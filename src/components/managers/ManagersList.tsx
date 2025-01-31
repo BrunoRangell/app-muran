@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { seedInitialData } from "@/lib/seed";
 
 interface Manager {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -32,7 +32,7 @@ export const ManagersList = () => {
       console.log('Buscando gestores...');
       const { data, error } = await supabase
         .from('managers')
-        .select('id, name');
+        .select('*');
 
       if (error) {
         console.error('Erro ao buscar gestores:', error);

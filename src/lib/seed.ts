@@ -5,28 +5,23 @@ export const seedInitialData = async () => {
     console.log('Iniciando criação de dados iniciais...');
 
     // Verificar se já existe um gestor
-    const { data: existingManager, error: existingManagerError } = await supabase
+    const { data: existingManagers, error: existingManagerError } = await supabase
       .from('managers')
-      .select('*')
-      .single();
+      .select('*');
 
-    if (existingManagerError && existingManagerError.code !== 'PGRST116') {
+    if (existingManagerError) {
       console.error('Erro ao verificar gestor existente:', existingManagerError);
       throw existingManagerError;
     }
 
-    let manager = existingManager;
+    let manager = existingManagers?.[0];
 
     // Se não existir gestor, criar um novo
-    if (!existingManager) {
+    if (!existingManagers || existingManagers.length === 0) {
       console.log('Nenhum gestor encontrado, criando novo gestor...');
       const { data: newManager, error: managerError } = await supabase
         .from('managers')
-        .insert([
-          { 
-            name: 'Pedro Henrique',
-          }
-        ])
+        .insert([{ name: 'Pedro Henrique' }])
         .select()
         .single();
 
@@ -38,7 +33,7 @@ export const seedInitialData = async () => {
       console.log('Gestor criado com sucesso:', newManager);
       manager = newManager;
     } else {
-      console.log('Gestor existente encontrado:', existingManager);
+      console.log('Gestor existente encontrado:', manager);
     }
 
     if (!manager?.id) {
