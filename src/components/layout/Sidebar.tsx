@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Users, 
@@ -7,6 +7,8 @@ import {
   Shield,
   LogOut
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -18,6 +20,39 @@ const menuItems = [
 
 export const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      console.log("Iniciando processo de logout...");
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Erro ao fazer logout:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao sair",
+          description: "Não foi possível fazer logout. Tente novamente.",
+        });
+        return;
+      }
+
+      console.log("Logout realizado com sucesso");
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+      navigate("/login");
+    } catch (error) {
+      console.error("Erro inesperado ao fazer logout:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
+      });
+    }
+  };
 
   return (
     <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0">
@@ -52,7 +87,10 @@ export const Sidebar = () => {
       </nav>
 
       <div className="absolute bottom-4 left-4 right-4">
-        <button className="flex items-center space-x-2 w-full p-3 rounded-lg hover:bg-muran-complementary/80 text-gray-300">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center space-x-2 w-full p-3 rounded-lg hover:bg-muran-complementary/80 text-gray-300"
+        >
           <LogOut size={20} />
           <span>Sair</span>
         </button>
