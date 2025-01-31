@@ -1,19 +1,49 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, DollarSign, TrendingUp } from "lucide-react";
+import { Users, DollarSign } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 const Dashboard = () => {
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      console.log("Fetching clients for dashboard...");
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*');
+      
+      if (error) {
+        console.error("Error fetching clients:", error);
+        throw error;
+      }
+      
+      console.log("Clients fetched:", data);
+      return data || [];
+    }
+  });
+
+  const totalClients = clients.length;
+  const totalRevenue = clients.reduce((sum, client) => {
+    return sum + (client.contract_value || 0);
+  }, 0);
+
+  const formattedRevenue = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(totalRevenue / 100); // Divide by 100 since values are stored in cents
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-muran-complementary">Dashboard</h1>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
             <Users className="h-4 w-4 text-muran-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{totalClients}</div>
             <p className="text-xs text-muted-foreground">
               Clientes ativos no sistema
             </p>
@@ -26,22 +56,9 @@ const Dashboard = () => {
             <DollarSign className="h-4 w-4 text-muran-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 0,00</div>
+            <div className="text-2xl font-bold">{formattedRevenue}</div>
             <p className="text-xs text-muted-foreground">
               Receita acumulada no mês
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Crescimento</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muran-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0%</div>
-            <p className="text-xs text-muted-foreground">
-              Comparado ao mês anterior
             </p>
           </CardContent>
         </Card>
