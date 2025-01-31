@@ -47,6 +47,15 @@ export const TeamMemberForm = () => {
 
       console.log("Usuário autenticado criado com sucesso", authData);
       
+      // Aguardar um momento para garantir que a sessão esteja estabelecida
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Obter a sessão atual
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) throw sessionError;
+      if (!session) throw new Error("Não foi possível estabelecer a sessão");
+      
       // Em seguida, criar o registro na tabela team_members usando o manager_id
       const { error: dbError } = await supabase
         .from('team_members')
@@ -55,7 +64,7 @@ export const TeamMemberForm = () => {
             name: data.name,
             email: data.email,
             role: data.role,
-            manager_id: authData.user?.id // Usando manager_id em vez de user_id
+            manager_id: authData.user?.id
           }
         ]);
 
