@@ -14,8 +14,10 @@ import { SidebarLogout } from "./SidebarLogout";
 import { MenuItem } from "@/types/sidebar";
 
 const adminMenuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Clientes", path: "/clientes" },
+  { icon: Users, label: "Equipe", path: "/equipe" },
+  { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
   { icon: Shield, label: "Admin", path: "/admin" },
 ];
 
@@ -52,9 +54,7 @@ export const Sidebar = () => {
     checkAdminStatus();
   }, []);
 
-  const menuItems = isAdmin 
-    ? [...adminMenuItems, ...regularMenuItems]
-    : regularMenuItems;
+  const menuItems = isAdmin ? adminMenuItems : regularMenuItems;
 
   return (
     <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0">

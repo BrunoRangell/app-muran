@@ -1,57 +1,49 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, Briefcase, CalendarClock } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { supabase } from "@/lib/supabase";
-import { format } from "date-fns";
 
 interface TeamMember {
   id: string;
   name: string;
   role: string;
-  photo_url?: string;
-  birthday?: string;
-  start_date?: string;
+  photo_url: string;
+  birthday: string;
+  start_date: string;
 }
 
 const Managers = () => {
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTeamMembers = async () => {
+  const { data: teamMembers, isLoading } = useQuery({
+    queryKey: ["team_members"],
+    queryFn: async () => {
+      console.log("Fetching team members...");
       try {
-        console.log('Buscando membros da equipe...');
         const { data, error } = await supabase
           .from('team_members')
           .select('id, name, role, photo_url, birthday, start_date')
-          .order('start_date', { ascending: true, nullsLast: true })
+          .order('start_date', { ascending: true })
           .order('name');
 
         if (error) {
-          console.error('Erro ao buscar membros:', error);
+          console.error("Error fetching team members:", error);
           throw error;
         }
 
-        console.log('Membros encontrados:', data);
-        setTeamMembers(data || []);
+        console.log("Team members fetched successfully:", data);
+        return data;
       } catch (error) {
-        console.error('Erro ao carregar membros:', error);
-      } finally {
-        setIsLoading(false);
+        console.error("Error in team members query:", error);
+        throw error;
       }
-    };
-
-    fetchTeamMembers();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-muran-primary"></div>
-      </div>
-    );
-  }
+    },
+  });
 
   return (
     <div className="space-y-8">
@@ -59,38 +51,39 @@ const Managers = () => {
         <h1 className="text-3xl font-bold text-muran-dark">Equipe</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {teamMembers.map((member) => (
-          <Card key={member.id} className="p-6 space-y-4">
-            <div className="flex items-center space-x-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={member.photo_url} alt={member.name} />
-                <AvatarFallback className="bg-muran-primary text-white">
-                  {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="text-xl font-semibold text-muran-dark">{member.name}</h3>
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <Briefcase className="h-4 w-4" />
-                  <span>{member.role}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-gray-600">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4" />
-                <span>Aniversário: {member.birthday ? format(new Date(member.birthday), 'dd/MM') : 'N/A'}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <CalendarClock className="h-4 w-4" />
-                <span>Na Muran desde: {member.start_date ? format(new Date(member.start_date), 'MM/yyyy') : 'N/A'}</span>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <Card className="p-6">
+        <h2 className="text-xl font-bold mb-4">Lista de Integrantes</h2>
+        {isLoading ? (
+          <p className="text-gray-600">Carregando integrantes...</p>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Data de Início</TableHead>
+                  <TableHead>Foto</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {teamMembers?.map((member: TeamMember) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="font-medium">
+                      {member.name}
+                    </TableCell>
+                    <TableCell>{member.role}</TableCell>
+                    <TableCell>{new Date(member.start_date).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell>
+                      <img src={member.photo_url} alt={member.name} className="h-10 w-10 rounded-full" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 };
