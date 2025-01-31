@@ -44,14 +44,10 @@ const Clients = () => {
   });
 
   const formatCurrency = (value: number) => {
-    // Convert from cents to real currency value
-    const realValue = value / 100;
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(realValue);
+    }).format(value);
   };
 
   const formatDate = (dateString: string) => {

@@ -71,23 +71,12 @@ export const ClientForm = () => {
         ? data.customAcquisitionChannel 
         : data.acquisitionChannel;
 
-      // Convert the formatted currency string (e.g. "R$ 2.540,00") to cents
-      const contractValueInCents = Math.round(
-        parseFloat(
-          data.contractValue
-            .replace(/[R$\s.]/g, '')  // Remove R$, spaces, and dots
-            .replace(',', '.')         // Replace comma with dot for decimal
-        ) * 100                       // Convert to cents
-      );
-
-      console.log("Valor em centavos:", contractValueInCents);
-
       const { error: dbError } = await supabase
         .from('clients')
         .insert([
           {
             company_name: data.companyName,
-            contract_value: contractValueInCents,
+            contract_value: parseFloat(data.contractValue.toString().replace(/[^\d.,]/g, "").replace(",", ".")),
             first_payment_date: data.firstPaymentDate,
             payment_type: data.paymentType,
             status: data.status,
