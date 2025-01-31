@@ -16,7 +16,7 @@ export const PaymentSection = ({ form }: PaymentSectionProps) => {
         name="firstPaymentDate"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Data do Primeiro Pagamento</FormLabel>
+            <FormLabel>Início da Parceria</FormLabel>
             <FormControl>
               <Input type="date" {...field} />
             </FormControl>

@@ -9,8 +9,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Settings2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/lib/supabase";
 import { ClientForm } from "@/components/admin/ClientForm";
 import { useToast } from "@/components/ui/use-toast";
@@ -29,10 +31,28 @@ interface Client {
   created_at: string;
 }
 
+interface Column {
+  id: keyof Client | 'actions';
+  label: string;
+  show: boolean;
+}
+
 export const ClientsList = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const [columns, setColumns] = useState<Column[]>([
+    { id: 'company_name', label: 'Empresa', show: true },
+    { id: 'contract_value', label: 'Valor do Contrato', show: true },
+    { id: 'first_payment_date', label: 'Início da Parceria', show: true },
+    { id: 'payment_type', label: 'Tipo de Pagamento', show: true },
+    { id: 'status', label: 'Status', show: true },
+    { id: 'acquisition_channel', label: 'Canal de Aquisição', show: true },
+    { id: 'company_birthday', label: 'Aniversário da Empresa', show: true },
+    { id: 'contact_name', label: 'Responsável', show: true },
+    { id: 'contact_phone', label: 'Contato', show: true },
+    { id: 'actions', label: 'Ações', show: true }
+  ]);
 
   const { data: clients, isLoading, refetch } = useQuery({
     queryKey: ["clients"],
@@ -85,14 +105,51 @@ export const ClientsList = () => {
     });
   };
 
+  const toggleColumn = (columnId: string) => {
+    setColumns(columns.map(col => 
+      col.id === columnId ? { ...col, show: !col.show } : col
+    ));
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Lista de Clientes</h2>
-        <Button onClick={handleCreateClick} className="bg-muran-primary hover:bg-muran-primary/90">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Cliente
-        </Button>
+        <div className="flex gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-4">
+                <h4 className="font-medium">Colunas visíveis</h4>
+                <div className="space-y-2">
+                  {columns.map(column => (
+                    <div key={column.id} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={column.id} 
+                        checked={column.show}
+                        onCheckedChange={() => toggleColumn(column.id)}
+                      />
+                      <label 
+                        htmlFor={column.id}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {column.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button onClick={handleCreateClick} className="bg-muran-primary hover:bg-muran-primary/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Cliente
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -102,61 +159,57 @@ export const ClientsList = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Valor do Contrato</TableHead>
-                <TableHead>Data do 1º Pagamento</TableHead>
-                <TableHead>Tipo de Pagamento</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Canal de Aquisição</TableHead>
-                <TableHead>Aniversário</TableHead>
-                <TableHead>Responsável</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Data de Cadastro</TableHead>
-                <TableHead className="w-[100px]">Ações</TableHead>
+                {columns.filter(col => col.show).map(column => (
+                  <TableHead key={column.id}>{column.label}</TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {clients?.map((client) => (
                 <TableRow key={client.id}>
-                  <TableCell className="font-medium">
-                    {client.company_name}
-                  </TableCell>
-                  <TableCell>
-                    {formatCurrency(client.contract_value)}
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(client.first_payment_date)}
-                  </TableCell>
-                  <TableCell>
-                    {client.payment_type === "pre" ? "Pré-pago" : "Pós-pago"}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        client.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {client.status === "active" ? "Ativo" : "Inativo"}
-                    </span>
-                  </TableCell>
-                  <TableCell>{client.acquisition_channel}</TableCell>
-                  <TableCell>
-                    {client.company_birthday ? formatDate(client.company_birthday) : "-"}
-                  </TableCell>
-                  <TableCell>{client.contact_name}</TableCell>
-                  <TableCell>{client.contact_phone}</TableCell>
-                  <TableCell>{formatDate(client.created_at)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditClick(client)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+                  {columns.filter(col => col.show).map(column => {
+                    if (column.id === 'actions') {
+                      return (
+                        <TableCell key={column.id}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(client)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      );
+                    }
+
+                    let content = client[column.id as keyof Client];
+                    
+                    if (column.id === 'contract_value') {
+                      content = formatCurrency(client.contract_value as number);
+                    } else if (column.id === 'first_payment_date' || column.id === 'company_birthday') {
+                      content = formatDate(content as string);
+                    } else if (column.id === 'payment_type') {
+                      content = content === 'pre' ? 'Pré-pago' : 'Pós-pago';
+                    } else if (column.id === 'status') {
+                      return (
+                        <TableCell key={column.id}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              client.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {client.status === "active" ? "Ativo" : "Inativo"}
+                          </span>
+                        </TableCell>
+                      );
+                    }
+
+                    return (
+                      <TableCell key={column.id}>{content}</TableCell>
+                    );
+                  })}
                 </TableRow>
               ))}
             </TableBody>
