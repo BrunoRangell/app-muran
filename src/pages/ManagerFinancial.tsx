@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { SalaryChart } from "@/components/managers/SalaryChart";
 import { seedInitialData } from "@/lib/seed";
 import { Button } from "@/components/ui/button";
+import { History } from "lucide-react";
 
 interface Salary {
   month: Date;
@@ -15,6 +16,7 @@ interface Salary {
 const ManagerFinancial = () => {
   const [salaries, setSalaries] = useState<Salary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -70,7 +72,11 @@ const ManagerFinancial = () => {
   };
 
   if (isLoading) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-gray-500">Carregando dados financeiros...</p>
+      </div>
+    );
   }
 
   return (
@@ -92,27 +98,40 @@ const ManagerFinancial = () => {
         <SalaryChart />
       </Card>
 
-      <Card className="p-6">
-        <h2 className="text-xl font-bold mb-6">Histórico de Salários</h2>
-        <div className="space-y-4">
-          {salaries.map((salary, index) => (
-            <div
-              key={index}
-              className="flex justify-between items-center p-4 bg-gray-50 rounded-lg"
-            >
-              <span className="font-medium">
-                {new Date(salary.month).toLocaleDateString('pt-BR', {
-                  month: 'long',
-                  year: 'numeric'
-                })}
-              </span>
-              <span className="text-green-600 font-semibold">
-                R$ {salary.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
+      <div className="flex flex-col gap-4">
+        <Button
+          onClick={() => setShowHistory(!showHistory)}
+          variant="outline"
+          className="w-full md:w-auto flex items-center gap-2"
+        >
+          <History className="w-4 h-4" />
+          {showHistory ? "Ocultar Histórico" : "Ver Histórico de Salários"}
+        </Button>
+
+        {showHistory && (
+          <Card className="p-6 animate-accordion-down">
+            <h2 className="text-xl font-bold mb-6">Histórico de Salários</h2>
+            <div className="space-y-4">
+              {salaries.map((salary, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <span className="font-medium">
+                    {new Date(salary.month).toLocaleDateString('pt-BR', {
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </span>
+                  <span className="text-green-600 font-semibold">
+                    R$ {salary.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

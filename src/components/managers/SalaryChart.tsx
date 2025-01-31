@@ -5,7 +5,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
@@ -85,16 +85,24 @@ export const SalaryChart = () => {
   }, [toast]);
 
   if (isLoading) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-gray-500">Carregando gráfico...</p>
+      </div>
+    );
   }
 
   if (salaryData.length === 0) {
-    return <div>Nenhum dado salarial encontrado.</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-gray-500">Nenhum dado salarial encontrado.</p>
+      </div>
+    );
   }
 
   return (
     <ChartContainer
-      className="aspect-[2/1]"
+      className="aspect-[2/1] w-full"
       config={{
         salary: {
           theme: {
@@ -104,24 +112,28 @@ export const SalaryChart = () => {
         },
       }}
     >
-      <LineChart data={salaryData}>
-        <CartesianGrid strokeDasharray="3 3" />
+      <LineChart data={salaryData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis
           dataKey="month"
-          tick={{ fill: '#0f0f0f' }}
+          tick={{ fill: '#0f0f0f', fontSize: 12 }}
+          tickLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#e5e7eb' }}
         />
         <YAxis
-          tick={{ fill: '#0f0f0f' }}
+          tick={{ fill: '#0f0f0f', fontSize: 12 }}
           tickFormatter={(value) => `R$ ${value}`}
+          tickLine={{ stroke: '#e5e7eb' }}
+          axisLine={{ stroke: '#e5e7eb' }}
         />
         <ChartTooltip
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             return (
               <ChartTooltipContent
-                className="bg-white"
+                className="bg-white shadow-lg border border-gray-100"
                 payload={payload}
-                formatter={(value) => `R$ ${value}`}
+                formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
               />
             );
           }}
@@ -130,9 +142,10 @@ export const SalaryChart = () => {
           type="monotone"
           dataKey="amount"
           name="Salário"
-          stroke="var(--color-salary)"
+          stroke="#ff6e00"
           strokeWidth={2}
-          dot={{ fill: "var(--color-salary)" }}
+          dot={{ fill: "#ff6e00", strokeWidth: 2 }}
+          activeDot={{ r: 6, fill: "#ff6e00" }}
         />
       </LineChart>
     </ChartContainer>
