@@ -8,7 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FolderList } from "./FolderList";
-import { Folder } from "lucide-react";
+import { Folder, Plus } from "lucide-react";
 
 interface SpaceItemProps {
   space: Space;
