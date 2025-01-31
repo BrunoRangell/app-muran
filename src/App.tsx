@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/layout/Layout";
-import { Toaster } from "./components/ui/toaster";
 import { PrivateRoute } from "./components/auth/PrivateRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -9,16 +8,14 @@ import Clients from "./pages/Clients";
 import Financial from "./pages/Financial";
 import Managers from "./pages/Managers";
 import Admin from "./pages/Admin";
-import ManagerFinancial from "./pages/ManagerFinancial";
 import NotFound from "./pages/NotFound";
-import { AuthCallback } from "./components/auth/AuthCallback";
+import { Toaster } from "./components/ui/toaster";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route
           path="/"
           element={
@@ -75,16 +72,6 @@ function App() {
             <PrivateRoute requireAdmin>
               <Layout>
                 <Admin />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/gestor/financeiro"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <ManagerFinancial />
               </Layout>
             </PrivateRoute>
           }

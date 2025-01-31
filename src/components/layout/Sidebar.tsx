@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useEffect, useState } from "react";
 
 const adminMenuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: Shield, label: "Admin", path: "/admin" },
 ];
