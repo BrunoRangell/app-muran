@@ -35,7 +35,7 @@ export const TeamMemberForm = () => {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/auth/callback`,
           data: {
             name: data.name,
             role: data.role,
