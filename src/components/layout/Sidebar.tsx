@@ -1,74 +1,106 @@
-import { useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Shield,
-  Home,
-} from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarLogo } from "./SidebarLogo";
-import { SidebarMenuItem } from "./SidebarMenuItem";
 import { SidebarLogout } from "./SidebarLogout";
-import { MenuItem } from "@/types/sidebar";
-
-const adminMenuItems: MenuItem[] = [
-  { icon: Home, label: "Início", path: "/" },
-  { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: Shield, label: "Admin", path: "/admin" },
-];
-
-const regularMenuItems: MenuItem[] = [
-  { icon: Home, label: "Início", path: "/" },
-  { icon: Users, label: "Equipe", path: "/equipe" },
-];
+import { Home, Users, Wallet, Building2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export const Sidebar = () => {
   const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
+    const checkPermissions = async () => {
+      console.log('Verificando permissões do usuário...');
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (session) {
+        if (session?.user?.email) {
           const { data: teamMember } = await supabase
             .from('team_members')
             .select('permission')
             .eq('email', session.user.email)
             .single();
 
-          setIsAdmin(teamMember?.permission === 'admin');
+          const userIsAdmin = teamMember?.permission === 'admin';
+          console.log('Usuário é admin?', userIsAdmin);
+          setIsAdmin(userIsAdmin);
         }
       } catch (error) {
-        console.error("Erro ao verificar status de admin:", error);
-        setIsAdmin(false);
+        console.error('Erro ao verificar permissões:', error);
       }
     };
 
-    checkAdminStatus();
+    checkPermissions();
   }, []);
 
-  const menuItems = isAdmin 
-    ? adminMenuItems
-    : regularMenuItems;
+  const adminMenuItems = [
+    {
+      title: "Início",
+      icon: Home,
+      href: "/inicio",
+    },
+    {
+      title: "Clientes",
+      icon: Building2,
+      href: "/clientes",
+    },
+    {
+      title: "Equipe",
+      icon: Users,
+      href: "/equipe",
+    },
+    {
+      title: "Financeiro",
+      icon: Wallet,
+      href: "/financeiro",
+    },
+  ];
+
+  const regularMenuItems = [
+    {
+      title: "Início",
+      icon: Home,
+      href: "/inicio",
+    },
+    {
+      title: "Financeiro",
+      icon: Wallet,
+      href: "/gestor/financeiro",
+    },
+  ];
+
+  const menuItems = isAdmin ? adminMenuItems : regularMenuItems;
 
   return (
-    <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0">
-      <SidebarLogo />
-      
-      <nav className="space-y-2">
-        {menuItems.map((item) => (
-          <SidebarMenuItem
-            key={item.path}
-            {...item}
-            isActive={location.pathname === item.path}
-          />
-        ))}
-      </nav>
-
-      <SidebarLogout />
+    <div className="relative flex h-screen w-72 flex-col border-r bg-background">
+      <div className="p-6">
+        <SidebarLogo />
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="space-y-2 p-4">
+          {menuItems.map((item) => (
+            <Link key={item.href} to={item.href}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-2",
+                  location.pathname === item.href && "bg-muran-secondary text-muran-dark hover:bg-muran-secondary/90"
+                )}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.title}
+              </Button>
+            </Link>
+          ))}
+        </div>
+      </ScrollArea>
+      <div className="p-4">
+        <SidebarLogout />
+      </div>
     </div>
   );
 };
