@@ -38,8 +38,7 @@ export const TeamMemberForm = () => {
           data: {
             name: data.name,
             role: data.role,
-          },
-          emailConfirm: false
+          }
         }
       });
 
@@ -47,6 +46,14 @@ export const TeamMemberForm = () => {
       if (!authData.user) throw new Error("Falha ao criar usuário");
 
       console.log("Usuário autenticado criado com sucesso", authData);
+
+      // Fazer login com o usuário recém-criado
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (signInError) throw signInError;
       
       // Em seguida, criar o registro na tabela team_members usando o ID do usuário
       const { error: dbError } = await supabase
