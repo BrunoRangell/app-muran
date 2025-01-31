@@ -30,8 +30,8 @@ export const TeamMemberForm = () => {
       setIsLoading(true);
       console.log("Criando novo membro:", data);
       
-      // Criar o usuário autenticado no Supabase com URL de redirecionamento
-      const { error: authError } = await supabase.auth.signUp({
+      // Primeiro, criar o usuário autenticado no Supabase
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -39,16 +39,15 @@ export const TeamMemberForm = () => {
           data: {
             name: data.name,
             role: data.role,
-          },
-          shouldCreateUser: true
+          }
         }
       });
 
       if (authError) throw authError;
 
-      console.log("Usuário autenticado criado com sucesso");
+      console.log("Usuário autenticado criado com sucesso", authData);
       
-      // Criar o registro na tabela team_members
+      // Em seguida, criar o registro na tabela team_members usando o token do usuário criado
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -56,7 +55,7 @@ export const TeamMemberForm = () => {
             name: data.name,
             email: data.email,
             role: data.role,
-            password: data.password
+            user_id: authData.user?.id // Associar com o ID do usuário autenticado
           }
         ]);
 
