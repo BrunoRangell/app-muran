@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Search, LogIn } from "lucide-react";
+import { Search, LogIn, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import {
 import { ManagerLoginForm } from "./ManagerLoginForm";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
+import { seedInitialData } from "@/lib/seed";
 
 interface Manager {
   id: number;
@@ -26,35 +27,56 @@ export const ManagersList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchManagers = async () => {
-      try {
-        console.log('Buscando gestores...');
-        const { data, error } = await supabase
-          .from('managers')
-          .select('id, name');
+  const fetchManagers = async () => {
+    try {
+      console.log('Buscando gestores...');
+      const { data, error } = await supabase
+        .from('managers')
+        .select('id, name');
 
-        if (error) {
-          console.error('Erro ao buscar gestores:', error);
-          throw error;
-        }
-
-        console.log('Gestores encontrados:', data);
-        setManagers(data || []);
-      } catch (error) {
-        console.error('Erro ao carregar gestores:', error);
-        toast({
-          title: "Erro ao carregar gestores",
-          description: "Tente novamente mais tarde.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+      if (error) {
+        console.error('Erro ao buscar gestores:', error);
+        throw error;
       }
-    };
 
+      console.log('Gestores encontrados:', data);
+      setManagers(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar gestores:', error);
+      toast({
+        title: "Erro ao carregar gestores",
+        description: "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchManagers();
-  }, [toast]);
+  }, []);
+
+  const handleSeed = async () => {
+    try {
+      setIsLoading(true);
+      await seedInitialData();
+      await fetchManagers();
+      toast({
+        title: "Sucesso",
+        description: "Dados iniciais criados com sucesso!",
+      });
+    } catch (error) {
+      console.error('Erro ao criar dados iniciais:', error);
+      toast({
+        title: "Erro ao criar dados iniciais",
+        description: "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredManagers = managers.filter(manager =>
     manager.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -81,6 +103,15 @@ export const ManagersList = () => {
             className="pl-10"
           />
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+          onClick={handleSeed}
+        >
+          <Plus size={16} />
+          Criar Dados Iniciais
+        </Button>
       </div>
 
       <div className="grid gap-4">
