@@ -18,6 +18,7 @@ interface SalaryData {
 export const SalaryChart = () => {
   const [salaryData, setSalaryData] = useState<SalaryData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [totalSalary, setTotalSalary] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,6 +69,9 @@ export const SalaryChart = () => {
           amount: item.amount
         })) || [];
 
+        // Calcula o total dos salários
+        const total = formattedData.reduce((acc, curr) => acc + curr.amount, 0);
+        setTotalSalary(total);
         setSalaryData(formattedData);
       } catch (error) {
         console.error('Erro ao carregar dados de salários:', error);
@@ -101,53 +105,69 @@ export const SalaryChart = () => {
   }
 
   return (
-    <ChartContainer
-      className="aspect-[2/1] w-full"
-      config={{
-        salary: {
-          theme: {
-            light: "#ff6e00",
-            dark: "#ff6e00",
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <div className="bg-muran-secondary rounded-lg px-4 py-2">
+          <span className="text-sm font-medium text-muran-dark">
+            Total acumulado: {' '}
+            <span className="text-muran-primary">
+              {new Intl.NumberFormat('pt-BR', { 
+                style: 'currency', 
+                currency: 'BRL' 
+              }).format(totalSalary)}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <ChartContainer
+        className="aspect-[2/1] w-full"
+        config={{
+          salary: {
+            theme: {
+              light: "#ff6e00",
+              dark: "#ff6e00",
+            },
           },
-        },
-      }}
-    >
-      <LineChart data={salaryData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis
-          dataKey="month"
-          tick={{ fill: '#0f0f0f', fontSize: 12 }}
-          tickLine={{ stroke: '#e5e7eb' }}
-          axisLine={{ stroke: '#e5e7eb' }}
-        />
-        <YAxis
-          tick={{ fill: '#0f0f0f', fontSize: 12 }}
-          tickFormatter={(value) => `R$ ${value}`}
-          tickLine={{ stroke: '#e5e7eb' }}
-          axisLine={{ stroke: '#e5e7eb' }}
-        />
-        <ChartTooltip
-          content={({ active, payload }) => {
-            if (!active || !payload?.length) return null;
-            return (
-              <ChartTooltipContent
-                className="bg-white shadow-lg border border-gray-100"
-                payload={payload}
-                formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-              />
-            );
-          }}
-        />
-        <Line
-          type="monotone"
-          dataKey="amount"
-          name="Salário"
-          stroke="#ff6e00"
-          strokeWidth={2}
-          dot={{ fill: "#ff6e00", strokeWidth: 2 }}
-          activeDot={{ r: 6, fill: "#ff6e00" }}
-        />
-      </LineChart>
-    </ChartContainer>
+        }}
+      >
+        <LineChart data={salaryData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis
+            dataKey="month"
+            tick={{ fill: '#0f0f0f', fontSize: 12 }}
+            tickLine={{ stroke: '#e5e7eb' }}
+            axisLine={{ stroke: '#e5e7eb' }}
+          />
+          <YAxis
+            tick={{ fill: '#0f0f0f', fontSize: 12 }}
+            tickFormatter={(value) => `R$ ${value}`}
+            tickLine={{ stroke: '#e5e7eb' }}
+            axisLine={{ stroke: '#e5e7eb' }}
+          />
+          <ChartTooltip
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              return (
+                <ChartTooltipContent
+                  className="bg-white shadow-lg border border-gray-100"
+                  payload={payload}
+                  formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                />
+              );
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="amount"
+            name="Salário"
+            stroke="#ff6e00"
+            strokeWidth={2}
+            dot={{ fill: "#ff6e00", strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: "#ff6e00" }}
+          />
+        </LineChart>
+      </ChartContainer>
+    </div>
   );
 };
