@@ -30,22 +30,35 @@ export const TeamMemberForm = () => {
       setIsLoading(true);
       console.log("Criando novo membro:", data);
       
-      const { error } = await supabase
+      // Primeiro, criar o usuário autenticado no Supabase
+      const { error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (authError) throw authError;
+
+      console.log("Usuário autenticado criado com sucesso");
+      
+      // Depois, criar o registro na tabela team_members
+      const { error: dbError } = await supabase
         .from('team_members')
         .insert([
           {
             name: data.name,
             email: data.email,
             role: data.role,
-            password: data.password // Adicionando senha
+            password: data.password
           }
         ]);
 
-      if (error) throw error;
+      if (dbError) throw dbError;
+
+      console.log("Registro na tabela team_members criado com sucesso");
 
       toast({
         title: "Sucesso!",
-        description: "Membro da equipe cadastrado com sucesso.",
+        description: "Membro da equipe cadastrado com sucesso. Um email de confirmação foi enviado.",
       });
       
       form.reset();
@@ -53,7 +66,7 @@ export const TeamMemberForm = () => {
       console.error("Erro ao cadastrar membro:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível cadastrar o membro da equipe.",
+        description: "Não foi possível cadastrar o membro da equipe. Verifique se o email já está em uso.",
         variant: "destructive",
       });
     } finally {
