@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ManagerLoginFormProps {
   managerId: string;
@@ -14,80 +14,50 @@ interface ManagerLoginFormProps {
 export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLoginFormProps) => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      console.log('Tentando fazer login com:', { managerId, password });
-      
-      // Primeiro verificar se o usuário existe na tabela team_members
-      const { data: manager, error: managerError } = await supabase
+      console.log("Tentando fazer login com:", { managerId, password });
+
+      // Primeiro, buscar o email do gestor
+      const { data: managerData, error: managerError } = await supabase
         .from('team_members')
-        .select('*')
+        .select('email')
         .eq('id', managerId)
-        .eq('password', password)
         .single();
 
       if (managerError) throw managerError;
+      if (!managerData?.email) throw new Error("Email do gestor não encontrado");
 
-      if (manager) {
-        console.log('Login bem sucedido:', manager);
-        
-        try {
-          // Tentar criar sessão no Supabase
-          const { error: sessionError } = await supabase.auth.signInWithPassword({
-            email: manager.email,
-            password: password
-          });
+      // Agora fazer login usando o sistema de autenticação do Supabase
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: managerData.email,
+        password: password
+      });
 
-          if (sessionError) {
-            // Se o erro for de email não confirmado, permitir o login mesmo assim
-            if (sessionError.message === "Email not confirmed") {
-              toast({
-                title: "Login realizado com sucesso",
-                description: `Bem-vindo, ${managerName}!`,
-              });
-              navigate("/gestor/financeiro");
-              return;
-            }
-            throw sessionError;
-          }
+      if (signInError) throw signInError;
 
-          toast({
-            title: "Login realizado com sucesso",
-            description: `Bem-vindo, ${managerName}!`,
-          });
-          navigate("/gestor/financeiro");
-        } catch (authError: any) {
-          console.error('Erro de autenticação:', authError);
-          // Se o erro for de email não confirmado, permitir o login mesmo assim
-          if (authError.message === "Email not confirmed") {
-            toast({
-              title: "Login realizado com sucesso",
-              description: `Bem-vindo, ${managerName}!`,
-            });
-            navigate("/gestor/financeiro");
-            return;
-          }
-          throw authError;
-        }
-      } else {
-        throw new Error("Credenciais inválidas");
-      }
-    } catch (error) {
-      console.error('Login error:', error);
       toast({
-        title: "Erro ao fazer login",
-        description: "Senha incorreta ou erro ao criar sessão. Tente novamente.",
+        title: "Login realizado com sucesso!",
+        description: `Bem-vindo(a), ${managerName}!`,
+      });
+
+      onClose();
+      navigate("/gestor/financeiro");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Erro no login",
+        description: "Senha incorreta ou usuário não encontrado.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
-      onClose();
     }
   };
 
