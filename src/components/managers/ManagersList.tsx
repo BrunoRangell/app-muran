@@ -34,7 +34,8 @@ export const ManagersList = () => {
       console.log('Buscando membros da equipe...');
       const { data, error } = await supabase
         .from('team_members')
-        .select('id, name, email, role');
+        .select('id, name, email, role')
+        .order('name');
 
       if (error) {
         console.error('Erro ao buscar membros:', error);
@@ -47,9 +48,10 @@ export const ManagersList = () => {
       console.error('Erro ao carregar membros:', error);
       toast({
         title: "Erro ao carregar membros",
-        description: "Tente novamente mais tarde.",
+        description: "Verifique sua conexão e tente novamente.",
         variant: "destructive",
       });
+      setTeamMembers([]); // Garantir que o estado seja limpo em caso de erro
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +95,9 @@ export const ManagersList = () => {
       <div className="grid gap-4">
         {filteredMembers.length === 0 ? (
           <Card className="p-4">
-            <p className="text-center text-gray-500">Nenhum membro encontrado</p>
+            <p className="text-center text-gray-500">
+              {searchTerm ? "Nenhum membro encontrado" : "Nenhum membro disponível"}
+            </p>
           </Card>
         ) : (
           filteredMembers.map((member) => (
