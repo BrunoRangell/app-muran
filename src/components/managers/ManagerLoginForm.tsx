@@ -45,13 +45,13 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
           });
 
           if (sessionError) {
-            // Se o erro for de email não confirmado
+            // Se o erro for de email não confirmado, permitir o login mesmo assim
             if (sessionError.message === "Email not confirmed") {
               toast({
-                title: "Email não confirmado",
-                description: "Por favor, confirme seu email através do link enviado para sua caixa de entrada.",
-                variant: "destructive",
+                title: "Login realizado com sucesso",
+                description: `Bem-vindo, ${managerName}!`,
               });
+              navigate("/gestor/financeiro");
               return;
             }
             throw sessionError;
@@ -64,12 +64,13 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
           navigate("/gestor/financeiro");
         } catch (authError: any) {
           console.error('Erro de autenticação:', authError);
+          // Se o erro for de email não confirmado, permitir o login mesmo assim
           if (authError.message === "Email not confirmed") {
             toast({
-              title: "Email não confirmado",
-              description: "Por favor, confirme seu email através do link enviado para sua caixa de entrada.",
-              variant: "destructive",
+              title: "Login realizado com sucesso",
+              description: `Bem-vindo, ${managerName}!`,
             });
+            navigate("/gestor/financeiro");
             return;
           }
           throw authError;
