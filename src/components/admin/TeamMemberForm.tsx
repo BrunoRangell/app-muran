@@ -47,7 +47,7 @@ export const TeamMemberForm = () => {
 
       console.log("Usuário autenticado criado com sucesso", authData);
       
-      // Em seguida, criar o registro na tabela team_members usando o token do usuário criado
+      // Em seguida, criar o registro na tabela team_members usando o manager_id
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -55,7 +55,7 @@ export const TeamMemberForm = () => {
             name: data.name,
             email: data.email,
             role: data.role,
-            user_id: authData.user?.id // Associar com o ID do usuário autenticado
+            manager_id: authData.user?.id // Usando manager_id em vez de user_id
           }
         ]);
 
