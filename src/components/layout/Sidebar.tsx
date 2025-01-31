@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   Users, 
   DollarSign, 
-  UserCog,
   Shield,
   Home,
 } from "lucide-react";
@@ -22,8 +21,8 @@ const adminMenuItems: MenuItem[] = [
 
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
-  { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
   { icon: Users, label: "Equipe", path: "/equipe" },
+  { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
 ];
 
 export const Sidebar = () => {

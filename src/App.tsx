@@ -1,38 +1,27 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Layout } from "./components/layout/Layout";
-import { PrivateRoute } from "./components/auth/PrivateRoute";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import UserDashboard from "./pages/UserDashboard";
-import Clients from "./pages/Clients";
-import Financial from "./pages/Financial";
-import Managers from "./pages/Managers";
-import Admin from "./pages/Admin";
-import NotFound from "./pages/NotFound";
-import { Toaster } from "./components/ui/toaster";
+import { Routes, Route } from "react-router-dom";
+import { Layout } from "@/components/layout/Layout";
+import { PrivateRoute } from "@/components/auth/PrivateRoute";
+import Login from "@/pages/Login";
+import Index from "@/pages/Index";
+import Dashboard from "@/pages/Dashboard";
+import Clients from "@/pages/Clients";
+import Admin from "@/pages/Admin";
+import NotFound from "@/pages/NotFound";
+import Managers from "@/pages/Managers";
+import ManagerFinancial from "@/pages/ManagerFinancial";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <UserDashboard />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<Index />} />
+        <Route path="/equipe" element={<Managers />} />
         <Route
           path="/dashboard"
           element={
             <PrivateRoute requireAdmin>
-              <Layout>
-                <Dashboard />
-              </Layout>
+              <Dashboard />
             </PrivateRoute>
           }
         />
@@ -40,29 +29,7 @@ function App() {
           path="/clientes"
           element={
             <PrivateRoute requireAdmin>
-              <Layout>
-                <Clients />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/financeiro"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Financial />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/equipe"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Managers />
-              </Layout>
+              <Clients />
             </PrivateRoute>
           }
         />
@@ -70,16 +37,21 @@ function App() {
           path="/admin"
           element={
             <PrivateRoute requireAdmin>
-              <Layout>
-                <Admin />
-              </Layout>
+              <Admin />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/financeiro"
+          element={
+            <PrivateRoute>
+              <ManagerFinancial />
             </PrivateRoute>
           }
         />
         <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster />
-    </Router>
+      </Route>
+    </Routes>
   );
 }
 
