@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { seedInitialData } from "@/lib/seed";
 
 interface Manager {
-  id: string;  // Changed from number to string to match UUID type
+  id: string;  // Atualizado para string (UUID)
   name: string;
 }
 
