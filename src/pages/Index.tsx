@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Smile, Heart, Sun } from "lucide-react";
+import { ArrowUpRight, Target, Users, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const Index = () => {
@@ -26,7 +26,7 @@ const Index = () => {
             .single();
 
           if (teamMember?.name) {
-            setUserName(teamMember.name.split(' ')[0]); // Get first name only
+            setUserName(teamMember.name.split(' ')[0]);
           }
         }
       } catch (error) {
@@ -42,10 +42,10 @@ const Index = () => {
     <div className="space-y-8">
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold text-muran-complementary">
-          {greeting}, {userName ? userName : "Bem-vindo"}! <Smile className="inline-block ml-2 text-muran-primary" />
+          {greeting}, {userName ? userName : "Bem-vindo"}! <Zap className="inline-block ml-2 text-muran-primary" />
         </h1>
         <p className="text-lg text-gray-600">
-          É ótimo ter você aqui na Muran!
+          Impulsionando negócios no mundo digital
         </p>
       </div>
 
@@ -53,13 +53,13 @@ const Index = () => {
         <Card className="transform transition-all hover:scale-105">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Heart className="text-muran-primary" />
-              Nosso Propósito
+              <Target className="text-muran-primary" />
+              Nossa Missão
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-gray-600">
-              Transformar a gestão financeira em uma experiência simples e eficiente para nossos clientes.
+              Contribuir para o impulsionamento de negócios no mundo digital, assessorando empreendedores com transparência, leveza e comprometimento e construindo parcerias duradouras.
             </p>
           </CardContent>
         </Card>
@@ -67,15 +67,18 @@ const Index = () => {
         <Card className="transform transition-all hover:scale-105">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sun className="text-muran-primary" />
+              <Users className="text-muran-primary" />
               Nossos Valores
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="list-disc list-inside text-gray-600 space-y-2">
-              <li>Transparência em primeiro lugar</li>
-              <li>Compromisso com resultados</li>
-              <li>Inovação constante</li>
+              <li>Agilidade</li>
+              <li>Colaboração</li>
+              <li>Comprometimento</li>
+              <li>Excelência</li>
+              <li>Flexibilidade</li>
+              <li>Transparência</li>
             </ul>
           </CardContent>
         </Card>
@@ -83,13 +86,13 @@ const Index = () => {
         <Card className="transform transition-all hover:scale-105 md:col-span-2 lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Smile className="text-muran-primary" />
-              Dica do Dia
+              <ArrowUpRight className="text-muran-primary" />
+              Nossa Visão
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-gray-600">
-              Explore a seção "Meu Financeiro" para acompanhar suas informações e manter-se atualizado com seus dados financeiros.
+              Prestar serviços de excelência em marketing digital, contribuindo para a prosperidade de clientes e almejando tornar-se referência no nicho.
             </p>
           </CardContent>
         </Card>
@@ -98,9 +101,61 @@ const Index = () => {
       <div className="mt-8">
         <Card className="bg-gradient-to-r from-muran-primary/10 to-muran-complementary/10">
           <CardContent className="p-6">
-            <p className="text-center text-lg text-gray-700">
-              "A excelência não é um ato, mas um hábito." - Aristóteles
+            <p className="text-center text-lg text-gray-700 font-medium italic">
+              "Resultados reais, relações duradouras."
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Nossa Personalidade</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Agradável</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Ambiciosa</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Colaboradora</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Disciplinada</span>
+              </div>
+              <div className="space-y-2">
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Honesta</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Leal</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Segura</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Versátil</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Nossas Propostas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium mb-2">Funcionais:</h4>
+                <ul className="list-disc list-inside text-gray-600">
+                  <li>Consultorias detalhadas</li>
+                  <li>Resultados mensuráveis</li>
+                  <li>Foco no crescimento</li>
+                  <li>Atendimento digital</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Emocionais:</h4>
+                <ul className="list-disc list-inside text-gray-600">
+                  <li>Relação próxima e atenciosa</li>
+                  <li>Incentivo ao empreendedorismo</li>
+                  <li>Comprometimento com sucesso</li>
+                  <li>Esforço mútuo e colaboração</li>
+                </ul>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
