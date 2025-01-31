@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Search, LogIn, Plus } from "lucide-react";
+import { Search, LogIn } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,39 +12,40 @@ import {
 import { ManagerLoginForm } from "./ManagerLoginForm";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
-import { seedInitialData } from "@/lib/seed";
 
-interface Manager {
-  id: string;  // Atualizado para string (UUID)
+interface TeamMember {
+  id: string;
   name: string;
+  email: string;
+  role: string;
 }
 
 export const ManagersList = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedManager, setSelectedManager] = useState<Manager | null>(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
-  const [managers, setManagers] = useState<Manager[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchManagers = async () => {
+  const fetchTeamMembers = async () => {
     try {
-      console.log('Buscando gestores...');
+      console.log('Buscando membros da equipe...');
       const { data, error } = await supabase
-        .from('managers')
+        .from('team_members')
         .select('*');
 
       if (error) {
-        console.error('Erro ao buscar gestores:', error);
+        console.error('Erro ao buscar membros:', error);
         throw error;
       }
 
-      console.log('Gestores encontrados:', data);
-      setManagers(data || []);
+      console.log('Membros encontrados:', data);
+      setTeamMembers(data || []);
     } catch (error) {
-      console.error('Erro ao carregar gestores:', error);
+      console.error('Erro ao carregar membros:', error);
       toast({
-        title: "Erro ao carregar gestores",
+        title: "Erro ao carregar membros",
         description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
@@ -54,36 +55,17 @@ export const ManagersList = () => {
   };
 
   useEffect(() => {
-    fetchManagers();
+    fetchTeamMembers();
   }, []);
 
-  const handleSeed = async () => {
-    try {
-      setIsLoading(true);
-      await seedInitialData();
-      await fetchManagers();
-      toast({
-        title: "Sucesso",
-        description: "Dados iniciais criados com sucesso!",
-      });
-    } catch (error) {
-      console.error('Erro ao criar dados iniciais:', error);
-      toast({
-        title: "Erro ao criar dados iniciais",
-        description: "Tente novamente mais tarde.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filteredManagers = managers.filter(manager =>
-    manager.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredMembers = teamMembers.filter(member =>
+    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleLogin = (manager: Manager) => {
-    setSelectedManager(manager);
+  const handleLogin = (member: TeamMember) => {
+    setSelectedMember(member);
     setIsLoginDialogOpen(true);
   };
 
@@ -93,42 +75,35 @@ export const ManagersList = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={20} />
-          <Input
-            placeholder="Buscar gestor..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2"
-          onClick={handleSeed}
-        >
-          <Plus size={16} />
-          Criar Dados Iniciais
-        </Button>
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={20} />
+        <Input
+          placeholder="Buscar membro..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       <div className="grid gap-4">
-        {filteredManagers.length === 0 ? (
+        {filteredMembers.length === 0 ? (
           <Card className="p-4">
-            <p className="text-center text-gray-500">Nenhum gestor encontrado</p>
+            <p className="text-center text-gray-500">Nenhum membro encontrado</p>
           </Card>
         ) : (
-          filteredManagers.map((manager) => (
-            <Card key={manager.id} className="p-4">
+          filteredMembers.map((member) => (
+            <Card key={member.id} className="p-4">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-medium">{manager.name}</span>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-medium">{member.name}</h3>
+                  <p className="text-sm text-gray-500">{member.email}</p>
+                  <p className="text-sm text-gray-500">{member.role}</p>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
                   className="flex items-center gap-2"
-                  onClick={() => handleLogin(manager)}
+                  onClick={() => handleLogin(member)}
                 >
                   <LogIn size={16} />
                   Login
@@ -142,12 +117,12 @@ export const ManagersList = () => {
       <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Login - {selectedManager?.name}</DialogTitle>
+            <DialogTitle>Login - {selectedMember?.name}</DialogTitle>
           </DialogHeader>
-          {selectedManager && (
+          {selectedMember && (
             <ManagerLoginForm
-              managerId={selectedManager.id}
-              managerName={selectedManager.name}
+              managerId={selectedMember.id}
+              managerName={selectedMember.name}
               onClose={() => setIsLoginDialogOpen(false)}
             />
           )}

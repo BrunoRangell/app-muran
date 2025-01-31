@@ -17,6 +17,7 @@ interface TeamMemberFormData {
   name: string;
   email: string;
   role: string;
+  password: string;
 }
 
 export const TeamMemberForm = () => {
@@ -36,6 +37,7 @@ export const TeamMemberForm = () => {
             name: data.name,
             email: data.email,
             role: data.role,
+            password: data.password // Adicionando senha
           }
         ]);
 
@@ -98,6 +100,20 @@ export const TeamMemberForm = () => {
               <FormLabel>Cargo</FormLabel>
               <FormControl>
                 <Input placeholder="Ex: Desenvolvedor, Designer, etc" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Senha</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="Digite a senha" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

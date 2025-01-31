@@ -12,7 +12,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
-  { icon: UserCog, label: "Gestores", path: "/gestores" },
+  { icon: Users, label: "Equipe", path: "/gestores" }, // Alterado de "Gestores" para "Equipe"
   { icon: Shield, label: "Admin", path: "/admin" },
 ];
 
