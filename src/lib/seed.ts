@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { v4 as uuidv4 } from 'uuid';
 
 export const seedInitialData = async () => {
   try {
@@ -19,9 +20,13 @@ export const seedInitialData = async () => {
     // Se não existir gestor, criar um novo
     if (!existingManagers || existingManagers.length === 0) {
       console.log('Nenhum gestor encontrado, criando novo gestor...');
+      const managerId = uuidv4();
       const { data: newManager, error: managerError } = await supabase
         .from('managers')
-        .insert([{ name: 'Pedro Henrique' }])
+        .insert([{ 
+          id: managerId,
+          name: 'Pedro Henrique' 
+        }])
         .select()
         .single();
 
@@ -59,21 +64,25 @@ export const seedInitialData = async () => {
     // Inserir salários usando o ID do gestor
     const salariesData = [
       { 
+        id: uuidv4(),
         manager_id: manager.id, 
         month: new Date('2024-10-05').toISOString(), 
         amount: 1000.00 
       },
       { 
+        id: uuidv4(),
         manager_id: manager.id, 
         month: new Date('2024-11-05').toISOString(), 
         amount: 1300.00 
       },
       { 
+        id: uuidv4(),
         manager_id: manager.id, 
         month: new Date('2024-12-05').toISOString(), 
         amount: 1300.00 
       },
       { 
+        id: uuidv4(),
         manager_id: manager.id, 
         month: new Date('2025-01-05').toISOString(), 
         amount: 1300.00 
