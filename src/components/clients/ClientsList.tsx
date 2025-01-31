@@ -81,10 +81,6 @@ export const ClientsList = () => {
   };
 
   const handleSort = (key: string) => {
-    const sortableColumns = ['company_name', 'contract_value', 'status', 'first_payment_date'];
-    
-    if (!sortableColumns.includes(key)) return;
-    
     setSortConfig(prevConfig => ({
       key,
       direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'

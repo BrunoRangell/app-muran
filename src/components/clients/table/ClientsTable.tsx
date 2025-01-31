@@ -7,7 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, ArrowUpDown } from "lucide-react";
+import { Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Column, SortConfig } from "../types";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 
@@ -33,14 +33,11 @@ interface ClientsTableProps {
 }
 
 export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort }: ClientsTableProps) => {
-  // Sort columns to ensure fixed columns come first in the specified order
   const sortedColumns = [...columns].sort((a, b) => {
     if (a.fixed && !b.fixed) return -1;
     if (!a.fixed && b.fixed) return 1;
     return 0;
   });
-
-  const sortableColumns = ['company_name', 'contract_value', 'status', 'first_payment_date'];
 
   return (
     <div className="rounded-md border">
@@ -50,20 +47,21 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
             {sortedColumns.filter(col => col.show).map(column => (
               <TableHead 
                 key={column.id}
-                className={sortableColumns.includes(column.id) ? "cursor-pointer" : ""}
-                onClick={() => sortableColumns.includes(column.id) ? onSort(column.id) : null}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => onSort(column.id)}
               >
                 <div className="flex items-center gap-2">
                   {column.label}
-                  {sortableColumns.includes(column.id) && (
-                    <>
-                      <ArrowUpDown className="h-4 w-4" />
-                      {sortConfig.key === column.id && (
-                        <span className="text-xs">
-                          {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                        </span>
+                  {sortConfig.key === column.id ? (
+                    <span className="text-muran-primary">
+                      {sortConfig.direction === 'asc' ? (
+                        <ArrowUp className="h-4 w-4" />
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
                       )}
-                    </>
+                    </span>
+                  ) : (
+                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
               </TableHead>
