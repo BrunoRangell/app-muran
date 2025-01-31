@@ -57,7 +57,7 @@ function App() {
           }
         />
         <Route
-          path="/gestores"
+          path="/equipe"
           element={
             <PrivateRoute>
               <Layout>

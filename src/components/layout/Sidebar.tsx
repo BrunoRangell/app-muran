@@ -23,7 +23,7 @@ const adminMenuItems: MenuItem[] = [
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
-  { icon: Users, label: "Equipe", path: "/gestores" },
+  { icon: Users, label: "Equipe", path: "/equipe" },
 ];
 
 export const Sidebar = () => {
