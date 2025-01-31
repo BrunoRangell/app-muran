@@ -48,7 +48,7 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
               <TableHead 
                 key={column.id}
                 className={`cursor-pointer hover:bg-muted/50 transition-colors ${
-                  sortConfig.key === column.id ? 'bg-muran-secondary/30' : ''
+                  sortConfig.key === column.id ? 'bg-muran-secondary/50' : ''
                 }`}
                 onClick={() => onSort(column.id)}
               >

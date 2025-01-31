@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter } from "lucide-react";
+import { Plus, Filter, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { ClientForm } from "@/components/admin/ClientForm";
@@ -104,13 +104,34 @@ export const ClientsList = () => {
     return 0;
   });
 
+  const hasActiveFilters = Object.values(filters).some(value => value !== "");
+
+  const clearFilters = () => {
+    setFilters({
+      status: '',
+      acquisition_channel: '',
+      payment_type: ''
+    });
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Lista de Clientes</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <ColumnToggle columns={columns.filter(col => !col.fixed)} onToggleColumn={toggleColumn} />
           <FilterPopover filters={filters} onFilterChange={setFilters} />
+          {hasActiveFilters && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearFilters}
+              className="h-9 px-2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Limpar filtros
+            </Button>
+          )}
           <Button onClick={handleCreateClick} className="bg-muran-primary hover:bg-muran-primary/90">
             <Plus className="h-4 w-4 mr-2" />
             Novo Cliente
