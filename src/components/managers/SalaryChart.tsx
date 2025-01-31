@@ -205,6 +205,8 @@ export const SalaryChart = () => {
                         <Input
                           type="month"
                           {...field}
+                          placeholder="Selecione o mês"
+                          className="cursor-pointer"
                         />
                       </FormControl>
                       <FormMessage />
