@@ -19,7 +19,6 @@ interface TeamMember {
   name: string;
   email: string;
   role: string;
-  password: string;
 }
 
 export const ManagersList = () => {
@@ -35,7 +34,7 @@ export const ManagersList = () => {
       console.log('Buscando membros da equipe...');
       const { data, error } = await supabase
         .from('team_members')
-        .select('*');
+        .select('id, name, email, role');
 
       if (error) {
         console.error('Erro ao buscar membros:', error);
@@ -72,7 +71,11 @@ export const ManagersList = () => {
   };
 
   if (isLoading) {
-    return <div>Carregando...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-gray-500">Carregando membros...</p>
+      </div>
+    );
   }
 
   return (
