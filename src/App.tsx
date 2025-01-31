@@ -9,6 +9,7 @@ import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
 import Managers from "@/pages/Managers";
 import ManagerFinancial from "@/pages/ManagerFinancial";
+import Tasks from "@/pages/Tasks";
 
 function App() {
   return (
@@ -46,6 +47,14 @@ function App() {
           element={
             <PrivateRoute>
               <ManagerFinancial />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/tarefas"
+          element={
+            <PrivateRoute>
+              <Tasks />
             </PrivateRoute>
           }
         />

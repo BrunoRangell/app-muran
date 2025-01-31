@@ -5,6 +5,7 @@ import {
   DollarSign, 
   Shield,
   Home,
+  ListTodo,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -18,6 +19,7 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
+  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: Shield, label: "Admin", path: "/admin" },
 ];
 
@@ -25,6 +27,7 @@ const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
+  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
 ];
 
 export const Sidebar = () => {
