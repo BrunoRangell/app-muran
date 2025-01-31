@@ -2,6 +2,7 @@ export interface Column {
   id: string;
   label: string;
   show: boolean;
+  fixed?: boolean;
 }
 
 export interface Client {

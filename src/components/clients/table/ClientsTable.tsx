@@ -31,12 +31,19 @@ interface ClientsTableProps {
 }
 
 export const ClientsTable = ({ clients, columns, onEditClick }: ClientsTableProps) => {
+  // Sort columns to ensure fixed columns come first in the specified order
+  const sortedColumns = [...columns].sort((a, b) => {
+    if (a.fixed && !b.fixed) return -1;
+    if (!a.fixed && b.fixed) return 1;
+    return 0;
+  });
+
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            {columns.filter(col => col.show).map(column => (
+            {sortedColumns.filter(col => col.show).map(column => (
               <TableHead key={column.id}>{column.label}</TableHead>
             ))}
             <TableHead>Ações</TableHead>
@@ -45,8 +52,8 @@ export const ClientsTable = ({ clients, columns, onEditClick }: ClientsTableProp
         <TableBody>
           {clients?.map((client) => (
             <TableRow key={client.id}>
-              {columns.filter(col => col.show).map(column => {
-                let content = client[column.id];
+              {sortedColumns.filter(col => col.show).map(column => {
+                let content = client[column.id as keyof Client];
                 
                 if (column.id === 'contract_value') {
                   content = formatCurrency(client.contract_value);

@@ -1,10 +1,12 @@
-export const formatCurrency = (value: string) => {
-  const numericValue = value.replace(/\D/g, "");
-  const floatValue = parseFloat(numericValue) / 100;
+export const formatCurrency = (value: string | number) => {
+  const numericValue = typeof value === 'string' ? 
+    parseFloat(value.replace(/\D/g, "")) / 100 :
+    value;
+
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(floatValue);
+  }).format(numericValue);
 };
 
 export const parseCurrencyToNumber = (value: string) => {
@@ -23,4 +25,10 @@ export const formatPhoneNumber = (value: string) => {
   if (numbers.length <= 2) return `(${numbers}`;
   if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
   return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+};
+
+export const formatDate = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('pt-BR').format(date);
 };

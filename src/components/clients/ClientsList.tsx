@@ -15,12 +15,12 @@ export const ClientsList = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const [columns, setColumns] = useState<Column[]>([
-    { id: 'company_name', label: 'Empresa', show: true },
-    { id: 'contract_value', label: 'Valor do Contrato', show: true },
+    { id: 'company_name', label: 'Empresa', show: true, fixed: true },
+    { id: 'contract_value', label: 'Valor do Contrato', show: true, fixed: true },
+    { id: 'status', label: 'Status', show: true, fixed: true },
+    { id: 'acquisition_channel', label: 'Canal de Aquisição', show: true, fixed: true },
     { id: 'first_payment_date', label: 'Início da Parceria', show: true },
     { id: 'payment_type', label: 'Tipo de Pagamento', show: true },
-    { id: 'status', label: 'Status', show: true },
-    { id: 'acquisition_channel', label: 'Canal de Aquisição', show: true },
     { id: 'company_birthday', label: 'Aniversário da Empresa', show: true },
     { id: 'contact_name', label: 'Responsável', show: true },
     { id: 'contact_phone', label: 'Contato', show: true }
@@ -68,7 +68,7 @@ export const ClientsList = () => {
 
   const toggleColumn = (columnId: string) => {
     setColumns(columns.map(col => 
-      col.id === columnId ? { ...col, show: !col.show } : col
+      col.fixed ? col : { ...col, show: col.id === columnId ? !col.show : col.show }
     ));
   };
 
@@ -77,7 +77,7 @@ export const ClientsList = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Lista de Clientes</h2>
         <div className="flex gap-2">
-          <ColumnToggle columns={columns} onToggleColumn={toggleColumn} />
+          <ColumnToggle columns={columns.filter(col => !col.fixed)} onToggleColumn={toggleColumn} />
           <Button onClick={handleCreateClick} className="bg-muran-primary hover:bg-muran-primary/90">
             <Plus className="h-4 w-4 mr-2" />
             Novo Cliente
