@@ -53,7 +53,6 @@ const Managers = () => {
       </div>
 
       <Card className="p-6">
-        <h2 className="text-xl font-bold mb-6">Lista de Integrantes</h2>
         {isLoading ? (
           <p className="text-gray-600">Carregando integrantes...</p>
         ) : (
@@ -75,6 +74,11 @@ const Managers = () => {
                   <p className="text-sm text-gray-500">
                     Início: {new Date(member.start_date).toLocaleDateString("pt-BR")}
                   </p>
+                  {member.birthday && (
+                    <p className="text-sm text-gray-500">
+                      Aniversário: {new Date(member.birthday).toLocaleDateString("pt-BR")}
+                    </p>
+                  )}
                 </div>
               </Card>
             ))}
