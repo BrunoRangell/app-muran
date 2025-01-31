@@ -1,37 +1,35 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/layout/Layout";
+import { Toaster } from "./components/ui/toaster";
+import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import Financial from "./pages/Financial";
 import Managers from "./pages/Managers";
-import ManagerFinancial from "./pages/ManagerFinancial";
 import Admin from "./pages/Admin";
+import ManagerFinancial from "./pages/ManagerFinancial";
 import NotFound from "./pages/NotFound";
+import { AuthCallback } from "./components/auth/AuthCallback";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+function App() {
+  return (
+    <Router>
+      <Layout>
         <Routes>
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/clientes" element={<Layout><Clients /></Layout>} />
-          <Route path="/financeiro" element={<Layout><Financial /></Layout>} />
-          <Route path="/gestores" element={<Layout><Managers /></Layout>} />
-          <Route path="/gestor/financeiro" element={<Layout><ManagerFinancial /></Layout>} />
-          <Route path="/admin" element={<Layout><Admin /></Layout>} />
+          <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/clientes" element={<Clients />} />
+          <Route path="/financeiro" element={<Financial />} />
+          <Route path="/gestores" element={<Managers />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/gestor/financeiro" element={<ManagerFinancial />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </Layout>
+      <Toaster />
+    </Router>
+  );
+}
 
 export default App;
