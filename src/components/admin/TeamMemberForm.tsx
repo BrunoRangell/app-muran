@@ -31,13 +31,14 @@ export const TeamMemberForm = () => {
       console.log("Criando novo membro:", data);
       
       // Criar o usuário autenticado no Supabase
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
-        email_confirm: true,
-        user_metadata: {
-          name: data.name,
-          role: data.role,
+        options: {
+          data: {
+            name: data.name,
+            role: data.role,
+          }
         }
       });
 
