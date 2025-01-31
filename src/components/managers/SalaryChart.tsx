@@ -22,21 +22,42 @@ export const SalaryChart = () => {
     const fetchSalaryData = async () => {
       try {
         console.log('Buscando dados de salários...');
-        const { data: sessionData } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
+        if (sessionError) {
+          console.error('Erro ao buscar sessão:', sessionError);
+          throw sessionError;
+        }
+
         if (!sessionData.session?.user?.id) {
           console.log('Usuário não autenticado');
           setIsLoading(false);
           return;
         }
 
-        const managerId = sessionData.session.user.id;
-        console.log('ID do gestor:', managerId);
+        const { data: userData, error: userError } = await supabase
+          .from('team_members')
+          .select('id')
+          .eq('email', sessionData.session.user.email)
+          .single();
+
+        if (userError) {
+          console.error('Erro ao buscar dados do usuário:', userError);
+          throw userError;
+        }
+
+        if (!userData) {
+          console.log('Usuário não encontrado');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('ID do gestor:', userData.id);
 
         const { data, error } = await supabase
           .from('salaries')
           .select('month, amount')
-          .eq('manager_id', managerId)
+          .eq('manager_id', userData.id)
           .order('month', { ascending: true });
 
         if (error) {
