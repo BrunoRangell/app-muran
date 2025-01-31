@@ -55,6 +55,19 @@ export const ClientForm = () => {
     }).format(floatValue);
   };
 
+  const parseCurrencyToNumber = (value: string) => {
+    // Remove currency symbol, dots and replace comma with dot
+    const cleanValue = value
+      .replace(/^R\$\s*/g, '')
+      .replace(/\./g, '')
+      .replace(',', '.');
+    
+    // Convert to number
+    const numberValue = parseFloat(cleanValue);
+    console.log('Parsing currency value:', { original: value, cleaned: cleanValue, final: numberValue });
+    return numberValue;
+  };
+
   const formatPhoneNumber = (value: string) => {
     const numbers = value.replace(/\D/g, "");
     if (numbers.length <= 2) return `(${numbers}`;
@@ -71,12 +84,15 @@ export const ClientForm = () => {
         ? data.customAcquisitionChannel 
         : data.acquisitionChannel;
 
+      const contractValue = parseCurrencyToNumber(data.contractValue.toString());
+      console.log('Contract value being saved:', contractValue);
+
       const { error: dbError } = await supabase
         .from('clients')
         .insert([
           {
             company_name: data.companyName,
-            contract_value: parseFloat(data.contractValue.toString().replace(/[^\d.,]/g, "").replace(",", ".")),
+            contract_value: contractValue,
             first_payment_date: data.firstPaymentDate,
             payment_type: data.paymentType,
             status: data.status,
