@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { ManagersList } from "@/components/managers/ManagersList";
 
 const Managers = () => {
   return (
@@ -8,8 +9,8 @@ const Managers = () => {
       </div>
 
       <Card className="p-6">
-        <h2 className="text-xl font-bold mb-4">Lista de Gestores</h2>
-        <p className="text-gray-600">Em desenvolvimento...</p>
+        <h2 className="text-xl font-bold mb-6">Lista de Gestores</h2>
+        <ManagersList />
       </Card>
     </div>
   );
