@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Settings2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/lib/supabase";
@@ -32,7 +32,7 @@ interface Client {
 }
 
 interface Column {
-  id: keyof Client | 'actions';
+  id: keyof Client;
   label: string;
   show: boolean;
 }
@@ -50,8 +50,7 @@ export const ClientsList = () => {
     { id: 'acquisition_channel', label: 'Canal de Aquisição', show: true },
     { id: 'company_birthday', label: 'Aniversário da Empresa', show: true },
     { id: 'contact_name', label: 'Responsável', show: true },
-    { id: 'contact_phone', label: 'Contato', show: true },
-    { id: 'actions', label: 'Ações', show: true }
+    { id: 'contact_phone', label: 'Contato', show: true }
   ]);
 
   const { data: clients, isLoading, refetch } = useQuery({
@@ -162,30 +161,17 @@ export const ClientsList = () => {
                 {columns.filter(col => col.show).map(column => (
                   <TableHead key={column.id}>{column.label}</TableHead>
                 ))}
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clients?.map((client) => (
                 <TableRow key={client.id}>
                   {columns.filter(col => col.show).map(column => {
-                    if (column.id === 'actions') {
-                      return (
-                        <TableCell key={column.id}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditClick(client)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      );
-                    }
-
-                    let content = client[column.id as keyof Client];
+                    let content = client[column.id];
                     
                     if (column.id === 'contract_value') {
-                      content = formatCurrency(client.contract_value as number);
+                      content = formatCurrency(client.contract_value);
                     } else if (column.id === 'first_payment_date' || column.id === 'company_birthday') {
                       content = formatDate(content as string);
                     } else if (column.id === 'payment_type') {
@@ -210,6 +196,15 @@ export const ClientsList = () => {
                       <TableCell key={column.id}>{content}</TableCell>
                     );
                   })}
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditClick(client)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
