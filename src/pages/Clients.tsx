@@ -13,24 +13,24 @@ const Clients = () => {
       </div>
 
       <Card className="p-6">
-        <Tabs defaultValue="list" className="space-y-4">
+        <Tabs defaultValue="metrics" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="list" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Lista de Clientes
-            </TabsTrigger>
             <TabsTrigger value="metrics" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               Métricas Financeiras
             </TabsTrigger>
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Lista de Clientes
+            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="list">
-            <ClientsList />
-          </TabsContent>
 
           <TabsContent value="metrics">
             <FinancialMetrics />
+          </TabsContent>
+
+          <TabsContent value="list">
+            <ClientsList />
           </TabsContent>
         </Tabs>
       </Card>
