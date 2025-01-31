@@ -21,7 +21,7 @@ export const FinancialMetrics = () => {
       const monthlyRevenue = clients.reduce((sum, client) => {
         return sum + (client.contract_value || 0);
       }, 0);
-      const averageTicket = totalClients > 0 ? monthlyRevenue / totalClients : 0;
+      const averageTicket = monthlyRevenue / totalClients;
 
       console.log("Client metrics calculated:", { totalClients, monthlyRevenue, averageTicket });
       return { totalClients, monthlyRevenue, averageTicket };
