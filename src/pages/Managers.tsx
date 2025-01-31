@@ -1,13 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/lib/supabase";
 
 interface TeamMember {
@@ -45,6 +38,14 @@ const Managers = () => {
     },
   });
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -52,35 +53,31 @@ const Managers = () => {
       </div>
 
       <Card className="p-6">
-        <h2 className="text-xl font-bold mb-4">Lista de Integrantes</h2>
+        <h2 className="text-xl font-bold mb-6">Lista de Integrantes</h2>
         {isLoading ? (
           <p className="text-gray-600">Carregando integrantes...</p>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead>Data de Início</TableHead>
-                  <TableHead>Foto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {teamMembers?.map((member: TeamMember) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">
-                      {member.name}
-                    </TableCell>
-                    <TableCell>{member.role}</TableCell>
-                    <TableCell>{new Date(member.start_date).toLocaleDateString("pt-BR")}</TableCell>
-                    <TableCell>
-                      <img src={member.photo_url} alt={member.name} className="h-10 w-10 rounded-full" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {teamMembers?.map((member: TeamMember) => (
+              <Card key={member.id} className="p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow">
+                <Avatar className="h-24 w-24">
+                  {member.photo_url ? (
+                    <AvatarImage src={member.photo_url} alt={member.name} />
+                  ) : (
+                    <AvatarFallback className="bg-muran-primary text-white text-xl">
+                      {getInitials(member.name)}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="text-center space-y-2">
+                  <h3 className="font-semibold text-lg">{member.name}</h3>
+                  <p className="text-gray-600">{member.role}</p>
+                  <p className="text-sm text-gray-500">
+                    Início: {new Date(member.start_date).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+              </Card>
+            ))}
           </div>
         )}
       </Card>
