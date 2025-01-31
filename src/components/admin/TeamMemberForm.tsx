@@ -30,7 +30,7 @@ export const TeamMemberForm = () => {
       setIsLoading(true);
       console.log("Criando novo membro:", data);
       
-      // Criar o usuário autenticado no Supabase com URL de redirecionamento
+      // Criar o usuário autenticado no Supabase com URL de redirecionamento e emailConfirm: false
       const { error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -39,7 +39,8 @@ export const TeamMemberForm = () => {
           data: {
             name: data.name,
             role: data.role,
-          }
+          },
+          emailConfirm: false
         }
       });
 
@@ -65,7 +66,7 @@ export const TeamMemberForm = () => {
 
       toast({
         title: "Sucesso!",
-        description: "Membro da equipe cadastrado com sucesso. Um email de confirmação foi enviado.",
+        description: "Membro da equipe cadastrado com sucesso.",
       });
       
       form.reset();
