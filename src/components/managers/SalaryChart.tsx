@@ -36,47 +36,19 @@ export const SalaryChart = () => {
           return;
         }
 
-        if (!sessionData.session?.user?.email) {
-          console.log('Email do usuário não encontrado na sessão');
+        if (!sessionData.session?.user?.id) {
+          console.log('Usuário não autenticado');
           setIsLoading(false);
           return;
         }
 
-        console.log('Buscando usuário com email:', sessionData.session.user.email);
-
-        const { data: userData, error: userError } = await supabase
-          .from('team_members')
-          .select('id')
-          .eq('email', sessionData.session.user.email);
-
-        if (userError) {
-          console.error('Erro ao buscar dados do usuário:', userError);
-          toast({
-            title: "Erro ao carregar dados",
-            description: "Não foi possível buscar seus dados. Tente novamente mais tarde.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        if (!userData || userData.length === 0) {
-          console.log('Usuário não encontrado na tabela team_members');
-          toast({
-            title: "Usuário não encontrado",
-            description: "Não foi possível encontrar seus dados na base. Entre em contato com o suporte.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        const managerId = userData[0].id;
-        console.log('ID do gestor encontrado:', managerId);
+        const userId = sessionData.session.user.id;
+        console.log('ID do usuário:', userId);
 
         const { data: salariesData, error: salariesError } = await supabase
           .from('salaries')
           .select('month, amount')
-          .eq('manager_id', managerId)
+          .eq('user_id', userId)
           .order('month', { ascending: true });
 
         if (salariesError) {
