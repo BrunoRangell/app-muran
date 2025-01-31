@@ -3,7 +3,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Search, LogIn } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ManagerLoginForm } from "./ManagerLoginForm";
 
 interface Manager {
   id: number;
@@ -16,18 +22,16 @@ const managers: Manager[] = [
 
 export const ManagersList = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const { toast } = useToast();
+  const [selectedManager, setSelectedManager] = useState<Manager | null>(null);
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
 
   const filteredManagers = managers.filter(manager =>
     manager.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleLogin = (manager: Manager) => {
-    // Temporariamente apenas mostrando um toast
-    toast({
-      title: "Login necessário",
-      description: "Sistema de login em desenvolvimento...",
-    });
+    setSelectedManager(manager);
+    setIsLoginDialogOpen(true);
   };
 
   return (
@@ -62,6 +66,21 @@ export const ManagersList = () => {
           </Card>
         ))}
       </div>
+
+      <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Login - {selectedManager?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedManager && (
+            <ManagerLoginForm
+              managerId={selectedManager.id}
+              managerName={selectedManager.name}
+              onClose={() => setIsLoginDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
