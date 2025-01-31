@@ -1,0 +1,51 @@
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UseFormReturn } from "react-hook-form";
+import { ClientFormData } from "@/types/client";
+
+interface PaymentSectionProps {
+  form: UseFormReturn<ClientFormData>;
+}
+
+export const PaymentSection = ({ form }: PaymentSectionProps) => {
+  return (
+    <>
+      <FormField
+        control={form.control}
+        name="firstPaymentDate"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Data do Primeiro Pagamento</FormLabel>
+            <FormControl>
+              <Input type="date" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="paymentType"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Tipo de Pagamento</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo de pagamento" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                <SelectItem value="pre">Pré-pago</SelectItem>
+                <SelectItem value="post">Pós-pago</SelectItem>
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </>
+  );
+};
