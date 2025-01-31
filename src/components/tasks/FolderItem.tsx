@@ -28,29 +28,29 @@ export const FolderItem = ({ folder }: FolderItemProps) => {
   };
 
   return (
-    <Accordion type="single" collapsible>
-      <AccordionItem value={folder.id}>
-        <AccordionTrigger className="hover:no-underline">
+    <Accordion type="single" collapsible className="border-none">
+      <AccordionItem value={folder.id} className="border-none">
+        <AccordionTrigger className="hover:no-underline py-2 px-3 rounded-lg hover:bg-white/10">
           <div className="flex items-center space-x-2">
             <List className="h-4 w-4 text-muran-primary" />
-            <span>{folder.name}</span>
+            <span className="text-sm text-white">{folder.name}</span>
           </div>
         </AccordionTrigger>
         <AccordionContent>
-          <div className="pl-4 space-y-4">
+          <div className="pl-4 space-y-2">
             <Button
               onClick={handleAddList}
               variant="ghost"
               size="sm"
-              className="text-muran-primary hover:text-muran-primary/90"
+              className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10"
             >
               <Plus className="mr-2 h-4 w-4" />
               Nova Lista
             </Button>
             <div className="space-y-2">
               {lists.map((list) => (
-                <div key={list.id} className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-4">{list.name}</h3>
+                <div key={list.id} className="py-2 px-3 rounded-lg hover:bg-white/10">
+                  <h3 className="text-sm text-white">{list.name}</h3>
                   <TaskList tasks={list.tasks} />
                 </div>
               ))}

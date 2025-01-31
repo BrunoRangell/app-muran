@@ -24,19 +24,18 @@ export const SpaceList = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-muran-complementary">Espaços</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-semibold text-white">Espaços</h2>
         <Button
           onClick={handleAddSpace}
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="text-muran-primary hover:text-muran-primary/90"
+          className="text-white hover:text-muran-primary hover:bg-white/10"
         >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Espaço
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1">
         {spaces.map((space) => (
           <SpaceItem key={space.id} space={space} />
         ))}
