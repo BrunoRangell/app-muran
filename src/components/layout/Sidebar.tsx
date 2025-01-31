@@ -2,8 +2,6 @@ import { useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Users, 
-  DollarSign, 
-  UserCog,
   Shield,
   Home,
 } from "lucide-react";
@@ -15,14 +13,13 @@ import { SidebarLogout } from "./SidebarLogout";
 import { MenuItem } from "@/types/sidebar";
 
 const adminMenuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: Shield, label: "Admin", path: "/admin" },
 ];
 
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
-  { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
   { icon: Users, label: "Equipe", path: "/equipe" },
 ];
 
@@ -54,7 +51,7 @@ export const Sidebar = () => {
   }, []);
 
   const menuItems = isAdmin 
-    ? [...adminMenuItems, ...regularMenuItems]
+    ? adminMenuItems
     : regularMenuItems;
 
   return (

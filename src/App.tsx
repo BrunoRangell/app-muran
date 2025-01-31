@@ -5,7 +5,6 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import UserDashboard from "./pages/UserDashboard";
 import Clients from "./pages/Clients";
-import Financial from "./pages/Financial";
 import Managers from "./pages/Managers";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -42,16 +41,6 @@ function App() {
             <PrivateRoute requireAdmin>
               <Layout>
                 <Clients />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/financeiro"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Financial />
               </Layout>
             </PrivateRoute>
           }
