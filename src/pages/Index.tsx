@@ -1,121 +1,105 @@
 import { useEffect, useState } from "react";
-import { Users, DollarSign, X } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Smile, Heart, Sun } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const Index = () => {
-  const [showAlert, setShowAlert] = useState(true);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [userName, setUserName] = useState<string>("");
+  const [greeting, setGreeting] = useState<string>("");
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
+    const getGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour < 12) return "Bom dia";
+      if (hour < 18) return "Boa tarde";
+      return "Boa noite";
+    };
+
+    const fetchUserName = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
+        if (session?.user?.email) {
           const { data: teamMember } = await supabase
             .from('team_members')
-            .select('permission')
+            .select('name')
             .eq('email', session.user.email)
             .single();
 
-          setIsAdmin(teamMember?.permission === 'admin');
+          if (teamMember?.name) {
+            setUserName(teamMember.name.split(' ')[0]); // Get first name only
+          }
         }
       } catch (error) {
-        console.error("Erro ao verificar status de admin:", error);
-        setIsAdmin(false);
+        console.error("Erro ao buscar nome do usuário:", error);
       }
     };
 
-    checkAdminStatus();
+    setGreeting(getGreeting());
+    fetchUserName();
   }, []);
 
-  const { data: clients = [] } = useQuery({
-    queryKey: ['clients'],
-    queryFn: async () => {
-      console.log("Fetching clients for dashboard...");
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*');
-      
-      if (error) {
-        console.error("Error fetching clients:", error);
-        throw error;
-      }
-      
-      console.log("Clients fetched:", data);
-      return data || [];
-    },
-    enabled: isAdmin === true,
-  });
-
-  const totalClients = clients.length;
-  const totalRevenue = clients.reduce((sum, client) => {
-    return sum + (client.contract_value || 0);
-  }, 0);
-
-  const formattedRevenue = new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(totalRevenue);
-
-  if (!isAdmin) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-muran-complementary">Bem-vindo à Muran</h1>
-        <p className="text-gray-600">
-          Utilize o menu lateral para navegar entre as seções disponíveis.
+  return (
+    <div className="space-y-8">
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl font-bold text-muran-complementary">
+          {greeting}, {userName ? userName : "Bem-vindo"}! <Smile className="inline-block ml-2 text-muran-primary" />
+        </h1>
+        <p className="text-lg text-gray-600">
+          É ótimo ter você aqui na Muran!
         </p>
       </div>
-    );
-  }
 
-  return (
-    <div className="space-y-6">
-      {showAlert && (
-        <Alert className="relative">
-          <AlertDescription>
-            Bem-vindo ao seu dashboard! Aqui você encontrará um resumo das principais métricas e informações do seu negócio.
-            Em breve, mais dados e gráficos serão adicionados para ajudar na gestão do seu negócio.
-          </AlertDescription>
-          <button
-            onClick={() => setShowAlert(false)}
-            className="absolute top-2 right-2 p-1 hover:bg-secondary rounded-full"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </Alert>
-      )}
-      
-      <h1 className="text-3xl font-bold text-muran-complementary">Dashboard</h1>
-      
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
-            <Users className="h-4 w-4 text-muran-primary" />
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="transform transition-all hover:scale-105">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="text-muran-primary" />
+              Nosso Propósito
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalClients}</div>
-            <p className="text-xs text-muted-foreground">
-              Clientes ativos no sistema
+            <p className="text-gray-600">
+              Transformar a gestão financeira em uma experiência simples e eficiente para nossos clientes.
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muran-primary" />
+        <Card className="transform transition-all hover:scale-105">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sun className="text-muran-primary" />
+              Nossos Valores
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formattedRevenue}</div>
-            <p className="text-xs text-muted-foreground">
-              Receita acumulada no mês
+            <ul className="list-disc list-inside text-gray-600 space-y-2">
+              <li>Transparência em primeiro lugar</li>
+              <li>Compromisso com resultados</li>
+              <li>Inovação constante</li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card className="transform transition-all hover:scale-105 md:col-span-2 lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Smile className="text-muran-primary" />
+              Dica do Dia
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600">
+              Explore a seção "Meu Financeiro" para acompanhar suas informações e manter-se atualizado com seus dados financeiros.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-8">
+        <Card className="bg-gradient-to-r from-muran-primary/10 to-muran-complementary/10">
+          <CardContent className="p-6">
+            <p className="text-center text-lg text-gray-700">
+              "A excelência não é um ato, mas um hábito." - Aristóteles
             </p>
           </CardContent>
         </Card>
