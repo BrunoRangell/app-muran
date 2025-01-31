@@ -7,8 +7,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
-import { Column } from "../types";
+import { Pencil, ArrowUpDown } from "lucide-react";
+import { Column, SortConfig } from "../types";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 
 interface Client {
@@ -28,9 +28,11 @@ interface ClientsTableProps {
   clients: Client[] | undefined;
   columns: Column[];
   onEditClick: (client: Client) => void;
+  sortConfig: SortConfig;
+  onSort: (key: string) => void;
 }
 
-export const ClientsTable = ({ clients, columns, onEditClick }: ClientsTableProps) => {
+export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort }: ClientsTableProps) => {
   // Sort columns to ensure fixed columns come first in the specified order
   const sortedColumns = [...columns].sort((a, b) => {
     if (a.fixed && !b.fixed) return -1;
@@ -44,7 +46,21 @@ export const ClientsTable = ({ clients, columns, onEditClick }: ClientsTableProp
         <TableHeader>
           <TableRow>
             {sortedColumns.filter(col => col.show).map(column => (
-              <TableHead key={column.id}>{column.label}</TableHead>
+              <TableHead 
+                key={column.id}
+                className="cursor-pointer"
+                onClick={() => onSort(column.id)}
+              >
+                <div className="flex items-center gap-2">
+                  {column.label}
+                  <ArrowUpDown className="h-4 w-4" />
+                  {sortConfig.key === column.id && (
+                    <span className="text-xs">
+                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
+              </TableHead>
             ))}
             <TableHead>Ações</TableHead>
           </TableRow>

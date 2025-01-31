@@ -17,3 +17,8 @@ export interface Client {
   contact_name: string;
   contact_phone: string;
 }
+
+export interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
+}
