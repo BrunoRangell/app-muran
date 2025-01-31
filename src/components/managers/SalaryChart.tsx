@@ -146,14 +146,22 @@ export const SalaryChart = () => {
             axisLine={{ stroke: '#e5e7eb' }}
           />
           <ChartTooltip
+            cursor={{ stroke: '#e5e7eb' }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
+              const data = payload[0];
               return (
-                <ChartTooltipContent
-                  className="bg-white shadow-lg border border-gray-100"
-                  payload={payload}
-                  formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                />
+                <div className="bg-white p-2 rounded-lg shadow-lg border border-gray-100">
+                  <p className="text-sm font-medium text-muran-dark">
+                    {data.payload.month}
+                  </p>
+                  <p className="text-sm font-bold text-muran-primary">
+                    {new Intl.NumberFormat('pt-BR', { 
+                      style: 'currency', 
+                      currency: 'BRL' 
+                    }).format(data.value as number)}
+                  </p>
+                </div>
               );
             }}
           />
