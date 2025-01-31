@@ -1,6 +1,6 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Filter } from "lucide-react";
+import { Filter, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface FilterPopoverProps {
@@ -21,16 +21,42 @@ export const FilterPopover = ({ filters, onFilterChange }: FilterPopoverProps) =
     return value === "" ? "all" : value;
   };
 
+  const hasActiveFilters = Object.values(filters).some(value => value !== "");
+
+  const clearFilters = () => {
+    onFilterChange({
+      status: "",
+      acquisition_channel: "",
+      payment_type: ""
+    });
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" className={hasActiveFilters ? "relative" : ""}>
           <Filter className="h-4 w-4" />
+          {hasActiveFilters && (
+            <span className="absolute -top-1 -right-1 h-3 w-3 bg-muran-primary rounded-full" />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">
         <div className="space-y-4">
-          <h4 className="font-medium">Filtros</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium">Filtros</h4>
+            {hasActiveFilters && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearFilters}
+                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpar filtros
+              </Button>
+            )}
+          </div>
           <div className="space-y-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">Status</label>

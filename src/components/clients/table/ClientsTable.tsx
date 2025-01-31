@@ -47,7 +47,9 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
             {sortedColumns.filter(col => col.show).map(column => (
               <TableHead 
                 key={column.id}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                  sortConfig.key === column.id ? 'bg-muran-secondary/30' : ''
+                }`}
                 onClick={() => onSort(column.id)}
               >
                 <div className="flex items-center gap-2">
