@@ -29,15 +29,20 @@ export const ManagersList = () => {
   useEffect(() => {
     const fetchManagers = async () => {
       try {
+        console.log('Buscando gestores...');
         const { data, error } = await supabase
           .from('managers')
           .select('id, name');
 
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao buscar gestores:', error);
+          throw error;
+        }
 
+        console.log('Gestores encontrados:', data);
         setManagers(data || []);
       } catch (error) {
-        console.error('Error fetching managers:', error);
+        console.error('Erro ao carregar gestores:', error);
         toast({
           title: "Erro ao carregar gestores",
           description: "Tente novamente mais tarde.",
@@ -79,22 +84,28 @@ export const ManagersList = () => {
       </div>
 
       <div className="grid gap-4">
-        {filteredManagers.map((manager) => (
-          <Card key={manager.id} className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-medium">{manager.name}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                onClick={() => handleLogin(manager)}
-              >
-                <LogIn size={16} />
-                Login
-              </Button>
-            </div>
+        {filteredManagers.length === 0 ? (
+          <Card className="p-4">
+            <p className="text-center text-gray-500">Nenhum gestor encontrado</p>
           </Card>
-        ))}
+        ) : (
+          filteredManagers.map((manager) => (
+            <Card key={manager.id} className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-medium">{manager.name}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => handleLogin(manager)}
+                >
+                  <LogIn size={16} />
+                  Login
+                </Button>
+              </div>
+            </Card>
+          ))
+        )}
       </div>
 
       <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
