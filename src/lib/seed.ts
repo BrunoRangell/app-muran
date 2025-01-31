@@ -7,7 +7,7 @@ export const seedInitialData = async () => {
     // Verificar se já existe um gestor
     const { data: existingManager, error: existingManagerError } = await supabase
       .from('managers')
-      .select('id, uuid')
+      .select('id')
       .single();
 
     if (existingManagerError && existingManagerError.code !== 'PGRST116') {
@@ -25,7 +25,7 @@ export const seedInitialData = async () => {
         .insert([
           { name: 'Pedro Henrique' }
         ])
-        .select('id, uuid')
+        .select('id')
         .single();
 
       if (managerError) {
@@ -43,7 +43,7 @@ export const seedInitialData = async () => {
     const { data: existingSalaries, error: existingSalariesError } = await supabase
       .from('salaries')
       .select('*')
-      .eq('manager_id', manager.uuid);
+      .eq('manager_id', manager.id);
 
     if (existingSalariesError) {
       console.error('Erro ao verificar salários existentes:', existingSalariesError);
@@ -55,25 +55,25 @@ export const seedInitialData = async () => {
       return { success: true, message: 'Dados já existem' };
     }
 
-    // Inserir salários usando o UUID do gestor
+    // Inserir salários usando o ID do gestor
     const salariesData = [
       { 
-        manager_id: manager.uuid, 
+        manager_id: manager.id, 
         month: new Date('2024-10-05').toISOString(), 
         amount: 1000.00 
       },
       { 
-        manager_id: manager.uuid, 
+        manager_id: manager.id, 
         month: new Date('2024-11-05').toISOString(), 
         amount: 1300.00 
       },
       { 
-        manager_id: manager.uuid, 
+        manager_id: manager.id, 
         month: new Date('2024-12-05').toISOString(), 
         amount: 1300.00 
       },
       { 
-        manager_id: manager.uuid, 
+        manager_id: manager.id, 
         month: new Date('2025-01-05').toISOString(), 
         amount: 1300.00 
       }
