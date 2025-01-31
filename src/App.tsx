@@ -4,6 +4,7 @@ import { Toaster } from "./components/ui/toaster";
 import { PrivateRoute } from "./components/auth/PrivateRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import UserDashboard from "./pages/UserDashboard";
 import Clients from "./pages/Clients";
 import Financial from "./pages/Financial";
 import Managers from "./pages/Managers";
@@ -21,9 +22,9 @@ function App() {
         <Route
           path="/"
           element={
-            <PrivateRoute requireAdmin>
+            <PrivateRoute>
               <Layout>
-                <Dashboard />
+                <UserDashboard />
               </Layout>
             </PrivateRoute>
           }
