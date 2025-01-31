@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { ClientFormData, ACQUISITION_CHANNELS } from "@/types/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface StatusSectionProps {
   form: UseFormReturn<ClientFormData>;
@@ -11,6 +11,11 @@ interface StatusSectionProps {
 
 export const StatusSection = ({ form }: StatusSectionProps) => {
   const [showCustomChannel, setShowCustomChannel] = useState(false);
+
+  useEffect(() => {
+    const currentChannel = form.getValues("acquisitionChannel");
+    setShowCustomChannel(currentChannel === "outro");
+  }, [form]);
 
   return (
     <>
@@ -20,7 +25,7 @@ export const StatusSection = ({ form }: StatusSectionProps) => {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Status</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o status" />
@@ -47,7 +52,7 @@ export const StatusSection = ({ form }: StatusSectionProps) => {
                 field.onChange(value);
                 setShowCustomChannel(value === "outro");
               }} 
-              defaultValue={field.value}
+              value={field.value}
             >
               <FormControl>
                 <SelectTrigger>
