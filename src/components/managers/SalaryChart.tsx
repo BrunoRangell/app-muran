@@ -119,13 +119,17 @@ export const SalaryChart = () => {
         return;
       }
 
+      // Ajusta o formato da data adicionando o dia (primeiro dia do mês)
+      const formattedDate = `${values.month}-01`;
+      console.log('Data formatada:', formattedDate);
+
       const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
       const { error } = await supabase
         .from('salaries')
         .insert([
           {
             manager_id: sessionData.session.user.id,
-            month: values.month,
+            month: formattedDate, // Usa a data formatada
             amount: amount,
           },
         ]);
