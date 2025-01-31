@@ -48,7 +48,7 @@ export const SalaryChart = () => {
         const { data: salariesData, error: salariesError } = await supabase
           .from('salaries')
           .select('month, amount')
-          .eq('user_id', userId)
+          .eq('manager_id', userId)
           .order('month', { ascending: true });
 
         if (salariesError) {

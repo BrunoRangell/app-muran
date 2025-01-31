@@ -24,7 +24,7 @@ export const seedInitialData = async () => {
     const { data: existingSalaries, error: existingSalariesError } = await supabase
       .from('salaries')
       .select('*')
-      .eq('user_id', userId);
+      .eq('manager_id', userId);
 
     if (existingSalariesError) {
       console.error('Erro ao verificar salários existentes:', existingSalariesError);
@@ -40,25 +40,25 @@ export const seedInitialData = async () => {
     const salariesData = [
       { 
         id: uuidv4(),
-        user_id: userId, 
+        manager_id: userId, 
         month: new Date('2024-01-05').toISOString(), 
         amount: 1000.00 
       },
       { 
         id: uuidv4(),
-        user_id: userId, 
+        manager_id: userId, 
         month: new Date('2024-02-05').toISOString(), 
         amount: 1300.00 
       },
       { 
         id: uuidv4(),
-        user_id: userId, 
+        manager_id: userId, 
         month: new Date('2024-03-05').toISOString(), 
         amount: 1300.00 
       },
       { 
         id: uuidv4(),
-        user_id: userId, 
+        manager_id: userId, 
         month: new Date('2024-04-05').toISOString(), 
         amount: 1300.00 
       }
