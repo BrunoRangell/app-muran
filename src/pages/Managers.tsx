@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, Briefcase, CalendarClock } from "lucide-react";
+import { Briefcase } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { format } from "date-fns";
 
 interface TeamMember {
   id: string;
   name: string;
   role: string;
-  birthday: string;
-  start_date: string;
   photo_url?: string;
 }
 
@@ -24,7 +21,7 @@ const Managers = () => {
         console.log('Buscando membros da equipe...');
         const { data, error } = await supabase
           .from('team_members')
-          .select('id, name, role, birthday, start_date, photo_url')
+          .select('id, name, role, photo_url')
           .order('name');
 
         if (error) {
@@ -74,17 +71,6 @@ const Managers = () => {
                   <Briefcase className="h-4 w-4" />
                   <span>{member.role}</span>
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-gray-600">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4" />
-                <span>Aniversário: {member.birthday ? format(new Date(member.birthday), 'dd/MM') : 'N/A'}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <CalendarClock className="h-4 w-4" />
-                <span>Na Muran desde: {member.start_date ? format(new Date(member.start_date), 'MM/yyyy') : 'N/A'}</span>
               </div>
             </div>
           </Card>
