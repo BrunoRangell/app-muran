@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
-import { format } from "date-fns";
 
 interface ClientFormData {
   companyName: string;
@@ -30,32 +29,61 @@ interface ClientFormData {
   acquisitionChannel: string;
   companyBirthday: string;
   contactName: string;
-  contactEmail: string;
+  contactPhone: string;
+  customAcquisitionChannel?: string;
 }
+
+const ACQUISITION_CHANNELS = [
+  "Tráfego pago",
+  "Indicação",
+  "Prospecção fria",
+  "outro"
+] as const;
 
 export const ClientForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showCustomChannel, setShowCustomChannel] = useState(false);
   const { toast } = useToast();
   const form = useForm<ClientFormData>();
+
+  const formatCurrency = (value: string) => {
+    const numericValue = value.replace(/\D/g, "");
+    const floatValue = parseFloat(numericValue) / 100;
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(floatValue);
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 2) return `(${numbers}`;
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
 
   const onSubmit = async (data: ClientFormData) => {
     try {
       setIsLoading(true);
       console.log("Criando novo cliente:", data);
       
+      const finalAcquisitionChannel = data.acquisitionChannel === "outro" 
+        ? data.customAcquisitionChannel 
+        : data.acquisitionChannel;
+
       const { error: dbError } = await supabase
         .from('clients')
         .insert([
           {
             company_name: data.companyName,
-            contract_value: data.contractValue,
+            contract_value: parseFloat(data.contractValue.toString().replace(/[^\d.,]/g, "").replace(",", ".")),
             first_payment_date: data.firstPaymentDate,
             payment_type: data.paymentType,
             status: data.status,
-            acquisition_channel: data.acquisitionChannel,
+            acquisition_channel: finalAcquisitionChannel,
             company_birthday: data.companyBirthday,
             contact_name: data.contactName,
-            contact_email: data.contactEmail,
+            contact_phone: data.contactPhone,
           }
         ]);
 
@@ -69,6 +97,7 @@ export const ClientForm = () => {
       });
       
       form.reset();
+      setShowCustomChannel(false);
     } catch (error) {
       console.error("Erro ao cadastrar cliente:", error);
       toast({
@@ -106,11 +135,14 @@ export const ClientForm = () => {
               <FormLabel>Valor do Contrato</FormLabel>
               <FormControl>
                 <Input 
-                  type="number" 
-                  placeholder="0.00" 
-                  step="0.01"
-                  {...field} 
-                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  placeholder="R$ 0,00"
+                  {...field}
+                  onChange={(e) => {
+                    const formatted = formatCurrency(e.target.value);
+                    e.target.value = formatted;
+                    field.onChange(formatted);
+                  }}
+                  className="font-mono text-lg"
                 />
               </FormControl>
               <FormMessage />
@@ -182,13 +214,46 @@ export const ClientForm = () => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Canal de Aquisição</FormLabel>
-              <FormControl>
-                <Input placeholder="Ex: Indicação, LinkedIn, etc" {...field} />
-              </FormControl>
+              <Select 
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  setShowCustomChannel(value === "outro");
+                }} 
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o canal de aquisição" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {ACQUISITION_CHANNELS.map((channel) => (
+                    <SelectItem key={channel} value={channel}>
+                      {channel}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {showCustomChannel && (
+          <FormField
+            control={form.control}
+            name="customAcquisitionChannel"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Especifique o Canal</FormLabel>
+                <FormControl>
+                  <Input placeholder="Digite o canal de aquisição" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
@@ -220,12 +285,21 @@ export const ClientForm = () => {
 
         <FormField
           control={form.control}
-          name="contactEmail"
+          name="contactPhone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>E-mail do Responsável</FormLabel>
+              <FormLabel>Contato do Responsável</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="email@exemplo.com" {...field} />
+                <Input 
+                  placeholder="(00) 00000-0000"
+                  {...field}
+                  onChange={(e) => {
+                    const formatted = formatPhoneNumber(e.target.value);
+                    e.target.value = formatted;
+                    field.onChange(formatted);
+                  }}
+                  maxLength={15}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
