@@ -20,6 +20,38 @@ export const seedInitialData = async () => {
     const userId = sessionData.session.user.id;
     console.log('ID do usuário:', userId);
 
+    // Primeiro, verificar se já existe um registro em team_members
+    const { data: existingMember, error: memberCheckError } = await supabase
+      .from('team_members')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (memberCheckError && memberCheckError.code !== 'PGRST116') {
+      console.error('Erro ao verificar membro existente:', memberCheckError);
+      throw memberCheckError;
+    }
+
+    // Se não existir, criar o registro em team_members
+    if (!existingMember) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      const { error: createMemberError } = await supabase
+        .from('team_members')
+        .insert([{
+          user_id: userId,
+          name: userData.user.user_metadata.name || 'Usuário',
+          email: userData.user.email,
+          role: userData.user.user_metadata.role || 'Gestor'
+        }]);
+
+      if (createMemberError) {
+        console.error('Erro ao criar membro:', createMemberError);
+        throw createMemberError;
+      }
+    }
+
     // Verificar se já existem salários para este usuário
     const { data: existingSalaries, error: existingSalariesError } = await supabase
       .from('salaries')
