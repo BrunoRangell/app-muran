@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Table,
@@ -7,7 +8,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Plus, Pencil } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
+import { ClientForm } from "@/components/admin/ClientForm";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Client {
   id: string;
@@ -20,10 +26,15 @@ interface Client {
   company_birthday: string;
   contact_name: string;
   contact_phone: string;
+  created_at: string;
 }
 
 export const ClientsList = () => {
-  const { data: clients, isLoading } = useQuery({
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const { data: clients, isLoading, refetch } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
       console.log("Fetching clients...");
@@ -53,9 +64,37 @@ export const ClientsList = () => {
     return new Date(dateString).toLocaleDateString("pt-BR");
   };
 
+  const handleEditClick = (client: Client) => {
+    setSelectedClient(client);
+    setIsDialogOpen(true);
+  };
+
+  const handleCreateClick = () => {
+    setSelectedClient(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleFormSuccess = () => {
+    setIsDialogOpen(false);
+    refetch();
+    toast({
+      title: "Sucesso!",
+      description: selectedClient 
+        ? "Cliente atualizado com sucesso!" 
+        : "Cliente cadastrado com sucesso!",
+    });
+  };
+
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">Lista de Clientes</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold">Lista de Clientes</h2>
+        <Button onClick={handleCreateClick} className="bg-muran-primary hover:bg-muran-primary/90">
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Cliente
+        </Button>
+      </div>
+
       {isLoading ? (
         <p className="text-gray-600">Carregando clientes...</p>
       ) : (
@@ -69,8 +108,11 @@ export const ClientsList = () => {
                 <TableHead>Tipo de Pagamento</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Canal de Aquisição</TableHead>
+                <TableHead>Aniversário</TableHead>
                 <TableHead>Responsável</TableHead>
                 <TableHead>Contato</TableHead>
+                <TableHead>Data de Cadastro</TableHead>
+                <TableHead className="w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -100,14 +142,41 @@ export const ClientsList = () => {
                     </span>
                   </TableCell>
                   <TableCell>{client.acquisition_channel}</TableCell>
+                  <TableCell>
+                    {client.company_birthday ? formatDate(client.company_birthday) : "-"}
+                  </TableCell>
                   <TableCell>{client.contact_name}</TableCell>
                   <TableCell>{client.contact_phone}</TableCell>
+                  <TableCell>{formatDate(client.created_at)}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditClick(client)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedClient ? "Editar Cliente" : "Novo Cliente"}
+            </DialogTitle>
+          </DialogHeader>
+          <ClientForm 
+            initialData={selectedClient}
+            onSuccess={handleFormSuccess}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
