@@ -29,8 +29,10 @@ const Dashboard = () => {
 
   const formattedRevenue = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
-    currency: 'BRL'
-  }).format(totalRevenue / 100); // Divide by 100 since values are stored in cents
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(totalRevenue); // Remove division by 100 since the value is already in the correct format
 
   return (
     <div className="space-y-6">
