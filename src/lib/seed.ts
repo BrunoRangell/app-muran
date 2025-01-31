@@ -41,25 +41,25 @@ export const seedInitialData = async () => {
       { 
         id: uuidv4(),
         user_id: userId, 
-        month: new Date('2024-10-05').toISOString(), 
+        month: new Date('2024-01-05').toISOString(), 
         amount: 1000.00 
       },
       { 
         id: uuidv4(),
         user_id: userId, 
-        month: new Date('2024-11-05').toISOString(), 
+        month: new Date('2024-02-05').toISOString(), 
         amount: 1300.00 
       },
       { 
         id: uuidv4(),
         user_id: userId, 
-        month: new Date('2024-12-05').toISOString(), 
+        month: new Date('2024-03-05').toISOString(), 
         amount: 1300.00 
       },
       { 
         id: uuidv4(),
         user_id: userId, 
-        month: new Date('2025-01-05').toISOString(), 
+        month: new Date('2024-04-05').toISOString(), 
         amount: 1300.00 
       }
     ];
