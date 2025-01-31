@@ -45,7 +45,7 @@ const Index = () => {
           {greeting}, {userName ? userName : "Bem-vindo"}! <Zap className="inline-block ml-2 text-muran-primary" />
         </h1>
         <p className="text-lg text-gray-600">
-          Impulsionando negócios no mundo digital
+          É ótimo ter você aqui na Muran!
         </p>
       </div>
 
@@ -102,60 +102,8 @@ const Index = () => {
         <Card className="bg-gradient-to-r from-muran-primary/10 to-muran-complementary/10">
           <CardContent className="p-6">
             <p className="text-center text-lg text-gray-700 font-medium italic">
-              "Construímos juntos o caminho para o seu sucesso no digital."
+              "A excelência não é um ato, mas um hábito." - Aristóteles
             </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Nossa Essência</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Inovação</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Estratégia</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Confiança</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Competência</span>
-              </div>
-              <div className="space-y-2">
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Parceria</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Agilidade</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Prosperidade</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Excelência</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Nosso Compromisso</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Com Resultados:</h4>
-                <ul className="list-disc list-inside text-gray-600">
-                  <li>Estratégias personalizadas</li>
-                  <li>Métricas transparentes</li>
-                  <li>Crescimento sustentável</li>
-                  <li>Inovação constante</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Com Pessoas:</h4>
-                <ul className="list-disc list-inside text-gray-600">
-                  <li>Parceria duradoura</li>
-                  <li>Comunicação clara</li>
-                  <li>Suporte dedicado</li>
-                  <li>Evolução conjunta</li>
-                </ul>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
