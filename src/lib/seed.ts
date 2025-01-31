@@ -24,7 +24,7 @@ export const seedInitialData = async () => {
     const { data: existingMember, error: memberCheckError } = await supabase
       .from('team_members')
       .select('*')
-      .eq('user_id', userId)
+      .eq('manager_id', userId)
       .single();
 
     if (memberCheckError && memberCheckError.code !== 'PGRST116') {
@@ -40,7 +40,7 @@ export const seedInitialData = async () => {
       const { error: createMemberError } = await supabase
         .from('team_members')
         .insert([{
-          user_id: userId,
+          manager_id: userId,
           name: userData.user.user_metadata.name || 'Usuário',
           email: userData.user.email,
           role: userData.user.user_metadata.role || 'Gestor'
