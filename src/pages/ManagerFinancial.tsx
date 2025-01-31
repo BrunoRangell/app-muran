@@ -4,6 +4,8 @@ import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { SalaryChart } from "@/components/managers/SalaryChart";
+import { seedInitialData } from "@/lib/seed";
+import { Button } from "@/components/ui/button";
 
 interface Salary {
   month: Date;
@@ -49,6 +51,24 @@ const ManagerFinancial = () => {
     checkAuth();
   }, [navigate, toast]);
 
+  const handleSeedData = async () => {
+    try {
+      await seedInitialData();
+      toast({
+        title: "Dados criados com sucesso!",
+        description: "Recarregue a página para ver os dados.",
+      });
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao criar dados:', error);
+      toast({
+        title: "Erro ao criar dados",
+        description: "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return <div>Carregando...</div>;
   }
@@ -57,6 +77,14 @@ const ManagerFinancial = () => {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-muran-dark">Meu Financeiro</h1>
+        {salaries.length === 0 && (
+          <Button 
+            onClick={handleSeedData}
+            className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
+          >
+            Criar Dados Iniciais
+          </Button>
+        )}
       </div>
 
       <Card className="p-6">
