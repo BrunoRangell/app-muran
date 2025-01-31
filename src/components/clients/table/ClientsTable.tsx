@@ -40,6 +40,8 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
     return 0;
   });
 
+  const sortableColumns = ['company_name', 'contract_value', 'status', 'first_payment_date'];
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -48,16 +50,20 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
             {sortedColumns.filter(col => col.show).map(column => (
               <TableHead 
                 key={column.id}
-                className="cursor-pointer"
-                onClick={() => onSort(column.id)}
+                className={sortableColumns.includes(column.id) ? "cursor-pointer" : ""}
+                onClick={() => sortableColumns.includes(column.id) ? onSort(column.id) : null}
               >
                 <div className="flex items-center gap-2">
                   {column.label}
-                  <ArrowUpDown className="h-4 w-4" />
-                  {sortConfig.key === column.id && (
-                    <span className="text-xs">
-                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                    </span>
+                  {sortableColumns.includes(column.id) && (
+                    <>
+                      <ArrowUpDown className="h-4 w-4" />
+                      {sortConfig.key === column.id && (
+                        <span className="text-xs">
+                          {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </TableHead>
