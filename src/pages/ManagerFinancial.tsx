@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
+import { SalaryChart } from "@/components/managers/SalaryChart";
 
 interface Salary {
   month: Date;
@@ -57,6 +58,11 @@ const ManagerFinancial = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-muran-dark">Meu Financeiro</h1>
       </div>
+
+      <Card className="p-6">
+        <h2 className="text-xl font-bold mb-6">Evolução Salarial</h2>
+        <SalaryChart />
+      </Card>
 
       <Card className="p-6">
         <h2 className="text-xl font-bold mb-6">Histórico de Salários</h2>

@@ -1,10 +1,10 @@
-import { supabase } from './supabase';
+import { supabase } from "./supabase";
 
 export const seedInitialData = async () => {
   try {
-    console.log('Iniciando seed de dados...');
-    
-    // Inserir gestor
+    console.log('Iniciando criação de dados iniciais...');
+
+    // Criar gestor
     const { data: manager, error: managerError } = await supabase
       .from('managers')
       .insert([
@@ -26,18 +26,23 @@ export const seedInitialData = async () => {
       .insert([
         { 
           manager_id: manager.uuid, 
-          month: new Date('2024-01-01').toISOString(), 
-          amount: 3500.00 
+          month: new Date('2024-10-05').toISOString(), 
+          amount: 1000.00 
         },
         { 
           manager_id: manager.uuid, 
-          month: new Date('2024-02-01').toISOString(), 
-          amount: 3500.00 
+          month: new Date('2024-11-05').toISOString(), 
+          amount: 1300.00 
         },
         { 
           manager_id: manager.uuid, 
-          month: new Date('2024-03-01').toISOString(), 
-          amount: 3800.00 
+          month: new Date('2024-12-05').toISOString(), 
+          amount: 1300.00 
+        },
+        { 
+          manager_id: manager.uuid, 
+          month: new Date('2025-01-05').toISOString(), 
+          amount: 1300.00 
         }
       ]);
 
@@ -46,8 +51,8 @@ export const seedInitialData = async () => {
       throw salaryError;
     }
 
-    console.log('Dados inseridos com sucesso!');
-
+    console.log('Dados iniciais criados com sucesso!');
+    return { success: true };
   } catch (error) {
     console.error('Erro ao criar dados iniciais:', error);
     throw error;
