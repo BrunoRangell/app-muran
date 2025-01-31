@@ -24,17 +24,26 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
     try {
       console.log('Tentando fazer login com:', { managerId, password });
       
-      const { data, error } = await supabase
+      const { data: manager, error: managerError } = await supabase
         .from('team_members')
         .select('*')
         .eq('id', managerId)
         .eq('password', password)
         .single();
 
-      if (error) throw error;
+      if (managerError) throw managerError;
 
-      if (data) {
-        console.log('Login bem sucedido:', data);
+      if (manager) {
+        console.log('Login bem sucedido:', manager);
+        
+        // Criar sessão no Supabase
+        const { error: sessionError } = await supabase.auth.signInWithPassword({
+          email: manager.email,
+          password: password
+        });
+
+        if (sessionError) throw sessionError;
+
         toast({
           title: "Login realizado com sucesso",
           description: `Bem-vindo, ${managerName}!`,
@@ -47,7 +56,7 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
       console.error('Login error:', error);
       toast({
         title: "Erro ao fazer login",
-        description: "Senha incorreta. Tente novamente.",
+        description: "Senha incorreta ou erro ao criar sessão. Tente novamente.",
         variant: "destructive",
       });
     } finally {
