@@ -11,7 +11,10 @@ export const seedInitialData = async () => {
       .select()
       .single();
 
-    if (managerError) throw managerError;
+    if (managerError) {
+      console.error('Erro ao criar gestor:', managerError);
+      throw managerError;
+    }
 
     console.log('Gestor inicial criado com sucesso:', manager);
 
@@ -21,22 +24,25 @@ export const seedInitialData = async () => {
       .insert([
         {
           manager_id: manager.id,
-          month: new Date('2024-01-01'),
+          month: new Date('2024-01-01').toISOString(),
           amount: 3500.00
         },
         {
           manager_id: manager.id,
-          month: new Date('2024-02-01'),
+          month: new Date('2024-02-01').toISOString(),
           amount: 3500.00
         },
         {
           manager_id: manager.id,
-          month: new Date('2024-03-01'),
+          month: new Date('2024-03-01').toISOString(),
           amount: 3800.00
         }
       ]);
 
-    if (salaryError) throw salaryError;
+    if (salaryError) {
+      console.error('Erro ao criar salários:', salaryError);
+      throw salaryError;
+    }
 
     console.log('Salários iniciais criados com sucesso');
   } catch (error) {
