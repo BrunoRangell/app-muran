@@ -18,6 +18,9 @@ interface TeamMemberFormData {
   email: string;
   role: string;
   password: string;
+  photo_url?: string;
+  birthday?: string;
+  start_date?: string;
 }
 
 export const TeamMemberForm = () => {
@@ -55,7 +58,10 @@ export const TeamMemberForm = () => {
             name: data.name,
             email: data.email,
             role: data.role,
-            manager_id: authData.user.id
+            manager_id: authData.user.id,
+            photo_url: data.photo_url,
+            birthday: data.birthday,
+            start_date: data.start_date
           }
         ]);
 
@@ -120,6 +126,48 @@ export const TeamMemberForm = () => {
               <FormLabel>Cargo</FormLabel>
               <FormControl>
                 <Input placeholder="Ex: Desenvolvedor, Designer, etc" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="photo_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>URL da Foto</FormLabel>
+              <FormControl>
+                <Input placeholder="https://exemplo.com/foto.jpg" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="birthday"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Data de Aniversário</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="start_date"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Data de Início na Muran</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
