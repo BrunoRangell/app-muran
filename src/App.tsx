@@ -1,41 +1,85 @@
-import { Routes, Route } from "react-router-dom";
-import { Toaster } from "@/components/ui/toaster";
-import { Layout } from "@/components/layout/Layout";
-import { PrivateRoute } from "@/components/auth/PrivateRoute";
-import { AuthCallback } from "@/components/auth/AuthCallback";
-import Index from "@/pages/Index";
-import Login from "@/pages/Login";
-import NotFound from "@/pages/NotFound";
-import Dashboard from "@/pages/Dashboard";
-import UserDashboard from "@/pages/UserDashboard";
-import Clients from "@/pages/Clients";
-import Admin from "@/pages/Admin";
-import Financial from "@/pages/Financial";
-import ManagerFinancial from "@/pages/ManagerFinancial";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Layout } from "./components/layout/Layout";
+import { PrivateRoute } from "./components/auth/PrivateRoute";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import UserDashboard from "./pages/UserDashboard";
+import Clients from "./pages/Clients";
+import Financial from "./pages/Financial";
+import Managers from "./pages/Managers";
+import Admin from "./pages/Admin";
+import NotFound from "./pages/NotFound";
+import { Toaster } from "./components/ui/toaster";
 
 function App() {
   return (
-    <>
+    <Router>
       <Routes>
-        <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        
-        <Route element={<Layout />}>
-          <Route element={<PrivateRoute />}>
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="inicio" element={<UserDashboard />} />
-            <Route path="clientes" element={<Clients />} />
-            <Route path="equipe" element={<Admin />} />
-            <Route path="financeiro" element={<Financial />} />
-            <Route path="gestor/financeiro" element={<ManagerFinancial />} />
-          </Route>
-        </Route>
-
+        <Route
+          path="/"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <UserDashboard />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute requireAdmin>
+              <Layout>
+                <Dashboard />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/clientes"
+          element={
+            <PrivateRoute requireAdmin>
+              <Layout>
+                <Clients />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/financeiro"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <Financial />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/equipe"
+          element={
+            <PrivateRoute>
+              <Layout>
+                <Managers />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute requireAdmin>
+              <Layout>
+                <Admin />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
-    </>
+    </Router>
   );
 }
 

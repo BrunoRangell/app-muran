@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { Navigate, useLocation, Outlet } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
 interface PrivateRouteProps {
+  children: React.ReactNode;
   requireAdmin?: boolean;
 }
 
-export const PrivateRoute = ({ requireAdmin = false }: PrivateRouteProps) => {
+export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRouteProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const location = useLocation();
@@ -70,5 +71,5 @@ export const PrivateRoute = ({ requireAdmin = false }: PrivateRouteProps) => {
     return <Navigate to="/" replace />;
   }
 
-  return <Outlet />;
+  return <>{children}</>;
 };
