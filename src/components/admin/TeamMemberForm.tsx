@@ -35,11 +35,11 @@ export const TeamMemberForm = () => {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/auth/callback`,
           data: {
             name: data.name,
             role: data.role,
-          }
+          },
+          emailConfirm: false
         }
       });
 
@@ -66,7 +66,7 @@ export const TeamMemberForm = () => {
 
       toast({
         title: "Sucesso!",
-        description: "Membro cadastrado! Um email de confirmação foi enviado.",
+        description: "Membro da equipe cadastrado com sucesso!",
       });
       
       form.reset();
