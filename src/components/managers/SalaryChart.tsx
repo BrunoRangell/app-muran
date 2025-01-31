@@ -3,90 +3,161 @@ import { supabase } from "@/lib/supabase";
 import {
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Plus } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface SalaryData {
   month: string;
   amount: number;
 }
 
+const formSchema = z.object({
+  month: z.string().min(1, "Selecione um mês"),
+  amount: z.string().min(1, "Digite um valor"),
+});
+
 export const SalaryChart = () => {
   const [salaryData, setSalaryData] = useState<SalaryData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalSalary, setTotalSalary] = useState(0);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      month: "",
+      amount: "",
+    },
+  });
 
-  useEffect(() => {
-    const fetchSalaryData = async () => {
-      try {
-        console.log('Buscando dados de salários...');
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Erro ao buscar sessão:', sessionError);
-          toast({
-            title: "Erro ao carregar dados",
-            description: "Não foi possível verificar sua sessão. Tente novamente mais tarde.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        if (!sessionData.session?.user?.id) {
-          console.log('Usuário não autenticado');
-          setIsLoading(false);
-          return;
-        }
-
-        const userId = sessionData.session.user.id;
-        console.log('ID do usuário:', userId);
-
-        const { data: salariesData, error: salariesError } = await supabase
-          .from('salaries')
-          .select('month, amount')
-          .eq('manager_id', userId)
-          .order('month', { ascending: true });
-
-        if (salariesError) {
-          console.error('Erro ao buscar salários:', salariesError);
-          toast({
-            title: "Erro ao carregar salários",
-            description: "Não foi possível buscar seus dados salariais. Tente novamente mais tarde.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        console.log('Dados de salários encontrados:', salariesData);
-        
-        const formattedData = salariesData?.map(item => ({
-          month: format(new Date(item.month), 'MMM/yyyy', { locale: ptBR }),
-          amount: item.amount
-        })) || [];
-
-        // Calcula o total dos salários
-        const total = formattedData.reduce((acc, curr) => acc + curr.amount, 0);
-        setTotalSalary(total);
-        setSalaryData(formattedData);
-      } catch (error) {
-        console.error('Erro ao carregar dados de salários:', error);
+  const fetchSalaryData = async () => {
+    try {
+      console.log('Buscando dados de salários...');
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Erro ao buscar sessão:', sessionError);
         toast({
-          title: "Erro inesperado",
-          description: "Ocorreu um erro ao carregar seus dados. Tente novamente mais tarde.",
+          title: "Erro ao carregar dados",
+          description: "Não foi possível verificar sua sessão. Tente novamente mais tarde.",
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    };
 
+      if (!sessionData.session?.user?.id) {
+        console.log('Usuário não autenticado');
+        setIsLoading(false);
+        return;
+      }
+
+      const userId = sessionData.session.user.id;
+      console.log('ID do usuário:', userId);
+
+      const { data: salariesData, error: salariesError } = await supabase
+        .from('salaries')
+        .select('month, amount')
+        .eq('manager_id', userId)
+        .order('month', { ascending: true });
+
+      if (salariesError) {
+        console.error('Erro ao buscar salários:', salariesError);
+        toast({
+          title: "Erro ao carregar salários",
+          description: "Não foi possível buscar seus dados salariais. Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Dados de salários encontrados:', salariesData);
+      
+      const formattedData = salariesData?.map(item => ({
+        month: format(new Date(item.month), 'MMM/yyyy', { locale: ptBR }),
+        amount: item.amount
+      })) || [];
+
+      const total = formattedData.reduce((acc, curr) => acc + curr.amount, 0);
+      setTotalSalary(total);
+      setSalaryData(formattedData);
+    } catch (error) {
+      console.error('Erro ao carregar dados de salários:', error);
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao carregar seus dados. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSalaryData();
   }, [toast]);
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.user?.id) {
+        toast({
+          title: "Erro ao adicionar salário",
+          description: "Você precisa estar autenticado para adicionar um salário.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
+      const { error } = await supabase
+        .from('salaries')
+        .insert([
+          {
+            manager_id: sessionData.session.user.id,
+            month: values.month,
+            amount: amount,
+          },
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Salário adicionado",
+        description: "O salário foi adicionado com sucesso!",
+      });
+
+      form.reset();
+      setIsDialogOpen(false);
+      fetchSalaryData();
+    } catch (error) {
+      console.error('Erro ao adicionar salário:', error);
+      toast({
+        title: "Erro ao adicionar salário",
+        description: "Não foi possível adicionar o salário. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatCurrency = (value: string) => {
+    const onlyNumbers = value.replace(/\D/g, '');
+    const amount = parseInt(onlyNumbers) / 100;
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(amount);
+  };
 
   if (isLoading) {
     return (
@@ -96,17 +167,9 @@ export const SalaryChart = () => {
     );
   }
 
-  if (salaryData.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <p className="text-gray-500">Nenhum dado salarial encontrado.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
         <div className="bg-muran-secondary rounded-lg px-4 py-2">
           <span className="text-sm font-medium text-muran-dark">
             Total acumulado: {' '}
@@ -118,6 +181,64 @@ export const SalaryChart = () => {
             </span>
           </span>
         </div>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-muran-primary hover:bg-muran-primary/90">
+              <Plus className="w-4 h-4" />
+              Adicionar Recebimento
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar Novo Recebimento</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="month"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mês de Referência</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="month"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field: { onChange, ...field } }) => (
+                    <FormItem>
+                      <FormLabel>Valor</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          onChange={(e) => {
+                            const formatted = formatCurrency(e.target.value);
+                            e.target.value = formatted;
+                            onChange(e);
+                          }}
+                          placeholder="R$ 0,00"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full bg-muran-primary hover:bg-muran-primary/90">
+                  Adicionar
+                </Button>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <ChartContainer
