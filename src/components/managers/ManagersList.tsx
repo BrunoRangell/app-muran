@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,20 +10,46 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ManagerLoginForm } from "./ManagerLoginForm";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Manager {
   id: number;
   name: string;
 }
 
-const managers: Manager[] = [
-  { id: 1, name: "Pedro Henrique" },
-];
-
 export const ManagersList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedManager, setSelectedManager] = useState<Manager | null>(null);
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+  const [managers, setManagers] = useState<Manager[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchManagers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('managers')
+          .select('id, name');
+
+        if (error) throw error;
+
+        setManagers(data || []);
+      } catch (error) {
+        console.error('Error fetching managers:', error);
+        toast({
+          title: "Erro ao carregar gestores",
+          description: "Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchManagers();
+  }, [toast]);
 
   const filteredManagers = managers.filter(manager =>
     manager.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -33,6 +59,10 @@ export const ManagersList = () => {
     setSelectedManager(manager);
     setIsLoginDialogOpen(true);
   };
+
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
 
   return (
     <div className="space-y-6">

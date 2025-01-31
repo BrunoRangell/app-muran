@@ -37,6 +37,7 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
         navigate("/gestor/financeiro");
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Erro ao fazer login",
         description: "Senha incorreta. Tente novamente.",

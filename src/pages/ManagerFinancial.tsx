@@ -2,32 +2,55 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Salary {
-  month: string;
+  month: Date;
   amount: number;
 }
 
-const mockSalaries: Salary[] = [
-  { month: "Janeiro 2024", amount: 3500 },
-  { month: "Fevereiro 2024", amount: 3500 },
-  { month: "Março 2024", amount: 3800 },
-];
-
 const ManagerFinancial = () => {
-  const [salaries, setSalaries] = useState<Salary[]>(mockSalaries);
+  const [salaries, setSalaries] = useState<Salary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate("/gestores");
+        return;
+      }
+
+      try {
+        const { data: salariesData, error } = await supabase
+          .from('salaries')
+          .select('month, amount')
+          .eq('manager_id', session.user.id)
+          .order('month', { ascending: false });
+
+        if (error) throw error;
+
+        setSalaries(salariesData || []);
+      } catch (error) {
+        console.error('Error fetching salaries:', error);
+        toast({
+          title: "Erro ao carregar salários",
+          description: "Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
 
     checkAuth();
-  }, [navigate]);
+  }, [navigate, toast]);
+
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -43,7 +66,12 @@ const ManagerFinancial = () => {
               key={index}
               className="flex justify-between items-center p-4 bg-gray-50 rounded-lg"
             >
-              <span className="font-medium">{salary.month}</span>
+              <span className="font-medium">
+                {new Date(salary.month).toLocaleDateString('pt-BR', {
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </span>
               <span className="text-green-600 font-semibold">
                 R$ {salary.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
