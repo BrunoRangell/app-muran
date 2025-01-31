@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { Users, DollarSign } from "lucide-react";
+import { Users, DollarSign, CreditCard } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export const FinancialMetrics = () => {
@@ -21,9 +21,10 @@ export const FinancialMetrics = () => {
       const monthlyRevenue = clients.reduce((sum, client) => {
         return sum + (client.contract_value || 0);
       }, 0);
+      const averageTicket = totalClients > 0 ? monthlyRevenue / totalClients : 0;
 
-      console.log("Client metrics calculated:", { totalClients, monthlyRevenue });
-      return { totalClients, monthlyRevenue };
+      console.log("Client metrics calculated:", { totalClients, monthlyRevenue, averageTicket });
+      return { totalClients, monthlyRevenue, averageTicket };
     },
   });
 
@@ -41,7 +42,7 @@ export const FinancialMetrics = () => {
       {isLoading ? (
         <p className="text-gray-600">Carregando métricas...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="p-6">
             <div className="flex items-center space-x-4">
               <div className="p-3 bg-muran-primary/10 rounded-full">
@@ -69,6 +70,22 @@ export const FinancialMetrics = () => {
                 </p>
                 <h3 className="text-2xl font-bold text-muran-dark">
                   {formatCurrency(metrics?.monthlyRevenue || 0)}
+                </h3>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-muran-primary/10 rounded-full">
+                <CreditCard className="h-6 w-6 text-muran-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Ticket Médio
+                </p>
+                <h3 className="text-2xl font-bold text-muran-dark">
+                  {formatCurrency(metrics?.averageTicket || 0)}
                 </h3>
               </div>
             </div>
