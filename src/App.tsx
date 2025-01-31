@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/layout/Layout";
 import { Toaster } from "./components/ui/toaster";
-import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import Financial from "./pages/Financial";
@@ -16,7 +15,7 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/clientes" element={<Clients />} />
           <Route path="/financeiro" element={<Financial />} />
