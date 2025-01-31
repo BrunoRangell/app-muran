@@ -102,7 +102,7 @@ const Index = () => {
         <Card className="bg-gradient-to-r from-muran-primary/10 to-muran-complementary/10">
           <CardContent className="p-6">
             <p className="text-center text-lg text-gray-700 font-medium italic">
-              "Resultados reais, relações duradouras."
+              "Construímos juntos o caminho para o seu sucesso no digital."
             </p>
           </CardContent>
         </Card>
@@ -111,21 +111,21 @@ const Index = () => {
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Nossa Personalidade</CardTitle>
+            <CardTitle>Nossa Essência</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Agradável</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Ambiciosa</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Colaboradora</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Disciplinada</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Inovação</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Estratégia</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Confiança</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Competência</span>
               </div>
               <div className="space-y-2">
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Honesta</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Leal</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Segura</span>
-                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Versátil</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Parceria</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Agilidade</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Prosperidade</span>
+                <span className="inline-block px-3 py-1 rounded-full bg-muran-secondary text-muran-complementary">Excelência</span>
               </div>
             </div>
           </CardContent>
@@ -133,26 +133,26 @@ const Index = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Nossas Propostas</CardTitle>
+            <CardTitle>Nosso Compromisso</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium mb-2">Funcionais:</h4>
+                <h4 className="font-medium mb-2">Com Resultados:</h4>
                 <ul className="list-disc list-inside text-gray-600">
-                  <li>Consultorias detalhadas</li>
-                  <li>Resultados mensuráveis</li>
-                  <li>Foco no crescimento</li>
-                  <li>Atendimento digital</li>
+                  <li>Estratégias personalizadas</li>
+                  <li>Métricas transparentes</li>
+                  <li>Crescimento sustentável</li>
+                  <li>Inovação constante</li>
                 </ul>
               </div>
               <div>
-                <h4 className="font-medium mb-2">Emocionais:</h4>
+                <h4 className="font-medium mb-2">Com Pessoas:</h4>
                 <ul className="list-disc list-inside text-gray-600">
-                  <li>Relação próxima e atenciosa</li>
-                  <li>Incentivo ao empreendedorismo</li>
-                  <li>Comprometimento com sucesso</li>
-                  <li>Esforço mútuo e colaboração</li>
+                  <li>Parceria duradoura</li>
+                  <li>Comunicação clara</li>
+                  <li>Suporte dedicado</li>
+                  <li>Evolução conjunta</li>
                 </ul>
               </div>
             </div>
