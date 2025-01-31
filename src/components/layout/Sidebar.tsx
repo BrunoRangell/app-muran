@@ -5,6 +5,7 @@ import {
   DollarSign, 
   UserCog,
   Shield,
+  Home,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -20,6 +21,7 @@ const adminMenuItems: MenuItem[] = [
 ];
 
 const regularMenuItems: MenuItem[] = [
+  { icon: Home, label: "Início", path: "/" },
   { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
   { icon: Users, label: "Equipe", path: "/gestores" },
 ];
