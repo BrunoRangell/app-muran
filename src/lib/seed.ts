@@ -7,7 +7,7 @@ export const seedInitialData = async () => {
     // Verificar se já existe um gestor
     const { data: existingManager, error: existingManagerError } = await supabase
       .from('managers')
-      .select('id')
+      .select('*')
       .single();
 
     if (existingManagerError && existingManagerError.code !== 'PGRST116') {
@@ -25,7 +25,6 @@ export const seedInitialData = async () => {
         .insert([
           { 
             name: 'Pedro Henrique',
-            // Não precisamos definir o ID, o Supabase gerará um UUID automaticamente
           }
         ])
         .select()
