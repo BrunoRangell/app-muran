@@ -48,16 +48,7 @@ export const TeamMemberForm = () => {
 
       console.log("Usuário autenticado criado com sucesso", authData);
       
-      // Fazer login com o usuário recém criado
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (signInError) throw signInError;
-      console.log("Login realizado com sucesso", signInData);
-      
-      // Em seguida, criar o registro na tabela team_members usando o manager_id
+      // Em seguida, criar o registro na tabela team_members usando o ID do usuário
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -75,7 +66,7 @@ export const TeamMemberForm = () => {
 
       toast({
         title: "Sucesso!",
-        description: "Membro da equipe cadastrado com sucesso.",
+        description: "Membro cadastrado! Um email de confirmação foi enviado.",
       });
       
       form.reset();
