@@ -24,6 +24,7 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
     try {
       console.log('Tentando fazer login com:', { managerId, password });
       
+      // Primeiro verificar se o usuário existe na tabela team_members
       const { data: manager, error: managerError } = await supabase
         .from('team_members')
         .select('*')
@@ -36,19 +37,43 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
       if (manager) {
         console.log('Login bem sucedido:', manager);
         
-        // Criar sessão no Supabase
-        const { error: sessionError } = await supabase.auth.signInWithPassword({
-          email: manager.email,
-          password: password
-        });
+        try {
+          // Tentar criar sessão no Supabase
+          const { error: sessionError } = await supabase.auth.signInWithPassword({
+            email: manager.email,
+            password: password
+          });
 
-        if (sessionError) throw sessionError;
+          if (sessionError) {
+            // Se o erro for de email não confirmado
+            if (sessionError.message === "Email not confirmed") {
+              toast({
+                title: "Email não confirmado",
+                description: "Por favor, confirme seu email através do link enviado para sua caixa de entrada.",
+                variant: "destructive",
+              });
+              return;
+            }
+            throw sessionError;
+          }
 
-        toast({
-          title: "Login realizado com sucesso",
-          description: `Bem-vindo, ${managerName}!`,
-        });
-        navigate("/gestor/financeiro");
+          toast({
+            title: "Login realizado com sucesso",
+            description: `Bem-vindo, ${managerName}!`,
+          });
+          navigate("/gestor/financeiro");
+        } catch (authError: any) {
+          console.error('Erro de autenticação:', authError);
+          if (authError.message === "Email not confirmed") {
+            toast({
+              title: "Email não confirmado",
+              description: "Por favor, confirme seu email através do link enviado para sua caixa de entrada.",
+              variant: "destructive",
+            });
+            return;
+          }
+          throw authError;
+        }
       } else {
         throw new Error("Credenciais inválidas");
       }
