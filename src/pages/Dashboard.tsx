@@ -1,9 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, DollarSign } from "lucide-react";
+import { Users, DollarSign, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useState } from "react";
 
 const Dashboard = () => {
+  const [showAlert, setShowAlert] = useState(true);
+  
   const { data: clients = [] } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
@@ -32,10 +36,25 @@ const Dashboard = () => {
     currency: 'BRL',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(totalRevenue); // Remove division by 100 since the value is already in the correct format
+  }).format(totalRevenue);
 
   return (
     <div className="space-y-6">
+      {showAlert && (
+        <Alert className="relative">
+          <AlertDescription>
+            Bem-vindo ao seu dashboard! Aqui você encontrará um resumo das principais métricas e informações do seu negócio.
+            Em breve, mais dados e gráficos serão adicionados para ajudar na gestão do seu negócio.
+          </AlertDescription>
+          <button
+            onClick={() => setShowAlert(false)}
+            className="absolute top-2 right-2 p-1 hover:bg-secondary rounded-full"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </Alert>
+      )}
+      
       <h1 className="text-3xl font-bold text-muran-complementary">Dashboard</h1>
       
       <div className="grid gap-4 md:grid-cols-2">
@@ -61,20 +80,6 @@ const Dashboard = () => {
             <div className="text-2xl font-bold">{formattedRevenue}</div>
             <p className="text-xs text-muted-foreground">
               Receita acumulada no mês
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="col-span-2">
-          <CardHeader>
-            <CardTitle>Visão Geral</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Bem-vindo ao seu dashboard! Aqui você encontrará um resumo das principais métricas e informações do seu negócio.
-              Em breve, mais dados e gráficos serão adicionados para ajudar na gestão do seu negócio.
             </p>
           </CardContent>
         </Card>
