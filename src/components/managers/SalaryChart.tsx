@@ -174,15 +174,18 @@ export const SalaryChart = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="bg-muran-secondary rounded-lg px-4 py-2">
-          <span className="text-sm font-medium text-muran-dark">
-            Total acumulado: {' '}
-            <span className="text-muran-primary">
-              {new Intl.NumberFormat('pt-BR', { 
-                style: 'currency', 
-                currency: 'BRL' 
-              }).format(totalSalary)}
-            </span>
+        <div className="bg-muran-primary/10 rounded-lg px-6 py-4 border-l-4 border-muran-primary">
+          <span className="text-sm font-medium text-muran-complementary block mb-1">
+            Total acumulado
+          </span>
+          <span className="text-2xl font-bold text-muran-primary">
+            {new Intl.NumberFormat('pt-BR', { 
+              style: 'currency', 
+              currency: 'BRL' 
+            }).format(totalSalary)}
+          </span>
+          <span className="text-xs text-muran-complementary/80 block mt-1">
+            Parabéns pelo seu progresso! 🎉
           </span>
         </div>
 
