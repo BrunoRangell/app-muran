@@ -4,6 +4,7 @@ import {
   Users, 
   DollarSign, 
   UserCog,
+  Shield,
   LogOut
 } from "lucide-react";
 
@@ -12,6 +13,7 @@ const menuItems = [
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
   { icon: UserCog, label: "Gestores", path: "/gestores" },
+  { icon: Shield, label: "Admin", path: "/admin" },
 ];
 
 export const Sidebar = () => {
