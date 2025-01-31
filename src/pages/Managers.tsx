@@ -25,6 +25,7 @@ const Managers = () => {
         const { data, error } = await supabase
           .from('team_members')
           .select('id, name, role, photo_url, birthday, start_date')
+          .order('start_date', { ascending: true, nullsLast: true })
           .order('name');
 
         if (error) {
