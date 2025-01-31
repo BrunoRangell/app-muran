@@ -107,14 +107,18 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <CompanySection form={form} />
-        <PaymentSection form={form} />
-        <StatusSection form={form} />
-        <ContactSection form={form} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CompanySection form={form} />
+          <PaymentSection form={form} />
+          <StatusSection form={form} />
+          <ContactSection form={form} />
+        </div>
 
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Salvando..." : initialData ? "Atualizar cliente" : "Cadastrar cliente"}
-        </Button>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isLoading} className="bg-muran-primary hover:bg-muran-primary/90">
+            {isLoading ? "Salvando..." : initialData ? "Atualizar cliente" : "Cadastrar cliente"}
+          </Button>
+        </div>
       </form>
     </Form>
   );
