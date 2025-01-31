@@ -22,17 +22,17 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
           console.log("Verificando permissões do usuário...");
           const { data: teamMember, error } = await supabase
             .from('team_members')
-            .select('role')
+            .select('role, permission')
             .eq('email', session.user.email)
             .single();
 
           if (error) {
-            console.error("Erro ao verificar role do usuário:", error);
+            console.error("Erro ao verificar permissões do usuário:", error);
             setIsAdmin(false);
             return;
           }
 
-          const userIsAdmin = teamMember?.role === 'admin';
+          const userIsAdmin = teamMember?.permission === 'admin';
           console.log("Usuário é admin?", userIsAdmin);
           setIsAdmin(userIsAdmin);
         }

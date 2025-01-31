@@ -36,11 +36,11 @@ export const Sidebar = () => {
         if (session) {
           const { data: teamMember } = await supabase
             .from('team_members')
-            .select('role')
+            .select('permission')
             .eq('email', session.user.email)
             .single();
 
-          setIsAdmin(teamMember?.role === 'admin');
+          setIsAdmin(teamMember?.permission === 'admin');
         }
       } catch (error) {
         console.error("Erro ao verificar status de admin:", error);
