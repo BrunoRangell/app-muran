@@ -10,7 +10,7 @@ export const seedInitialData = async () => {
       .insert([
         { name: 'Pedro Henrique' }
       ])
-      .select()
+      .select('id, uuid')
       .single();
 
     if (managerError) {
@@ -20,22 +20,22 @@ export const seedInitialData = async () => {
 
     console.log('Gestor criado com sucesso:', manager);
 
-    // Inserir salários
+    // Inserir salários usando o UUID do gestor
     const { error: salaryError } = await supabase
       .from('salaries')
       .insert([
         { 
-          manager_id: manager.id, 
+          manager_id: manager.uuid, 
           month: new Date('2024-01-01').toISOString(), 
           amount: 3500.00 
         },
         { 
-          manager_id: manager.id, 
+          manager_id: manager.uuid, 
           month: new Date('2024-02-01').toISOString(), 
           amount: 3500.00 
         },
         { 
-          manager_id: manager.id, 
+          manager_id: manager.uuid, 
           month: new Date('2024-03-01').toISOString(), 
           amount: 3800.00 
         }
