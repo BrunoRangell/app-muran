@@ -17,14 +17,14 @@ const adminMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
+  { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: Shield, label: "Admin", path: "/admin" },
 ];
 
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
+  { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
 ];
 
 export const Sidebar = () => {

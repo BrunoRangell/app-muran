@@ -4,7 +4,7 @@ const Financial = () => {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-muran-dark">Financeiro</h1>
+        <h1 className="text-3xl font-bold text-muran-dark">Meu Financeiro</h1>
       </div>
 
       <Card className="p-6">
