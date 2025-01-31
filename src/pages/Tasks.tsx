@@ -1,6 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TaskList } from "@/components/tasks/TaskList";
-import { TaskHeader } from "@/components/tasks/TaskHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { SpaceList } from "@/components/tasks/SpaceList";
 
 const Tasks = () => {
   return (
@@ -10,12 +9,8 @@ const Tasks = () => {
       </h1>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Minhas Tarefas</CardTitle>
-          <TaskHeader />
-        </CardHeader>
-        <CardContent>
-          <TaskList />
+        <CardContent className="pt-6">
+          <SpaceList />
         </CardContent>
       </Card>
     </div>
