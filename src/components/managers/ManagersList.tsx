@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { ManagerLoginForm } from "./ManagerLoginForm";
 import { supabase } from "@/lib/supabase";
@@ -119,6 +120,9 @@ export const ManagersList = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Login - {selectedMember?.name}</DialogTitle>
+            <DialogDescription>
+              Digite sua senha para acessar o sistema
+            </DialogDescription>
           </DialogHeader>
           {selectedMember && (
             <ManagerLoginForm

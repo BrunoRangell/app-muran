@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 
 interface ManagerLoginFormProps {
-  managerId: number;
+  managerId: string;
   managerName: string;
   onClose: () => void;
 }
@@ -22,19 +22,26 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: `gestor${managerId}@muran.com`,
-        password: password,
-      });
+      console.log('Tentando fazer login com:', { managerId, password });
+      
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('id', managerId)
+        .eq('password', password)
+        .single();
 
       if (error) throw error;
 
-      if (data.user) {
+      if (data) {
+        console.log('Login bem sucedido:', data);
         toast({
           title: "Login realizado com sucesso",
           description: `Bem-vindo, ${managerName}!`,
         });
         navigate("/gestor/financeiro");
+      } else {
+        throw new Error("Credenciais inválidas");
       }
     } catch (error) {
       console.error('Login error:', error);
