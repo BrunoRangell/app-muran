@@ -9,6 +9,7 @@ import Clients from "./pages/Clients";
 import Financial from "./pages/Financial";
 import Managers from "./pages/Managers";
 import ManagerFinancial from "./pages/ManagerFinancial";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/financeiro" element={<Layout><Financial /></Layout>} />
           <Route path="/gestores" element={<Layout><Managers /></Layout>} />
           <Route path="/gestor/financeiro" element={<Layout><ManagerFinancial /></Layout>} />
+          <Route path="/admin" element={<Layout><Admin /></Layout>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
