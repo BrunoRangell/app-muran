@@ -21,7 +21,7 @@ function App() {
         <Route
           path="/"
           element={
-            <PrivateRoute>
+            <PrivateRoute requireAdmin>
               <Layout>
                 <Dashboard />
               </Layout>
@@ -31,7 +31,7 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <PrivateRoute>
+            <PrivateRoute requireAdmin>
               <Layout>
                 <Dashboard />
               </Layout>
@@ -41,7 +41,7 @@ function App() {
         <Route
           path="/clientes"
           element={
-            <PrivateRoute>
+            <PrivateRoute requireAdmin>
               <Layout>
                 <Clients />
               </Layout>
@@ -71,7 +71,7 @@ function App() {
         <Route
           path="/admin"
           element={
-            <PrivateRoute>
+            <PrivateRoute requireAdmin>
               <Layout>
                 <Admin />
               </Layout>
