@@ -12,7 +12,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
-  { icon: Users, label: "Equipe", path: "/gestores" }, // Alterado de "Gestores" para "Equipe"
+  { icon: Users, label: "Equipe", path: "/gestores" },
   { icon: Shield, label: "Admin", path: "/admin" },
 ];
 
@@ -22,7 +22,11 @@ export const Sidebar = () => {
   return (
     <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0">
       <div className="flex items-center justify-center mb-8">
-        <h1 className="text-2xl font-bold text-muran-primary">Muran</h1>
+        <img 
+          src="/lovable-uploads/860bf16a-63ea-498c-a61b-86729e456d4a.png" 
+          alt="Muran" 
+          className="h-12"
+        />
       </div>
       
       <nav className="space-y-2">
