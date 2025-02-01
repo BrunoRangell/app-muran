@@ -76,7 +76,7 @@ const Login = () => {
         description: "Bem-vindo(a) de volta!",
       });
 
-      navigate("/dashboard");
+      navigate("/"); // Redirecionando para a página inicial
     } catch (error: any) {
       console.error("Erro completo no login:", error);
       
