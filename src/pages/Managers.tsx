@@ -252,7 +252,8 @@ const Managers = () => {
                       <Input {...field} />
                     </FormControl>
                     <FormDescription>
-                      Cole aqui o link de compartilhamento do Google Drive da sua foto
+                      Para melhor compatibilidade, recomendamos usar serviços como imgur.com ou imgbb.com para hospedar suas fotos. 
+                      Cole aqui o link direto da imagem após fazer o upload.
                     </FormDescription>
                   </FormItem>
                 )}
