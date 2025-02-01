@@ -1,18 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
-import { Users, DollarSign, CreditCard, Calendar, Percent, BarChart, Info, ChevronDown } from "lucide-react";
+import { Users, DollarSign, CreditCard, Calendar, Percent, BarChart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { calculateFinancialMetrics } from "@/utils/financialCalculations";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
 import { DateRangeFilter, PeriodFilter } from "./types";
-import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears, format, isWithinInterval, parseISO, isValid } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears } from "date-fns";
+import { MetricCard } from "./metrics/MetricCard";
+import { MetricsChart } from "./metrics/MetricsChart";
+import { useMetricsData } from "./metrics/useMetricsData";
 
 export const FinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this-year');
@@ -83,86 +78,7 @@ export const FinancialMetrics = () => {
   });
 
   // Query para buscar clientes filtrados por período (para os gráficos)
-  const { data: filteredClientsData, isLoading: isLoadingFilteredClients } = useQuery({
-    queryKey: ["filteredClientsMetrics", dateRange],
-    queryFn: async () => {
-      console.log("Fetching filtered clients for period:", dateRange);
-      const { data: clients, error } = await supabase
-        .from("clients")
-        .select("*");
-
-      if (error) {
-        console.error("Error fetching filtered clients:", error);
-        throw error;
-      }
-
-      // Gera dados mensais para o período selecionado
-      const months = [];
-      let currentDate = new Date(dateRange.start);
-      
-      while (currentDate <= dateRange.end) {
-        const monthStart = startOfMonth(currentDate);
-        const monthEnd = endOfMonth(currentDate);
-
-        // Filtra clientes ativos no mês atual
-        const activeClientsInMonth = clients.filter(client => {
-          try {
-            if (!client.first_payment_date) {
-              console.warn("Client missing first_payment_date:", client);
-              return false;
-            }
-
-            const clientStart = parseISO(client.first_payment_date);
-            const clientEnd = client.last_payment_date ? parseISO(client.last_payment_date) : new Date();
-            
-            if (!isValid(clientStart)) {
-              console.warn("Invalid first_payment_date for client:", client);
-              return false;
-            }
-
-            if (client.last_payment_date && !isValid(clientEnd)) {
-              console.warn("Invalid last_payment_date for client:", client);
-              return false;
-            }
-
-            return isWithinInterval(monthStart, { start: clientStart, end: clientEnd }) ||
-                   isWithinInterval(monthEnd, { start: clientStart, end: clientEnd }) ||
-                   (clientStart <= monthStart && clientEnd >= monthEnd);
-          } catch (error) {
-            console.error("Error processing client dates:", client, error);
-            return false;
-          }
-        });
-
-        try {
-          const monthData = {
-            month: format(currentDate, 'MMM/yy'),
-            mrr: activeClientsInMonth.reduce((sum, client) => sum + (client.contract_value || 0), 0),
-            clients: activeClientsInMonth.length,
-            churn: activeClientsInMonth.filter(client => {
-              if (!client.last_payment_date) return false;
-              try {
-                const lastPaymentDate = parseISO(client.last_payment_date);
-                return isValid(lastPaymentDate) && 
-                       isWithinInterval(lastPaymentDate, { start: monthStart, end: monthEnd });
-              } catch (error) {
-                console.error("Error processing churn date for client:", client, error);
-                return false;
-              }
-            }).length
-          };
-          months.push(monthData);
-        } catch (error) {
-          console.error("Error creating month data for:", currentDate, error);
-        }
-
-        currentDate = addMonths(currentDate, 1);
-      }
-
-      console.log("Generated monthly data:", months);
-      return months;
-    },
-  });
+  const { data: filteredClientsData, isLoading: isLoadingFilteredClients } = useMetricsData(dateRange);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -176,64 +92,6 @@ export const FinancialMetrics = () => {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
     }).format(value);
-  };
-
-  const MetricCard = ({ 
-    icon: Icon, 
-    title, 
-    value, 
-    tooltip,
-    formatter = (v: number) => v.toString()
-  }: {
-    icon: any;
-    title: string;
-    value: number;
-    tooltip: string;
-    formatter?: (value: number) => string;
-  }) => (
-    <Card className="p-6">
-      <div className="flex items-center space-x-4">
-        <div className="p-3 bg-muran-primary/10 rounded-full">
-          <Icon className="h-6 w-6 text-muran-primary" />
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-gray-500">{title}</p>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" />
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs p-4">
-                  <p className="text-sm">{tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <h3 className="text-2xl font-bold text-muran-dark">
-            {formatter(value || 0)}
-          </h3>
-        </div>
-      </div>
-    </Card>
-  );
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-4 border rounded-lg shadow-lg">
-          <p className="text-sm font-medium">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.name.includes('MRR') 
-                ? formatCurrency(entry.value)
-                : entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
@@ -295,184 +153,48 @@ export const FinancialMetrics = () => {
           </div>
 
           <div className="space-y-6">
-            <Card className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Evolução do MRR e Total de Clientes</h3>
-                <div className="flex gap-4">
-                  <Select value={periodFilter} onValueChange={handlePeriodChange}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Selecione o período" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-                      <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
-                      <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
-                      <SelectItem value="this-year">Este ano</SelectItem>
-                      <SelectItem value="last-year">Ano passado</SelectItem>
-                      <SelectItem value="custom">Data personalizada</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <MetricsChart
+              title="Evolução do MRR e Total de Clientes"
+              data={filteredClientsData || []}
+              periodFilter={periodFilter}
+              onPeriodChange={handlePeriodChange}
+              isCustomDateOpen={isCustomDateOpen}
+              onCustomDateOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              lines={[
+                {
+                  key: "mrr",
+                  name: "MRR",
+                  color: "#ff6e00",
+                  yAxisId: "left"
+                },
+                {
+                  key: "clients",
+                  name: "Total de Clientes",
+                  color: "#321e32",
+                  yAxisId: "right"
+                }
+              ]}
+            />
 
-                  <Dialog open={isCustomDateOpen} onOpenChange={setIsCustomDateOpen}>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Selecione o período</DialogTitle>
-                      </DialogHeader>
-                      <div className="grid gap-4">
-                        <div className="grid gap-2">
-                          <Label>Data inicial</Label>
-                          <Input
-                            type="date"
-                            value={format(dateRange.start, 'yyyy-MM-dd')}
-                            onChange={(e) => {
-                              const newDate = new Date(e.target.value);
-                              setDateRange(prev => ({
-                                ...prev,
-                                start: startOfMonth(newDate)
-                              }));
-                            }}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Data final</Label>
-                          <Input
-                            type="date"
-                            value={format(dateRange.end, 'yyyy-MM-dd')}
-                            onChange={(e) => {
-                              const newDate = new Date(e.target.value);
-                              setDateRange(prev => ({
-                                ...prev,
-                                end: endOfMonth(newDate)
-                              }));
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={() => setIsCustomDateOpen(false)}>
-                          Confirmar
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </div>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={filteredClientsData || []}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <RechartsTooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Line
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="mrr"
-                      name="MRR"
-                      stroke="#ff6e00"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="clients"
-                      name="Total de Clientes"
-                      stroke="#321e32"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Clientes Cancelados por Mês</h3>
-                <div className="flex gap-4">
-                  <Select value={periodFilter} onValueChange={handlePeriodChange}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Selecione o período" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-                      <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
-                      <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
-                      <SelectItem value="this-year">Este ano</SelectItem>
-                      <SelectItem value="last-year">Ano passado</SelectItem>
-                      <SelectItem value="custom">Data personalizada</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Dialog open={isCustomDateOpen} onOpenChange={setIsCustomDateOpen}>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Selecione o período</DialogTitle>
-                      </DialogHeader>
-                      <div className="grid gap-4">
-                        <div className="grid gap-2">
-                          <Label>Data inicial</Label>
-                          <Input
-                            type="date"
-                            value={format(dateRange.start, 'yyyy-MM-dd')}
-                            onChange={(e) => {
-                              const newDate = new Date(e.target.value);
-                              setDateRange(prev => ({
-                                ...prev,
-                                start: startOfMonth(newDate)
-                              }));
-                            }}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Data final</Label>
-                          <Input
-                            type="date"
-                            value={format(dateRange.end, 'yyyy-MM-dd')}
-                            onChange={(e) => {
-                              const newDate = new Date(e.target.value);
-                              setDateRange(prev => ({
-                                ...prev,
-                                end: endOfMonth(newDate)
-                              }));
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={() => setIsCustomDateOpen(false)}>
-                          Confirmar
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </div>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={filteredClientsData || []}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <RechartsTooltip content={<CustomTooltip />} />
-                    <Line
-                      type="monotone"
-                      dataKey="churn"
-                      name="Clientes Cancelados"
-                      stroke="#ff6e00"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+            <MetricsChart
+              title="Clientes Cancelados por Mês"
+              data={filteredClientsData || []}
+              periodFilter={periodFilter}
+              onPeriodChange={handlePeriodChange}
+              isCustomDateOpen={isCustomDateOpen}
+              onCustomDateOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              lines={[
+                {
+                  key: "churn",
+                  name: "Clientes Cancelados",
+                  color: "#ff6e00"
+                }
+              ]}
+            />
           </div>
         </>
       )}
