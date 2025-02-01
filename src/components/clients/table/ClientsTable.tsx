@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Column, SortConfig } from "../types";
 import { formatCurrency, formatDate } from "@/utils/formatters";
+import { differenceInMonths } from "date-fns";
 
 interface Client {
   id: string;
@@ -22,6 +23,7 @@ interface Client {
   company_birthday: string;
   contact_name: string;
   contact_phone: string;
+  last_payment_date: string | null;
 }
 
 interface ClientsTableProps {
@@ -38,6 +40,17 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
     if (!a.fixed && b.fixed) return 1;
     return 0;
   });
+
+  const calculateRetention = (client: Client) => {
+    const startDate = new Date(client.first_payment_date);
+    const endDate = client.status === "active" 
+      ? new Date()
+      : client.last_payment_date 
+        ? new Date(client.last_payment_date)
+        : new Date();
+    
+    return Math.max(differenceInMonths(endDate, startDate), 0);
+  };
 
   return (
     <div className="rounded-md border">
@@ -79,10 +92,13 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
                 
                 if (column.id === 'contract_value') {
                   content = formatCurrency(client.contract_value);
-                } else if (column.id === 'first_payment_date' || column.id === 'company_birthday') {
+                } else if (column.id === 'first_payment_date' || column.id === 'company_birthday' || column.id === 'last_payment_date') {
                   content = formatDate(content as string);
                 } else if (column.id === 'payment_type') {
                   content = content === 'pre' ? 'Pré-pago' : 'Pós-pago';
+                } else if (column.id === 'retention') {
+                  const months = calculateRetention(client);
+                  content = `${months} ${months === 1 ? 'mês' : 'meses'}`;
                 } else if (column.id === 'status') {
                   return (
                     <TableCell key={column.id}>

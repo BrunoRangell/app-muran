@@ -17,7 +17,7 @@ export interface Client {
   contact_name: string;
   contact_phone: string;
   last_payment_date: string | null;
-  created_at: string;
+  retention?: number;
 }
 
 export interface SortConfig {

@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { Users, DollarSign, CreditCard, Calendar, Percent, BarChart, Info } from "lucide-react";
+import { Users, DollarSign, CreditCard, Calendar, Percent, BarChart, Info, UserMinus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { calculateFinancialMetrics } from "@/utils/financialCalculations";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts";
 
 export const FinancialMetrics = () => {
   const { data: metrics, isLoading } = useQuery({
@@ -88,6 +88,14 @@ export const FinancialMetrics = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <MetricCard
+              icon={Users}
+              title="Total de Clientes"
+              value={metrics?.totalClients || 0}
+              tooltip="Número total de clientes cadastrados"
+              formatter={(value) => value.toString()}
+            />
+
+            <MetricCard
               icon={DollarSign}
               title="MRR"
               value={metrics?.mrr || 0}
@@ -112,14 +120,6 @@ export const FinancialMetrics = () => {
             />
 
             <MetricCard
-              icon={Percent}
-              title="Churn Rate"
-              value={metrics?.churnRate || 0}
-              tooltip="Taxa de cancelamento mensal de clientes"
-              formatter={(value) => `${formatDecimal(value)}%`}
-            />
-
-            <MetricCard
               icon={CreditCard}
               title="LTV"
               value={metrics?.ltv || 0}
@@ -128,34 +128,46 @@ export const FinancialMetrics = () => {
             />
 
             <MetricCard
-              icon={Users}
-              title="Total de Clientes"
-              value={metrics?.totalClients || 0}
-              tooltip="Número total de clientes cadastrados"
-              formatter={(value) => value.toString()}
+              icon={Percent}
+              title="Churn Rate"
+              value={metrics?.churnRate || 0}
+              tooltip="Taxa de cancelamento mensal de clientes"
+              formatter={(value) => `${formatDecimal(value)}%`}
             />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Evolução do MRR</h3>
+              <h3 className="text-lg font-semibold mb-4">Evolução do MRR e Total de Clientes</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={[
-                      { month: 'Jan', value: metrics?.mrr || 0 },
-                      { month: 'Fev', value: metrics?.mrr || 0 },
-                      { month: 'Mar', value: metrics?.mrr || 0 }
+                      { month: 'Jan', mrr: metrics?.mrr || 0, clients: metrics?.totalClients || 0 },
+                      { month: 'Fev', mrr: metrics?.mrr || 0, clients: metrics?.totalClients || 0 },
+                      { month: 'Mar', mrr: metrics?.mrr || 0, clients: metrics?.totalClients || 0 }
                     ]}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
-                    <YAxis />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Legend />
                     <Line
+                      yAxisId="left"
                       type="monotone"
-                      dataKey="value"
+                      dataKey="mrr"
+                      name="MRR"
                       stroke="#ff6e00"
+                      strokeWidth={2}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="clients"
+                      name="Total de Clientes"
+                      stroke="#321e32"
                       strokeWidth={2}
                     />
                   </LineChart>
@@ -164,7 +176,7 @@ export const FinancialMetrics = () => {
             </Card>
 
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Churn Rate Mensal</h3>
+              <h3 className="text-lg font-semibold mb-4">Clientes Cancelados por Mês</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
@@ -181,6 +193,7 @@ export const FinancialMetrics = () => {
                     <Line
                       type="monotone"
                       dataKey="value"
+                      name="Clientes Cancelados"
                       stroke="#ff6e00"
                       strokeWidth={2}
                     />
