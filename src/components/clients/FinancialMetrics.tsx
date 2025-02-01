@@ -8,7 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Lege
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { DateRangeFilter, PeriodFilter } from "./types";
-import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears, format } from "date-fns";
+import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears, format, isWithinInterval, parseISO } from "date-fns";
 
 export const FinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this-month');
@@ -62,27 +62,74 @@ export const FinancialMetrics = () => {
     }
   };
 
-  const { data: metrics, isLoading } = useQuery({
-    queryKey: ["clientMetrics", dateRange],
+  // Query para buscar todos os clientes sem filtro (para os cards)
+  const { data: allClientsMetrics, isLoading: isLoadingAllClients } = useQuery({
+    queryKey: ["allClientsMetrics"],
     queryFn: async () => {
-      console.log("Fetching client metrics for period:", dateRange);
       const { data: clients, error } = await supabase
         .from("clients")
         .select("*");
 
       if (error) {
-        console.error("Error fetching client metrics:", error);
+        console.error("Error fetching all clients metrics:", error);
         throw error;
       }
 
-      // Filtra os clientes pelo período selecionado
-      const filteredClients = clients.filter(client => {
-        const firstPaymentDate = new Date(client.first_payment_date);
-        return firstPaymentDate >= dateRange.start && firstPaymentDate <= dateRange.end;
-      });
+      return calculateFinancialMetrics(clients);
+    },
+  });
 
-      console.log("Filtered clients for period:", filteredClients);
-      return calculateFinancialMetrics(filteredClients);
+  // Query para buscar clientes filtrados por período (para os gráficos)
+  const { data: filteredClientsData, isLoading: isLoadingFilteredClients } = useQuery({
+    queryKey: ["filteredClientsMetrics", dateRange],
+    queryFn: async () => {
+      console.log("Fetching filtered clients for period:", dateRange);
+      const { data: clients, error } = await supabase
+        .from("clients")
+        .select("*");
+
+      if (error) {
+        console.error("Error fetching filtered clients:", error);
+        throw error;
+      }
+
+      // Gera dados mensais para o período selecionado
+      const months = [];
+      let currentDate = new Date(dateRange.start);
+      
+      while (currentDate <= dateRange.end) {
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(currentDate);
+
+        // Filtra clientes ativos no mês atual
+        const activeClientsInMonth = clients.filter(client => {
+          const clientStart = parseISO(client.first_payment_date);
+          const clientEnd = client.last_payment_date ? parseISO(client.last_payment_date) : new Date();
+          
+          // Verifica se o cliente estava ativo em algum momento durante o mês
+          return isWithinInterval(monthStart, { start: clientStart, end: clientEnd }) ||
+                 isWithinInterval(monthEnd, { start: clientStart, end: clientEnd }) ||
+                 (clientStart <= monthStart && clientEnd >= monthEnd);
+        });
+
+        // Calcula MRR do mês
+        const monthMRR = activeClientsInMonth.reduce((sum, client) => sum + client.contract_value, 0);
+
+        months.push({
+          month: format(currentDate, 'MMM/yy'),
+          mrr: monthMRR,
+          clients: activeClientsInMonth.length,
+          churn: activeClientsInMonth.filter(client => 
+            client.last_payment_date && 
+            isWithinInterval(parseISO(client.last_payment_date), { start: monthStart, end: monthEnd })
+          ).length
+        });
+
+        currentDate = addMonths(currentDate, 1);
+      }
+
+      console.log("Generated monthly data:", months);
+      return months;
     },
   });
 
@@ -158,29 +205,11 @@ export const FinancialMetrics = () => {
     return null;
   };
 
-  const generateChartData = () => {
-    const months = [];
-    let currentDate = new Date(dateRange.start);
-    
-    while (currentDate <= dateRange.end) {
-      months.push({
-        month: format(currentDate, 'MMM/yy'),
-        mrr: metrics?.mrr || 0,
-        clients: metrics?.activeClientsCount || 0,
-        churn: metrics?.churnRate || 0
-      });
-      currentDate = addMonths(currentDate, 1);
-    }
-
-    console.log("Generated chart data:", months);
-    return months;
-  };
-
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold">Métricas Financeiras</h2>
       
-      {isLoading ? (
+      {isLoadingAllClients ? (
         <p className="text-gray-600">Carregando métricas...</p>
       ) : (
         <>
@@ -188,7 +217,7 @@ export const FinancialMetrics = () => {
             <MetricCard
               icon={Users}
               title="Total de Clientes Ativos"
-              value={metrics?.activeClientsCount || 0}
+              value={allClientsMetrics?.activeClientsCount || 0}
               tooltip="Número total de clientes ativos cadastrados no sistema"
               formatter={(value) => value.toString()}
             />
@@ -196,7 +225,7 @@ export const FinancialMetrics = () => {
             <MetricCard
               icon={DollarSign}
               title="MRR"
-              value={metrics?.mrr || 0}
+              value={allClientsMetrics?.mrr || 0}
               tooltip="Monthly Recurring Revenue - Receita mensal recorrente total dos clientes ativos. Soma dos valores de contrato de todos os clientes ativos"
               formatter={formatCurrency}
             />
@@ -204,7 +233,7 @@ export const FinancialMetrics = () => {
             <MetricCard
               icon={BarChart}
               title="ARR"
-              value={metrics?.arr || 0}
+              value={allClientsMetrics?.arr || 0}
               tooltip="Annual Recurring Revenue - Receita anual recorrente. Calculado multiplicando o MRR por 12"
               formatter={formatCurrency}
             />
@@ -212,7 +241,7 @@ export const FinancialMetrics = () => {
             <MetricCard
               icon={Calendar}
               title="Retenção Média"
-              value={metrics?.averageRetention || 0}
+              value={allClientsMetrics?.averageRetention || 0}
               tooltip="Tempo médio que os clientes permanecem ativos na plataforma, calculado desde a data do primeiro pagamento"
               formatter={(value) => `${formatDecimal(value)} meses`}
             />
@@ -220,7 +249,7 @@ export const FinancialMetrics = () => {
             <MetricCard
               icon={CreditCard}
               title="LTV Médio"
-              value={(metrics?.ltv || 0) / (metrics?.totalClients || 1)}
+              value={(allClientsMetrics?.ltv || 0) / (allClientsMetrics?.totalClients || 1)}
               tooltip="Lifetime Value Médio - Valor médio gerado por cliente durante sua permanência. Calculado dividindo o LTV total pelo número de clientes"
               formatter={formatCurrency}
             />
@@ -228,7 +257,7 @@ export const FinancialMetrics = () => {
             <MetricCard
               icon={Percent}
               title="Churn Rate"
-              value={metrics?.churnRate || 0}
+              value={allClientsMetrics?.churnRate || 0}
               tooltip="Taxa de cancelamento mensal de clientes. Porcentagem de clientes que cancelaram em relação ao total"
               formatter={(value) => `${formatDecimal(value)}%`}
             />
@@ -256,7 +285,7 @@ export const FinancialMetrics = () => {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={generateChartData()}
+                    data={filteredClientsData || []}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -307,7 +336,7 @@ export const FinancialMetrics = () => {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={generateChartData()}
+                    data={filteredClientsData || []}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
