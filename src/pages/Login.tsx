@@ -61,7 +61,6 @@ const Login = () => {
           throw new Error("Email não confirmado. Por favor, verifique sua caixa de entrada e clique no link de confirmação.");
         }
         
-        // Aqui modificamos a mensagem de erro para ser mais clara e orientar o usuário
         setShowError(true);
         throw new Error("Conta não encontrada. Por favor, entre em contato com a administração da Muran para solicitar a criação de sua conta.");
       }
