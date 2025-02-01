@@ -55,6 +55,17 @@ const Login = () => {
       console.log("Iniciando tentativa de login com email:", email);
       console.log("URL do Supabase:", import.meta.env.VITE_SUPABASE_URL);
       
+      // Primeiro, vamos verificar se o usuário existe
+      const { data: userExists } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (!userExists) {
+        throw new Error("Usuário não encontrado. Por favor, registre-se primeiro.");
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -69,7 +80,7 @@ const Login = () => {
           throw new Error("Email não confirmado. Por favor, verifique sua caixa de entrada e clique no link de confirmação.");
         }
         if (error.message === "Invalid login credentials") {
-          throw new Error("Email ou senha incorretos. Verifique suas credenciais e tente novamente. Se você não possui uma conta, por favor, registre-se primeiro.");
+          throw new Error("Senha incorreta. Por favor, verifique suas credenciais e tente novamente.");
         }
         throw error;
       }
