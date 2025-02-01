@@ -8,7 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Lege
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { DateRangeFilter, PeriodFilter } from "./types";
-import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears } from "date-fns";
+import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears, format } from "date-fns";
 
 export const FinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this-month');
@@ -65,7 +65,7 @@ export const FinancialMetrics = () => {
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["clientMetrics", dateRange],
     queryFn: async () => {
-      console.log("Fetching client metrics...");
+      console.log("Fetching client metrics for period:", dateRange);
       const { data: clients, error } = await supabase
         .from("clients")
         .select("*");
@@ -75,7 +75,14 @@ export const FinancialMetrics = () => {
         throw error;
       }
 
-      return calculateFinancialMetrics(clients);
+      // Filtra os clientes pelo período selecionado
+      const filteredClients = clients.filter(client => {
+        const firstPaymentDate = new Date(client.first_payment_date);
+        return firstPaymentDate >= dateRange.start && firstPaymentDate <= dateRange.end;
+      });
+
+      console.log("Filtered clients for period:", filteredClients);
+      return calculateFinancialMetrics(filteredClients);
     },
   });
 
@@ -149,6 +156,24 @@ export const FinancialMetrics = () => {
       );
     }
     return null;
+  };
+
+  const generateChartData = () => {
+    const months = [];
+    let currentDate = new Date(dateRange.start);
+    
+    while (currentDate <= dateRange.end) {
+      months.push({
+        month: format(currentDate, 'MMM/yy'),
+        mrr: metrics?.mrr || 0,
+        clients: metrics?.activeClientsCount || 0,
+        churn: metrics?.churnRate || 0
+      });
+      currentDate = addMonths(currentDate, 1);
+    }
+
+    console.log("Generated chart data:", months);
+    return months;
   };
 
   return (
@@ -231,11 +256,7 @@ export const FinancialMetrics = () => {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={[
-                      { month: 'Jan', mrr: metrics?.mrr || 0, clients: metrics?.activeClientsCount || 0 },
-                      { month: 'Fev', mrr: metrics?.mrr || 0, clients: metrics?.activeClientsCount || 0 },
-                      { month: 'Mar', mrr: metrics?.mrr || 0, clients: metrics?.activeClientsCount || 0 }
-                    ]}
+                    data={generateChartData()}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -286,11 +307,7 @@ export const FinancialMetrics = () => {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={[
-                      { month: 'Jan', value: metrics?.churnRate || 0 },
-                      { month: 'Fev', value: metrics?.churnRate || 0 },
-                      { month: 'Mar', value: metrics?.churnRate || 0 }
-                    ]}
+                    data={generateChartData()}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -299,7 +316,7 @@ export const FinancialMetrics = () => {
                     <RechartsTooltip content={<CustomTooltip />} />
                     <Line
                       type="monotone"
-                      dataKey="value"
+                      dataKey="churn"
                       name="Clientes Cancelados"
                       stroke="#ff6e00"
                       strokeWidth={2}

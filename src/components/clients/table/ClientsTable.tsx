@@ -64,6 +64,30 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
     return Math.max(differenceInMonths(endDate, startDate), 0);
   };
 
+  // Adiciona a retenção calculada aos clientes para ordenação
+  const clientsWithRetention = clients?.map(client => ({
+    ...client,
+    calculatedRetention: calculateRetention(client)
+  }));
+
+  // Ordena os clientes considerando a retenção calculada
+  const sortedClients = clientsWithRetention?.sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    
+    if (sortConfig.key === 'retention') {
+      return sortConfig.direction === 'asc' 
+        ? a.calculatedRetention - b.calculatedRetention
+        : b.calculatedRetention - a.calculatedRetention;
+    }
+    
+    const aValue = a[sortConfig.key as keyof Client];
+    const bValue = b[sortConfig.key as keyof Client];
+    
+    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -97,8 +121,8 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
           </TableRow>
         </TableHeader>
         <TableBody>
-          {clients?.map((client) => {
-            const retentionMonths = calculateRetention(client);
+          {sortedClients?.map((client) => {
+            const retentionMonths = client.calculatedRetention;
             return (
               <TableRow key={client.id}>
                 {sortedColumns.filter(col => col.show).map(column => {
