@@ -10,6 +10,17 @@ export const SidebarLogout = () => {
   const handleLogout = async () => {
     try {
       console.log("Iniciando processo de logout...");
+      
+      // Primeiro verifica se existe uma sessão
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log("Nenhuma sessão encontrada, redirecionando para login...");
+        navigate("/login");
+        return;
+      }
+
+      // Se existe sessão, faz o logout
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -35,6 +46,8 @@ export const SidebarLogout = () => {
         title: "Erro ao sair",
         description: "Ocorreu um erro inesperado. Tente novamente.",
       });
+      // Em caso de erro, redireciona para login
+      navigate("/login");
     }
   };
 
