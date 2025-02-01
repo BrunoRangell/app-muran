@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpRight, Target, Users, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { BirthdayWidget } from "@/components/home/BirthdayWidget";
-import { DailyQuote } from "@/components/home/DailyQuote";
 
 const Index = () => {
   const [userName, setUserName] = useState<string>("");
@@ -100,9 +98,14 @@ const Index = () => {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <BirthdayWidget />
-        <DailyQuote />
+      <div className="mt-8">
+        <Card className="bg-gradient-to-r from-muran-primary/10 to-muran-complementary/10">
+          <CardContent className="p-6">
+            <p className="text-center text-lg text-gray-700 font-medium italic">
+              "A excelência não é um ato, mas um hábito." - Aristóteles
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

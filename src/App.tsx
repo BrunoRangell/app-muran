@@ -4,6 +4,7 @@ import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import Login from "@/pages/Login";
 import Index from "@/pages/Index";
 import Clients from "@/pages/Clients";
+import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
 import Managers from "@/pages/Managers";
 import ManagerFinancial from "@/pages/ManagerFinancial";
@@ -21,6 +22,14 @@ function App() {
           element={
             <PrivateRoute requireAdmin>
               <Clients />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute requireAdmin>
+              <Admin />
             </PrivateRoute>
           }
         />
