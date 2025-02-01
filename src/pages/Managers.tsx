@@ -1,7 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useForm } from "react-hook-form";
+import { useToast } from "@/components/ui/use-toast";
 
 interface TeamMember {
   id: string;
@@ -10,17 +18,47 @@ interface TeamMember {
   photo_url: string;
   birthday: string;
   start_date: string;
+  email: string;
+  permission: string;
+}
+
+interface EditFormData {
+  name: string;
+  role: string;
+  photo_url: string;
+  birthday: string;
 }
 
 const Managers = () => {
-  const { data: teamMembers, isLoading } = useQuery({
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const { toast } = useToast();
+  const form = useForm<EditFormData>();
+
+  const { data: currentUser } = useQuery({
+    queryKey: ["current_user"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return null;
+
+      const { data: teamMember } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('email', session.user.email)
+        .single();
+
+      return teamMember;
+    },
+  });
+
+  const { data: teamMembers, isLoading, refetch } = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
       console.log("Fetching team members...");
       try {
         const { data, error } = await supabase
           .from('team_members')
-          .select('id, name, role, photo_url, birthday, start_date')
+          .select('*')
           .order('start_date', { ascending: true })
           .order('name');
 
@@ -37,6 +75,59 @@ const Managers = () => {
       }
     },
   });
+
+  const handleEdit = (member: TeamMember) => {
+    if (currentUser?.permission !== 'admin' && currentUser?.id !== member.id) {
+      toast({
+        title: "Acesso negado",
+        description: "Você só pode editar suas próprias informações.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedMember(member);
+    form.reset({
+      name: member.name,
+      role: member.role,
+      photo_url: member.photo_url || '',
+      birthday: member.birthday,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const onSubmit = async (data: EditFormData) => {
+    try {
+      if (!selectedMember) return;
+
+      const { error } = await supabase
+        .from('team_members')
+        .update({
+          name: data.name,
+          role: data.role,
+          photo_url: data.photo_url,
+          birthday: data.birthday,
+        })
+        .eq('id', selectedMember.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso!",
+        description: "Informações atualizadas com sucesso.",
+      });
+
+      setIsEditDialogOpen(false);
+      refetch();
+    } catch (error) {
+      console.error("Erro ao atualizar informações:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar as informações.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getInitials = (name: string) => {
     return name
@@ -79,12 +170,84 @@ const Managers = () => {
                       Aniversário: {new Date(member.birthday).toLocaleDateString("pt-BR")}
                     </p>
                   )}
+                  {(currentUser?.permission === 'admin' || currentUser?.id === member.id) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => handleEdit(member)}
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Editar
+                    </Button>
+                  )}
                 </div>
               </Card>
             ))}
           </div>
         )}
       </Card>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Informações</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cargo</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="photo_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL da Foto</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="birthday"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Aniversário</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full">Salvar</Button>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -9,25 +9,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { DateRangeFilter, PeriodFilter } from "./types";
 import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears, format, isWithinInterval, parseISO } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Button } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 export const FinancialMetrics = () => {
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this-month');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this-year');
   const [dateRange, setDateRange] = useState<DateRangeFilter>({
-    start: startOfMonth(new Date()),
-    end: endOfMonth(new Date())
+    start: startOfYear(new Date()),
+    end: endOfYear(new Date())
   });
+  const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
 
   const handlePeriodChange = (value: PeriodFilter) => {
     setPeriodFilter(value);
     const now = new Date();
     
+    if (value === 'custom') {
+      setIsCustomDateOpen(true);
+      return;
+    }
+    
     switch (value) {
-      case 'this-month':
-        setDateRange({
-          start: startOfMonth(now),
-          end: endOfMonth(now)
-        });
-        break;
       case 'last-3-months':
         setDateRange({
           start: startOfMonth(addMonths(now, -2)),
@@ -58,7 +60,6 @@ export const FinancialMetrics = () => {
           end: endOfYear(subYears(now, 1))
         });
         break;
-      // Custom period will be handled separately with a date picker
     }
   };
 
@@ -267,20 +268,64 @@ export const FinancialMetrics = () => {
             <Card className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">Evolução do MRR e Total de Clientes</h3>
-                <Select value={periodFilter} onValueChange={handlePeriodChange}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Selecione o período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="this-month">Este mês</SelectItem>
-                    <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-                    <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
-                    <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
-                    <SelectItem value="this-year">Este ano</SelectItem>
-                    <SelectItem value="last-year">Ano passado</SelectItem>
-                    <SelectItem value="custom">Data personalizada</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-4">
+                  <Select value={periodFilter} onValueChange={handlePeriodChange}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Selecione o período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
+                      <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
+                      <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
+                      <SelectItem value="this-year">Este ano</SelectItem>
+                      <SelectItem value="last-year">Ano passado</SelectItem>
+                      <SelectItem value="custom">Data personalizada</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Dialog open={isCustomDateOpen} onOpenChange={setIsCustomDateOpen}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Selecione o período</DialogTitle>
+                      </DialogHeader>
+                      <div className="grid gap-4">
+                        <div className="grid gap-2">
+                          <Label>Data inicial</Label>
+                          <Input
+                            type="date"
+                            value={format(dateRange.start, 'yyyy-MM-dd')}
+                            onChange={(e) => {
+                              const newDate = new Date(e.target.value);
+                              setDateRange(prev => ({
+                                ...prev,
+                                start: startOfMonth(newDate)
+                              }));
+                            }}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Data final</Label>
+                          <Input
+                            type="date"
+                            value={format(dateRange.end, 'yyyy-MM-dd')}
+                            onChange={(e) => {
+                              const newDate = new Date(e.target.value);
+                              setDateRange(prev => ({
+                                ...prev,
+                                end: endOfMonth(newDate)
+                              }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={() => setIsCustomDateOpen(false)}>
+                          Confirmar
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -318,20 +363,64 @@ export const FinancialMetrics = () => {
             <Card className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">Clientes Cancelados por Mês</h3>
-                <Select value={periodFilter} onValueChange={handlePeriodChange}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Selecione o período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="this-month">Este mês</SelectItem>
-                    <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-                    <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
-                    <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
-                    <SelectItem value="this-year">Este ano</SelectItem>
-                    <SelectItem value="last-year">Ano passado</SelectItem>
-                    <SelectItem value="custom">Data personalizada</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-4">
+                  <Select value={periodFilter} onValueChange={handlePeriodChange}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Selecione o período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
+                      <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
+                      <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
+                      <SelectItem value="this-year">Este ano</SelectItem>
+                      <SelectItem value="last-year">Ano passado</SelectItem>
+                      <SelectItem value="custom">Data personalizada</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Dialog open={isCustomDateOpen} onOpenChange={setIsCustomDateOpen}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Selecione o período</DialogTitle>
+                      </DialogHeader>
+                      <div className="grid gap-4">
+                        <div className="grid gap-2">
+                          <Label>Data inicial</Label>
+                          <Input
+                            type="date"
+                            value={format(dateRange.start, 'yyyy-MM-dd')}
+                            onChange={(e) => {
+                              const newDate = new Date(e.target.value);
+                              setDateRange(prev => ({
+                                ...prev,
+                                start: startOfMonth(newDate)
+                              }));
+                            }}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Data final</Label>
+                          <Input
+                            type="date"
+                            value={format(dateRange.end, 'yyyy-MM-dd')}
+                            onChange={(e) => {
+                              const newDate = new Date(e.target.value);
+                              setDateRange(prev => ({
+                                ...prev,
+                                end: endOfMonth(newDate)
+                              }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={() => setIsCustomDateOpen(false)}>
+                          Confirmar
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
