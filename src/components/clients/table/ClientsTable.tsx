@@ -97,51 +97,53 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
           </TableRow>
         </TableHeader>
         <TableBody>
-          {clients?.map((client) => (
-            <TableRow key={client.id}>
-              {sortedColumns.filter(col => col.show).map(column => {
-                let content = client[column.id as keyof Client];
-                
-                if (column.id === 'contract_value') {
-                  content = formatCurrency(client.contract_value);
-                } else if (column.id === 'first_payment_date' || column.id === 'company_birthday' || column.id === 'last_payment_date') {
-                  content = formatDate(content as string);
-                } else if (column.id === 'payment_type') {
-                  content = content === 'pre' ? 'Pré-pago' : 'Pós-pago';
-                } else if (column.id === 'retention') {
-                  const months = calculateRetention(client);
-                  content = formatRetention(months);
-                } else if (column.id === 'status') {
-                  return (
-                    <TableCell key={column.id}>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          client.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {client.status === "active" ? "Ativo" : "Inativo"}
-                      </span>
-                    </TableCell>
-                  );
-                }
+          {clients?.map((client) => {
+            const retentionMonths = calculateRetention(client);
+            return (
+              <TableRow key={client.id}>
+                {sortedColumns.filter(col => col.show).map(column => {
+                  let content = client[column.id as keyof Client];
+                  
+                  if (column.id === 'contract_value') {
+                    content = formatCurrency(client.contract_value);
+                  } else if (column.id === 'first_payment_date' || column.id === 'company_birthday' || column.id === 'last_payment_date') {
+                    content = formatDate(content as string);
+                  } else if (column.id === 'payment_type') {
+                    content = content === 'pre' ? 'Pré-pago' : 'Pós-pago';
+                  } else if (column.id === 'retention') {
+                    content = formatRetention(retentionMonths);
+                  } else if (column.id === 'status') {
+                    return (
+                      <TableCell key={column.id}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            client.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {client.status === "active" ? "Ativo" : "Inativo"}
+                        </span>
+                      </TableCell>
+                    );
+                  }
 
-                return (
-                  <TableCell key={column.id}>{content}</TableCell>
-                );
-              })}
-              <TableCell>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onEditClick(client)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+                  return (
+                    <TableCell key={column.id}>{content}</TableCell>
+                  );
+                })}
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onEditClick(client)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

@@ -1,14 +1,69 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { Users, DollarSign, CreditCard, Calendar, Percent, BarChart, Info } from "lucide-react";
+import { Users, DollarSign, CreditCard, Calendar, Percent, BarChart, Info, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { calculateFinancialMetrics } from "@/utils/financialCalculations";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
+import { DateRangeFilter, PeriodFilter } from "./types";
+import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears } from "date-fns";
 
 export const FinancialMetrics = () => {
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this-month');
+  const [dateRange, setDateRange] = useState<DateRangeFilter>({
+    start: startOfMonth(new Date()),
+    end: endOfMonth(new Date())
+  });
+
+  const handlePeriodChange = (value: PeriodFilter) => {
+    setPeriodFilter(value);
+    const now = new Date();
+    
+    switch (value) {
+      case 'this-month':
+        setDateRange({
+          start: startOfMonth(now),
+          end: endOfMonth(now)
+        });
+        break;
+      case 'last-3-months':
+        setDateRange({
+          start: startOfMonth(addMonths(now, -2)),
+          end: endOfMonth(now)
+        });
+        break;
+      case 'last-6-months':
+        setDateRange({
+          start: startOfMonth(addMonths(now, -5)),
+          end: endOfMonth(now)
+        });
+        break;
+      case 'last-12-months':
+        setDateRange({
+          start: startOfMonth(addMonths(now, -11)),
+          end: endOfMonth(now)
+        });
+        break;
+      case 'this-year':
+        setDateRange({
+          start: startOfYear(now),
+          end: endOfYear(now)
+        });
+        break;
+      case 'last-year':
+        setDateRange({
+          start: startOfYear(subYears(now, 1)),
+          end: endOfYear(subYears(now, 1))
+        });
+        break;
+      // Custom period will be handled separately with a date picker
+    }
+  };
+
   const { data: metrics, isLoading } = useQuery({
-    queryKey: ["clientMetrics"],
+    queryKey: ["clientMetrics", dateRange],
     queryFn: async () => {
       console.log("Fetching client metrics...");
       const { data: clients, error } = await supabase
@@ -107,9 +162,9 @@ export const FinancialMetrics = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <MetricCard
               icon={Users}
-              title="Total de Clientes"
-              value={metrics?.totalClients || 0}
-              tooltip="Número total de clientes cadastrados no sistema, incluindo ativos e inativos"
+              title="Total de Clientes Ativos"
+              value={metrics?.activeClientsCount || 0}
+              tooltip="Número total de clientes ativos cadastrados no sistema"
               formatter={(value) => value.toString()}
             />
 
@@ -154,16 +209,32 @@ export const FinancialMetrics = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Evolução do MRR e Total de Clientes</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Evolução do MRR e Total de Clientes</h3>
+                <Select value={periodFilter} onValueChange={handlePeriodChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Selecione o período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="this-month">Este mês</SelectItem>
+                    <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
+                    <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
+                    <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
+                    <SelectItem value="this-year">Este ano</SelectItem>
+                    <SelectItem value="last-year">Ano passado</SelectItem>
+                    <SelectItem value="custom">Data personalizada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={[
-                      { month: 'Jan', mrr: metrics?.mrr || 0, clients: metrics?.totalClients || 0 },
-                      { month: 'Fev', mrr: metrics?.mrr || 0, clients: metrics?.totalClients || 0 },
-                      { month: 'Mar', mrr: metrics?.mrr || 0, clients: metrics?.totalClients || 0 }
+                      { month: 'Jan', mrr: metrics?.mrr || 0, clients: metrics?.activeClientsCount || 0 },
+                      { month: 'Fev', mrr: metrics?.mrr || 0, clients: metrics?.activeClientsCount || 0 },
+                      { month: 'Mar', mrr: metrics?.mrr || 0, clients: metrics?.activeClientsCount || 0 }
                     ]}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
@@ -195,7 +266,23 @@ export const FinancialMetrics = () => {
             </Card>
 
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Clientes Cancelados por Mês</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Clientes Cancelados por Mês</h3>
+                <Select value={periodFilter} onValueChange={handlePeriodChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Selecione o período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="this-month">Este mês</SelectItem>
+                    <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
+                    <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
+                    <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
+                    <SelectItem value="this-year">Este ano</SelectItem>
+                    <SelectItem value="last-year">Ano passado</SelectItem>
+                    <SelectItem value="custom">Data personalizada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart

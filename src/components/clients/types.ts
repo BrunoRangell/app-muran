@@ -24,3 +24,10 @@ export interface SortConfig {
   key: string;
   direction: 'asc' | 'desc';
 }
+
+export interface DateRangeFilter {
+  start: Date;
+  end: Date;
+}
+
+export type PeriodFilter = 'this-month' | 'last-3-months' | 'last-6-months' | 'last-12-months' | 'this-year' | 'last-year' | 'custom';
