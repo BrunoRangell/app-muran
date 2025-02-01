@@ -3,7 +3,6 @@ import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import Login from "@/pages/Login";
 import Index from "@/pages/Index";
-import Dashboard from "@/pages/Dashboard";
 import Clients from "@/pages/Clients";
 import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
@@ -18,14 +17,6 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Index />} />
         <Route path="/equipe" element={<Managers />} />
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute requireAdmin>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
         <Route
           path="/clientes"
           element={

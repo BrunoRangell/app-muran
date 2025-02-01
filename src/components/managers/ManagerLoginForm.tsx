@@ -1,17 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
+import { Mail, Lock } from "lucide-react";
 
-interface ManagerLoginFormProps {
-  managerId: string;
-  managerName: string;
-  onClose: () => void;
-}
-
-export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLoginFormProps) => {
+export const ManagerLoginForm = () => {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -22,39 +18,39 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
     setIsLoading(true);
 
     try {
-      console.log("Tentando fazer login com:", { managerId, password });
-
-      // Primeiro, buscar o email do gestor
-      const { data: managerData, error: managerError } = await supabase
-        .from('team_members')
-        .select('email')
-        .eq('id', managerId)
-        .single();
-
-      if (managerError) throw managerError;
-      if (!managerData?.email) throw new Error("Email do gestor não encontrado");
-
-      // Agora fazer login usando o sistema de autenticação do Supabase
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: managerData.email,
-        password: password
+      const { data: { session }, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      if (signInError) throw signInError;
+      if (error) {
+        console.error("Erro no login:", error);
+        throw error;
+      }
 
-      toast({
-        title: "Login realizado com sucesso!",
-        description: `Bem-vindo(a), ${managerName}!`,
-      });
+      if (session) {
+        console.log("Login bem-sucedido, verificando permissões...");
+        const { data: teamMember, error: teamError } = await supabase
+          .from('team_members')
+          .select('permission')
+          .eq('email', session.user.email)
+          .single();
 
-      onClose();
-      navigate("/gestor/financeiro");
-    } catch (error) {
-      console.error("Login error:", error);
+        if (teamError) {
+          console.error("Erro ao verificar permissões:", teamError);
+          throw teamError;
+        }
+
+        console.log("Permissões do usuário:", teamMember);
+        // Agora todos os usuários são redirecionados para a página inicial
+        navigate("/");
+      }
+    } catch (error: any) {
+      console.error("Erro durante o login:", error);
       toast({
-        title: "Erro no login",
-        description: "Senha incorreta ou usuário não encontrado.",
         variant: "destructive",
+        title: "Erro no login",
+        description: error.message || "Ocorreu um erro durante o login. Por favor, tente novamente.",
       });
     } finally {
       setIsLoading(false);
@@ -62,16 +58,40 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
       <div className="space-y-2">
-        <Input
-          type="password"
-          placeholder="Digite sua senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+          <Input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="pl-10"
+            required
+          />
+        </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      
+      <div className="space-y-2">
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+          <Input
+            type="password"
+            placeholder="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="pl-10"
+            required
+          />
+        </div>
+      </div>
+
+      <Button
+        type="submit"
+        className="w-full bg-muran-primary hover:bg-muran-primary/90"
+        disabled={isLoading}
+      >
         {isLoading ? "Entrando..." : "Entrar"}
       </Button>
     </form>
