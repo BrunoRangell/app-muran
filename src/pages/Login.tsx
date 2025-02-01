@@ -21,7 +21,9 @@ const Login = () => {
       });
       return false;
     }
-    if (!email.includes("@")) {
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       toast({
         title: "Email inválido",
         description: "Por favor, insira um email válido.",
@@ -29,6 +31,16 @@ const Login = () => {
       });
       return false;
     }
+
+    if (password.length < 6) {
+      toast({
+        title: "Senha inválida",
+        description: "A senha deve ter pelo menos 6 caracteres.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     return true;
   };
 
@@ -41,6 +53,7 @@ const Login = () => {
 
     try {
       console.log("Iniciando tentativa de login com email:", email);
+      console.log("URL do Supabase:", import.meta.env.VITE_SUPABASE_URL);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -52,12 +65,11 @@ const Login = () => {
       if (error) {
         console.error("Erro detalhado do Supabase:", error);
         
-        // Tratamento específico para cada tipo de erro
         if (error.message.includes("Email not confirmed")) {
-          throw new Error("Email não confirmado. Por favor, verifique sua caixa de entrada.");
+          throw new Error("Email não confirmado. Por favor, verifique sua caixa de entrada e clique no link de confirmação.");
         }
         if (error.message === "Invalid login credentials") {
-          throw new Error("Email ou senha incorretos. Verifique suas credenciais e tente novamente.");
+          throw new Error("Email ou senha incorretos. Verifique suas credenciais e tente novamente. Se você não possui uma conta, por favor, registre-se primeiro.");
         }
         throw error;
       }
@@ -77,7 +89,7 @@ const Login = () => {
     } catch (error: any) {
       console.error("Erro completo no login:", error);
       
-      let errorMessage = "Ocorreu um erro ao fazer login. Por favor, tente novamente.";
+      let errorMessage = "Ocorreu um erro ao fazer login. Por favor, tente novamente mais tarde.";
       
       if (error.message) {
         errorMessage = error.message;
