@@ -9,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { DateRangeFilter, PeriodFilter } from "./types";
 import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears, format, isWithinInterval, parseISO } from "date-fns";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Button } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 export const FinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this-year');
