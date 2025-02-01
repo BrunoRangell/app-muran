@@ -41,6 +41,18 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
     return 0;
   });
 
+  const formatRetention = (months: number) => {
+    if (months <= 11) {
+      return `${months} ${months === 1 ? 'mês' : 'meses'}`;
+    }
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+    if (remainingMonths === 0) {
+      return `${years} ${years === 1 ? 'ano' : 'anos'}`;
+    }
+    return `${years} ${years === 1 ? 'ano' : 'anos'} e ${remainingMonths} ${remainingMonths === 1 ? 'mês' : 'meses'}`;
+  };
+
   const calculateRetention = (client: Client) => {
     const startDate = new Date(client.first_payment_date);
     const endDate = client.status === "active" 
@@ -98,7 +110,7 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
                   content = content === 'pre' ? 'Pré-pago' : 'Pós-pago';
                 } else if (column.id === 'retention') {
                   const months = calculateRetention(client);
-                  content = `${months} ${months === 1 ? 'mês' : 'meses'}`;
+                  content = formatRetention(months);
                 } else if (column.id === 'status') {
                   return (
                     <TableCell key={column.id}>
