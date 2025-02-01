@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { TextQuote } from "lucide-react";
+import { TextQuote, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const quotes = [
   {
@@ -36,6 +37,11 @@ const quotes = [
 export const DailyQuote = () => {
   const [quote, setQuote] = useState({ text: "", author: "" });
 
+  const getRandomQuote = () => {
+    const randomIndex = Math.floor(Math.random() * quotes.length);
+    return quotes[randomIndex];
+  };
+
   useEffect(() => {
     const today = new Date();
     const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
@@ -48,9 +54,22 @@ export const DailyQuote = () => {
       <CardContent className="p-6">
         <div className="flex items-start gap-3">
           <TextQuote className="h-5 w-5 text-muran-primary flex-shrink-0 mt-1" />
-          <p className="text-center text-lg text-gray-700 font-medium italic">
-            "{quote.text}" - {quote.author}
-          </p>
+          <div className="flex-1">
+            <p className="text-center text-lg text-gray-700 font-medium italic">
+              "{quote.text}" - {quote.author}
+            </p>
+            <div className="flex justify-center mt-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setQuote(getRandomQuote())}
+                className="text-muran-primary hover:text-muran-primary/80"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Nova frase
+              </Button>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

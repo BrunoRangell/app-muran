@@ -1,10 +1,8 @@
 import { useLocation } from "react-router-dom";
 import { 
-  LayoutDashboard, 
-  Users, 
-  DollarSign, 
-  Shield,
   Home,
+  Users, 
+  DollarSign,
   ListTodo,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -14,17 +12,9 @@ import { SidebarMenuItem } from "./SidebarMenuItem";
 import { SidebarLogout } from "./SidebarLogout";
 import { MenuItem } from "@/types/sidebar";
 
-const adminMenuItems: MenuItem[] = [
+const menuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
-  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
-  { icon: Shield, label: "Admin", path: "/admin" },
-];
-
-const regularMenuItems: MenuItem[] = [
-  { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
@@ -32,32 +22,6 @@ const regularMenuItems: MenuItem[] = [
 
 export const Sidebar = () => {
   const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          const { data: teamMember } = await supabase
-            .from('team_members')
-            .select('permission')
-            .eq('email', session.user.email)
-            .single();
-
-          setIsAdmin(teamMember?.permission === 'admin');
-        }
-      } catch (error) {
-        console.error("Erro ao verificar status de admin:", error);
-        setIsAdmin(false);
-      }
-    };
-
-    checkAdminStatus();
-  }, []);
-
-  const menuItems = isAdmin ? adminMenuItems : regularMenuItems;
 
   return (
     <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0">

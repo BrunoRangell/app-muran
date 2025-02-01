@@ -16,36 +16,58 @@ export const BirthdayWidget = () => {
 
   useEffect(() => {
     const fetchBirthdays = async () => {
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth() + 1;
+      try {
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
 
-      let { data: currentMonthBirthdays, error } = await supabase
-        .from('team_members')
-        .select('name, birthday')
-        .not('birthday', 'is', null);
+        let { data: currentMonthBirthdays, error } = await supabase
+          .from('team_members')
+          .select('name, birthday')
+          .not('birthday', 'is', null);
 
-      if (error) {
-        console.error("Erro ao buscar aniversariantes:", error);
-        return;
-      }
+        if (error) {
+          console.error("Erro ao buscar aniversariantes:", error);
+          return;
+        }
 
-      const filteredBirthdays = currentMonthBirthdays
-        .filter(member => new Date(member.birthday).getMonth() + 1 === currentMonth)
-        .sort((a, b) => new Date(a.birthday).getDate() - new Date(b.birthday).getDate());
+        console.log("Buscando aniversariantes do mês atual:", currentMonth);
+        console.log("Dados encontrados:", currentMonthBirthdays);
 
-      if (filteredBirthdays.length === 0) {
-        const nextMonth = addMonths(currentDate, 1);
-        const nextMonthNumber = nextMonth.getMonth() + 1;
+        const filteredBirthdays = currentMonthBirthdays
+          .filter(member => {
+            const birthDate = new Date(member.birthday);
+            return birthDate.getMonth() + 1 === currentMonth;
+          })
+          .sort((a, b) => {
+            const dateA = new Date(a.birthday);
+            const dateB = new Date(b.birthday);
+            return dateA.getDate() - dateB.getDate();
+          });
 
-        const nextMonthBirthdays = currentMonthBirthdays
-          .filter(member => new Date(member.birthday).getMonth() + 1 === nextMonthNumber)
-          .sort((a, b) => new Date(a.birthday).getDate() - new Date(b.birthday).getDate());
+        if (filteredBirthdays.length === 0) {
+          console.log("Nenhum aniversariante este mês, buscando próximo mês");
+          const nextMonth = addMonths(currentDate, 1);
+          const nextMonthNumber = nextMonth.getMonth() + 1;
 
-        setBirthdays(nextMonthBirthdays);
-        setIsNextMonth(true);
-      } else {
-        setBirthdays(filteredBirthdays);
-        setIsNextMonth(false);
+          const nextMonthBirthdays = currentMonthBirthdays
+            .filter(member => {
+              const birthDate = new Date(member.birthday);
+              return birthDate.getMonth() + 1 === nextMonthNumber;
+            })
+            .sort((a, b) => {
+              const dateA = new Date(a.birthday);
+              const dateB = new Date(b.birthday);
+              return dateA.getDate() - dateB.getDate();
+            });
+
+          setBirthdays(nextMonthBirthdays);
+          setIsNextMonth(true);
+        } else {
+          setBirthdays(filteredBirthdays);
+          setIsNextMonth(false);
+        }
+      } catch (error) {
+        console.error("Erro ao processar aniversariantes:", error);
       }
     };
 

@@ -104,8 +104,8 @@ const ManagerFinancial = () => {
 
       <Card className="bg-gradient-to-r from-muran-primary/10 to-muran-complementary/10 p-6">
         <p className="text-lg text-center text-gray-700 font-medium">
-          "Na Muran, acreditamos que seu crescimento profissional e financeiro é parte fundamental do nosso sucesso como equipe. 
-          Estamos aqui para apoiar suas metas e celebrar cada conquista junto com você! 🚀"
+          Na Muran, acreditamos que seu crescimento profissional e financeiro é parte fundamental do nosso sucesso como equipe. 
+          Estamos aqui para apoiar suas metas e celebrar cada conquista junto com você! 🚀
         </p>
       </Card>
 
