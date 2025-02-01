@@ -11,25 +11,35 @@ export const SidebarLogout = () => {
     try {
       console.log("Iniciando processo de logout...");
       
-      // Primeiro verifica se existe uma sessão
-      const { data: { session } } = await supabase.auth.getSession();
+      // Verifica a sessão atual
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
-      if (!session) {
-        console.log("Nenhuma sessão encontrada, redirecionando para login...");
+      if (sessionError) {
+        console.error("Erro ao verificar sessão:", sessionError);
         navigate("/login");
         return;
       }
 
-      // Se existe sessão, faz o logout
-      const { error } = await supabase.auth.signOut();
+      if (!sessionData.session) {
+        console.log("Nenhuma sessão ativa encontrada");
+        navigate("/login");
+        return;
+      }
+
+      // Tenta fazer o logout
+      const { error: signOutError } = await supabase.auth.signOut({
+        scope: 'local'
+      });
       
-      if (error) {
-        console.error("Erro ao fazer logout:", error);
+      if (signOutError) {
+        console.error("Erro ao fazer logout:", signOutError);
         toast({
           variant: "destructive",
           title: "Erro ao sair",
           description: "Não foi possível fazer logout. Tente novamente.",
         });
+        // Mesmo com erro, redireciona para login
+        navigate("/login");
         return;
       }
 
@@ -39,6 +49,7 @@ export const SidebarLogout = () => {
         description: "Você foi desconectado com sucesso.",
       });
       navigate("/login");
+      
     } catch (error) {
       console.error("Erro inesperado ao fazer logout:", error);
       toast({
@@ -46,7 +57,6 @@ export const SidebarLogout = () => {
         title: "Erro ao sair",
         description: "Ocorreu um erro inesperado. Tente novamente.",
       });
-      // Em caso de erro, redireciona para login
       navigate("/login");
     }
   };
