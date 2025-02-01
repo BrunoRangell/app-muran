@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { Users, DollarSign, CreditCard, Clock, Percent, BarChart, Calendar } from "lucide-react";
+import { Users, DollarSign, CreditCard, Calendar, Percent, BarChart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { calculateFinancialMetrics } from "@/utils/financialCalculations";
 
@@ -119,22 +119,6 @@ export const FinancialMetrics = () => {
                 </p>
                 <h3 className="text-2xl font-bold text-muran-dark">
                   {formatCurrency(metrics?.ltv || 0)}
-                </h3>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-muran-primary/10 rounded-full">
-                <Clock className="h-6 w-6 text-muran-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">
-                  Payback Time
-                </p>
-                <h3 className="text-2xl font-bold text-muran-dark">
-                  {formatDecimal(metrics?.paybackTime || 0)} meses
                 </h3>
               </div>
             </div>

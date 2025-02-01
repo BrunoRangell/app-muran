@@ -16,28 +16,27 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
   // Retenção Média (em meses)
   const retentionPeriods = clients.map(client => {
     const startDate = parseISO(client.first_payment_date);
-    const endDate = client.status === "active" ? today : parseISO(client.first_payment_date);
+    const endDate = client.status === "active" 
+      ? today 
+      : (client.last_payment_date ? parseISO(client.last_payment_date) : today);
     return Math.max(differenceInMonths(endDate, startDate), 1);
   });
 
   const averageRetention = retentionPeriods.reduce((sum, months) => sum + months, 0) / totalClients;
 
   // Churn Rate (mensal)
-  const inactiveClientsLastMonth = clients.filter(
-    client => client.status === "inactive"
+  const churned = clients.filter(client => 
+    client.status === "inactive" && 
+    client.last_payment_date && 
+    differenceInMonths(today, parseISO(client.last_payment_date)) <= 1
   ).length;
 
   const churnRate = totalClients > 0 
-    ? (inactiveClientsLastMonth / totalClients) * 100 
+    ? (churned / totalClients) * 100 
     : 0;
 
-  // LTV (Lifetime Value) - usando margem bruta padrão de 70%
-  const grossMargin = 0.7; // 70% de margem bruta
-  const ltv = mrr * grossMargin * averageRetention;
-
-  // Payback Time (em meses) - assumindo CAC médio de R$ 1000
-  const averageCac = 1000; // Custo de aquisição médio
-  const paybackTime = averageCac / (mrr * grossMargin / activeClientsCount);
+  // LTV (Lifetime Value) - usando valor do contrato * retenção média
+  const ltv = mrr * averageRetention;
 
   console.log("Financial metrics calculated:", {
     mrr,
@@ -45,7 +44,6 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
     averageRetention,
     churnRate,
     ltv,
-    paybackTime,
     activeClientsCount,
     totalClients
   });
@@ -56,7 +54,6 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
     averageRetention,
     churnRate,
     ltv,
-    paybackTime,
     activeClientsCount,
     totalClients
   };
