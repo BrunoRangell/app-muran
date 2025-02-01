@@ -40,7 +40,7 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
       });
 
       onClose();
-      navigate("/");
+      navigate("/"); // Corrigido para redirecionar para a página inicial
     } catch (error) {
       console.error("Erro durante o login:", error);
       toast({
@@ -54,13 +54,14 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm mx-auto px-4">
       <div className="space-y-2">
         <Input
           type="password"
           placeholder="Digite sua senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          className="w-full"
         />
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>

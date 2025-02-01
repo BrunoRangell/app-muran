@@ -91,15 +91,15 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muran-secondary">
-      <div className="w-full max-w-md space-y-8 p-8 bg-white rounded-lg shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-muran-secondary p-4">
+      <div className="w-full max-w-md space-y-8 p-4 md:p-8 bg-white rounded-lg shadow-lg">
         <div className="text-center space-y-6">
           <img
-            src="/lovable-uploads/397f32ec-90a7-4d37-b618-cae2c3cef585.png"
+            src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
             alt="Muran Logo"
-            className="mx-auto h-32"
+            className="mx-auto h-20 md:h-32 w-auto"
           />
-          <h2 className="text-3xl font-bold text-muran-complementary">
+          <h2 className="text-2xl md:text-3xl font-bold text-muran-complementary">
             Bem-vindo(a) de volta
           </h2>
           <p className="text-sm text-gray-600">
@@ -110,7 +110,7 @@ const Login = () => {
         {showError && (
           <Alert className="bg-orange-50 border-orange-200 text-orange-800">
             <Info className="h-5 w-5" />
-            <AlertDescription className="ml-2">
+            <AlertDescription className="ml-2 text-sm">
               Conta não encontrada. Por favor, entre em contato com a administração da Muran para solicitar a criação de sua conta.
             </AlertDescription>
           </Alert>
