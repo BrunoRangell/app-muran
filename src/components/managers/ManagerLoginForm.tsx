@@ -40,7 +40,7 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
       });
 
       onClose();
-      navigate("/"); // Corrigido para redirecionar para a página inicial
+      navigate("/financeiro");
     } catch (error) {
       console.error("Erro durante o login:", error);
       toast({

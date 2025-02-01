@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { SalaryChart } from "@/components/managers/SalaryChart";
 import { seedInitialData } from "@/lib/seed";
 import { Button } from "@/components/ui/button";
-import { History } from "lucide-react";
+import { History, TrendingUp, Sparkles } from "lucide-react";
 
 interface Salary {
   month: Date;
@@ -80,21 +80,33 @@ const ManagerFinancial = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-muran-dark">Meu Financeiro</h1>
+    <div className="space-y-8 p-4 md:p-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="space-y-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-muran-dark flex items-center gap-2">
+            Meu Financeiro
+            <Sparkles className="h-6 w-6 text-muran-primary animate-pulse" />
+          </h1>
+          <p className="text-gray-600">
+            Acompanhe sua evolução financeira e celebre suas conquistas!
+          </p>
+        </div>
         {salaries.length === 0 && (
           <Button 
             onClick={handleSeedData}
-            className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
+            className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2"
           >
+            <TrendingUp className="h-4 w-4" />
             Criar Dados Iniciais
           </Button>
         )}
       </div>
 
-      <Card className="p-6">
-        <h2 className="text-xl font-bold mb-6">Evolução Salarial</h2>
+      <Card className="p-4 md:p-6">
+        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+          Evolução Salarial
+          <TrendingUp className="h-5 w-5 text-muran-primary" />
+        </h2>
         <SalaryChart />
       </Card>
 
@@ -109,13 +121,16 @@ const ManagerFinancial = () => {
         </Button>
 
         {showHistory && (
-          <Card className="p-6 animate-accordion-down">
-            <h2 className="text-xl font-bold mb-6">Histórico de Salários</h2>
+          <Card className="p-4 md:p-6 animate-accordion-down">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+              Histórico de Salários
+              <History className="h-5 w-5 text-muran-primary" />
+            </h2>
             <div className="space-y-4">
               {salaries.map((salary, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-2 md:gap-0"
                 >
                   <span className="font-medium">
                     {new Date(salary.month).toLocaleDateString('pt-BR', {
@@ -124,7 +139,10 @@ const ManagerFinancial = () => {
                     })}
                   </span>
                   <span className="text-green-600 font-semibold">
-                    R$ {salary.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL'
+                    }).format(salary.amount)}
                   </span>
                 </div>
               ))}

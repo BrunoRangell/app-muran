@@ -10,11 +10,15 @@ import { MetricsChart } from "./metrics/MetricsChart";
 import { useMetricsData } from "./metrics/useMetricsData";
 
 export const FinancialMetrics = () => {
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this-year');
-  const [dateRange, setDateRange] = useState<DateRangeFilter>({
-    start: startOfYear(new Date()),
-    end: endOfYear(new Date())
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('last-12-months');
+  const [dateRange, setDateRange] = useState<DateRangeFilter>(() => {
+    const now = new Date();
+    return {
+      start: startOfMonth(addMonths(now, -11)),
+      end: endOfMonth(now)
+    };
   });
+  
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
 
   const handlePeriodChange = (value: PeriodFilter) => {

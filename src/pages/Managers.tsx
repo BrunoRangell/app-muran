@@ -6,11 +6,15 @@ import { TeamMember, EditFormData } from "@/types/team";
 import { TeamMemberCard } from "@/components/team/TeamMemberCard";
 import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
+import { Button } from "@/components/ui/button";
+import { UserPlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Managers = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const { data: currentUser } = useCurrentUser();
   const { data: teamMembers, isLoading, refetch } = useTeamMembers();
@@ -27,6 +31,18 @@ const Managers = () => {
 
     setSelectedMember(member);
     setIsEditDialogOpen(true);
+  };
+
+  const handleAddMember = () => {
+    if (currentUser?.permission !== 'admin') {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem adicionar novos membros.",
+        variant: "destructive",
+      });
+      return;
+    }
+    navigate("/admin");
   };
 
   const onSubmit = async (data: EditFormData) => {
@@ -63,16 +79,25 @@ const Managers = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-muran-dark">Equipe</h1>
+    <div className="space-y-8 p-4 md:p-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">Equipe</h1>
+        {currentUser?.permission === 'admin' && (
+          <Button
+            onClick={handleAddMember}
+            className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Adicionar Membro
+          </Button>
+        )}
       </div>
 
-      <Card className="p-6">
+      <Card className="p-4 md:p-6">
         {isLoading ? (
           <p className="text-gray-600">Carregando integrantes...</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {teamMembers?.map((member) => (
               <TeamMemberCard
                 key={member.id}
