@@ -98,7 +98,7 @@ const Login = () => {
           <img
             src="/lovable-uploads/397f32ec-90a7-4d37-b618-cae2c3cef585.png"
             alt="Muran Logo"
-            className="mx-auto h-24" // Aumentamos o tamanho da logo
+            className="mx-auto h-32"
           />
           <h2 className="text-3xl font-bold text-muran-complementary">
             Bem-vindo(a) de volta
