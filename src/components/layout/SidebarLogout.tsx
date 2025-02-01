@@ -16,13 +16,11 @@ export const SidebarLogout = () => {
       
       if (error) {
         console.error("Erro ao fazer logout no Supabase:", error);
-        // Mesmo com erro, vamos limpar a sessão local
-        await supabase.auth.clearSession();
       }
 
-      // Limpa a sessão local
-      console.log("Limpando sessão local...");
-      localStorage.removeItem('supabase.auth.token');
+      // Limpa dados locais
+      console.log("Limpando dados locais...");
+      localStorage.clear(); // Limpa todos os dados locais
       
       console.log("Logout realizado com sucesso");
       toast({
@@ -36,13 +34,8 @@ export const SidebarLogout = () => {
     } catch (error) {
       console.error("Erro inesperado ao fazer logout:", error);
       
-      // Mesmo com erro, tenta limpar a sessão local
-      try {
-        await supabase.auth.clearSession();
-        localStorage.removeItem('supabase.auth.token');
-      } catch (clearError) {
-        console.error("Erro ao limpar sessão:", clearError);
-      }
+      // Mesmo com erro, limpa dados locais
+      localStorage.clear();
 
       toast({
         variant: "destructive",
