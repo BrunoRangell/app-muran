@@ -12,18 +12,51 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const validateForm = () => {
+    if (!email || !password) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    if (!email.includes("@")) {
+      toast({
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setIsLoading(true);
 
     try {
-      console.log("Tentando fazer login com:", email);
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Iniciando tentativa de login com email:", email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      console.log("Resposta do Supabase:", { data, error });
+
+      if (error) {
+        console.error("Erro detalhado do Supabase:", error);
+        throw error;
+      }
+
+      if (!data.user) {
+        throw new Error("Usuário não encontrado na resposta");
+      }
 
       toast({
         title: "Login realizado com sucesso!",
@@ -31,11 +64,18 @@ const Login = () => {
       });
 
       navigate("/dashboard");
-    } catch (error) {
-      console.error("Erro no login:", error);
+    } catch (error: any) {
+      console.error("Erro completo no login:", error);
+      
+      let errorMessage = "Ocorreu um erro ao fazer login.";
+      
+      if (error.message === "Invalid login credentials") {
+        errorMessage = "Email ou senha incorretos.";
+      }
+      
       toast({
         title: "Erro no login",
-        description: "Email ou senha incorretos.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -74,6 +114,7 @@ const Login = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
                 className="mt-1"
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -88,6 +129,7 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="mt-1"
+                disabled={isLoading}
               />
             </div>
           </div>
