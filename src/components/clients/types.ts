@@ -16,6 +16,8 @@ export interface Client {
   company_birthday: string;
   contact_name: string;
   contact_phone: string;
+  last_payment_date: string | null;
+  created_at: string;
 }
 
 export interface SortConfig {

@@ -28,10 +28,12 @@ export const ClientsList = () => {
     { id: 'status', label: 'Status', show: true, fixed: true },
     { id: 'acquisition_channel', label: 'Canal de Aquisição', show: true, fixed: true },
     { id: 'first_payment_date', label: 'Início da Parceria', show: true },
+    { id: 'last_payment_date', label: 'Último Pagamento', show: true },
     { id: 'payment_type', label: 'Tipo de Pagamento', show: true },
     { id: 'company_birthday', label: 'Aniversário da Empresa', show: true },
     { id: 'contact_name', label: 'Responsável', show: true },
-    { id: 'contact_phone', label: 'Contato', show: true }
+    { id: 'contact_phone', label: 'Contato', show: true },
+    { id: 'created_at', label: 'Data de Cadastro', show: true }
   ]);
 
   const { data: clients, isLoading, refetch } = useQuery({
