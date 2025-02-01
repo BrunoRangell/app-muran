@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
@@ -78,6 +78,18 @@ const Managers = () => {
     },
   });
 
+  const convertGoogleDriveLink = (url: string) => {
+    if (!url) return '';
+    
+    // Verifica se é um link do Google Drive
+    const match = url.match(/\/d\/(.+?)\/view/);
+    if (match) {
+      const fileId = match[1];
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+    return url;
+  };
+
   const handleEdit = (member: TeamMember) => {
     if (currentUser?.permission !== 'admin' && currentUser?.id !== member.id) {
       toast({
@@ -102,12 +114,15 @@ const Managers = () => {
     try {
       if (!selectedMember) return;
 
+      const convertedPhotoUrl = convertGoogleDriveLink(data.photo_url);
+      console.log("URL convertida:", convertedPhotoUrl);
+
       const { error } = await supabase
         .from('team_members')
         .update({
           name: data.name,
           role: data.role,
-          photo_url: data.photo_url,
+          photo_url: convertedPhotoUrl,
           birthday: data.birthday,
         })
         .eq('id', selectedMember.id);
@@ -160,7 +175,7 @@ const Managers = () => {
               <Card key={member.id} className="p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow">
                 <Avatar className="h-24 w-24">
                   {member.photo_url ? (
-                    <AvatarImage src={member.photo_url} alt={member.name} />
+                    <AvatarImage src={convertGoogleDriveLink(member.photo_url)} alt={member.name} />
                   ) : (
                     <AvatarFallback className="bg-muran-primary text-white text-xl">
                       {getInitials(member.name)}
@@ -237,7 +252,7 @@ const Managers = () => {
                       <Input {...field} />
                     </FormControl>
                     <FormDescription>
-                      Cole aqui o link público de uma imagem (ex: Google Drive, imgur, etc)
+                      Cole aqui o link de compartilhamento do Google Drive da sua foto
                     </FormDescription>
                   </FormItem>
                 )}
