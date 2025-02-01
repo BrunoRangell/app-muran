@@ -6,10 +6,12 @@ import { Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/components/ui/use-toast";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface TeamMember {
   id: string;
@@ -54,7 +56,7 @@ const Managers = () => {
   const { data: teamMembers, isLoading, refetch } = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      console.log("Fetching team members...");
+      console.log("Buscando membros da equipe...");
       try {
         const { data, error } = await supabase
           .from('team_members')
@@ -63,14 +65,14 @@ const Managers = () => {
           .order('name');
 
         if (error) {
-          console.error("Error fetching team members:", error);
+          console.error("Erro ao buscar membros:", error);
           throw error;
         }
 
-        console.log("Team members fetched successfully:", data);
+        console.log("Membros encontrados:", data);
         return data;
       } catch (error) {
-        console.error("Error in team members query:", error);
+        console.error("Erro na consulta de membros:", error);
         throw error;
       }
     },
@@ -137,6 +139,12 @@ const Managers = () => {
       .toUpperCase();
   };
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = parseISO(dateString);
+    return format(date, 'dd/MM/yyyy', { locale: ptBR });
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -163,11 +171,11 @@ const Managers = () => {
                   <h3 className="font-semibold text-lg">{member.name}</h3>
                   <p className="text-gray-600">{member.role}</p>
                   <p className="text-sm text-gray-500">
-                    Início: {new Date(member.start_date).toLocaleDateString("pt-BR")}
+                    Início: {formatDate(member.start_date)}
                   </p>
                   {member.birthday && (
                     <p className="text-sm text-gray-500">
-                      Aniversário: {new Date(member.birthday).toLocaleDateString("pt-BR")}
+                      Aniversário: {formatDate(member.birthday)}
                     </p>
                   )}
                   {(currentUser?.permission === 'admin' || currentUser?.id === member.id) && (
@@ -228,6 +236,9 @@ const Managers = () => {
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Cole aqui o link público de uma imagem (ex: Google Drive, imgur, etc)
+                    </FormDescription>
                   </FormItem>
                 )}
               />
