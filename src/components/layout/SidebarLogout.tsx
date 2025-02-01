@@ -11,52 +11,45 @@ export const SidebarLogout = () => {
     try {
       console.log("Iniciando processo de logout...");
       
-      // Verifica a sessão atual
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      // Tenta fazer o logout no Supabase
+      const { error } = await supabase.auth.signOut();
       
-      if (sessionError) {
-        console.error("Erro ao verificar sessão:", sessionError);
-        navigate("/login");
-        return;
+      if (error) {
+        console.error("Erro ao fazer logout no Supabase:", error);
+        // Mesmo com erro, vamos limpar a sessão local
+        await supabase.auth.clearSession();
       }
 
-      if (!sessionData.session) {
-        console.log("Nenhuma sessão ativa encontrada");
-        navigate("/login");
-        return;
-      }
-
-      // Tenta fazer o logout
-      const { error: signOutError } = await supabase.auth.signOut({
-        scope: 'local'
-      });
+      // Limpa a sessão local
+      console.log("Limpando sessão local...");
+      localStorage.removeItem('supabase.auth.token');
       
-      if (signOutError) {
-        console.error("Erro ao fazer logout:", signOutError);
-        toast({
-          variant: "destructive",
-          title: "Erro ao sair",
-          description: "Não foi possível fazer logout. Tente novamente.",
-        });
-        // Mesmo com erro, redireciona para login
-        navigate("/login");
-        return;
-      }
-
       console.log("Logout realizado com sucesso");
       toast({
         title: "Logout realizado",
         description: "Você foi desconectado com sucesso.",
       });
+
+      // Sempre redireciona para login
       navigate("/login");
       
     } catch (error) {
       console.error("Erro inesperado ao fazer logout:", error);
+      
+      // Mesmo com erro, tenta limpar a sessão local
+      try {
+        await supabase.auth.clearSession();
+        localStorage.removeItem('supabase.auth.token');
+      } catch (clearError) {
+        console.error("Erro ao limpar sessão:", clearError);
+      }
+
       toast({
         variant: "destructive",
         title: "Erro ao sair",
-        description: "Ocorreu um erro inesperado. Tente novamente.",
+        description: "Ocorreu um erro inesperado, mas você foi desconectado.",
       });
+      
       navigate("/login");
     }
   };
