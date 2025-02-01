@@ -8,7 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Lege
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { DateRangeFilter, PeriodFilter } from "./types";
-import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears, format, isWithinInterval, parseISO } from "date-fns";
+import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears, format, isWithinInterval, parseISO, isValid } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -109,21 +109,25 @@ export const FinancialMetrics = () => {
           const clientStart = parseISO(client.first_payment_date);
           const clientEnd = client.last_payment_date ? parseISO(client.last_payment_date) : new Date();
           
+          // Verifica se as datas são válidas antes de usar
+          if (!isValid(clientStart) || !isValid(clientEnd)) {
+            console.warn("Invalid date found for client:", client);
+            return false;
+          }
+
           // Verifica se o cliente estava ativo em algum momento durante o mês
           return isWithinInterval(monthStart, { start: clientStart, end: clientEnd }) ||
                  isWithinInterval(monthEnd, { start: clientStart, end: clientEnd }) ||
                  (clientStart <= monthStart && clientEnd >= monthEnd);
         });
 
-        // Calcula MRR do mês
-        const monthMRR = activeClientsInMonth.reduce((sum, client) => sum + client.contract_value, 0);
-
         months.push({
           month: format(currentDate, 'MMM/yy'),
-          mrr: monthMRR,
+          mrr: activeClientsInMonth.reduce((sum, client) => sum + client.contract_value, 0),
           clients: activeClientsInMonth.length,
           churn: activeClientsInMonth.filter(client => 
             client.last_payment_date && 
+            isValid(parseISO(client.last_payment_date)) &&
             isWithinInterval(parseISO(client.last_payment_date), { start: monthStart, end: monthEnd })
           ).length
         });
