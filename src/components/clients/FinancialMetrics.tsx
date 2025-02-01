@@ -106,31 +106,55 @@ export const FinancialMetrics = () => {
 
         // Filtra clientes ativos no mês atual
         const activeClientsInMonth = clients.filter(client => {
-          const clientStart = parseISO(client.first_payment_date);
-          const clientEnd = client.last_payment_date ? parseISO(client.last_payment_date) : new Date();
-          
-          // Verifica se as datas são válidas antes de usar
-          if (!isValid(clientStart) || !isValid(clientEnd)) {
-            console.warn("Invalid date found for client:", client);
+          try {
+            if (!client.first_payment_date) {
+              console.warn("Client missing first_payment_date:", client);
+              return false;
+            }
+
+            const clientStart = parseISO(client.first_payment_date);
+            const clientEnd = client.last_payment_date ? parseISO(client.last_payment_date) : new Date();
+            
+            if (!isValid(clientStart)) {
+              console.warn("Invalid first_payment_date for client:", client);
+              return false;
+            }
+
+            if (client.last_payment_date && !isValid(clientEnd)) {
+              console.warn("Invalid last_payment_date for client:", client);
+              return false;
+            }
+
+            return isWithinInterval(monthStart, { start: clientStart, end: clientEnd }) ||
+                   isWithinInterval(monthEnd, { start: clientStart, end: clientEnd }) ||
+                   (clientStart <= monthStart && clientEnd >= monthEnd);
+          } catch (error) {
+            console.error("Error processing client dates:", client, error);
             return false;
           }
-
-          // Verifica se o cliente estava ativo em algum momento durante o mês
-          return isWithinInterval(monthStart, { start: clientStart, end: clientEnd }) ||
-                 isWithinInterval(monthEnd, { start: clientStart, end: clientEnd }) ||
-                 (clientStart <= monthStart && clientEnd >= monthEnd);
         });
 
-        months.push({
-          month: format(currentDate, 'MMM/yy'),
-          mrr: activeClientsInMonth.reduce((sum, client) => sum + client.contract_value, 0),
-          clients: activeClientsInMonth.length,
-          churn: activeClientsInMonth.filter(client => 
-            client.last_payment_date && 
-            isValid(parseISO(client.last_payment_date)) &&
-            isWithinInterval(parseISO(client.last_payment_date), { start: monthStart, end: monthEnd })
-          ).length
-        });
+        try {
+          const monthData = {
+            month: format(currentDate, 'MMM/yy'),
+            mrr: activeClientsInMonth.reduce((sum, client) => sum + (client.contract_value || 0), 0),
+            clients: activeClientsInMonth.length,
+            churn: activeClientsInMonth.filter(client => {
+              if (!client.last_payment_date) return false;
+              try {
+                const lastPaymentDate = parseISO(client.last_payment_date);
+                return isValid(lastPaymentDate) && 
+                       isWithinInterval(lastPaymentDate, { start: monthStart, end: monthEnd });
+              } catch (error) {
+                console.error("Error processing churn date for client:", client, error);
+                return false;
+              }
+            }).length
+          };
+          months.push(monthData);
+        } catch (error) {
+          console.error("Error creating month data for:", currentDate, error);
+        }
 
         currentDate = addMonths(currentDate, 1);
       }
