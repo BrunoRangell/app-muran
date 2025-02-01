@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 
 const Login = () => {
@@ -51,12 +51,22 @@ const Login = () => {
 
       if (error) {
         console.error("Erro detalhado do Supabase:", error);
+        
+        // Tratamento específico para cada tipo de erro
+        if (error.message.includes("Email not confirmed")) {
+          throw new Error("Email não confirmado. Por favor, verifique sua caixa de entrada.");
+        }
+        if (error.message === "Invalid login credentials") {
+          throw new Error("Email ou senha incorretos. Verifique suas credenciais e tente novamente.");
+        }
         throw error;
       }
 
       if (!data.user) {
         throw new Error("Usuário não encontrado na resposta");
       }
+
+      console.log("Login bem sucedido para o usuário:", data.user.email);
 
       toast({
         title: "Login realizado com sucesso!",
@@ -67,10 +77,10 @@ const Login = () => {
     } catch (error: any) {
       console.error("Erro completo no login:", error);
       
-      let errorMessage = "Ocorreu um erro ao fazer login.";
+      let errorMessage = "Ocorreu um erro ao fazer login. Por favor, tente novamente.";
       
-      if (error.message === "Invalid login credentials") {
-        errorMessage = "Email ou senha incorretos.";
+      if (error.message) {
+        errorMessage = error.message;
       }
       
       toast({
