@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { SalaryChart } from "@/components/managers/SalaryChart";
 
 const Financial = () => {
   return (
@@ -8,8 +9,16 @@ const Financial = () => {
       </div>
 
       <Card className="p-6">
-        <h2 className="text-xl font-bold mb-4">Visão Geral</h2>
-        <p className="text-gray-600">Em desenvolvimento...</p>
+        <div className="space-y-6">
+          <div className="bg-muran-primary/5 rounded-lg p-4 border-l-4 border-muran-primary">
+            <p className="text-muran-complementary text-lg">
+              Acompanhe sua evolução financeira e celebre cada conquista! 
+              Na Muran, acreditamos no seu potencial e queremos fazer parte 
+              da sua jornada de crescimento. 🚀
+            </p>
+          </div>
+          <SalaryChart />
+        </div>
       </Card>
     </div>
   );

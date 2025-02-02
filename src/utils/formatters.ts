@@ -30,5 +30,7 @@ export const formatPhoneNumber = (value: string) => {
 export const formatDate = (dateString: string) => {
   if (!dateString) return '';
   const date = new Date(dateString);
+  // Ajusta o fuso horário para considerar UTC
+  date.setUTCHours(0, 0, 0, 0);
   return new Intl.DateTimeFormat('pt-BR').format(date);
 };

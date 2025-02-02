@@ -119,8 +119,7 @@ export const SalaryChart = () => {
         return;
       }
 
-      // Ajusta o formato da data adicionando o dia (primeiro dia do mês)
-      const formattedDate = `${values.month}-01`;
+      const formattedDate = values.month;
       console.log('Data formatada:', formattedDate);
 
       const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
@@ -129,7 +128,7 @@ export const SalaryChart = () => {
         .insert([
           {
             manager_id: sessionData.session.user.id,
-            month: formattedDate, // Usa a data formatada
+            month: formattedDate,
             amount: amount,
           },
         ]);
@@ -173,8 +172,8 @@ export const SalaryChart = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="bg-muran-primary/10 rounded-lg px-6 py-4 border-l-4 border-muran-primary">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-muran-primary/10 rounded-lg px-6 py-4 border-l-4 border-muran-primary w-full md:w-auto">
           <span className="text-sm font-medium text-muran-complementary block mb-1">
             Total acumulado
           </span>
@@ -191,8 +190,8 @@ export const SalaryChart = () => {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-muran-primary hover:bg-muran-primary/90">
-              <Plus className="w-4 h-4" />
+            <Button className="bg-muran-primary hover:bg-muran-primary/90 w-full md:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
               Adicionar Recebimento
             </Button>
           </DialogTrigger>
@@ -251,15 +250,7 @@ export const SalaryChart = () => {
       </div>
 
       <ChartContainer
-        className="aspect-[2/1] w-full"
-        config={{
-          salary: {
-            theme: {
-              light: "#ff6e00",
-              dark: "#ff6e00",
-            },
-          },
-        }}
+        className="aspect-[3/2] w-full"
       >
         <LineChart data={salaryData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -306,6 +297,26 @@ export const SalaryChart = () => {
           />
         </LineChart>
       </ChartContainer>
+
+      <div className="bg-white rounded-lg shadow p-4 mt-6">
+        <h3 className="text-lg font-semibold mb-4 text-muran-dark">Histórico de Recebimentos</h3>
+        <div className="space-y-3">
+          {salaryData.map((salary, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <span className="font-medium text-muran-dark">{salary.month}</span>
+              <span className="text-muran-primary font-semibold">
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL'
+                }).format(salary.amount)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
