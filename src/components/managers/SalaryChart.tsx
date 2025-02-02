@@ -83,10 +83,14 @@ export const SalaryChart = () => {
 
       console.log('Dados de salários encontrados:', salariesData);
       
-      const formattedData = salariesData?.map(item => ({
-        month: format(new Date(item.month), 'MMM/yyyy', { locale: ptBR }),
-        amount: item.amount
-      })) || [];
+      const formattedData = salariesData?.map(item => {
+        const date = new Date(item.month);
+        date.setDate(date.getDate() + 1);
+        return {
+          month: format(date, 'MMM/yyyy', { locale: ptBR }),
+          amount: item.amount
+        };
+      }) || [];
 
       const total = formattedData.reduce((acc, curr) => acc + curr.amount, 0);
       setTotalSalary(total);

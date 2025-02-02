@@ -33,8 +33,17 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
               return false;
             }
 
-            const clientStart = parseISO(client.first_payment_date);
-            const clientEnd = client.last_payment_date ? parseISO(client.last_payment_date) : new Date();
+            // Ajusta as datas para considerar UTC
+            const clientStart = new Date(client.first_payment_date);
+            clientStart.setDate(clientStart.getDate() + 1);
+            
+            const clientEnd = client.last_payment_date ? 
+              (() => {
+                const date = new Date(client.last_payment_date);
+                date.setDate(date.getDate() + 1);
+                return date;
+              })() : 
+              new Date();
             
             if (!isValid(clientStart)) {
               console.warn("Invalid first_payment_date for client:", client);
@@ -63,7 +72,8 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
             churn: activeClientsInMonth.filter(client => {
               if (!client.last_payment_date) return false;
               try {
-                const lastPaymentDate = parseISO(client.last_payment_date);
+                const lastPaymentDate = new Date(client.last_payment_date);
+                lastPaymentDate.setDate(lastPaymentDate.getDate() + 1);
                 return isValid(lastPaymentDate) && 
                        isWithinInterval(lastPaymentDate, { start: monthStart, end: monthEnd });
               } catch (error) {
