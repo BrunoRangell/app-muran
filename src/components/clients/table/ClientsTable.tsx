@@ -54,6 +54,8 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
   };
 
   const calculateRetention = (client: Client) => {
+    if (!client.first_payment_date) return 0;
+    
     const startDate = new Date(client.first_payment_date);
     const endDate = client.status === "active" 
       ? new Date()
@@ -131,7 +133,14 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
                   if (column.id === 'contract_value') {
                     content = formatCurrency(client.contract_value);
                   } else if (column.id === 'first_payment_date' || column.id === 'company_birthday' || column.id === 'last_payment_date') {
-                    content = formatDate(content as string);
+                    // Ajustando para considerar a data UTC
+                    if (content) {
+                      const date = new Date(content as string);
+                      date.setDate(date.getDate() + 1);
+                      content = formatDate(date.toISOString());
+                    } else {
+                      content = '';
+                    }
                   } else if (column.id === 'payment_type') {
                     content = content === 'pre' ? 'Pré-pago' : 'Pós-pago';
                   } else if (column.id === 'retention') {
