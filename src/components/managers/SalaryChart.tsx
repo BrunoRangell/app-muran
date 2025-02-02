@@ -254,7 +254,7 @@ export const SalaryChart = () => {
       </div>
 
       <ChartContainer
-        className="aspect-[2/1] w-full"
+        className="aspect-[1.5/1] w-full"
         config={{
           salary: {
             theme: {
