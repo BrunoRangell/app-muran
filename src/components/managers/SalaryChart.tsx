@@ -251,6 +251,14 @@ export const SalaryChart = () => {
 
       <ChartContainer
         className="aspect-[3/2] w-full"
+        config={{
+          salary: {
+            theme: {
+              light: "#ff6e00",
+              dark: "#ff6e00",
+            },
+          },
+        }}
       >
         <LineChart data={salaryData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
