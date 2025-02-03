@@ -312,25 +312,7 @@ export const SalaryChart = () => {
         </LineChart>
       </ChartContainer>
 
-      <div className="bg-white rounded-lg shadow p-4 mt-6">
-        <h3 className="text-lg font-semibold mb-4 text-muran-dark">Histórico de Recebimentos</h3>
-        <div className="space-y-3">
-          {salaryData.map((salary, index) => (
-            <div
-              key={index}
-              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <span className="font-medium text-muran-dark">{salary.month}</span>
-              <span className="text-muran-primary font-semibold">
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(salary.amount)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+      
     </div>
   );
 };
