@@ -158,8 +158,8 @@ export const SalaryChart = () => {
         variant: "destructive",
       });
     }
-  };  
-
+  };
+  
 
   const formatCurrency = (value: string) => {
     const onlyNumbers = value.replace(/\D/g, '');
