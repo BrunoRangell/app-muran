@@ -256,7 +256,7 @@ export const SalaryChart = () => {
       </div>
 
       <ChartContainer
-        className="aspect-[5/1] w-full" // Modificado de 1.5/1 para 2/1 para diminuir a altura
+        className="aspect-[3/1] w-full max-h-[500px] mx-auto"
         config={{
           salary: {
             theme: {
