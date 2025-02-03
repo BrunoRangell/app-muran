@@ -124,7 +124,7 @@ export const SalaryChart = () => {
       }
 
       const [year, month] = values.month.split('-').map(Number);
-      const formattedDate = format(new Date(Date.UTC(year, month - 1, 1)), "yyyy-MM-dd");
+      const formattedDate = format(new Date(year, month - 1, 1), "yyyy-MM-dd");
 
       const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
       console.log('Data formatada:', formattedDate); // Verifique o valor aqui
