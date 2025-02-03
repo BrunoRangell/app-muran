@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { EditFormData, TeamMember } from "@/types/team";
+import { useCurrentUser } from "@/hooks/useTeamMembers";
 
 interface EditMemberDialogProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ export const EditMemberDialog = ({
   onSubmit,
 }: EditMemberDialogProps) => {
   const form = useForm<EditFormData>();
+  const { data: currentUser } = useCurrentUser();
+  const isAdmin = currentUser?.permission === 'admin';
 
   if (!selectedMember) return null;
 
@@ -51,8 +54,13 @@ export const EditMemberDialog = ({
                 <FormItem>
                   <FormLabel>Cargo</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} readOnly={!isAdmin} className={!isAdmin ? "bg-gray-100" : ""} />
                   </FormControl>
+                  {!isAdmin && (
+                    <FormDescription className="text-yellow-600">
+                      Apenas administradores podem editar o cargo
+                    </FormDescription>
+                  )}
                 </FormItem>
               )}
             />

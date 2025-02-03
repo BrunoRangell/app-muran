@@ -33,6 +33,12 @@ export const TeamMemberCard = ({
     return format(date, 'dd/MM/yyyy', { locale: ptBR });
   };
 
+  const formatBirthday = (dateString: string) => {
+    if (!dateString) return '';
+    const date = parseISO(dateString);
+    return format(date, 'dd/MM', { locale: ptBR });
+  };
+
   const convertGoogleDriveLink = (url: string) => {
     if (!url) return '';
     const match = url.match(/\/d\/(.+?)\/view/);
@@ -62,7 +68,7 @@ export const TeamMemberCard = ({
         </p>
         {member.birthday && (
           <p className="text-sm text-gray-500">
-            Aniversário: {formatDate(member.birthday)}
+            Aniversário: {formatBirthday(member.birthday)}
           </p>
         )}
         {(currentUserPermission === 'admin' || currentUserId === member.id) && (
