@@ -15,19 +15,34 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsAuthenticated(!!session);
+        console.log("Verificando sessão do usuário...");
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Erro ao verificar sessão:", sessionError);
+          setIsAuthenticated(false);
+          return;
+        }
 
-        if (session) {
+        if (!session) {
+          console.log("Nenhuma sessão encontrada");
+          setIsAuthenticated(false);
+          return;
+        }
+
+        console.log("Sessão válida encontrada");
+        setIsAuthenticated(true);
+
+        if (requireAdmin) {
           console.log("Verificando permissões do usuário...");
-          const { data: teamMember, error } = await supabase
+          const { data: teamMember, error: teamError } = await supabase
             .from('team_members')
             .select('role, permission')
             .eq('email', session.user.email)
             .single();
 
-          if (error) {
-            console.error("Erro ao verificar permissões do usuário:", error);
+          if (teamError) {
+            console.error("Erro ao verificar permissões:", teamError);
             setIsAdmin(false);
             return;
           }
@@ -45,15 +60,28 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Mudança no estado de autenticação:", event);
       setIsAuthenticated(!!session);
+      
       if (!session) {
         setIsAdmin(false);
+        return;
+      }
+
+      if (requireAdmin && session) {
+        const { data: teamMember } = await supabase
+          .from('team_members')
+          .select('permission')
+          .eq('email', session.user.email)
+          .single();
+        
+        setIsAdmin(teamMember?.permission === 'admin');
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [requireAdmin]);
 
   if (isAuthenticated === null || (requireAdmin && isAdmin === null)) {
     return (

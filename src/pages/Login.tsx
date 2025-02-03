@@ -70,13 +70,19 @@ const Login = () => {
       }
 
       console.log("Login bem sucedido para o usuário:", data.user.email);
+      
+      // Verificar se a sessão foi realmente estabelecida
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Erro ao estabelecer sessão");
+      }
 
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo(a) de volta!",
       });
 
-      navigate("/"); // Alterado de /dashboard para /
+      navigate("/");
     } catch (error: any) {
       console.error("Erro completo no login:", error);
       
