@@ -112,54 +112,54 @@ export const SalaryChart = () => {
   }, [toast]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user?.id) {
-        toast({
-          title: "Erro ao adicionar salário",
-          description: "Você precisa estar autenticado para adicionar um salário.",
-          variant: "destructive",
-        });
-        return;
-      }
-  
-      // Garantir que a data seja configurada com o primeiro dia do mês
-      const date = new Date(values.month); // values.month é no formato 'yyyy-MM'
-      date.setDate(1); // Configurar o dia como o primeiro do mês
-  
-      const formattedDate = date.toISOString().split('T')[0]; // Converter para o formato 'YYYY-MM-DD'
-  
-      const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
-      const { error } = await supabase
-        .from('salaries')
-        .insert([
-          {
-            manager_id: sessionData.session.user.id,
-            month: formattedDate,  // Salvar a data corretamente formatada
-            amount: amount,
-          },
-        ]);
-  
-      if (error) throw error;
-  
-      toast({
-        title: "Salário adicionado",
-        description: "O salário foi adicionado com sucesso!",
-      });
-  
-      form.reset();
-      setIsDialogOpen(false);
-      fetchSalaryData();
-    } catch (error) {
-      console.error('Erro ao adicionar salário:', error);
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session?.user?.id) {
       toast({
         title: "Erro ao adicionar salário",
-        description: "Não foi possível adicionar o salário. Tente novamente mais tarde.",
+        description: "Você precisa estar autenticado para adicionar um salário.",
         variant: "destructive",
       });
+      return;
     }
-  };
-  
+
+    // Garantir que a data seja configurada com o primeiro dia do mês
+    const date = new Date(values.month); // values.month é no formato 'yyyy-MM'
+    date.setDate(1); // Configurar o dia como o primeiro do mês
+
+    const formattedDate = date.toISOString().split('T')[0]; // Converter para o formato 'YYYY-MM-DD'
+
+    const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
+    const { error } = await supabase
+      .from('salaries')
+      .insert([
+        {
+          manager_id: sessionData.session.user.id,
+          month: formattedDate,  // Salvar a data corretamente formatada
+          amount: amount,
+        },
+      ]);
+
+    if (error) throw error;
+
+    toast({
+      title: "Salário adicionado",
+      description: "O salário foi adicionado com sucesso!",
+    });
+
+    form.reset();
+    setIsDialogOpen(false);
+    fetchSalaryData();
+  } catch (error) {
+    console.error('Erro ao adicionar salário:', error);
+    toast({
+      title: "Erro ao adicionar salário",
+      description: "Não foi possível adicionar o salário. Tente novamente mais tarde.",
+      variant: "destructive",
+    });
+  }
+};
+
 
   const formatCurrency = (value: string) => {
     const onlyNumbers = value.replace(/\D/g, '');
