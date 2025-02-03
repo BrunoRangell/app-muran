@@ -123,9 +123,8 @@ export const SalaryChart = () => {
         return;
       }
 
-      // Formata a data para o último dia do mês selecionado
-      const selectedDate = new Date(values.month + "-01"); // Adiciona o dia 01
-      const formattedDate = format(selectedDate, "yyyy-MM-dd");
+      const [year, month] = values.month.split('-').map(Number);
+      const formattedDate = format(new Date(Date.UTC(year, month - 1, 1)), "yyyy-MM-dd");
 
       const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
       console.log('Data formatada:', formattedDate); // Verifique o valor aqui
