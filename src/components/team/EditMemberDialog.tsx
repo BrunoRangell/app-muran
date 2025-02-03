@@ -46,24 +46,21 @@ export const EditMemberDialog = ({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="role"
-              defaultValue={selectedMember.role}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cargo</FormLabel>
-                  <FormControl>
-                    <Input {...field} readOnly={!isAdmin} className={!isAdmin ? "bg-gray-100" : ""} />
-                  </FormControl>
-                  {!isAdmin && (
-                    <FormDescription className="text-yellow-600">
-                      Apenas administradores podem editar o cargo
-                    </FormDescription>
-                  )}
-                </FormItem>
-              )}
-            />
+            {isAdmin && (
+              <FormField
+                control={form.control}
+                name="role"
+                defaultValue={selectedMember.role}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cargo</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="photo_url"
