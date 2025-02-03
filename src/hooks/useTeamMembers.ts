@@ -6,20 +6,21 @@ export const useTeamMembers = () => {
   return useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      console.log("Buscando membros da equipe...");
+      console.log("Iniciando busca de todos os membros da equipe...");
       try {
         const { data, error } = await supabase
           .from('team_members')
           .select('*')
-          .order('start_date', { ascending: true })
-          .order('name');
+          .order('start_date', { ascending: true });
 
         if (error) {
           console.error("Erro ao buscar membros:", error);
           throw error;
         }
 
-        console.log("Membros encontrados:", data);
+        console.log("Total de membros encontrados:", data?.length);
+        console.log("Membros:", data);
+        
         return data as TeamMember[];
       } catch (error) {
         console.error("Erro na consulta de membros:", error);
@@ -36,12 +37,20 @@ export const useCurrentUser = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return null;
 
-      const { data: teamMember } = await supabase
+      console.log("Buscando dados do usuário atual:", session.user.email);
+      
+      const { data: teamMember, error } = await supabase
         .from('team_members')
         .select('*')
         .eq('email', session.user.email)
         .single();
 
+      if (error) {
+        console.error("Erro ao buscar usuário atual:", error);
+        throw error;
+      }
+
+      console.log("Dados do usuário atual:", teamMember);
       return teamMember as TeamMember;
     },
   });

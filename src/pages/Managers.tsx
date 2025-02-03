@@ -16,8 +16,16 @@ const Managers = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const { data: currentUser } = useCurrentUser();
-  const { data: teamMembers, isLoading, refetch } = useTeamMembers();
+  const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
+  const { data: teamMembers, isLoading: isLoadingTeam, error } = useTeamMembers();
+
+  console.log("Estado atual dos membros:", {
+    currentUser,
+    teamMembers,
+    isLoadingUser,
+    isLoadingTeam,
+    error
+  });
 
   const handleEdit = (member: TeamMember) => {
     if (currentUser?.permission !== 'admin' && currentUser?.id !== member.id) {
@@ -49,14 +57,20 @@ const Managers = () => {
     try {
       if (!selectedMember) return;
 
+      const updateData: Partial<TeamMember> = {
+        name: data.name,
+        photo_url: data.photo_url,
+        birthday: data.birthday,
+      };
+
+      // Apenas adiciona o role se for admin
+      if (currentUser?.permission === 'admin') {
+        updateData.role = data.role;
+      }
+
       const { error } = await supabase
         .from('team_members')
-        .update({
-          name: data.name,
-          role: data.role,
-          photo_url: data.photo_url,
-          birthday: data.birthday,
-        })
+        .update(updateData)
         .eq('id', selectedMember.id);
 
       if (error) throw error;
@@ -67,7 +81,7 @@ const Managers = () => {
       });
 
       setIsEditDialogOpen(false);
-      refetch();
+      window.location.reload(); // Força atualização dos dados
     } catch (error) {
       console.error("Erro ao atualizar informações:", error);
       toast({
@@ -77,6 +91,14 @@ const Managers = () => {
       });
     }
   };
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <p className="text-red-500">Erro ao carregar membros da equipe.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 p-4 md:p-8">
@@ -94,11 +116,11 @@ const Managers = () => {
       </div>
 
       <Card className="p-4 md:p-6">
-        {isLoading ? (
+        {isLoadingTeam || isLoadingUser ? (
           <p className="text-gray-600">Carregando integrantes...</p>
-        ) : (
+        ) : teamMembers && teamMembers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {teamMembers?.map((member) => (
+            {teamMembers.map((member) => (
               <TeamMemberCard
                 key={member.id}
                 member={member}
@@ -108,6 +130,8 @@ const Managers = () => {
               />
             ))}
           </div>
+        ) : (
+          <p className="text-gray-600">Nenhum membro encontrado.</p>
         )}
       </Card>
 
