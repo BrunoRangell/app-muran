@@ -5,7 +5,7 @@ import {
   ChartTooltip,
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
-import { format } from "date-fns";
+import { format, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -123,7 +123,9 @@ export const SalaryChart = () => {
         return;
       }
 
-      const formattedDate = values.month;
+      // Formata a data para o último dia do mês selecionado
+      const selectedDate = new Date(values.month + "-01"); // Adiciona o dia 01
+      const formattedDate = format(endOfMonth(selectedDate), "yyyy-MM-dd");
       console.log('Data formatada:', formattedDate);
 
       const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
