@@ -113,6 +113,7 @@ export const SalaryChart = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      console.log('Valor do mês selecionado:', values.month);
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session?.user?.id) {
         toast({
@@ -129,6 +130,7 @@ export const SalaryChart = () => {
       console.log('Data formatada:', formattedDate);
 
       const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
+      console.log('Data formatada:', formattedDate); // Verifique o valor aqui
       const { error } = await supabase
         .from('salaries')
         .insert([
@@ -256,7 +258,7 @@ export const SalaryChart = () => {
       </div>
 
       <ChartContainer
-        className="aspect-[2/1] w-full max-h-[300px] mx-auto"
+        className="aspect-[2/1] w-full max-h-[400px] mx-auto"
         config={{
           salary: {
             theme: {
