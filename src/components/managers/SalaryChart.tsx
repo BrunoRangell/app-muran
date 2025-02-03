@@ -113,7 +113,6 @@ export const SalaryChart = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      console.log('Valor do mês selecionado:', values.month);
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session?.user?.id) {
         toast({
@@ -126,8 +125,7 @@ export const SalaryChart = () => {
 
       // Formata a data para o último dia do mês selecionado
       const selectedDate = new Date(values.month + "-01"); // Adiciona o dia 01
-      const formattedDate = format(endOfMonth(selectedDate), "yyyy-MM-dd");
-      console.log('Data formatada:', formattedDate);
+      const formattedDate = format(selectedDate, "yyyy-MM-dd");
 
       const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
       console.log('Data formatada:', formattedDate); // Verifique o valor aqui
