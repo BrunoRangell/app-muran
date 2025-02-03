@@ -103,7 +103,7 @@ const Login = () => {
           <img
             src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
             alt="Muran Logo"
-            className="mx-auto h-20 md:h-32 w-auto"
+            className="mx-auto h-20 md:h-30 w-auto"
           />
           <h2 className="text-2xl md:text-3xl font-bold text-muran-complementary">
             Bem-vindo(a) de volta
