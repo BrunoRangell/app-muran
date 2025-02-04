@@ -37,12 +37,6 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
       setIsLoading(true);
       console.log("Criando novo membro:", data);
 
-      // Obter o usuário atual
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error("Usuário não autenticado");
-      }
-
       // Primeiro, criar o registro na tabela team_members
       const { data: memberData, error: memberError } = await supabase
         .from('team_members')
@@ -54,8 +48,7 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
             photo_url: data.photo_url,
             birthday: data.birthday,
             start_date: data.start_date,
-            permission: 'member', // Define permissão padrão
-            created_by: session.user.id // Adiciona o ID do usuário que está criando
+            permission: 'member' // Define permissão padrão
           }
         ])
         .select()
