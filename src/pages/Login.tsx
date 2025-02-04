@@ -191,47 +191,48 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Adicionar estas animações no CSS global */}
-      <style jsx global>{`
-        @keyframes gradient-x {
-          0% { background-position: 0% 50% }
-          50% { background-position: 100% 50% }
-          100% { background-position: 0% 50% }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(10deg); }
-        }
-        @keyframes border-rotate {
-          100% { transform: rotate(360deg); }
-        }
-        .animate-gradient-x {
-          background-size: 400% 400%;
-          animation: gradient-x 15s ease infinite;
-        }
-        .animate-float {
-          animation: float 10s infinite ease-in-out;
-        }
-        .animate-border-rotate {
-          animation: border-rotate 20s linear infinite;
-          mask: 
-            linear-gradient(#fff 0 0) content-box,
-            linear-gradient(#fff 0 0);
-          -webkit-mask: 
-            linear-gradient(#fff 0 0) content-box,
-            linear-gradient(#fff 0 0);
-          mask-composite: exclude;
-          -webkit-mask-composite: xor;
-          padding: 2px;
-        }
-        .animate-slide-in {
-          animation: slide-in 0.5s ease-out;
-        }
-        @keyframes slide-in {
-          0% { opacity: 0; transform: translateY(20px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      <style>
+        {`
+          @keyframes gradient-x {
+            0% { background-position: 0% 50% }
+            50% { background-position: 100% 50% }
+            100% { background-position: 0% 50% }
+          }
+          @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+          }
+          @keyframes border-rotate {
+            100% { transform: rotate(360deg); }
+          }
+          .animate-gradient-x {
+            background-size: 400% 400%;
+            animation: gradient-x 15s ease infinite;
+          }
+          .animate-float {
+            animation: float 10s infinite ease-in-out;
+          }
+          .animate-border-rotate {
+            animation: border-rotate 20s linear infinite;
+            mask: 
+              linear-gradient(#fff 0 0) content-box,
+              linear-gradient(#fff 0 0);
+            -webkit-mask: 
+              linear-gradient(#fff 0 0) content-box,
+              linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            -webkit-mask-composite: xor;
+            padding: 2px;
+          }
+          .animate-slide-in {
+            animation: slide-in 0.5s ease-out;
+          }
+          @keyframes slide-in {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+        `}
+      </style>
     </div>
   );
 };

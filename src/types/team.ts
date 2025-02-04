@@ -15,3 +15,11 @@ export interface EditFormData {
   photo_url: string;
   birthday: string;
 }
+
+export interface TeamMemberCardProps {
+  member: TeamMember;
+  currentUserPermission: string;
+  currentUserId: string;
+  onEdit: (member: TeamMember) => void;
+  className?: string;
+}
