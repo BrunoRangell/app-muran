@@ -84,11 +84,14 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#321e32] p-4 relative overflow-hidden">
-      {/* Fundo animado de ondas */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#321e32] via-[#ff6e00] to-[#321e32] animate-fluid" />
+      {/* Fundo animado de ondas com efeito de partículas */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#321e32] via-[#ff6e00] to-[#321e32] animate-fluid z-0" />
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="particle-field"></div> {/* Partículas animadas */}
+      </div>
       
       {/* Card de Login */}
-      <div className="w-full max-w-md bg-[#ebebf0] rounded-2xl shadow-2xl transform transition-transform duration-300 hover:scale-[1.005] relative overflow-hidden animate-fadeIn">
+      <div className="w-full max-w-md bg-[#ebebf0] rounded-2xl shadow-2xl transform transition-transform duration-300 hover:scale-[1.005] relative overflow-hidden animate-fadeIn z-10">
         <div className="p-8 space-y-6 relative z-10">
           <div className="text-center space-y-6">
             <img
@@ -97,10 +100,10 @@ const Login = () => {
               className="mx-auto h-24 w-auto drop-shadow-lg animate-logoDance transition-transform duration-300"
             />
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-[#0f0f0f] animate-fadeIn">
-                Bem-vindo à<span className="block text-[#ff6e00]">Plataforma Muran</span>
+              <h2 className="text-4xl font-extrabold text-[#0f0f0f] animate-fadeIn">
+                Bem-vindo à<span className="block text-[#ff6e00] text-shadow-md">Plataforma Muran</span>
               </h2>
-              <p className="text-[#321e32]/80 text-sm font-medium">
+              <p className="text-[#321e32]/80 text-lg font-medium opacity-90">
                 Sua jornada começa com um login
               </p>
             </div>
@@ -198,6 +201,27 @@ const Login = () => {
 
         .animate-shake {
           animation: shake 0.5s ease-in-out;
+        }
+
+        .text-shadow-md {
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .particle-field {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-image: url('/path-to-your-particle-image.png');
+          background-size: contain;
+          background-repeat: no-repeat;
+          animation: particle-animation 10s infinite linear;
+        }
+
+        @keyframes particle-animation {
+          0% { transform: translateX(0) translateY(0); }
+          100% { transform: translateX(-100%) translateY(-100%); }
         }
       `}</style>
     </div>
