@@ -7,6 +7,7 @@ import { TeamMemberCard } from "@/components/team/TeamMemberCard";
 import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
 import { TeamMemberForm } from "@/components/admin/TeamMemberForm";
+import { supabase } from "@/lib/supabase";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,6 @@ const Managers = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
   const { data: teamMembers, isLoading: isLoadingTeam, error } = useTeamMembers();
@@ -56,6 +56,44 @@ const Managers = () => {
       return;
     }
     setIsAddDialogOpen(true);
+  };
+
+  const onSubmit = async (data) => {
+    try {
+      if (!selectedMember) return;
+
+      const updateData = {
+        name: data.name,
+        photo_url: data.photo_url,
+        birthday: data.birthday,
+      };
+
+      if (currentUser?.permission === 'admin') {
+        updateData.role = data.role;
+      }
+
+      const { error } = await supabase
+        .from('team_members')
+        .update(updateData)
+        .eq('id', selectedMember.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso!",
+        description: "Informações atualizadas com sucesso.",
+      });
+
+      setIsEditDialogOpen(false);
+      window.location.reload();
+    } catch (error) {
+      console.error("Erro ao atualizar informações:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar as informações.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (error) {
