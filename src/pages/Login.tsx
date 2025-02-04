@@ -15,6 +15,16 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Posições memorizadas das partículas
+  const [particles] = useState(() => 
+    Array.from({ length: 50 }, () => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      opacity: Math.random() * 0.5 + 0.5,
+      delay: Math.random() * 50 * 0.3
+    }))
+  );
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -99,17 +109,17 @@ const Login = () => {
           />
         </svg>
 
-        {/* Partículas flutuantes */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none">
-          {[...Array(50)].map((_, i) => (
+        {/* Partículas flutuantes com posições memorizadas */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none transition-opacity duration-1000">
+          {particles.map((particle, i) => (
             <div
               key={i}
               className="absolute w-1 h-1 bg-[#ff6e00] rounded-full animate-particleFloat"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 0.3}s`,
-                opacity: Math.random() * 1 + 0.5
+                left: `${particle.left}%`,
+                top: `${particle.top}%`,
+                animationDelay: `${particle.delay}s`,
+                opacity: particle.opacity
               }}
             />
           ))}
@@ -220,6 +230,8 @@ const Login = () => {
 
         .animate-particleFloat {
           animation: particleFloat 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          will-change: transform, opacity;
+          backface-visibility: hidden;
         }
 
         .animate-logoDance {
