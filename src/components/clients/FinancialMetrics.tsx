@@ -1,4 +1,3 @@
-// components/clients/FinancialMetrics.tsx
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Users, DollarSign, CreditCard, Calendar, Percent, BarChart, Info } from "lucide-react";
@@ -10,7 +9,7 @@ import { MetricCard } from "./metrics/MetricCard";
 import { MetricsChart } from "./metrics/MetricsChart";
 import { useMetricsData } from "./metrics/useMetricsData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -115,7 +114,8 @@ export const FinancialMetrics = () => {
   );
 
   return (
-    <div className="space-y-6 p-4 bg-gradient-to-b from-[#0f0f15] to-[#1a0b2e] rounded-xl">
+    <TooltipProvider>
+      <div className="space-y-6 p-4 bg-gradient-to-b from-[#0f0f15] to-[#1a0b2e] rounded-xl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-[#ff6e00] to-[#ff914d] bg-clip-text text-transparent">
@@ -289,6 +289,7 @@ export const FinancialMetrics = () => {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
