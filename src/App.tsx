@@ -14,7 +14,13 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route element={<Layout />}>
+      <Route
+        element={
+          <PrivateRoute>
+            <Layout />
+          </PrivateRoute>
+        }
+      >
         <Route path="/" element={<Index />} />
         <Route path="/equipe" element={<Managers />} />
         <Route
@@ -33,22 +39,8 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/financeiro"
-          element={
-            <PrivateRoute>
-              <ManagerFinancial />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/tarefas"
-          element={
-            <PrivateRoute>
-              <Tasks />
-            </PrivateRoute>
-          }
-        />
+        <Route path="/financeiro" element={<ManagerFinancial />} />
+        <Route path="/tarefas" element={<Tasks />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
