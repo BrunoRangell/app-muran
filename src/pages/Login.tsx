@@ -101,7 +101,7 @@ const Login = () => {
 
         {/* Partículas flutuantes */}
         <div className="absolute inset-0 opacity-20 pointer-events-none">
-          {[...Array(24)].map((_, i) => (
+          {[...Array(36)].map((_, i) => (
             <div
               key={i}
               className="absolute w-1 h-1 bg-[#ff6e00] rounded-full animate-particleFloat"
@@ -109,7 +109,7 @@ const Login = () => {
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 animationDelay: `${i * 0.5}s`,
-                opacity: Math.random() * 0.5 + 0.2
+                opacity: Math.random() * 0.5 + 0.3
               }}
             />
           ))}
@@ -219,7 +219,7 @@ const Login = () => {
         }
 
         .animate-particleFloat {
-          animation: particleFloat 12s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          animation: particleFloat 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
         .animate-logoDance {
