@@ -1,18 +1,23 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
-import { TeamMember, EditFormData } from "@/types/team";
+import { Button } from "@/components/ui/button";
+import { UserPlus } from "lucide-react";
 import { TeamMemberCard } from "@/components/team/TeamMemberCard";
 import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
-import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { TeamMemberForm } from "@/components/admin/TeamMemberForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const Managers = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -27,7 +32,7 @@ const Managers = () => {
     error
   });
 
-  const handleEdit = (member: TeamMember) => {
+  const handleEdit = (member) => {
     if (currentUser?.permission !== 'admin' && currentUser?.id !== member.id) {
       toast({
         title: "Acesso negado",
@@ -50,46 +55,7 @@ const Managers = () => {
       });
       return;
     }
-    navigate("/admin");
-  };
-
-  const onSubmit = async (data: EditFormData) => {
-    try {
-      if (!selectedMember) return;
-
-      const updateData: Partial<TeamMember> = {
-        name: data.name,
-        photo_url: data.photo_url,
-        birthday: data.birthday,
-      };
-
-      // Apenas adiciona o role se for admin
-      if (currentUser?.permission === 'admin') {
-        updateData.role = data.role;
-      }
-
-      const { error } = await supabase
-        .from('team_members')
-        .update(updateData)
-        .eq('id', selectedMember.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso!",
-        description: "Informações atualizadas com sucesso.",
-      });
-
-      setIsEditDialogOpen(false);
-      window.location.reload(); // Força atualização dos dados
-    } catch (error) {
-      console.error("Erro ao atualizar informações:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar as informações.",
-        variant: "destructive",
-      });
-    }
+    setIsAddDialogOpen(true);
   };
 
   if (error) {
@@ -141,6 +107,15 @@ const Managers = () => {
         selectedMember={selectedMember}
         onSubmit={onSubmit}
       />
+
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Membro</DialogTitle>
+          </DialogHeader>
+          <TeamMemberForm onSuccess={() => setIsAddDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

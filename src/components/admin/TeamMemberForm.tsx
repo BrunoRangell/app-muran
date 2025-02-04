@@ -23,7 +23,11 @@ interface TeamMemberFormData {
   start_date?: string;
 }
 
-export const TeamMemberForm = () => {
+interface TeamMemberFormProps {
+  onSuccess?: () => void;
+}
+
+export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const form = useForm<TeamMemberFormData>();
@@ -33,7 +37,6 @@ export const TeamMemberForm = () => {
       setIsLoading(true);
       console.log("Criando novo membro:", data);
       
-      // Criar o usuário autenticado no Supabase
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -50,7 +53,6 @@ export const TeamMemberForm = () => {
 
       console.log("Usuário autenticado criado com sucesso", authData);
       
-      // Em seguida, criar o registro na tabela team_members usando o ID do usuário
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -75,6 +77,7 @@ export const TeamMemberForm = () => {
       });
       
       form.reset();
+      onSuccess?.();
     } catch (error) {
       console.error("Erro ao cadastrar membro:", error);
       toast({
