@@ -83,21 +83,18 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f0f0f] p-4 relative overflow-hidden">
-      {/* Efeito de partículas sutil */}
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-soft-light" />
+    <div className="min-h-screen flex items-center justify-center bg-[#321e32] p-4 relative overflow-hidden">
+      {/* Efeito de profundidade */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#321e32]/90 via-[#0f0f0f]/20 to-[#321e32]/90" />
       
-      {/* Gradiente dinâmico */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#321e32]/80 via-[#0f0f0f] to-[#321e32]/80 animate-fluid" />
-
       {/* Card de Login */}
-      <div className="w-full max-w-md bg-[#ebebf0] rounded-2xl shadow-2xl transform transition-all duration-500 hover:shadow-3xl relative overflow-hidden animate-fadeIn border-2 border-[#ebebf0]/20">
-        <div className="absolute inset-0 rounded-2xl border-[1.5px] border-[#ff6e00]/20" />
+      <div className="w-full max-w-md bg-[#ebebf0] rounded-2xl shadow-2xl transform transition-all duration-500 hover:shadow-3xl relative overflow-hidden animate-fadeIn border border-[#ff6e00]/10">
+        <div className="absolute inset-0 rounded-2xl border-[1.5px] border-[#ebebf0]/20" />
         
         <div className="p-8 space-y-6 relative z-10">
           <div className="text-center space-y-6">
             <div className="relative inline-block">
-              <div className="absolute inset-0 bg-[#ff6e00] blur-2xl opacity-30 rounded-full" />
+              <div className="absolute -inset-4 bg-[#ff6e00] blur-2xl opacity-20 rounded-full" />
               <img
                 src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
                 alt="Muran Logo"
@@ -106,9 +103,9 @@ const Login = () => {
             </div>
             
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-[#0f0f0f] tracking-tighter">
+              <h2 className="text-3xl font-bold text-[#0f0f0f] tracking-tight">
                 Bem-vindo à
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#ff6e00] to-[#ff6e00]/80">
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#ff6e00] to-[#ff6e00]/90">
                   Plataforma Muran
                 </span>
               </h2>
@@ -119,7 +116,7 @@ const Login = () => {
           </div>
 
           {showError && (
-            <Alert className="bg-[#321e32]/5 border border-[#ff6e00]/20 text-[#0f0f0f] backdrop-blur-sm">
+            <Alert className="bg-[#ff6e00]/10 border border-[#ff6e00]/20 text-[#0f0f0f] backdrop-blur-sm">
               <Info className="h-5 w-5 text-[#ff6e00]" />
               <AlertDescription className="ml-2 text-sm font-medium">
                 Conta não encontrada. Contate a administração.
@@ -139,7 +136,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="pl-10 border-2 border-[#321e32]/10 focus:border-[#ff6e00]/50 focus:ring-0 rounded-xl transition-all bg-white/50 backdrop-blur-sm"
+                  className="pl-10 border-2 border-[#321e32]/10 focus:border-[#ff6e00]/50 focus:ring-0 rounded-xl transition-all bg-white/70 backdrop-blur-sm"
                   disabled={isLoading}
                 />
               </div>
@@ -154,7 +151,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="pl-10 border-2 border-[#321e32]/10 focus:border-[#ff6e00]/50 focus:ring-0 rounded-xl transition-all bg-white/50 backdrop-blur-sm"
+                  className="pl-10 border-2 border-[#321e32]/10 focus:border-[#ff6e00]/50 focus:ring-0 rounded-xl transition-all bg-white/70 backdrop-blur-sm"
                   disabled={isLoading}
                 />
               </div>
@@ -176,15 +173,13 @@ const Login = () => {
       </div>
 
       <style jsx global>{`
-        @keyframes fluid {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+        @keyframes fadeIn {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
 
-        .animate-fluid {
-          background-size: 400% 400%;
-          animation: fluid 15s ease infinite;
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
         }
       `}</style>
     </div>
