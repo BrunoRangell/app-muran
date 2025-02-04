@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Loader2, Users, AlertCircle } from "lucide-react";
 import { TeamMemberCard } from "@/components/team/TeamMemberCard";
 import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
@@ -25,14 +25,6 @@ const Managers = () => {
   const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
   const { data: teamMembers, isLoading: isLoadingTeam, error } = useTeamMembers();
 
-  console.log("Estado atual dos membros:", {
-    currentUser,
-    teamMembers,
-    isLoadingUser,
-    isLoadingTeam,
-    error
-  });
-
   const handleEdit = (member: TeamMember) => {
     if (currentUser?.permission !== 'admin' && currentUser?.id !== member.id) {
       toast({
@@ -42,7 +34,6 @@ const Managers = () => {
       });
       return;
     }
-
     setSelectedMember(member);
     setIsEditDialogOpen(true);
   };
@@ -96,66 +87,88 @@ const Managers = () => {
 
   if (error) {
     return (
-      <div className="p-4">
-        <p className="text-red-500">Erro ao carregar membros da equipe.</p>
+      <div className="min-h-screen p-8 flex flex-col items-center justify-center text-center">
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-800 mb-2">Erro ao carregar membros</h2>
+        <p className="text-gray-600 max-w-md">Ocorreu um erro ao tentar carregar a lista de membros. Por favor, tente recarregar a página.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h1 className="text-3xl font-extrabold text-gray-800 border-b-2 pb-2 border-gray-200">
-            Equipe
+    <div className="space-y-8 p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-3">
+            <Users className="h-9 w-9 text-muran-primary" />
+            Nossa Equipe
           </h1>
-          {currentUser?.permission === 'admin' && (
-            <Button
-              onClick={handleAddMember}
-              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 rounded-md px-4 py-2 shadow transition-colors duration-300"
-            >
-              <UserPlus className="h-5 w-5" />
-              Adicionar Membro
-            </Button>
-          )}
+          <p className="text-gray-600 text-sm md:text-base">
+            Conheça os membros que fazem nossa empresa brilhar
+          </p>
         </div>
-
-        <Card className="p-6 shadow-md rounded-lg bg-white">
-          {isLoadingTeam || isLoadingUser ? (
-            <p className="text-gray-600 text-center">Carregando integrantes...</p>
-          ) : teamMembers && teamMembers.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {teamMembers.map((member) => (
-                <TeamMemberCard
-                  key={member.id}
-                  member={member}
-                  currentUserPermission={currentUser?.permission}
-                  currentUserId={currentUser?.id}
-                  onEdit={handleEdit}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-600 text-center">Nenhum membro encontrado.</p>
-          )}
-        </Card>
-
-        <EditMemberDialog
-          isOpen={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          selectedMember={selectedMember}
-          onSubmit={onSubmit}
-        />
-
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogContent className="max-w-2xl rounded-lg p-6 shadow-lg bg-white">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Adicionar Novo Membro</DialogTitle>
-            </DialogHeader>
-            <TeamMemberForm onSuccess={() => setIsAddDialogOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        
+        {currentUser?.permission === 'admin' && (
+          <Button
+            onClick={handleAddMember}
+            className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2 transition-transform hover:scale-105"
+            size="lg"
+          >
+            <UserPlus className="h-5 w-5" />
+            <span className="hidden sm:inline">Adicionar Membro</span>
+          </Button>
+        )}
       </div>
+
+      <Card className="p-4 md:p-6 bg-white/95 backdrop-blur-sm border border-gray-100 shadow-lg">
+        {isLoadingTeam || isLoadingUser ? (
+          <div className="min-h-[300px] flex flex-col items-center justify-center gap-4">
+            <Loader2 className="h-8 w-8 text-muran-primary animate-spin" />
+            <p className="text-gray-600 text-sm">Carregando equipe...</p>
+          </div>
+        ) : teamMembers && teamMembers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            {teamMembers.map((member) => (
+              <TeamMemberCard
+                key={member.id}
+                member={member}
+                currentUserPermission={currentUser?.permission}
+                currentUserId={currentUser?.id}
+                onEdit={handleEdit}
+                className="hover:shadow-md transition-all duration-300 ease-in-out"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 text-center">
+            <AlertCircle className="h-12 w-12 text-gray-400" />
+            <h3 className="text-lg font-medium text-gray-900">Nenhum membro encontrado</h3>
+            <p className="text-gray-600 max-w-sm text-sm">
+              Parece que ainda não há membros cadastrados na equipe.
+              {currentUser?.permission === 'admin' && " Clique no botão acima para adicionar um novo."}
+            </p>
+          </div>
+        )}
+      </Card>
+
+      <EditMemberDialog
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        selectedMember={selectedMember}
+        onSubmit={onSubmit}
+      />
+
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-2xl rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <UserPlus className="h-6 w-6" />
+              Adicionar Novo Membro
+            </DialogTitle>
+          </DialogHeader>
+          <TeamMemberForm onSuccess={() => setIsAddDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
