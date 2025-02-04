@@ -159,13 +159,13 @@ const Index = () => {
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                <span className="font-medium">Clientes Ativos</span>
+                <span className="font-medium">Clientes ativos</span>
                 <span className="text-muran-primary font-bold text-xl">
                   {clientMetrics?.activeCount || 0}
                 </span>
               </div>
               <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                <span className="font-medium">Clientes este Mês</span>
+                <span className="font-medium">Novos clientes este mês</span>
                 <span className="text-muran-primary font-bold text-xl">
                   {clientMetrics?.newCount || 0}
                 </span>
