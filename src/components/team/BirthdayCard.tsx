@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gift } from "lucide-react";
 import { TeamMember } from "@/types/team";
-import { format, parseISO, isSameMonth, isSameYear, addMonths, isAfter, isToday, addDays, isEqual } from "date-fns";
+import { format, parseISO, isSameMonth, isSameYear, addMonths, isAfter, isToday, addDays, isEqual, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface BirthdayCardProps {
@@ -11,7 +11,7 @@ interface BirthdayCardProps {
 export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   const today = new Date();
   const tomorrow = addDays(today, 1);
-  
+
   const getBirthdayDate = (birthday: string) => {
     const date = parseISO(birthday);
     return new Date(today.getFullYear(), date.getMonth(), date.getDate());
@@ -68,7 +68,8 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   // Função para verificar se o aniversário é amanhã
   const isBirthdayTomorrow = (birthday: string) => {
     const birthdayDate = getBirthdayDate(birthday);
-    return isEqual(birthdayDate, tomorrow); // Corrigi a verificação de amanhã
+    const startOfTomorrow = startOfDay(tomorrow); // Ignora a hora ao comparar
+    return isEqual(birthdayDate, startOfTomorrow); // Comparar somente data
   };
 
   // Melhorando a ordenação para colocar aniversariantes de hoje e amanhã no topo
