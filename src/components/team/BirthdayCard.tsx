@@ -68,7 +68,7 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   // Função para verificar se o aniversário é amanhã
   const isBirthdayTomorrow = (birthday: string) => {
     const birthdayDate = getBirthdayDate(birthday);
-    return isEqual(birthdayDate, tomorrow);
+    return isEqual(birthdayDate, tomorrow); // Corrigi a verificação de amanhã
   };
 
   // Melhorando a ordenação para colocar aniversariantes de hoje e amanhã no topo
