@@ -8,6 +8,7 @@ import { Mail, Key, Info, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login = () => {
+  // Estados e funções existentes (não alterados)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -15,49 +16,66 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Iniciando processo de login...");
-    
+  const validateForm = () => {
     if (!email || !password) {
       toast({
-        title: "Erro de validação",
-        description: "Por favor, preencha todos os campos",
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setIsLoading(true);
     setShowError(false);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error("Erro no login:", error.message);
+        if (error.message.includes("Email not confirmed")) {
+          throw new Error("Email não confirmado. Verifique sua caixa de entrada.");
+        }
         setShowError(true);
-        toast({
-          title: "Erro no login",
-          description: "Verifique suas credenciais e tente novamente",
-          variant: "destructive",
-        });
-      } else {
-        console.log("Login realizado com sucesso");
-        toast({
-          title: "Bem-vindo!",
-          description: "Login realizado com sucesso",
-        });
-        navigate("/dashboard");
+        throw new Error("Conta não encontrada. Entre em contato com a administração.");
       }
-    } catch (error) {
-      console.error("Erro inesperado:", error);
+
+      if (!data.user) throw new Error("Usuário não encontrado");
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Erro ao estabelecer sessão");
+
       toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro ao tentar fazer login",
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo(a) de volta!",
+      });
+
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Erro no login",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -67,7 +85,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#321e32] p-4 relative overflow-hidden">
-      {/* Efeito de partículas na identidade visual */}
+      {/* Efeito de partículas */}
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(15)].map((_, i) => (
           <div
@@ -86,12 +104,13 @@ const Login = () => {
         ))}
       </div>
 
+      {/* Card de Login */}
       <div className="w-full max-w-md bg-[#ebebf0] rounded-2xl shadow-2xl transform transition-transform duration-300 hover:scale-[1.005] relative overflow-hidden">
         {/* Destaque laranja */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#ff6e00]/10 blur-[100px] rounded-full" />
         
         <div className="p-8 space-y-6 relative z-10">
-          {/* Header impactante */}
+          {/* Header */}
           <div className="text-center space-y-6">
             <img
               src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
@@ -108,7 +127,7 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Alert personalizado */}
+          {/* Alert de Erro */}
           {showError && (
             <Alert className="bg-[#ff6e00]/10 border-[#ff6e00]/30 text-[#0f0f0f] animate-shake">
               <Info className="h-5 w-5 text-[#ff6e00]" />
@@ -118,7 +137,7 @@ const Login = () => {
             </Alert>
           )}
 
-          {/* Formulário premium */}
+          {/* Formulário */}
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-5">
               {/* Campo Email */}
@@ -156,7 +175,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Botão com efeito premium */}
+            {/* Botão de Login */}
             <Button
               type="submit"
               className="w-full bg-[#ff6e00] hover:bg-[#ff6e00]/90 text-white 
@@ -177,7 +196,7 @@ const Login = () => {
           </form>
         </div>
 
-        {/* Footer estilizado */}
+        {/* Footer */}
         <div className="bg-[#321e32]/10 p-4 text-center border-t border-[#321e32]/10">
           <p className="text-sm text-[#321e32]/80">
             Precisa de ajuda?{' '}
@@ -188,27 +207,25 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Animações CSS personalizadas */}
-      <style>
-        {`
-          @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(5deg); }
-          }
-          .animate-float {
-            animation: float 8s infinite ease-in-out;
-          }
-          .animate-shake {
-            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-          }
-          @keyframes shake {
-            10%, 90% { transform: translateX(-1px); }
-            20%, 80% { transform: translateX(2px); }
-            30%, 50%, 70% { transform: translateX(-3px); }
-            40%, 60% { transform: translateX(3px); }
-          }
-        `}
-      </style>
+      {/* Animações CSS */}
+      <style jsx global>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        .animate-float {
+          animation: float 8s infinite ease-in-out;
+        }
+        .animate-shake {
+          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+          10%, 90% { transform: translateX(-1px); }
+          20%, 80% { transform: translateX(2px); }
+          30%, 50%, 70% { transform: translateX(-3px); }
+          40%, 60% { transform: translateX(3px); }
+        }
+      `}</style>
     </div>
   );
 };
