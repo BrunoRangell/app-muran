@@ -104,7 +104,7 @@ const Login = () => {
           {[...Array(36)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-1 h-1 bg-[#ff6e00] rounded-full animate-particleFloat"
+              className="absolute w-1.5 h-1.5 bg-[#ff6e00] rounded-full animate-particleFloat"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
@@ -219,7 +219,7 @@ const Login = () => {
         }
 
         .animate-particleFloat {
-          animation: particleFloat 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          animation: particleFloat 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
         .animate-logoDance {
