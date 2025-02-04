@@ -17,26 +17,26 @@ export const MetricCard = ({
   tooltip,
   formatter = (v: number) => v.toString()
 }: MetricCardProps) => (
-  <Card className="p-5 bg-gradient-to-br from-white to-muran-primary/5 hover:shadow-md transition-shadow">
-    <div className="flex items-center gap-4">
-      <div className="p-3 bg-muran-primary/10 rounded-lg">
+  <Card className="p-6">
+    <div className="flex items-center space-x-4">
+      <div className="p-3 bg-muran-primary/10 rounded-full">
         <Icon className="h-6 w-6 text-muran-primary" />
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-muran-dark/80">{title}</p>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>
-                <Info className="h-4 w-4 text-muran-primary/70 hover:text-muran-primary transition-colors" />
+                <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" />
               </TooltipTrigger>
-              <TooltipContent side="top" className="bg-white border border-muran-primary/20 shadow-lg max-w-xs p-3">
-                <p className="text-sm text-muran-dark">{tooltip}</p>
+              <TooltipContent side="top" className="max-w-xs p-4">
+                <p className="text-sm">{tooltip}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
-        <h3 className="text-2xl font-bold text-muran-dark mt-1">
+        <h3 className="text-2xl font-bold text-muran-dark">
           {formatter(value || 0)}
         </h3>
       </div>

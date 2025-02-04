@@ -64,6 +64,7 @@ export const FinancialMetrics = () => {
     }
   };
 
+  // Query para buscar todos os clientes sem filtro (para os cards)
   const { data: allClientsMetrics, isLoading: isLoadingAllClients } = useQuery({
     queryKey: ["allClientsMetrics"],
     queryFn: async () => {
@@ -80,6 +81,7 @@ export const FinancialMetrics = () => {
     },
   });
 
+  // Query para buscar clientes filtrados por período (para os gráficos)
   const { data: filteredClientsData, isLoading: isLoadingFilteredClients } = useMetricsData(dateRange);
 
   const formatCurrency = (value: number) => {
@@ -97,22 +99,17 @@ export const FinancialMetrics = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-muran-dark bg-gradient-to-r from-muran-primary to-muran-complementary bg-clip-text text-transparent">
-          Métricas Financeiras
-        </h2>
-        <p className="text-muran-dark/80">Visão geral do desempenho financeiro</p>
-      </div>
-
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold">Métricas Financeiras</h2>
+      
       {isLoadingAllClients ? (
-        <p className="text-gray-600 text-center">Carregando métricas...</p>
+        <p className="text-gray-600">Carregando métricas...</p>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <MetricCard
               icon={Users}
-              title="Clientes Ativos"
+              title="Total de Clientes Ativos"
               value={allClientsMetrics?.activeClientsCount || 0}
               tooltip="Número total de clientes ativos cadastrados no sistema"
               formatter={(value) => value.toString()}
@@ -122,7 +119,7 @@ export const FinancialMetrics = () => {
               icon={DollarSign}
               title="MRR"
               value={allClientsMetrics?.mrr || 0}
-              tooltip="Monthly Recurring Revenue - Receita mensal recorrente total dos clientes ativos"
+              tooltip="Monthly Recurring Revenue - Receita mensal recorrente total dos clientes ativos. Soma dos valores de contrato de todos os clientes ativos"
               formatter={formatCurrency}
             />
 
@@ -130,7 +127,7 @@ export const FinancialMetrics = () => {
               icon={BarChart}
               title="ARR"
               value={allClientsMetrics?.arr || 0}
-              tooltip="Annual Recurring Revenue - Receita anual recorrente"
+              tooltip="Annual Recurring Revenue - Receita anual recorrente. Calculado multiplicando o MRR por 12"
               formatter={formatCurrency}
             />
 
@@ -138,7 +135,7 @@ export const FinancialMetrics = () => {
               icon={Calendar}
               title="Retenção Média"
               value={allClientsMetrics?.averageRetention || 0}
-              tooltip="Tempo médio que os clientes permanecem ativos"
+              tooltip="Tempo médio que os clientes permanecem ativos na plataforma, calculado desde a data do primeiro pagamento"
               formatter={(value) => `${formatDecimal(value)} meses`}
             />
 
@@ -146,7 +143,7 @@ export const FinancialMetrics = () => {
               icon={CreditCard}
               title="LTV Médio"
               value={(allClientsMetrics?.ltv || 0) / (allClientsMetrics?.totalClients || 1)}
-              tooltip="Lifetime Value Médio - Valor médio por cliente"
+              tooltip="Lifetime Value Médio - Valor médio gerado por cliente durante sua permanência. Calculado dividindo o LTV total pelo número de clientes"
               formatter={formatCurrency}
             />
 
@@ -154,12 +151,12 @@ export const FinancialMetrics = () => {
               icon={Percent}
               title="Churn Rate"
               value={allClientsMetrics?.churnRate || 0}
-              tooltip="Taxa de cancelamento mensal de clientes"
+              tooltip="Taxa de cancelamento mensal de clientes. Porcentagem de clientes que cancelaram em relação ao total"
               formatter={(value) => `${formatDecimal(value)}%`}
             />
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-6">
             <MetricsChart
               title="Evolução do MRR e Total de Clientes"
               data={filteredClientsData || []}
@@ -183,7 +180,6 @@ export const FinancialMetrics = () => {
                   yAxisId: "right"
                 }
               ]}
-              className="border border-muran-primary/20 rounded-xl p-4"
             />
 
             <MetricsChart
@@ -202,7 +198,6 @@ export const FinancialMetrics = () => {
                   color: "#ff6e00"
                 }
               ]}
-              className="border border-muran-primary/20 rounded-xl p-4"
             />
           </div>
         </>
