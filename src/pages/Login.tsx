@@ -88,16 +88,16 @@ const Login = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-[#321e32] via-[#ff6e00] to-[#321e32] animate-fluid" />
       
       {/* Card de Login */}
-      <div className="w-full max-w-md bg-[#ebebf0] rounded-2xl shadow-2xl transform transition-transform duration-300 hover:scale-[1.005] relative overflow-hidden">
+      <div className="w-full max-w-md bg-[#ebebf0] rounded-2xl shadow-2xl transform transition-transform duration-300 hover:scale-[1.005] relative overflow-hidden animate-fadeIn">
         <div className="p-8 space-y-6 relative z-10">
           <div className="text-center space-y-6">
             <img
               src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
               alt="Muran Logo"
-              className="mx-auto h-24 w-auto drop-shadow-lg hover:rotate-[5deg] transition-transform duration-300"
+              className="mx-auto h-24 w-auto drop-shadow-lg animate-logoDance transition-transform duration-300"
             />
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-[#0f0f0f]">
+              <h2 className="text-3xl font-bold text-[#0f0f0f] animate-fadeIn">
                 Bem-vindo à<span className="block text-[#ff6e00]">Plataforma Muran</span>
               </h2>
               <p className="text-[#321e32]/80 text-sm font-medium">
@@ -126,7 +126,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="pl-10 border-2 border-[#321e32]/20 focus:border-[#ff6e00] focus:ring-2 focus:ring-[#ff6e00]/30 rounded-xl transition-all"
+                  className="pl-10 border-2 border-[#321e32]/20 focus:border-[#ff6e00] focus:ring-2 focus:ring-[#ff6e00]/30 rounded-xl transition-all focus:shadow-lg focus:scale-105"
                   disabled={isLoading}
                 />
               </div>
@@ -146,7 +146,7 @@ const Login = () => {
             </div>
             <Button
               type="submit"
-              className="w-full bg-[#ff6e00] hover:bg-[#ff6e00]/90 text-white transform transition-all duration-300 hover:shadow-lg border-2 border-[#ff6e00]/30 hover:scale-[1.02] active:scale-95 font-bold"
+              className="w-full bg-[#ff6e00] hover:bg-[#ff6e00]/90 text-white transform transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 font-bold"
               disabled={isLoading}
             >
               {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Acessar Plataforma"}
@@ -154,15 +154,50 @@ const Login = () => {
           </form>
         </div>
       </div>
+
       <style jsx global>{`
         @keyframes fluid {
           0% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
         }
+
+        @keyframes logoDance {
+          0% { transform: rotate(0deg); }
+          25% { transform: rotate(5deg); }
+          50% { transform: rotate(0deg); }
+          75% { transform: rotate(-5deg); }
+          100% { transform: rotate(0deg); }
+        }
+
+        @keyframes fadeIn {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes shake {
+          0% { transform: translateX(0); }
+          25% { transform: translateX(-10px); }
+          50% { transform: translateX(10px); }
+          75% { transform: translateX(-10px); }
+          100% { transform: translateX(0); }
+        }
+
         .animate-fluid {
           background-size: 200% 200%;
           animation: fluid 10s infinite ease-in-out;
+        }
+
+        .animate-logoDance {
+          animation: logoDance 5s ease-in-out infinite;
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 1s ease-out;
+        }
+
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
         }
       `}</style>
     </div>
