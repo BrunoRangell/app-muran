@@ -15,7 +15,55 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // ... (manter as funções validateForm e handleLogin anteriores)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Iniciando processo de login...");
+    
+    if (!email || !password) {
+      toast({
+        title: "Erro de validação",
+        description: "Por favor, preencha todos os campos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setShowError(false);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error("Erro no login:", error.message);
+        setShowError(true);
+        toast({
+          title: "Erro no login",
+          description: "Verifique suas credenciais e tente novamente",
+          variant: "destructive",
+        });
+      } else {
+        console.log("Login realizado com sucesso");
+        toast({
+          title: "Bem-vindo!",
+          description: "Login realizado com sucesso",
+        });
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Erro inesperado:", error);
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao tentar fazer login",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#321e32] p-4 relative overflow-hidden">
@@ -141,24 +189,26 @@ const Login = () => {
       </div>
 
       {/* Animações CSS personalizadas */}
-      <style jsx global>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
-        }
-        .animate-float {
-          animation: float 8s infinite ease-in-out;
-        }
-        .animate-shake {
-          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        }
-        @keyframes shake {
-          10%, 90% { transform: translateX(-1px); }
-          20%, 80% { transform: translateX(2px); }
-          30%, 50%, 70% { transform: translateX(-3px); }
-          40%, 60% { transform: translateX(3px); }
-        }
-      `}</style>
+      <style>
+        {`
+          @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+          }
+          .animate-float {
+            animation: float 8s infinite ease-in-out;
+          }
+          .animate-shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+          }
+          @keyframes shake {
+            10%, 90% { transform: translateX(-1px); }
+            20%, 80% { transform: translateX(2px); }
+            30%, 50%, 70% { transform: translateX(-3px); }
+            40%, 60% { transform: translateX(3px); }
+          }
+        `}
+      </style>
     </div>
   );
 };
