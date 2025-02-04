@@ -10,6 +10,8 @@ import { PaymentSection } from "./client-form/PaymentSection";
 import { StatusSection } from "./client-form/StatusSection";
 import { ContactSection } from "./client-form/ContactSection";
 import { parseCurrencyToNumber } from "@/utils/formatters";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 
 interface ClientFormProps {
   initialData?: {
@@ -23,6 +25,7 @@ interface ClientFormProps {
     company_birthday: string;
     contact_name: string;
     contact_phone: string;
+    last_payment_date?: string;
   } | null;
   onSuccess?: () => void;
 }
@@ -31,6 +34,7 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const form = useForm<ClientFormData>();
+  const [showLastPaymentDate, setShowLastPaymentDate] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -45,7 +49,9 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         companyBirthday: initialData.company_birthday,
         contactName: initialData.contact_name,
         contactPhone: initialData.contact_phone,
+        lastPaymentDate: initialData.last_payment_date,
       });
+      setShowLastPaymentDate(initialData.status === "inactive");
     }
   }, [initialData, form]);
 
@@ -71,6 +77,7 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         company_birthday: data.companyBirthday,
         contact_name: data.contactName,
         contact_phone: data.contactPhone,
+        last_payment_date: data.status === "inactive" ? data.lastPaymentDate : null,
       };
 
       if (initialData) {
@@ -104,18 +111,82 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!initialData?.id) return;
+
+    try {
+      setIsLoading(true);
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', initialData.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Cliente excluído com sucesso!",
+      });
+
+      onSuccess?.();
+    } catch (error) {
+      console.error("Erro ao excluir cliente:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o cliente. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Watch status field to show/hide last payment date
+  const status = form.watch("status");
+  useEffect(() => {
+    setShowLastPaymentDate(status === "inactive");
+  }, [status]);
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <CompanySection form={form} />
-          <PaymentSection form={form} />
+          <PaymentSection form={form} showLastPaymentDate={showLastPaymentDate} />
           <StatusSection form={form} />
           <ContactSection form={form} />
         </div>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isLoading} className="bg-muran-primary hover:bg-muran-primary/90">
+        <div className="flex justify-between">
+          {initialData && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={isLoading}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir Cliente
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o cliente {initialData.company_name}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button type="submit" disabled={isLoading} className="bg-muran-primary hover:bg-muran-primary/90 ml-auto">
             {isLoading ? "Salvando..." : initialData ? "Atualizar cliente" : "Cadastrar cliente"}
           </Button>
         </div>

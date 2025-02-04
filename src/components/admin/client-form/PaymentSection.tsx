@@ -6,9 +6,10 @@ import { ClientFormData } from "@/types/client";
 
 interface PaymentSectionProps {
   form: UseFormReturn<ClientFormData>;
+  showLastPaymentDate?: boolean;
 }
 
-export const PaymentSection = ({ form }: PaymentSectionProps) => {
+export const PaymentSection = ({ form, showLastPaymentDate }: PaymentSectionProps) => {
   return (
     <>
       <FormField
@@ -46,6 +47,22 @@ export const PaymentSection = ({ form }: PaymentSectionProps) => {
           </FormItem>
         )}
       />
+
+      {showLastPaymentDate && (
+        <FormField
+          control={form.control}
+          name="lastPaymentDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Último Pagamento</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
     </>
   );
 };
