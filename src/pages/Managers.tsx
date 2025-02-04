@@ -8,6 +8,7 @@ import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
 import { TeamMemberForm } from "@/components/admin/TeamMemberForm";
 import { supabase } from "@/lib/supabase";
+import { EditFormData, TeamMember } from "@/types/team";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +19,7 @@ import {
 const Managers = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const { toast } = useToast();
 
   const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
@@ -32,7 +33,7 @@ const Managers = () => {
     error
   });
 
-  const handleEdit = (member) => {
+  const handleEdit = (member: TeamMember) => {
     if (currentUser?.permission !== 'admin' && currentUser?.id !== member.id) {
       toast({
         title: "Acesso negado",
@@ -58,19 +59,16 @@ const Managers = () => {
     setIsAddDialogOpen(true);
   };
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data: EditFormData) => {
     try {
       if (!selectedMember) return;
 
-      const updateData = {
+      const updateData: EditFormData = {
         name: data.name,
         photo_url: data.photo_url,
         birthday: data.birthday,
+        role: data.role
       };
-
-      if (currentUser?.permission === 'admin') {
-        updateData.role = data.role;
-      }
 
       const { error } = await supabase
         .from('team_members')
