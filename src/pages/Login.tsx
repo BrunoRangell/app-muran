@@ -109,7 +109,7 @@ const Login = () => {
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 animationDelay: `${i * 0.5}s`,
-                opacity: Math.random() * 0.3 + 0.1
+                opacity: Math.random() * 0.5 + 0.2
               }}
             />
           ))}
