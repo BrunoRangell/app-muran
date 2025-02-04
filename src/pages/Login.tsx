@@ -63,33 +63,50 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0f0f15] p-4 relative overflow-hidden isolate">
-      {/* Efeito de fundo geométrico animado */}
-      <div className="absolute inset-0 opacity-20 z-[-1]">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJub25lIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+')] animate-textureMove" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#ff6e00]/10 to-transparent" />
-      </div>
+      {/* Novo Fundo Premium */}
+      <div className="absolute inset-0 z-[-1]">
+        {/* Base gradient escuro */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#160B21] via-[#0F0819] to-[#1A0B2E]" />
 
-      {/* Efeito de partículas suaves */}
-      <div className="absolute inset-0 opacity-30 z-[-1] pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-[#ff6e00] rounded-full animate-particleFloat"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${i * 0.5}s`,
-              opacity: Math.random() * 0.5 + 0.2
-            }}
+        {/* Brilho central */}
+        <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#FF6E00]/15 via-[#FF6E00]/05 to-transparent" />
+
+        {/* Padrão geométrico estático */}
+        <svg 
+          viewBox="0 0 100 100" 
+          className="absolute w-[150%] h-[150%] -left-1/4 -top-1/4 opacity-5"
+        >
+          <defs>
+            <linearGradient id="geoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FF6E00" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#FF914D" stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+          <polygon
+            points="50,0 100,50 50,100 0,50"
+            fill="url(#geoGradient)"
+            transform="rotate(45 50 50)"
           />
-        ))}
+          <rect
+            x="25"
+            y="25"
+            width="50"
+            height="50"
+            fill="none"
+            stroke="url(#geoGradient)"
+            strokeWidth="2"
+            transform="rotate(10 50 50)"
+          />
+        </svg>
+
+        {/* Textura sutil */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGgxNnYxNkgweiIgZmlsbD0ibm9uZSIvPjxjaXJjbGUgY3g9IjgiIGN5PSI4IiByPSIyIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+PC9zdmc+')] opacity-10" />
       </div>
 
-      {/* Card de Login com efeito de vidro */}
+      {/* Card de Login (mantido idêntico) */}
       <div className="w-full max-w-md bg-[rgba(235,235,240,0.95)] rounded-2xl shadow-2xl backdrop-blur-xl transition-all duration-500 hover:shadow-3xl relative overflow-hidden border border-[rgba(255,255,255,0.1)] group hover:border-[#ff6e00]/20">
         <div className="p-8 space-y-6 relative z-10">
           <div className="text-center space-y-6">
-            {/* Logo com animação complexa */}
             <div className="relative inline-block animate-logoDance">
               <div className="absolute inset-0 bg-[#ff6e00] blur-2xl opacity-10 rounded-full" />
               <img
@@ -166,17 +183,6 @@ const Login = () => {
       </div>
 
       <style jsx global>{`
-        @keyframes textureMove {
-          0% { background-position: 0 0; }
-          100% { background-position: 100px 100px; }
-        }
-
-        @keyframes particleFloat {
-          0% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-40px) scale(0.8); }
-          100% { transform: translateY(0) scale(1); }
-        }
-
         @keyframes logoDance {
           0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
           20% { transform: translateY(-10px) rotate(3deg) scale(1.05); }
@@ -188,14 +194,6 @@ const Login = () => {
         @keyframes shine {
           0% { background-position: 200% center; }
           100% { background-position: -200% center; }
-        }
-
-        .animate-textureMove {
-          animation: textureMove 20s linear infinite;
-        }
-
-        .animate-particleFloat {
-          animation: particleFloat 8s ease-in-out infinite;
         }
 
         .animate-logoDance {
