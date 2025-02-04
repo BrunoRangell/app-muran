@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { History, TrendingUp, Sparkles } from "lucide-react";
 
 interface Salary {
-  month: Date;
+  month: string;
   amount: number;
 }
 
@@ -127,25 +127,26 @@ const ManagerFinancial = () => {
               <History className="h-5 w-5 text-muran-primary" />
             </h2>
             <div className="space-y-4">
-            {salaries.map((salary, index) => (
-              <div
-                key={index}
-                className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-2 md:gap-0"
-              >
-                <span className="font-medium">
-                  {(() => {
-                    const [year, month] = salary.month.split('-').map(Number);
-                    return new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
-                  })()}
-                </span>
-                <span className="text-green-600 font-semibold">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(salary.amount)}
-                </span>
-              </div>
-            ))}
+            {salaries.map((salary, index) => {
+              const [year, month] = salary.month.split('-');
+              const date = new Date(Number(year), Number(month) - 1);
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-2 md:gap-0"
+                >
+                  <span className="font-medium">
+                    {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(date)}
+                  </span>
+                  <span className="text-green-600 font-semibold">
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL'
+                    }).format(salary.amount)}
+                  </span>
+                </div>
+              );
+            })}
             </div>
           </Card>
         )}
