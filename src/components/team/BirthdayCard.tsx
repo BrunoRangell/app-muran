@@ -64,6 +64,17 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
     return isToday(birthdayDate);
   };
 
+  // Melhorando a ordenação para colocar aniversariantes de hoje no topo
+  const sortedBirthdays = [...birthdaysToShow].sort((a, b) => {
+    const aIsToday = isBirthdayToday(a.birthday);
+    const bIsToday = isBirthdayToday(b.birthday);
+    
+    if (aIsToday && !bIsToday) return -1;
+    if (!aIsToday && bIsToday) return 1;
+    // Se ambos ou nenhum forem de hoje, mantém a ordenação original
+    return 0;
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -76,22 +87,22 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {birthdaysToShow.map((member) => {
+          {sortedBirthdays.map((member) => {
             const isToday = isBirthdayToday(member.birthday);
             return (
               <div
                 key={member.id}
-                className={`flex items-center justify-between p-2 rounded-lg ${isToday ? 'bg-muran-primary text-white hover:bg-muran-complementary' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}
+                className={`flex items-center justify-between p-2 rounded-lg ${isToday ? 'bg-muran-primary text-white' : 'bg-gray-50 text-gray-900'} transition-none`}
               >
                 <span className="font-medium">{isToday ? `🎉 ${member.name} (Hoje!)` : member.name}</span>
-                <span className="text-gray-600">
+                <span className={isToday ? 'text-gray-200' : 'text-gray-600'}>
                   {formatBirthday(member.birthday)}
                 </span>
                 {isToday && <span className="ml-2">🎉</span>}
               </div>
             );
           })}
-          {birthdaysToShow.length === 0 && (
+          {sortedBirthdays.length === 0 && (
             <p className="text-center text-gray-600">
               Nenhum aniversariante encontrado
             </p>
