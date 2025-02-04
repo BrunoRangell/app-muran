@@ -5,19 +5,22 @@ import { Pencil } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TeamMember } from "@/types/team";
+import { cn } from "@/lib/utils";
 
 interface TeamMemberCardProps {
   member: TeamMember;
   currentUserPermission: string | undefined;
   currentUserId: string | undefined;
   onEdit: (member: TeamMember) => void;
+  className?: string;
 }
 
 export const TeamMemberCard = ({ 
   member, 
   currentUserPermission, 
   currentUserId, 
-  onEdit 
+  onEdit,
+  className 
 }: TeamMemberCardProps) => {
   const getInitials = (name: string) => {
     return name
@@ -50,7 +53,7 @@ export const TeamMemberCard = ({
   };
 
   return (
-    <Card className="p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow">
+    <Card className={cn("p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow", className)}>
       <Avatar className="h-24 w-24">
         {member.photo_url ? (
           <AvatarImage src={convertGoogleDriveLink(member.photo_url)} alt={member.name} />
