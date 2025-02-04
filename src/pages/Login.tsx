@@ -17,7 +17,7 @@ const LoginPage = () => {
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      // Lógica de autenticação
+      // Lógica de autenticação real aqui
     } catch (error) {
       setShowError(true);
     } finally {
@@ -25,49 +25,52 @@ const LoginPage = () => {
     }
   };
 
+  // SVG para textura de fundo embutido
+  const backgroundTexture = () => (
+    <svg className="absolute inset-0 w-full h-full opacity-[0.03] pointer-events-none" viewBox="0 0 100 100">
+      <pattern id="texture" width="10" height="10" patternUnits="userSpaceOnUse">
+        <path d="M0 0h10v10H0z" fill="none"/>
+        <path d="M-2 2l4-4M0 10L10 0M8 12l4-4" stroke="currentColor" strokeWidth="0.5"/>
+      </pattern>
+      <rect width="100%" height="100%" fill="url(#texture)"/>
+    </svg>
+  );
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-100 p-4 relative overflow-hidden">
-      {/* Efeito de profundidade sutil */}
-      <div className="absolute inset-0 bg-[url('/subtle-texture.png')] opacity-10 mix-blend-soft-light" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 relative overflow-hidden">
+      {/* Textura de fundo embutida */}
+      {backgroundTexture()}
 
       {/* Card de Login */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl transform transition-all duration-500 hover:shadow-2xl relative overflow-hidden animate-fadeIn border border-neutral-200/50 hover:border-neutral-300">
-        <div className="absolute inset-0 rounded-2xl border-2 border-white/20 pointer-events-none" />
-        
-        <div className="p-8 space-y-6 relative z-10">
-          <div className="text-center space-y-6">
-            <div className="relative inline-block animate-logoFloat">
-              <div className="absolute -inset-4 bg-primary/10 blur-xl rounded-full" />
-              <img
-                src="/logo.png"
-                alt="Muran Logo"
-                className="mx-auto h-20 w-auto transition-transform duration-300 hover:scale-105"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-neutral-800 tracking-tight">
-                Bem-vindo(a)
-              </h2>
-              <p className="text-neutral-600 text-sm font-medium">
-                Faça login para acessar sua conta
-              </p>
+      <div className="w-full max-w-md bg-white rounded-xl shadow-lg transform transition-all duration-300 hover:shadow-xl relative overflow-hidden border border-gray-200/60">
+        <div className="p-8 space-y-6">
+          {/* Logo local - Substitua pelo seu arquivo */}
+          <div className="text-center">
+            <div className="inline-block p-4 rounded-2xl bg-primary/10">
+              <svg className="w-16 h-16 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
             </div>
           </div>
 
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-semibold text-gray-900">Bem-vindo(a)</h2>
+            <p className="text-gray-600 text-sm">Faça login para acessar sua conta</p>
+          </div>
+
           {showError && (
-            <Alert className="bg-red-50 border border-red-100 text-red-800 backdrop-blur-sm animate-enter-shake">
-              <Info className="h-5 w-5 text-red-600" />
+            <Alert className="bg-red-50 border border-red-100 text-red-800">
+              <Info className="h-4 w-4 text-red-600" />
               <AlertDescription className="ml-2 text-sm">
-                Credenciais não reconhecidas. Verifique seus dados.
+                Credenciais inválidas. Tente novamente.
               </AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-5">
-              <div className="group relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-neutral-400 transition-colors duration-200 group-focus-within:text-primary" />
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-3">
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
                   id="email"
                   type="email"
@@ -75,13 +78,13 @@ const LoginPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="E-mail"
-                  className="pl-10 border-2 border-neutral-200 focus:border-primary/50 focus:ring-0 rounded-xl bg-white/95 backdrop-blur-sm placeholder:text-neutral-400 hover:border-neutral-300 transition-all"
+                  className="pl-10 border-gray-300 focus:ring-primary/50"
                   disabled={isLoading}
                 />
               </div>
-              
-              <div className="group relative">
-                <Key className="absolute left-3 top-3 h-5 w-5 text-neutral-400 transition-colors duration-200 group-focus-within:text-primary" />
+
+              <div className="relative">
+                <Key className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
                   id="password"
                   type="password"
@@ -89,56 +92,26 @@ const LoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Senha"
-                  className="pl-10 border-2 border-neutral-200 focus:border-primary/50 focus:ring-0 rounded-xl bg-white/95 backdrop-blur-sm placeholder:text-neutral-400 hover:border-neutral-300 transition-all"
+                  className="pl-10 border-gray-300 focus:ring-primary/50"
                   disabled={isLoading}
                 />
               </div>
             </div>
-            
+
             <Button
               type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-white font-medium transition-all duration-300 hover:shadow-md active:scale-[0.98]"
+              className="w-full bg-primary hover:bg-primary/90 text-white"
               disabled={isLoading}
             >
               {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <span>Entrar</span>
+                'Entrar'
               )}
             </Button>
           </form>
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes fadeIn {
-          0% { opacity: 0; transform: translateY(10px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes logoFloat {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-5px); }
-        }
-
-        @keyframes enter-shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(6px); }
-          75% { transform: translateX(-6px); }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.4s ease-out;
-        }
-
-        .animate-logoFloat {
-          animation: logoFloat 8s ease-in-out infinite;
-        }
-
-        .animate-enter-shake {
-          animation: enter-shake 0.3s ease-in-out;
-        }
-      `}</style>
     </div>
   );
 };
