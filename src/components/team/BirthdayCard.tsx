@@ -65,43 +65,39 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   };
 
   return (
-    
-      
-        
-          
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Gift className="text-muran-primary" />
           {currentMonthBirthdays.length > 0 
             ? "Aniversariantes do Mês" 
             : "Próximos Aniversariantes"}
-        
-      
-      
-        
-
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
           {birthdaysToShow.map((member) => {
             const isToday = isBirthdayToday(member.birthday);
             return (
-              
-
-                {isToday ? `🎉 ${member.name} (Hoje!)` : member.name}
-                
+              <div
+                key={member.id}
+                className={`flex items-center justify-between p-2 rounded-lg ${isToday ? 'bg-muran-primary text-white hover:bg-muran-complementary' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}
+              >
+                <span className="font-medium">{isToday ? `🎉 ${member.name} (Hoje!)` : member.name}</span>
+                <span className="text-gray-600">
                   {formatBirthday(member.birthday)}
-                
-                {isToday && 🎉}
-              
-
+                </span>
+                {isToday && <span className="ml-2">🎉</span>}
+              </div>
             );
           })}
           {birthdaysToShow.length === 0 && (
-            
-
+            <p className="text-center text-gray-600">
               Nenhum aniversariante encontrado
-            
-
-
+            </p>
           )}
-        
-
-      
-    
+        </div>
+      </CardContent>
+    </Card>
   );
 };
