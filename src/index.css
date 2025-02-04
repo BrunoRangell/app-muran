@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+ 
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -25,7 +25,9 @@
     --ring: 222.2 84% 4.9%;
     --radius: 0.75rem;
   }
-
+}
+ 
+@layer base {
   * {
     @apply border-border;
   }
@@ -34,23 +36,6 @@
   }
 }
 
-/* Adicione as novas variáveis e animações aqui */
-:root {
-  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-  --shadow-card: 0 8px 24px rgba(0,0,0,0.08);
-  --hover-scale: scale(1.02);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-card {
-  animation: fadeIn 0.6s ease-out forwards;
-}
-
-/* Seu gradiente personalizado */
 .muran-gradient {
   background: linear-gradient(135deg, #ff6e00 0%, #321e32 100%);
 }
