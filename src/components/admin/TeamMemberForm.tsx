@@ -21,6 +21,7 @@ interface TeamMemberFormData {
   photo_url?: string;
   birthday?: string;
   start_date?: string;
+  manager_id: string; // Novo campo adicionado
 }
 
 interface TeamMemberFormProps {
@@ -48,7 +49,8 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
             photo_url: data.photo_url,
             birthday: data.birthday,
             start_date: data.start_date,
-            permission: 'member' // Define permissão padrão
+            permission: 'member',
+            manager_id: data.manager_id // Adicionando o manager_id ao insert
           }
         ])
         .select()
@@ -179,6 +181,20 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
               <FormLabel>Data de Início na Muran</FormLabel>
               <FormControl>
                 <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="manager_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>ID do Gestor</FormLabel>
+              <FormControl>
+                <Input placeholder="ID do gestor responsável" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
