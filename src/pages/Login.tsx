@@ -84,12 +84,32 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#321e32] p-4 relative overflow-hidden">
-      {/* Fundo animado de ondas */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#321e32] via-[#ff6e00] to-[#321e32] animate-fluid" />
-      
+      {/* Novo Fundo Sofisticado */}
+      <div className="absolute inset-0 bg-[#321e32] overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#321e32] to-[#1a101a] opacity-90" />
+        
+        {/* Textura geométrica sutil */}
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='52' height='26' viewBox='0 0 52 26' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ff6e00' fill-opacity='0.1' fill-rule='evenodd'%3E%3Ccircle cx='6' cy='6' r='6'/%3E%3Ccircle cx='42' cy='6' r='6'/%3E%3Ccircle cx='6' cy='20' r='6'/%3E%3Ccircle cx='42' cy='20' r='6'/%3E%3C/g%3E%3C/svg%3E")`
+          }}
+        />
+        
+        {/* Luzes estáticas */}
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-[#ff6e00]/10 blur-[100px] rounded-full" />
+          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#ff6e00]/5 blur-[150px] rounded-full" />
+        </div>
+      </div>
+
       {/* Card de Login */}
       <div className="w-full max-w-md bg-[#ebebf0] rounded-2xl shadow-2xl transform transition-transform duration-300 hover:scale-[1.005] relative overflow-hidden">
+        {/* Destaque laranja */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-[#ff6e00]/10 blur-[100px] rounded-full" />
+        
         <div className="p-8 space-y-6 relative z-10">
+          {/* Header */}
           <div className="text-center space-y-6">
             <img
               src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
@@ -106,6 +126,7 @@ const Login = () => {
             </div>
           </div>
 
+          {/* Alert de Erro */}
           {showError && (
             <Alert className="bg-[#ff6e00]/10 border-[#ff6e00]/30 text-[#0f0f0f] animate-shake">
               <Info className="h-5 w-5 text-[#ff6e00]" />
@@ -115,54 +136,86 @@ const Login = () => {
             </Alert>
           )}
 
+          {/* Formulário */}
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-5">
-              <div className="group relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-[#321e32]/50 group-focus-within:text-[#ff6e00] transition-colors" />
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  className="pl-10 border-2 border-[#321e32]/20 focus:border-[#ff6e00] focus:ring-2 focus:ring-[#ff6e00]/30 rounded-xl transition-all"
-                  disabled={isLoading}
-                />
+              {/* Campo Email */}
+              <div className="group">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-[#321e32]/50 group-focus-within:text-[#ff6e00] transition-colors" />
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className="pl-10 border-2 border-[#321e32]/20 focus:border-[#ff6e00] focus:ring-2 focus:ring-[#ff6e00]/30 rounded-xl transition-all"
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
-              <div className="group relative">
-                <Key className="absolute left-3 top-3 h-5 w-5 text-[#321e32]/50 group-focus-within:text-[#ff6e00] transition-colors" />
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pl-10 border-2 border-[#321e32]/20 focus:border-[#ff6e00] focus:ring-2 focus:ring-[#ff6e00]/30 rounded-xl transition-all"
-                  disabled={isLoading}
-                />
+
+              {/* Campo Senha */}
+              <div className="group">
+                <div className="relative">
+                  <Key className="absolute left-3 top-3 h-5 w-5 text-[#321e32]/50 group-focus-within:text-[#ff6e00] transition-colors" />
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="pl-10 border-2 border-[#321e32]/20 focus:border-[#ff6e00] focus:ring-2 focus:ring-[#ff6e00]/30 rounded-xl transition-all"
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
             </div>
+
+            {/* Botão de Login */}
             <Button
               type="submit"
-              className="w-full bg-[#ff6e00] hover:bg-[#ff6e00]/90 text-white transform transition-all duration-300 hover:shadow-lg border-2 border-[#ff6e00]/30 hover:scale-[1.02] active:scale-95 font-bold"
+              className="w-full bg-[#ff6e00] hover:bg-[#ff6e00]/90 text-white 
+                        transform transition-all duration-300 hover:shadow-lg
+                        relative overflow-hidden border-2 border-[#ff6e00]/30
+                        hover:scale-[1.02] active:scale-95 font-bold"
               disabled={isLoading}
             >
-              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Acessar Plataforma"}
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <span className="relative z-10">Acessar Plataforma</span>
+                  <div className="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity" />
+                </>
+              )}
             </Button>
           </form>
         </div>
+
+        {/* Footer */}
+        <div className="bg-[#321e32]/10 p-4 text-center border-t border-[#321e32]/10">
+          <p className="text-sm text-[#321e32]/80">
+            Precisa de ajuda?{' '}
+            <a href="#" className="text-[#ff6e00] hover:text-[#321e32] font-semibold transition-colors">
+              Suporte Muran
+            </a>
+          </p>
+        </div>
       </div>
+
+      {/* Animações CSS */}
       <style jsx global>{`
-        @keyframes fluid {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+        .animate-shake {
+          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
         }
-        .animate-fluid {
-          background-size: 200% 200%;
-          animation: fluid 10s infinite ease-in-out;
+        @keyframes shake {
+          10%, 90% { transform: translateX(-1px); }
+          20%, 80% { transform: translateX(2px); }
+          30%, 50%, 70% { transform: translateX(-3px); }
+          40%, 60% { transform: translateX(3px); }
         }
       `}</style>
     </div>
