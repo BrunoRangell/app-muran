@@ -101,15 +101,15 @@ const Login = () => {
 
         {/* Partículas flutuantes */}
         <div className="absolute inset-0 opacity-20 pointer-events-none">
-          {[...Array(36)].map((_, i) => (
+          {[...Array(50)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-1.5 h-1.5 bg-[#ff6e00] rounded-full animate-particleFloat"
+              className="absolute w-1 h-1 bg-[#ff6e00] rounded-full animate-particleFloat"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 animationDelay: `${i * 0.3}s`,
-                opacity: Math.random() * 0.8 + 0.3
+                opacity: Math.random() * 1 + 0.5
               }}
             />
           ))}
