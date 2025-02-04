@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Search, LogIn } from "lucide-react";
+import { Search, LogIn, Loader2, AlertCircle, User } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,31 +27,27 @@ export const ManagersList = () => {
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchTeamMembers = async () => {
     try {
-      console.log('Buscando membros da equipe...');
       const { data, error } = await supabase
         .from('team_members')
         .select('id, name, email, role')
         .order('name');
 
-      if (error) {
-        console.error('Erro ao buscar membros:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Membros encontrados:', data);
       setTeamMembers(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar membros:', error);
+      setError(null);
+    } catch (err) {
+      setError("Falha ao carregar membros da equipe");
       toast({
-        title: "Erro ao carregar membros",
-        description: "Verifique sua conexão e tente novamente.",
+        title: "Erro de conexão",
+        description: "Não foi possível carregar os dados da equipe",
         variant: "destructive",
       });
-      setTeamMembers([]); // Garantir que o estado seja limpo em caso de erro
     } finally {
       setIsLoading(false);
     }
@@ -72,50 +68,81 @@ export const ManagersList = () => {
     setIsLoginDialogOpen(true);
   };
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 gap-4 text-center">
+        <AlertCircle className="h-12 w-12 text-red-500" />
+        <h3 className="text-xl font-semibold text-gray-800">Erro ao carregar membros</h3>
+        <p className="text-gray-600 max-w-md">
+          Ocorreu um problema ao tentar carregar a lista de membros. Por favor, tente novamente mais tarde.
+        </p>
+        <Button onClick={fetchTeamMembers} variant="outline" className="mt-4">
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <p className="text-gray-500">Carregando membros...</p>
+      <div className="flex flex-col items-center justify-center min-h-[300px] gap-3">
+        <Loader2 className="h-8 w-8 text-muran-primary animate-spin" />
+        <p className="text-gray-600">Carregando membros...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={20} />
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="relative group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         <Input
-          placeholder="Buscar membro..."
+          placeholder="Buscar membro por nome, email ou cargo..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
+          className="pl-10 focus-visible:ring-muran-primary/30 transition-all"
         />
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
         {filteredMembers.length === 0 ? (
-          <Card className="p-4">
-            <p className="text-center text-gray-500">
-              {searchTerm ? "Nenhum membro encontrado" : "Nenhum membro disponível"}
+          <Card className="p-6 flex flex-col items-center justify-center gap-3 min-h-[200px]">
+            <User className="h-10 w-10 text-gray-400" />
+            <h3 className="text-lg font-medium text-gray-900">
+              {searchTerm ? "Nenhum resultado encontrado" : "Lista de membros vazia"}
+            </h3>
+            <p className="text-gray-600 text-center text-sm max-w-xs">
+              {searchTerm 
+                ? "Tente ajustar sua busca ou verifique a ortografia"
+                : "Nenhum membro cadastrado no sistema ainda"}
             </p>
           </Card>
         ) : (
           filteredMembers.map((member) => (
-            <Card key={member.id} className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <h3 className="text-lg font-medium">{member.name}</h3>
-                  <p className="text-sm text-gray-500">{member.email}</p>
-                  <p className="text-sm text-gray-500">{member.role}</p>
+            <Card 
+              key={member.id} 
+              className="p-4 hover:shadow-md transition-shadow duration-200 group"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="bg-muran-primary/10 p-2 rounded-full">
+                    <User className="h-6 w-6 text-muran-primary" />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <h3 className="font-medium text-gray-900 truncate">{member.name}</h3>
+                    <p className="text-sm text-gray-600 truncate">{member.email}</p>
+                    <span className="inline-block bg-muran-primary/10 text-muran-primary text-xs px-2 py-1 rounded-full">
+                      {member.role}
+                    </span>
+                  </div>
                 </div>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2"
                   onClick={() => handleLogin(member)}
+                  className="shrink-0 hover:bg-muran-primary/90 bg-muran-primary text-white hover:shadow-sm transition-all"
+                  size="sm"
                 >
-                  <LogIn size={16} />
-                  Login
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Acessar
                 </Button>
               </div>
             </Card>
@@ -124,11 +151,14 @@ export const ManagersList = () => {
       </div>
 
       <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
-        <DialogContent>
+        <DialogContent className="rounded-lg max-w-md">
           <DialogHeader>
-            <DialogTitle>Login - {selectedMember?.name}</DialogTitle>
-            <DialogDescription>
-              Digite sua senha para acessar o sistema
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <LogIn className="h-5 w-5" />
+              Acesso do membro
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              {selectedMember?.name ? `Autenticação para ${selectedMember.name}` : 'Complete o login abaixo'}
             </DialogDescription>
           </DialogHeader>
           {selectedMember && (
