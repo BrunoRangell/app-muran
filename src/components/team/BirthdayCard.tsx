@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gift } from "lucide-react";
 import { TeamMember } from "@/types/team";
-import { format, parseISO, isSameMonth, isSameYear, addMonths, isAfter } from "date-fns";
+import { format, parseISO, isSameMonth, isSameYear, addMonths, isAfter, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface BirthdayCardProps {
@@ -58,36 +58,50 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
     return format(parseISO(birthday), "dd 'de' MMMM", { locale: ptBR });
   };
 
+  // Função para verificar se o aniversário é hoje
+  const isBirthdayToday = (birthday: string) => {
+    const birthdayDate = getBirthdayDate(birthday);
+    return isToday(birthdayDate);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Gift className="text-muran-primary" />
+    
+      
+        
+          
           {currentMonthBirthdays.length > 0 
             ? "Aniversariantes do Mês" 
             : "Próximos Aniversariantes"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {birthdaysToShow.map((member) => (
-            <div
-              key={member.id}
-              className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-            >
-              <span className="font-medium">{member.name}</span>
-              <span className="text-gray-600">
-                {formatBirthday(member.birthday)}
-              </span>
-            </div>
-          ))}
+        
+      
+      
+        
+
+          {birthdaysToShow.map((member) => {
+            const isToday = isBirthdayToday(member.birthday);
+            return (
+              
+
+                {isToday ? `🎉 ${member.name} (Hoje!)` : member.name}
+                
+                  {formatBirthday(member.birthday)}
+                
+                {isToday && 🎉}
+              
+
+            );
+          })}
           {birthdaysToShow.length === 0 && (
-            <p className="text-center text-gray-600">
+            
+
               Nenhum aniversariante encontrado
-            </p>
+            
+
+
           )}
-        </div>
-      </CardContent>
-    </Card>
+        
+
+      
+    
   );
 };
