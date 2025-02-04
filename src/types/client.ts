@@ -9,6 +9,7 @@ export interface ClientFormData {
   contactName: string;
   contactPhone: string;
   customAcquisitionChannel?: string;
+  lastPaymentDate?: string;
 }
 
 export const ACQUISITION_CHANNELS = [
