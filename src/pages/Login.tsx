@@ -208,8 +208,7 @@ const Login = () => {
         </div>
       </div>
 
-      <style>
-        {`
+      <style jsx global>{`
         @keyframes particleFloat {
           0% { transform: translateY(0) scale(1); }
           50% { transform: translateY(-60px) scale(0.8); }
@@ -242,8 +241,7 @@ const Login = () => {
         .animate-shine {
           animation: shine 3s linear infinite;
         }
-        `}
-      </style>
+      `}</style>
     </div>
   );
 };

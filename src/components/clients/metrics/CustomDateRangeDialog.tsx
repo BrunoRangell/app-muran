@@ -14,11 +14,9 @@ interface CustomDateRangeDialogProps {
 export const CustomDateRangeDialog = ({
   isOpen,
   onOpenChange,
-  dateRange = { start: new Date(), end: new Date() }, // Valor padrão adicionado
+  dateRange,
   onDateRangeChange,
 }: CustomDateRangeDialogProps) => {
-  console.log("CustomDateRangeDialog rendered with dateRange:", dateRange);
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>

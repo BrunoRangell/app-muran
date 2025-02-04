@@ -8,11 +8,6 @@ import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears }
 import { MetricCard } from "./metrics/MetricCard";
 import { MetricsChart } from "./metrics/MetricsChart";
 import { useMetricsData } from "./metrics/useMetricsData";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/ui/date-picker";
 
 export const FinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('last-12-months');
@@ -69,6 +64,7 @@ export const FinancialMetrics = () => {
     }
   };
 
+  // Query para buscar todos os clientes sem filtro (para os cards)
   const { data: allClientsMetrics, isLoading: isLoadingAllClients } = useQuery({
     queryKey: ["allClientsMetrics"],
     queryFn: async () => {
@@ -76,12 +72,17 @@ export const FinancialMetrics = () => {
         .from("clients")
         .select("*");
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching all clients metrics:", error);
+        throw error;
+      }
+
       return calculateFinancialMetrics(clients);
     },
   });
 
-  const { data: filteredClientsData } = useMetricsData(dateRange);
+  // Query para buscar clientes filtrados por período (para os gráficos)
+  const { data: filteredClientsData, isLoading: isLoadingFilteredClients } = useMetricsData(dateRange);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -97,217 +98,110 @@ export const FinancialMetrics = () => {
     }).format(value);
   };
 
-  const PeriodSelector = () => (
-    <Select value={periodFilter} onValueChange={(v) => handlePeriodChange(v as PeriodFilter)}>
-      <SelectTrigger className="w-[180px] bg-[#0f0f15] border-[#ff6e00]/20">
-        <SelectValue placeholder="Selecione o período" />
-      </SelectTrigger>
-      <SelectContent className="bg-[#0f0f15] border-[#ff6e00]/20">
-        <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-        <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
-        <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
-        <SelectItem value="this-year">Este ano</SelectItem>
-        <SelectItem value="last-year">Ano anterior</SelectItem>
-        <SelectItem value="custom">Personalizado</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-
   return (
-    <TooltipProvider>
-      <div className="space-y-6 p-4 bg-gradient-to-b from-[#0f0f15] to-[#1a0b2e] rounded-xl">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-[#ff6e00] to-[#ff914d] bg-clip-text text-transparent">
-              Métricas Financeiras
-            </h2>
-            <p className="text-sm text-[#ff914d]/80 mt-1">Dados atualizados em tempo real</p>
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold">Métricas Financeiras</h2>
+      
+      {isLoadingAllClients ? (
+        <p className="text-gray-600">Carregando métricas...</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <MetricCard
+              icon={Users}
+              title="Total de Clientes Ativos"
+              value={allClientsMetrics?.activeClientsCount || 0}
+              tooltip="Número total de clientes ativos cadastrados no sistema"
+              formatter={(value) => value.toString()}
+            />
+
+            <MetricCard
+              icon={DollarSign}
+              title="MRR"
+              value={allClientsMetrics?.mrr || 0}
+              tooltip="Monthly Recurring Revenue - Receita mensal recorrente total dos clientes ativos. Soma dos valores de contrato de todos os clientes ativos"
+              formatter={formatCurrency}
+            />
+
+            <MetricCard
+              icon={BarChart}
+              title="ARR"
+              value={allClientsMetrics?.arr || 0}
+              tooltip="Annual Recurring Revenue - Receita anual recorrente. Calculado multiplicando o MRR por 12"
+              formatter={formatCurrency}
+            />
+
+            <MetricCard
+              icon={Calendar}
+              title="Retenção Média"
+              value={allClientsMetrics?.averageRetention || 0}
+              tooltip="Tempo médio que os clientes permanecem ativos na plataforma, calculado desde a data do primeiro pagamento"
+              formatter={(value) => `${formatDecimal(value)} meses`}
+            />
+
+            <MetricCard
+              icon={CreditCard}
+              title="LTV Médio"
+              value={(allClientsMetrics?.ltv || 0) / (allClientsMetrics?.totalClients || 1)}
+              tooltip="Lifetime Value Médio - Valor médio gerado por cliente durante sua permanência. Calculado dividindo o LTV total pelo número de clientes"
+              formatter={formatCurrency}
+            />
+
+            <MetricCard
+              icon={Percent}
+              title="Churn Rate"
+              value={allClientsMetrics?.churnRate || 0}
+              tooltip="Taxa de cancelamento mensal de clientes. Porcentagem de clientes que cancelaram em relação ao total"
+              formatter={(value) => `${formatDecimal(value)}%`}
+            />
           </div>
-          <div className="flex gap-2 items-center">
-            <PeriodSelector />
-            {isCustomDateOpen && (
-              <div className="flex gap-2">
-                <DatePicker
-                  selected={dateRange.start}
-                  onSelect={(date) => setDateRange(prev => ({ ...prev, start: date }))}
-                  className="bg-[#0f0f15] border-[#ff6e00]/20"
-                />
-                <DatePicker
-                  selected={dateRange.end}
-                  onSelect={(date) => setDateRange(prev => ({ ...prev, end: date }))}
-                  className="bg-[#0f0f15] border-[#ff6e00]/20"
-                />
-                <Button 
-                  onClick={() => setIsCustomDateOpen(false)}
-                  className="bg-[#ff6e00] hover:bg-[#ff914d]"
-                  size="sm"
-                >
-                  Aplicar
-                </Button>
-              </div>
-            )}
+
+          <div className="space-y-6">
+            <MetricsChart
+              title="Evolução do MRR e Total de Clientes"
+              data={filteredClientsData || []}
+              periodFilter={periodFilter}
+              onPeriodChange={handlePeriodChange}
+              isCustomDateOpen={isCustomDateOpen}
+              onCustomDateOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              lines={[
+                {
+                  key: "mrr",
+                  name: "MRR",
+                  color: "#ff6e00",
+                  yAxisId: "left"
+                },
+                {
+                  key: "clients",
+                  name: "Total de Clientes",
+                  color: "#321e32",
+                  yAxisId: "right"
+                }
+              ]}
+            />
+
+            <MetricsChart
+              title="Clientes Cancelados por Mês"
+              data={filteredClientsData || []}
+              periodFilter={periodFilter}
+              onPeriodChange={handlePeriodChange}
+              isCustomDateOpen={isCustomDateOpen}
+              onCustomDateOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              lines={[
+                {
+                  key: "churn",
+                  name: "Clientes Cancelados",
+                  color: "#ff6e00"
+                }
+              ]}
+            />
           </div>
-        </div>
-
-        {isLoadingAllClients ? (
-          <div className="h-64 flex items-center justify-center">
-            <div className="animate-pulse text-[#ff914d]">Carregando métricas...</div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <MetricCard
-                icon={Users}
-                title="Clientes Ativos"
-                value={allClientsMetrics?.activeClientsCount || 0}
-                trend={8.2}
-                tooltip="Clientes com contrato ativo"
-                formatValue={(v) => v.toString()}
-                className="bg-[#160B21] border-[#ff6e00]/20"
-              />
-
-              <MetricCard
-                icon={DollarSign}
-                title="MRR"
-                value={allClientsMetrics?.mrr || 0}
-                trend={12.5}
-                tooltip="Receita Mensal Recorrente"
-                formatValue={formatCurrency}
-                className="bg-[#160B21] border-[#ff6e00]/20"
-              />
-
-              <MetricCard
-                icon={BarChart}
-                title="ARR"
-                value={allClientsMetrics?.arr || 0}
-                trend={15.3}
-                tooltip="Receita Anual Recorrente"
-                formatValue={formatCurrency}
-                className="bg-[#160B21] border-[#ff6e00]/20"
-              />
-
-              <MetricCard
-                icon={Calendar}
-                title="Retenção"
-                value={allClientsMetrics?.averageRetention || 0}
-                trend={-2.1}
-                tooltip="Média de permanência (meses)"
-                formatValue={(v) => `${formatDecimal(v)}m`}
-                className="bg-[#160B21] border-[#ff6e00]/20"
-              />
-
-              <MetricCard
-                icon={CreditCard}
-                title="LTV Médio"
-                value={(allClientsMetrics?.ltv || 0) / (allClientsMetrics?.totalClients || 1)}
-                trend={9.8}
-                tooltip="Valor médio por cliente"
-                formatValue={formatCurrency}
-                className="bg-[#160B21] border-[#ff6e00]/20"
-              />
-
-              <MetricCard
-                icon={Percent}
-                title="Churn Rate"
-                value={allClientsMetrics?.churnRate || 0}
-                trend={-4.5}
-                tooltip="Taxa de cancelamento mensal"
-                formatValue={(v) => `${formatDecimal(v)}%`}
-                inverseTrend
-                className="bg-[#160B21] border-[#ff6e00]/20"
-              />
-            </div>
-
-            <Tabs defaultValue="mrr" className="space-y-4">
-              <TabsList className="bg-[#0f0f15] border border-[#ff6e00]/20">
-                <TabsTrigger value="mrr" className="data-[state=active]:bg-[#ff6e00]">MRR</TabsTrigger>
-                <TabsTrigger value="churn" className="data-[state=active]:bg-[#ff6e00]">Cancelamentos</TabsTrigger>
-                <TabsTrigger value="ltv" className="data-[state=active]:bg-[#ff6e00]">LTV</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="mrr">
-                <div className="bg-[#160B21] p-4 rounded-xl border border-[#ff6e00]/20">
-                  <MetricsChart
-                    title="Evolução do MRR"
-                    data={filteredClientsData || []}
-                    lines={[
-                      { key: "mrr", name: "MRR", color: "#ff6e00" },
-                      { key: "clients", name: "Clientes", color: "#ff914d", dashed: true }
-                    ]}
-                    height={300}
-                    periodFilter={periodFilter}
-                    onPeriodChange={handlePeriodChange}
-                    isCustomDateOpen={isCustomDateOpen}
-                    onCustomDateOpenChange={setIsCustomDateOpen}
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                  />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="churn">
-                <div className="bg-[#160B21] p-4 rounded-xl border border-[#ff6e00]/20">
-                  <MetricsChart
-                    title="Histórico de Cancelamentos"
-                    data={filteredClientsData || []}
-                    lines={[
-                      { key: "churn", name: "Cancelamentos", color: "#ff6e00" }
-                    ]}
-                    height={300}
-                    periodFilter={periodFilter}
-                    onPeriodChange={handlePeriodChange}
-                    isCustomDateOpen={isCustomDateOpen}
-                    onCustomDateOpenChange={setIsCustomDateOpen}
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                  />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="ltv">
-                <div className="bg-[#160B21] p-4 rounded-xl border border-[#ff6e00]/20">
-                  <MetricsChart
-                    title="Evolução do LTV Médio"
-                    data={filteredClientsData || []}
-                    lines={[
-                      { key: "ltv", name: "LTV Médio", color: "#ff914d" }
-                    ]}
-                    height={300}
-                    periodFilter={periodFilter}
-                    onPeriodChange={handlePeriodChange}
-                    isCustomDateOpen={isCustomDateOpen}
-                    onCustomDateOpenChange={setIsCustomDateOpen}
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            <div className="flex flex-wrap gap-4 items-center justify-center text-sm text-[#ff914d]">
-              <Tooltip>
-                <TooltipTrigger className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-[#ff6e00]" />
-                  <span>MRR</span>
-                </TooltipTrigger>
-                <TooltipContent className="bg-[#0f0f15] border-[#ff6e00]/20">
-                  Monthly Recurring Revenue
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger className="flex items-center gap-2">
-                  <div className="w-4 h-1 bg-[#ff914d] border-2 border-dashed" />
-                  <span>Clientes Ativos</span>
-                </TooltipTrigger>
-                <TooltipContent className="bg-[#0f0f15] border-[#ff6e00]/20">
-                  Total de clientes com contrato ativo
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </>
-        )}
-      </div>
-    </TooltipProvider>
+        </>
+      )}
+    </div>
   );
 };
