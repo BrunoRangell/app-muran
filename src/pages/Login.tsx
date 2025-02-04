@@ -15,7 +15,47 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // ... (manter as funções validateForm e handleLogin anteriores)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setShowError(false);
+
+    try {
+      console.log("Iniciando tentativa de login com email:", email);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error("Erro no login:", error);
+        setShowError(true);
+        toast({
+          title: "Erro no login",
+          description: "Verifique suas credenciais e tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("Login bem sucedido para o usuário:", email);
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo de volta.",
+      });
+
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Erro durante o login:", error);
+      toast({
+        title: "Erro no login",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-blue-600 to-muran-primary animate-gradient-x p-4 relative overflow-hidden">
