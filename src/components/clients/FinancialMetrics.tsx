@@ -8,173 +8,199 @@ import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears }
 import { MetricCard } from "./metrics/MetricCard";
 import { MetricsChart } from "./metrics/MetricsChart";
 import { useMetricsData } from "./metrics/useMetricsData";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const FinancialMetrics = () => {
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("last-12-months");
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('last-12-months');
+  const [dateRange, setDateRange] = useState<DateRangeFilter>(() => {
+    const now = new Date();
+    return {
+      start: startOfMonth(addMonths(now, -11)),
+      end: endOfMonth(now)
+    };
+  });
+  
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRangeFilter>({
-    start: new Date(new Date().getFullYear(), 0, 1),
-    end: new Date(new Date().getFullYear(), 11, 31)
-  });
-
-  const { data: filteredClientsData, isLoading: isLoadingMetrics } = useMetricsData(dateRange);
-
-  const { data: allClients, isLoading: isLoadingAllClients } = useQuery({
-    queryKey: ["allClients"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*");
-
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const handlePeriodChange = (value: PeriodFilter) => {
     setPeriodFilter(value);
-    if (value === "custom") {
+    const now = new Date();
+    
+    if (value === 'custom') {
       setIsCustomDateOpen(true);
       return;
     }
-
-    const today = new Date();
-    let start = new Date();
-    let end = new Date();
-
+    
     switch (value) {
-      case "last-3-months":
-        start = addMonths(today, -3);
+      case 'last-3-months':
+        setDateRange({
+          start: startOfMonth(addMonths(now, -2)),
+          end: endOfMonth(now)
+        });
         break;
-      case "last-6-months":
-        start = addMonths(today, -6);
+      case 'last-6-months':
+        setDateRange({
+          start: startOfMonth(addMonths(now, -5)),
+          end: endOfMonth(now)
+        });
         break;
-      case "last-12-months":
-        start = addMonths(today, -12);
+      case 'last-12-months':
+        setDateRange({
+          start: startOfMonth(addMonths(now, -11)),
+          end: endOfMonth(now)
+        });
         break;
-      case "this-year":
-        start = startOfYear(today);
-        end = endOfYear(today);
+      case 'this-year':
+        setDateRange({
+          start: startOfYear(now),
+          end: endOfYear(now)
+        });
         break;
-      case "last-year":
-        start = startOfYear(subYears(today, 1));
-        end = endOfYear(subYears(today, 1));
+      case 'last-year':
+        setDateRange({
+          start: startOfYear(subYears(now, 1)),
+          end: endOfYear(subYears(now, 1))
+        });
         break;
     }
-
-    setDateRange({
-      start: startOfMonth(start),
-      end: endOfMonth(end)
-    });
   };
 
-  const metrics = allClients ? calculateFinancialMetrics(allClients) : null;
+  // Query para buscar todos os clientes sem filtro (para os cards)
+  const { data: allClientsMetrics, isLoading: isLoadingAllClients } = useQuery({
+    queryKey: ["allClientsMetrics"],
+    queryFn: async () => {
+      const { data: clients, error } = await supabase
+        .from("clients")
+        .select("*");
+
+      if (error) {
+        console.error("Error fetching all clients metrics:", error);
+        throw error;
+      }
+
+      return calculateFinancialMetrics(clients);
+    },
+  });
+
+  // Query para buscar clientes filtrados por período (para os gráficos)
+  const { data: filteredClientsData, isLoading: isLoadingFilteredClients } = useMetricsData(dateRange);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  const formatDecimal = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(value);
+  };
 
   return (
-    <div className="space-y-4 p-4 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-bold text-muran-dark">Métricas Financeiras</h2>
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold">Métricas Financeiras</h2>
       
       {isLoadingAllClients ? (
         <p className="text-gray-600">Carregando métricas...</p>
       ) : (
-        <TooltipProvider>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <MetricCard
-              title="MRR (Monthly Recurring Revenue)"
-              value={metrics?.mrr || 0}
-              icon={DollarSign}
-              description="Receita recorrente mensal"
-              format="currency"
-            />
-            <MetricCard
-              title="ARR (Annual Recurring Revenue)"
-              value={metrics?.arr || 0}
-              icon={DollarSign}
-              description="Receita recorrente anual"
-              format="currency"
-            />
-            <MetricCard
-              title="Retenção Média"
-              value={metrics?.averageRetention || 0}
-              icon={Calendar}
-              description="Tempo médio de permanência dos clientes"
-              format="months"
-            />
-            <MetricCard
-              title="Churn Rate"
-              value={metrics?.churnRate || 0}
-              icon={Percent}
-              description="Taxa de cancelamento mensal"
-              format="percentage"
-            />
-            <MetricCard
-              title="LTV (Lifetime Value)"
-              value={metrics?.ltv || 0}
-              icon={CreditCard}
-              description="Valor médio gerado por cliente"
-              format="currency"
-            />
-            <MetricCard
-              title="Total de Clientes"
-              value={metrics?.activeClientsCount || 0}
               icon={Users}
-              description="Número de clientes ativos"
-              format="number"
+              title="Total de Clientes Ativos"
+              value={allClientsMetrics?.activeClientsCount || 0}
+              tooltip="Número total de clientes ativos cadastrados no sistema"
+              formatter={(value) => value.toString()}
+            />
+
+            <MetricCard
+              icon={DollarSign}
+              title="MRR"
+              value={allClientsMetrics?.mrr || 0}
+              tooltip="Monthly Recurring Revenue - Receita mensal recorrente total dos clientes ativos. Soma dos valores de contrato de todos os clientes ativos"
+              formatter={formatCurrency}
+            />
+
+            <MetricCard
+              icon={BarChart}
+              title="ARR"
+              value={allClientsMetrics?.arr || 0}
+              tooltip="Annual Recurring Revenue - Receita anual recorrente. Calculado multiplicando o MRR por 12"
+              formatter={formatCurrency}
+            />
+
+            <MetricCard
+              icon={Calendar}
+              title="Retenção Média"
+              value={allClientsMetrics?.averageRetention || 0}
+              tooltip="Tempo médio que os clientes permanecem ativos na plataforma, calculado desde a data do primeiro pagamento"
+              formatter={(value) => `${formatDecimal(value)} meses`}
+            />
+
+            <MetricCard
+              icon={CreditCard}
+              title="LTV Médio"
+              value={(allClientsMetrics?.ltv || 0) / (allClientsMetrics?.totalClients || 1)}
+              tooltip="Lifetime Value Médio - Valor médio gerado por cliente durante sua permanência. Calculado dividindo o LTV total pelo número de clientes"
+              formatter={formatCurrency}
+            />
+
+            <MetricCard
+              icon={Percent}
+              title="Churn Rate"
+              value={allClientsMetrics?.churnRate || 0}
+              tooltip="Taxa de cancelamento mensal de clientes. Porcentagem de clientes que cancelaram em relação ao total"
+              formatter={(value) => `${formatDecimal(value)}%`}
             />
           </div>
 
-          <div className="space-y-4">
-            <div className="p-4 bg-muran-light rounded-lg shadow">
-              <MetricsChart
-                title="Evolução do MRR e Total de Clientes"
-                data={filteredClientsData || []}
-                periodFilter={periodFilter}
-                onPeriodChange={handlePeriodChange}
-                isCustomDateOpen={isCustomDateOpen}
-                onCustomDateOpenChange={setIsCustomDateOpen}
-                dateRange={dateRange}
-                onDateRangeChange={setDateRange}
-                lines={[
-                  {
-                    key: "mrr",
-                    name: "MRR",
-                    color: "#ff6e00",
-                    yAxisId: "left"
-                  },
-                  {
-                    key: "clients",
-                    name: "Total de Clientes",
-                    color: "#321e32",
-                    yAxisId: "right"
-                  }
-                ]}
-                className="h-64"
-              />
-            </div>
+          <div className="space-y-6">
+            <MetricsChart
+              title="Evolução do MRR e Total de Clientes"
+              data={filteredClientsData || []}
+              periodFilter={periodFilter}
+              onPeriodChange={handlePeriodChange}
+              isCustomDateOpen={isCustomDateOpen}
+              onCustomDateOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              lines={[
+                {
+                  key: "mrr",
+                  name: "MRR",
+                  color: "#ff6e00",
+                  yAxisId: "left"
+                },
+                {
+                  key: "clients",
+                  name: "Total de Clientes",
+                  color: "#321e32",
+                  yAxisId: "right"
+                }
+              ]}
+            />
 
-            <div className="p-4 bg-muran-light rounded-lg shadow">
-              <MetricsChart
-                title="Clientes Cancelados por Mês"
-                data={filteredClientsData || []}
-                periodFilter={periodFilter}
-                onPeriodChange={handlePeriodChange}
-                isCustomDateOpen={isCustomDateOpen}
-                onCustomDateOpenChange={setIsCustomDateOpen}
-                dateRange={dateRange}
-                onDateRangeChange={setDateRange}
-                lines={[
-                  {
-                    key: "churn",
-                    name: "Clientes Cancelados",
-                    color: "#ff6e00"
-                  }
-                ]}
-                className="h-64"
-              />
-            </div>
+            <MetricsChart
+              title="Clientes Cancelados por Mês"
+              data={filteredClientsData || []}
+              periodFilter={periodFilter}
+              onPeriodChange={handlePeriodChange}
+              isCustomDateOpen={isCustomDateOpen}
+              onCustomDateOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              lines={[
+                {
+                  key: "churn",
+                  name: "Clientes Cancelados",
+                  color: "#ff6e00"
+                }
+              ]}
+            />
           </div>
-        </TooltipProvider>
+        </>
       )}
     </div>
   );

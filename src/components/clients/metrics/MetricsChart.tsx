@@ -19,7 +19,6 @@ interface MetricsChartProps {
     color: string;
     yAxisId?: string;
   }>;
-  className?: string;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -49,8 +48,7 @@ export const MetricsChart = ({
   onCustomDateOpenChange,
   dateRange,
   onDateRangeChange,
-  lines,
-  className
+  lines
 }: MetricsChartProps) => {
   return (
     <Card className="p-6">
@@ -71,7 +69,7 @@ export const MetricsChart = ({
         </Select>
       </div>
 
-      <div className={className || "h-[300px]"}>
+      <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
