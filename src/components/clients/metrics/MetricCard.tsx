@@ -6,16 +6,32 @@ interface MetricCardProps {
   icon: any;
   title: string;
   value: number;
-  tooltip: string;
-  formatter?: (value: number) => string;
+  description: string;
+  format?: "currency" | "percentage" | "number" | "months";
 }
+
+const formatValue = (value: number, format?: string) => {
+  switch (format) {
+    case "currency":
+      return new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+      }).format(value);
+    case "percentage":
+      return `${value.toFixed(1)}%`;
+    case "months":
+      return `${value.toFixed(1)} meses`;
+    default:
+      return value.toString();
+  }
+};
 
 export const MetricCard = ({ 
   icon: Icon, 
   title, 
   value, 
-  tooltip,
-  formatter = (v: number) => v.toString()
+  description,
+  format 
 }: MetricCardProps) => (
   <Card className="p-4 bg-muran-light text-muran-dark shadow-sm rounded-lg">
     <div className="flex items-center space-x-4">
@@ -31,13 +47,13 @@ export const MetricCard = ({
                 <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" />
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs p-2 text-xs">
-                <p>{tooltip}</p>
+                <p>{description}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
         <h3 className="text-lg font-semibold">
-          {formatter(value || 0)}
+          {formatValue(value || 0, format)}
         </h3>
       </div>
     </div>
