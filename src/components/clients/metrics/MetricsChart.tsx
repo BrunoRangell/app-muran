@@ -13,11 +13,13 @@ interface MetricsChartProps {
   onCustomDateOpenChange: (open: boolean) => void;
   dateRange: { start: Date; end: Date };
   onDateRangeChange: (range: { start: Date; end: Date }) => void;
+  height?: number;
   lines: Array<{
     key: string;
     name: string;
     color: string;
     yAxisId?: string;
+    dashed?: boolean;
   }>;
 }
 
@@ -48,6 +50,7 @@ export const MetricsChart = ({
   onCustomDateOpenChange,
   dateRange,
   onDateRangeChange,
+  height = 300,
   lines
 }: MetricsChartProps) => {
   return (
@@ -69,7 +72,7 @@ export const MetricsChart = ({
         </Select>
       </div>
 
-      <div className="h-[300px]">
+      <div style={{ height: `${height}px` }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
@@ -92,6 +95,7 @@ export const MetricsChart = ({
                 name={line.name}
                 stroke={line.color}
                 strokeWidth={2}
+                strokeDasharray={line.dashed ? "5 5" : undefined}
               />
             ))}
           </LineChart>
