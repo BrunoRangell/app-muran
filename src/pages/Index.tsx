@@ -165,7 +165,7 @@ const Index = () => {
                 </span>
               </div>
               <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                <span Clientes este Mês</span>
+                <span className="font-medium">Clientes este Mês</span>
                 <span className="text-muran-primary font-bold text-xl">
                   {clientMetrics?.newCount || 0}
                 </span>
