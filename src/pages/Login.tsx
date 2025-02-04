@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Mail, Key, Info } from "lucide-react";
+import { Mail, Key, Info, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Login = () => {
@@ -47,35 +47,23 @@ const Login = () => {
     setShowError(false);
 
     try {
-      console.log("Iniciando tentativa de login com email:", email);
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error("Erro detalhado do Supabase:", error);
-        
         if (error.message.includes("Email not confirmed")) {
-          throw new Error("Email não confirmado. Por favor, verifique sua caixa de entrada e clique no link de confirmação.");
+          throw new Error("Email não confirmado. Verifique sua caixa de entrada.");
         }
-        
         setShowError(true);
-        throw new Error("Conta não encontrada. Por favor, entre em contato com a administração da Muran para solicitar a criação de sua conta.");
+        throw new Error("Conta não encontrada. Entre em contato com a administração.");
       }
 
-      if (!data.user) {
-        throw new Error("Usuário não encontrado na resposta");
-      }
+      if (!data.user) throw new Error("Usuário não encontrado");
 
-      console.log("Login bem sucedido para o usuário:", data.user.email);
-      
-      // Verificar se a sessão foi realmente estabelecida
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Erro ao estabelecer sessão");
-      }
+      if (!session) throw new Error("Erro ao estabelecer sessão");
 
       toast({
         title: "Login realizado com sucesso!",
@@ -84,8 +72,6 @@ const Login = () => {
 
       navigate("/");
     } catch (error: any) {
-      console.error("Erro completo no login:", error);
-      
       toast({
         title: "Erro no login",
         description: error.message,
@@ -97,79 +83,104 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muran-secondary p-4">
-      <div className="w-full max-w-md space-y-8 p-4 md:p-8 bg-white rounded-lg shadow-lg">
-        <div className="text-center space-y-6">
-          <img
-            src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
-            alt="Muran Logo"
-            className="mx-auto h-20 md:h-30 w-auto"
-          />
-          <h2 className="text-2xl md:text-3xl font-bold text-muran-complementary">
-            Bem-vindo(a) de volta
-          </h2>
-          <p className="text-sm text-gray-600">
-            Faça login para acessar sua conta
-          </p>
-        </div>
-
-        {showError && (
-          <Alert className="bg-orange-50 border-orange-200 text-orange-800">
-            <Info className="h-5 w-5" />
-            <AlertDescription className="ml-2 text-sm">
-              Conta não encontrada. Por favor, entre em contato com a administração da Muran para solicitar a criação de sua conta.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handleLogin} className="mt-8 space-y-6">
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <div className="mt-1 relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  className="pl-10"
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Senha
-              </label>
-              <div className="mt-1 relative">
-                <Key className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pl-10"
-                  disabled={isLoading}
-                />
-              </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-muran-secondary to-muran-primary/20 p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <div className="p-8 space-y-6">
+          {/* Header Section */}
+          <div className="text-center space-y-4">
+            <img
+              src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
+              alt="Muran Logo"
+              className="mx-auto h-24 w-auto animate-fade-in"
+            />
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold text-muran-complementary">
+                Bem-vindo(a) de volta
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Faça login para acessar sua conta
+              </p>
             </div>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full bg-muran-primary hover:bg-muran-primary/90"
-            disabled={isLoading}
-          >
-            {isLoading ? "Entrando..." : "Entrar"}
-          </Button>
-        </form>
+          {/* Error Alert */}
+          {showError && (
+            <Alert className="bg-orange-50 border-orange-200 text-orange-800 animate-shake">
+              <Info className="h-5 w-5" />
+              <AlertDescription className="ml-2 text-sm">
+                Conta não encontrada. Entre em contato com a administração.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-4">
+              {/* Email Input */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className="pl-10 focus:ring-muran-primary focus:border-muran-primary"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium text-gray-700">
+                  Senha
+                </label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="pl-10 focus:ring-muran-primary focus:border-muran-primary"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full bg-muran-primary hover:bg-muran-primary/90 transition-all duration-300 transform hover:scale-[1.02] active:scale-95"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                "Entrar"
+              )}
+            </Button>
+          </form>
+        </div>
+
+        {/* Footer Section */}
+        <div className="bg-muran-primary/10 p-4 text-center">
+          <p className="text-sm text-gray-600">
+            Precisa de ajuda?{" "}
+            <a href="#" className="text-muran-primary hover:underline">
+              Contate a administração
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );
