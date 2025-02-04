@@ -108,8 +108,8 @@ const Login = () => {
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${i * 0.5}s`,
-                opacity: Math.random() * 0.5 + 0.3
+                animationDelay: `${i * 0.3}s`,
+                opacity: Math.random() * 0.8 + 0.3
               }}
             />
           ))}
@@ -201,7 +201,7 @@ const Login = () => {
       <style jsx global>{`
         @keyframes particleFloat {
           0% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-40px) scale(0.8); }
+          50% { transform: translateY(-60px) scale(0.8); }
           100% { transform: translateY(0) scale(1); }
         }
 
@@ -219,7 +219,7 @@ const Login = () => {
         }
 
         .animate-particleFloat {
-          animation: particleFloat 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          animation: particleFloat 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
 
         .animate-logoDance {
