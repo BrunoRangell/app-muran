@@ -12,17 +12,21 @@ import {
 } from "@/components/ui/form";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-interface TeamMemberFormData {
-  name: string;
-  email: string;
-  role: string;
-  password: string;
-  photo_url?: string;
-  birthday?: string;
-  start_date?: string;
-  manager_id: string; // Novo campo adicionado
-}
+const formSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("Email inválido"),
+  role: z.string().min(1, "Cargo é obrigatório"),
+  password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  photo_url: z.string().optional(),
+  birthday: z.string().optional(),
+  start_date: z.string().optional(),
+  manager_id: z.string().uuid("ID do gestor inválido").min(1, "ID do gestor é obrigatório"),
+});
+
+type TeamMemberFormData = z.infer<typeof formSchema>;
 
 interface TeamMemberFormProps {
   onSuccess?: () => void;
@@ -31,7 +35,19 @@ interface TeamMemberFormProps {
 export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const form = useForm<TeamMemberFormData>();
+  const form = useForm<TeamMemberFormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      role: "",
+      password: "",
+      photo_url: "",
+      birthday: "",
+      start_date: "",
+      manager_id: "",
+    }
+  });
 
   const onSubmit = async (data: TeamMemberFormData) => {
     try {
@@ -50,7 +66,7 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
             birthday: data.birthday,
             start_date: data.start_date,
             permission: 'member',
-            manager_id: data.manager_id // Adicionando o manager_id ao insert
+            manager_id: data.manager_id
           }
         ])
         .select()
@@ -194,7 +210,7 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
             <FormItem>
               <FormLabel>ID do Gestor</FormLabel>
               <FormControl>
-                <Input placeholder="ID do gestor responsável" {...field} />
+                <Input placeholder="Digite o UUID do gestor responsável" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
