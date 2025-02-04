@@ -63,12 +63,12 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0f0f15] p-4 relative overflow-hidden isolate">
-      {/* Novo Fundo Premium */}
+      {/* Camadas de Fundo Premium */}
       <div className="absolute inset-0 z-[-1]">
-        {/* Base gradient escuro */}
+        {/* Gradiente base */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#160B21] via-[#0F0819] to-[#1A0B2E]" />
 
-        {/* Brilho central */}
+        {/* Brilho radial central */}
         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#FF6E00]/15 via-[#FF6E00]/05 to-transparent" />
 
         {/* Padrão geométrico estático */}
@@ -99,11 +99,27 @@ const Login = () => {
           />
         </svg>
 
-        {/* Textura sutil */}
+        {/* Partículas flutuantes */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          {[...Array(24)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-[#ff6e00] rounded-full animate-particleFloat"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${i * 0.5}s`,
+                opacity: Math.random() * 0.3 + 0.1
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Textura de pontos sutil */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGgxNnYxNkgweiIgZmlsbD0ibm9uZSIvPjxjaXJjbGUgY3g9IjgiIGN5PSI4IiByPSIyIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+PC9zdmc+')] opacity-10" />
       </div>
 
-      {/* Card de Login (mantido idêntico) */}
+      {/* Card de Login */}
       <div className="w-full max-w-md bg-[rgba(235,235,240,0.95)] rounded-2xl shadow-2xl backdrop-blur-xl transition-all duration-500 hover:shadow-3xl relative overflow-hidden border border-[rgba(255,255,255,0.1)] group hover:border-[#ff6e00]/20">
         <div className="p-8 space-y-6 relative z-10">
           <div className="text-center space-y-6">
@@ -183,6 +199,12 @@ const Login = () => {
       </div>
 
       <style jsx global>{`
+        @keyframes particleFloat {
+          0% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-40px) scale(0.8); }
+          100% { transform: translateY(0) scale(1); }
+        }
+
         @keyframes logoDance {
           0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
           20% { transform: translateY(-10px) rotate(3deg) scale(1.05); }
@@ -194,6 +216,10 @@ const Login = () => {
         @keyframes shine {
           0% { background-position: 200% center; }
           100% { background-position: -200% center; }
+        }
+
+        .animate-particleFloat {
+          animation: particleFloat 12s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
         .animate-logoDance {
