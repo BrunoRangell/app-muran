@@ -87,38 +87,41 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   });
 
   return (
-    <Card>
+    <Card className="shadow-lg border-t-4 border-muran-primary hover:scale-105 transition-transform duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Gift className="text-muran-primary" />
+        <CardTitle className="flex items-center gap-3 text-lg font-bold text-gray-800">
+          <Gift className="text-muran-primary" size={20} />
           {currentMonthBirthdays.length > 0 
             ? "Aniversariantes do Mês" 
             : "Próximos Aniversariantes"}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-6">
           {sortedBirthdays.map((member) => {
             const isToday = isBirthdayToday(member.birthday);
             const isTomorrow = isBirthdayTomorrow(member.birthday);
             return (
               <div
                 key={member.id}
-                className={`flex items-center justify-between p-2 rounded-lg ${isToday ? 'bg-muran-primary text-white' : isTomorrow ? 'bg-blue-200 text-blue-800' : 'bg-gray-50 text-gray-900'} transition-none`}
+                className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
+                  isToday ? 'bg-muran-primary text-white' : 
+                  isTomorrow ? 'bg-blue-200 text-blue-800' : 'bg-gray-50 text-gray-900'
+                } ${isToday || isTomorrow ? 'shadow-xl' : 'shadow-sm'}`}
               >
-                <span className="font-medium">
+                <span className={`font-semibold ${isToday ? 'text-white' : ''}`}>
                   {isToday ? `🎉 ${member.name} (Hoje!)` : isTomorrow ? `🎂 ${member.name} (Amanhã!)` : member.name}
                 </span>
-                <span className={isToday ? 'text-gray-200' : isTomorrow ? 'text-blue-600' : 'text-gray-600'}>
+                <span className={`font-medium ${isToday ? 'text-gray-200' : isTomorrow ? 'text-blue-600' : 'text-gray-600'}`}>
                   {formatBirthday(member.birthday)}
                 </span>
-                {isToday && <span className="ml-2">🎉</span>}
-                {isTomorrow && <span className="ml-2">🎂</span>}
+                {isToday && <span className="ml-2 text-white">🎉</span>}
+                {isTomorrow && <span className="ml-2 text-blue-800">🎂</span>}
               </div>
             );
           })}
           {sortedBirthdays.length === 0 && (
-            <p className="text-center text-gray-600">
+            <p className="text-center text-gray-600 font-medium">
               Nenhum aniversariante encontrado
             </p>
           )}
