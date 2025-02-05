@@ -72,12 +72,9 @@ export const ManagersList = () => {
     return (
       <div className="flex flex-col items-center justify-center p-8 gap-4 text-center">
         <AlertCircle className="h-12 w-12 text-red-500" />
-        <h3 className="text-xl font-semibold text-gray-800">
-          Erro ao carregar membros
-        </h3>
+        <h3 className="text-xl font-semibold text-gray-800">Erro ao carregar membros</h3>
         <p className="text-gray-600 max-w-md">
-          Ocorreu um problema ao tentar carregar a lista de membros. Por favor,
-          tente novamente mais tarde.
+          Ocorreu um problema ao tentar carregar a lista de membros. Por favor, tente novamente mais tarde.
         </p>
         <Button onClick={fetchTeamMembers} variant="outline" className="mt-4">
           Tentar novamente
@@ -96,21 +93,18 @@ export const ManagersList = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto px-4">
-      <div className="relative">
-        <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          size={20}
-        />
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="relative group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         <Input
-          placeholder="Buscar por nome, email ou cargo..."
+          placeholder="Buscar membro por nome, email ou cargo..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 focus-visible:ring-muran-primary/30 transition-all"
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {filteredMembers.length === 0 ? (
           <Card className="p-6 flex flex-col items-center justify-center gap-3 min-h-[200px]">
             <User className="h-10 w-10 text-gray-400" />
@@ -127,18 +121,16 @@ export const ManagersList = () => {
           filteredMembers.map((member) => (
             <Card
               key={member.id}
-              className="p-4 hover:shadow-md transition-shadow duration-200 group"
+              className="p-3 hover:shadow-md transition-shadow duration-200 group"
             >
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="bg-muran-primary/10 p-2 rounded-full">
-                    <User className="h-6 w-6 text-muran-primary" />
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="bg-muran-primary/10 p-1 rounded-full">
+                    <User className="h-5 w-5 text-muran-primary" />
                   </div>
                   <div className="space-y-1 flex-1">
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {member.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 truncate">{member.email}</p>
+                    <h3 className="font-medium text-gray-900 text-sm truncate">{member.name}</h3>
+                    <p className="text-xs text-gray-600 truncate">{member.email}</p>
                     <span className="inline-block bg-muran-primary/10 text-muran-primary text-xs px-2 py-1 rounded-full">
                       {member.role}
                     </span>
@@ -147,9 +139,9 @@ export const ManagersList = () => {
                 <Button
                   onClick={() => handleLogin(member)}
                   className="shrink-0 hover:bg-muran-primary/90 bg-muran-primary text-white hover:shadow-sm transition-all"
-                  size="sm"
+                  size="xs"
                 >
-                  <LogIn className="mr-2 h-4 w-4" />
+                  <LogIn className="mr-1 h-4 w-4" />
                   Acessar
                 </Button>
               </div>
@@ -163,20 +155,11 @@ export const ManagersList = () => {
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               <LogIn className="h-5 w-5" />
-              Acesso do Membro
+              Acesso do membro
             </DialogTitle>
-            <DialogDescription className="pt-2">
-              {selectedMember?.name
-                ? `Autenticação para ${selectedMember.name}`
-                : "Complete o login abaixo"}
-            </DialogDescription>
           </DialogHeader>
           {selectedMember && (
-            <ManagerLoginForm
-              managerId={selectedMember.id}
-              managerName={selectedMember.name}
-              onClose={() => setIsLoginDialogOpen(false)}
-            />
+            <ManagerLoginForm managerId={selectedMember.id} managerName={selectedMember.name} onClose={() => setIsLoginDialogOpen(false)} />
           )}
         </DialogContent>
       </Dialog>
