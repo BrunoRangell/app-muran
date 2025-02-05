@@ -102,8 +102,15 @@ const ManagerFinancial = () => {
       form.reset();
       setIsDialogOpen(false);
 
-      // Atualiza o histórico de salários
-      await fetchSalaries();
+      // Atualiza o estado local imediatamente para atualizar o gráfico
+      setSalaries((prev) => [
+        { month: formattedDate, amount },
+        ...prev,
+      ]);
+      
+      // Opcional: você pode chamar fetchSalaries() aqui para sincronizar com o banco,
+      // mas atualizar o estado local já garante que o gráfico seja atualizado.
+      // await fetchSalaries();
 
     } catch (error) {
       console.error('Erro ao adicionar salário:', error);
