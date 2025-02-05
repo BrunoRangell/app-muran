@@ -1,30 +1,11 @@
 import {
   Table,
   TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Pencil, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import { Column, SortConfig } from "../types";
-import { formatCurrency, formatDate } from "@/utils/formatters";
-import { differenceInMonths } from "date-fns";
-
-interface Client {
-  id: string;
-  company_name: string;
-  contract_value: number;
-  first_payment_date: string;
-  payment_type: "pre" | "post";
-  status: "active" | "inactive";
-  acquisition_channel: string;
-  company_birthday: string;
-  contact_name: string;
-  contact_phone: string;
-  last_payment_date: string | null;
-}
+import { Client, Column, SortConfig } from "../types";
+import { ClientsTableHeader } from "./TableHeader";
+import { ClientTableRow } from "./TableRow";
+import { calculateRetention } from "./utils";
 
 interface ClientsTableProps {
   clients: Client[] | undefined;
@@ -34,37 +15,18 @@ interface ClientsTableProps {
   onSort: (key: string) => void;
 }
 
-export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort }: ClientsTableProps) => {
+export const ClientsTable = ({ 
+  clients, 
+  columns, 
+  onEditClick, 
+  sortConfig, 
+  onSort 
+}: ClientsTableProps) => {
   const sortedColumns = [...columns].sort((a, b) => {
     if (a.fixed && !b.fixed) return -1;
     if (!a.fixed && b.fixed) return 1;
     return 0;
   });
-
-  const formatRetention = (months: number) => {
-    if (months <= 11) {
-      return `${months} ${months === 1 ? 'mês' : 'meses'}`;
-    }
-    const years = Math.floor(months / 12);
-    const remainingMonths = months % 12;
-    if (remainingMonths === 0) {
-      return `${years} ${years === 1 ? 'ano' : 'anos'}`;
-    }
-    return `${years} ${years === 1 ? 'ano' : 'anos'} e ${remainingMonths} ${remainingMonths === 1 ? 'mês' : 'meses'}`;
-  };
-
-  const calculateRetention = (client: Client) => {
-    if (!client.first_payment_date) return 0;
-    
-    const startDate = new Date(client.first_payment_date);
-    const endDate = client.status === "active" 
-      ? new Date()
-      : client.last_payment_date 
-        ? new Date(client.last_payment_date)
-        : new Date();
-    
-    return Math.max(differenceInMonths(endDate, startDate), 0);
-  };
 
   // Adiciona a retenção calculada aos clientes para ordenação
   const clientsWithRetention = clients?.map(client => ({
@@ -93,90 +55,20 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
   return (
     <div className="rounded-md border">
       <Table>
-        <TableHeader>
-          <TableRow>
-            {sortedColumns.filter(col => col.show).map(column => (
-              <TableHead 
-                key={column.id}
-                className={`cursor-pointer hover:bg-muted/50 transition-colors ${
-                  sortConfig.key === column.id ? 'bg-muran-secondary/50' : ''
-                }`}
-                onClick={() => onSort(column.id)}
-              >
-                <div className="flex items-center gap-2">
-                  {column.label}
-                  {sortConfig.key === column.id ? (
-                    <span className="text-muran-primary">
-                      {sortConfig.direction === 'asc' ? (
-                        <ArrowUp className="h-4 w-4" />
-                      ) : (
-                        <ArrowDown className="h-4 w-4" />
-                      )}
-                    </span>
-                  ) : (
-                    <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-              </TableHead>
-            ))}
-            <TableHead>Ações</TableHead>
-          </TableRow>
-        </TableHeader>
+        <ClientsTableHeader 
+          columns={sortedColumns} 
+          sortConfig={sortConfig} 
+          onSort={onSort} 
+        />
         <TableBody>
-          {sortedClients?.map((client) => {
-            const retentionMonths = client.calculatedRetention;
-            return (
-              <TableRow key={client.id}>
-                {sortedColumns.filter(col => col.show).map(column => {
-                  let content = client[column.id as keyof Client];
-                  
-                  if (column.id === 'contract_value') {
-                    content = formatCurrency(client.contract_value);
-                  } else if (column.id === 'first_payment_date' || column.id === 'company_birthday' || column.id === 'last_payment_date') {
-                    // Ajustando para considerar a data UTC
-                    if (content) {
-                      const date = new Date(content as string);
-                      date.setDate(date.getDate() + 1);
-                      content = formatDate(date.toISOString());
-                    } else {
-                      content = '';
-                    }
-                  } else if (column.id === 'payment_type') {
-                    content = content === 'pre' ? 'Pré-pago' : 'Pós-pago';
-                  } else if (column.id === 'retention') {
-                    content = formatRetention(retentionMonths);
-                  } else if (column.id === 'status') {
-                    return (
-                      <TableCell key={column.id}>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            client.status === "active"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {client.status === "active" ? "Ativo" : "Inativo"}
-                        </span>
-                      </TableCell>
-                    );
-                  }
-
-                  return (
-                    <TableCell key={column.id}>{content}</TableCell>
-                  );
-                })}
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onEditClick(client)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            );
-          })}
+          {sortedClients?.map((client) => (
+            <ClientTableRow
+              key={client.id}
+              client={client}
+              columns={sortedColumns}
+              onEditClick={onEditClick}
+            />
+          ))}
         </TableBody>
       </Table>
     </div>
