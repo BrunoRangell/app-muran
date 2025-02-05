@@ -16,15 +16,17 @@ interface SalaryChartProps {
 }
 
 export const SalaryChart = ({ salaries }: SalaryChartProps) => {
-  // Formata os dados para o gráfico
-  const formattedData = salaries.map(item => {
-    const date = new Date(item.month);
-    date.setDate(date.getDate() + 1); // Ajuste para o formato correto
-    return {
-      month: format(date, 'MMM/yyyy', { locale: ptBR }),
-      amount: item.amount
-    };
-  });
+  // Inverte os dados para que o mês mais antigo fique à esquerda
+  const formattedData = [...salaries]
+    .reverse()
+    .map(item => {
+      const date = new Date(item.month);
+      date.setDate(date.getDate() + 1); // Ajuste para o formato correto
+      return {
+        month: format(date, 'MMM/yyyy', { locale: ptBR }),
+        amount: item.amount,
+      };
+    });
 
   // Calcula o total acumulado
   const totalSalary = formattedData.reduce((acc, curr) => acc + curr.amount, 0);
