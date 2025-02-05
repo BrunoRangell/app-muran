@@ -33,9 +33,9 @@ export const ManagersList = () => {
   const fetchTeamMembers = async () => {
     try {
       const { data, error } = await supabase
-        .from('team_members')
-        .select('id, name, email, role')
-        .order('name');
+        .from("team_members")
+        .select("id, name, email, role")
+        .order("name");
 
       if (error) throw error;
 
@@ -57,7 +57,7 @@ export const ManagersList = () => {
     fetchTeamMembers();
   }, []);
 
-  const filteredMembers = teamMembers.filter(member =>
+  const filteredMembers = teamMembers.filter((member) =>
     member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.role.toLowerCase().includes(searchTerm.toLowerCase())
@@ -72,9 +72,12 @@ export const ManagersList = () => {
     return (
       <div className="flex flex-col items-center justify-center p-8 gap-4 text-center">
         <AlertCircle className="h-12 w-12 text-red-500" />
-        <h3 className="text-xl font-semibold text-gray-800">Erro ao carregar membros</h3>
+        <h3 className="text-xl font-semibold text-gray-800">
+          Erro ao carregar membros
+        </h3>
         <p className="text-gray-600 max-w-md">
-          Ocorreu um problema ao tentar carregar a lista de membros. Por favor, tente novamente mais tarde.
+          Ocorreu um problema ao tentar carregar a lista de membros. Por favor,
+          tente novamente mais tarde.
         </p>
         <Button onClick={fetchTeamMembers} variant="outline" className="mt-4">
           Tentar novamente
@@ -93,11 +96,14 @@ export const ManagersList = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="relative group">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+    <div className="space-y-6 max-w-3xl mx-auto px-4">
+      <div className="relative">
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          size={20}
+        />
         <Input
-          placeholder="Buscar membro por nome, email ou cargo..."
+          placeholder="Buscar por nome, email ou cargo..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 focus-visible:ring-muran-primary/30 transition-all"
@@ -112,24 +118,26 @@ export const ManagersList = () => {
               {searchTerm ? "Nenhum resultado encontrado" : "Lista de membros vazia"}
             </h3>
             <p className="text-gray-600 text-center text-sm max-w-xs">
-              {searchTerm 
+              {searchTerm
                 ? "Tente ajustar sua busca ou verifique a ortografia"
                 : "Nenhum membro cadastrado no sistema ainda"}
             </p>
           </Card>
         ) : (
           filteredMembers.map((member) => (
-            <Card 
-              key={member.id} 
+            <Card
+              key={member.id}
               className="p-4 hover:shadow-md transition-shadow duration-200 group"
             >
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4 flex-1">
                   <div className="bg-muran-primary/10 p-2 rounded-full">
                     <User className="h-6 w-6 text-muran-primary" />
                   </div>
                   <div className="space-y-1 flex-1">
-                    <h3 className="font-medium text-gray-900 truncate">{member.name}</h3>
+                    <h3 className="font-medium text-gray-900 truncate">
+                      {member.name}
+                    </h3>
                     <p className="text-sm text-gray-600 truncate">{member.email}</p>
                     <span className="inline-block bg-muran-primary/10 text-muran-primary text-xs px-2 py-1 rounded-full">
                       {member.role}
@@ -155,10 +163,12 @@ export const ManagersList = () => {
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               <LogIn className="h-5 w-5" />
-              Acesso do membro
+              Acesso do Membro
             </DialogTitle>
             <DialogDescription className="pt-2">
-              {selectedMember?.name ? `Autenticação para ${selectedMember.name}` : 'Complete o login abaixo'}
+              {selectedMember?.name
+                ? `Autenticação para ${selectedMember.name}`
+                : "Complete o login abaixo"}
             </DialogDescription>
           </DialogHeader>
           {selectedMember && (

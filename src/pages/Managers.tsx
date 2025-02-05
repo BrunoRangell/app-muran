@@ -26,7 +26,7 @@ const Managers = () => {
   const { data: teamMembers, isLoading: isLoadingTeam, error } = useTeamMembers();
 
   const handleEdit = (member: TeamMember) => {
-    if (currentUser?.permission !== 'admin' && currentUser?.id !== member.id) {
+    if (currentUser?.permission !== "admin" && currentUser?.id !== member.id) {
       toast({
         title: "Acesso negado",
         description: "Você só pode editar suas próprias informações.",
@@ -39,7 +39,7 @@ const Managers = () => {
   };
 
   const handleAddMember = () => {
-    if (currentUser?.permission !== 'admin') {
+    if (currentUser?.permission !== "admin") {
       toast({
         title: "Acesso negado",
         description: "Apenas administradores podem adicionar novos membros.",
@@ -58,13 +58,13 @@ const Managers = () => {
         name: data.name,
         photo_url: data.photo_url,
         birthday: data.birthday,
-        role: data.role
+        role: data.role,
       };
 
       const { error } = await supabase
-        .from('team_members')
+        .from("team_members")
         .update(updateData)
-        .eq('id', selectedMember.id);
+        .eq("id", selectedMember.id);
 
       if (error) throw error;
 
@@ -89,26 +89,31 @@ const Managers = () => {
     return (
       <div className="min-h-screen p-8 flex flex-col items-center justify-center text-center">
         <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-800 mb-2">Erro ao carregar membros</h2>
-        <p className="text-gray-600 max-w-md">Ocorreu um erro ao tentar carregar a lista de membros. Por favor, tente recarregar a página.</p>
+        <h2 className="text-xl font-semibold text-gray-800 mb-2">
+          Erro ao carregar membros
+        </h2>
+        <p className="text-gray-600 max-w-md">
+          Ocorreu um erro ao tentar carregar a lista de membros. Por favor, tente
+          recarregar a página.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
             <Users className="h-7 md:h-9 w-7 md:w-9 text-muran-primary" />
             Nossa Equipe
           </h1>
           <p className="text-gray-600 text-sm md:text-base">
-            Conheça os membros que fazem nossa empresa brilhar
+            Conheça os membros que fazem nossa empresa brilhar.
           </p>
         </div>
-        
-        {currentUser?.permission === 'admin' && (
+
+        {currentUser?.permission === "admin" && (
           <Button
             onClick={handleAddMember}
             className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2 transition-transform hover:scale-105 w-full md:w-auto"
@@ -118,7 +123,7 @@ const Managers = () => {
             <span>Adicionar Membro</span>
           </Button>
         )}
-      </div>
+      </header>
 
       <Card className="p-4 md:p-6 bg-white/95 backdrop-blur-sm border border-gray-100 shadow-lg">
         {isLoadingTeam || isLoadingUser ? (
@@ -142,10 +147,13 @@ const Managers = () => {
         ) : (
           <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 text-center p-4">
             <AlertCircle className="h-12 w-12 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-900">Nenhum membro encontrado</h3>
+            <h3 className="text-lg font-medium text-gray-900">
+              Nenhum membro encontrado
+            </h3>
             <p className="text-gray-600 max-w-sm text-sm">
               Parece que ainda não há membros cadastrados na equipe.
-              {currentUser?.permission === 'admin' && " Clique no botão acima para adicionar um novo."}
+              {currentUser?.permission === "admin" &&
+                " Clique no botão acima para adicionar um novo."}
             </p>
           </div>
         )}
