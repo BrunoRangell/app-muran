@@ -48,16 +48,16 @@ const ManagerFinancial = () => {
 
     try {
       const { data: salariesData, error } = await supabase
-        .from('salaries')
-        .select('month, amount')
-        .eq('manager_id', session.user.id)
-        .order('month', { ascending: false });
+        .from("salaries")
+        .select("month, amount")
+        .eq("manager_id", session.user.id)
+        .order("month", { ascending: false });
 
       if (error) throw error;
 
       setSalaries(salariesData || []);
     } catch (error) {
-      console.error('Error fetching salaries:', error);
+      console.error("Error fetching salaries:", error);
       toast({
         title: "Erro ao carregar salários",
         description: "Tente novamente mais tarde.",
@@ -84,17 +84,19 @@ const ManagerFinancial = () => {
         return;
       }
 
-      const [year, month] = values.month.split('-').map(Number);
-      const formattedDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+      const [year, month] = values.month.split("-").map(Number);
+      const formattedDate = new Date(year, month - 1, 1)
+        .toISOString()
+        .split("T")[0];
 
-      const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
-      const { error } = await supabase
-        .from('salaries')
-        .insert([{ 
+      const amount = parseFloat(values.amount.replace(/\D/g, "")) / 100;
+      const { error } = await supabase.from("salaries").insert([
+        {
           manager_id: sessionData.session.user.id,
           month: formattedDate,
-          amount: amount 
-        }]);
+          amount: amount,
+        },
+      ]);
 
       if (error) throw error;
 
@@ -102,18 +104,10 @@ const ManagerFinancial = () => {
       form.reset();
       setIsDialogOpen(false);
 
-      // Atualiza o estado local imediatamente para atualizar o gráfico
-      setSalaries((prev) => [
-        { month: formattedDate, amount },
-        ...prev,
-      ]);
-      
-      // Opcional: você pode chamar fetchSalaries() aqui para sincronizar com o banco,
-      // mas atualizar o estado local já garante que o gráfico seja atualizado.
-      // await fetchSalaries();
-
+      // Atualiza o estado local imediatamente para refletir no gráfico
+      setSalaries((prev) => [{ month: formattedDate, amount }, ...prev]);
     } catch (error) {
-      console.error('Erro ao adicionar salário:', error);
+      console.error("Erro ao adicionar salário:", error);
       toast({
         title: "Erro ao adicionar salário",
         description: "Tente novamente mais tarde.",
@@ -123,11 +117,11 @@ const ManagerFinancial = () => {
   };
 
   const formatCurrency = (value: string) => {
-    const onlyNumbers = value.replace(/\D/g, '') || '0';
+    const onlyNumbers = value.replace(/\D/g, "") || "0";
     const amount = parseInt(onlyNumbers) / 100;
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(amount);
   };
 
@@ -164,7 +158,10 @@ const ManagerFinancial = () => {
               <DialogTitle>Adicionar Novo Recebimento</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleAddSalary)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(handleAddSalary)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="month"
@@ -204,7 +201,10 @@ const ManagerFinancial = () => {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full bg-muran-primary hover:bg-muran-primary/90">
+                <Button
+                  type="submit"
+                  className="w-full bg-muran-primary hover:bg-muran-primary/90"
+                >
                   Adicionar
                 </Button>
               </form>
@@ -239,7 +239,7 @@ const ManagerFinancial = () => {
             </h2>
             <div className="space-y-4">
               {salaries.map((salary, index) => {
-                const [year, month] = salary.month.split('-');
+                const [year, month] = salary.month.split("-");
                 const date = new Date(Number(year), Number(month) - 1);
                 return (
                   <div
@@ -247,12 +247,15 @@ const ManagerFinancial = () => {
                     className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-2 md:gap-0"
                   >
                     <span className="font-medium">
-                      {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(date)}
+                      {new Intl.DateTimeFormat("pt-BR", {
+                        month: "long",
+                        year: "numeric",
+                      }).format(date)}
                     </span>
                     <span className="text-green-600 font-semibold">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
+                      {new Intl.NumberFormat("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
                       }).format(salary.amount)}
                     </span>
                   </div>

@@ -1,7 +1,4 @@
-import {
-  ChartContainer,
-  ChartTooltip,
-} from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -16,20 +13,22 @@ interface SalaryChartProps {
 }
 
 export const SalaryChart = ({ salaries }: SalaryChartProps) => {
-  // Inverte os dados para que o mês mais antigo fique à esquerda
+  // Inverte a ordem para que o mês mais antigo fique à esquerda
   const formattedData = [...salaries]
     .reverse()
-    .map(item => {
+    .map((item) => {
       const date = new Date(item.month);
-      date.setDate(date.getDate() + 1); // Ajuste para o formato correto
       return {
-        month: format(date, 'MMM/yyyy', { locale: ptBR }),
+        month: format(date, "MMM/yyyy", { locale: ptBR }),
         amount: item.amount,
       };
     });
 
   // Calcula o total acumulado
-  const totalSalary = formattedData.reduce((acc, curr) => acc + curr.amount, 0);
+  const totalSalary = formattedData.reduce(
+    (acc, curr) => acc + curr.amount,
+    0
+  );
 
   return (
     <div className="space-y-4">
@@ -38,9 +37,9 @@ export const SalaryChart = ({ salaries }: SalaryChartProps) => {
           Total acumulado
         </span>
         <span className="text-2xl font-bold text-muran-primary">
-          {new Intl.NumberFormat('pt-BR', { 
-            style: 'currency', 
-            currency: 'BRL' 
+          {new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
           }).format(totalSalary)}
         </span>
         <span className="text-xs text-muran-complementary/80 block mt-1">
@@ -49,7 +48,7 @@ export const SalaryChart = ({ salaries }: SalaryChartProps) => {
       </div>
 
       <ChartContainer
-        className="aspect-[2/1] w-full max-h-[400px] mx-auto"
+        className="w-full h-[300px] md:h-[400px] mx-auto"
         config={{
           salary: {
             theme: {
@@ -59,22 +58,25 @@ export const SalaryChart = ({ salaries }: SalaryChartProps) => {
           },
         }}
       >
-        <LineChart data={formattedData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+        <LineChart
+          data={formattedData}
+          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="month"
-            tick={{ fill: '#0f0f0f', fontSize: 12 }}
-            tickLine={{ stroke: '#e5e7eb' }}
-            axisLine={{ stroke: '#e5e7eb' }}
+            tick={{ fill: "#0f0f0f", fontSize: 12 }}
+            tickLine={{ stroke: "#e5e7eb" }}
+            axisLine={{ stroke: "#e5e7eb" }}
           />
           <YAxis
-            tick={{ fill: '#0f0f0f', fontSize: 12 }}
+            tick={{ fill: "#0f0f0f", fontSize: 12 }}
             tickFormatter={(value) => `R$ ${value}`}
-            tickLine={{ stroke: '#e5e7eb' }}
-            axisLine={{ stroke: '#e5e7eb' }}
+            tickLine={{ stroke: "#e5e7eb" }}
+            axisLine={{ stroke: "#e5e7eb" }}
           />
           <ChartTooltip
-            cursor={{ stroke: '#e5e7eb' }}
+            cursor={{ stroke: "#e5e7eb" }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const data = payload[0];
@@ -84,9 +86,9 @@ export const SalaryChart = ({ salaries }: SalaryChartProps) => {
                     {data.payload.month}
                   </p>
                   <p className="text-sm font-bold text-muran-primary">
-                    {new Intl.NumberFormat('pt-BR', { 
-                      style: 'currency', 
-                      currency: 'BRL' 
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
                     }).format(data.value as number)}
                   </p>
                 </div>
