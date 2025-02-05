@@ -1,122 +1,185 @@
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Loader2, Users, AlertCircle } from "lucide-react";
-import { TeamMemberCard } from "@/components/team/TeamMemberCard";
-import { EditMemberDialog } from "@/components/team/EditMemberDialog";
-import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
-import { TeamMemberForm } from "@/components/admin/TeamMemberForm";
-import { supabase } from "@/lib/supabase";
-import { EditFormData, TeamMember } from "@/types/team";
+import { Card } from "@/components/ui/card";
+import { Search, LogIn, Loader2, AlertCircle, User } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import { ManagerLoginForm } from "./ManagerLoginForm";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
 
-const Managers = () => {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+export const ManagersList = () => {
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
-  const { data: teamMembers, isLoading: isLoadingTeam, error } = useTeamMembers();
+  const fetchTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("id, name, email, role")
+        .order("name");
 
-  const handleEdit = (member: TeamMember) => {
-    if (currentUser?.permission !== 'admin' && currentUser?.id !== member.id) {
+      if (error) throw error;
+
+      setTeamMembers(data || []);
+      setError(null);
+    } catch (err) {
+      setError("Falha ao carregar membros da equipe");
       toast({
-        title: "Acesso negado",
-        description: "Você só pode editar suas próprias informações.",
+        title: "Erro de conexão",
+        description: "Não foi possível carregar os dados da equipe",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-    setSelectedMember(member);
-    setIsEditDialogOpen(true);
   };
 
-  const handleAddMember = () => {
-    if (currentUser?.permission !== 'admin') {
-      toast({
-        title: "Acesso negado",
-        description: "Apenas administradores podem adicionar novos membros.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsAddDialogOpen(true);
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
+
+  const filteredMembers = teamMembers.filter((member) =>
+    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleLogin = (member: TeamMember) => {
+    setSelectedMember(member);
+    setIsLoginDialogOpen(true);
   };
 
   if (error) {
     return (
-      <div className="min-h-screen p-8 flex flex-col items-center justify-center text-center">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-800 mb-2">Erro ao carregar membros</h2>
-        <p className="text-gray-600 max-w-md">Ocorreu um erro ao tentar carregar a lista de membros. Por favor, tente recarregar a página.</p>
+      <div className="flex flex-col items-center justify-center p-8 gap-4 text-center">
+        <AlertCircle className="h-12 w-12 text-red-500" />
+        <h3 className="text-xl font-semibold text-gray-800">
+          Erro ao carregar membros
+        </h3>
+        <p className="text-gray-600 max-w-md">
+          Ocorreu um problema ao tentar carregar a lista de membros. Por favor,
+          tente novamente mais tarde.
+        </p>
+        <Button onClick={fetchTeamMembers} variant="outline" className="mt-4">
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] gap-3">
+        <Loader2 className="h-8 w-8 text-muran-primary animate-spin" />
+        <p className="text-gray-600">Carregando membros...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Users className="h-7 md:h-9 w-7 md:w-9 text-muran-primary" />
-            Nossa Equipe
-          </h1>
-          <p className="text-gray-600 text-sm md:text-base">
-            Conheça os membros que fazem nossa empresa brilhar
-          </p>
-        </div>
-        
-        {currentUser?.permission === 'admin' && (
-          <Button
-            onClick={handleAddMember}
-            className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2 transition-transform hover:scale-105 w-full md:w-auto"
-            size="lg"
-          >
-            <UserPlus className="h-5 w-5" />
-            <span>Adicionar Membro</span>
-          </Button>
+    <div className="space-y-6 max-w-3xl mx-auto px-4">
+      <div className="relative">
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          size={20}
+        />
+        <Input
+          placeholder="Buscar por nome, email ou cargo..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 focus-visible:ring-muran-primary/30 transition-all"
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+        {filteredMembers.length === 0 ? (
+          <Card className="p-6 flex flex-col items-center justify-center gap-3 min-h-[200px]">
+            <User className="h-10 w-10 text-gray-400" />
+            <h3 className="text-lg font-medium text-gray-900">
+              {searchTerm ? "Nenhum resultado encontrado" : "Lista de membros vazia"}
+            </h3>
+            <p className="text-gray-600 text-center text-sm max-w-xs">
+              {searchTerm
+                ? "Tente ajustar sua busca ou verifique a ortografia"
+                : "Nenhum membro cadastrado no sistema ainda"}
+            </p>
+          </Card>
+        ) : (
+          filteredMembers.map((member) => (
+            <Card
+              key={member.id}
+              className="p-4 hover:shadow-md transition-shadow duration-200 group"
+            >
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="bg-muran-primary/10 p-2 rounded-full">
+                    <User className="h-6 w-6 text-muran-primary" />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <h3 className="font-medium text-gray-900 truncate">
+                      {member.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 truncate">{member.email}</p>
+                    <span className="inline-block bg-muran-primary/10 text-muran-primary text-xs px-2 py-1 rounded-full">
+                      {member.role}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => handleLogin(member)}
+                  className="shrink-0 hover:bg-muran-primary/90 bg-muran-primary text-white hover:shadow-sm transition-all"
+                  size="sm"
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Acessar
+                </Button>
+              </div>
+            </Card>
+          ))
         )}
       </div>
 
-      <Card className="p-4 md:p-6 bg-white/95 backdrop-blur-sm border border-gray-100 shadow-lg">
-        {isLoadingTeam || isLoadingUser ? (
-          <div className="min-h-[300px] flex flex-col items-center justify-center gap-4">
-            <Loader2 className="h-8 w-8 text-muran-primary animate-spin" />
-            <p className="text-gray-600 text-sm">Carregando equipe...</p>
-          </div>
-        ) : teamMembers && teamMembers.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-            {teamMembers.map((member) => (
-              <TeamMemberCard
-                key={member.id}
-                member={member}
-                currentUserPermission={currentUser?.permission}
-                currentUserId={currentUser?.id}
-                onEdit={handleEdit}
-                className="hover:shadow-md transition-all duration-300 ease-in-out"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 text-center p-4">
-            <AlertCircle className="h-12 w-12 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-900">Nenhum membro encontrado</h3>
-            <p className="text-gray-600 max-w-sm text-sm">
-              Parece que ainda não há membros cadastrados na equipe.
-              {currentUser?.permission === 'admin' && " Clique no botão acima para adicionar um novo."}
-            </p>
-          </div>
-        )}
-      </Card>
+      <Dialog open={isLoginDialogOpen} onOpenChange={setIsLoginDialogOpen}>
+        <DialogContent className="rounded-lg max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <LogIn className="h-5 w-5" />
+              Acesso do Membro
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              {selectedMember?.name
+                ? `Autenticação para ${selectedMember.name}`
+                : "Complete o login abaixo"}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMember && (
+            <ManagerLoginForm
+              managerId={selectedMember.id}
+              managerName={selectedMember.name}
+              onClose={() => setIsLoginDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
-
-export default Managers;
