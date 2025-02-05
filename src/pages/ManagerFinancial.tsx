@@ -4,127 +4,71 @@ import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { SalaryChart } from "@/components/managers/SalaryChart";
+import { seedInitialData } from "@/lib/seed";
 import { Button } from "@/components/ui/button";
 import { History, TrendingUp, Sparkles } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 interface Salary {
   month: string;
   amount: number;
 }
 
-const formSchema = z.object({
-  month: z.string().min(1, "Selecione um mês"),
-  amount: z.string().min(1, "Digite um valor"),
-});
-
 const ManagerFinancial = () => {
   const [salaries, setSalaries] = useState<Salary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      month: "",
-      amount: "",
-    },
-  });
-
-  const fetchSalaries = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/gestores");
-      return;
-    }
-
-    try {
-      const { data: salariesData, error } = await supabase
-        .from('salaries')
-        .select('month, amount')
-        .eq('manager_id', session.user.id)
-        .order('month', { ascending: false });
-
-      if (error) throw error;
-
-      setSalaries(salariesData || []);
-    } catch (error) {
-      console.error('Error fetching salaries:', error);
-      toast({
-        title: "Erro ao carregar salários",
-        description: "Tente novamente mais tarde.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchSalaries();
-  }, [navigate, toast]);
-
-  const handleAddSalary = async (values: z.infer<typeof formSchema>) => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user?.id) {
-        toast({
-          title: "Erro ao adicionar salário",
-          description: "Você precisa estar autenticado para adicionar um salário.",
-          variant: "destructive",
-        });
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/gestores");
         return;
       }
 
-      const [year, month] = values.month.split('-').map(Number);
-      const formattedDate = format(new Date(year, month - 1, 1), "yyyy-MM-dd");
+      try {
+        const { data: salariesData, error } = await supabase
+          .from('salaries')
+          .select('month, amount')
+          .eq('manager_id', session.user.id)
+          .order('month', { ascending: false });
 
-      const amount = parseFloat(values.amount.replace(/\D/g, '')) / 100;
-      const { error } = await supabase
-        .from('salaries')
-        .insert([
-          {
-            manager_id: sessionData.session.user.id,
-            month: formattedDate,
-            amount: amount,
-          },
-        ]);
+        if (error) throw error;
 
-      if (error) throw error;
+        setSalaries(salariesData || []);
+      } catch (error) {
+        console.error('Error fetching salaries:', error);
+        toast({
+          title: "Erro ao carregar salários",
+          description: "Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
+    checkAuth();
+  }, [navigate, toast]);
+
+  const handleSeedData = async () => {
+    try {
+      await seedInitialData();
       toast({
-        title: "Salário adicionado",
-        description: "O salário foi adicionado com sucesso!",
+        title: "Dados criados com sucesso!",
+        description: "Recarregue a página para ver os dados.",
       });
-
-      form.reset();
-      setIsDialogOpen(false);
-      fetchSalaries(); // Atualiza a lista de salários
+      window.location.reload();
     } catch (error) {
-      console.error('Erro ao adicionar salário:', error);
+      console.error('Erro ao criar dados:', error);
       toast({
-        title: "Erro ao adicionar salário",
-        description: "Não foi possível adicionar o salário. Tente novamente mais tarde.",
+        title: "Erro ao criar dados",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     }
-  };
-
-  const formatCurrency = (value: string) => {
-    const onlyNumbers = value.replace(/\D/g, '');
-    const amount = parseInt(onlyNumbers) / 100;
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
   };
 
   if (isLoading) {
@@ -147,66 +91,15 @@ const ManagerFinancial = () => {
             Acompanhe sua evolução financeira e celebre suas conquistas!
           </p>
         </div>
-
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-muran-primary hover:bg-muran-primary/90 w-full md:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Recebimento
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Novo Recebimento</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleAddSalary)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="month"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mês de Referência</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="month"
-                          {...field}
-                          placeholder="Selecione o mês"
-                          className="cursor-pointer"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="amount"
-                  render={({ field: { onChange, ...field } }) => (
-                    <FormItem>
-                      <FormLabel>Valor</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          onChange={(e) => {
-                            const formatted = formatCurrency(e.target.value);
-                            e.target.value = formatted;
-                            onChange(e);
-                          }}
-                          placeholder="R$ 0,00"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full bg-muran-primary hover:bg-muran-primary/90">
-                  Adicionar
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        {salaries.length === 0 && (
+          <Button 
+            onClick={handleSeedData}
+            className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2"
+          >
+            <TrendingUp className="h-4 w-4" />
+            Criar Dados Iniciais
+          </Button>
+        )}
       </div>
 
       <Card className="p-4 md:p-6">
@@ -214,7 +107,7 @@ const ManagerFinancial = () => {
           Evolução Salarial
           <TrendingUp className="h-5 w-5 text-muran-primary" />
         </h2>
-        <SalaryChart salaries={salaries} />
+        <SalaryChart />
       </Card>
 
       <div className="flex flex-col gap-4">
@@ -234,26 +127,26 @@ const ManagerFinancial = () => {
               <History className="h-5 w-5 text-muran-primary" />
             </h2>
             <div className="space-y-4">
-              {salaries.map((salary, index) => {
-                const [year, month] = salary.month.split('-');
-                const date = new Date(Number(year), Number(month) - 1);
-                return (
-                  <div
-                    key={index}
-                    className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-2 md:gap-0"
-                  >
-                    <span className="font-medium">
-                      {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(date)}
-                    </span>
-                    <span className="text-green-600 font-semibold">
-                      {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(salary.amount)}
-                    </span>
-                  </div>
-                );
-              })}
+            {salaries.map((salary, index) => {
+              const [year, month] = salary.month.split('-');
+              const date = new Date(Number(year), Number(month) - 1);
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-2 md:gap-0"
+                >
+                  <span className="font-medium">
+                    {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(date)}
+                  </span>
+                  <span className="text-green-600 font-semibold">
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL'
+                    }).format(salary.amount)}
+                  </span>
+                </div>
+              );
+            })}
             </div>
           </Card>
         )}
