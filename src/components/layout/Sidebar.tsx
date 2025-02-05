@@ -14,6 +14,10 @@ import { SidebarMenuItem } from "./SidebarMenuItem";
 import { SidebarLogout } from "./SidebarLogout";
 import { MenuItem } from "@/types/sidebar";
 
+interface SidebarProps {
+  onMobileItemClick?: () => void;
+}
+
 const adminMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Clientes", path: "/clientes" },
@@ -30,7 +34,7 @@ const regularMenuItems: MenuItem[] = [
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
 ];
 
-export const Sidebar = () => {
+export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
@@ -69,6 +73,7 @@ export const Sidebar = () => {
             key={item.path}
             {...item}
             isActive={location.pathname === item.path}
+            onClick={onMobileItemClick}
           />
         ))}
       </nav>
