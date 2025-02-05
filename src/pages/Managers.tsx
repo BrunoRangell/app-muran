@@ -96,11 +96,11 @@ const Managers = () => {
   }
 
   return (
-    <div className="space-y-8 p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-3">
-            <Users className="h-9 w-9 text-muran-primary" />
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <Users className="h-7 md:h-9 w-7 md:w-9 text-muran-primary" />
             Nossa Equipe
           </h1>
           <p className="text-gray-600 text-sm md:text-base">
@@ -111,11 +111,11 @@ const Managers = () => {
         {currentUser?.permission === 'admin' && (
           <Button
             onClick={handleAddMember}
-            className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2 transition-transform hover:scale-105"
+            className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2 transition-transform hover:scale-105 w-full md:w-auto"
             size="lg"
           >
             <UserPlus className="h-5 w-5" />
-            <span className="hidden sm:inline">Adicionar Membro</span>
+            <span>Adicionar Membro</span>
           </Button>
         )}
       </div>
@@ -140,7 +140,7 @@ const Managers = () => {
             ))}
           </div>
         ) : (
-          <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 text-center">
+          <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 text-center p-4">
             <AlertCircle className="h-12 w-12 text-gray-400" />
             <h3 className="text-lg font-medium text-gray-900">Nenhum membro encontrado</h3>
             <p className="text-gray-600 max-w-sm text-sm">

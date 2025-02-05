@@ -131,19 +131,19 @@ const Login = () => {
 
       {/* Card de Login */}
       <div className="w-full max-w-md bg-[rgba(235,235,240,0.95)] rounded-2xl shadow-2xl backdrop-blur-xl transition-all duration-500 hover:shadow-3xl relative overflow-hidden border border-[rgba(255,255,255,0.1)] group hover:border-[#ff6e00]/20">
-        <div className="p-8 space-y-6 relative z-10">
+        <div className="p-6 md:p-8 space-y-6 relative z-10">
           <div className="text-center space-y-6">
             <div className="relative inline-block animate-logoDance">
               <div className="absolute inset-0 bg-[#ff6e00] blur-2xl opacity-10 rounded-full" />
               <img
                 src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
                 alt="Muran Logo"
-                className="mx-auto h-24 w-auto drop-shadow-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
+                className="mx-auto h-16 md:h-24 w-auto drop-shadow-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
               />
             </div>
             
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#ff6e00] to-[#ff914d] tracking-tight">
+              <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#ff6e00] to-[#ff914d] tracking-tight">
                 Bem-vindo(a)
               </h2>
               <p className="text-[#321e32]/80 text-sm font-medium tracking-tight">
@@ -162,7 +162,7 @@ const Login = () => {
           )}
 
           <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="group relative">
                 <Mail className="absolute left-3 top-3 h-5 w-5 text-[#321e32]/50 group-focus-within:text-[#ff6e00] transition-colors z-10" />
                 <Input
