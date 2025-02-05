@@ -208,40 +208,42 @@ const Login = () => {
         </div>
       </div>
 
-      <style jsx global>{`
-        @keyframes particleFloat {
-          0% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-60px) scale(0.8); }
-          100% { transform: translateY(0) scale(1); }
-        }
+      <style>
+        {`
+          @keyframes particleFloat {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-60px) scale(0.8); }
+            100% { transform: translateY(0) scale(1); }
+          }
 
-        @keyframes logoDance {
-          0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-          20% { transform: translateY(-10px) rotate(3deg) scale(1.05); }
-          40% { transform: translateY(5px) rotate(-2deg) scale(0.98); }
-          60% { transform: translateY(-7px) rotate(2deg) scale(1.03); }
-          80% { transform: translateY(3px) rotate(-1deg) scale(0.99); }
-        }
+          @keyframes logoDance {
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            20% { transform: translateY(-10px) rotate(3deg) scale(1.05); }
+            40% { transform: translateY(5px) rotate(-2deg) scale(0.98); }
+            60% { transform: translateY(-7px) rotate(2deg) scale(1.03); }
+            80% { transform: translateY(3px) rotate(-1deg) scale(0.99); }
+          }
 
-        @keyframes shine {
-          0% { background-position: 200% center; }
-          100% { background-position: -200% center; }
-        }
+          @keyframes shine {
+            0% { background-position: 200% center; }
+            100% { background-position: -200% center; }
+          }
 
-        .animate-particleFloat {
-          animation: particleFloat 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-          will-change: transform, opacity;
-          backface-visibility: hidden;
-        }
+          .animate-particleFloat {
+            animation: particleFloat 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+          }
 
-        .animate-logoDance {
-          animation: logoDance 6s ease-in-out infinite;
-        }
+          .animate-logoDance {
+            animation: logoDance 6s ease-in-out infinite;
+          }
 
-        .animate-shine {
-          animation: shine 3s linear infinite;
-        }
-      `}</style>
+          .animate-shine {
+            animation: shine 3s linear infinite;
+          }
+        `}
+      </style>
     </div>
   );
 };
