@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Gauge, Plus } from "lucide-react";
+import { Gauge, Plus, Trophy } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
@@ -10,6 +10,7 @@ import { Goal } from "@/types/goal";
 import { GoalForm } from "./GoalForm";
 import { GoalProgress } from "./GoalProgress";
 import { useGoalCalculation } from "@/hooks/useGoalCalculation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const { toast } = useToast();
@@ -17,7 +18,6 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [editedGoal, setEditedGoal] = useState<Partial<Goal>>({});
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -35,6 +35,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(1);
+
       if (error) throw error;
       return data as Goal[];
     },
@@ -51,6 +52,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         .eq("id", goal?.id)
         .select()
         .single();
+
       if (error) throw error;
       return data;
     },
@@ -58,13 +60,13 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ["current-goal"] });
       setIsEditing(false);
       toast({
-        title: "Meta atualizada!",
-        description: "As alterações foram salvas com sucesso.",
+        title: "🎉 Meta atualizada!",
+        description: "Sua equipe está mais perto da vitória!",
       });
     },
     onError: () => {
       toast({
-        title: "Erro ao atualizar meta",
+        title: "😕 Algo deu errado",
         description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
@@ -73,7 +75,8 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   const createGoal = useMutation({
     mutationFn: async (newGoal: Omit<Goal, "id" | "current_value">) => {
-      if (!currentUserId) throw new Error("Usuário não autenticado");
+      if (!currentUserId) throw new Error("Usuário não está logado");
+      
       const { data, error } = await supabase
         .from("goals")
         .insert({ 
@@ -83,6 +86,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         })
         .select()
         .single();
+
       if (error) throw error;
       return data;
     },
@@ -90,13 +94,13 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ["current-goal"] });
       setIsCreating(false);
       toast({
-        title: "Meta criada!",
-        description: "Nova meta adicionada com sucesso.",
+        title: "🚀 Nova meta criada!",
+        description: "Vamos conquistar esse objetivo juntos!",
       });
     },
     onError: (error) => {
       toast({
-        title: "Erro ao criar meta",
+        title: "😕 Ops, algo deu errado",
         description: error instanceof Error ? error.message : "Tente novamente mais tarde.",
         variant: "destructive",
       });
@@ -113,87 +117,75 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="border-0 shadow-lg">
         <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-6 w-full" />
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const formattedDateRange = goal 
-    ? `${format(new Date(goal.start_date), 'dd/MM')} até ${format(new Date(goal.end_date), 'dd/MM')}`
-    : '';
-
-  const renderContent = () => {
-    if (isEditing || isCreating) {
-      return (
-        <GoalForm
-          initialData={editedGoal}
-          onSubmit={handleSave}
-          onCancel={() => {
-            setIsEditing(false);
-            setIsCreating(false);
-            setEditedGoal({});
-          }}
-          isSubmitting={updateGoal.isPending || createGoal.isPending}
-        />
-      );
-    }
-
-    if (!goal) {
-      return (
-        <div className="text-center space-y-4">
-          <p className="text-gray-600">Nenhuma meta definida no momento.</p>
-          {isAdmin && (
-            <Button
-              onClick={() => {
-                setIsCreating(true);
-                setEditedGoal({});
-              }}
-              className="w-full"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Criar Meta
-            </Button>
-          )}
-        </div>
-      );
-    }
-
-    return <GoalProgress goal={goal} currentValue={currentValue || 0} />;
-  };
-
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="p-4 border-b">
-        <CardTitle className="flex items-center gap-2 text-xl font-semibold">
-          <Gauge className="text-muran-primary h-5 w-5" />
-          Meta Atual {goal && `- ${formattedDateRange}`}
+    <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
+      <CardHeader className="p-6 pb-4">
+        <CardTitle className="flex items-center gap-3 text-xl font-bold">
+          <Trophy className="w-7 h-7 text-yellow-500" />
+          <div>
+            <p>Desafio da Equipe</p>
+            {goal && (
+              <p className="text-sm font-normal text-gray-500 mt-1">
+                {format(new Date(goal.start_date), 'dd/MM')} - {format(new Date(goal.end_date), 'dd/MM')}
+              </p>
+            )}
+          </div>
           {isAdmin && !isEditing && !isCreating && goal && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               className="ml-auto"
-              onClick={() => {
-                setIsEditing(true);
-                setEditedGoal({
-                  goal_type: goal.goal_type,
-                  start_date: goal.start_date,
-                  end_date: goal.end_date,
-                  target_value: goal.target_value,
-                });
-              }}
+              onClick={() => setIsEditing(true)}
             >
-              Editar
+              Editar Desafio
             </Button>
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4">{renderContent()}</CardContent>
+      <CardContent className="p-6 pt-0">
+        {isEditing || isCreating ? (
+          <GoalForm
+            initialData={goal}
+            onSubmit={handleSave}
+            onCancel={() => {
+              setIsEditing(false);
+              setIsCreating(false);
+            }}
+            isSubmitting={updateGoal.isPending || createGoal.isPending}
+          />
+        ) : goal ? (
+          <GoalProgress goal={goal} currentValue={currentValue || 0} />
+        ) : (
+          <div className="text-center space-y-6 py-8">
+            <div className="space-y-2">
+              <Trophy className="w-12 h-12 mx-auto text-gray-300" />
+              <p className="text-gray-600">Nenhum desafio ativo</p>
+            </div>
+            {isAdmin && (
+              <Button
+                onClick={() => setIsCreating(true)}
+                className="w-full max-w-xs mx-auto"
+                size="lg"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Criar Novo Desafio
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 };
