@@ -88,14 +88,16 @@ const Index = () => {
   const todaysQuote = getRandomQuote();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 p-4 md:p-8">
       <WelcomeHeader greeting={greeting} userName={userName} />
-      <CompanyCards />
-      <div className="grid gap-6 md:grid-cols-2">
-        <MetricsCard clientMetrics={clientMetrics} />
-        {teamMembers && <BirthdayCard members={teamMembers} />}
+      <div className="grid gap-4 md:gap-6">
+        <CompanyCards />
+        <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2">
+          <MetricsCard clientMetrics={clientMetrics} />
+          {teamMembers && <BirthdayCard members={teamMembers} />}
+        </div>
+        <QuoteCard quote={todaysQuote} />
       </div>
-      <QuoteCard quote={todaysQuote} />
     </div>
   );
 };

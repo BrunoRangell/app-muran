@@ -7,31 +7,31 @@ import { Users, DollarSign } from "lucide-react";
 
 const Clients = () => {
   return (
-    <div className="space-y-6 p-4 md:p-8">
+    <div className="space-y-4 p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
           Clientes
         </h1>
       </div>
 
-      <Card className="p-4 md:p-6">
+      <Card className="p-2 md:p-6">
         <Tabs defaultValue="metrics" className="space-y-4">
           <TabsList className="w-full md:w-auto flex flex-col md:flex-row gap-2 md:gap-0">
-            <TabsTrigger value="metrics" className="flex items-center gap-2 w-full md:w-auto">
+            <TabsTrigger value="metrics" className="flex items-center gap-2 w-full md:w-auto text-sm md:text-base">
               <DollarSign className="h-4 w-4" />
               Métricas Financeiras
             </TabsTrigger>
-            <TabsTrigger value="list" className="flex items-center gap-2 w-full md:w-auto">
+            <TabsTrigger value="list" className="flex items-center gap-2 w-full md:w-auto text-sm md:text-base">
               <Users className="h-4 w-4" />
               Lista de Clientes
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="metrics" className="mt-6">
+          <TabsContent value="metrics" className="mt-4 md:mt-6">
             <FinancialMetrics />
           </TabsContent>
 
-          <TabsContent value="list" className="mt-6">
+          <TabsContent value="list" className="mt-4 md:mt-6">
             <ClientsList />
           </TabsContent>
         </Tabs>
