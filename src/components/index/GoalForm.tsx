@@ -21,12 +21,11 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
   const [formData, setFormData] = useState<Partial<Goal>>(initialData || {});
 
   return (
-    <div className="space-y-6">
-      {/* Seleção do Tipo de Meta */}
+    <div className="space-y-6 p-4">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-muran-primary" />
-          <h3 className="font-semibold">Selecione o Tipo de Meta</h3>
+          <h3 className="font-semibold">Tipo de Meta</h3>
         </div>
         <Select
           value={formData.goal_type}
@@ -38,7 +37,7 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
           }
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Escolha o tipo de meta" />
+            <SelectValue placeholder="Selecione o tipo de meta" />
           </SelectTrigger>
           <SelectContent>
             {Object.entries(GOAL_TYPES).map(([value, label]) => (
@@ -50,11 +49,10 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         </Select>
       </div>
 
-      {/* Definição do Período */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <CalendarIcon className="h-5 w-5 text-muran-primary" />
-          <h3 className="font-semibold">Defina o Período</h3>
+          <h3 className="font-semibold">Período da Meta</h3>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Popover>
@@ -123,33 +121,31 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         </div>
       </div>
 
-      {/* Definição do Valor da Meta */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-muran-primary" />
-          <h3 className="font-semibold">Insira o Valor da Meta</h3>
+          <h3 className="font-semibold">Valor da Meta</h3>
         </div>
         <Input
           type="number"
-          placeholder="Digite o valor desejado"
+          placeholder="Digite o valor da meta"
           value={formData.target_value || ""}
           onChange={(e) =>
             setFormData({
               ...formData,
-              target_value: parseInt(e.target.value),
+              target_value: parseInt(e.target.value) || 0,
             })
           }
         />
       </div>
 
-      {/* Ações */}
       <div className="flex gap-2 pt-4">
         <Button
           onClick={() => onSubmit(formData)}
           disabled={isSubmitting}
           className="w-full"
         >
-          Salvar
+          {isSubmitting ? "Salvando..." : "Salvar"}
         </Button>
         <Button
           variant="outline"

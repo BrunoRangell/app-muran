@@ -22,7 +22,6 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log("ID do usuário atual:", user?.id);
       setCurrentUserId(user?.id || null);
     };
     getCurrentUser();
@@ -31,19 +30,12 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const { data: goals, isLoading } = useQuery({
     queryKey: ["current-goal"],
     queryFn: async () => {
-      console.log("Buscando meta atual...");
       const { data, error } = await supabase
         .from("goals")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(1);
-
-      if (error) {
-        console.error("Erro ao buscar meta:", error);
-        throw error;
-      }
-
-      console.log("Metas encontradas:", data);
+      if (error) throw error;
       return data as Goal[];
     },
   });
@@ -53,14 +45,12 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   const updateGoal = useMutation({
     mutationFn: async (updatedGoal: Partial<Goal>) => {
-      console.log("Atualizando meta...", updatedGoal);
       const { data, error } = await supabase
         .from("goals")
         .update(updatedGoal)
         .eq("id", goal?.id)
         .select()
         .single();
-
       if (error) throw error;
       return data;
     },
@@ -68,12 +58,11 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ["current-goal"] });
       setIsEditing(false);
       toast({
-        title: "Meta atualizada com sucesso!",
-        description: "As alterações foram salvas.",
+        title: "Meta atualizada!",
+        description: "As alterações foram salvas com sucesso.",
       });
     },
-    onError: (error) => {
-      console.error("Erro ao atualizar meta:", error);
+    onError: () => {
       toast({
         title: "Erro ao atualizar meta",
         description: "Tente novamente mais tarde.",
@@ -84,11 +73,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   const createGoal = useMutation({
     mutationFn: async (newGoal: Omit<Goal, "id" | "current_value">) => {
-      if (!currentUserId) {
-        throw new Error("Usuário não está logado");
-      }
-      
-      console.log("Criando nova meta...", { ...newGoal, manager_id: currentUserId });
+      if (!currentUserId) throw new Error("Usuário não autenticado");
       const { data, error } = await supabase
         .from("goals")
         .insert({ 
@@ -98,7 +83,6 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         })
         .select()
         .single();
-
       if (error) throw error;
       return data;
     },
@@ -106,12 +90,11 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ["current-goal"] });
       setIsCreating(false);
       toast({
-        title: "Meta criada com sucesso!",
-        description: "A nova meta foi adicionada.",
+        title: "Meta criada!",
+        description: "Nova meta adicionada com sucesso.",
       });
     },
     onError: (error) => {
-      console.error("Erro ao criar meta:", error);
       toast({
         title: "Erro ao criar meta",
         description: error instanceof Error ? error.message : "Tente novamente mais tarde.",
@@ -164,7 +147,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     if (!goal) {
       return (
         <div className="text-center space-y-4">
-          <p className="text-gray-600">Nenhuma meta definida</p>
+          <p className="text-gray-600">Nenhuma meta definida no momento.</p>
           {isAdmin && (
             <Button
               onClick={() => {
@@ -185,9 +168,9 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   };
 
   return (
-    <Card>
-      <CardHeader className="p-4">
-        <CardTitle className="flex items-center gap-2 text-base">
+    <Card className="shadow-lg">
+      <CardHeader className="p-4 border-b">
+        <CardTitle className="flex items-center gap-2 text-xl font-semibold">
           <Gauge className="text-muran-primary h-5 w-5" />
           Meta Atual {goal && `- ${formattedDateRange}`}
           {isAdmin && !isEditing && !isCreating && goal && (
@@ -210,7 +193,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-0">{renderContent()}</CardContent>
+      <CardContent className="p-4">{renderContent()}</CardContent>
     </Card>
   );
 };
