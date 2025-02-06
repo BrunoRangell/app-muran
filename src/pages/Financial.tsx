@@ -1,7 +1,36 @@
 import { Card } from "@/components/ui/card";
 import { SalaryChart } from "@/components/managers/SalaryChart";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 const Financial = () => {
+  const { data: salaries = [], isLoading } = useQuery({
+    queryKey: ["salaries"],
+    queryFn: async () => {
+      console.log("Buscando salários do usuário...");
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user?.id) {
+        console.log("Usuário não autenticado");
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from("salaries")
+        .select("month, amount")
+        .eq("manager_id", session.user.id)
+        .order("month", { ascending: false });
+
+      if (error) {
+        console.error("Erro ao buscar salários:", error);
+        throw error;
+      }
+
+      console.log("Salários encontrados:", data);
+      return data || [];
+    },
+  });
+
   return (
     <div className="space-y-4 p-4 md:p-8">
       <div className="flex justify-between items-center">
@@ -21,7 +50,11 @@ const Financial = () => {
           </div>
           <div className="w-full overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
             <div className="min-w-[600px] md:min-w-0">
-              <SalaryChart />
+              {isLoading ? (
+                <p className="text-center text-gray-500">Carregando dados financeiros...</p>
+              ) : (
+                <SalaryChart salaries={salaries} />
+              )}
             </div>
           </div>
         </div>
