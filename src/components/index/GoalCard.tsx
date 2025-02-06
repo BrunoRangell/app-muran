@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Gauge, Plus, Trophy } from "lucide-react";
+import { Trophy, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
@@ -76,13 +76,13 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const createGoal = useMutation({
     mutationFn: async (newGoal: Omit<Goal, "id" | "current_value">) => {
       if (!currentUserId) throw new Error("Usuário não está logado");
-      
+
       const { data, error } = await supabase
         .from("goals")
-        .insert({ 
-          ...newGoal, 
+        .insert({
+          ...newGoal,
           current_value: 0,
-          manager_id: currentUserId 
+          manager_id: currentUserId,
         })
         .select()
         .single();

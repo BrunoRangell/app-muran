@@ -20,128 +20,124 @@ interface GoalFormProps {
 export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: GoalFormProps) => {
   const [formData, setFormData] = useState<Partial<Goal>>(initialData || {});
 
+  const handleDateChange = (date: Date | undefined, field: 'start_date' | 'end_date') => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: date ? date.toISOString() : undefined,
+    }));
+  };
+
   return (
     <div className="space-y-8">
-      <div className="space-y-6">
-        {/* Tipo de Meta */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Tipo de Desafio
-          </label>
-          <Select
-            value={formData.goal_type}
-            onValueChange={(value) => 
-              setFormData({ 
-                ...formData, 
-                goal_type: value as Goal['goal_type']
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione o tipo de desafio" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(GOAL_TYPES).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Tipo de Meta */}
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-gray-700">
+          Tipo de Desafio
+        </label>
+        <Select
+          value={formData.goal_type}
+          onValueChange={(value) =>
+            setFormData({
+              ...formData,
+              goal_type: value as Goal['goal_type'],
+            })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Selecione o tipo de desafio" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(GOAL_TYPES).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-        {/* Período */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Período do Desafio
-          </label>
-          <div className="grid grid-cols-2 gap-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData.start_date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.start_date ? (
-                    format(new Date(formData.start_date), "dd 'de' MMMM", { locale: ptBR })
-                  ) : (
-                    <span>Início</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={formData.start_date ? new Date(formData.start_date) : undefined}
-                  onSelect={(date) =>
-                    setFormData({ 
-                      ...formData, 
-                      start_date: date ? format(date, 'yyyy-MM-dd') : undefined 
-                    })
-                  }
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+      {/* Período */}
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-gray-700">
+          Período do Desafio
+        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.start_date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.start_date ? (
+                  format(new Date(formData.start_date), "dd 'de' MMMM", { locale: ptBR })
+                ) : (
+                  <span>Início</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={formData.start_date ? new Date(formData.start_date) : undefined}
+                onSelect={(date) => handleDateChange(date, 'start_date')}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
 
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData.end_date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.end_date ? (
-                    format(new Date(formData.end_date), "dd 'de' MMMM", { locale: ptBR })
-                  ) : (
-                    <span>Término</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
-                  selected={formData.end_date ? new Date(formData.end_date) : undefined}
-                  onSelect={(date) =>
-                    setFormData({ 
-                      ...formData, 
-                      end_date: date ? format(date, 'yyyy-MM-dd') : undefined 
-                    })
-                  }
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {/* Valor da Meta */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Objetivo do Desafio
-          </label>
-          <Input
-            type="number"
-            placeholder="Defina o objetivo"
-            value={formData.target_value || ""}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                target_value: parseInt(e.target.value),
-              })
-            }
-            className="w-full"
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.end_date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.end_date ? (
+                  format(new Date(formData.end_date), "dd 'de' MMMM", { locale: ptBR })
+                ) : (
+                  <span>Término</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={formData.end_date ? new Date(formData.end_date) : undefined}
+                onSelect={(date) => handleDateChange(date, 'end_date')}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
+      {/* Valor da Meta */}
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-gray-700">
+          Objetivo do Desafio
+        </label>
+        <Input
+          type="number"
+          placeholder="Defina o objetivo"
+          value={formData.target_value || ""}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              target_value: parseInt(e.target.value),
+            })
+          }
+          className="w-full"
+        />
+      </div>
+
+      {/* Botões */}
       <div className="flex gap-3 pt-6">
         <Button
           variant="outline"
