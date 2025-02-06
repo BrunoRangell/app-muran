@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -15,6 +15,7 @@ interface Goal {
   end_date: string;
   target_value: number;
   current_value: number;
+  manager_id: string;
 }
 
 export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
@@ -22,6 +23,17 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Buscar ID do usuário logado
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log("ID do usuário atual:", user?.id);
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
 
   const { data: goals, isLoading } = useQuery({
     queryKey: ["current-goal"],
@@ -78,10 +90,18 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   const createGoal = useMutation({
     mutationFn: async (newGoal: Omit<Goal, "id" | "current_value">) => {
-      console.log("Criando nova meta...", newGoal);
+      if (!currentUserId) {
+        throw new Error("Usuário não está logado");
+      }
+      
+      console.log("Criando nova meta...", { ...newGoal, manager_id: currentUserId });
       const { data, error } = await supabase
         .from("goals")
-        .insert({ ...newGoal, current_value: 0 })
+        .insert({ 
+          ...newGoal, 
+          current_value: 0,
+          manager_id: currentUserId 
+        })
         .select()
         .single();
 
@@ -100,7 +120,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       console.error("Erro ao criar meta:", error);
       toast({
         title: "Erro ao criar meta",
-        description: "Tente novamente mais tarde.",
+        description: error instanceof Error ? error.message : "Tente novamente mais tarde.",
         variant: "destructive",
       });
     },
