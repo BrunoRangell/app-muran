@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Database } from "@/types/supabase";
 
 interface Goal {
   id: number;
@@ -64,7 +65,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   const calculateCurrentValue = async (goal: Goal) => {
     const { start_date, end_date, goal_type } = goal;
-    let query = supabase.from("clients");
+    let query = supabase.from('clients').select('*', { count: 'exact' });
 
     switch (goal_type) {
       case 'active_clients':
@@ -84,7 +85,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         break;
     }
 
-    const { count, error } = await query.count();
+    const { count, error } = await query;
     
     if (error) {
       console.error("Erro ao calcular valor atual:", error);
