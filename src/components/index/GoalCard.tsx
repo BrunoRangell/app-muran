@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Gauge } from "lucide-react";
+import { Gauge, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
@@ -20,9 +20,10 @@ interface Goal {
 export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: goal, isLoading } = useQuery({
+  const { data: goals, isLoading } = useQuery({
     queryKey: ["current-goal"],
     queryFn: async () => {
       console.log("Buscando meta atual...");
@@ -30,18 +31,19 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         .from("goals")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
 
       if (error) {
         console.error("Erro ao buscar meta:", error);
         throw error;
       }
 
-      console.log("Meta encontrada:", data);
-      return data as Goal;
+      console.log("Metas encontradas:", data);
+      return data as Goal[];
     },
   });
+
+  const goal = goals?.[0];
 
   const updateGoal = useMutation({
     mutationFn: async (updatedGoal: Partial<Goal>) => {
@@ -74,6 +76,36 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     },
   });
 
+  const createGoal = useMutation({
+    mutationFn: async (newGoal: Omit<Goal, "id" | "current_value">) => {
+      console.log("Criando nova meta...", newGoal);
+      const { data, error } = await supabase
+        .from("goals")
+        .insert({ ...newGoal, current_value: 0 })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["current-goal"] });
+      setIsCreating(false);
+      toast({
+        title: "Meta criada com sucesso!",
+        description: "A nova meta foi adicionada.",
+      });
+    },
+    onError: (error) => {
+      console.error("Erro ao criar meta:", error);
+      toast({
+        title: "Erro ao criar meta",
+        description: "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const [editedGoal, setEditedGoal] = useState<Partial<Goal>>({});
 
   if (isLoading) {
@@ -89,15 +121,120 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     );
   }
 
-  if (!goal) return null;
-
-  const progress = Math.min(
-    Math.round((goal.current_value / goal.target_value) * 100),
-    100
-  );
-
   const handleSave = () => {
-    updateGoal.mutate(editedGoal);
+    if (isCreating) {
+      createGoal.mutate(editedGoal as Omit<Goal, "id" | "current_value">);
+    } else {
+      updateGoal.mutate(editedGoal);
+    }
+  };
+
+  const renderContent = () => {
+    if (isEditing || isCreating) {
+      return (
+        <div className="space-y-4">
+          <Input
+            placeholder="Nome da meta"
+            value={editedGoal.name || ""}
+            onChange={(e) =>
+              setEditedGoal({ ...editedGoal, name: e.target.value })
+            }
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              type="date"
+              value={editedGoal.start_date || ""}
+              onChange={(e) =>
+                setEditedGoal({ ...editedGoal, start_date: e.target.value })
+              }
+            />
+            <Input
+              type="date"
+              value={editedGoal.end_date || ""}
+              onChange={(e) =>
+                setEditedGoal({ ...editedGoal, end_date: e.target.value })
+              }
+            />
+          </div>
+          <Input
+            type="number"
+            placeholder="Valor da meta"
+            value={editedGoal.target_value || ""}
+            onChange={(e) =>
+              setEditedGoal({
+                ...editedGoal,
+                target_value: parseFloat(e.target.value),
+              })
+            }
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={handleSave}
+              disabled={updateGoal.isPending || createGoal.isPending}
+              className="w-full"
+            >
+              Salvar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditing(false);
+                setIsCreating(false);
+                setEditedGoal({});
+              }}
+              className="w-full"
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!goal) {
+      return (
+        <div className="text-center space-y-4">
+          <p className="text-gray-600">Nenhuma meta definida</p>
+          {isAdmin && (
+            <Button
+              onClick={() => {
+                setIsCreating(true);
+                setEditedGoal({});
+              }}
+              className="w-full"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Criar Meta
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    const progress = Math.min(
+      Math.round((goal.current_value / goal.target_value) * 100),
+      100
+    );
+
+    return (
+      <div className="space-y-3">
+        <h3 className="font-semibold">{goal.name}</h3>
+        <p className="text-sm text-gray-600">
+          {new Date(goal.start_date).toLocaleDateString()} até{" "}
+          {new Date(goal.end_date).toLocaleDateString()}
+        </p>
+        <div className="space-y-2">
+          <Progress value={progress} />
+          <p className="text-sm text-gray-600 text-right">{progress}% concluído</p>
+        </div>
+        <p className="text-sm">
+          <span className="font-medium">
+            R$ {goal.current_value.toLocaleString("pt-BR")}
+          </span>{" "}
+          / R$ {goal.target_value.toLocaleString("pt-BR")}
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -106,7 +243,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         <CardTitle className="flex items-center gap-2 text-base">
           <Gauge className="text-muran-primary h-5 w-5" />
           Meta Atual
-          {isAdmin && !isEditing && (
+          {isAdmin && !isEditing && !isCreating && goal && (
             <Button
               variant="ghost"
               size="sm"
@@ -126,82 +263,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
-        {isEditing ? (
-          <div className="space-y-4">
-            <Input
-              placeholder="Nome da meta"
-              value={editedGoal.name || ""}
-              onChange={(e) =>
-                setEditedGoal({ ...editedGoal, name: e.target.value })
-              }
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                type="date"
-                value={editedGoal.start_date || ""}
-                onChange={(e) =>
-                  setEditedGoal({ ...editedGoal, start_date: e.target.value })
-                }
-              />
-              <Input
-                type="date"
-                value={editedGoal.end_date || ""}
-                onChange={(e) =>
-                  setEditedGoal({ ...editedGoal, end_date: e.target.value })
-                }
-              />
-            </div>
-            <Input
-              type="number"
-              placeholder="Valor da meta"
-              value={editedGoal.target_value || ""}
-              onChange={(e) =>
-                setEditedGoal({
-                  ...editedGoal,
-                  target_value: parseFloat(e.target.value),
-                })
-              }
-            />
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSave}
-                disabled={updateGoal.isPending}
-                className="w-full"
-              >
-                Salvar
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditing(false)}
-                className="w-full"
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <h3 className="font-semibold">{goal.name}</h3>
-            <p className="text-sm text-gray-600">
-              {new Date(goal.start_date).toLocaleDateString()} até{" "}
-              {new Date(goal.end_date).toLocaleDateString()}
-            </p>
-            <div className="space-y-2">
-              <Progress value={progress} />
-              <p className="text-sm text-gray-600 text-right">
-                {progress}% concluído
-              </p>
-            </div>
-            <p className="text-sm">
-              <span className="font-medium">
-                R$ {goal.current_value.toLocaleString("pt-BR")}
-              </span>{" "}
-              / R$ {goal.target_value.toLocaleString("pt-BR")}
-            </p>
-          </div>
-        )}
-      </CardContent>
+      <CardContent className="p-4 pt-0">{renderContent()}</CardContent>
     </Card>
   );
 };
