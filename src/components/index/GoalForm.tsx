@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Target, Calendar } from "lucide-react";
+import { Calendar as CalendarIcon, Target } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Goal, GOAL_TYPES } from "@/types/goal";
 import { format } from "date-fns";
@@ -22,10 +22,11 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
 
   return (
     <div className="space-y-6">
+      {/* Seleção do Tipo de Meta */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-muran-primary" />
-          <h3 className="font-semibold">Tipo de Meta</h3>
+          <h3 className="font-semibold">Selecione o Tipo de Meta</h3>
         </div>
         <Select
           value={formData.goal_type}
@@ -37,7 +38,7 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
           }
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Selecione o tipo de meta" />
+            <SelectValue placeholder="Escolha o tipo de meta" />
           </SelectTrigger>
           <SelectContent>
             {Object.entries(GOAL_TYPES).map(([value, label]) => (
@@ -49,10 +50,11 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         </Select>
       </div>
 
+      {/* Definição do Período */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-muran-primary" />
-          <h3 className="font-semibold">Período</h3>
+          <CalendarIcon className="h-5 w-5 text-muran-primary" />
+          <h3 className="font-semibold">Defina o Período</h3>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Popover>
@@ -121,14 +123,15 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         </div>
       </div>
 
+      {/* Definição do Valor da Meta */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-muran-primary" />
-          <h3 className="font-semibold">Valor da Meta</h3>
+          <h3 className="font-semibold">Insira o Valor da Meta</h3>
         </div>
         <Input
           type="number"
-          placeholder="Digite o valor da meta"
+          placeholder="Digite o valor desejado"
           value={formData.target_value || ""}
           onChange={(e) =>
             setFormData({
@@ -139,6 +142,7 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         />
       </div>
 
+      {/* Ações */}
       <div className="flex gap-2 pt-4">
         <Button
           onClick={() => onSubmit(formData)}

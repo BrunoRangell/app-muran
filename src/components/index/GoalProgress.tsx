@@ -46,7 +46,7 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-1">
             <TrendingUp className="h-4 w-4 text-muran-primary" />
-            <span>Progresso:</span>
+            <span>Progresso Atual:</span>
           </div>
           <span className="font-medium">{progress}%</span>
         </div>
@@ -54,11 +54,11 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
 
       <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
         <div className="text-sm">
-          <p className="text-gray-600">Atual</p>
+          <p className="text-gray-600">Valor Atual</p>
           <p className="font-semibold text-lg">{currentValue}</p>
         </div>
         <div className="text-sm text-right">
-          <p className="text-gray-600">Meta</p>
+          <p className="text-gray-600">Valor Alvo</p>
           <p className="font-semibold text-lg">{goal.target_value}</p>
         </div>
       </div>
