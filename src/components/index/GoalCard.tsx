@@ -1,31 +1,15 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Gauge, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { format } from "date-fns";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Database } from "@/types/supabase";
-
-interface Goal {
-  id: number;
-  goal_type: 'active_clients' | 'new_clients' | 'churned_clients';
-  start_date: string;
-  end_date: string;
-  target_value: number;
-  current_value: number;
-  manager_id: string;
-}
-
-const GOAL_TYPES = {
-  active_clients: 'Meta de Clientes Ativos',
-  new_clients: 'Meta de Novos Clientes',
-  churned_clients: 'Meta de Clientes Cancelados'
-} as const;
+import { Goal } from "@/types/goal";
+import { GoalForm } from "./GoalForm";
+import { GoalProgress } from "./GoalProgress";
+import { useGoalCalculation } from "@/hooks/useGoalCalculation";
 
 export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const { toast } = useToast();
@@ -33,6 +17,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [editedGoal, setEditedGoal] = useState<Partial<Goal>>({});
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -63,37 +48,8 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     },
   });
 
-  const calculateCurrentValue = async (goal: Goal) => {
-    const { start_date, end_date, goal_type } = goal;
-    let query = supabase.from('clients').select('*', { count: 'exact' });
-
-    switch (goal_type) {
-      case 'active_clients':
-        query = query.eq('status', 'active');
-        break;
-      case 'new_clients':
-        query = query
-          .eq('status', 'active')
-          .gte('first_payment_date', start_date)
-          .lte('first_payment_date', end_date);
-        break;
-      case 'churned_clients':
-        query = query
-          .eq('status', 'inactive')
-          .gte('last_payment_date', start_date)
-          .lte('last_payment_date', end_date);
-        break;
-    }
-
-    const { count, error } = await query;
-    
-    if (error) {
-      console.error("Erro ao calcular valor atual:", error);
-      return 0;
-    }
-
-    return count || 0;
-  };
+  const goal = goals?.[0];
+  const { data: currentValue } = useGoalCalculation(goal);
 
   const updateGoal = useMutation({
     mutationFn: async (updatedGoal: Partial<Goal>) => {
@@ -164,7 +120,13 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     },
   });
 
-  const [editedGoal, setEditedGoal] = useState<Partial<Goal>>({});
+  const handleSave = (formData: Partial<Goal>) => {
+    if (isCreating) {
+      createGoal.mutate(formData as Omit<Goal, "id" | "current_value">);
+    } else {
+      updateGoal.mutate(formData);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -179,88 +141,23 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     );
   }
 
-  const goal = goals?.[0];
-
-  const handleSave = () => {
-    if (isCreating) {
-      createGoal.mutate(editedGoal as Omit<Goal, "id" | "current_value">);
-    } else {
-      updateGoal.mutate(editedGoal);
-    }
-  };
+  const formattedDateRange = goal 
+    ? `${format(new Date(goal.start_date), 'dd/MM')} até ${format(new Date(goal.end_date), 'dd/MM')}`
+    : '';
 
   const renderContent = () => {
     if (isEditing || isCreating) {
       return (
-        <div className="space-y-4">
-          <Select
-            value={editedGoal.goal_type}
-            onValueChange={(value) => 
-              setEditedGoal({ 
-                ...editedGoal, 
-                goal_type: value as Goal['goal_type']
-              })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o tipo de meta" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(GOAL_TYPES).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              type="date"
-              value={editedGoal.start_date || ""}
-              onChange={(e) =>
-                setEditedGoal({ ...editedGoal, start_date: e.target.value })
-              }
-            />
-            <Input
-              type="date"
-              value={editedGoal.end_date || ""}
-              onChange={(e) =>
-                setEditedGoal({ ...editedGoal, end_date: e.target.value })
-              }
-            />
-          </div>
-          <Input
-            type="number"
-            placeholder="Valor da meta"
-            value={editedGoal.target_value || ""}
-            onChange={(e) =>
-              setEditedGoal({
-                ...editedGoal,
-                target_value: parseInt(e.target.value),
-              })
-            }
-          />
-          <div className="flex gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={updateGoal.isPending || createGoal.isPending}
-              className="w-full"
-            >
-              Salvar
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditing(false);
-                setIsCreating(false);
-                setEditedGoal({});
-              }}
-              className="w-full"
-            >
-              Cancelar
-            </Button>
-          </div>
-        </div>
+        <GoalForm
+          initialData={editedGoal}
+          onSubmit={handleSave}
+          onCancel={() => {
+            setIsEditing(false);
+            setIsCreating(false);
+            setEditedGoal({});
+          }}
+          isSubmitting={updateGoal.isPending || createGoal.isPending}
+        />
       );
     }
 
@@ -284,35 +181,8 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       );
     }
 
-    const progress = Math.min(
-      Math.round((goal.current_value / goal.target_value) * 100),
-      100
-    );
-
-    return (
-      <div className="space-y-3">
-        <h3 className="font-semibold">{GOAL_TYPES[goal.goal_type]}</h3>
-        <p className="text-sm text-gray-600">
-          {format(new Date(goal.start_date), 'dd/MM')} até{" "}
-          {format(new Date(goal.end_date), 'dd/MM')}
-        </p>
-        <div className="space-y-2">
-          <Progress value={progress} />
-          <p className="text-sm text-gray-600 text-right">{progress}% concluído</p>
-        </div>
-        <p className="text-sm">
-          <span className="font-medium">
-            {goal.current_value}
-          </span>{" "}
-          / {goal.target_value}
-        </p>
-      </div>
-    );
+    return <GoalProgress goal={goal} currentValue={currentValue || 0} />;
   };
-
-  const formattedDateRange = goal 
-    ? `${format(new Date(goal.start_date), 'dd/MM')} até ${format(new Date(goal.end_date), 'dd/MM')}`
-    : '';
 
   return (
     <Card>
