@@ -1,6 +1,7 @@
 import { Progress } from "@/components/ui/progress";
 import { Goal, GOAL_TYPES } from "@/types/goal";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface GoalProgressProps {
   goal: Goal;
@@ -17,8 +18,8 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     <div className="space-y-3">
       <h3 className="font-semibold">{GOAL_TYPES[goal.goal_type]}</h3>
       <p className="text-sm text-gray-600">
-        {format(new Date(goal.start_date), 'dd/MM')} até{" "}
-        {format(new Date(goal.end_date), 'dd/MM')}
+        {format(new Date(goal.start_date), 'dd/MM', { locale: ptBR })} até{" "}
+        {format(new Date(goal.end_date), 'dd/MM', { locale: ptBR })}
       </p>
       <div className="space-y-2">
         <Progress value={progress} />
