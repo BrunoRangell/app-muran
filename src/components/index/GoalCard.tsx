@@ -7,16 +7,24 @@ import { useToast } from "@/components/ui/use-toast";
 import { Gauge, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Goal {
   id: number;
-  name: string;
+  goal_type: 'active_clients' | 'new_clients' | 'churned_clients';
   start_date: string;
   end_date: string;
   target_value: number;
   current_value: number;
   manager_id: string;
 }
+
+const GOAL_TYPES = {
+  active_clients: 'Meta de Clientes Ativos',
+  new_clients: 'Meta de Novos Clientes',
+  churned_clients: 'Meta de Clientes Cancelados'
+} as const;
 
 export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const { toast } = useToast();
@@ -25,7 +33,6 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const queryClient = useQueryClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Buscar ID do usuário logado
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -55,7 +62,37 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     },
   });
 
-  const goal = goals?.[0];
+  const calculateCurrentValue = async (goal: Goal) => {
+    const { start_date, end_date, goal_type } = goal;
+    let query = supabase.from("clients");
+
+    switch (goal_type) {
+      case 'active_clients':
+        query = query.eq('status', 'active');
+        break;
+      case 'new_clients':
+        query = query
+          .eq('status', 'active')
+          .gte('first_payment_date', start_date)
+          .lte('first_payment_date', end_date);
+        break;
+      case 'churned_clients':
+        query = query
+          .eq('status', 'inactive')
+          .gte('last_payment_date', start_date)
+          .lte('last_payment_date', end_date);
+        break;
+    }
+
+    const { count, error } = await query.count();
+    
+    if (error) {
+      console.error("Erro ao calcular valor atual:", error);
+      return 0;
+    }
+
+    return count || 0;
+  };
 
   const updateGoal = useMutation({
     mutationFn: async (updatedGoal: Partial<Goal>) => {
@@ -141,6 +178,8 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     );
   }
 
+  const goal = goals?.[0];
+
   const handleSave = () => {
     if (isCreating) {
       createGoal.mutate(editedGoal as Omit<Goal, "id" | "current_value">);
@@ -153,13 +192,26 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     if (isEditing || isCreating) {
       return (
         <div className="space-y-4">
-          <Input
-            placeholder="Nome da meta"
-            value={editedGoal.name || ""}
-            onChange={(e) =>
-              setEditedGoal({ ...editedGoal, name: e.target.value })
+          <Select
+            value={editedGoal.goal_type}
+            onValueChange={(value) => 
+              setEditedGoal({ 
+                ...editedGoal, 
+                goal_type: value as Goal['goal_type']
+              })
             }
-          />
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o tipo de meta" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(GOAL_TYPES).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="grid grid-cols-2 gap-2">
             <Input
               type="date"
@@ -183,7 +235,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
             onChange={(e) =>
               setEditedGoal({
                 ...editedGoal,
-                target_value: parseFloat(e.target.value),
+                target_value: parseInt(e.target.value),
               })
             }
           />
@@ -238,10 +290,10 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
     return (
       <div className="space-y-3">
-        <h3 className="font-semibold">{goal.name}</h3>
+        <h3 className="font-semibold">{GOAL_TYPES[goal.goal_type]}</h3>
         <p className="text-sm text-gray-600">
-          {new Date(goal.start_date).toLocaleDateString()} até{" "}
-          {new Date(goal.end_date).toLocaleDateString()}
+          {format(new Date(goal.start_date), 'dd/MM')} até{" "}
+          {format(new Date(goal.end_date), 'dd/MM')}
         </p>
         <div className="space-y-2">
           <Progress value={progress} />
@@ -249,20 +301,24 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         </div>
         <p className="text-sm">
           <span className="font-medium">
-            R$ {goal.current_value.toLocaleString("pt-BR")}
+            {goal.current_value}
           </span>{" "}
-          / R$ {goal.target_value.toLocaleString("pt-BR")}
+          / {goal.target_value}
         </p>
       </div>
     );
   };
+
+  const formattedDateRange = goal 
+    ? `${format(new Date(goal.start_date), 'dd/MM')} até ${format(new Date(goal.end_date), 'dd/MM')}`
+    : '';
 
   return (
     <Card>
       <CardHeader className="p-4">
         <CardTitle className="flex items-center gap-2 text-base">
           <Gauge className="text-muran-primary h-5 w-5" />
-          Meta Atual
+          Meta Atual {goal && `- ${formattedDateRange}`}
           {isAdmin && !isEditing && !isCreating && goal && (
             <Button
               variant="ghost"
@@ -271,7 +327,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
               onClick={() => {
                 setIsEditing(true);
                 setEditedGoal({
-                  name: goal.name,
+                  goal_type: goal.goal_type,
                   start_date: goal.start_date,
                   end_date: goal.end_date,
                   target_value: goal.target_value,
