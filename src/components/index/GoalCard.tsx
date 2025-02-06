@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Trophy, Plus } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { format } from "date-fns";
+import { format, differenceInDays, startOfToday } from "date-fns";
 import { Goal } from "@/types/goal";
 import { GoalForm } from "./GoalForm";
 import { GoalProgress } from "./GoalProgress";
@@ -43,6 +43,12 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   const goal = goals?.[0];
   const { data: currentValue } = useGoalCalculation(goal);
+
+  const getDaysRemaining = (endDate: string) => {
+    const today = startOfToday();
+    const end = new Date(endDate);
+    return differenceInDays(end, today) + 1; // +1 para incluir o último dia
+  };
 
   const updateGoal = useMutation({
     mutationFn: async (updatedGoal: Partial<Goal>) => {
@@ -134,12 +140,19 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       <CardHeader className="p-6 pb-4">
         <CardTitle className="flex items-center gap-3 text-xl font-bold">
           <Trophy className="w-7 h-7 text-yellow-500" />
-          <div>
+          <div className="flex-1">
             <p>Desafio da Equipe</p>
             {goal && (
-              <p className="text-sm font-normal text-gray-500 mt-1">
-                {format(new Date(goal.start_date), 'dd/MM')} - {format(new Date(goal.end_date), 'dd/MM')}
-              </p>
+              <div className="flex gap-4 items-center mt-2">
+                <div className="bg-blue-100 px-3 py-1 rounded-full text-sm text-blue-800">
+                  {format(new Date(goal.start_date), 'dd/MM/yyyy')} - {format(new Date(goal.end_date), 'dd/MM/yyyy')}
+                </div>
+                <div className="bg-green-100 px-3 py-1 rounded-full text-sm text-green-800">
+                  {getDaysRemaining(goal.end_date) > 0 
+                    ? `${getDaysRemaining(goal.end_date)} dias restantes` 
+                    : "Desafio encerrado"}
+                </div>
+              </div>
             )}
           </div>
           {isAdmin && !isEditing && !isCreating && goal && (

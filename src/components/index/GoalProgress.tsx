@@ -1,6 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { Goal, GOAL_TYPES } from "@/types/goal";
-import { format } from "date-fns";
+import { format, differenceInDays, startOfToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar, Target, TrendingUp, Zap } from "lucide-react";
 
@@ -30,16 +30,35 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     return "⏳ Vamos começar? O desafio está apenas começando!";
   };
 
+  const getDaysRemaining = () => {
+    const today = startOfToday();
+    const end = new Date(goal.end_date);
+    return differenceInDays(end, today) + 1; // +1 para incluir o último dia
+  };
+
   return (
     <div className="space-y-8">
-      {/* Cabeçalho */}
+      {/* Cabeçalho atualizado */}
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl">
-        <div className="flex items-center gap-4">
-          <Zap className="w-8 h-8 text-indigo-600" />
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {GOAL_TYPES[goal.goal_type]}
-            </h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Zap className="w-8 h-8 text-indigo-600" />
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {GOAL_TYPES[goal.goal_type]}
+              </h2>
+              <p className="text-sm text-gray-600 mt-2">
+                {format(new Date(goal.start_date), "dd 'de' MMMM", { locale: ptBR })} -{" "}
+                {format(new Date(goal.end_date), "dd 'de' MMMM", { locale: ptBR })}
+              </p>
+            </div>
+          </div>
+          <div className="bg-indigo-100 px-4 py-2 rounded-full">
+            <span className="font-semibold text-indigo-700">
+              {getDaysRemaining() > 0 
+                ? `${getDaysRemaining()} dias restantes` 
+                : "Desafio encerrado"}
+            </span>
           </div>
         </div>
       </div>
@@ -71,10 +90,6 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
 
       {/* Valores */}
       <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white p-4 rounded-xl shadow-sm">
-          <p className="text-sm text-gray-600">Atual</p>
-          <p className="text-2xl font-bold text-gray-900">{currentValue}</p>
-        </div>
         <div className="bg-white p-4 rounded-xl shadow-sm">
           <p className="text-sm text-gray-600">Meta</p>
           <p className="text-2xl font-bold text-gray-900">{goal.target_value}</p>
