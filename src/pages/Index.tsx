@@ -8,10 +8,12 @@ import { CompanyCards } from "@/components/index/CompanyCards";
 import { MetricsCard } from "@/components/index/MetricsCard";
 import { QuoteCard } from "@/components/index/QuoteCard";
 import { BirthdayCard } from "@/components/team/BirthdayCard";
+import { GoalCard } from "@/components/index/GoalCard";
 
 const Index = () => {
   const [userName, setUserName] = useState<string>("");
   const [greeting, setGreeting] = useState<string>("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const { data: teamMembers } = useQuery({
     queryKey: ["team_members"],
@@ -62,35 +64,43 @@ const Index = () => {
       return "Boa noite";
     };
 
-    const fetchUserName = async () => {
+    const fetchUserData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.email) {
           const { data: teamMember } = await supabase
             .from("team_members")
-            .select("name")
+            .select("name, permission")
             .eq("email", session.user.email)
             .single();
 
           if (teamMember?.name) {
             setUserName(teamMember.name.split(" ")[0]);
           }
+          setIsAdmin(teamMember?.permission === "admin");
         }
       } catch (error) {
-        console.error("Erro ao buscar nome do usuário:", error);
+        console.error("Erro ao buscar dados do usuário:", error);
       }
     };
 
     setGreeting(getGreeting());
-    fetchUserName();
+    fetchUserData();
   }, []);
 
   const todaysQuote = getRandomQuote();
 
   return (
-    <div className="space-y-6 p-4 md:p-8">
-      <WelcomeHeader greeting={greeting} userName={userName} />
+    <div className="space-y-4 p-4 md:p-6">
       <div className="grid gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="lg:col-span-2">
+            <WelcomeHeader greeting={greeting} userName={userName} />
+          </div>
+          <div>
+            <GoalCard isAdmin={isAdmin} />
+          </div>
+        </div>
         <CompanyCards />
         <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2">
           <MetricsCard clientMetrics={clientMetrics} />
