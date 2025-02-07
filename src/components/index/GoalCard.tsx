@@ -1,200 +1,35 @@
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { Trophy, Plus } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { format, differenceInDays, startOfToday, isWithinInterval, parseISO } from "date-fns";
-import { Goal } from "@/types/goal";
+import { Card, CardContent } from "@/components/ui/card";
 import { GoalForm } from "./GoalForm";
 import { GoalProgress } from "./GoalProgress";
-import { useGoalCalculation } from "@/hooks/useGoalCalculation";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GoalHeader } from "./goal/GoalHeader";
+import { EmptyGoalState } from "./goal/EmptyGoalState";
+import { useGoalCard } from "./goal/useGoalCard";
 
 export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
-  const { toast } = useToast();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const queryClient = useQueryClient();
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const {
+    goal,
+    currentValue,
+    isLoading,
+    queryError,
+    isEditing,
+    isCreating,
+    setIsEditing,
+    setIsCreating,
+    updateGoal,
+    createGoal,
+  } = useGoalCard(isAdmin);
 
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
-
-  // Query para buscar o desafio ativo
-  const { data: goals, isLoading, error: queryError } = useQuery({
-    queryKey: ["current-goal"],
-    queryFn: async () => {
-      const today = new Date();
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("status", "active")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Erro ao buscar desafios:", error);
-        throw error;
-      }
-
-      // Filtra apenas o desafio ativo (data atual entre start_date e end_date)
-      const activeGoal = (data as Goal[]).find(goal => {
-        const startDate = parseISO(goal.start_date);
-        const endDate = parseISO(goal.end_date);
-        return isWithinInterval(today, { start: startDate, end: endDate });
-      });
-
-      return activeGoal ? [activeGoal] : [];
-    },
-    retry: 2,
-  });
-
-  const goal = goals?.[0];
-  const { data: currentValue, error: calculationError } = useGoalCalculation(goal);
-
-  // Mutation para finalizar o desafio
-  const finalizeGoal = useMutation({
-    mutationFn: async (goalToFinalize: Goal) => {
-      const { data, error } = await supabase
-        .from("goals")
-        .update({
-          final_value: currentValue,
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq("id", goalToFinalize.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Erro ao finalizar desafio:", error);
-        throw error;
-      }
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["current-goal"] });
-      toast({
-        title: "🏆 Desafio finalizado!",
-        description: "O desafio foi encerrado e os resultados foram registrados.",
-      });
-    },
-    onError: (error) => {
-      console.error("Erro ao finalizar desafio:", error);
-      toast({
-        title: "Erro ao finalizar desafio",
-        description: "Não foi possível finalizar o desafio. Tente novamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Verifica se o desafio precisa ser finalizado
-  useEffect(() => {
-    if (goal && goal.status === 'active') {
-      const endDate = parseISO(goal.end_date);
-      const today = new Date();
-      
-      if (today > endDate) {
-        console.log("Finalizando desafio automaticamente:", goal.id);
-        finalizeGoal.mutate(goal);
-      }
-    }
-  }, [goal]);
-
-  // Mutation para atualizar desafio
-  const updateGoal = useMutation({
-    mutationFn: async (updatedGoal: Partial<Goal>) => {
-      const { data, error } = await supabase
-        .from("goals")
-        .update(updatedGoal)
-        .eq("id", goal?.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Erro ao atualizar desafio:", error);
-        throw error;
-      }
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["current-goal"] });
-      setIsEditing(false);
-      toast({
-        title: "🎉 Meta atualizada!",
-        description: "Sua equipe está mais perto da vitória!",
-      });
-    },
-    onError: (error) => {
-      console.error("Erro ao atualizar desafio:", error);
-      toast({
-        title: "Erro ao atualizar",
-        description: "Não foi possível atualizar o desafio. Tente novamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Mutation para criar novo desafio
-  const createGoal = useMutation({
-    mutationFn: async (newGoal: Omit<Goal, "id" | "current_value">) => {
-      if (!currentUserId) throw new Error("Usuário não está logado");
-
-      const { data, error } = await supabase
-        .from("goals")
-        .insert({
-          ...newGoal,
-          current_value: 0,
-          manager_id: currentUserId,
-          status: 'active',
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Erro ao criar desafio:", error);
-        throw error;
-      }
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["current-goal"] });
-      setIsCreating(false);
-      toast({
-        title: "🚀 Novo desafio criado!",
-        description: "Vamos conquistar esse objetivo juntos!",
-      });
-    },
-    onError: (error) => {
-      console.error("Erro ao criar desafio:", error);
-      toast({
-        title: "Erro ao criar",
-        description: error instanceof Error ? error.message : "Não foi possível criar o desafio. Tente novamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSave = (formData: Partial<Goal>) => {
+  const handleSave = (formData: any) => {
     if (isCreating) {
-      createGoal.mutate(formData as Omit<Goal, "id" | "current_value">);
+      createGoal.mutate(formData);
     } else {
       updateGoal.mutate(formData);
     }
   };
 
-  // Tratamento de erros na query principal
   if (queryError) {
-    console.error("Erro ao carregar desafio:", queryError);
     return (
       <Card className="border-0 shadow-lg">
         <CardContent className="p-6">
@@ -222,36 +57,14 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   return (
     <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
-      <CardHeader className="p-6 pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl font-bold">
-          <Trophy className="w-7 h-7 text-[#ff6e00]" />
-          <div className="flex-1">
-            <p>Desafio Muran</p>
-            {goal && (
-              <div className="flex gap-4 items-center mt-2">
-                <div className="bg-blue-100 px-3 py-1 rounded-full text-sm text-blue-800">
-                  {format(new Date(goal.start_date), 'dd/MM/yyyy')} - {format(new Date(goal.end_date), 'dd/MM/yyyy')}
-                </div>
-                <div className="bg-green-100 px-3 py-1 rounded-full text-sm text-green-800">
-                  {getDaysRemaining(goal.end_date) > 0 
-                    ? `${getDaysRemaining(goal.end_date)} dias restantes` 
-                    : "Desafio encerrado"}
-                </div>
-              </div>
-            )}
-          </div>
-          {isAdmin && !isEditing && !isCreating && goal && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              onClick={() => setIsEditing(true)}
-            >
-              Editar Desafio
-            </Button>
-          )}
-        </CardTitle>
-      </CardHeader>
+      <GoalHeader
+        goal={goal}
+        isAdmin={isAdmin}
+        isEditing={isEditing}
+        isCreating={isCreating}
+        onEditClick={() => setIsEditing(true)}
+      />
+      
       <CardContent className="p-6 pt-0">
         {isEditing || isCreating ? (
           <GoalForm
@@ -266,31 +79,12 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         ) : goal ? (
           <GoalProgress goal={goal} currentValue={currentValue || 0} />
         ) : (
-          <div className="text-center space-y-6 py-8">
-            <div className="space-y-2">
-              <Trophy className="w-12 h-12 mx-auto text-gray-300" />
-              <p className="text-gray-600">Nenhum desafio ativo</p>
-            </div>
-            {isAdmin && (
-              <Button
-                onClick={() => setIsCreating(true)}
-                className="w-full max-w-xs mx-auto bg-[#ff6e00] hover:bg-[#e66200]"
-                size="lg"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Criar Novo Desafio
-              </Button>
-            )}
-          </div>
+          <EmptyGoalState 
+            isAdmin={isAdmin}
+            onCreateClick={() => setIsCreating(true)}
+          />
         )}
       </CardContent>
     </Card>
   );
 };
-
-const getDaysRemaining = (endDate: string) => {
-  const today = startOfToday();
-  const end = new Date(endDate);
-  return differenceInDays(end, today) + 1;
-};
-
