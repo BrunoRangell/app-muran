@@ -1,9 +1,14 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Goal, GOAL_TYPES } from "@/types/goal";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,40 +23,49 @@ interface GoalFormProps {
   isSubmitting: boolean;
 }
 
-export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: GoalFormProps) => {
+export const GoalForm = ({
+  initialData,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}: GoalFormProps) => {
   const [formData, setFormData] = useState<Partial<Goal>>(initialData || {});
 
-  const handleDateChange = (date: Date | undefined, field: 'start_date' | 'end_date') => {
+  const handleDateChange = (
+    date: Date | undefined,
+    field: "start_date" | "end_date"
+  ) => {
     if (!date) return;
-    
-    // Cria uma nova data usando o fuso horário local
+
+    // Cria uma nova data usando o horário local e define o horário para meio-dia
+    // para minimizar problemas de conversão de fuso horário.
     const localDate = new Date(
       date.getFullYear(),
       date.getMonth(),
       date.getDate(),
-      12, // Define meio-dia para evitar problemas com timezones
+      12, // meio-dia
       0,
       0,
       0
     );
-    
-    // Formata a data para YYYY-MM-DD
-    const formattedDate = localDate.toISOString().split('T')[0];
-    
-    setFormData(prev => ({
+
+    // Formata a data em horário local para o formato YYYY-MM-DD
+    const formattedDate = format(localDate, "yyyy-MM-dd");
+
+    setFormData((prev) => ({
       ...prev,
-      [field]: formattedDate
+      [field]: formattedDate,
     }));
   };
 
   const getMetricLabel = () => {
     switch (formData.goal_type) {
-      case 'active_clients':
-        return 'clientes ativos';
-      case 'new_clients':
-        return 'novos clientes';
+      case "active_clients":
+        return "clientes ativos";
+      case "new_clients":
+        return "novos clientes";
       default:
-        return 'clientes';
+        return "clientes";
     }
   };
 
@@ -66,7 +80,7 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
           onValueChange={(value) =>
             setFormData({
               ...formData,
-              goal_type: value as Goal['goal_type'],
+              goal_type: value as Goal["goal_type"],
             })
           }
         >
@@ -85,7 +99,9 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs text-gray-600 mb-1 block">Data Inicial</label>
+          <label className="text-xs text-gray-600 mb-1 block">
+            Data Inicial
+          </label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -97,7 +113,13 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {formData.start_date ? (
-                  format(new Date(formData.start_date), "dd/MM", { locale: ptBR })
+                  // Ao reconstruir a data, adicionamos "T12:00:00" para garantir que
+                  // ela seja interpretada como horário local (meio-dia).
+                  format(
+                    new Date(formData.start_date + "T12:00:00"),
+                    "dd/MM",
+                    { locale: ptBR }
+                  )
                 ) : (
                   <span>Início</span>
                 )}
@@ -106,8 +128,12 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
             <PopoverContent className="w-auto p-0" align="start">
               <CalendarComponent
                 mode="single"
-                selected={formData.start_date ? new Date(formData.start_date) : undefined}
-                onSelect={(date) => handleDateChange(date, 'start_date')}
+                selected={
+                  formData.start_date
+                    ? new Date(formData.start_date + "T12:00:00")
+                    : undefined
+                }
+                onSelect={(date) => handleDateChange(date, "start_date")}
                 initialFocus
               />
             </PopoverContent>
@@ -115,7 +141,9 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         </div>
 
         <div>
-          <label className="text-xs text-gray-600 mb-1 block">Data Final</label>
+          <label className="text-xs text-gray-600 mb-1 block">
+            Data Final
+          </label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -127,7 +155,11 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {formData.end_date ? (
-                  format(new Date(formData.end_date), "dd/MM", { locale: ptBR })
+                  format(
+                    new Date(formData.end_date + "T12:00:00"),
+                    "dd/MM",
+                    { locale: ptBR }
+                  )
                 ) : (
                   <span>Término</span>
                 )}
@@ -136,8 +168,12 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
             <PopoverContent className="w-auto p-0" align="start">
               <CalendarComponent
                 mode="single"
-                selected={formData.end_date ? new Date(formData.end_date) : undefined}
-                onSelect={(date) => handleDateChange(date, 'end_date')}
+                selected={
+                  formData.end_date
+                    ? new Date(formData.end_date + "T12:00:00")
+                    : undefined
+                }
+                onSelect={(date) => handleDateChange(date, "end_date")}
                 initialFocus
               />
             </PopoverContent>
