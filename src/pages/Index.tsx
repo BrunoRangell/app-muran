@@ -128,12 +128,12 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1 h-[400px]">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[400px]">
+        <div className="lg:col-span-1 h-full">
           <CompanyCards />
         </div>
 
-        <div className="lg:col-span-3 h-[400px]">
+        <div className="lg:col-span-3 h-full">
           <GoalCard isAdmin={isAdmin} />
         </div>
       </div>
