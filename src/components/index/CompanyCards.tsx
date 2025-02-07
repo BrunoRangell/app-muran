@@ -56,12 +56,12 @@ export const CompanyCards = () => {
   }, [autoPlay, emblaApi]);
 
   return (
-    <Carousel className="w-full">
+    <Carousel className="w-full h-[400px]">
       <CarouselContent ref={emblaRef}>
         {cards.map((card) => (
           <CarouselItem key={card.title}>
             <Card className="h-full transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md">
-              <CardContent className="p-6">
+              <CardContent className="flex flex-col justify-between h-full p-6">
                 <div className="flex items-start gap-4">
                   <card.icon className="h-6 w-6 text-muran-primary shrink-0" />
                   <div className="space-y-2">

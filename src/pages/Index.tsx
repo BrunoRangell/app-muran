@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -97,7 +96,6 @@ const Index = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
-      {/* Header com Perfil e Frase do Dia */}
       <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -119,7 +117,6 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Frase do Dia */}
         <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
           <Quote className="h-5 w-5 text-muran-primary/50 shrink-0" />
           <p className="text-sm text-gray-600 italic">
@@ -131,29 +128,21 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Container Principal com Grid Responsivo */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Carrossel de Cultura - 1 coluna */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CompanyCards />
-          </div>
+        <div className="lg:col-span-1 h-[400px]">
+          <CompanyCards />
         </div>
 
-        {/* Desafio Muran - 2 colunas */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 h-[400px]">
           <GoalCard isAdmin={isAdmin} />
         </div>
       </div>
 
-      {/* Métricas e Aniversariantes em Layout Horizontal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Métricas - 1 coluna */}
         <div className="lg:col-span-1">
           <MetricsCard clientMetrics={clientMetrics} />
         </div>
         
-        {/* Aniversariantes - 2 colunas */}
         <div className="lg:col-span-2">
           {teamMembers && <BirthdayCard members={teamMembers} />}
         </div>
