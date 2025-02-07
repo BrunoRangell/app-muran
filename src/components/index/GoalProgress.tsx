@@ -1,4 +1,3 @@
-
 import { Progress } from "@/components/ui/progress";
 import { Goal, GOAL_TYPES } from "@/types/goal";
 import { format } from "date-fns";
@@ -11,7 +10,10 @@ interface GoalProgressProps {
 }
 
 export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
-  const progress = Math.min(Math.round((currentValue / goal.target_value) * 100), 100);
+  const progress = Math.min(
+    Math.round((currentValue / goal.target_value) * 100),
+    100
+  );
 
   const getProgressColor = (value: number) => {
     if (value >= 100) return "bg-gradient-to-r from-green-400 to-emerald-500";
@@ -38,8 +40,17 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
               {GOAL_TYPES[goal.goal_type]}
             </h2>
             <p className="text-xs text-gray-600 mt-0.5">
-              {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
-              {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
+              {format(
+                new Date(goal.start_date + "T12:00:00"),
+                "dd 'de' MMM",
+                { locale: ptBR }
+              )}{" "}
+              -{" "}
+              {format(
+                new Date(goal.end_date + "T12:00:00"),
+                "dd 'de' MMM",
+                { locale: ptBR }
+              )}
             </p>
           </div>
         </div>
