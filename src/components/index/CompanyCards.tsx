@@ -61,8 +61,8 @@ export const CompanyCards = () => {
         <CarouselContent ref={emblaRef}>
           {cards.map((card) => (
             <CarouselItem key={card.title} className="h-full">
-              <Card className="transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md h-[320px]">
-                <CardContent className="flex flex-col p-6 h-full">
+              <Card className="transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md h-full">
+                <CardContent className="flex flex-col p-4 h-full">
                   <div className="flex items-start gap-4">
                     <card.icon className="h-6 w-6 text-muran-primary shrink-0" />
                     <div className="space-y-2">
