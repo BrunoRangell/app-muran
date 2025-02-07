@@ -30,6 +30,12 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     return "⏳ Vamos começar!";
   };
 
+  // Função para criar a data corretamente no horário local sem deslocamento
+  const parseLocalDate = (dateString: string) => {
+    const [year, month, day] = dateString.split("-").map(Number);
+    return new Date(year, month - 1, day); // Mês no JS começa em 0
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-3 rounded-lg">
@@ -40,17 +46,9 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
               {GOAL_TYPES[goal.goal_type]}
             </h2>
             <p className="text-xs text-gray-600 mt-0.5">
-              {format(
-                new Date(goal.start_date + "T12:00:00"),
-                "dd 'de' MMM",
-                { locale: ptBR }
-              )}{" "}
+              {format(parseLocalDate(goal.start_date), "dd 'de' MMM", { locale: ptBR })}{" "}
               -{" "}
-              {format(
-                new Date(goal.end_date + "T12:00:00"),
-                "dd 'de' MMM",
-                { locale: ptBR }
-              )}
+              {format(parseLocalDate(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
             </p>
           </div>
         </div>
