@@ -2,11 +2,13 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Eye } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TeamMember } from "@/types/team";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { ViewProfileDialog } from "./ViewProfileDialog";
 
 interface TeamMemberCardProps {
   member: TeamMember;
@@ -23,6 +25,8 @@ export const TeamMemberCard = ({
   onEdit,
   className 
 }: TeamMemberCardProps) => {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -54,39 +58,58 @@ export const TeamMemberCard = ({
   };
 
   return (
-    <Card className={cn("p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow", className)}>
-      <Avatar className="h-24 w-24">
-        {member.photo_url ? (
-          <AvatarImage src={convertGoogleDriveLink(member.photo_url)} alt={member.name} />
-        ) : (
-          <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
-            {getInitials(member.name)}
-          </AvatarFallback>
-        )}
-      </Avatar>
-      <div className="text-center space-y-2">
-        <h3 className="font-semibold text-lg">{member.name}</h3>
-        <p className="text-gray-600">{member.role}</p>
-        <p className="text-sm text-gray-500">
-          Início: {formatDate(member.start_date)}
-        </p>
-        {member.birthday && (
+    <>
+      <Card className={cn("p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow", className)}>
+        <Avatar className="h-24 w-24">
+          {member.photo_url ? (
+            <AvatarImage src={convertGoogleDriveLink(member.photo_url)} alt={member.name} />
+          ) : (
+            <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
+              {getInitials(member.name)}
+            </AvatarFallback>
+          )}
+        </Avatar>
+        <div className="text-center space-y-2">
+          <h3 className="font-semibold text-lg">{member.name}</h3>
+          <p className="text-gray-600">{member.role}</p>
           <p className="text-sm text-gray-500">
-            Aniversário: {formatBirthday(member.birthday)}
+            Início: {formatDate(member.start_date)}
           </p>
-        )}
-        {(currentUserPermission === 'admin' || currentUserId === member.id) && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            onClick={() => onEdit(member)}
-          >
-            <Pencil className="w-4 h-4 mr-2" />
-            Editar
-          </Button>
-        )}
-      </div>
-    </Card>
+          {member.birthday && (
+            <p className="text-sm text-gray-500">
+              Aniversário: {formatBirthday(member.birthday)}
+            </p>
+          )}
+          <div className="flex flex-col gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsProfileOpen(true)}
+              className="w-full"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              Ver perfil
+            </Button>
+            {(currentUserPermission === 'admin' || currentUserId === member.id) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onEdit(member)}
+                className="w-full"
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Editar
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <ViewProfileDialog
+        member={member}
+        isOpen={isProfileOpen}
+        onOpenChange={setIsProfileOpen}
+      />
+    </>
   );
 };
