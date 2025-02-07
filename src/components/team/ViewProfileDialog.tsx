@@ -75,11 +75,11 @@ export const ViewProfileDialog = ({
             </p>
           </div>
 
-          {member.bio && (
-            <div className="w-full text-center px-6">
-              <p className="text-gray-600 italic">{member.bio}</p>
-            </div>
-          )}
+          <div className="w-full text-center px-6">
+            <p className="text-gray-600 italic">
+              {member.bio || "Biografia não informada"}
+            </p>
+          </div>
 
           <div className="w-full space-y-4 bg-gray-50 p-6 rounded-lg">
             <div className="flex items-center gap-3 text-gray-700">
@@ -105,46 +105,53 @@ export const ViewProfileDialog = ({
             )}
           </div>
 
-          {(member.linkedin || member.instagram || member.tiktok) && (
-            <>
-              <Separator className="w-full" />
-              <div className="flex gap-4 justify-center w-full">
-                {member.linkedin && (
-                  <a
-                    href={member.linkedin}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-gray-600 hover:text-muran-primary transition-colors"
-                  >
-                    <Linkedin className="h-5 w-5" />
-                    <span>LinkedIn</span>
-                  </a>
-                )}
-                {member.instagram && (
-                  <a
-                    href={member.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-gray-600 hover:text-muran-primary transition-colors"
-                  >
-                    <Instagram className="h-5 w-5" />
-                    <span>Instagram</span>
-                  </a>
-                )}
-                {member.tiktok && (
-                  <a
-                    href={member.tiktok}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-gray-600 hover:text-muran-primary transition-colors"
-                  >
-                    <TiktokLogo className="h-5 w-5" />
-                    <span>TikTok</span>
-                  </a>
-                )}
-              </div>
-            </>
-          )}
+          <Separator className="w-full" />
+          <div className="flex gap-4 justify-center w-full">
+            <a
+              href={member.linkedin || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-2 ${
+                member.linkedin
+                  ? "text-gray-600 hover:text-muran-primary transition-colors cursor-pointer"
+                  : "text-gray-400 cursor-not-allowed"
+              }`}
+              onClick={(e) => !member.linkedin && e.preventDefault()}
+            >
+              <Linkedin className="h-5 w-5" />
+              <span>{member.linkedin ? "LinkedIn" : "LinkedIn não informado"}</span>
+            </a>
+
+            <a
+              href={member.instagram || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-2 ${
+                member.instagram
+                  ? "text-gray-600 hover:text-muran-primary transition-colors cursor-pointer"
+                  : "text-gray-400 cursor-not-allowed"
+              }`}
+              onClick={(e) => !member.instagram && e.preventDefault()}
+            >
+              <Instagram className="h-5 w-5" />
+              <span>{member.instagram ? "Instagram" : "Instagram não informado"}</span>
+            </a>
+
+            <a
+              href={member.tiktok || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-2 ${
+                member.tiktok
+                  ? "text-gray-600 hover:text-muran-primary transition-colors cursor-pointer"
+                  : "text-gray-400 cursor-not-allowed"
+              }`}
+              onClick={(e) => !member.tiktok && e.preventDefault()}
+            >
+              <TiktokLogo className="h-5 w-5" />
+              <span>{member.tiktok ? "TikTok" : "TikTok não informado"}</span>
+            </a>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
