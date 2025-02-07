@@ -4,6 +4,7 @@ import { Goal, GOAL_TYPES } from "@/types/goal";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Target, TrendingUp } from "lucide-react";
+import { getDaysRemaining } from "../goal/goalUtils";
 
 interface GoalProgressProps {
   goal: Goal;
@@ -37,10 +38,17 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
             <h2 className="text-sm font-semibold text-gray-900">
               {GOAL_TYPES[goal.goal_type]}
             </h2>
-            <p className="text-xs text-gray-600 mt-0.5">
-              {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
-              {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
-            </p>
+            <div className="space-y-0.5">
+              <p className="text-xs text-gray-600">
+                {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
+                {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
+              </p>
+              <p className="text-xs text-green-600">
+                {getDaysRemaining(goal.end_date) > 0 
+                  ? `${getDaysRemaining(goal.end_date)} dias restantes` 
+                  : "Encerrado"}
+              </p>
+            </div>
           </div>
         </div>
       </div>
