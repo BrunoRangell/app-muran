@@ -51,7 +51,7 @@ const Financial = () => {
       const { data, error } = await supabase
         .from("salaries")
         .select("month, amount")
-        .eq("team_member_id", queryId)
+        .eq("manager_id", queryId)
         .order("month", { ascending: false });
 
       if (error) {
