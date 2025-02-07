@@ -30,11 +30,24 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
     }));
   };
 
+  const getMetricLabel = () => {
+    switch (formData.goal_type) {
+      case 'active_clients':
+        return 'clientes ativos';
+      case 'new_clients':
+        return 'novos clientes';
+      case 'churned_clients':
+        return 'clientes cancelados';
+      default:
+        return 'clientes';
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
         <label className="text-xs font-medium text-gray-600 mb-1 block">
-          Tipo de Desafio
+          Tipo de Meta
         </label>
         <Select
           value={formData.goal_type}
@@ -122,11 +135,11 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
 
       <div>
         <label className="text-xs font-medium text-gray-600 mb-1 block">
-          Meta
+          Meta de {getMetricLabel()}
         </label>
         <Input
           type="number"
-          placeholder="Defina o objetivo"
+          placeholder="Digite a quantidade"
           value={formData.target_value || ""}
           onChange={(e) =>
             setFormData({
@@ -138,11 +151,11 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         />
       </div>
 
-      <div className="flex gap-2 pt-2">
+      <div className="grid grid-cols-2 gap-2 pt-2">
         <Button
           variant="outline"
           onClick={onCancel}
-          className="w-full h-8"
+          className="h-8"
           disabled={isSubmitting}
           size="sm"
         >
@@ -151,7 +164,7 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         <Button
           onClick={() => onSubmit(formData)}
           disabled={isSubmitting}
-          className="w-full h-8 bg-[#ff6e00] hover:bg-[#e66200]"
+          className="h-8 bg-[#ff6e00] hover:bg-[#e66200]"
           size="sm"
         >
           {isSubmitting ? "Salvando..." : "Salvar"}
@@ -160,3 +173,4 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
     </div>
   );
 };
+
