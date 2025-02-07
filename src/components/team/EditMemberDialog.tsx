@@ -8,29 +8,10 @@ import { useForm } from "react-hook-form";
 import { EditFormData, TeamMember } from "@/types/team";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { toast } from "@/components/ui/use-toast";
 import { useEffect } from "react";
-
-const socialMediaSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  role: z.string().optional(),
-  photo_url: z.string().optional(),
-  birthday: z.string().min(1, "Data de aniversário é obrigatória"),
-  bio: z.string().optional(),
-  instagram: z.string().optional()
-    .refine(value => !value || value.match(/^https:\/\/(www\.)?instagram\.com\/.+/), {
-      message: "O link do Instagram deve começar com 'https://www.instagram.com/' ou 'https://instagram.com/'"
-    }),
-  linkedin: z.string().optional()
-    .refine(value => !value || value.match(/^https:\/\/(www\.)?linkedin\.com\/.+/), {
-      message: "O link do LinkedIn deve começar com 'https://www.linkedin.com/' ou 'https://linkedin.com/'"
-    }),
-  tiktok: z.string().optional()
-    .refine(value => !value || value.match(/^https:\/\/(www\.)?tiktok\.com\/.+/), {
-      message: "O link do TikTok deve começar com 'https://www.tiktok.com/' ou 'https://tiktok.com/'"
-    })
-});
+import { socialMediaSchema, SocialMediaSchemaType } from "./schemas/memberSchema";
+import { SocialMediaForm } from "./forms/SocialMediaForm";
 
 interface EditMemberDialogProps {
   isOpen: boolean;
@@ -45,7 +26,7 @@ export const EditMemberDialog = ({
   selectedMember,
   onSubmit,
 }: EditMemberDialogProps) => {
-  const form = useForm<z.infer<typeof socialMediaSchema>>({
+  const form = useForm<SocialMediaSchemaType>({
     resolver: zodResolver(socialMediaSchema),
     defaultValues: {
       name: '',
@@ -80,7 +61,7 @@ export const EditMemberDialog = ({
 
   if (!selectedMember) return null;
 
-  const handleSubmit = async (data: z.infer<typeof socialMediaSchema>) => {
+  const handleSubmit = async (data: SocialMediaSchemaType) => {
     try {
       await onSubmit(data as EditFormData);
     } catch (error) {
@@ -181,51 +162,7 @@ export const EditMemberDialog = ({
                 )}
               />
 
-              <div className="space-y-3 border rounded-lg p-3 bg-gray-50">
-                <h3 className="font-medium text-sm text-gray-700">Redes Sociais</h3>
-                
-                <FormField
-                  control={form.control}
-                  name="instagram"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Instagram (URL)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="https://www.instagram.com/seu.perfil/" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="linkedin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>LinkedIn (URL)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="https://www.linkedin.com/in/seu-perfil/" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="tiktok"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>TikTok (URL)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="https://www.tiktok.com/@seu.perfil" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <SocialMediaForm form={form} />
             </div>
 
             <div className="sticky bottom-0 pt-4 bg-white">
@@ -237,4 +174,3 @@ export const EditMemberDialog = ({
     </Dialog>
   );
 };
-
