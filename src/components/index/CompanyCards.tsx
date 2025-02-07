@@ -40,21 +40,32 @@ export const CompanyCards = () => {
     },
   ];
 
-  // Efeito de Autoplay: quando a API estiver disponível, chama scrollNext a cada 5 segundos
+  // Lógica de autoplay: a cada seleção de slide, espera 5 segundos e então avança
   useEffect(() => {
     if (!emblaApi) {
       console.log("Embla API não disponível ainda.");
       return;
     }
-    console.log("Embla API disponível, iniciando autoplay.");
-    const interval = setInterval(() => {
+
+    let timeout = setTimeout(() => {
       console.log("Autoplay: chamando emblaApi.scrollNext()");
       emblaApi.scrollNext();
     }, 5000);
 
+    const onSelect = () => {
+      // Reinicia o timer sempre que um novo slide for selecionado
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        console.log("Autoplay (onSelect): chamando emblaApi.scrollNext()");
+        emblaApi.scrollNext();
+      }, 5000);
+    };
+
+    emblaApi.on("select", onSelect);
+
     return () => {
-      console.log("Limpando intervalo de autoplay.");
-      clearInterval(interval);
+      clearTimeout(timeout);
+      emblaApi.off("select", onSelect);
     };
   }, [emblaApi]);
 
