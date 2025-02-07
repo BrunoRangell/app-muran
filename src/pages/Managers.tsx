@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -7,7 +6,7 @@ import { UserPlus, Loader2, Users, AlertCircle } from "lucide-react";
 import { TeamMemberCard } from "@/components/team/TeamMemberCard";
 import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
-import { TeamMemberForm } from "@/components/team/TeamMemberForm";
+import { TeamMemberForm } from "@/components/admin/TeamMemberForm";
 import { supabase } from "@/lib/supabase";
 import { EditFormData, TeamMember } from "@/types/team";
 import {
