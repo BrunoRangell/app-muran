@@ -20,7 +20,7 @@ const Financial = () => {
       if (paramMemberId) {
         const { data: member } = await supabase
           .from("team_members")
-          .select("manager_id")
+          .select("*")
           .eq("id", paramMemberId)
           .single();
           
@@ -34,8 +34,8 @@ const Financial = () => {
         
         const { data: currentUser } = await supabase
           .from("team_members")
-          .select("manager_id")
-          .eq("id", session.user.id)
+          .select("*")
+          .eq("email", session.user.email)
           .single();
           
         queryId = currentUser?.manager_id;
