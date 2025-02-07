@@ -25,6 +25,17 @@ const Login = () => {
     }))
   );
 
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/');
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -41,19 +52,24 @@ const Login = () => {
     setShowError(false);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('Erro de login:', error);
         setShowError(true);
         toast({
           title: "Erro no login",
           description: "Verifique suas credenciais e tente novamente",
           variant: "destructive",
         });
-      } else {
+        return;
+      }
+
+      if (data.session) {
+        console.log('Login bem-sucedido:', data.session);
         toast({
           title: "Bem-vindo!",
           description: "Login realizado com sucesso",
@@ -61,6 +77,7 @@ const Login = () => {
         navigate("/");
       }
     } catch (error) {
+      console.error('Erro inesperado:', error);
       toast({
         title: "Erro inesperado",
         description: "Ocorreu um erro ao tentar fazer login",
