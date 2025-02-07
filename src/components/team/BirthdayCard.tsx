@@ -1,10 +1,9 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gift } from "lucide-react";
 import { TeamMember } from "@/types/team";
 import { format, parseISO, isSameMonth, isSameYear, addMonths, isAfter, isToday, addDays, isEqual, startOfDay, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface BirthdayCardProps {
   members: TeamMember[];
@@ -13,6 +12,14 @@ interface BirthdayCardProps {
 export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   const today = new Date();
   const tomorrow = addDays(today, 1);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
 
   const getBirthdayDate = (birthday: string) => {
     const date = parseISO(birthday);
@@ -123,11 +130,17 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
                 } ${isToday || isTomorrow ? 'shadow-xl' : 'shadow-sm'}`}
               >
                 <Avatar className="h-12 w-12 border-2 border-white/20">
-                  <img
-                    src={member.photo_url || "/placeholder.svg"}
-                    alt={member.name}
-                    className="object-cover"
-                  />
+                  {member.photo_url ? (
+                    <AvatarImage
+                      src={member.photo_url}
+                      alt={member.name}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
+                      {getInitials(member.name)}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 
                 <div className="flex-1 min-w-0">
@@ -162,4 +175,3 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
     </Card>
   );
 };
-
