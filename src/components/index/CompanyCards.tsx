@@ -7,7 +7,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
 export const CompanyCards = () => {
@@ -46,31 +46,22 @@ export const CompanyCards = () => {
     },
   ];
 
+  const scrollNext = useCallback(() => {
+    if (!emblaApi) return;
+    emblaApi.scrollNext();
+    console.log('Avançando para o próximo slide automaticamente');
+  }, [emblaApi]);
+
   useEffect(() => {
     if (!autoPlay || !emblaApi) return;
 
-    const onSelect = () => {
-      console.log('Slide atual:', emblaApi.selectedScrollSnap());
-    };
-
-    const autoPlayInterval = setInterval(() => {
-      if (emblaApi.canScrollNext()) {
-        console.log('Avançando para o próximo slide...');
-        emblaApi.scrollNext();
-      } else {
-        console.log('Voltando para o primeiro slide...');
-        emblaApi.scrollTo(0);
-      }
-    }, 5000);
-
-    emblaApi.on('select', onSelect);
+    const interval = setInterval(scrollNext, 5000);
 
     return () => {
       console.log('Limpando intervalo do autoplay');
-      clearInterval(autoPlayInterval);
-      emblaApi.off('select', onSelect);
+      clearInterval(interval);
     };
-  }, [autoPlay, emblaApi]);
+  }, [autoPlay, emblaApi, scrollNext]);
 
   return (
     <div className="h-full flex">
