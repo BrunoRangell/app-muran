@@ -1,7 +1,11 @@
 
 import { Badge } from "@/types/team";
 import { Trophy, Award, Star, Medal, Ribbon, Gem, Flag, BadgeCheck, BadgeIcon } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { 
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface BadgeDisplayProps {
   badges?: Badge[];
@@ -35,53 +39,25 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
             const IconComponent = BadgeIconMap[badge.icon] || Trophy;
             
             return (
-              <TooltipProvider key={badge.id} delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <div className="group relative p-3 bg-gradient-to-br from-muran-primary/20 to-muran-primary/10 rounded-xl hover:from-muran-primary/30 hover:to-muran-primary/20 transition-all duration-300 shadow-sm hover:shadow-md">
-                      <IconComponent className="h-7 w-7 text-muran-primary transition-transform group-hover:scale-110 duration-300" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent 
-                    side="top" 
-                    align="center" 
-                    sideOffset={12}
-                    className="fixed bg-white/95 backdrop-blur-sm border-2 border-muran-primary/20 shadow-xl p-6 max-w-[300px] z-[999999] break-words rounded-xl"
-                    style={{ 
-                      position: 'fixed',
-                      pointerEvents: 'auto',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      top: '10vh',
-                      transformOrigin: 'center bottom',
-                      animation: 'tooltipSlideIn 0.2s ease-out'
-                    }}
-                  >
-                    <style>{`
-                      @keyframes tooltipSlideIn {
-                        from {
-                          opacity: 0;
-                          transform: translate(-50%, 20px);
-                        }
-                        to {
-                          opacity: 1;
-                          transform: translate(-50%, 0);
-                        }
-                      }
-                    `}</style>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-muran-primary/10 rounded-lg">
-                          <IconComponent className="h-6 w-6 text-muran-primary" />
-                        </div>
-                        <h4 className="font-bold text-xl text-gray-900">{badge.name}</h4>
+              <Dialog key={badge.id}>
+                <DialogTrigger asChild>
+                  <button className="group relative p-3 bg-gradient-to-br from-muran-primary/20 to-muran-primary/10 rounded-xl hover:from-muran-primary/30 hover:to-muran-primary/20 transition-all duration-300 shadow-sm hover:shadow-md">
+                    <IconComponent className="h-7 w-7 text-muran-primary transition-transform group-hover:scale-110 duration-300" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px] bg-white p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-muran-primary/10 rounded-xl">
+                        <IconComponent className="h-8 w-8 text-muran-primary" />
                       </div>
-                      <div className="w-12 h-1 bg-muran-primary/20 rounded-full"></div>
-                      <p className="text-base text-gray-700 leading-relaxed">{badge.description}</p>
+                      <h4 className="font-bold text-2xl text-gray-900">{badge.name}</h4>
                     </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                    <div className="w-16 h-1 bg-muran-primary/20 rounded-full"></div>
+                    <p className="text-base text-gray-700 leading-relaxed">{badge.description}</p>
+                  </div>
+                </DialogContent>
+              </Dialog>
             );
           })}
         </div>
