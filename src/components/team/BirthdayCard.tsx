@@ -144,7 +144,7 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
                       <span className={`text-xs ${
                         isTomorrow ? 'text-blue-700' : 'text-gray-500'
                       }`}>
-                        • {daysUntil} {daysUntil === 1 ? 'dia' : 'dias'}
+                        • {daysUntil} {daysUntil === 1 ? 'dia restante' : 'dias restantes'}
                       </span>
                     )}
                   </div>
@@ -162,3 +162,4 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
     </Card>
   );
 };
+
