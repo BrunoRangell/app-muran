@@ -96,7 +96,7 @@ const Index = () => {
   const todaysQuote = getRandomQuote();
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
+    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
       <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -129,7 +129,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" style={{ height: '400px' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4" style={{ height: '400px' }}>
         <div className="lg:col-span-1 h-full">
           <CompanyCards />
         </div>
@@ -139,7 +139,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1">
           <MetricsCard clientMetrics={clientMetrics} />
         </div>
