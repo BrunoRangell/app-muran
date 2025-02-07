@@ -28,21 +28,21 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
 
   return (
     <div className="w-full">
-      <div className="p-4 bg-gradient-to-br from-white to-gray-50 rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <Trophy className="h-5 w-5 text-muran-primary" />
-          <h3 className="text-lg font-semibold text-gray-900">Conquistas e Reconhecimentos</h3>
+      <div className="p-3 bg-gradient-to-br from-white to-gray-50 rounded-xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-2 mb-2">
+          <Trophy className="h-4 w-4 text-muran-primary" />
+          <h3 className="text-base font-semibold text-gray-900">Conquistas e Reconhecimentos</h3>
         </div>
         
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {badges.map((badge) => {
             const IconComponent = BadgeIconMap[badge.icon] || Trophy;
             
             return (
               <Dialog key={badge.id}>
                 <DialogTrigger asChild>
-                  <button className="group relative p-3 bg-gradient-to-br from-muran-primary/20 to-muran-primary/10 rounded-xl hover:from-muran-primary/30 hover:to-muran-primary/20 transition-all duration-300 shadow-sm hover:shadow-md">
-                    <IconComponent className="h-7 w-7 text-muran-primary transition-transform group-hover:scale-110 duration-300" />
+                  <button className="group relative p-2 bg-gradient-to-br from-muran-primary/20 to-muran-primary/10 rounded-lg hover:from-muran-primary/30 hover:to-muran-primary/20 transition-all duration-300 shadow-sm hover:shadow-md">
+                    <IconComponent className="h-5 w-5 text-muran-primary transition-transform group-hover:scale-110 duration-300" />
                   </button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px] bg-white p-6">

@@ -79,9 +79,9 @@ export const ViewProfileDialog = ({
       <DialogContent className="max-w-lg bg-white p-0 overflow-hidden max-h-[85vh]">
         <ScrollArea className="h-full max-h-[85vh] [&_[data-radix-scroll-area-thumb]]:bg-muran-primary [&_[data-radix-scroll-area-thumb]]:w-2.5 [&_[data-radix-scroll-area-thumb]]:hover:bg-muran-primary/80">
           {/* Header com gradiente e foto */}
-          <div className="relative bg-gradient-to-br from-muran-primary/10 to-muran-primary/5 pb-6">
-            <div className="flex flex-col items-center gap-6 p-8">
-              <Avatar className="h-32 w-32 ring-4 ring-white shadow-xl">
+          <div className="relative bg-gradient-to-br from-muran-primary/10 to-muran-primary/5 pb-4">
+            <div className="flex flex-col items-center gap-4 p-6">
+              <Avatar className="h-28 w-28 ring-4 ring-white shadow-xl">
                 {member.photo_url ? (
                   <AvatarImage
                     src={member.photo_url}
@@ -89,14 +89,14 @@ export const ViewProfileDialog = ({
                     className="object-cover hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
-                  <AvatarFallback className="bg-muran-primary text-white text-3xl">
+                  <AvatarFallback className="bg-muran-primary text-white text-2xl">
                     {getInitials(member.name)}
                   </AvatarFallback>
                 )}
               </Avatar>
               
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 mb-1">{member.name}</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">{member.name}</h2>
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/80 backdrop-blur-sm rounded-full">
                   <Briefcase className="h-4 w-4 text-muran-primary" />
                   <p className="text-gray-700 font-medium">{member.role}</p>
@@ -161,3 +161,4 @@ export const ViewProfileDialog = ({
     </Dialog>
   );
 };
+
