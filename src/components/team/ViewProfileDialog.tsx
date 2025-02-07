@@ -11,6 +11,7 @@ import { ptBR } from "date-fns/locale";
 import { TeamMember } from "@/types/team";
 import { CalendarDays, Mail, Briefcase, CalendarClock, Instagram, Linkedin } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { BadgeDisplay } from "./BadgeDisplay";
 
 interface ViewProfileDialogProps {
   member: TeamMember | null;
@@ -99,6 +100,12 @@ export const ViewProfileDialog = ({
                 <p className="text-gray-700 font-medium">{member.role}</p>
               </div>
             </div>
+
+            {member.badges && member.badges.length > 0 && (
+              <div className="w-full">
+                <BadgeDisplay badges={member.badges} />
+              </div>
+            )}
           </div>
         </div>
 

@@ -9,7 +9,6 @@ import { TeamMember } from "@/types/team";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { ViewProfileDialog } from "./ViewProfileDialog";
-import { BadgeDisplay } from "./BadgeDisplay";
 
 interface TeamMemberCardProps {
   member: TeamMember;
@@ -92,7 +91,6 @@ export const TeamMemberCard = ({
               Aniversário: {formatBirthday(member.birthday)}
             </p>
           )}
-          {member.badges && <BadgeDisplay badges={member.badges} />}
           <div className="pt-2">
             <Button
               variant="outline"
@@ -115,3 +113,4 @@ export const TeamMemberCard = ({
     </>
   );
 };
+
