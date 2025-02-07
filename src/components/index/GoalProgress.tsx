@@ -1,6 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { Goal, GOAL_TYPES } from "@/types/goal";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Target, TrendingUp } from "lucide-react";
 
@@ -30,9 +30,14 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     return "⏳ Vamos começar!";
   };
 
-  // Converte corretamente a data do banco de dados, garantindo o fuso horário correto
-  const startDate = parseISO(goal.start_date + "T12:00:00Z"); // Força meio-dia UTC
-  const endDate = parseISO(goal.end_date + "T12:00:00Z");
+  // Ajuste definitivo: Forçar a data para o fuso local sem alteração de dia
+  const createDate = (dateString: string) => {
+    const [year, month, day] = dateString.split("-").map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0); // Define meio-dia para evitar conversões inesperadas
+  };
+
+  const startDate = createDate(goal.start_date);
+  const endDate = createDate(goal.end_date);
 
   return (
     <div className="space-y-4">
