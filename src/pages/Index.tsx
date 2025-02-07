@@ -74,14 +74,14 @@ const Index = () => {
         if (session?.user?.email) {
           const { data: teamMember } = await supabase
             .from("team_members")
-            .select("name, permission, role, avatar_url")
+            .select("name, permission, role, photo_url")
             .eq("email", session.user.email)
             .single();
 
           if (teamMember) {
             setUserName(teamMember.name.split(" ")[0]);
             setUserRole(teamMember.role || "");
-            setAvatarUrl(teamMember.avatar_url || "");
+            setAvatarUrl(teamMember.photo_url || "");
           }
           setIsAdmin(teamMember?.permission === "admin");
         }
@@ -147,3 +147,4 @@ const Index = () => {
 };
 
 export default Index;
+
