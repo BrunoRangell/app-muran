@@ -1,28 +1,14 @@
 
-import { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Target, Users, ArrowUpRight } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
-  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel";
-import useEmblaCarousel from "embla-carousel-react";
 
 export const CompanyCards = () => {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
-
-  useEffect(() => {
-    if (emblaApi) {
-      // Auto-play com intervalo de 5 segundos
-      const interval = setInterval(() => {
-        emblaApi.scrollNext();
-      }, 5000);
-
-      return () => clearInterval(interval);
-    }
-  }, [emblaApi]);
-
   const cards = [
     {
       icon: Target,
@@ -52,16 +38,18 @@ export const CompanyCards = () => {
 
   return (
     <Carousel
-      ref={emblaRef}
-      className="w-full"
       opts={{
         align: "start",
         loop: true,
       }}
+      className="w-full"
     >
       <CarouselContent>
-        {cards.map((card) => (
-          <CarouselItem key={card.title}>
+        {cards.map((card, index) => (
+          <div
+            key={card.title}
+            className="basis-full pl-1"
+          >
             <Card className="h-full transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -87,9 +75,11 @@ export const CompanyCards = () => {
                 </div>
               </CardContent>
             </Card>
-          </CarouselItem>
+          </div>
         ))}
       </CarouselContent>
+      <CarouselPrevious className="hidden md:flex -left-4" />
+      <CarouselNext className="hidden md:flex -right-4" />
     </Carousel>
   );
 };
