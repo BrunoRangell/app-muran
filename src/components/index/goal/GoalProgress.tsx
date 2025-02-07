@@ -1,7 +1,10 @@
 
 import { Progress } from "@/components/ui/progress";
 import { Goal, GOAL_TYPES } from "@/types/goal";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Target, TrendingUp } from "lucide-react";
+import { getDaysRemaining } from "./goalUtils";
 
 interface GoalProgressProps {
   goal: Goal;
