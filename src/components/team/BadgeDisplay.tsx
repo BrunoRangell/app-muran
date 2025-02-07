@@ -20,7 +20,12 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
                 <Trophy className="h-5 w-5 text-muran-primary" />
               </div>
             </TooltipTrigger>
-            <TooltipContent side="top" align="center" className="bg-white z-50 shadow-lg border border-gray-200 p-3 max-w-[200px]">
+            <TooltipContent 
+              side="top" 
+              align="center" 
+              sideOffset={8}
+              className="bg-white z-[9999] shadow-lg border border-gray-200 p-3 max-w-[300px] break-words"
+            >
               <div className="text-sm">
                 <p className="font-semibold text-gray-900">{badge.name}</p>
                 <p className="text-xs text-gray-600 mt-1">{badge.description}</p>
@@ -32,4 +37,3 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
     </div>
   );
 };
-
