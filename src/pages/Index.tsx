@@ -5,12 +5,11 @@ import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { Avatar } from "@/components/ui/avatar";
 import { getRandomQuote } from "@/data/motivationalQuotes";
-import { WelcomeHeader } from "@/components/index/WelcomeHeader";
 import { CompanyCards } from "@/components/index/CompanyCards";
 import { MetricsCard } from "@/components/index/MetricsCard";
-import { QuoteCard } from "@/components/index/QuoteCard";
 import { BirthdayCard } from "@/components/team/BirthdayCard";
 import { GoalCard } from "@/components/index/GoalCard";
+import { Quote } from "lucide-react";
 
 const Index = () => {
   const [userName, setUserName] = useState<string>("");
@@ -98,24 +97,37 @@ const Index = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
-      {/* Header com Perfil Compacto */}
-      <div className="flex items-center justify-between bg-white rounded-lg p-4 md:p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-12 w-12 border-2 border-muran-primary/20">
-            <img
-              src={avatarUrl || "/placeholder.svg"}
-              alt={userName}
-              className="object-cover"
-            />
-          </Avatar>
-          <div className="text-left">
-            <h1 className="text-2xl font-bold text-muran-complementary">
-              {greeting}, {userName}! <span className="text-muran-primary">✨</span>
-            </h1>
-            {userRole && (
-              <p className="text-gray-600">{userRole}</p>
-            )}
+      {/* Header com Perfil e Frase do Dia */}
+      <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-12 w-12 border-2 border-muran-primary/20">
+              <img
+                src={avatarUrl || "/placeholder.svg"}
+                alt={userName}
+                className="object-cover"
+              />
+            </Avatar>
+            <div className="text-left">
+              <h1 className="text-2xl font-bold text-muran-complementary">
+                {greeting}, {userName}! <span className="text-muran-primary">✨</span>
+              </h1>
+              {userRole && (
+                <p className="text-gray-600">{userRole}</p>
+              )}
+            </div>
           </div>
+        </div>
+        
+        {/* Frase do Dia */}
+        <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+          <Quote className="h-5 w-5 text-muran-primary/50 shrink-0" />
+          <p className="text-sm text-gray-600 italic">
+            "{todaysQuote.quote}" 
+            <span className="text-xs text-gray-500 ml-1">
+              - {todaysQuote.author}
+            </span>
+          </p>
         </div>
       </div>
 
@@ -135,11 +147,6 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MetricsCard clientMetrics={clientMetrics} />
           {teamMembers && <BirthdayCard members={teamMembers} />}
-        </div>
-
-        {/* Frase Inspiracional (Fixada) */}
-        <div className="sticky bottom-0 bg-white/80 backdrop-blur-sm">
-          <QuoteCard quote={todaysQuote} />
         </div>
       </div>
     </div>

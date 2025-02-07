@@ -1,8 +1,10 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gift } from "lucide-react";
 import { TeamMember } from "@/types/team";
-import { format, parseISO, isSameMonth, isSameYear, addMonths, isAfter, isToday, addDays, isEqual, startOfDay } from "date-fns";
+import { format, parseISO, isSameMonth, isSameYear, addMonths, isAfter, isToday, addDays, isEqual, startOfDay, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Avatar } from "@/components/ui/avatar";
 
 interface BirthdayCardProps {
   members: TeamMember[];
@@ -15,6 +17,19 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   const getBirthdayDate = (birthday: string) => {
     const date = parseISO(birthday);
     return new Date(today.getFullYear(), date.getMonth(), date.getDate());
+  };
+
+  const getDaysUntilBirthday = (birthday: string) => {
+    const birthdayDate = getBirthdayDate(birthday);
+    if (isAfter(birthdayDate, today)) {
+      return differenceInDays(birthdayDate, today);
+    }
+    const nextYearBirthday = new Date(
+      today.getFullYear() + 1,
+      parseISO(birthday).getMonth(),
+      parseISO(birthday).getDate()
+    );
+    return differenceInDays(nextYearBirthday, today);
   };
 
   const getCurrentMonthBirthdays = () => {
@@ -38,7 +53,6 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
         if (isAfter(birthdayDate, today)) {
           return { ...member, nextBirthday: birthdayDate };
         }
-        // Se o aniversário já passou este ano, considere o próximo ano
         const nextYearBirthday = new Date(
           today.getFullYear() + 1,
           parseISO(member.birthday).getMonth(),
@@ -59,20 +73,17 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
     return format(parseISO(birthday), "dd 'de' MMMM", { locale: ptBR });
   };
 
-  // Função para verificar se o aniversário é hoje
   const isBirthdayToday = (birthday: string) => {
     const birthdayDate = getBirthdayDate(birthday);
     return isToday(birthdayDate);
   };
 
-  // Função para verificar se o aniversário é amanhã
   const isBirthdayTomorrow = (birthday: string) => {
     const birthdayDate = getBirthdayDate(birthday);
-    const startOfTomorrow = startOfDay(tomorrow); // Ignora a hora ao comparar
-    return isEqual(birthdayDate, startOfTomorrow); // Comparar somente data
+    const startOfTomorrow = startOfDay(tomorrow);
+    return isEqual(birthdayDate, startOfTomorrow);
   };
 
-  // Melhorando a ordenação para colocar aniversariantes de hoje e amanhã no topo
   const sortedBirthdays = [...birthdaysToShow].sort((a, b) => {
     const aIsToday = isBirthdayToday(a.birthday);
     const bIsToday = isBirthdayToday(b.birthday);
@@ -83,7 +94,6 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
     if (!aIsToday && bIsToday) return 1;
     if (aIsTomorrow && !bIsTomorrow && !bIsToday) return -1;
     if (!aIsTomorrow && bIsTomorrow && !aIsToday) return 1;
-    // Se ambos ou nenhum forem de hoje ou amanhã, mantém a ordenação original
     return 0;
   });
 
@@ -98,26 +108,47 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
+        <div className="space-y-4">
           {sortedBirthdays.map((member) => {
             const isToday = isBirthdayToday(member.birthday);
             const isTomorrow = isBirthdayTomorrow(member.birthday);
+            const daysUntil = getDaysUntilBirthday(member.birthday);
+            
             return (
               <div
                 key={member.id}
-                className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
+                className={`flex items-center gap-4 p-4 rounded-lg transition-all duration-200 ${
                   isToday ? 'bg-muran-primary text-white' : 
                   isTomorrow ? 'bg-blue-200 text-blue-800' : 'bg-gray-50 text-gray-900'
                 } ${isToday || isTomorrow ? 'shadow-xl' : 'shadow-sm'}`}
               >
-                <span className={`font-semibold ${isToday ? 'text-white' : ''}`}>
-                  {isToday ? `🎉 ${member.name} (Hoje!)` : isTomorrow ? `🎂 ${member.name} (Amanhã!)` : member.name}
-                </span>
-                <span className={`font-medium ${isToday ? 'text-gray-200' : isTomorrow ? 'text-blue-600' : 'text-gray-600'}`}>
-                  {formatBirthday(member.birthday)}
-                </span>
-                {isToday && <span className="ml-2 text-white">🎉</span>}
-                {isTomorrow && <span className="ml-2 text-blue-800">🎂</span>}
+                <Avatar className="h-12 w-12 border-2 border-white/20">
+                  <img
+                    src={member.photo_url || "/placeholder.svg"}
+                    alt={member.name}
+                    className="object-cover"
+                  />
+                </Avatar>
+                
+                <div className="flex-1 min-w-0">
+                  <p className={`font-semibold truncate ${isToday ? 'text-white' : ''}`}>
+                    {isToday ? `🎉 ${member.name}` : 
+                     isTomorrow ? `🎂 ${member.name}` : 
+                     member.name}
+                  </p>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className={isToday ? 'text-white/90' : 'text-gray-600'}>
+                      {formatBirthday(member.birthday)}
+                    </span>
+                    {!isToday && (
+                      <span className={`text-xs ${
+                        isTomorrow ? 'text-blue-700' : 'text-gray-500'
+                      }`}>
+                        • {daysUntil} {daysUntil === 1 ? 'dia' : 'dias'}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })}
