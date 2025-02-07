@@ -15,7 +15,8 @@ export const CompanyCards = () => {
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     align: "center",
     loop: true,
-    duration: 20
+    duration: 20,
+    dragFree: false
   });
 
   const cards = [
@@ -48,19 +49,20 @@ export const CompanyCards = () => {
   useEffect(() => {
     if (!autoPlay || !emblaApi) return;
 
-    const interval = setInterval(() => {
+    const autoPlayInterval = setInterval(() => {
       console.log('Tentando avançar para o próximo slide...');
-      if (emblaApi.canScrollNext()) {
-        emblaApi.scrollNext();
-      } else {
-        console.log('Voltando para o primeiro slide...');
-        emblaApi.scrollTo(0);
-      }
+      emblaApi.scrollNext();
     }, 5000);
+
+    emblaApi.on('select', () => {
+      const lastSlide = emblaApi.selectedScrollSnap() === emblaApi.scrollSnapList().length - 1;
+      console.log('Slide atual:', emblaApi.selectedScrollSnap(), 'É último slide:', lastSlide);
+    });
 
     return () => {
       console.log('Limpando intervalo do autoplay');
-      clearInterval(interval);
+      clearInterval(autoPlayInterval);
+      emblaApi.off('select');
     };
   }, [autoPlay, emblaApi]);
 
