@@ -2,14 +2,13 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Pencil, Eye, DollarSign } from "lucide-react";
+import { Pencil, Eye } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TeamMember } from "@/types/team";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { ViewProfileDialog } from "./ViewProfileDialog";
-import { useNavigate } from "react-router-dom";
 
 interface TeamMemberCardProps {
   member: TeamMember;
@@ -27,7 +26,6 @@ export const TeamMemberCard = ({
   className 
 }: TeamMemberCardProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const navigate = useNavigate();
 
   const getInitials = (name: string) => {
     return name
@@ -59,37 +57,19 @@ export const TeamMemberCard = ({
     return url;
   };
 
-  const handleViewFinancial = () => {
-    navigate(`/financeiro/${member.id}`);
-  };
-
   return (
     <>
       <Card className={cn("relative p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow", className)}>
-        <div className="absolute right-2 top-2 flex gap-1">
-          {currentUserPermission === "admin" && currentUserId !== member.id && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleViewFinancial}
-              className="h-8 w-8 hover:bg-gray-100"
-              title="Ver financeiro"
-            >
-              <DollarSign className="h-4 w-4 text-muran-primary" />
-            </Button>
-          )}
-          {(currentUserPermission === 'admin' || currentUserId === member.id) && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(member)}
-              className="h-8 w-8 hover:bg-gray-100"
-              title="Editar"
-            >
-              <Pencil className="h-4 w-4 text-gray-500" />
-            </Button>
-          )}
-        </div>
+        {(currentUserPermission === 'admin' || currentUserId === member.id) && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onEdit(member)}
+            className="absolute right-2 top-2 h-8 w-8 hover:bg-gray-100"
+          >
+            <Pencil className="h-4 w-4 text-gray-500" />
+          </Button>
+        )}
         
         <Avatar className="h-24 w-24">
           {member.photo_url ? (

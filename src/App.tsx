@@ -1,4 +1,3 @@
-
 import { Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
@@ -8,7 +7,7 @@ import Clients from "@/pages/Clients";
 import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
 import Managers from "@/pages/Managers";
-import Financial from "@/pages/Financial";
+import ManagerFinancial from "@/pages/ManagerFinancial";
 import Tasks from "@/pages/Tasks";
 
 function App() {
@@ -40,15 +39,7 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route path="/financeiro" element={<Financial />} />
-        <Route 
-          path="/financeiro/:memberId" 
-          element={
-            <PrivateRoute requireAdmin>
-              <Financial />
-            </PrivateRoute>
-          } 
-        />
+        <Route path="/financeiro" element={<ManagerFinancial />} />
         <Route path="/tarefas" element={<Tasks />} />
         <Route path="*" element={<NotFound />} />
       </Route>
@@ -57,4 +48,3 @@ function App() {
 }
 
 export default App;
-
