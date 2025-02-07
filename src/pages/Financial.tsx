@@ -21,7 +21,7 @@ const Financial = () => {
         const { data, error } = await supabase
           .from("salaries")
           .select("month, amount")
-          .eq("manager_id", paramMemberId)
+          .eq("team_member_id", paramMemberId)
           .order("month", { ascending: false });
 
         if (error) {
@@ -58,7 +58,7 @@ const Financial = () => {
       const { data, error } = await supabase
         .from("salaries")
         .select("month, amount")
-        .eq("manager_id", currentUser.id)
+        .eq("team_member_id", currentUser.id)
         .order("month", { ascending: false });
 
       if (error) {
