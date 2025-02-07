@@ -53,12 +53,21 @@ export const useGoalCard = (isAdmin: boolean) => {
 
   const finalizeGoal = useMutation({
     mutationFn: async (goalToFinalize: Goal) => {
+      // Garante que temos o valor mais atualizado
+      const { data: updatedGoal } = await supabase
+        .from("goals")
+        .select("current_value")
+        .eq("id", goalToFinalize.id)
+        .single();
+
+      const finalValue = updatedGoal?.current_value || currentValue;
+
       const { data, error } = await supabase
         .from("goals")
         .update({
-          final_value: currentValue,
+          final_value: finalValue,
           status: 'completed',
-          completed_at: new Date().toISOString()
+          completed_at: goalToFinalize.end_date // Usa a data final como data de conclusão
         })
         .eq("id", goalToFinalize.id)
         .select()
@@ -98,6 +107,28 @@ export const useGoalCard = (isAdmin: boolean) => {
 
   const updateGoal = useMutation({
     mutationFn: async (updatedGoal: Partial<Goal>) => {
+      const today = new Date();
+      const endDate = parseISO(updatedGoal.end_date || '');
+      
+      // Se a data final for anterior a hoje, finaliza o desafio
+      if (today > endDate) {
+        const { data, error } = await supabase
+          .from("goals")
+          .update({
+            ...updatedGoal,
+            status: 'completed',
+            final_value: currentValue,
+            completed_at: updatedGoal.end_date
+          })
+          .eq("id", goal?.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      }
+
+      // Caso contrário, apenas atualiza normalmente
       const { data, error } = await supabase
         .from("goals")
         .update(updatedGoal)

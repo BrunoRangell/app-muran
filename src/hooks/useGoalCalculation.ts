@@ -29,8 +29,19 @@ export const useGoalCalculation = (goal: Goal | undefined) => {
         throw error;
       }
 
+      // Atualiza o current_value no banco de dados
+      if (count !== goal.current_value) {
+        const { error: updateError } = await supabase
+          .from("goals")
+          .update({ current_value: count })
+          .eq("id", goal.id);
+
+        if (updateError) {
+          console.error("Erro ao atualizar current_value:", updateError);
+        }
+      }
+
       return count || 0;
     },
   });
 };
-
