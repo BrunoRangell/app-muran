@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TeamMember } from "@/types/team";
-import { CalendarDays, Mail, Briefcase, CalendarClock, Instagram, Linkedin, User, TiktokLogo } from "lucide-react";
+import { CalendarDays, Mail, Briefcase, CalendarClock, Instagram, Linkedin, BrandTiktok } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 interface ViewProfileDialogProps {
@@ -148,7 +148,7 @@ export const ViewProfileDialog = ({
               }`}
               onClick={(e) => !member.tiktok && e.preventDefault()}
             >
-              <TiktokLogo className="h-5 w-5" />
+              <BrandTiktok className="h-5 w-5" />
               <span>{member.tiktok ? "TikTok" : "TikTok não informado"}</span>
             </a>
           </div>
@@ -157,3 +157,4 @@ export const ViewProfileDialog = ({
     </Dialog>
   );
 };
+
