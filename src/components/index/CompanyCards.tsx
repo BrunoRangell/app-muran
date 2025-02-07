@@ -80,8 +80,7 @@ export const CompanyCards = () => {
         opts={{ 
           align: "center", 
           loop: true, 
-          duration: 150,
-          easing: (t: number) => t // Curva de animação linear para reduzir a desaceleração
+          duration: 150
         }}
       >
         <CarouselContent>
@@ -124,4 +123,3 @@ export const CompanyCards = () => {
     </div>
   );
 };
-
