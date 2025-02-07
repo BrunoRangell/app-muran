@@ -94,7 +94,7 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
           <p className="text-lg font-semibold">{goal.target_value}</p>
         </div>
         <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">{getMetricLabel()} atual</p>
+          <p className="text-xs text-gray-500 mb-0.5">Clientes ativos atualmente</p>
           <p className="text-lg font-semibold">{currentValue}</p>
         </div>
       </div>
