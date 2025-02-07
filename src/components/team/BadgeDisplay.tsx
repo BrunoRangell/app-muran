@@ -89,3 +89,4 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
     </div>
   );
 };
+
