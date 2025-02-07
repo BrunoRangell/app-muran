@@ -101,58 +101,50 @@ export const ViewProfileDialog = ({
           </>
         )}
 
-        {/* Links Sociais */}
-        {(member.instagram || member.linkedin || member.tiktok) && (
-          <>
-            <div className="grid grid-cols-3 gap-2 p-4">
-              {member.instagram && (
-                <a
-                  href={member.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 group"
-                >
-                  <Instagram className="h-5 w-5 group-hover:text-muran-primary transition-colors" />
-                  <span>Instagram</span>
-                </a>
-              )}
-
-              {member.linkedin && (
-                <a
-                  href={member.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 group"
-                >
-                  <Linkedin className="h-5 w-5 group-hover:text-muran-primary transition-colors" />
-                  <span>LinkedIn</span>
-                </a>
-              )}
-
-              {member.tiktok && (
-                <a
-                  href={member.tiktok}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700 group"
-                >
-                  <svg 
-                    viewBox="0 0 24 24" 
-                    className="h-5 w-5 group-hover:text-muran-primary transition-colors"
-                    fill="currentColor"
-                  >
-                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-                  </svg>
-                  <span>TikTok</span>
-                </a>
-              )}
-            </div>
-            <Separator />
-          </>
-        )}
-
         {/* Informações de Contato */}
-        <div className="p-4 bg-gray-50">
+        <div className="p-4 bg-gray-50 space-y-2">
+          {member.instagram && (
+            <a
+              href={member.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 text-sm text-gray-600 bg-white p-3 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Instagram className="h-5 w-5 text-muran-primary" />
+              <span className="font-medium">Instagram</span>
+            </a>
+          )}
+
+          {member.linkedin && (
+            <a
+              href={member.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 text-sm text-gray-600 bg-white p-3 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Linkedin className="h-5 w-5 text-muran-primary" />
+              <span className="font-medium">LinkedIn</span>
+            </a>
+          )}
+
+          {member.tiktok && (
+            <a
+              href={member.tiktok}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 text-sm text-gray-600 bg-white p-3 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <svg 
+                viewBox="0 0 24 24" 
+                className="h-5 w-5 text-muran-primary"
+                fill="currentColor"
+              >
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+              </svg>
+              <span className="font-medium">TikTok</span>
+            </a>
+          )}
+
           <div className="flex items-center gap-3 text-sm text-gray-600 bg-white p-3 rounded-lg">
             <Mail className="h-5 w-5 text-muran-primary" />
             <span className="font-medium">{member.email}</span>
