@@ -13,7 +13,6 @@ import { Quote } from "lucide-react";
 
 const Index = () => {
   const [userName, setUserName] = useState<string>("");
-  const [userRole, setUserRole] = useState<string>("");
   const [greeting, setGreeting] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
@@ -73,13 +72,12 @@ const Index = () => {
         if (session?.user?.email) {
           const { data: teamMember } = await supabase
             .from("team_members")
-            .select("name, permission, role, photo_url")
+            .select("name, permission, photo_url")
             .eq("email", session.user.email)
             .single();
 
           if (teamMember) {
             setUserName(teamMember.name.split(" ")[0]);
-            setUserRole(teamMember.role || "");
             setAvatarUrl(teamMember.photo_url || "");
           }
           setIsAdmin(teamMember?.permission === "admin");
@@ -109,11 +107,9 @@ const Index = () => {
             </Avatar>
             <div className="text-left">
               <h1 className="text-2xl font-bold text-muran-complementary">
-                {greeting}, {userName}! <span className="text-muran-primary">✨</span>
+                {greeting}, {userName}!
               </h1>
-              {userRole && (
-                <p className="text-gray-600">{userRole}</p>
-              )}
+              <p className="text-gray-600">É muito bom ter você na Muran!</p>
             </div>
           </div>
         </div>
@@ -153,3 +149,4 @@ const Index = () => {
 };
 
 export default Index;
+
