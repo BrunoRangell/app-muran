@@ -29,16 +29,14 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     return "⏳ Vamos começar!";
   };
 
-  const getMetricLabel = () => {
+  const getCurrentValueLabel = () => {
     switch (goal.goal_type) {
       case 'active_clients':
-        return 'clientes ativos';
+        return 'Clientes ativos atualmente';
       case 'new_clients':
-        return 'novos clientes';
-      case 'churned_clients':
-        return 'clientes cancelados';
+        return 'Novos clientes no período';
       default:
-        return 'clientes';
+        return 'Clientes';
     }
   };
 
@@ -90,15 +88,14 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">Meta de {getMetricLabel()}</p>
+          <p className="text-xs text-gray-500 mb-0.5">Meta de {goal.goal_type === 'active_clients' ? 'clientes ativos' : 'novos clientes'}</p>
           <p className="text-lg font-semibold">{goal.target_value}</p>
         </div>
         <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">Clientes ativos atualmente</p>
+          <p className="text-xs text-gray-500 mb-0.5">{getCurrentValueLabel()}</p>
           <p className="text-lg font-semibold">{currentValue}</p>
         </div>
       </div>
     </div>
   );
 };
-
