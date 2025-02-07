@@ -98,10 +98,10 @@ const Index = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
-      {/* Header Section with Profile */}
-      <div className="flex items-center justify-between bg-white rounded-lg p-6 shadow-sm">
+      {/* Header com Perfil Compacto */}
+      <div className="flex items-center justify-between bg-white rounded-lg p-4 md:p-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <Avatar className="h-12 w-12">
+          <Avatar className="h-12 w-12 border-2 border-muran-primary/20">
             <img
               src={avatarUrl || "/placeholder.svg"}
               alt={userName}
@@ -119,25 +119,25 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Main Content Grid */}
+      {/* Container Principal com Grid Responsivo */}
       <div className="grid gap-6">
-        {/* Culture Carousel and Goal Card */}
+        {/* Carrossel de Cultura e Desafio Muran */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
             <CompanyCards />
           </div>
-          <div>
+          <div className="lg:col-span-1">
             <GoalCard isAdmin={isAdmin} />
           </div>
         </div>
 
-        {/* Metrics and Birthdays */}
+        {/* Métricas e Aniversariantes */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MetricsCard clientMetrics={clientMetrics} />
           {teamMembers && <BirthdayCard members={teamMembers} />}
         </div>
 
-        {/* Inspirational Quote */}
+        {/* Frase Inspiracional (Fixada) */}
         <div className="sticky bottom-0 bg-white/80 backdrop-blur-sm">
           <QuoteCard quote={todaysQuote} />
         </div>
@@ -147,4 +147,3 @@ const Index = () => {
 };
 
 export default Index;
-

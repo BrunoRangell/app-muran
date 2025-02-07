@@ -7,7 +7,6 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { cn } from "@/lib/utils";
 
 export const CompanyCards = () => {
   const cards = [
@@ -49,24 +48,26 @@ export const CompanyCards = () => {
         {cards.map((card, index) => (
           <div
             key={card.title}
-            className="basis-full md:basis-1/2 lg:basis-1/3 pl-1"
+            className="basis-full pl-1"
           >
-            <Card className="h-full transform transition-all hover:scale-105">
+            <Card className="h-full transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <card.icon className="h-6 w-6 text-muran-primary shrink-0" />
                   <div className="space-y-2">
-                    <h3 className="font-semibold text-lg text-left">
+                    <h3 className="font-semibold text-lg text-muran-complementary">
                       {card.title}
                     </h3>
                     {Array.isArray(card.content) ? (
-                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 text-left">
+                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                         {card.content.map((item) => (
-                          <li key={item}>{item}</li>
+                          <li key={item} className="transition-all hover:text-muran-primary">
+                            {item}
+                          </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-gray-600 text-left">
+                      <p className="text-sm text-gray-600 leading-relaxed">
                         {card.content}
                       </p>
                     )}
@@ -77,8 +78,8 @@ export const CompanyCards = () => {
           </div>
         ))}
       </CarouselContent>
-      <CarouselPrevious className="hidden md:flex" />
-      <CarouselNext className="hidden md:flex" />
+      <CarouselPrevious className="hidden md:flex -left-4" />
+      <CarouselNext className="hidden md:flex -right-4" />
     </Carousel>
   );
 };
