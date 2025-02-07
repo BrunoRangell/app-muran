@@ -14,7 +14,8 @@ export const CompanyCards = () => {
   const [autoPlay, setAutoPlay] = useState(true);
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     align: "center",
-    loop: true 
+    loop: true,
+    duration: 20
   });
 
   const cards = [
@@ -48,10 +49,19 @@ export const CompanyCards = () => {
     if (!autoPlay || !emblaApi) return;
 
     const interval = setInterval(() => {
-      emblaApi.scrollNext();
+      console.log('Tentando avançar para o próximo slide...');
+      if (emblaApi.canScrollNext()) {
+        emblaApi.scrollNext();
+      } else {
+        console.log('Voltando para o primeiro slide...');
+        emblaApi.scrollTo(0);
+      }
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log('Limpando intervalo do autoplay');
+      clearInterval(interval);
+    };
   }, [autoPlay, emblaApi]);
 
   return (
