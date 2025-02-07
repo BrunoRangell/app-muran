@@ -7,26 +7,28 @@ import { useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
 const Financial = () => {
-  const { memberId } = useParams();
+  const { memberId: paramMemberId } = useParams();
 
   const { data: salaries = [], isLoading } = useQuery({
-    queryKey: ["salaries", memberId],
+    queryKey: ["salaries", paramMemberId],
     queryFn: async () => {
-      console.log("Buscando salários do usuário...", memberId);
+      console.log("Buscando salários do usuário...", paramMemberId);
       
-      if (!memberId) {
+      let userId = paramMemberId;
+      
+      if (!userId) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) {
           console.log("Usuário não autenticado");
           return [];
         }
-        memberId = session.user.id;
+        userId = session.user.id;
       }
 
       const { data, error } = await supabase
         .from("salaries")
         .select("month, amount")
-        .eq("manager_id", memberId)
+        .eq("manager_id", userId)
         .order("month", { ascending: false });
 
       if (error) {
@@ -40,13 +42,13 @@ const Financial = () => {
   });
 
   const { data: member } = useQuery({
-    queryKey: ["team_member", memberId],
-    enabled: !!memberId,
+    queryKey: ["team_member", paramMemberId],
+    enabled: !!paramMemberId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("team_members")
         .select("name")
-        .eq("id", memberId)
+        .eq("id", paramMemberId)
         .single();
 
       if (error) throw error;
@@ -58,7 +60,7 @@ const Financial = () => {
     <div className="space-y-4 p-4 md:p-8">
       <div className="flex justify-between items-center">
         <h1 className="text-xl md:text-3xl font-bold text-muran-dark">
-          {memberId ? `Financeiro - ${member?.name}` : "Meu Financeiro"}
+          {paramMemberId ? `Financeiro - ${member?.name}` : "Meu Financeiro"}
         </h1>
       </div>
 
@@ -66,7 +68,7 @@ const Financial = () => {
         <div className="space-y-4 md:space-y-6">
           <div className="bg-muran-primary/5 rounded-lg p-3 md:p-4 border-l-4 border-muran-primary">
             <p className="text-sm md:text-base text-muran-complementary">
-              {memberId 
+              {paramMemberId 
                 ? "Visualize a evolução financeira do membro selecionado."
                 : "Acompanhe sua evolução financeira e celebre cada conquista! Na Muran, acreditamos no seu potencial e queremos fazer parte da sua jornada de crescimento. 🚀"
               }
@@ -90,4 +92,3 @@ const Financial = () => {
 };
 
 export default Financial;
-
