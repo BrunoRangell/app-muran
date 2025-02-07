@@ -132,20 +132,29 @@ const Index = () => {
       </div>
 
       {/* Container Principal com Grid Responsivo */}
-      <div className="grid gap-6">
-        {/* Carrossel de Cultura e Desafio Muran */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Carrossel de Cultura - 1 coluna */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
             <CompanyCards />
-          </div>
-          <div className="lg:col-span-2">
-            <GoalCard isAdmin={isAdmin} />
           </div>
         </div>
 
-        {/* Métricas e Aniversariantes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Desafio Muran - 2 colunas */}
+        <div className="lg:col-span-3">
+          <GoalCard isAdmin={isAdmin} />
+        </div>
+      </div>
+
+      {/* Métricas e Aniversariantes em Layout Horizontal */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Métricas - 1 coluna */}
+        <div className="lg:col-span-1">
           <MetricsCard clientMetrics={clientMetrics} />
+        </div>
+        
+        {/* Aniversariantes - 2 colunas */}
+        <div className="lg:col-span-2">
           {teamMembers && <BirthdayCard members={teamMembers} />}
         </div>
       </div>
