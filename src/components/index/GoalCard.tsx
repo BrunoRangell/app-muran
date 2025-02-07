@@ -1,7 +1,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { GoalForm } from "./GoalForm";
-import { GoalProgress } from "./GoalProgress";
+import { GoalProgress } from "./goal/GoalProgress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GoalHeader } from "./goal/GoalHeader";
 import { EmptyGoalState } from "./goal/EmptyGoalState";
