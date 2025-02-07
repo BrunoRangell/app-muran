@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,7 @@ const socialMediaSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   role: z.string().optional(),
   photo_url: z.string().optional(),
-  birthday: z.string().optional(),
+  birthday: z.string().min(1, "Data de aniversário é obrigatória"),
   bio: z.string().optional(),
   instagram: z.string().optional()
     .refine(value => !value || value.match(/^https:\/\/(www\.)?instagram\.com\/.+/), {
@@ -88,7 +87,7 @@ export const EditMemberDialog = ({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome</FormLabel>
+                    <FormLabel>Nome *</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -136,7 +135,7 @@ export const EditMemberDialog = ({
                 name="birthday"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data de Aniversário</FormLabel>
+                    <FormLabel>Data de Aniversário *</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -219,4 +218,3 @@ export const EditMemberDialog = ({
     </Dialog>
   );
 };
-
