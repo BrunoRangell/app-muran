@@ -1,5 +1,5 @@
 
-import { Trophy } from "lucide-react";
+import { Trophy, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardHeader } from "@/components/ui/card";
 import { format, getDaysRemaining } from "../goal/goalUtils";
@@ -16,12 +16,16 @@ interface GoalHeaderProps {
 export const GoalHeader = ({ goal, isAdmin, isEditing, isCreating, onEditClick }: GoalHeaderProps) => {
   return (
     <CardHeader className="p-3">
-      <div className="flex items-center gap-2">
-        <Trophy className="w-5 h-5 text-[#ff6e00]" />
-        <div className="flex-1 text-sm">
-          <p className="font-semibold">Desafio Muran</p>
+      <div className="flex items-start justify-between">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-[#ff6e00]" />
+            <p className="font-semibold text-sm">Desafio Muran</p>
+          </div>
+          
           {goal && (
-            <div className="flex gap-2 items-center mt-1 text-xs">
+            <div className="flex items-center gap-2 text-xs pl-7">
+              <Target className="w-4 h-4 text-blue-500" />
               <span className="text-gray-600">
                 {format(new Date(goal.start_date), 'dd/MM')} - {format(new Date(goal.end_date), 'dd/MM')}
               </span>
@@ -33,6 +37,7 @@ export const GoalHeader = ({ goal, isAdmin, isEditing, isCreating, onEditClick }
             </div>
           )}
         </div>
+
         {isAdmin && !isEditing && !isCreating && goal && (
           <Button
             variant="ghost"
@@ -47,3 +52,4 @@ export const GoalHeader = ({ goal, isAdmin, isEditing, isCreating, onEditClick }
     </CardHeader>
   );
 };
+
