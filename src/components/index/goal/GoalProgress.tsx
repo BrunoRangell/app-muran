@@ -38,17 +38,14 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
             <h2 className="text-sm font-semibold text-gray-900">
               {GOAL_TYPES[goal.goal_type]}
             </h2>
-            <div className="flex items-center gap-2 text-xs">
-              <Target className="w-4 h-4 text-blue-500" />
-              <span className="text-gray-600">
-                {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
-                {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
-              </span>
-              <span className="text-green-600">
-                {getDaysRemaining(goal.end_date) > 0 
-                  ? `${getDaysRemaining(goal.end_date)} dias restantes` 
-                  : "Encerrado"}
-              </span>
+            <span className="text-xs text-gray-600">
+              {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
+              {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
+            </span>
+            <div className="text-xs text-green-600">
+              {getDaysRemaining(goal.end_date) > 0 
+                ? `${getDaysRemaining(goal.end_date)} dias restantes` 
+                : "Encerrado"}
             </div>
           </div>
         </div>
