@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -109,11 +108,9 @@ const Index = () => {
             </Avatar>
             <div className="text-left">
               <h1 className="text-2xl font-bold text-muran-complementary">
-                {greeting}, {userName}! <span className="text-muran-primary">✨</span>
+                {greeting}, {userName}!
               </h1>
-              {userRole && (
-                <p className="text-gray-600">{userRole}</p>
-              )}
+              <p className="text-gray-600">É muito bom ter você na Muran!</p>
             </div>
           </div>
         </div>
