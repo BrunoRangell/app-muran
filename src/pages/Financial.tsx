@@ -15,23 +15,43 @@ const Financial = () => {
       console.log("Iniciando busca de salários...");
       console.log("ID do membro nos parâmetros:", paramMemberId);
       
-      let userId = paramMemberId;
+      let queryId;
       
-      if (!userId) {
+      if (paramMemberId) {
+        const { data: member } = await supabase
+          .from("team_members")
+          .select("manager_id")
+          .eq("id", paramMemberId)
+          .single();
+          
+        queryId = member?.manager_id;
+      } else {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) {
           console.log("Usuário não autenticado");
           return [];
         }
-        userId = session.user.id;
+        
+        const { data: currentUser } = await supabase
+          .from("team_members")
+          .select("manager_id")
+          .eq("id", session.user.id)
+          .single();
+          
+        queryId = currentUser?.manager_id;
       }
 
-      console.log("ID final para busca de salários:", userId);
+      console.log("ID final para busca de salários:", queryId);
+
+      if (!queryId) {
+        console.log("ID do manager não encontrado");
+        return [];
+      }
 
       const { data, error } = await supabase
         .from("salaries")
         .select("month, amount")
-        .eq("manager_id", userId)
+        .eq("manager_id", queryId)
         .order("month", { ascending: false });
 
       if (error) {
