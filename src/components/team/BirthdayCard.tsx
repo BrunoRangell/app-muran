@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gift } from "lucide-react";
 import { TeamMember } from "@/types/team";
@@ -21,20 +22,30 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
       .toUpperCase();
   };
 
-  const getBirthdayDate = (birthday: string) => {
-    const date = parseISO(birthday);
+  const isValidDate = (dateString: string | null): boolean => {
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date.getTime());
+  };
+
+  const getBirthdayDate = (birthday: string | null) => {
+    if (!isValidDate(birthday)) return null;
+    const date = parseISO(birthday!);
     return new Date(today.getFullYear(), date.getMonth(), date.getDate());
   };
 
-  const getDaysUntilBirthday = (birthday: string) => {
+  const getDaysUntilBirthday = (birthday: string | null) => {
+    if (!isValidDate(birthday)) return null;
     const birthdayDate = getBirthdayDate(birthday);
+    if (!birthdayDate) return null;
+    
     if (isAfter(birthdayDate, today)) {
       return differenceInDays(birthdayDate, today);
     }
     const nextYearBirthday = new Date(
       today.getFullYear() + 1,
-      parseISO(birthday).getMonth(),
-      parseISO(birthday).getDate()
+      parseISO(birthday!).getMonth(),
+      parseISO(birthday!).getDate()
     );
     return differenceInDays(nextYearBirthday, today);
   };
@@ -42,12 +53,13 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   const getCurrentMonthBirthdays = () => {
     return members
       .filter(member => {
-        const birthdayDate = parseISO(member.birthday);
+        if (!isValidDate(member.birthday)) return false;
+        const birthdayDate = parseISO(member.birthday!);
         return isSameMonth(birthdayDate, today) && isSameYear(today, today);
       })
       .sort((a, b) => {
-        const dateA = getBirthdayDate(a.birthday);
-        const dateB = getBirthdayDate(b.birthday);
+        const dateA = getBirthdayDate(a.birthday) || new Date();
+        const dateB = getBirthdayDate(b.birthday) || new Date();
         return dateA.getTime() - dateB.getTime();
       });
   };
@@ -55,18 +67,22 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   const getNextBirthdays = () => {
     const nextYear = addMonths(today, 12);
     return members
+      .filter(member => isValidDate(member.birthday))
       .map(member => {
         const birthdayDate = getBirthdayDate(member.birthday);
+        if (!birthdayDate) return null;
+
         if (isAfter(birthdayDate, today)) {
           return { ...member, nextBirthday: birthdayDate };
         }
         const nextYearBirthday = new Date(
           today.getFullYear() + 1,
-          parseISO(member.birthday).getMonth(),
-          parseISO(member.birthday).getDate()
+          parseISO(member.birthday!).getMonth(),
+          parseISO(member.birthday!).getDate()
         );
         return { ...member, nextBirthday: nextYearBirthday };
       })
+      .filter((member): member is (TeamMember & { nextBirthday: Date }) => member !== null)
       .sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime())
       .slice(0, 3);
   };
@@ -76,19 +92,22 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
     ? currentMonthBirthdays 
     : getNextBirthdays();
 
-  const formatBirthday = (birthday: string) => {
-    return format(parseISO(birthday), "dd 'de' MMMM", { locale: ptBR });
+  const formatBirthday = (birthday: string | null) => {
+    if (!isValidDate(birthday)) return '';
+    return format(parseISO(birthday!), "dd 'de' MMMM", { locale: ptBR });
   };
 
-  const isBirthdayToday = (birthday: string) => {
+  const isBirthdayToday = (birthday: string | null) => {
+    if (!isValidDate(birthday)) return false;
     const birthdayDate = getBirthdayDate(birthday);
-    return isToday(birthdayDate);
+    return birthdayDate ? isToday(birthdayDate) : false;
   };
 
-  const isBirthdayTomorrow = (birthday: string) => {
+  const isBirthdayTomorrow = (birthday: string | null) => {
+    if (!isValidDate(birthday)) return false;
     const birthdayDate = getBirthdayDate(birthday);
     const startOfTomorrow = startOfDay(tomorrow);
-    return isEqual(birthdayDate, startOfTomorrow);
+    return birthdayDate ? isEqual(birthdayDate, startOfTomorrow) : false;
   };
 
   const sortedBirthdays = [...birthdaysToShow].sort((a, b) => {
@@ -153,7 +172,7 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
                     <span className={isToday ? 'text-white/90' : 'text-gray-600'}>
                       {formatBirthday(member.birthday)}
                     </span>
-                    {!isToday && (
+                    {!isToday && daysUntil !== null && (
                       <span className={`text-xs ${
                         isTomorrow ? 'text-blue-700' : 'text-gray-500'
                       }`}>
