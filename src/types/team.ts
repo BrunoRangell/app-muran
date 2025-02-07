@@ -11,6 +11,7 @@ export interface TeamMember {
   bio?: string;
   linkedin?: string;
   instagram?: string;
+  tiktok?: string;
 }
 
 export interface EditFormData {

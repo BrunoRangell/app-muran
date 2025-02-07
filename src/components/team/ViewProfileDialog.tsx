@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TeamMember } from "@/types/team";
-import { CalendarDays, Mail, Briefcase, CalendarClock, Instagram, Linkedin, User } from "lucide-react";
+import { CalendarDays, Mail, Briefcase, CalendarClock, Instagram, Linkedin, User, TiktokLogo } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 interface ViewProfileDialogProps {
@@ -105,7 +105,7 @@ export const ViewProfileDialog = ({
             )}
           </div>
 
-          {(member.linkedin || member.instagram) && (
+          {(member.linkedin || member.instagram || member.tiktok) && (
             <>
               <Separator className="w-full" />
               <div className="flex gap-4 justify-center w-full">
@@ -129,6 +129,17 @@ export const ViewProfileDialog = ({
                   >
                     <Instagram className="h-5 w-5" />
                     <span>Instagram</span>
+                  </a>
+                )}
+                {member.tiktok && (
+                  <a
+                    href={member.tiktok}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-gray-600 hover:text-muran-primary transition-colors"
+                  >
+                    <TiktokLogo className="h-5 w-5" />
+                    <span>TikTok</span>
                   </a>
                 )}
               </div>
