@@ -77,10 +77,10 @@ export const ViewProfileDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg bg-white p-0 overflow-hidden max-h-[85vh]">
-        <ScrollArea className="h-full max-h-[85vh] [&_[data-radix-scroll-area-thumb]]:bg-muran-primary/50 [&_[data-radix-scroll-area-thumb]]:w-2.5 [&_[data-radix-scroll-area-thumb]]:rounded-none">
+        <ScrollArea className="h-full max-h-[85vh] [&_[data-radix-scroll-area-thumb]]:bg-muran-primary [&_[data-radix-scroll-area-thumb]]:w-2.5 [&_[data-radix-scroll-area-thumb]]:hover:bg-muran-primary/80">
           {/* Header com gradiente e foto */}
-          <div className="relative bg-gradient-to-br from-muran-primary/10 to-muran-primary/5 p-8">
-            <div className="flex flex-col items-center gap-6">
+          <div className="relative bg-gradient-to-br from-muran-primary/10 to-muran-primary/5 pb-6">
+            <div className="flex flex-col items-center gap-6 p-8">
               <Avatar className="h-32 w-32 ring-4 ring-white shadow-xl">
                 {member.photo_url ? (
                   <AvatarImage
@@ -111,14 +111,14 @@ export const ViewProfileDialog = ({
                   </p>
                 </div>
               )}
-
-              {member.badges && member.badges.length > 0 && (
-                <div className="w-full">
-                  <BadgeDisplay badges={member.badges} />
-                </div>
-              )}
             </div>
           </div>
+
+          {member.badges && member.badges.length > 0 && (
+            <div className="w-full bg-white px-6 py-4">
+              <BadgeDisplay badges={member.badges} />
+            </div>
+          )}
 
           {/* Informações principais */}
           <div className="grid grid-cols-2 gap-4 p-6 bg-gray-50">
@@ -161,4 +161,3 @@ export const ViewProfileDialog = ({
     </Dialog>
   );
 };
-
