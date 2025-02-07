@@ -23,10 +23,11 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
 
   const handleDateChange = (date: Date | undefined, field: 'start_date' | 'end_date') => {
     if (!date) return;
-    const adjustedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    // Mantém o horário em UTC para evitar problemas com timezone
+    const isoDate = formatISO(date, { representation: 'date' });
     setFormData(prev => ({
       ...prev,
-      [field]: formatISO(adjustedDate, { representation: 'date' })
+      [field]: isoDate
     }));
   };
 
