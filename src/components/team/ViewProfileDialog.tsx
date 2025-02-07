@@ -103,6 +103,15 @@ export const ViewProfileDialog = ({
                 </div>
               </div>
 
+              {/* Bio */}
+              {member.bio && (
+                <div className="w-full px-4">
+                  <p className="text-gray-600 text-sm text-center whitespace-pre-wrap leading-relaxed">
+                    {member.bio}
+                  </p>
+                </div>
+              )}
+
               {member.badges && member.badges.length > 0 && (
                 <div className="w-full">
                   <BadgeDisplay badges={member.badges} />
@@ -124,18 +133,6 @@ export const ViewProfileDialog = ({
               </div>
             )}
           </div>
-
-          {/* Bio */}
-          {member.bio && (
-            <>
-              <div className="px-6 py-4">
-                <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
-                  {member.bio}
-                </p>
-              </div>
-              <Separator />
-            </>
-          )}
 
           {/* Informações de Contato */}
           <div className="p-4 bg-gray-50 space-y-2">
