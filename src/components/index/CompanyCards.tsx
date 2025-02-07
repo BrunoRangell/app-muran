@@ -41,7 +41,7 @@ export const CompanyCards = () => {
     },
   ];
 
-  // Lógica de autoplay: a cada seleção de slide, espera 5 segundos e então avança
+  // Lógica de autoplay: a cada seleção de slide, espera 10 segundos e então avança
   useEffect(() => {
     if (!emblaApi) {
       console.log("Embla API não disponível ainda.");
@@ -51,7 +51,7 @@ export const CompanyCards = () => {
     let timeout = setTimeout(() => {
       console.log("Autoplay: chamando emblaApi.scrollNext()");
       emblaApi.scrollNext();
-    }, 5000);
+    }, 10000);
 
     const onSelect = () => {
       // Reinicia o timer sempre que um novo slide for selecionado
@@ -59,7 +59,7 @@ export const CompanyCards = () => {
       timeout = setTimeout(() => {
         console.log("Autoplay (onSelect): chamando emblaApi.scrollNext()");
         emblaApi.scrollNext();
-      }, 5000);
+      }, 10000);
     };
 
     emblaApi.on("select", onSelect);
@@ -76,8 +76,8 @@ export const CompanyCards = () => {
         className="w-full"
         // Passa a função para capturar a API do Embla
         setApi={setEmblaApi}
-        // Define as opções do Embla: alinhamento central, loop ativo e duração da transição
-        opts={{ align: "center", loop: true, duration: 300 }}
+        // Define as opções do Embla: alinhamento central, loop ativo e duração da transição reduzida
+        opts={{ align: "center", loop: true, duration: 200 }}
       >
         <CarouselContent>
           {cards.map((card) => (
