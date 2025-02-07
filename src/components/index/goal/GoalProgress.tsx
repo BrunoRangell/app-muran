@@ -30,28 +30,30 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-3 rounded-lg">
-        <div className="flex items-center gap-3">
+    <div className="space-y-3">
+      <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-2 rounded-lg">
+        <div className="flex items-center gap-2">
           <Target className="w-5 h-5 text-indigo-600" />
-          <div>
+          <div className="flex-1">
             <h2 className="text-sm font-semibold text-gray-900">
               {GOAL_TYPES[goal.goal_type]}
             </h2>
-            <span className="text-xs text-gray-600">
-              {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
-              {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
-            </span>
-            <div className="text-xs text-green-600">
-              {getDaysRemaining(goal.end_date) > 0 
-                ? `${getDaysRemaining(goal.end_date)} dias restantes` 
-                : "Encerrado"}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">
+                {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
+                {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
+              </span>
+              <span className="text-green-600">
+                {getDaysRemaining(goal.end_date) > 0 
+                  ? `${getDaysRemaining(goal.end_date)} dias restantes` 
+                  : "Encerrado"}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <Progress
           value={progress}
           className="h-2 rounded-full"
