@@ -45,8 +45,31 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
   const onSubmit = async (data: TeamMemberFormData) => {
     try {
       setIsLoading(true);
-      console.log("Criando novo membro:", data);
 
+      // Primeiro, criar o usuário no Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            role: data.role,
+          }
+        }
+      });
+
+      if (authError) {
+        console.error("Erro ao criar usuário autenticado:", authError);
+        throw authError;
+      }
+
+      if (!authData.user?.id) {
+        throw new Error("Não foi possível criar o usuário");
+      }
+
+      console.log("Usuário autenticado criado com sucesso:", authData);
+
+      // Depois, criar o registro na tabela team_members
       const { data: memberData, error: memberError } = await supabase
         .from('team_members')
         .insert([
@@ -55,39 +78,20 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
             email: data.email,
             role: data.role,
             permission: 'member',
+            manager_id: authData.user.id, // Usando o ID do usuário como manager_id
           }
         ])
         .select()
         .single();
 
       if (memberError) {
+        // Se houver erro na criação do membro, remove o usuário autenticado
+        await supabase.auth.admin.deleteUser(authData.user.id);
         console.error("Erro ao criar registro na tabela team_members:", memberError);
         throw memberError;
       }
+
       console.log("Registro na tabela team_members criado com sucesso:", memberData);
-
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: data.email,
-        password: data.password,
-        email_confirm: true,
-        user_metadata: {
-          name: data.name,
-          role: data.role,
-        }
-      });
-
-      if (authError) {
-        // Se houver erro na criação do usuário, remove o registro da tabela team_members
-        await supabase
-          .from('team_members')
-          .delete()
-          .eq('id', memberData.id);
-        
-        console.error("Erro ao criar usuário autenticado:", authError);
-        throw authError;
-      }
-
-      console.log("Usuário autenticado criado com sucesso:", authData);
 
       toast({
         title: "Sucesso!",
@@ -101,9 +105,10 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
       
       let errorMessage = "Não foi possível cadastrar o membro da equipe.";
       
-      // Mensagens de erro específicas
       if (error.message?.includes("duplicate key")) {
         errorMessage = "Este email já está cadastrado.";
+      } else if (error.message?.includes("manager_id")) {
+        errorMessage = "Erro ao vincular o usuário como membro da equipe.";
       } else if (error.message?.includes("invalid email")) {
         errorMessage = "O email fornecido é inválido.";
       }
@@ -177,7 +182,7 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
           )}
         />
 
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading} className="w-full">
           {isLoading ? "Cadastrando..." : "Cadastrar membro"}
         </Button>
       </form>
