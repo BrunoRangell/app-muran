@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { GoalForm } from "./GoalForm";
 import { GoalProgress } from "./goal/GoalProgress";
@@ -31,7 +30,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   if (queryError) {
     return (
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm h-full">
         <CardContent className="p-4">
           <div className="text-center text-red-600">
             Erro ao carregar o desafio. Por favor, tente novamente mais tarde.
@@ -43,7 +42,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   if (isLoading) {
     return (
-      <Card className="border-0 shadow-sm">
+      <Card className="border-0 shadow-sm h-full">
         <CardContent className="p-4">
           <div className="space-y-4">
             <Skeleton className="h-8 w-3/4" />
@@ -56,7 +55,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   }
 
   return (
-    <Card className="border-0 shadow-sm bg-white">
+    <Card className="border-0 shadow-sm bg-white h-full">
       <GoalHeader
         goal={goal}
         isAdmin={isAdmin}
