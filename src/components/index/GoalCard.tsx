@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,8 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     getCurrentUser();
   }, []);
 
-  const { data: goals, isLoading } = useQuery({
+  // Query para buscar o desafio ativo
+  const { data: goals, isLoading, error: queryError } = useQuery({
     queryKey: ["current-goal"],
     queryFn: async () => {
       const today = new Date();
@@ -37,7 +39,10 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         .eq("status", "active")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar desafios:", error);
+        throw error;
+      }
 
       // Filtra apenas o desafio ativo (data atual entre start_date e end_date)
       const activeGoal = (data as Goal[]).find(goal => {
@@ -48,10 +53,11 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
       return activeGoal ? [activeGoal] : [];
     },
+    retry: 2,
   });
 
   const goal = goals?.[0];
-  const { data: currentValue } = useGoalCalculation(goal);
+  const { data: currentValue, error: calculationError } = useGoalCalculation(goal);
 
   // Mutation para finalizar o desafio
   const finalizeGoal = useMutation({
@@ -67,7 +73,10 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao finalizar desafio:", error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -77,20 +86,30 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         description: "O desafio foi encerrado e os resultados foram registrados.",
       });
     },
+    onError: (error) => {
+      console.error("Erro ao finalizar desafio:", error);
+      toast({
+        title: "Erro ao finalizar desafio",
+        description: "Não foi possível finalizar o desafio. Tente novamente.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Verifica se o desafio precisa ser finalizado
   useEffect(() => {
-    if (goal) {
+    if (goal && goal.status === 'active') {
       const endDate = parseISO(goal.end_date);
       const today = new Date();
       
-      if (today > endDate && goal.status !== 'completed') {
+      if (today > endDate) {
+        console.log("Finalizando desafio automaticamente:", goal.id);
         finalizeGoal.mutate(goal);
       }
     }
   }, [goal]);
 
+  // Mutation para atualizar desafio
   const updateGoal = useMutation({
     mutationFn: async (updatedGoal: Partial<Goal>) => {
       const { data, error } = await supabase
@@ -100,7 +119,10 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao atualizar desafio:", error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -111,15 +133,17 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         description: "Sua equipe está mais perto da vitória!",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Erro ao atualizar desafio:", error);
       toast({
-        title: "😕 Algo deu errado",
-        description: "Tente novamente mais tarde.",
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o desafio. Tente novamente.",
         variant: "destructive",
       });
     },
   });
 
+  // Mutation para criar novo desafio
   const createGoal = useMutation({
     mutationFn: async (newGoal: Omit<Goal, "id" | "current_value">) => {
       if (!currentUserId) throw new Error("Usuário não está logado");
@@ -136,7 +160,10 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao criar desafio:", error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -148,9 +175,10 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       });
     },
     onError: (error) => {
+      console.error("Erro ao criar desafio:", error);
       toast({
-        title: "😕 Ops, algo deu errado",
-        description: error instanceof Error ? error.message : "Tente novamente mais tarde.",
+        title: "Erro ao criar",
+        description: error instanceof Error ? error.message : "Não foi possível criar o desafio. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -163,6 +191,20 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       updateGoal.mutate(formData);
     }
   };
+
+  // Tratamento de erros na query principal
+  if (queryError) {
+    console.error("Erro ao carregar desafio:", queryError);
+    return (
+      <Card className="border-0 shadow-lg">
+        <CardContent className="p-6">
+          <div className="text-center text-red-600">
+            Erro ao carregar o desafio. Por favor, tente novamente mais tarde.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -182,7 +224,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
       <CardHeader className="p-6 pb-4">
         <CardTitle className="flex items-center gap-3 text-xl font-bold">
-          <Trophy className="w-7 h-7 text-yellow-500" />
+          <Trophy className="w-7 h-7 text-[#ff6e00]" />
           <div className="flex-1">
             <p>Desafio Muran</p>
             {goal && (
@@ -232,7 +274,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
             {isAdmin && (
               <Button
                 onClick={() => setIsCreating(true)}
-                className="w-full max-w-xs mx-auto"
+                className="w-full max-w-xs mx-auto bg-[#ff6e00] hover:bg-[#e66200]"
                 size="lg"
               >
                 <Plus className="w-5 h-5 mr-2" />
@@ -251,3 +293,4 @@ const getDaysRemaining = (endDate: string) => {
   const end = new Date(endDate);
   return differenceInDays(end, today) + 1;
 };
+
