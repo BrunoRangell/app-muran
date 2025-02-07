@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
 
@@ -10,7 +11,7 @@ interface MetricsCardProps {
 
 export const MetricsCard = ({ clientMetrics }: MetricsCardProps) => {
   return (
-    <Card className="shadow-lg border-t-4 border-muran-primary hover:scale-105 transition-transform duration-300">
+    <Card className="border-0 shadow-sm hover:scale-105 transition-transform duration-300">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
           <TrendingUp className="text-muran-primary" />
