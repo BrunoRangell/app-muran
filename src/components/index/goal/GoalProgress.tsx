@@ -60,7 +60,7 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
           className="h-2 rounded-full"
           indicatorClassName={`${getProgressColor(progress)} rounded-full`}
         />
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2 justify-center text-sm">
           <div className="flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-indigo-600" />
             <span className="text-gray-600">Progresso:</span>
