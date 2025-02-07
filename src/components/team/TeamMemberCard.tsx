@@ -59,7 +59,18 @@ export const TeamMemberCard = ({
 
   return (
     <>
-      <Card className={cn("p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow", className)}>
+      <Card className={cn("relative p-6 flex flex-col items-center space-y-4 hover:shadow-lg transition-shadow", className)}>
+        {(currentUserPermission === 'admin' || currentUserId === member.id) && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onEdit(member)}
+            className="absolute right-2 top-2 h-8 w-8 hover:bg-gray-100"
+          >
+            <Pencil className="h-4 w-4 text-gray-500" />
+          </Button>
+        )}
+        
         <Avatar className="h-24 w-24">
           {member.photo_url ? (
             <AvatarImage src={convertGoogleDriveLink(member.photo_url)} alt={member.name} />
@@ -80,7 +91,7 @@ export const TeamMemberCard = ({
               Aniversário: {formatBirthday(member.birthday)}
             </p>
           )}
-          <div className="flex flex-col gap-2 mt-4">
+          <div className="pt-2">
             <Button
               variant="outline"
               size="sm"
@@ -90,17 +101,6 @@ export const TeamMemberCard = ({
               <Eye className="w-4 h-4 mr-2" />
               Ver perfil
             </Button>
-            {(currentUserPermission === 'admin' || currentUserId === member.id) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onEdit(member)}
-                className="w-full"
-              >
-                <Pencil className="w-4 h-4 mr-2" />
-                Editar
-              </Button>
-            )}
           </div>
         </div>
       </Card>
