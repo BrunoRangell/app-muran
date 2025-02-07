@@ -15,7 +15,7 @@ const Financial = () => {
       console.log("Iniciando busca de salários...");
       console.log("ID do membro nos parâmetros:", paramMemberId);
       
-      let queryId;
+      let queryId = paramMemberId;
       
       if (paramMemberId) {
         const { data: member } = await supabase
@@ -24,7 +24,7 @@ const Financial = () => {
           .eq("id", paramMemberId)
           .single();
           
-        queryId = member?.manager_id;
+        queryId = member?.id;
       } else {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user?.id) {
@@ -38,20 +38,20 @@ const Financial = () => {
           .eq("email", session.user.email)
           .single();
           
-        queryId = currentUser?.manager_id;
+        queryId = currentUser?.id;
       }
 
       console.log("ID final para busca de salários:", queryId);
 
       if (!queryId) {
-        console.log("ID do manager não encontrado");
+        console.log("ID do membro não encontrado");
         return [];
       }
 
       const { data, error } = await supabase
         .from("salaries")
         .select("month, amount")
-        .eq("manager_id", queryId)
+        .eq("team_member_id", queryId)
         .order("month", { ascending: false });
 
       if (error) {
