@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Goal, GOAL_TYPES } from "@/types/goal";
-import { format, formatISO } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -23,11 +23,16 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
 
   const handleDateChange = (date: Date | undefined, field: 'start_date' | 'end_date') => {
     if (!date) return;
-    // Mantém o horário em UTC para evitar problemas com timezone
-    const isoDate = formatISO(date, { representation: 'date' });
+    
+    // Formata a data para YYYY-MM-DD mantendo o dia selecionado
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    
     setFormData(prev => ({
       ...prev,
-      [field]: isoDate
+      [field]: formattedDate
     }));
   };
 
@@ -172,4 +177,3 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
     </div>
   );
 };
-
