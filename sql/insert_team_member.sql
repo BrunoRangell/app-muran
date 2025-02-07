@@ -11,7 +11,7 @@ INSERT INTO team_members (
   birthday
 )
 VALUES (
-  '0730ffac-d039-4194-9571-01aa2aa0efbd',
+  '4d4d4fd2-4039-44df-bd63-94de78b261eb',
   'Bruno Rangel',
   'Diretor de Tecnologia',
   'bruno.rangel@muran.digital',
