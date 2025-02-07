@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,7 @@ export const TeamMemberCard = ({
         {member.photo_url ? (
           <AvatarImage src={convertGoogleDriveLink(member.photo_url)} alt={member.name} />
         ) : (
-          <AvatarFallback className="bg-muran-primary text-white text-xl">
+          <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
             {getInitials(member.name)}
           </AvatarFallback>
         )}

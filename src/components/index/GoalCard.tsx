@@ -31,8 +31,8 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   if (queryError) {
     return (
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-6">
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
           <div className="text-center text-red-600">
             Erro ao carregar o desafio. Por favor, tente novamente mais tarde.
           </div>
@@ -43,8 +43,8 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   if (isLoading) {
     return (
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-6">
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
           <div className="space-y-4">
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
@@ -56,7 +56,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   }
 
   return (
-    <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
+    <Card className="border-0 shadow-sm bg-white">
       <GoalHeader
         goal={goal}
         isAdmin={isAdmin}
@@ -65,7 +65,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         onEditClick={() => setIsEditing(true)}
       />
       
-      <CardContent className="p-6 pt-0">
+      <CardContent className="p-4">
         {isEditing || isCreating ? (
           <GoalForm
             initialData={goal}

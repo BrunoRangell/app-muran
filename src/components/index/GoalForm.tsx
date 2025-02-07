@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,6 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
   const handleDateChange = (date: Date | undefined, field: 'start_date' | 'end_date') => {
     if (!date) return;
     
-    // Corrige o problema de timezone
     const adjustedDate = new Date(
       date.getFullYear(),
       date.getMonth(),
@@ -37,9 +37,8 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
   };
 
   return (
-    <div className="space-y-8">
-      {/* Tipo de Meta */}
-      <div className="space-y-3">
+    <div className="space-y-6">
+      <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
           Tipo de Desafio
         </label>
@@ -65,20 +64,19 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         </Select>
       </div>
 
-      {/* Período */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
           Período do Desafio
         </label>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
             <label className="text-xs text-gray-500">Data Inicial</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal text-sm",
                     !formData.start_date && "text-muted-foreground"
                   )}
                 >
@@ -101,14 +99,14 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
             </Popover>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className="text-xs text-gray-500">Data Final</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal text-sm",
                     !formData.end_date && "text-muted-foreground"
                   )}
                 >
@@ -133,8 +131,7 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         </div>
       </div>
 
-      {/* Valor da Meta */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
           Objetivo do Desafio
         </label>
@@ -152,20 +149,21 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         />
       </div>
 
-      {/* Botões */}
-      <div className="flex gap-3 pt-6">
+      <div className="flex gap-2 pt-4">
         <Button
           variant="outline"
           onClick={onCancel}
           className="w-full"
           disabled={isSubmitting}
+          size="sm"
         >
           Cancelar
         </Button>
         <Button
           onClick={() => onSubmit(formData)}
           disabled={isSubmitting}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          className="w-full bg-[#ff6e00] hover:bg-[#e66200]"
+          size="sm"
         >
           {isSubmitting ? "Salvando..." : "Salvar Desafio"}
         </Button>

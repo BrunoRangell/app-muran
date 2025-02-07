@@ -15,17 +15,17 @@ interface GoalHeaderProps {
 
 export const GoalHeader = ({ goal, isAdmin, isEditing, isCreating, onEditClick }: GoalHeaderProps) => {
   return (
-    <CardHeader className="p-6 pb-4">
-      <CardTitle className="flex items-center gap-3 text-xl font-bold">
-        <Trophy className="w-7 h-7 text-[#ff6e00]" />
+    <CardHeader className="p-4">
+      <CardTitle className="flex items-center gap-3 text-lg font-bold">
+        <Trophy className="w-6 h-6 text-[#ff6e00]" />
         <div className="flex-1">
           <p>Desafio Muran</p>
           {goal && (
-            <div className="flex gap-4 items-center mt-2">
-              <div className="bg-blue-100 px-3 py-1 rounded-full text-sm text-blue-800">
+            <div className="flex gap-3 items-center mt-1.5">
+              <div className="bg-blue-50 px-2 py-0.5 rounded-full text-xs text-blue-700">
                 {format(new Date(goal.start_date), 'dd/MM/yyyy')} - {format(new Date(goal.end_date), 'dd/MM/yyyy')}
               </div>
-              <div className="bg-green-100 px-3 py-1 rounded-full text-sm text-green-800">
+              <div className="bg-green-50 px-2 py-0.5 rounded-full text-xs text-green-700">
                 {getDaysRemaining(goal.end_date) > 0 
                   ? `${getDaysRemaining(goal.end_date)} dias restantes` 
                   : "Desafio encerrado"}
@@ -37,7 +37,7 @@ export const GoalHeader = ({ goal, isAdmin, isEditing, isCreating, onEditClick }
           <Button
             variant="outline"
             size="sm"
-            className="ml-auto"
+            className="ml-auto text-xs"
             onClick={onEditClick}
           >
             Editar Desafio
