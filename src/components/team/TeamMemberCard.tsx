@@ -2,7 +2,7 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Pencil, Eye, WalletCards } from "lucide-react";
+import { Pencil, Eye, DollarSign } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TeamMember } from "@/types/team";
@@ -75,7 +75,7 @@ export const TeamMemberCard = ({
               className="h-8 w-8 hover:bg-gray-100"
               title="Ver financeiro"
             >
-              <WalletCards className="h-4 w-4 text-muran-primary" />
+              <DollarSign className="h-4 w-4 text-muran-primary" />
             </Button>
           )}
           {(currentUserPermission === 'admin' || currentUserId === member.id) && (

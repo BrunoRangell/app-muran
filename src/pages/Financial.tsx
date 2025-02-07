@@ -12,7 +12,8 @@ const Financial = () => {
   const { data: salaries = [], isLoading } = useQuery({
     queryKey: ["salaries", paramMemberId],
     queryFn: async () => {
-      console.log("Buscando salários do usuário...", paramMemberId);
+      console.log("Iniciando busca de salários...");
+      console.log("ID do membro nos parâmetros:", paramMemberId);
       
       let userId = paramMemberId;
       
@@ -24,6 +25,8 @@ const Financial = () => {
         }
         userId = session.user.id;
       }
+
+      console.log("ID final para busca de salários:", userId);
 
       const { data, error } = await supabase
         .from("salaries")
@@ -45,13 +48,20 @@ const Financial = () => {
     queryKey: ["team_member", paramMemberId],
     enabled: !!paramMemberId,
     queryFn: async () => {
+      console.log("Buscando informações do membro:", paramMemberId);
+      
       const { data, error } = await supabase
         .from("team_members")
         .select("name")
         .eq("id", paramMemberId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar membro:", error);
+        throw error;
+      }
+
+      console.log("Membro encontrado:", data);
       return data;
     }
   });
