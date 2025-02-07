@@ -30,10 +30,10 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     return "⏳ Vamos começar!";
   };
 
-  // Função para criar a data corretamente no horário local sem deslocamento
+  // Criar a data no fuso local sem conversão inesperada
   const parseLocalDate = (dateString: string) => {
     const [year, month, day] = dateString.split("-").map(Number);
-    return new Date(year, month - 1, day); // Mês no JS começa em 0
+    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0)); // Define UTC, mas ao meio-dia para evitar deslocamento
   };
 
   return (
