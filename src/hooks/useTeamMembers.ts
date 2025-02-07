@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { TeamMember } from "@/types/team";
@@ -8,20 +9,37 @@ export const useTeamMembers = () => {
     queryFn: async () => {
       console.log("Iniciando busca de todos os membros da equipe...");
       try {
-        const { data, error } = await supabase
+        const { data: members, error: membersError } = await supabase
           .from('team_members')
           .select('*')
           .order('start_date', { ascending: true });
 
-        if (error) {
-          console.error("Erro ao buscar membros:", error);
-          throw error;
+        if (membersError) {
+          console.error("Erro ao buscar membros:", membersError);
+          throw membersError;
         }
 
-        console.log("Total de membros encontrados:", data?.length);
-        console.log("Membros:", data);
+        // Buscar emblemas para cada membro
+        const membersWithBadges = await Promise.all(
+          members.map(async (member) => {
+            const { data: badges, error: badgesError } = await supabase
+              .from('badges')
+              .select('*')
+              .eq('team_member_id', member.id);
+
+            if (badgesError) {
+              console.error("Erro ao buscar emblemas do membro:", badgesError);
+              return member;
+            }
+
+            return { ...member, badges };
+          })
+        );
+
+        console.log("Total de membros encontrados:", membersWithBadges.length);
+        console.log("Membros com emblemas:", membersWithBadges);
         
-        return data as TeamMember[];
+        return membersWithBadges as TeamMember[];
       } catch (error) {
         console.error("Erro na consulta de membros:", error);
         throw error;
@@ -50,8 +68,21 @@ export const useCurrentUser = () => {
         throw error;
       }
 
-      console.log("Dados do usuário atual:", teamMember);
-      return teamMember as TeamMember;
+      // Buscar emblemas do usuário atual
+      const { data: badges, error: badgesError } = await supabase
+        .from('badges')
+        .select('*')
+        .eq('team_member_id', teamMember.id);
+
+      if (badgesError) {
+        console.error("Erro ao buscar emblemas do usuário atual:", badgesError);
+        return teamMember;
+      }
+
+      const memberWithBadges = { ...teamMember, badges };
+      console.log("Dados do usuário atual:", memberWithBadges);
+      
+      return memberWithBadges as TeamMember;
     },
   });
 };

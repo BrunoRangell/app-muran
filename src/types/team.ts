@@ -12,6 +12,17 @@ export interface TeamMember {
   linkedin?: string;
   instagram?: string;
   tiktok?: string;
+  badges?: Badge[];
+}
+
+export interface Badge {
+  id: string;
+  code: string;
+  name: string;
+  icon: string;
+  description: string;
+  created_at: string;
+  team_member_id: string;
 }
 
 export interface EditFormData {
