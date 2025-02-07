@@ -40,6 +40,12 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     }
   };
 
+  // Função auxiliar para criar uma data correta sem problemas de timezone
+  const createLocalDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0); // Define meio-dia para evitar problemas de timezone
+  };
+
   return (
     <div className="space-y-3">
       <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-2 rounded-lg">
@@ -51,8 +57,8 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
             </h2>
             <div className="flex items-center gap-2 text-xs">
               <span className="text-gray-600">
-                {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
-                {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
+                {format(createLocalDate(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
+                {format(createLocalDate(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
               </span>
               <span className="text-green-600">
                 •{" "}
