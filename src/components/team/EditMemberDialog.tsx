@@ -29,104 +29,70 @@ export const EditMemberDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Editar Informações</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              defaultValue={selectedMember.name}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {isAdmin && (
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 overflow-y-auto pr-2">
+            <div className="space-y-4">
               <FormField
                 control={form.control}
-                name="role"
-                defaultValue={selectedMember.role}
+                name="name"
+                defaultValue={selectedMember.name}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cargo</FormLabel>
+                    <FormLabel>Nome</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
                   </FormItem>
                 )}
               />
-            )}
 
-            <FormField
-              control={form.control}
-              name="photo_url"
-              defaultValue={selectedMember.photo_url}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL da Foto</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Para melhor compatibilidade, recomendamos usar serviços como imgur.com ou imgbb.com para hospedar suas fotos. 
-                    Cole aqui o link direto da imagem após fazer o upload.
-                  </FormDescription>
-                </FormItem>
+              {isAdmin && (
+                <FormField
+                  control={form.control}
+                  name="role"
+                  defaultValue={selectedMember.role}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cargo</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               )}
-            />
 
-            <FormField
-              control={form.control}
-              name="birthday"
-              defaultValue={selectedMember.birthday}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de Aniversário</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="bio"
-              defaultValue={selectedMember.bio}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Biografia</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      placeholder="Conte um pouco sobre você..."
-                      className="resize-none min-h-[100px]"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
-              <h3 className="font-medium text-sm text-gray-700">Redes Sociais</h3>
-              
               <FormField
                 control={form.control}
-                name="instagram"
-                defaultValue={selectedMember.instagram}
+                name="photo_url"
+                defaultValue={selectedMember.photo_url}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Instagram</FormLabel>
+                    <FormLabel>URL da Foto</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="@seu.perfil" />
+                      <Input {...field} />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Para melhor compatibilidade, recomendamos usar serviços como imgur.com ou imgbb.com para hospedar suas fotos. 
+                      Cole aqui o link direto da imagem após fazer o upload.
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="birthday"
+                defaultValue={selectedMember.birthday}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Aniversário</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
                     </FormControl>
                   </FormItem>
                 )}
@@ -134,34 +100,72 @@ export const EditMemberDialog = ({
 
               <FormField
                 control={form.control}
-                name="linkedin"
-                defaultValue={selectedMember.linkedin}
+                name="bio"
+                defaultValue={selectedMember.bio}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>LinkedIn</FormLabel>
+                    <FormLabel>Biografia</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="URL do seu perfil" />
+                      <Textarea 
+                        {...field} 
+                        placeholder="Conte um pouco sobre você..."
+                        className="resize-none h-24"
+                      />
                     </FormControl>
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="tiktok"
-                defaultValue={selectedMember.tiktok}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>TikTok</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="@seu.perfil" />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-3 border rounded-lg p-3 bg-gray-50">
+                <h3 className="font-medium text-sm text-gray-700">Redes Sociais</h3>
+                
+                <FormField
+                  control={form.control}
+                  name="instagram"
+                  defaultValue={selectedMember.instagram}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Instagram</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="@seu.perfil" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="linkedin"
+                  defaultValue={selectedMember.linkedin}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>LinkedIn</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="URL do seu perfil" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tiktok"
+                  defaultValue={selectedMember.tiktok}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>TikTok</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="@seu.perfil" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
-            <Button type="submit" className="w-full">Salvar</Button>
+            <div className="sticky bottom-0 pt-4 bg-white">
+              <Button type="submit" className="w-full">Salvar</Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
