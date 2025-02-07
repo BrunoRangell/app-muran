@@ -1,7 +1,9 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -14,16 +16,18 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Instagram, Tiktok } from "lucide-react";
+
+const MAX_BIO_LENGTH = 500;
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
   role: z.string().min(1, "Cargo é obrigatório"),
   password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
-  photo_url: z.string().optional(),
-  birthday: z.string().optional(),
-  start_date: z.string().optional(),
-  manager_id: z.string().uuid("ID do gestor inválido").min(1, "ID do gestor é obrigatório"),
+  biography: z.string().max(MAX_BIO_LENGTH, `Bio deve ter no máximo ${MAX_BIO_LENGTH} caracteres`).optional(),
+  instagram_url: z.string().url("URL inválida").optional().or(z.literal("")),
+  tiktok_url: z.string().url("URL inválida").optional().or(z.literal("")),
 });
 
 type TeamMemberFormData = z.infer<typeof formSchema>;
@@ -42,10 +46,9 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
       email: "",
       role: "",
       password: "",
-      photo_url: "",
-      birthday: "",
-      start_date: "",
-      manager_id: "",
+      biography: "",
+      instagram_url: "",
+      tiktok_url: "",
     }
   });
 
@@ -62,11 +65,10 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
             name: data.name,
             email: data.email,
             role: data.role,
-            photo_url: data.photo_url,
-            birthday: data.birthday,
-            start_date: data.start_date,
             permission: 'member',
-            manager_id: data.manager_id
+            biography: data.biography,
+            instagram_url: data.instagram_url,
+            tiktok_url: data.tiktok_url,
           }
         ])
         .select()
@@ -163,59 +165,61 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
 
         <FormField
           control={form.control}
-          name="photo_url"
+          name="biography"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>URL da Foto</FormLabel>
+              <FormLabel>Biografia</FormLabel>
               <FormControl>
-                <Input placeholder="https://exemplo.com/foto.jpg" {...field} />
+                <Textarea 
+                  placeholder="Conte um pouco sobre você..." 
+                  {...field} 
+                  className="resize-none"
+                  maxLength={MAX_BIO_LENGTH}
+                />
               </FormControl>
+              <p className="text-sm text-gray-500">
+                {field.value?.length || 0}/{MAX_BIO_LENGTH} caracteres
+              </p>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="birthday"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Data de Aniversário</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-4">
+          <FormField
+            control={form.control}
+            name="instagram_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <Instagram className="w-4 h-4" />
+                  Instagram
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="URL do Instagram" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="start_date"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Data de Início na Muran</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="manager_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>ID do Gestor</FormLabel>
-              <FormControl>
-                <Input placeholder="Digite o UUID do gestor responsável" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="tiktok_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <Tiktok className="w-4 h-4" />
+                  TikTok
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="URL do TikTok" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -231,7 +235,7 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
           )}
         />
 
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading} className="w-full">
           {isLoading ? "Cadastrando..." : "Cadastrar membro"}
         </Button>
       </form>
