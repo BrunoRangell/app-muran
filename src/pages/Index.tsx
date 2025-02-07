@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -128,7 +129,7 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[400px]">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" style={{ height: '400px' }}>
         <div className="lg:col-span-1 h-full">
           <CompanyCards />
         </div>

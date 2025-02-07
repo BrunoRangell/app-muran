@@ -56,40 +56,42 @@ export const CompanyCards = () => {
   }, [autoPlay, emblaApi]);
 
   return (
-    <Carousel className="w-full h-full">
-      <CarouselContent ref={emblaRef} className="h-full">
-        {cards.map((card) => (
-          <CarouselItem key={card.title} className="h-full">
-            <Card className="h-full transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md">
-              <CardContent className="flex flex-col justify-between h-full p-6">
-                <div className="flex items-start gap-4">
-                  <card.icon className="h-6 w-6 text-muran-primary shrink-0" />
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-lg text-muran-complementary">
-                      {card.title}
-                    </h3>
-                    {Array.isArray(card.content) ? (
-                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        {card.content.map((item) => (
-                          <li key={item} className="transition-all hover:text-muran-primary">
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {card.content}
-                      </p>
-                    )}
+    <div className="h-full">
+      <Carousel className="w-full h-full">
+        <CarouselContent ref={emblaRef} className="h-full">
+          {cards.map((card) => (
+            <CarouselItem key={card.title} className="h-full">
+              <Card className="h-full transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md">
+                <CardContent className="flex flex-col justify-between h-full p-6">
+                  <div className="flex items-start gap-4">
+                    <card.icon className="h-6 w-6 text-muran-primary shrink-0" />
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-lg text-muran-complementary">
+                        {card.title}
+                      </h3>
+                      {Array.isArray(card.content) ? (
+                        <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                          {card.content.map((item) => (
+                            <li key={item} className="transition-all hover:text-muran-primary">
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                          {card.content}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-      <CarouselPrevious className="hidden md:flex -left-4" />
-      <CarouselNext className="hidden md:flex -right-4" />
-    </Carousel>
+                </CardContent>
+              </Card>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="hidden md:flex -left-4" />
+        <CarouselNext className="hidden md:flex -right-4" />
+      </Carousel>
+    </div>
   );
 };
