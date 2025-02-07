@@ -77,7 +77,7 @@ export const ViewProfileDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg bg-white p-0 overflow-hidden max-h-[85vh]">
-        <ScrollArea className="h-full max-h-[85vh]">
+        <ScrollArea className="h-full max-h-[85vh] [&_[data-radix-scroll-area-thumb]]:bg-muran-primary/50 [&_[data-radix-scroll-area-thumb]]:w-2.5 [&_[data-radix-scroll-area-thumb]]:rounded-none">
           {/* Header com gradiente e foto */}
           <div className="relative bg-gradient-to-br from-muran-primary/10 to-muran-primary/5 p-8">
             <div className="flex flex-col items-center gap-6">
@@ -164,3 +164,4 @@ export const ViewProfileDialog = ({
     </Dialog>
   );
 };
+
