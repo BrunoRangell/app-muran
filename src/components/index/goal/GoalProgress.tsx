@@ -46,6 +46,11 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     return new Date(year, month - 1, day, 12, 0, 0); // Define meio-dia para evitar problemas de timezone
   };
 
+  const getRemainingDaysText = (days: number) => {
+    if (days <= 0) return "Encerrado";
+    return days === 1 ? "1 dia restante" : `${days} dias restantes`;
+  };
+
   return (
     <div className="space-y-3">
       <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-2 rounded-lg">
@@ -62,9 +67,7 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
               </span>
               <span className="text-green-600">
                 •{" "}
-                {getDaysRemaining(goal.end_date) > 0 
-                  ? `${getDaysRemaining(goal.end_date)} dias restantes` 
-                  : "Encerrado"}
+                {getRemainingDaysText(getDaysRemaining(goal.end_date))}
               </span>
             </div>
           </div>
