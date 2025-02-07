@@ -31,19 +31,19 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
           <TooltipProvider key={badge.id} delayDuration={0}>
             <Tooltip>
               <TooltipTrigger>
-                <div className="p-1.5 bg-muran-primary/10 rounded-full hover:bg-muran-primary/20 transition-colors">
-                  <IconComponent className="h-5 w-5 text-muran-primary" />
+                <div className="p-2 bg-muran-primary/10 rounded-lg hover:bg-muran-primary/20 transition-colors">
+                  <IconComponent className="h-6 w-6 text-muran-primary" />
                 </div>
               </TooltipTrigger>
               <TooltipContent 
                 side="top" 
                 align="center" 
-                sideOffset={8}
-                className="fixed bg-white z-[9999] shadow-lg border border-gray-200 p-3 max-w-[300px] break-words"
+                sideOffset={10}
+                className="bg-white border-2 border-muran-primary/20 shadow-lg p-4 max-w-[250px] z-[100]"
               >
-                <div className="text-sm">
-                  <p className="font-semibold text-gray-900">{badge.name}</p>
-                  <p className="text-xs text-gray-600 mt-1">{badge.description}</p>
+                <div>
+                  <h4 className="font-bold text-base text-gray-900 mb-1">{badge.name}</h4>
+                  <p className="text-sm text-gray-700 leading-relaxed">{badge.description}</p>
                 </div>
               </TooltipContent>
             </Tooltip>
