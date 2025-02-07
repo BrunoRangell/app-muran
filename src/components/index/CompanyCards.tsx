@@ -86,7 +86,7 @@ export const CompanyCards = () => {
         <CarouselContent>
           {cards.map((card) => (
             <CarouselItem key={card.title} className="h-full">
-              <Card className="transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md h-[320px]">
+              <Card className="border-0 shadow-sm h-[320px]">
                 <CardContent className="flex flex-col p-6 h-full">
                   <div className="flex items-start gap-4">
                     <card.icon className="h-6 w-6 text-muran-primary shrink-0" />
@@ -99,7 +99,7 @@ export const CompanyCards = () => {
                           {card.content.map((item) => (
                             <li
                               key={item}
-                              className="transition-all hover:text-muran-primary"
+                              className="text-gray-600"
                             >
                               {item}
                             </li>
