@@ -77,7 +77,7 @@ export const ViewProfileDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg bg-white p-0 overflow-hidden max-h-[85vh]">
-        <ScrollArea className="h-full max-h-[85vh]">
+        <ScrollArea className="h-full max-h-[85vh] overflow-y-auto [&_[data-radix-scroll-area-viewport]]:!block [&_[data-radix-scroll-area-scrollbar]]:!w-2.5 [&_[data-radix-scroll-area-scrollbar]]:!p-[3px] [&_[data-radix-scroll-area-thumb]]:!bg-gray-300 [&_[data-radix-scroll-area-thumb]]:!rounded-full">
           {/* Header com gradiente e foto */}
           <div className="relative bg-gradient-to-br from-muran-primary/10 to-muran-primary/5 p-8">
             <div className="flex flex-col items-center gap-6">
@@ -102,12 +102,6 @@ export const ViewProfileDialog = ({
                   <p className="text-gray-700 font-medium">{member.role}</p>
                 </div>
               </div>
-
-              {member.badges && member.badges.length > 0 && (
-                <div className="w-full">
-                  <BadgeDisplay badges={member.badges} />
-                </div>
-              )}
             </div>
           </div>
 
@@ -127,15 +121,21 @@ export const ViewProfileDialog = ({
 
           {/* Bio */}
           {member.bio && (
-            <>
-              <div className="px-6 py-4">
-                <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
-                  {member.bio}
-                </p>
-              </div>
-              <Separator />
-            </>
+            <div className="px-6 py-4">
+              <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
+                {member.bio}
+              </p>
+            </div>
           )}
+
+          {/* Badges */}
+          {member.badges && member.badges.length > 0 && (
+            <div className="w-full px-6 py-4">
+              <BadgeDisplay badges={member.badges} />
+            </div>
+          )}
+
+          <Separator />
 
           {/* Informações de Contato */}
           <div className="p-4 bg-gray-50 space-y-2">
@@ -164,3 +164,4 @@ export const ViewProfileDialog = ({
     </Dialog>
   );
 };
+
