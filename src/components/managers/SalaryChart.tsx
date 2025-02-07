@@ -1,3 +1,4 @@
+
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { format } from "date-fns";
@@ -13,6 +14,19 @@ interface SalaryChartProps {
 }
 
 export const SalaryChart = ({ salaries }: SalaryChartProps) => {
+  if (salaries.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <p className="text-lg text-muran-complementary mb-2">
+          Nenhum registro salarial encontrado
+        </p>
+        <p className="text-sm text-gray-500">
+          Não existem dados de salário registrados para este período.
+        </p>
+      </div>
+    );
+  }
+
   // Inverte a ordem para que o mês mais antigo fique à esquerda
   const formattedData = [...salaries]
     .reverse()
