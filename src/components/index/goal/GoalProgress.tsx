@@ -15,10 +15,10 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
   const progress = Math.min(Math.round((currentValue / goal.target_value) * 100), 100);
 
   const getProgressColor = (value: number) => {
-    if (value >= 100) return "bg-gradient-to-r from-green-400 to-emerald-500";
-    if (value >= 75) return "bg-gradient-to-r from-blue-400 to-indigo-500";
-    if (value >= 50) return "bg-gradient-to-r from-yellow-400 to-amber-500";
-    return "bg-gradient-to-r from-pink-500 to-rose-500";
+    if (value >= 100) return "bg-gradient-to-r from-emerald-400 to-green-500";
+    if (value >= 75) return "bg-gradient-to-r from-violet-500 to-purple-600";
+    if (value >= 50) return "bg-gradient-to-r from-amber-400 to-orange-500";
+    return "bg-gradient-to-r from-rose-400 to-pink-600";
   };
 
   const getMotivationalMessage = (value: number) => {
@@ -57,15 +57,15 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
       <div className="space-y-2">
         <Progress
           value={progress}
-          className="h-2 rounded-full"
-          indicatorClassName={`${getProgressColor(progress)} rounded-full`}
+          className="h-2.5 rounded-full bg-gray-100"
+          indicatorClassName={`${getProgressColor(progress)} rounded-full shadow-sm`}
         />
         <div className="flex items-center gap-2 justify-center text-sm">
           <div className="flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-indigo-600" />
             <span className="text-gray-600">Progresso:</span>
           </div>
-          <span className="font-medium">{progress}%</span>
+          <span className="font-semibold bg-indigo-50 px-2 py-0.5 rounded text-indigo-700">{progress}%</span>
         </div>
       </div>
 
