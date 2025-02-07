@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth } from "date-fns";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getRandomQuote } from "@/data/motivationalQuotes";
 import { CompanyCards } from "@/components/index/CompanyCards";
 import { MetricsCard } from "@/components/index/MetricsCard";
@@ -92,6 +92,14 @@ const Index = () => {
     fetchUserData();
   }, []);
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
+
   const todaysQuote = getRandomQuote();
 
   return (
@@ -100,11 +108,13 @@ const Index = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="h-12 w-12 border-2 border-muran-primary/20">
-              <img
-                src={avatarUrl || "/placeholder.svg"}
-                alt={userName}
-                className="object-cover"
-              />
+              {avatarUrl ? (
+                <AvatarImage src={avatarUrl} alt={userName} className="object-cover" />
+              ) : (
+                <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
+                  {getInitials(userName)}
+                </AvatarFallback>
+              )}
             </Avatar>
             <div className="text-left">
               <h1 className="text-2xl font-bold text-muran-complementary">
