@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -59,6 +60,10 @@ const Managers = () => {
         photo_url: data.photo_url,
         birthday: data.birthday,
         role: data.role,
+        bio: data.bio,
+        linkedin: data.linkedin,
+        instagram: data.instagram,
+        tiktok: data.tiktok
       };
 
       const { error } = await supabase
@@ -182,3 +187,4 @@ const Managers = () => {
 };
 
 export default Managers;
+
