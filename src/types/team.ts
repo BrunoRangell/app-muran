@@ -1,3 +1,4 @@
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -18,6 +19,10 @@ export interface EditFormData {
   role: string;
   photo_url: string;
   birthday: string;
+  bio?: string;
+  linkedin?: string;
+  instagram?: string;
+  tiktok?: string;
 }
 
 export interface TeamMemberCardProps {

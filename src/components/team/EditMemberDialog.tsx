@@ -1,7 +1,9 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { EditFormData, TeamMember } from "@/types/team";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
@@ -27,7 +29,7 @@ export const EditMemberDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Editar Informações</DialogTitle>
         </DialogHeader>
@@ -46,6 +48,7 @@ export const EditMemberDialog = ({
                 </FormItem>
               )}
             />
+
             {isAdmin && (
               <FormField
                 control={form.control}
@@ -61,6 +64,7 @@ export const EditMemberDialog = ({
                 )}
               />
             )}
+
             <FormField
               control={form.control}
               name="photo_url"
@@ -78,6 +82,7 @@ export const EditMemberDialog = ({
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="birthday"
@@ -91,6 +96,71 @@ export const EditMemberDialog = ({
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="bio"
+              defaultValue={selectedMember.bio}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Biografia</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      placeholder="Conte um pouco sobre você..."
+                      className="resize-none min-h-[100px]"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+              <h3 className="font-medium text-sm text-gray-700">Redes Sociais</h3>
+              
+              <FormField
+                control={form.control}
+                name="instagram"
+                defaultValue={selectedMember.instagram}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Instagram</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="@seu.perfil" />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="linkedin"
+                defaultValue={selectedMember.linkedin}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>LinkedIn</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="URL do seu perfil" />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="tiktok"
+                defaultValue={selectedMember.tiktok}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>TikTok</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="@seu.perfil" />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <Button type="submit" className="w-full">Salvar</Button>
           </form>
         </Form>
