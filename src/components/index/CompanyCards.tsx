@@ -61,11 +61,11 @@ export const CompanyCards = () => {
         <CarouselContent ref={emblaRef}>
           {cards.map((card) => (
             <CarouselItem key={card.title} className="h-full basis-full">
-              <Card className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow h-full p-6">
-                <CardContent className="flex flex-col h-full p-0">
+              <Card className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow h-full flex flex-col p-6">
+                <CardContent className="flex-1 p-0">
                   <div className="flex items-start gap-4 h-full">
                     <card.icon className="h-6 w-6 text-muran-primary shrink-0" />
-                    <div className="space-y-2">
+                    <div className="space-y-2 flex-1">
                       <h3 className="font-semibold text-lg text-muran-complementary">
                         {card.title}
                       </h3>
@@ -95,3 +95,4 @@ export const CompanyCards = () => {
     </div>
   );
 };
+
