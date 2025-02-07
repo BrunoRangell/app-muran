@@ -1,7 +1,7 @@
 
 export interface Goal {
   id: number;
-  goal_type: 'active_clients' | 'new_clients' | 'churned_clients';
+  goal_type: 'active_clients' | 'new_clients';
   start_date: string;
   end_date: string;
   target_value: number;
@@ -15,6 +15,6 @@ export interface Goal {
 
 export const GOAL_TYPES = {
   active_clients: 'Meta de Clientes Ativos',
-  new_clients: 'Meta de Novos Clientes',
-  churned_clients: 'Meta de Clientes Cancelados'
+  new_clients: 'Meta de Novos Clientes'
 } as const;
+

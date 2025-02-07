@@ -36,8 +36,6 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
         return 'clientes ativos';
       case 'new_clients':
         return 'novos clientes';
-      case 'churned_clients':
-        return 'clientes cancelados';
       default:
         return 'clientes';
     }

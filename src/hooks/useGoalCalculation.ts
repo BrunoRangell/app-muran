@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Goal } from "@/types/goal";
@@ -12,22 +13,13 @@ export const useGoalCalculation = (goal: Goal | undefined) => {
       const { start_date, end_date, goal_type } = goal;
       let query = supabase.from("clients").select("*", { count: "exact" });
 
-      switch (goal_type) {
-        case "active_clients":
-          query = query.eq("status", "active");
-          break;
-        case "new_clients":
-          query = query
-            .eq("status", "active")
-            .gte("first_payment_date", start_date)
-            .lte("first_payment_date", end_date);
-          break;
-        case "churned_clients":
-          query = query
-            .eq("status", "inactive")
-            .gte("last_payment_date", start_date)
-            .lte("last_payment_date", end_date);
-          break;
+      if (goal_type === "active_clients") {
+        query = query.eq("status", "active");
+      } else if (goal_type === "new_clients") {
+        query = query
+          .eq("status", "active")
+          .gte("first_payment_date", start_date)
+          .lte("first_payment_date", end_date);
       }
 
       const { count, error } = await query;
@@ -41,3 +33,4 @@ export const useGoalCalculation = (goal: Goal | undefined) => {
     },
   });
 };
+
