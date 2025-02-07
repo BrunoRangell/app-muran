@@ -1,6 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { Goal, GOAL_TYPES } from "@/types/goal";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Target, TrendingUp } from "lucide-react";
 
@@ -30,11 +30,9 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     return "⏳ Vamos começar!";
   };
 
-  // Criar a data no fuso local sem conversão inesperada
-  const parseLocalDate = (dateString: string) => {
-    const [year, month, day] = dateString.split("-").map(Number);
-    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0)); // Define UTC, mas ao meio-dia para evitar deslocamento
-  };
+  // Converte corretamente a data do banco de dados, garantindo o fuso horário correto
+  const startDate = parseISO(goal.start_date + "T12:00:00Z"); // Força meio-dia UTC
+  const endDate = parseISO(goal.end_date + "T12:00:00Z");
 
   return (
     <div className="space-y-4">
@@ -46,9 +44,8 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
               {GOAL_TYPES[goal.goal_type]}
             </h2>
             <p className="text-xs text-gray-600 mt-0.5">
-              {format(parseLocalDate(goal.start_date), "dd 'de' MMM", { locale: ptBR })}{" "}
-              -{" "}
-              {format(parseLocalDate(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
+              {format(startDate, "dd 'de' MMM", { locale: ptBR })} -{" "}
+              {format(endDate, "dd 'de' MMM", { locale: ptBR })}
             </p>
           </div>
         </div>
