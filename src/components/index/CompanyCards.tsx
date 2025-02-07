@@ -80,7 +80,7 @@ export const CompanyCards = () => {
         opts={{ 
           align: "center", 
           loop: true, 
-          duration: 150
+          duration: 100
         }}
       >
         <CarouselContent>
