@@ -98,7 +98,7 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
   });
 
   return (
-    <Card className="shadow-lg border-t-4 border-muran-primary hover:scale-105 transition-transform duration-300">
+    <Card className="border-0 shadow-sm hover:scale-105 transition-transform duration-300">
       <CardHeader>
         <CardTitle className="flex items-center gap-3 text-lg font-bold text-gray-800">
           <Gift className="text-muran-primary" size={20} />
