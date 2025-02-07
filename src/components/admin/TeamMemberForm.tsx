@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -10,20 +11,21 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Instagram, Linkedin } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
   role: z.string().min(1, "Cargo é obrigatório"),
   password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
-  photo_url: z.string().optional(),
-  birthday: z.string().optional(),
-  start_date: z.string().optional(),
-  manager_id: z.string().uuid("ID do gestor inválido").min(1, "ID do gestor é obrigatório"),
+  bio: z.string().max(500, "Biografia deve ter no máximo 500 caracteres").optional(),
+  instagram_url: z.string().url("URL inválida").optional().or(z.literal("")),
+  linkedin_url: z.string().url("URL inválida").optional().or(z.literal("")),
 });
 
 type TeamMemberFormData = z.infer<typeof formSchema>;
@@ -42,10 +44,9 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
       email: "",
       role: "",
       password: "",
-      photo_url: "",
-      birthday: "",
-      start_date: "",
-      manager_id: "",
+      bio: "",
+      instagram_url: "",
+      linkedin_url: "",
     }
   });
 
@@ -54,7 +55,6 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
       setIsLoading(true);
       console.log("Criando novo membro:", data);
 
-      // Primeiro, criar o registro na tabela team_members
       const { data: memberData, error: memberError } = await supabase
         .from('team_members')
         .insert([
@@ -62,11 +62,10 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
             name: data.name,
             email: data.email,
             role: data.role,
-            photo_url: data.photo_url,
-            birthday: data.birthday,
-            start_date: data.start_date,
+            bio: data.bio,
+            instagram_url: data.instagram_url,
+            linkedin_url: data.linkedin_url,
             permission: 'member',
-            manager_id: data.manager_id
           }
         ])
         .select()
@@ -75,7 +74,6 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
       if (memberError) throw memberError;
       console.log("Registro na tabela team_members criado com sucesso:", memberData);
 
-      // Em seguida, criar o usuário no Auth
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: data.email,
         password: data.password,
@@ -87,7 +85,6 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
       });
 
       if (authError) {
-        // Se houver erro na criação do usuário, remover o registro da tabela
         await supabase
           .from('team_members')
           .delete()
@@ -163,59 +160,58 @@ export const TeamMemberForm = ({ onSuccess }: TeamMemberFormProps) => {
 
         <FormField
           control={form.control}
-          name="photo_url"
+          name="bio"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>URL da Foto</FormLabel>
+              <FormLabel>Biografia</FormLabel>
               <FormControl>
-                <Input placeholder="https://exemplo.com/foto.jpg" {...field} />
+                <Textarea 
+                  placeholder="Conte um pouco sobre você..." 
+                  className="resize-none"
+                  maxLength={500}
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="birthday"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Data de Aniversário</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-4">
+          <FormField
+            control={form.control}
+            name="instagram_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <Instagram className="h-4 w-4" />
+                  Instagram
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="https://instagram.com/seu_perfil" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="start_date"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Data de Início na Muran</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="manager_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>ID do Gestor</FormLabel>
-              <FormControl>
-                <Input placeholder="Digite o UUID do gestor responsável" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="linkedin_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <Linkedin className="h-4 w-4" />
+                  LinkedIn
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="https://linkedin.com/in/seu_perfil" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
