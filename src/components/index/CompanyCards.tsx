@@ -16,7 +16,7 @@ export const CompanyCards = () => {
     align: "center",
     loop: true,
     duration: 20,
-    dragFree: false
+    dragFree: true
   });
 
   const cards = [
@@ -50,13 +50,17 @@ export const CompanyCards = () => {
     if (!autoPlay || !emblaApi) return;
 
     const onSelect = () => {
-      const lastSlide = emblaApi.selectedScrollSnap() === emblaApi.scrollSnapList().length - 1;
-      console.log('Slide atual:', emblaApi.selectedScrollSnap(), 'É último slide:', lastSlide);
+      console.log('Slide atual:', emblaApi.selectedScrollSnap());
     };
 
     const autoPlayInterval = setInterval(() => {
-      console.log('Tentando avançar para o próximo slide...');
-      emblaApi.scrollNext();
+      if (emblaApi.canScrollNext()) {
+        console.log('Avançando para o próximo slide...');
+        emblaApi.scrollNext();
+      } else {
+        console.log('Voltando para o primeiro slide...');
+        emblaApi.scrollTo(0);
+      }
     }, 5000);
 
     emblaApi.on('select', onSelect);
