@@ -1,8 +1,9 @@
+
 import { Progress } from "@/components/ui/progress";
 import { Goal, GOAL_TYPES } from "@/types/goal";
-import { format, differenceInDays, startOfToday } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Target, TrendingUp, Zap } from "lucide-react";
+import { Target, TrendingUp } from "lucide-react";
 
 interface GoalProgressProps {
   goal: Goal;
@@ -10,10 +11,7 @@ interface GoalProgressProps {
 }
 
 export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
-  const progress = Math.min(
-    Math.round((currentValue / goal.target_value) * 100),
-    100
-  );
+  const progress = Math.min(Math.round((currentValue / goal.target_value) * 100), 100);
 
   const getProgressColor = (value: number) => {
     if (value >= 100) return "bg-gradient-to-r from-green-400 to-emerald-500";
@@ -23,76 +21,59 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
   };
 
   const getMotivationalMessage = (value: number) => {
-    if (value >= 100) return "🎉 Missão cumprida! Vocês são incríveis!";
-    if (value >= 75) return "🔥 Quase lá! Últimos metros para a vitória!";
-    if (value >= 50) return "💪 Metade do caminho! Vamos manter o ritmo!";
-    if (value >= 25) return "🚀 Bom começo! Ainda temos muito pela frente!";
-    return "⏳ Vamos começar? O desafio está apenas começando!";
-  };
-
-  const getDaysRemaining = () => {
-    const today = startOfToday();
-    const end = new Date(goal.end_date);
-    return differenceInDays(end, today) + 1; // +1 para incluir o último dia
+    if (value >= 100) return "🎉 Meta alcançada!";
+    if (value >= 75) return "🔥 Quase lá!";
+    if (value >= 50) return "💪 Na metade do caminho!";
+    if (value >= 25) return "🚀 Bom começo!";
+    return "⏳ Vamos começar!";
   };
 
   return (
-    <div className="space-y-8">
-      {/* Cabeçalho atualizado */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Zap className="w-8 h-8 text-indigo-600" />
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {GOAL_TYPES[goal.goal_type]}
-              </h2>
-              <p className="text-sm text-gray-600 mt-2">
-                {format(new Date(goal.start_date), "dd 'de' MMMM", { locale: ptBR })} -{" "}
-                {format(new Date(goal.end_date), "dd 'de' MMMM", { locale: ptBR })}
-              </p>
-            </div>
-          </div>
-          <div className="bg-indigo-100 px-4 py-2 rounded-full">
-            <span className="font-semibold text-indigo-700">
-              {getDaysRemaining() > 0 
-                ? `${getDaysRemaining()} dias restantes` 
-                : "Desafio encerrado"}
-            </span>
+    <div className="space-y-4">
+      <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-3 rounded-lg">
+        <div className="flex items-center gap-3">
+          <Target className="w-5 h-5 text-indigo-600" />
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">
+              {GOAL_TYPES[goal.goal_type]}
+            </h2>
+            <p className="text-xs text-gray-600 mt-0.5">
+              {format(new Date(goal.start_date), "dd 'de' MMM", { locale: ptBR })} -{" "}
+              {format(new Date(goal.end_date), "dd 'de' MMM", { locale: ptBR })}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Progresso */}
-      <div className="space-y-6">
-        <div className="space-y-4">
-          <Progress
-            value={progress}
-            className="h-3 rounded-full"
-            indicatorClassName={`${getProgressColor(progress)} rounded-full`}
-          />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-indigo-600" />
-              <span className="font-medium text-gray-700">Progresso:</span>
-            </div>
-            <span className="font-bold text-gray-900">{progress}%</span>
+      <div className="space-y-3">
+        <Progress
+          value={progress}
+          className="h-2 rounded-full"
+          indicatorClassName={`${getProgressColor(progress)} rounded-full`}
+        />
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4 text-indigo-600" />
+            <span className="text-gray-600">Progresso:</span>
           </div>
-        </div>
-
-        {/* Mensagem Motivacional */}
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-lg">
-          <p className="text-center text-gray-700 font-medium">
-            {getMotivationalMessage(progress)}
-          </p>
+          <span className="font-medium">{progress}%</span>
         </div>
       </div>
 
-      {/* Valores */}
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white p-4 rounded-xl shadow-sm">
-          <p className="text-sm text-gray-600">Meta</p>
-          <p className="text-2xl font-bold text-gray-900">{goal.target_value}</p>
+      <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-2 rounded">
+        <p className="text-center text-sm text-gray-700">
+          {getMotivationalMessage(progress)}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+          <p className="text-xs text-gray-500 mb-0.5">Meta</p>
+          <p className="text-lg font-semibold">{goal.target_value}</p>
+        </div>
+        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+          <p className="text-xs text-gray-500 mb-0.5">Atual</p>
+          <p className="text-lg font-semibold">{currentValue}</p>
         </div>
       </div>
     </div>

@@ -9,19 +9,17 @@ interface EmptyGoalStateProps {
 
 export const EmptyGoalState = ({ isAdmin, onCreateClick }: EmptyGoalStateProps) => {
   return (
-    <div className="text-center space-y-4 py-6">
-      <div className="space-y-2">
-        <Trophy className="w-10 h-10 mx-auto text-gray-300" />
-        <p className="text-gray-600">Nenhum desafio ativo</p>
-      </div>
+    <div className="text-center py-4">
+      <Trophy className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+      <p className="text-sm text-gray-600 mb-3">Nenhum desafio ativo</p>
       {isAdmin && (
         <Button
           onClick={onCreateClick}
-          className="w-full max-w-xs mx-auto bg-[#ff6e00] hover:bg-[#e66200]"
+          className="w-full max-w-xs mx-auto h-8 bg-[#ff6e00] hover:bg-[#e66200]"
           size="sm"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Criar Novo Desafio
+          <Plus className="w-4 h-4 mr-1" />
+          Criar Desafio
         </Button>
       )}
     </div>
