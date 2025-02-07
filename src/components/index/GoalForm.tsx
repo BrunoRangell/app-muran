@@ -24,11 +24,19 @@ export const GoalForm = ({ initialData, onSubmit, onCancel, isSubmitting }: Goal
   const handleDateChange = (date: Date | undefined, field: 'start_date' | 'end_date') => {
     if (!date) return;
     
-    // Formata a data para YYYY-MM-DD mantendo o dia selecionado
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}`;
+    // Cria uma nova data usando o fuso horário local
+    const localDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      12, // Define meio-dia para evitar problemas com timezones
+      0,
+      0,
+      0
+    );
+    
+    // Formata a data para YYYY-MM-DD
+    const formattedDate = localDate.toISOString().split('T')[0];
     
     setFormData(prev => ({
       ...prev,
