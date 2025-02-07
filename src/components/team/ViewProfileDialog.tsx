@@ -83,7 +83,7 @@ export const ViewProfileDialog = ({
                   <span className="font-semibold block text-gray-900">
                     {formatDate(member.start_date)}
                   </span>
-                  <span className="text-xs text-gray-500">Início</span>
+                  <span className="text-xs text-gray-500">Na Muran desde</span>
                 </div>
               </div>
             </div>
@@ -149,7 +149,7 @@ export const ViewProfileDialog = ({
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CalendarClock className="h-4 w-4 text-gray-400" />
-              <span>Início: {formatDate(member.start_date)}</span>
+              <span>Na Muran desde: {formatDate(member.start_date)}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Mail className="h-4 w-4 text-gray-400" />
@@ -161,4 +161,3 @@ export const ViewProfileDialog = ({
     </Dialog>
   );
 };
-

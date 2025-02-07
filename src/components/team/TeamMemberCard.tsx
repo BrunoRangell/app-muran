@@ -73,7 +73,7 @@ export const TeamMemberCard = ({
           <h3 className="font-semibold text-lg">{member.name}</h3>
           <p className="text-gray-600">{member.role}</p>
           <p className="text-sm text-gray-500">
-            Início: {formatDate(member.start_date)}
+            Na Muran desde: {formatDate(member.start_date)}
           </p>
           {member.birthday && (
             <p className="text-sm text-gray-500">
