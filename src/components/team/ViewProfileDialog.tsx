@@ -47,128 +47,114 @@ export const ViewProfileDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl overflow-hidden bg-gradient-to-br from-white to-gray-50">
-        <DialogHeader className="relative">
-          <div className="absolute inset-0 bg-muran-primary/10 backdrop-blur-sm -z-10" />
-          <DialogTitle className="text-2xl font-bold text-gray-900">
-            Perfil do Membro
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-lg bg-white p-0 overflow-hidden">
+        <div className="flex flex-col">
+          {/* Header com foto e informações básicas */}
+          <div className="p-6 flex items-start gap-6">
+            <div className="relative group">
+              <Avatar className="h-20 w-20 ring-2 ring-gray-100">
+                {member.photo_url ? (
+                  <AvatarImage
+                    src={member.photo_url}
+                    alt={member.name}
+                    className="object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <AvatarFallback className="bg-gray-100 text-gray-600 text-xl">
+                    {getInitials(member.name)}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+            </div>
 
-        <div className="mt-6 flex flex-col items-center space-y-6">
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-muran-primary rounded-full blur opacity-30 group-hover:opacity-50 transition duration-300" />
-            <Avatar className="h-32 w-32 ring-4 ring-white bg-white relative">
-              {member.photo_url ? (
-                <AvatarImage
-                  src={member.photo_url}
-                  alt={member.name}
-                  className="object-cover hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <AvatarFallback className="bg-muran-primary text-white text-3xl">
-                  {getInitials(member.name)}
-                </AvatarFallback>
-              )}
-            </Avatar>
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold text-gray-900">{member.name}</h2>
+              <p className="text-gray-600 font-medium">{member.role}</p>
+              <p className="text-gray-500 text-sm mt-1">{member.email}</p>
+              
+              <div className="flex gap-4 mt-4">
+                <div className="text-center">
+                  <span className="font-semibold block text-gray-900">
+                    {formatBirthday(member.birthday || '')}
+                  </span>
+                  <span className="text-xs text-gray-500">Aniversário</span>
+                </div>
+                <div className="text-center">
+                  <span className="font-semibold block text-gray-900">
+                    {formatDate(member.start_date)}
+                  </span>
+                  <span className="text-xs text-gray-500">Início</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-muran-primary to-muran-complementary bg-clip-text text-transparent">
-              {member.name}
-            </h2>
-            <p className="text-lg text-muran-primary font-medium">
-              {member.role}
-            </p>
-          </div>
+          <Separator />
 
-          <div className="w-full text-center px-6">
-            <p className="text-gray-600 italic bg-white/50 backdrop-blur-sm p-4 rounded-lg shadow-sm border border-gray-100">
+          {/* Bio */}
+          <div className="px-6 py-4">
+            <p className="text-gray-600 text-sm whitespace-pre-wrap">
               {member.bio || "Biografia não informada"}
             </p>
           </div>
 
-          <div className="w-full space-y-4 bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-sm border border-gray-100 hover:border-muran-primary/20 transition-colors duration-300">
-            <div className="flex items-center gap-3 text-gray-700 hover:text-muran-primary transition-colors group">
-              <div className="p-2 rounded-lg bg-muran-primary/10 group-hover:bg-muran-primary/20 transition-colors">
-                <Mail className="h-5 w-5 text-muran-primary" />
-              </div>
-              <span>{member.email}</span>
-            </div>
+          <Separator />
 
-            <div className="flex items-center gap-3 text-gray-700 hover:text-muran-primary transition-colors group">
-              <div className="p-2 rounded-lg bg-muran-primary/10 group-hover:bg-muran-primary/20 transition-colors">
-                <Briefcase className="h-5 w-5 text-muran-primary" />
-              </div>
-              <span>Cargo: {member.role}</span>
-            </div>
+          {/* Links Sociais */}
+          <div className="grid grid-cols-3 gap-2 p-4">
+            {member.instagram && (
+              <a
+                href={member.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700"
+              >
+                <Instagram className="h-4 w-4" />
+                <span>Instagram</span>
+              </a>
+            )}
 
-            <div className="flex items-center gap-3 text-gray-700 hover:text-muran-primary transition-colors group">
-              <div className="p-2 rounded-lg bg-muran-primary/10 group-hover:bg-muran-primary/20 transition-colors">
-                <CalendarClock className="h-5 w-5 text-muran-primary" />
-              </div>
-              <span>Data de início: {formatDate(member.start_date)}</span>
-            </div>
+            {member.linkedin && (
+              <a
+                href={member.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700"
+              >
+                <Linkedin className="h-4 w-4" />
+                <span>LinkedIn</span>
+              </a>
+            )}
 
-            {member.birthday && (
-              <div className="flex items-center gap-3 text-gray-700 hover:text-muran-primary transition-colors group">
-                <div className="p-2 rounded-lg bg-muran-primary/10 group-hover:bg-muran-primary/20 transition-colors">
-                  <CalendarDays className="h-5 w-5 text-muran-primary" />
-                </div>
-                <span>Aniversário: {formatBirthday(member.birthday)}</span>
-              </div>
+            {member.tiktok && (
+              <a
+                href={member.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                </svg>
+                <span>TikTok</span>
+              </a>
             )}
           </div>
 
-          <Separator className="w-full bg-gradient-to-r from-transparent via-muran-primary/20 to-transparent" />
-          
-          <div className="flex gap-6 justify-center w-full pb-2">
-            <a
-              href={member.linkedin || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
-                member.linkedin
-                  ? "hover:bg-muran-primary/10 text-gray-600 hover:text-muran-primary cursor-pointer"
-                  : "text-gray-400 cursor-not-allowed opacity-50"
-              }`}
-              onClick={(e) => !member.linkedin && e.preventDefault()}
-            >
-              <Linkedin className="h-5 w-5" />
-              <span>{member.linkedin ? "LinkedIn" : "LinkedIn não informado"}</span>
-            </a>
-
-            <a
-              href={member.instagram || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
-                member.instagram
-                  ? "hover:bg-muran-primary/10 text-gray-600 hover:text-muran-primary cursor-pointer"
-                  : "text-gray-400 cursor-not-allowed opacity-50"
-              }`}
-              onClick={(e) => !member.instagram && e.preventDefault()}
-            >
-              <Instagram className="h-5 w-5" />
-              <span>{member.instagram ? "Instagram" : "Instagram não informado"}</span>
-            </a>
-
-            <a
-              href={member.tiktok || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
-                member.tiktok
-                  ? "hover:bg-muran-primary/10 text-gray-600 hover:text-muran-primary cursor-pointer"
-                  : "text-gray-400 cursor-not-allowed opacity-50"
-              }`}
-              onClick={(e) => !member.tiktok && e.preventDefault()}
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-              </svg>
-              <span>{member.tiktok ? "TikTok" : "TikTok não informado"}</span>
-            </a>
+          {/* Informações Adicionais */}
+          <div className="bg-gray-50 p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Briefcase className="h-4 w-4 text-gray-400" />
+              <span>Cargo: {member.role}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <CalendarClock className="h-4 w-4 text-gray-400" />
+              <span>Início: {formatDate(member.start_date)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Mail className="h-4 w-4 text-gray-400" />
+              <span>{member.email}</span>
+            </div>
           </div>
         </div>
       </DialogContent>
