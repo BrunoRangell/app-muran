@@ -46,7 +46,7 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
                     side="top" 
                     align="center" 
                     sideOffset={12}
-                    className="fixed bg-white/95 backdrop-blur-sm border-2 border-muran-primary/20 shadow-xl p-6 max-w-[300px] z-[99999] break-words rounded-xl"
+                    className="fixed bg-white/95 backdrop-blur-sm border-2 border-muran-primary/20 shadow-xl p-6 max-w-[300px] z-[999999] break-words rounded-xl"
                     style={{ 
                       position: 'fixed',
                       pointerEvents: 'auto',
@@ -89,4 +89,3 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
     </div>
   );
 };
-

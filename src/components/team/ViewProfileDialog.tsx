@@ -12,6 +12,7 @@ import { TeamMember } from "@/types/team";
 import { CalendarDays, Mail, Briefcase, CalendarClock, Instagram, Linkedin } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { BadgeDisplay } from "./BadgeDisplay";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ViewProfileDialogProps {
   member: TeamMember | null;
@@ -75,90 +76,91 @@ export const ViewProfileDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-white p-0 overflow-hidden">
-        {/* Header com gradiente e foto */}
-        <div className="relative bg-gradient-to-br from-muran-primary/10 to-muran-primary/5 p-8">
-          <div className="flex flex-col items-center gap-6">
-            <Avatar className="h-32 w-32 ring-4 ring-white shadow-xl">
-              {member.photo_url ? (
-                <AvatarImage
-                  src={member.photo_url}
-                  alt={member.name}
-                  className="object-cover hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <AvatarFallback className="bg-muran-primary text-white text-3xl">
-                  {getInitials(member.name)}
-                </AvatarFallback>
-              )}
-            </Avatar>
-            
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">{member.name}</h2>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/80 backdrop-blur-sm rounded-full">
-                <Briefcase className="h-4 w-4 text-muran-primary" />
-                <p className="text-gray-700 font-medium">{member.role}</p>
+      <DialogContent className="max-w-lg bg-white p-0 overflow-hidden max-h-[85vh]">
+        <ScrollArea className="h-full max-h-[85vh]">
+          {/* Header com gradiente e foto */}
+          <div className="relative bg-gradient-to-br from-muran-primary/10 to-muran-primary/5 p-8">
+            <div className="flex flex-col items-center gap-6">
+              <Avatar className="h-32 w-32 ring-4 ring-white shadow-xl">
+                {member.photo_url ? (
+                  <AvatarImage
+                    src={member.photo_url}
+                    alt={member.name}
+                    className="object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <AvatarFallback className="bg-muran-primary text-white text-3xl">
+                    {getInitials(member.name)}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">{member.name}</h2>
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/80 backdrop-blur-sm rounded-full">
+                  <Briefcase className="h-4 w-4 text-muran-primary" />
+                  <p className="text-gray-700 font-medium">{member.role}</p>
+                </div>
               </div>
-            </div>
 
-            {member.badges && member.badges.length > 0 && (
-              <div className="w-full">
-                <BadgeDisplay badges={member.badges} />
+              {member.badges && member.badges.length > 0 && (
+                <div className="w-full">
+                  <BadgeDisplay badges={member.badges} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Informações principais */}
+          <div className="grid grid-cols-2 gap-4 p-6 bg-gray-50">
+            <div className="space-y-1 text-center p-3 bg-white rounded-lg shadow-sm">
+              <span className="text-sm text-gray-500">Na Muran desde</span>
+              <p className="text-lg font-semibold text-gray-900">{formatDate(member.start_date)}</p>
+            </div>
+            {member.birthday && (
+              <div className="space-y-1 text-center p-3 bg-white rounded-lg shadow-sm">
+                <span className="text-sm text-gray-500">Aniversário</span>
+                <p className="text-lg font-semibold text-gray-900">{formatBirthday(member.birthday)}</p>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Informações principais */}
-        <div className="grid grid-cols-2 gap-4 p-6 bg-gray-50">
-          <div className="space-y-1 text-center p-3 bg-white rounded-lg shadow-sm">
-            <span className="text-sm text-gray-500">Na Muran desde</span>
-            <p className="text-lg font-semibold text-gray-900">{formatDate(member.start_date)}</p>
-          </div>
-          {member.birthday && (
-            <div className="space-y-1 text-center p-3 bg-white rounded-lg shadow-sm">
-              <span className="text-sm text-gray-500">Aniversário</span>
-              <p className="text-lg font-semibold text-gray-900">{formatBirthday(member.birthday)}</p>
-            </div>
+          {/* Bio */}
+          {member.bio && (
+            <>
+              <div className="px-6 py-4">
+                <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
+                  {member.bio}
+                </p>
+              </div>
+              <Separator />
+            </>
           )}
-        </div>
 
-        {/* Bio */}
-        {member.bio && (
-          <>
-            <div className="px-6 py-4">
-              <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
-                {member.bio}
-              </p>
+          {/* Informações de Contato */}
+          <div className="p-4 bg-gray-50 space-y-2">
+            {socialLinks.map((link, index) => (
+              link.isActive && (
+                <a
+                  key={index}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 text-sm text-gray-600 bg-white p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  {link.icon}
+                  <span className="font-medium">{link.name}</span>
+                </a>
+              )
+            ))}
+
+            <div className="flex items-center gap-3 text-sm text-gray-600 bg-white p-3 rounded-lg">
+              <Mail className="h-5 w-5 text-muran-primary" />
+              <span className="font-medium">{member.email}</span>
             </div>
-            <Separator />
-          </>
-        )}
-
-        {/* Informações de Contato */}
-        <div className="p-4 bg-gray-50 space-y-2">
-          {socialLinks.map((link, index) => (
-            link.isActive && (
-              <a
-                key={index}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 text-sm text-gray-600 bg-white p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                {link.icon}
-                <span className="font-medium">{link.name}</span>
-              </a>
-            )
-          ))}
-
-          <div className="flex items-center gap-3 text-sm text-gray-600 bg-white p-3 rounded-lg">
-            <Mail className="h-5 w-5 text-muran-primary" />
-            <span className="font-medium">{member.email}</span>
           </div>
-        </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
 };
-
