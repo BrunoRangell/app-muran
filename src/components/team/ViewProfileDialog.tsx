@@ -35,14 +35,14 @@ export const ViewProfileDialog = ({
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
-    return format(parseISO(dateString), "dd 'de' MMMM 'de' yyyy", {
+    return format(parseISO(dateString), "dd/MM/yyyy", {
       locale: ptBR,
     });
   };
 
   const formatBirthday = (dateString: string) => {
     if (!dateString) return "";
-    return format(parseISO(dateString), "dd 'de' MMMM", { locale: ptBR });
+    return format(parseISO(dateString), "dd/MM", { locale: ptBR });
   };
 
   return (
@@ -161,3 +161,4 @@ export const ViewProfileDialog = ({
     </Dialog>
   );
 };
+
