@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { TeamMember } from "@/types/team";
-import { CalendarDays, Mail, Briefcase, CalendarClock } from "lucide-react";
+import { CalendarDays, Mail, Briefcase, CalendarClock, Instagram, Linkedin, User } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface ViewProfileDialogProps {
   member: TeamMember | null;
@@ -74,6 +75,12 @@ export const ViewProfileDialog = ({
             </p>
           </div>
 
+          {member.bio && (
+            <div className="w-full text-center px-6">
+              <p className="text-gray-600 italic">{member.bio}</p>
+            </div>
+          )}
+
           <div className="w-full space-y-4 bg-gray-50 p-6 rounded-lg">
             <div className="flex items-center gap-3 text-gray-700">
               <Mail className="h-5 w-5 text-muran-primary" />
@@ -97,6 +104,36 @@ export const ViewProfileDialog = ({
               </div>
             )}
           </div>
+
+          {(member.linkedin || member.instagram) && (
+            <>
+              <Separator className="w-full" />
+              <div className="flex gap-4 justify-center w-full">
+                {member.linkedin && (
+                  <a
+                    href={member.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-gray-600 hover:text-muran-primary transition-colors"
+                  >
+                    <Linkedin className="h-5 w-5" />
+                    <span>LinkedIn</span>
+                  </a>
+                )}
+                {member.instagram && (
+                  <a
+                    href={member.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-gray-600 hover:text-muran-primary transition-colors"
+                  >
+                    <Instagram className="h-5 w-5" />
+                    <span>Instagram</span>
+                  </a>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

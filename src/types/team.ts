@@ -1,3 +1,4 @@
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -7,6 +8,9 @@ export interface TeamMember {
   start_date: string;
   email: string;
   permission: string;
+  bio?: string;
+  linkedin?: string;
+  instagram?: string;
 }
 
 export interface EditFormData {
