@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { useCurrentUser } from "@/hooks/useTeamMembers";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "@/components/ui/use-toast";
+import { useEffect } from "react";
 
 const socialMediaSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -46,16 +48,33 @@ export const EditMemberDialog = ({
   const form = useForm<z.infer<typeof socialMediaSchema>>({
     resolver: zodResolver(socialMediaSchema),
     defaultValues: {
-      name: selectedMember?.name || '',
-      role: selectedMember?.role || '',
-      photo_url: selectedMember?.photo_url || '',
-      birthday: selectedMember?.birthday || '',
-      bio: selectedMember?.bio || '',
-      instagram: selectedMember?.instagram || '',
-      linkedin: selectedMember?.linkedin || '',
-      tiktok: selectedMember?.tiktok || ''
+      name: '',
+      role: '',
+      photo_url: '',
+      birthday: '',
+      bio: '',
+      instagram: '',
+      linkedin: '',
+      tiktok: ''
     }
   });
+
+  useEffect(() => {
+    if (selectedMember) {
+      console.log("Resetando form com dados do membro:", selectedMember);
+      form.reset({
+        name: selectedMember.name || '',
+        role: selectedMember.role || '',
+        photo_url: selectedMember.photo_url || '',
+        birthday: selectedMember.birthday || '',
+        bio: selectedMember.bio || '',
+        instagram: selectedMember.instagram || '',
+        linkedin: selectedMember.linkedin || '',
+        tiktok: selectedMember.tiktok || ''
+      });
+    }
+  }, [selectedMember, form]);
+
   const { data: currentUser } = useCurrentUser();
   const isAdmin = currentUser?.permission === 'admin';
 
@@ -218,3 +237,4 @@ export const EditMemberDialog = ({
     </Dialog>
   );
 };
+
