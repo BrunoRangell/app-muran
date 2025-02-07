@@ -15,31 +15,58 @@ const Financial = () => {
       console.log("Iniciando busca de salários...");
       console.log("ID do membro nos parâmetros:", paramMemberId);
       
-      let userId = paramMemberId;
-      
-      if (!userId) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user?.id) {
-          console.log("Usuário não autenticado");
-          return [];
+      // Se temos um ID nos parâmetros, usamos ele diretamente
+      if (paramMemberId) {
+        console.log("Buscando salários do membro específico:", paramMemberId);
+        const { data, error } = await supabase
+          .from("salaries")
+          .select("month, amount")
+          .eq("manager_id", paramMemberId)
+          .order("month", { ascending: false });
+
+        if (error) {
+          console.error("Erro ao buscar salários do membro:", error);
+          throw error;
         }
-        userId = session.user.id;
+
+        console.log("Salários encontrados para o membro:", data);
+        return data || [];
+      }
+      
+      // Caso contrário, buscamos o usuário atual
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.email) {
+        console.log("Usuário não autenticado");
+        return [];
+      }
+      
+      console.log("Buscando salários do usuário atual:", session.user.email);
+      
+      const { data: currentUser } = await supabase
+        .from("team_members")
+        .select("id")
+        .eq("email", session.user.email)
+        .single();
+        
+      if (!currentUser?.id) {
+        console.log("ID do usuário atual não encontrado");
+        return [];
       }
 
-      console.log("ID final para busca de salários:", userId);
+      console.log("ID do usuário atual:", currentUser.id);
 
       const { data, error } = await supabase
         .from("salaries")
         .select("month, amount")
-        .eq("manager_id", userId)
+        .eq("manager_id", currentUser.id)
         .order("month", { ascending: false });
 
       if (error) {
-        console.error("Erro ao buscar salários:", error);
+        console.error("Erro ao buscar salários do usuário atual:", error);
         throw error;
       }
 
-      console.log("Salários encontrados:", data);
+      console.log("Salários encontrados para o usuário atual:", data);
       return data || [];
     },
   });
