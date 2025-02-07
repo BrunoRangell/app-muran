@@ -47,74 +47,90 @@ export const ViewProfileDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl overflow-hidden bg-gradient-to-br from-white to-gray-50">
+        <DialogHeader className="relative">
+          <div className="absolute inset-0 bg-muran-primary/10 backdrop-blur-sm -z-10" />
           <DialogTitle className="text-2xl font-bold text-gray-900">
             Perfil do Membro
           </DialogTitle>
         </DialogHeader>
+
         <div className="mt-6 flex flex-col items-center space-y-6">
-          <Avatar className="h-32 w-32 border-4 border-muran-primary/20">
-            {member.photo_url ? (
-              <AvatarImage
-                src={member.photo_url}
-                alt={member.name}
-                className="object-cover"
-              />
-            ) : (
-              <AvatarFallback className="bg-muran-primary text-white text-3xl">
-                {getInitials(member.name)}
-              </AvatarFallback>
-            )}
-          </Avatar>
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-muran-primary rounded-full blur opacity-30 group-hover:opacity-50 transition duration-300" />
+            <Avatar className="h-32 w-32 ring-4 ring-white bg-white relative">
+              {member.photo_url ? (
+                <AvatarImage
+                  src={member.photo_url}
+                  alt={member.name}
+                  className="object-cover hover:scale-105 transition-transform duration-300"
+                />
+              ) : (
+                <AvatarFallback className="bg-muran-primary text-white text-3xl">
+                  {getInitials(member.name)}
+                </AvatarFallback>
+              )}
+            </Avatar>
+          </div>
 
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-gray-900">{member.name}</h2>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-muran-primary to-muran-complementary bg-clip-text text-transparent">
+              {member.name}
+            </h2>
             <p className="text-lg text-muran-primary font-medium">
               {member.role}
             </p>
           </div>
 
           <div className="w-full text-center px-6">
-            <p className="text-gray-600 italic">
+            <p className="text-gray-600 italic bg-white/50 backdrop-blur-sm p-4 rounded-lg shadow-sm border border-gray-100">
               {member.bio || "Biografia não informada"}
             </p>
           </div>
 
-          <div className="w-full space-y-4 bg-gray-50 p-6 rounded-lg">
-            <div className="flex items-center gap-3 text-gray-700">
-              <Mail className="h-5 w-5 text-muran-primary" />
+          <div className="w-full space-y-4 bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-sm border border-gray-100 hover:border-muran-primary/20 transition-colors duration-300">
+            <div className="flex items-center gap-3 text-gray-700 hover:text-muran-primary transition-colors group">
+              <div className="p-2 rounded-lg bg-muran-primary/10 group-hover:bg-muran-primary/20 transition-colors">
+                <Mail className="h-5 w-5 text-muran-primary" />
+              </div>
               <span>{member.email}</span>
             </div>
 
-            <div className="flex items-center gap-3 text-gray-700">
-              <Briefcase className="h-5 w-5 text-muran-primary" />
+            <div className="flex items-center gap-3 text-gray-700 hover:text-muran-primary transition-colors group">
+              <div className="p-2 rounded-lg bg-muran-primary/10 group-hover:bg-muran-primary/20 transition-colors">
+                <Briefcase className="h-5 w-5 text-muran-primary" />
+              </div>
               <span>Cargo: {member.role}</span>
             </div>
 
-            <div className="flex items-center gap-3 text-gray-700">
-              <CalendarClock className="h-5 w-5 text-muran-primary" />
+            <div className="flex items-center gap-3 text-gray-700 hover:text-muran-primary transition-colors group">
+              <div className="p-2 rounded-lg bg-muran-primary/10 group-hover:bg-muran-primary/20 transition-colors">
+                <CalendarClock className="h-5 w-5 text-muran-primary" />
+              </div>
               <span>Data de início: {formatDate(member.start_date)}</span>
             </div>
 
             {member.birthday && (
-              <div className="flex items-center gap-3 text-gray-700">
-                <CalendarDays className="h-5 w-5 text-muran-primary" />
+              <div className="flex items-center gap-3 text-gray-700 hover:text-muran-primary transition-colors group">
+                <div className="p-2 rounded-lg bg-muran-primary/10 group-hover:bg-muran-primary/20 transition-colors">
+                  <CalendarDays className="h-5 w-5 text-muran-primary" />
+                </div>
                 <span>Aniversário: {formatBirthday(member.birthday)}</span>
               </div>
             )}
           </div>
 
-          <Separator className="w-full" />
-          <div className="flex gap-4 justify-center w-full">
+          <Separator className="w-full bg-gradient-to-r from-transparent via-muran-primary/20 to-transparent" />
+          
+          <div className="flex gap-6 justify-center w-full pb-2">
             <a
               href={member.linkedin || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-2 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
                 member.linkedin
-                  ? "text-gray-600 hover:text-muran-primary transition-colors cursor-pointer"
-                  : "text-gray-400 cursor-not-allowed"
+                  ? "hover:bg-muran-primary/10 text-gray-600 hover:text-muran-primary cursor-pointer"
+                  : "text-gray-400 cursor-not-allowed opacity-50"
               }`}
               onClick={(e) => !member.linkedin && e.preventDefault()}
             >
@@ -126,10 +142,10 @@ export const ViewProfileDialog = ({
               href={member.instagram || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-2 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
                 member.instagram
-                  ? "text-gray-600 hover:text-muran-primary transition-colors cursor-pointer"
-                  : "text-gray-400 cursor-not-allowed"
+                  ? "hover:bg-muran-primary/10 text-gray-600 hover:text-muran-primary cursor-pointer"
+                  : "text-gray-400 cursor-not-allowed opacity-50"
               }`}
               onClick={(e) => !member.instagram && e.preventDefault()}
             >
@@ -141,10 +157,10 @@ export const ViewProfileDialog = ({
               href={member.tiktok || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-2 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
                 member.tiktok
-                  ? "text-gray-600 hover:text-muran-primary transition-colors cursor-pointer"
-                  : "text-gray-400 cursor-not-allowed"
+                  ? "hover:bg-muran-primary/10 text-gray-600 hover:text-muran-primary cursor-pointer"
+                  : "text-gray-400 cursor-not-allowed opacity-50"
               }`}
               onClick={(e) => !member.tiktok && e.preventDefault()}
             >
