@@ -39,7 +39,8 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
                 side="top" 
                 align="center" 
                 sideOffset={10}
-                className="bg-white border-2 border-muran-primary/20 shadow-lg p-4 max-w-[250px] z-[100]"
+                className="fixed bg-white border-2 border-muran-primary/20 shadow-lg p-4 max-w-[250px] z-[9999] break-words"
+                style={{ position: 'fixed', pointerEvents: 'auto' }}
               >
                 <div>
                   <h4 className="font-bold text-base text-gray-900 mb-1">{badge.name}</h4>
