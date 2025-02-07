@@ -15,8 +15,8 @@ export const CompanyCards = () => {
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     align: "center",
     loop: true,
-    duration: 20,
-    dragFree: true
+    duration: 300, // duração aumentada para uma transição mais suave
+    // Removido: dragFree: true
   });
 
   const cards = [
@@ -49,7 +49,7 @@ export const CompanyCards = () => {
   const scrollNext = useCallback(() => {
     if (!emblaApi) return;
     emblaApi.scrollNext();
-    console.log('Avançando para o próximo slide automaticamente');
+    console.log("Avançando para o próximo slide automaticamente");
   }, [emblaApi]);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export const CompanyCards = () => {
     const interval = setInterval(scrollNext, 5000);
 
     return () => {
-      console.log('Limpando intervalo do autoplay');
+      console.log("Limpando intervalo do autoplay");
       clearInterval(interval);
     };
   }, [autoPlay, emblaApi, scrollNext]);
