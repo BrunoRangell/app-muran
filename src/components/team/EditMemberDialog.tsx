@@ -125,9 +125,9 @@ export const EditMemberDialog = ({
                   defaultValue={selectedMember.instagram}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Instagram</FormLabel>
+                      <FormLabel>Instagram (URL)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="@seu.perfil" />
+                        <Input {...field} placeholder="https://instagram.com/seu.perfil" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -139,9 +139,9 @@ export const EditMemberDialog = ({
                   defaultValue={selectedMember.linkedin}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>LinkedIn</FormLabel>
+                      <FormLabel>LinkedIn (URL)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="URL do seu perfil" />
+                        <Input {...field} placeholder="https://linkedin.com/in/seu-perfil" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -153,9 +153,9 @@ export const EditMemberDialog = ({
                   defaultValue={selectedMember.tiktok}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>TikTok</FormLabel>
+                      <FormLabel>TikTok (URL)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="@seu.perfil" />
+                        <Input {...field} placeholder="https://tiktok.com/@seu.perfil" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -172,3 +172,4 @@ export const EditMemberDialog = ({
     </Dialog>
   );
 };
+
