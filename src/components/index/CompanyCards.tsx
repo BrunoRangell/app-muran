@@ -49,20 +49,22 @@ export const CompanyCards = () => {
   useEffect(() => {
     if (!autoPlay || !emblaApi) return;
 
+    const onSelect = () => {
+      const lastSlide = emblaApi.selectedScrollSnap() === emblaApi.scrollSnapList().length - 1;
+      console.log('Slide atual:', emblaApi.selectedScrollSnap(), 'É último slide:', lastSlide);
+    };
+
     const autoPlayInterval = setInterval(() => {
       console.log('Tentando avançar para o próximo slide...');
       emblaApi.scrollNext();
     }, 5000);
 
-    emblaApi.on('select', () => {
-      const lastSlide = emblaApi.selectedScrollSnap() === emblaApi.scrollSnapList().length - 1;
-      console.log('Slide atual:', emblaApi.selectedScrollSnap(), 'É último slide:', lastSlide);
-    });
+    emblaApi.on('select', onSelect);
 
     return () => {
       console.log('Limpando intervalo do autoplay');
       clearInterval(autoPlayInterval);
-      emblaApi.off('select');
+      emblaApi.off('select', onSelect);
     };
   }, [autoPlay, emblaApi]);
 
