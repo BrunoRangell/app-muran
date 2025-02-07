@@ -13,9 +13,10 @@ import useEmblaCarousel from "embla-carousel-react";
 export const CompanyCards = () => {
   const [autoPlay, setAutoPlay] = useState(true);
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
-    loop: true,
     align: "center",
-    duration: 20
+    loop: true,
+    duration: 20,
+    dragFree: true
   });
 
   const cards = [
@@ -51,18 +52,9 @@ export const CompanyCards = () => {
     console.log('Avançando para o próximo slide automaticamente');
   }, [emblaApi]);
 
-  // Reset autoplay timer when user interacts
-  const handleManualNavigation = useCallback(() => {
-    if (!autoPlay) return;
-    console.log('Navegação manual detectada, reiniciando timer');
-    setAutoPlay(false);
-    setTimeout(() => setAutoPlay(true), 100);
-  }, [autoPlay]);
-
   useEffect(() => {
     if (!autoPlay || !emblaApi) return;
 
-    console.log('Iniciando autoplay');
     const interval = setInterval(scrollNext, 5000);
 
     return () => {
@@ -105,14 +97,8 @@ export const CompanyCards = () => {
             </CarouselItem>
           ))}
         </CarouselContent>
-        <CarouselPrevious 
-          className="hidden md:flex -left-4" 
-          onClick={handleManualNavigation}
-        />
-        <CarouselNext 
-          className="hidden md:flex -right-4" 
-          onClick={handleManualNavigation}
-        />
+        <CarouselPrevious className="hidden md:flex -left-4" />
+        <CarouselNext className="hidden md:flex -right-4" />
       </Carousel>
     </div>
   );
