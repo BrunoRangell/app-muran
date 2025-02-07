@@ -29,6 +29,19 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
     return "⏳ Vamos começar!";
   };
 
+  const getMetricLabel = () => {
+    switch (goal.goal_type) {
+      case 'active_clients':
+        return 'clientes ativos';
+      case 'new_clients':
+        return 'novos clientes';
+      case 'churned_clients':
+        return 'clientes cancelados';
+      default:
+        return 'clientes';
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-2 rounded-lg">
@@ -77,11 +90,11 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">Meta</p>
+          <p className="text-xs text-gray-500 mb-0.5">Meta de {getMetricLabel()}</p>
           <p className="text-lg font-semibold">{goal.target_value}</p>
         </div>
         <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">Atual</p>
+          <p className="text-xs text-gray-500 mb-0.5">{getMetricLabel()} atual</p>
           <p className="text-lg font-semibold">{currentValue}</p>
         </div>
       </div>
