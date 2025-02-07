@@ -135,10 +135,10 @@ const Index = () => {
       <div className="grid gap-6">
         {/* Carrossel de Cultura e Desafio Muran */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="lg:col-span-1 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
             <CompanyCards />
           </div>
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-2">
             <GoalCard isAdmin={isAdmin} />
           </div>
         </div>

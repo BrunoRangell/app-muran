@@ -4,11 +4,16 @@ import { Target, Users, ArrowUpRight } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
+  CarouselItem,
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { useEffect, useState } from "react";
 
 export const CompanyCards = () => {
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
   const cards = [
     {
       icon: Target,
@@ -36,20 +41,29 @@ export const CompanyCards = () => {
     },
   ];
 
+  useEffect(() => {
+    if (!autoPlay) return;
+
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % cards.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [autoPlay]);
+
   return (
     <Carousel
+      className="w-full"
       opts={{
-        align: "start",
+        align: "center",
         loop: true,
       }}
-      className="w-full"
+      value={currentSlide}
+      onValueChange={setCurrentSlide}
     >
       <CarouselContent>
         {cards.map((card, index) => (
-          <div
-            key={card.title}
-            className="basis-full pl-1"
-          >
+          <CarouselItem key={card.title}>
             <Card className="h-full transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -75,7 +89,7 @@ export const CompanyCards = () => {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </CarouselItem>
         ))}
       </CarouselContent>
       <CarouselPrevious className="hidden md:flex -left-4" />
