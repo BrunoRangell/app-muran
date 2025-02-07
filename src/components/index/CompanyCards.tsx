@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Target, Users, ArrowUpRight } from "lucide-react";
 import {
@@ -11,13 +12,61 @@ import { useEffect, useState, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
 export const CompanyCards = () => {
-  const [autoPlay, setAutoPlay] = useState(true);
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
-    align: "center",
     loop: true,
-    duration: 300, // duração aumentada para uma transição mais suave
-    // Removido: dragFree: true
+    align: "center",
   });
+
+  const [autoplay, setAutoplay] = useState(true);
+  const [autoplayInterval, setAutoplayInterval] = useState<NodeJS.Timeout | null>(null);
+
+  const clearAutoplayInterval = useCallback(() => {
+    if (autoplayInterval) {
+      clearInterval(autoplayInterval);
+      setAutoplayInterval(null);
+    }
+  }, [autoplayInterval]);
+
+  const startAutoplay = useCallback(() => {
+    if (!emblaApi || !autoplay) return;
+
+    clearAutoplayInterval();
+
+    const interval = setInterval(() => {
+      if (emblaApi.canScrollNext()) {
+        emblaApi.scrollNext();
+        console.log("Avançando slide automaticamente");
+      } else {
+        emblaApi.scrollTo(0);
+        console.log("Voltando para o primeiro slide");
+      }
+    }, 5000);
+
+    setAutoplayInterval(interval);
+    console.log("Iniciando novo intervalo de autoplay");
+  }, [emblaApi, autoplay, clearAutoplayInterval]);
+
+  // Reinicia o autoplay quando o usuário interage com o carrossel
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    startAutoplay();
+    console.log("Slide selecionado manualmente - reiniciando autoplay");
+  }, [emblaApi, startAutoplay]);
+
+  // Inicializa o autoplay quando o componente monta
+  useEffect(() => {
+    if (!emblaApi) return;
+    
+    console.log("Embla API inicializada");
+    emblaApi.on("select", onSelect);
+    startAutoplay();
+
+    return () => {
+      console.log("Limpando recursos do carrossel");
+      emblaApi.off("select", onSelect);
+      clearAutoplayInterval();
+    };
+  }, [emblaApi, onSelect, startAutoplay, clearAutoplayInterval]);
 
   const cards = [
     {
@@ -45,23 +94,6 @@ export const CompanyCards = () => {
       ],
     },
   ];
-
-  const scrollNext = useCallback(() => {
-    if (!emblaApi) return;
-    emblaApi.scrollNext();
-    console.log("Avançando para o próximo slide automaticamente");
-  }, [emblaApi]);
-
-  useEffect(() => {
-    if (!autoPlay || !emblaApi) return;
-
-    const interval = setInterval(scrollNext, 5000);
-
-    return () => {
-      console.log("Limpando intervalo do autoplay");
-      clearInterval(interval);
-    };
-  }, [autoPlay, emblaApi, scrollNext]);
 
   return (
     <div className="h-full flex">
