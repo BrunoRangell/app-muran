@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +34,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
       const { data, error } = await supabase
         .from("goals")
         .select("*")
+        .eq("status", "active")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -52,6 +52,44 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
 
   const goal = goals?.[0];
   const { data: currentValue } = useGoalCalculation(goal);
+
+  // Mutation para finalizar o desafio
+  const finalizeGoal = useMutation({
+    mutationFn: async (goalToFinalize: Goal) => {
+      const { data, error } = await supabase
+        .from("goals")
+        .update({
+          final_value: currentValue,
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq("id", goalToFinalize.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["current-goal"] });
+      toast({
+        title: "🏆 Desafio finalizado!",
+        description: "O desafio foi encerrado e os resultados foram registrados.",
+      });
+    },
+  });
+
+  // Verifica se o desafio precisa ser finalizado
+  useEffect(() => {
+    if (goal) {
+      const endDate = parseISO(goal.end_date);
+      const today = new Date();
+      
+      if (today > endDate && goal.status !== 'completed') {
+        finalizeGoal.mutate(goal);
+      }
+    }
+  }, [goal]);
 
   const updateGoal = useMutation({
     mutationFn: async (updatedGoal: Partial<Goal>) => {
@@ -92,6 +130,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
           ...newGoal,
           current_value: 0,
           manager_id: currentUserId,
+          status: 'active',
           created_at: new Date().toISOString()
         })
         .select()
@@ -152,7 +191,9 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
                   {format(new Date(goal.start_date), 'dd/MM/yyyy')} - {format(new Date(goal.end_date), 'dd/MM/yyyy')}
                 </div>
                 <div className="bg-green-100 px-3 py-1 rounded-full text-sm text-green-800">
-                  {getDaysRemaining(goal.end_date)} dias restantes
+                  {getDaysRemaining(goal.end_date) > 0 
+                    ? `${getDaysRemaining(goal.end_date)} dias restantes` 
+                    : "Desafio encerrado"}
                 </div>
               </div>
             )}
