@@ -9,10 +9,14 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useEffect, useState } from "react";
+import useEmblaCarousel from "embla-carousel-react";
 
 export const CompanyCards = () => {
   const [autoPlay, setAutoPlay] = useState(true);
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ 
+    align: "center",
+    loop: true 
+  });
 
   const cards = [
     {
@@ -42,27 +46,19 @@ export const CompanyCards = () => {
   ];
 
   useEffect(() => {
-    if (!autoPlay) return;
+    if (!autoPlay || !emblaApi) return;
 
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % cards.length);
+      emblaApi.scrollNext();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [autoPlay]);
+  }, [autoPlay, emblaApi]);
 
   return (
-    <Carousel
-      className="w-full"
-      opts={{
-        align: "center",
-        loop: true,
-      }}
-      value={currentSlide}
-      onValueChange={setCurrentSlide}
-    >
-      <CarouselContent>
-        {cards.map((card, index) => (
+    <Carousel className="w-full">
+      <CarouselContent ref={emblaRef}>
+        {cards.map((card) => (
           <CarouselItem key={card.title}>
             <Card className="h-full transform transition-all hover:scale-105 border-0 shadow-sm hover:shadow-md">
               <CardContent className="p-6">
