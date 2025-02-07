@@ -1,12 +1,35 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { EditFormData, TeamMember } from "@/types/team";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { toast } from "@/components/ui/use-toast";
+
+const socialMediaSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  role: z.string().optional(),
+  photo_url: z.string().optional(),
+  birthday: z.string().optional(),
+  bio: z.string().optional(),
+  instagram: z.string().optional()
+    .refine(value => !value || value.match(/^https:\/\/(www\.)?instagram\.com\/.+/), {
+      message: "O link do Instagram deve começar com 'https://www.instagram.com/' ou 'https://instagram.com/'"
+    }),
+  linkedin: z.string().optional()
+    .refine(value => !value || value.match(/^https:\/\/(www\.)?linkedin\.com\/.+/), {
+      message: "O link do LinkedIn deve começar com 'https://www.linkedin.com/' ou 'https://linkedin.com/'"
+    }),
+  tiktok: z.string().optional()
+    .refine(value => !value || value.match(/^https:\/\/(www\.)?tiktok\.com\/.+/), {
+      message: "O link do TikTok deve começar com 'https://www.tiktok.com/' ou 'https://tiktok.com/'"
+    })
+});
 
 interface EditMemberDialogProps {
   isOpen: boolean;
@@ -21,11 +44,35 @@ export const EditMemberDialog = ({
   selectedMember,
   onSubmit,
 }: EditMemberDialogProps) => {
-  const form = useForm<EditFormData>();
+  const form = useForm<z.infer<typeof socialMediaSchema>>({
+    resolver: zodResolver(socialMediaSchema),
+    defaultValues: {
+      name: selectedMember?.name || '',
+      role: selectedMember?.role || '',
+      photo_url: selectedMember?.photo_url || '',
+      birthday: selectedMember?.birthday || '',
+      bio: selectedMember?.bio || '',
+      instagram: selectedMember?.instagram || '',
+      linkedin: selectedMember?.linkedin || '',
+      tiktok: selectedMember?.tiktok || ''
+    }
+  });
   const { data: currentUser } = useCurrentUser();
   const isAdmin = currentUser?.permission === 'admin';
 
   if (!selectedMember) return null;
+
+  const handleSubmit = async (data: z.infer<typeof socialMediaSchema>) => {
+    try {
+      await onSubmit(data as EditFormData);
+    } catch (error) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar as alterações.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -34,18 +81,18 @@ export const EditMemberDialog = ({
           <DialogTitle>Editar Informações</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 overflow-y-auto pr-2">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 overflow-y-auto pr-2">
             <div className="space-y-4">
               <FormField
                 control={form.control}
                 name="name"
-                defaultValue={selectedMember.name}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -54,13 +101,13 @@ export const EditMemberDialog = ({
                 <FormField
                   control={form.control}
                   name="role"
-                  defaultValue={selectedMember.role}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cargo</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -69,7 +116,6 @@ export const EditMemberDialog = ({
               <FormField
                 control={form.control}
                 name="photo_url"
-                defaultValue={selectedMember.photo_url}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>URL da Foto</FormLabel>
@@ -80,6 +126,7 @@ export const EditMemberDialog = ({
                       Para melhor compatibilidade, recomendamos usar serviços como imgur.com ou imgbb.com para hospedar suas fotos. 
                       Cole aqui o link direto da imagem após fazer o upload.
                     </FormDescription>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -87,13 +134,13 @@ export const EditMemberDialog = ({
               <FormField
                 control={form.control}
                 name="birthday"
-                defaultValue={selectedMember.birthday}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Data de Aniversário</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -101,7 +148,6 @@ export const EditMemberDialog = ({
               <FormField
                 control={form.control}
                 name="bio"
-                defaultValue={selectedMember.bio}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Biografia</FormLabel>
@@ -112,6 +158,7 @@ export const EditMemberDialog = ({
                         className="resize-none h-24"
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -122,13 +169,13 @@ export const EditMemberDialog = ({
                 <FormField
                   control={form.control}
                   name="instagram"
-                  defaultValue={selectedMember.instagram}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Instagram (URL)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="https://instagram.com/seu.perfil" />
+                        <Input {...field} placeholder="https://www.instagram.com/seu.perfil/" />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -136,13 +183,13 @@ export const EditMemberDialog = ({
                 <FormField
                   control={form.control}
                   name="linkedin"
-                  defaultValue={selectedMember.linkedin}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>LinkedIn (URL)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="https://linkedin.com/in/seu-perfil" />
+                        <Input {...field} placeholder="https://www.linkedin.com/in/seu-perfil/" />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -150,13 +197,13 @@ export const EditMemberDialog = ({
                 <FormField
                   control={form.control}
                   name="tiktok"
-                  defaultValue={selectedMember.tiktok}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>TikTok (URL)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="https://tiktok.com/@seu.perfil" />
+                        <Input {...field} placeholder="https://www.tiktok.com/@seu.perfil" />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
