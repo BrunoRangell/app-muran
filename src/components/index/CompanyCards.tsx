@@ -77,7 +77,12 @@ export const CompanyCards = () => {
         // Passa a função para capturar a API do Embla
         setApi={setEmblaApi}
         // Define as opções do Embla: alinhamento central, loop ativo e duração da transição reduzida
-        opts={{ align: "center", loop: true, duration: 150 }}
+        opts={{ 
+          align: "center", 
+          loop: true, 
+          duration: 150,
+          easing: (t: number) => t // Curva de animação linear para reduzir a desaceleração
+        }}
       >
         <CarouselContent>
           {cards.map((card) => (
