@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Target, Users, ArrowUpRight } from "lucide-react";
 import {
@@ -8,65 +7,17 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
 export const CompanyCards = () => {
+  // Inicializa o Embla Carousel com loop habilitado e duração ajustada
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
-    loop: true,
     align: "center",
+    loop: true,
+    duration: 300, // duração em ms para transição suave
+    // Certifique-se de não incluir "dragFree" se você deseja um comportamento de snap
   });
-
-  const [autoplay, setAutoplay] = useState(true);
-  const [autoplayInterval, setAutoplayInterval] = useState<NodeJS.Timeout | null>(null);
-
-  const clearAutoplayInterval = useCallback(() => {
-    if (autoplayInterval) {
-      clearInterval(autoplayInterval);
-      setAutoplayInterval(null);
-    }
-  }, [autoplayInterval]);
-
-  const startAutoplay = useCallback(() => {
-    if (!emblaApi || !autoplay) return;
-
-    clearAutoplayInterval();
-
-    const interval = setInterval(() => {
-      if (emblaApi.canScrollNext()) {
-        emblaApi.scrollNext();
-        console.log("Avançando slide automaticamente");
-      } else {
-        emblaApi.scrollTo(0);
-        console.log("Voltando para o primeiro slide");
-      }
-    }, 5000);
-
-    setAutoplayInterval(interval);
-    console.log("Iniciando novo intervalo de autoplay");
-  }, [emblaApi, autoplay, clearAutoplayInterval]);
-
-  // Reinicia o autoplay quando o usuário interage com o carrossel
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    startAutoplay();
-    console.log("Slide selecionado manualmente - reiniciando autoplay");
-  }, [emblaApi, startAutoplay]);
-
-  // Inicializa o autoplay quando o componente monta
-  useEffect(() => {
-    if (!emblaApi) return;
-    
-    console.log("Embla API inicializada");
-    emblaApi.on("select", onSelect);
-    startAutoplay();
-
-    return () => {
-      console.log("Limpando recursos do carrossel");
-      emblaApi.off("select", onSelect);
-      clearAutoplayInterval();
-    };
-  }, [emblaApi, onSelect, startAutoplay, clearAutoplayInterval]);
 
   const cards = [
     {
@@ -95,9 +46,32 @@ export const CompanyCards = () => {
     },
   ];
 
+  // Efeito de Autoplay: assim que emblaApi estiver disponível, inicia um intervalo que chama scrollNext a cada 5 segundos
+  useEffect(() => {
+    if (!emblaApi) {
+      console.log("Embla API não está disponível ainda.");
+      return;
+    }
+    console.log("Embla API disponível, iniciando autoplay.");
+    const interval = setInterval(() => {
+      console.log("Autoplay: chamando emblaApi.scrollNext()");
+      emblaApi.scrollNext();
+    }, 5000);
+
+    // Limpa o intervalo quando o componente desmontar ou emblaApi mudar
+    return () => {
+      console.log("Limpando intervalo de autoplay.");
+      clearInterval(interval);
+    };
+  }, [emblaApi]);
+
   return (
     <div className="h-full flex">
       <Carousel className="w-full">
+        {/* 
+          Atenção: verifique se o componente CarouselContent encaminha o ref (emblaRef) para um elemento DOM real.
+          O container deve ter estilos como display: flex e overflow: hidden para que o Embla funcione corretamente.
+        */}
         <CarouselContent ref={emblaRef}>
           {cards.map((card) => (
             <CarouselItem key={card.title} className="h-full">
