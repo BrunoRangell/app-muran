@@ -46,15 +46,29 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
                     side="top" 
                     align="center" 
                     sideOffset={12}
-                    className="fixed bg-white/95 backdrop-blur-sm border-2 border-muran-primary/20 shadow-xl p-6 max-w-[300px] z-[9999] break-words rounded-xl"
+                    className="fixed bg-white/95 backdrop-blur-sm border-2 border-muran-primary/20 shadow-xl p-6 max-w-[300px] z-[99999] break-words rounded-xl"
                     style={{ 
-                      position: 'fixed', 
+                      position: 'fixed',
                       pointerEvents: 'auto',
                       left: '50%',
                       transform: 'translateX(-50%)',
-                      top: '20%'
+                      top: '10vh',
+                      transformOrigin: 'center bottom',
+                      animation: 'tooltipSlideIn 0.2s ease-out'
                     }}
                   >
+                    <style>{`
+                      @keyframes tooltipSlideIn {
+                        from {
+                          opacity: 0;
+                          transform: translate(-50%, 20px);
+                        }
+                        to {
+                          opacity: 1;
+                          transform: translate(-50%, 0);
+                        }
+                      }
+                    `}</style>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-muran-primary/10 rounded-lg">
@@ -75,3 +89,4 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
     </div>
   );
 };
+
