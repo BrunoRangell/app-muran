@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -10,7 +9,6 @@ import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
 import { TeamMemberForm } from "@/components/admin/TeamMemberForm";
 import { supabase } from "@/lib/supabase";
 import { EditFormData, TeamMember } from "@/types/team";
-import { TestBadge } from "@/components/team/TestBadge"; // Novo import
 import {
   Dialog,
   DialogContent,
@@ -120,17 +118,14 @@ const Managers = () => {
         </div>
 
         {currentUser?.permission === "admin" && (
-          <>
-            <TestBadge /> {/* Adicionado temporariamente */}
-            <Button
-              onClick={handleAddMember}
-              className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2 transition-transform hover:scale-105 w-full md:w-auto"
-              size="lg"
-            >
-              <UserPlus className="h-5 w-5" />
-              <span>Adicionar Membro</span>
-            </Button>
-          </>
+          <Button
+            onClick={handleAddMember}
+            className="bg-muran-primary hover:bg-muran-primary/90 flex items-center gap-2 transition-transform hover:scale-105 w-full md:w-auto"
+            size="lg"
+          >
+            <UserPlus className="h-5 w-5" />
+            <span>Adicionar Membro</span>
+          </Button>
         )}
       </header>
 
