@@ -1,58 +1,84 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Card, CardContent } from "@/components/ui/card";
 import { Target, Users, ArrowUpRight } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
 
 export const CompanyCards = () => {
+  const cards = [
+    {
+      icon: Target,
+      title: "Nossa Missão",
+      content:
+        "Contribuir para o impulsionamento de negócios no mundo digital, assessorando empreendedores com transparência, leveza e comprometimento e construindo parcerias duradouras.",
+    },
+    {
+      icon: ArrowUpRight,
+      title: "Nossa Visão",
+      content:
+        "Prestar serviços de excelência em marketing digital, contribuindo para a prosperidade de clientes e almejando tornar-se referência no nicho.",
+    },
+    {
+      icon: Users,
+      title: "Nossos Valores",
+      content: [
+        "Agilidade",
+        "Colaboração",
+        "Comprometimento",
+        "Excelência",
+        "Flexibilidade",
+        "Transparência",
+      ],
+    },
+  ];
+
   return (
-    <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-      <Card className="transform transition-all hover:scale-105">
-        <CardHeader className="p-3 md:p-4">
-          <CardTitle className="flex items-center gap-2 text-sm md:text-base">
-            <Target className="text-muran-primary h-4 w-4" />
-            Nossa Missão
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-4 md:pt-0">
-          <p className="text-xs md:text-sm text-gray-600">
-            Contribuir para o impulsionamento de negócios no mundo digital,
-            assessorando empreendedores com transparência, leveza e
-            comprometimento e construindo parcerias duradouras.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="transform transition-all hover:scale-105">
-        <CardHeader className="p-3 md:p-4">
-          <CardTitle className="flex items-center gap-2 text-sm md:text-base">
-            <Users className="text-muran-primary h-4 w-4" />
-            Nossos Valores
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-4 md:pt-0">
-          <ul className="list-disc list-inside text-xs md:text-sm text-gray-600 space-y-0.5 md:space-y-1">
-            <li>Agilidade</li>
-            <li>Colaboração</li>
-            <li>Comprometimento</li>
-            <li>Excelência</li>
-            <li>Flexibilidade</li>
-            <li>Transparência</li>
-          </ul>
-        </CardContent>
-      </Card>
-
-      <Card className="transform transition-all hover:scale-105 md:col-span-2 lg:col-span-1">
-        <CardHeader className="p-3 md:p-4">
-          <CardTitle className="flex items-center gap-2 text-sm md:text-base">
-            <ArrowUpRight className="text-muran-primary h-4 w-4" />
-            Nossa Visão
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 pt-0 md:p-4 md:pt-0">
-          <p className="text-xs md:text-sm text-gray-600">
-            Prestar serviços de excelência em marketing digital, contribuindo para
-            a prosperidade de clientes e almejando tornar-se referência no nicho.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <Carousel
+      opts={{
+        align: "start",
+        loop: true,
+      }}
+      className="w-full"
+    >
+      <CarouselContent>
+        {cards.map((card, index) => (
+          <div
+            key={card.title}
+            className="basis-full md:basis-1/2 lg:basis-1/3 pl-1"
+          >
+            <Card className="h-full transform transition-all hover:scale-105">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <card.icon className="h-6 w-6 text-muran-primary shrink-0" />
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-lg text-left">
+                      {card.title}
+                    </h3>
+                    {Array.isArray(card.content) ? (
+                      <ul className="list-disc list-inside text-sm text-gray-600 space-y-1 text-left">
+                        {card.content.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-600 text-left">
+                        {card.content}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ))}
+      </CarouselContent>
+      <CarouselPrevious className="hidden md:flex" />
+      <CarouselNext className="hidden md:flex" />
+    </Carousel>
   );
 };

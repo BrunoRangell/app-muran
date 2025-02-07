@@ -1,7 +1,9 @@
+
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth } from "date-fns";
+import { Avatar } from "@/components/ui/avatar";
 import { getRandomQuote } from "@/data/motivationalQuotes";
 import { WelcomeHeader } from "@/components/index/WelcomeHeader";
 import { CompanyCards } from "@/components/index/CompanyCards";
@@ -12,8 +14,10 @@ import { GoalCard } from "@/components/index/GoalCard";
 
 const Index = () => {
   const [userName, setUserName] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
   const [greeting, setGreeting] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
 
   const { data: teamMembers } = useQuery({
     queryKey: ["team_members"],
@@ -70,12 +74,14 @@ const Index = () => {
         if (session?.user?.email) {
           const { data: teamMember } = await supabase
             .from("team_members")
-            .select("name, permission")
+            .select("name, permission, role, avatar_url")
             .eq("email", session.user.email)
             .single();
 
-          if (teamMember?.name) {
+          if (teamMember) {
             setUserName(teamMember.name.split(" ")[0]);
+            setUserRole(teamMember.role || "");
+            setAvatarUrl(teamMember.avatar_url || "");
           }
           setIsAdmin(teamMember?.permission === "admin");
         }
@@ -91,22 +97,50 @@ const Index = () => {
   const todaysQuote = getRandomQuote();
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="grid gap-4 md:gap-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
+      {/* Header Section with Profile */}
+      <div className="flex items-center justify-between bg-white rounded-lg p-6 shadow-sm">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-12 w-12">
+            <img
+              src={avatarUrl || "/placeholder.svg"}
+              alt={userName}
+              className="object-cover"
+            />
+          </Avatar>
+          <div className="text-left">
+            <h1 className="text-2xl font-bold text-muran-complementary">
+              {greeting}, {userName}! <span className="text-muran-primary">✨</span>
+            </h1>
+            {userRole && (
+              <p className="text-gray-600">{userRole}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid gap-6">
+        {/* Culture Carousel and Goal Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <WelcomeHeader greeting={greeting} userName={userName} />
+            <CompanyCards />
           </div>
           <div>
             <GoalCard isAdmin={isAdmin} />
           </div>
         </div>
-        <CompanyCards />
-        <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2">
+
+        {/* Metrics and Birthdays */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MetricsCard clientMetrics={clientMetrics} />
           {teamMembers && <BirthdayCard members={teamMembers} />}
         </div>
-        <QuoteCard quote={todaysQuote} />
+
+        {/* Inspirational Quote */}
+        <div className="sticky bottom-0 bg-white/80 backdrop-blur-sm">
+          <QuoteCard quote={todaysQuote} />
+        </div>
       </div>
     </div>
   );
