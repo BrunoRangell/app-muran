@@ -6,11 +6,8 @@ export interface Goal {
   end_date: string;
   target_value: number;
   current_value: number;
-  final_value?: number;
   manager_id: string;
   created_at?: string;
-  completed_at?: string;
-  status: 'active' | 'completed';
 }
 
 export const GOAL_TYPES = {

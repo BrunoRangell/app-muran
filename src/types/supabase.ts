@@ -38,11 +38,8 @@ export interface Database {
           end_date: string
           target_value: number
           current_value: number
-          final_value?: number
-          status: 'active' | 'completed'
           manager_id: string
           created_at?: string
-          completed_at?: string
         }
         Insert: {
           id?: number
@@ -51,11 +48,8 @@ export interface Database {
           end_date: string
           target_value: number
           current_value?: number
-          final_value?: number
-          status: 'active' | 'completed'
           manager_id: string
           created_at?: string
-          completed_at?: string
         }
         Update: {
           id?: number
@@ -64,11 +58,8 @@ export interface Database {
           end_date?: string
           target_value?: number
           current_value?: number
-          final_value?: number
-          status?: 'active' | 'completed'
           manager_id?: string
           created_at?: string
-          completed_at?: string
         }
       }
     }
