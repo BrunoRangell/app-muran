@@ -7,7 +7,6 @@ import { Client, Column, SortConfig } from "../types";
 import { ClientsTableHeader } from "./TableHeader";
 import { ClientTableRow } from "./TableRow";
 import { calculateRetention } from "./utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ClientsTableProps {
   clients: Client[] | undefined;
@@ -55,28 +54,26 @@ export const ClientsTable = ({
   });
 
   return (
-    <div className="border rounded-md">
-      <ScrollArea className="max-h-[80vh]">
-        <div className="min-w-max">
-          <Table>
-            <ClientsTableHeader 
-              columns={sortedColumns} 
-              sortConfig={sortConfig} 
-              onSort={onSort} 
-            />
-            <TableBody>
-              {sortedClients?.map((client) => (
-                <ClientTableRow
-                  key={client.id}
-                  client={client}
-                  columns={sortedColumns}
-                  onEditClick={onEditClick}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </ScrollArea>
+    <div className="min-w-full border rounded-md">
+      <div className="overflow-x-auto">
+        <Table>
+          <ClientsTableHeader 
+            columns={sortedColumns} 
+            sortConfig={sortConfig} 
+            onSort={onSort} 
+          />
+          <TableBody>
+            {sortedClients?.map((client) => (
+              <ClientTableRow
+                key={client.id}
+                client={client}
+                columns={sortedColumns}
+                onEditClick={onEditClick}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
