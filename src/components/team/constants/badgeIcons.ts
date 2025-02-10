@@ -24,6 +24,11 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "🎪", name: "circus", label: "Tenda de Circo", category: "Conquistas" },
   { icon: "🎨", name: "art_palette", label: "Paleta de Arte", category: "Conquistas" },
   { icon: "🎭", name: "performing_arts", label: "Artes Cênicas", category: "Conquistas" },
+  { icon: "🏹", name: "bow_and_arrow", label: "Arco e Flecha", category: "Conquistas" },
+  { icon: "🎪", name: "big_top", label: "Circo", category: "Conquistas" },
+  { icon: "🎖️", name: "military_medal", label: "Medalha Militar", category: "Conquistas" },
+  { icon: "🏵️", name: "rosette", label: "Roseta", category: "Conquistas" },
+  { icon: "🎗️", name: "reminder_ribbon", label: "Fita de Lembrança", category: "Conquistas" },
   
   // Elementos Positivos
   { icon: "💪", name: "muscle", label: "Força", category: "Positivos" },
@@ -37,10 +42,15 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "💡", name: "bulb", label: "Lâmpada", category: "Positivos" },
   { icon: "🎉", name: "party", label: "Festa", category: "Positivos" },
   { icon: "🎊", name: "confetti", label: "Confete", category: "Positivos" },
-  { icon: "🎨", name: "art", label: "Paleta de Arte", category: "Positivos" },
   { icon: "💝", name: "heart_ribbon", label: "Coração com Fita", category: "Positivos" },
   { icon: "💖", name: "sparkling_heart", label: "Coração Brilhante", category: "Positivos" },
   { icon: "💗", name: "growing_heart", label: "Coração Crescente", category: "Positivos" },
+  { icon: "🤝", name: "handshake", label: "Aperto de Mão", category: "Positivos" },
+  { icon: "✌️", name: "victory", label: "Vitória", category: "Positivos" },
+  { icon: "🫂", name: "people_hugging", label: "Abraço", category: "Positivos" },
+  { icon: "👊", name: "fist_bump", label: "Soco de Amizade", category: "Positivos" },
+  { icon: "💯", name: "hundred_points", label: "100 Pontos", category: "Positivos" },
+  { icon: "🌺", name: "hibiscus", label: "Hibisco", category: "Positivos" },
   
   // Natureza e Elementos
   { icon: "🌺", name: "flower", label: "Flor", category: "Natureza" },
@@ -55,17 +65,20 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "🌎", name: "earth_americas", label: "Terra (Américas)", category: "Natureza" },
   { icon: "🌏", name: "earth_asia", label: "Terra (Ásia)", category: "Natureza" },
   { icon: "🌙", name: "crescent_moon", label: "Lua Crescente", category: "Natureza" },
-  { icon: "⭐", name: "white_star", label: "Estrela Branca", category: "Natureza" },
-  { icon: "🌟", name: "glowing_star_nature", label: "Estrela Brilhante", category: "Natureza" },
-  { icon: "☀️", name: "sun_nature", label: "Sol", category: "Natureza" },
+  { icon: "🌳", name: "deciduous_tree", label: "Árvore Caducifólia", category: "Natureza" },
+  { icon: "🌴", name: "palm_tree", label: "Palmeira", category: "Natureza" },
+  { icon: "🌵", name: "cactus", label: "Cacto", category: "Natureza" },
+  { icon: "🌾", name: "sheaf_of_rice", label: "Arroz", category: "Natureza" },
+  { icon: "🌿", name: "herb", label: "Erva", category: "Natureza" },
+  { icon: "🍂", name: "fallen_leaf", label: "Folha Caída", category: "Natureza" },
+  { icon: "🍃", name: "leaf_fluttering", label: "Folha ao Vento", category: "Natureza" },
+  { icon: "🌪️", name: "tornado", label: "Tornado", category: "Natureza" },
   
   // Objetos
   { icon: "💎", name: "gem", label: "Gema", category: "Objetos" },
-  { icon: "🎭", name: "performing_arts", label: "Teatro", category: "Objetos" },
   { icon: "🎮", name: "video_game", label: "Videogame", category: "Objetos" },
   { icon: "📱", name: "mobile_phone", label: "Celular", category: "Objetos" },
   { icon: "💻", name: "laptop", label: "Laptop", category: "Objetos" },
-  { icon: "🎨", name: "artist", label: "Arte", category: "Objetos" },
   { icon: "📚", name: "books", label: "Livros", category: "Objetos" },
   { icon: "✏️", name: "pencil", label: "Lápis", category: "Objetos" },
   { icon: "📎", name: "paperclip", label: "Clipe", category: "Objetos" },
@@ -75,6 +88,13 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "🎹", name: "piano", label: "Piano", category: "Objetos" },
   { icon: "🎸", name: "guitar", label: "Guitarra", category: "Objetos" },
   { icon: "🎺", name: "trumpet", label: "Trompete", category: "Objetos" },
+  { icon: "🎨", name: "artist_palette", label: "Paleta de Artista", category: "Objetos" },
+  { icon: "📷", name: "camera", label: "Câmera", category: "Objetos" },
+  { icon: "🎬", name: "clapper_board", label: "Claquete", category: "Objetos" },
+  { icon: "🎭", name: "performing_arts", label: "Artes Cênicas", category: "Objetos" },
+  { icon: "🎪", name: "circus_tent", label: "Tenda de Circo", category: "Objetos" },
+  { icon: "🎨", name: "art", label: "Arte", category: "Objetos" },
+  { icon: "🎯", name: "direct_hit", label: "Tiro ao Alvo", category: "Objetos" },
   
   // Tecnologia
   { icon: "🤖", name: "robot", label: "Robô", category: "Tecnologia" },
@@ -92,6 +112,11 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "🕹️", name: "joystick", label: "Joystick", category: "Tecnologia" },
   { icon: "📱", name: "smartphone", label: "Smartphone", category: "Tecnologia" },
   { icon: "⌚", name: "watch", label: "Relógio", category: "Tecnologia" },
+  { icon: "🔌", name: "electric_plug", label: "Plugue", category: "Tecnologia" },
+  { icon: "💡", name: "light_bulb", label: "Lâmpada", category: "Tecnologia" },
+  { icon: "🔍", name: "magnifier", label: "Lupa", category: "Tecnologia" },
+  { icon: "📷", name: "camera_tech", label: "Câmera Digital", category: "Tecnologia" },
+  { icon: "🎥", name: "movie_camera", label: "Filmadora", category: "Tecnologia" },
   
   // Emoções e Gestos
   { icon: "❤️", name: "heart", label: "Coração", category: "Emoções" },
@@ -109,6 +134,11 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "🤩", name: "star_eyes", label: "Estrelas nos Olhos", category: "Emoções" },
   { icon: "😇", name: "angel", label: "Anjo", category: "Emoções" },
   { icon: "🥳", name: "party_face", label: "Festa", category: "Emoções" },
+  { icon: "😄", name: "grinning", label: "Sorrindo", category: "Emoções" },
+  { icon: "😃", name: "smiley", label: "Alegre", category: "Emoções" },
+  { icon: "😁", name: "grin", label: "Sorriso Grande", category: "Emoções" },
+  { icon: "😆", name: "laughing", label: "Rindo", category: "Emoções" },
+  { icon: "😅", name: "sweat_smile", label: "Sorriso Nervoso", category: "Emoções" },
   
   // Símbolos
   { icon: "✅", name: "check_mark", label: "Check", category: "Símbolos" },
@@ -126,6 +156,11 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "🔁", name: "arrows_clockwise", label: "Repetir", category: "Símbolos" },
   { icon: "⚜️", name: "fleur_de_lis", label: "Flor de Lis", category: "Símbolos" },
   { icon: "✳️", name: "eight_spoked_asterisk", label: "Asterisco", category: "Símbolos" },
+  { icon: "〽️", name: "part_alternation", label: "Parte Alternada", category: "Símbolos" },
+  { icon: "⚠️", name: "warning", label: "Aviso", category: "Símbolos" },
+  { icon: "🔰", name: "japanese_symbol", label: "Símbolo Japonês", category: "Símbolos" },
+  { icon: "♻️", name: "recycling", label: "Reciclagem", category: "Símbolos" },
+  { icon: "🔱", name: "trident", label: "Tridente", category: "Símbolos" },
   
   // Profissões e Atividades
   { icon: "👨‍💻", name: "technologist", label: "Tecnólogo", category: "Profissões" },
@@ -143,6 +178,11 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "👨‍🌾", name: "farmer", label: "Agricultor", category: "Profissões" },
   { icon: "👩‍🌾", name: "woman_farmer", label: "Agricultora", category: "Profissões" },
   { icon: "👨‍🎤", name: "singer", label: "Cantor", category: "Profissões" },
+  { icon: "👩‍🎤", name: "woman_singer", label: "Cantora", category: "Profissões" },
+  { icon: "👨‍🔧", name: "mechanic", label: "Mecânico", category: "Profissões" },
+  { icon: "👩‍🔧", name: "woman_mechanic", label: "Mecânica", category: "Profissões" },
+  { icon: "👨‍🚀", name: "astronaut", label: "Astronauta", category: "Profissões" },
+  { icon: "👩‍🚀", name: "woman_astronaut", label: "Astronauta", category: "Profissões" },
   
   // Motivacionais
   { icon: "🎯", name: "direct_hit", label: "Alvo Certeiro", category: "Motivacionais" },
@@ -160,21 +200,32 @@ export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "🌈", name: "rainbow_motivation", label: "Arco-íris", category: "Motivacionais" },
   { icon: "⭐", name: "star_motivation", label: "Estrela", category: "Motivacionais" },
   { icon: "🌅", name: "sunrise", label: "Nascer do Sol", category: "Motivacionais" },
+  { icon: "🚴", name: "cyclist", label: "Ciclista", category: "Motivacionais" },
+  { icon: "🎽", name: "running_shirt", label: "Camiseta de Corrida", category: "Motivacionais" },
+  { icon: "🏋️", name: "weight_lifter", label: "Levantador de Peso", category: "Motivacionais" },
+  { icon: "🤸", name: "cartwheel", label: "Estrela", category: "Motivacionais" },
+  { icon: "⛰️", name: "mountain", label: "Montanha", category: "Motivacionais" },
   
-  // Extras
+  // Extras e Especiais
   { icon: "🎲", name: "game_die", label: "Dado", category: "Extras" },
   { icon: "🎰", name: "slot_machine", label: "Caça-níquel", category: "Extras" },
   { icon: "🎪", name: "circus_tent", label: "Circo", category: "Extras" },
   { icon: "🎭", name: "masks", label: "Máscaras", category: "Extras" },
-  { icon: "🎪", name: "circus", label: "Tenda de Circo", category: "Extras" },
   { icon: "🎡", name: "ferris_wheel", label: "Roda Gigante", category: "Extras" },
   { icon: "🎢", name: "roller_coaster", label: "Montanha Russa", category: "Extras" },
   { icon: "🎠", name: "carousel_horse", label: "Carrossel", category: "Extras" },
-  { icon: "🎮", name: "video_game_extra", label: "Videogame", category: "Extras" },
-  { icon: "🕹️", name: "joystick_extra", label: "Joystick", category: "Extras" },
-  { icon: "🎲", name: "game_die_extra", label: "Dado", category: "Extras" },
   { icon: "♟️", name: "chess_pawn", label: "Peão de Xadrez", category: "Extras" },
-  { icon: "🎯", name: "direct_hit_extra", label: "Alvo", category: "Extras" },
   { icon: "🎳", name: "bowling", label: "Boliche", category: "Extras" },
-  { icon: "🎱", name: "pool_8_ball", label: "Bola 8", category: "Extras" }
+  { icon: "🎱", name: "pool_8_ball", label: "Bola 8", category: "Extras" },
+  { icon: "🎩", name: "top_hat", label: "Cartola", category: "Extras" },
+  { icon: "🎭", name: "performing_arts_extra", label: "Artes Cênicas", category: "Extras" },
+  { icon: "🎪", name: "circus_tent_extra", label: "Tenda de Circo", category: "Extras" },
+  { icon: "🎨", name: "art_extra", label: "Arte", category: "Extras" },
+  { icon: "🎯", name: "direct_hit_extra", label: "Alvo", category: "Extras" },
+  { icon: "🎪", name: "circus_extra", label: "Circo", category: "Extras" },
+  { icon: "🎭", name: "drama_masks", label: "Máscaras de Teatro", category: "Extras" },
+  { icon: "🎪", name: "big_top_extra", label: "Grande Tenda", category: "Extras" },
+  { icon: "🎨", name: "palette_extra", label: "Paleta", category: "Extras" },
+  { icon: "🎯", name: "target_extra", label: "Alvo", category: "Extras" }
 ];
+
