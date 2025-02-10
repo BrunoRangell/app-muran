@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { ClientForm } from "@/components/admin/ClientForm";
@@ -142,20 +142,22 @@ export const ClientsList = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        {isLoading ? (
-          <p className="text-gray-600">Carregando clientes...</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <ClientsTable 
-              clients={filteredAndSortedClients} 
-              columns={columns} 
-              onEditClick={handleEditClick}
-              sortConfig={sortConfig}
-              onSort={handleSort}
-            />
-          </div>
-        )}
+      <div className="flex-1 relative">
+        <div className="absolute inset-0 overflow-auto">
+          {isLoading ? (
+            <p className="text-gray-600">Carregando clientes...</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <ClientsTable 
+                clients={filteredAndSortedClients} 
+                columns={columns} 
+                onEditClick={handleEditClick}
+                sortConfig={sortConfig}
+                onSort={handleSort}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
