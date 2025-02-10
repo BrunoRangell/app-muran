@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -101,6 +100,22 @@ export const FinancialMetrics = () => {
   });
 
   const { data: filteredClientsData, isLoading: isLoadingFilteredClients } = useMetricsData(dateRange);
+
+  const { data: clients } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*");
+
+      if (error) {
+        console.error("Error fetching clients:", error);
+        throw error;
+      }
+
+      return data;
+    },
+  });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -259,6 +274,7 @@ export const FinancialMetrics = () => {
                   dateRange={dateRange}
                   onDateRangeChange={setDateRange}
                   lines={getActiveLines()}
+                  clients={clients}
                 />
               </div>
             </Card>
@@ -268,4 +284,3 @@ export const FinancialMetrics = () => {
     </div>
   );
 };
-

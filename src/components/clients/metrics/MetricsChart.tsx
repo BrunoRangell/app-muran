@@ -4,6 +4,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
 import { CustomDateRangeDialog } from "./CustomDateRangeDialog";
 import { PeriodFilter } from "../types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { useState } from "react";
+import { formatCurrency } from "@/utils/formatters";
 
 interface MetricsChartProps {
   title: string;
@@ -20,6 +26,7 @@ interface MetricsChartProps {
     color: string;
     yAxisId?: string;
   }>;
+  clients?: any[];
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -53,6 +60,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             </p>
           );
         })}
+        <p className="text-xs text-gray-500 mt-2">Clique para ver detalhes</p>
       </div>
     );
   }
@@ -68,10 +76,58 @@ export const MetricsChart = ({
   onCustomDateOpenChange,
   dateRange,
   onDateRangeChange,
-  lines
+  lines,
+  clients
 }: MetricsChartProps) => {
+  const [selectedPoint, setSelectedPoint] = useState<{
+    month: string;
+    metric: string;
+    value: number;
+  } | null>(null);
+  
   const hasTitle = title && title.length > 0;
   const uniqueYAxisIds = [...new Set(lines.map(line => line.yAxisId))];
+
+  const handlePointClick = (point: any) => {
+    if (!point.activePayload) return;
+    
+    const clickedMetric = point.activePayload[0];
+    setSelectedPoint({
+      month: point.activeLabel,
+      metric: clickedMetric.name,
+      value: clickedMetric.value
+    });
+  };
+
+  const getClientsForPeriod = () => {
+    if (!selectedPoint || !clients) return [];
+
+    const [month, year] = selectedPoint.month.split('/');
+    const startDate = new Date(Number(`20${year}`), ptBR.months.indexOf(month), 1);
+    const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+
+    switch (selectedPoint.metric) {
+      case 'Clientes Adquiridos':
+        return clients.filter(client => {
+          if (!client.first_payment_date) return false;
+          const date = new Date(client.first_payment_date);
+          return date >= startDate && date <= endDate;
+        });
+      case 'Clientes Cancelados':
+        return clients.filter(client => {
+          if (!client.last_payment_date) return false;
+          const date = new Date(client.last_payment_date);
+          return date >= startDate && date <= endDate;
+        });
+      default:
+        return clients.filter(client => {
+          if (!client.first_payment_date) return false;
+          const startClient = new Date(client.first_payment_date);
+          const endClient = client.last_payment_date ? new Date(client.last_payment_date) : new Date();
+          return startClient <= endDate && endClient >= startDate;
+        });
+    }
+  };
 
   return (
     <Card className="p-6 space-y-6">
@@ -102,6 +158,7 @@ export const MetricsChart = ({
           <LineChart
             data={data}
             margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+            onClick={handlePointClick}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 
@@ -110,7 +167,6 @@ export const MetricsChart = ({
               tick={{ fill: '#6b7280', fontSize: 12 }}
             />
             
-            {/* Eixo Y para valores monetários */}
             {uniqueYAxisIds.includes('mrr') && (
               <YAxis 
                 yAxisId="mrr"
@@ -128,7 +184,6 @@ export const MetricsChart = ({
               />
             )}
             
-            {/* Eixo Y para contagem de clientes */}
             {uniqueYAxisIds.includes('clients') && (
               <YAxis 
                 yAxisId="clients"
@@ -144,7 +199,6 @@ export const MetricsChart = ({
               />
             )}
             
-            {/* Eixo Y para percentuais */}
             {uniqueYAxisIds.includes('percentage') && (
               <YAxis 
                 yAxisId="percentage"
@@ -183,7 +237,8 @@ export const MetricsChart = ({
                   r: 6, 
                   stroke: '#fff',
                   strokeWidth: 2,
-                  fill: line.color 
+                  fill: line.color,
+                  style: { cursor: 'pointer' }
                 }}
               />
             ))}
@@ -197,6 +252,50 @@ export const MetricsChart = ({
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
       />
+
+      <Dialog open={!!selectedPoint} onOpenChange={() => setSelectedPoint(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedPoint?.metric} - {selectedPoint?.month}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Empresa</TableHead>
+                <TableHead>Valor do Contrato</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Canal de Aquisição</TableHead>
+                <TableHead>Início</TableHead>
+                {selectedPoint?.metric === 'Clientes Cancelados' && (
+                  <TableHead>Último Pagamento</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {getClientsForPeriod().map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell className="font-medium">{client.company_name}</TableCell>
+                  <TableCell>{formatCurrency(client.contract_value)}</TableCell>
+                  <TableCell>{client.status}</TableCell>
+                  <TableCell>{client.acquisition_channel}</TableCell>
+                  <TableCell>
+                    {format(new Date(client.first_payment_date), 'dd/MM/yyyy')}
+                  </TableCell>
+                  {selectedPoint?.metric === 'Clientes Cancelados' && client.last_payment_date && (
+                    <TableCell>
+                      {format(new Date(client.last_payment_date), 'dd/MM/yyyy')}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
+
