@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Award, Trophy, BadgeCheck, Star, Medal, Ribbon, Gem, Flag } from "lucide-react";
+import { Award, Trophy, BadgeCheck, Star, Medal, Ribbon, Gem, Flag, Crown, Heart, Shield, Bookmark, Target, Sparkles, Zap, Lightning } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,14 @@ const BADGE_ICONS = [
   { icon: Award, name: "award", label: "Prêmio" },
   { icon: Star, name: "star", label: "Estrela" },
   { icon: Medal, name: "medal", label: "Medalha" },
+  { icon: Crown, name: "crown", label: "Coroa" },
+  { icon: Heart, name: "heart", label: "Coração" },
+  { icon: Shield, name: "shield", label: "Escudo" },
+  { icon: Bookmark, name: "bookmark", label: "Marcador" },
+  { icon: Target, name: "target", label: "Alvo" },
+  { icon: Sparkles, name: "sparkles", label: "Brilhos" },
+  { icon: Zap, name: "zap", label: "Raio" },
+  { icon: Lightning, name: "lightning", label: "Relâmpago" },
   { icon: Ribbon, name: "ribbon", label: "Fita" },
   { icon: Gem, name: "gem", label: "Gema" },
   { icon: Flag, name: "flag", label: "Bandeira" },
@@ -244,20 +252,25 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ícone do Emblema</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {BADGE_ICONS.map(({ icon: Icon, name, label }) => (
-                    <Button
-                      key={name}
-                      type="button"
-                      variant={newBadge.icon === name ? "default" : "outline"}
-                      className="h-20 flex-col gap-2 hover:bg-muran-primary/10"
-                      onClick={() => setNewBadge((prev) => ({ ...prev, icon: name }))}
-                    >
-                      <Icon className={`h-6 w-6 ${newBadge.icon === name ? "text-white" : "text-muran-primary"}`} />
-                      <span className="text-xs">{label}</span>
-                    </Button>
-                  ))}
-                </div>
+                <ScrollArea className="h-[200px]">
+                  <div className="grid grid-cols-4 gap-2 pr-4">
+                    {BADGE_ICONS.map(({ icon: Icon, name, label }) => (
+                      <div key={name} className="relative">
+                        <Button
+                          type="button"
+                          variant={newBadge.icon === name ? "default" : "outline"}
+                          className={`w-full h-24 flex-col gap-2 hover:bg-muran-primary/10 group ${
+                            newBadge.icon === name ? 'ring-2 ring-muran-primary' : ''
+                          }`}
+                          onClick={() => setNewBadge((prev) => ({ ...prev, icon: name }))}
+                        >
+                          <Icon className={`h-8 w-8 ${newBadge.icon === name ? 'text-white' : 'text-muran-primary group-hover:text-muran-primary/80'}`} />
+                          <span className={`text-xs ${newBadge.icon === name ? 'text-white' : 'text-gray-600'}`}>{label}</span>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
 
               <Button onClick={handleCreateBadge} className="w-full">
