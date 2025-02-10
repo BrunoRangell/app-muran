@@ -1,8 +1,10 @@
-import { differenceInMonths, parseISO } from "date-fns";
+
+import { differenceInMonths, parseISO, subMonths } from "date-fns";
 import { Client } from "@/components/clients/types";
 
 export const calculateFinancialMetrics = (clients: Client[]) => {
   const today = new Date();
+  const threeMonthsAgo = subMonths(today, 3);
   const activeClients = clients.filter(client => client.status === "active");
   
   // Total de clientes
@@ -24,15 +26,20 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
 
   const averageRetention = retentionPeriods.reduce((sum, months) => sum + months, 0) / totalClients;
 
-  // Churn Rate (mensal)
+  // Churn Rate (últimos 3 meses)
   const churned = clients.filter(client => 
     client.status === "inactive" && 
     client.last_payment_date && 
-    differenceInMonths(today, parseISO(client.last_payment_date)) <= 1
+    parseISO(client.last_payment_date) >= threeMonthsAgo
   ).length;
 
-  const churnRate = totalClients > 0 
-    ? (churned / totalClients) * 100 
+  const activeClientsThreeMonthsAgo = clients.filter(client => 
+    client.first_payment_date && 
+    parseISO(client.first_payment_date) <= threeMonthsAgo
+  ).length;
+
+  const churnRate = activeClientsThreeMonthsAgo > 0 
+    ? (churned / activeClientsThreeMonthsAgo) * 100 
     : 0;
 
   // LTV (Lifetime Value) - usando valor do contrato * retenção média
@@ -45,7 +52,9 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
     churnRate,
     ltv,
     activeClientsCount,
-    totalClients
+    totalClients,
+    churned,
+    activeClientsThreeMonthsAgo
   });
 
   return {

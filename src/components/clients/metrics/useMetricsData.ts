@@ -1,6 +1,7 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { addMonths, startOfMonth, endOfMonth, parseISO, isValid, isWithinInterval, format } from "date-fns";
+import { addMonths, startOfMonth, endOfMonth, parseISO, isValid, isWithinInterval, format, subMonths } from "date-fns";
 import { Client } from "../types";
 
 export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
@@ -24,6 +25,7 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
       while (currentDate <= dateRange.end) {
         const monthStart = startOfMonth(currentDate);
         const monthEnd = endOfMonth(currentDate);
+        const threeMonthsBeforeStart = startOfMonth(subMonths(monthStart, 3));
 
         // Filtra clientes ativos no mês atual
         const activeClientsInMonth = clients.filter((client: Client) => {
@@ -64,23 +66,37 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
           }
         });
 
+        // Calcula churned clients e churn rate
+        const churned = clients.filter(client => {
+          if (!client.last_payment_date) return false;
+          try {
+            const lastPaymentDate = new Date(client.last_payment_date);
+            lastPaymentDate.setDate(lastPaymentDate.getDate() + 1);
+            return isValid(lastPaymentDate) && 
+                   isWithinInterval(lastPaymentDate, { start: monthStart, end: monthEnd });
+          } catch (error) {
+            console.error("Error processing churn date for client:", client, error);
+            return false;
+          }
+        }).length;
+
+        // Clientes ativos 3 meses antes
+        const activeClientsThreeMonthsAgo = clients.filter((client: Client) => {
+          if (!client.first_payment_date) return false;
+          const clientStart = new Date(client.first_payment_date);
+          clientStart.setDate(clientStart.getDate() + 1);
+          return clientStart <= threeMonthsBeforeStart;
+        }).length;
+
         try {
           const monthData = {
             month: format(currentDate, 'MMM/yy'),
             mrr: activeClientsInMonth.reduce((sum, client) => sum + (client.contract_value || 0), 0),
             clients: activeClientsInMonth.length,
-            churn: activeClientsInMonth.filter(client => {
-              if (!client.last_payment_date) return false;
-              try {
-                const lastPaymentDate = new Date(client.last_payment_date);
-                lastPaymentDate.setDate(lastPaymentDate.getDate() + 1);
-                return isValid(lastPaymentDate) && 
-                       isWithinInterval(lastPaymentDate, { start: monthStart, end: monthEnd });
-              } catch (error) {
-                console.error("Error processing churn date for client:", client, error);
-                return false;
-              }
-            }).length
+            churn: churned,
+            churnRate: activeClientsThreeMonthsAgo > 0 
+              ? (churned / activeClientsThreeMonthsAgo) * 100 
+              : 0
           };
           months.push(monthData);
         } catch (error) {

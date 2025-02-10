@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
@@ -18,6 +19,7 @@ interface MetricsChartProps {
     name: string;
     color: string;
     yAxisId?: string;
+    formatter?: (value: number) => string;
   }>;
 }
 
@@ -26,13 +28,22 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return (
       <div className="bg-white p-4 border rounded-lg shadow-lg">
         <p className="text-sm font-medium">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm" style={{ color: entry.color }}>
-            {entry.name}: {entry.name.includes('MRR') 
-              ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entry.value)
-              : entry.value}
-          </p>
-        ))}
+        {payload.map((entry: any, index: number) => {
+          const value = entry.payload[entry.dataKey];
+          const formattedValue = entry.payload.formatter?.[entry.dataKey]
+            ? entry.payload.formatter[entry.dataKey](value)
+            : entry.name.includes('MRR')
+            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+            : entry.name.includes('Churn Rate')
+            ? `${value.toFixed(1)}%`
+            : value;
+
+          return (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {formattedValue}
+            </p>
+          );
+        })}
       </div>
     );
   }

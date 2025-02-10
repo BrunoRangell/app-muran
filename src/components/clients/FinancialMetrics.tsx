@@ -139,7 +139,7 @@ export const FinancialMetrics = () => {
             />
 
             <MetricsChart
-              title="Clientes Cancelados por Mês"
+              title="Clientes Cancelados e Churn Rate"
               data={filteredClientsData || []}
               periodFilter={periodFilter}
               onPeriodChange={handlePeriodChange}
@@ -151,7 +151,14 @@ export const FinancialMetrics = () => {
                 {
                   key: "churn",
                   name: "Clientes Cancelados",
-                  color: "#ff6e00"
+                  color: "#ff6e00",
+                  yAxisId: "left"
+                },
+                {
+                  key: "churnRate",
+                  name: "Churn Rate",
+                  color: "#321e32",
+                  yAxisId: "right"
                 }
               ]}
             />
