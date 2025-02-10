@@ -6,7 +6,7 @@ import { Award } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBadges } from "@/hooks/useBadges";
 import { TeamMember } from "@/types/team";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { MemberSelect } from "./badge/MemberSelect";
 import { BadgeForm } from "./badge/BadgeForm";
 import { ExistingBadgesList } from "./badge/ExistingBadgesList";
@@ -40,15 +40,6 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
       return;
     }
 
-    if (!selectedMember || !newBadge.name || !newBadge.description) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios antes de criar o emblema.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       await addBadge({
         code: newBadge.name.toUpperCase().replace(/\s+/g, "_"),
@@ -58,20 +49,10 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
         team_member_id: selectedMember,
       });
 
-      toast({
-        title: "Emblema criado!",
-        description: "O emblema foi criado e atribuído com sucesso.",
-      });
-
       setNewBadge({ name: "", description: "", icon: "trophy" });
       setIsOpen(false);
     } catch (error) {
       console.error("Erro ao criar emblema:", error);
-      toast({
-        title: "Erro ao criar emblema",
-        description: "Ocorreu um erro ao tentar criar o emblema. Tente novamente.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -93,18 +74,8 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
         icon: badge.icon,
         team_member_id: selectedMember,
       });
-
-      toast({
-        title: "Emblema atribuído!",
-        description: "O emblema foi atribuído com sucesso ao membro selecionado.",
-      });
     } catch (error) {
       console.error("Erro ao dar emblema:", error);
-      toast({
-        title: "Erro ao atribuir emblema",
-        description: "Não foi possível atribuir o emblema. Tente novamente.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -171,6 +142,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
                     onDescriptionChange={(description) => setNewBadge((prev) => ({ ...prev, description }))}
                     onIconChange={(icon) => setNewBadge((prev) => ({ ...prev, icon }))}
                     onSubmit={handleCreateBadge}
+                    selectedMemberId={selectedMember}
                   />
                 </div>
               </TabsContent>

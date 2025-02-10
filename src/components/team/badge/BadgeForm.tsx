@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { IconSelector } from "./IconSelector";
 import { Award } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface BadgeFormProps {
   name: string;
@@ -13,6 +14,7 @@ interface BadgeFormProps {
   onDescriptionChange: (value: string) => void;
   onIconChange: (value: string) => void;
   onSubmit: () => void;
+  selectedMemberId?: string;
 }
 
 export function BadgeForm({
@@ -23,7 +25,50 @@ export function BadgeForm({
   onDescriptionChange,
   onIconChange,
   onSubmit,
+  selectedMemberId,
 }: BadgeFormProps) {
+  const { toast } = useToast();
+
+  const handleSubmit = () => {
+    if (!selectedMemberId) {
+      toast({
+        title: "Selecione um membro",
+        description: "Por favor, selecione um membro da equipe antes de criar o emblema.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!name.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Por favor, insira um nome para o emblema.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!description.trim()) {
+      toast({
+        title: "Descrição obrigatória",
+        description: "Por favor, insira uma descrição para o emblema.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!icon) {
+      toast({
+        title: "Ícone obrigatório",
+        description: "Por favor, selecione um ícone para o emblema.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    onSubmit();
+  };
+
   return (
     <div className="space-y-6 bg-white rounded-lg">
       <div className="space-y-2">
@@ -47,12 +92,12 @@ export function BadgeForm({
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700">Ícone do Emblema</label>
+        <label className="text-sm font-medium text-gray-700">Ícone do Emblema *</label>
         <IconSelector selectedIcon={icon} onSelectIcon={onIconChange} />
       </div>
 
       <Button 
-        onClick={onSubmit} 
+        onClick={handleSubmit} 
         className="w-full bg-muran-primary hover:bg-muran-primary/90 gap-2"
       >
         <Award className="h-4 w-4" />
@@ -61,4 +106,3 @@ export function BadgeForm({
     </div>
   );
 }
-
