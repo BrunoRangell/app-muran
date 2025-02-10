@@ -27,15 +27,24 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
         const monthEnd = endOfMonth(currentDate);
         const threeMonthsBeforeStart = startOfMonth(subMonths(monthStart, 3));
 
+        // Calcula clientes adquiridos no mês
+        const newClients = clients.filter((client: Client) => {
+          try {
+            if (!client.first_payment_date) return false;
+            const firstPayment = new Date(client.first_payment_date);
+            firstPayment.setDate(firstPayment.getDate() + 1);
+            return isValid(firstPayment) && 
+                   isWithinInterval(firstPayment, { start: monthStart, end: monthEnd });
+          } catch (error) {
+            console.error("Error processing new client:", client, error);
+            return false;
+          }
+        }).length;
+
         // Filtra clientes ativos no mês atual
         const activeClientsInMonth = clients.filter((client: Client) => {
           try {
-            if (!client.first_payment_date) {
-              console.warn("Client missing first_payment_date:", client);
-              return false;
-            }
-
-            // Ajusta as datas para considerar UTC
+            if (!client.first_payment_date) return false;
             const clientStart = new Date(client.first_payment_date);
             clientStart.setDate(clientStart.getDate() + 1);
             
@@ -47,21 +56,14 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
               })() : 
               new Date();
             
-            if (!isValid(clientStart)) {
-              console.warn("Invalid first_payment_date for client:", client);
-              return false;
-            }
-
-            if (client.last_payment_date && !isValid(clientEnd)) {
-              console.warn("Invalid last_payment_date for client:", client);
-              return false;
-            }
+            if (!isValid(clientStart)) return false;
+            if (client.last_payment_date && !isValid(clientEnd)) return false;
 
             return isWithinInterval(monthStart, { start: clientStart, end: clientEnd }) ||
                    isWithinInterval(monthEnd, { start: clientStart, end: clientEnd }) ||
                    (clientStart <= monthStart && clientEnd >= monthEnd);
           } catch (error) {
-            console.error("Error processing client dates:", client, error);
+            console.error("Error processing active client:", client, error);
             return false;
           }
         });
@@ -98,7 +100,8 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
             churn: churned,
             churnRate: activeClientsAtStartOfMonth > 0 
               ? (churned / activeClientsAtStartOfMonth) * 100 
-              : 0
+              : 0,
+            newClients: newClients
           };
           months.push(monthData);
         } catch (error) {
@@ -113,3 +116,4 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
     },
   });
 };
+

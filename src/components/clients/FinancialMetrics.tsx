@@ -174,9 +174,33 @@ export const FinancialMetrics = () => {
                 }
               ]}
             />
+
+            <MetricsChart
+              title="Clientes Adquiridos vs. Perdidos"
+              data={filteredClientsData || []}
+              periodFilter={periodFilter}
+              onPeriodChange={handlePeriodChange}
+              isCustomDateOpen={isCustomDateOpen}
+              onCustomDateOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              lines={[
+                {
+                  key: "newClients",
+                  name: "Clientes Adquiridos",
+                  color: "#ff6e00"
+                },
+                {
+                  key: "churn",
+                  name: "Clientes Perdidos",
+                  color: "#321e32"
+                }
+              ]}
+            />
           </div>
         </>
       )}
     </div>
   );
 };
+
