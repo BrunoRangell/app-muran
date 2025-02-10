@@ -66,7 +66,7 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
           }
         });
 
-        // Calcula churned clients e churn rate
+        // Calcula churned clients para o mês específico
         const churned = clients.filter(client => {
           if (!client.last_payment_date) return false;
           try {
@@ -80,12 +80,14 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
           }
         }).length;
 
-        // Clientes ativos 3 meses antes
-        const activeClientsThreeMonthsAgo = clients.filter((client: Client) => {
+        // Calcula clientes ativos no início do mês
+        const activeClientsAtStartOfMonth = clients.filter((client: Client) => {
           if (!client.first_payment_date) return false;
           const clientStart = new Date(client.first_payment_date);
           clientStart.setDate(clientStart.getDate() + 1);
-          return clientStart <= threeMonthsBeforeStart;
+          
+          return clientStart <= monthStart && 
+                 (!client.last_payment_date || new Date(client.last_payment_date) > monthStart);
         }).length;
 
         try {
@@ -94,8 +96,8 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
             mrr: activeClientsInMonth.reduce((sum, client) => sum + (client.contract_value || 0), 0),
             clients: activeClientsInMonth.length,
             churn: churned,
-            churnRate: activeClientsThreeMonthsAgo > 0 
-              ? (churned / activeClientsThreeMonthsAgo) * 100 
+            churnRate: activeClientsAtStartOfMonth > 0 
+              ? (churned / activeClientsAtStartOfMonth) * 100 
               : 0
           };
           months.push(monthData);

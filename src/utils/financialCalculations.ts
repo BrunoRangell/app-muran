@@ -35,7 +35,8 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
 
   const activeClientsThreeMonthsAgo = clients.filter(client => 
     client.first_payment_date && 
-    parseISO(client.first_payment_date) <= threeMonthsAgo
+    parseISO(client.first_payment_date) <= threeMonthsAgo &&
+    (!client.last_payment_date || parseISO(client.last_payment_date) > threeMonthsAgo)
   ).length;
 
   const churnRate = activeClientsThreeMonthsAgo > 0 
