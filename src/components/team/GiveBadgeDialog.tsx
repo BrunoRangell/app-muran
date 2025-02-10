@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { 
   Award, Trophy, BadgeCheck, Star, Medal, Ribbon, Gem, Flag, Crown, 
   Heart, Shield, Bookmark, Target, Sparkles, Zap, Diamond, Bot, 
-  Brain, Flare, Gift, HandMetal, Lightbulb, Rocket, PartyPopper,
-  Medal2, Megaphone, SquareStar, Lightning
+  Brain, Flame, Gift, HandMetal, Lightbulb, Rocket, PartyPopper,
+  Megaphone, SquareStack
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,7 +27,6 @@ const BADGE_ICONS = [
   { icon: Award, name: "award", label: "Prêmio" },
   { icon: Star, name: "star", label: "Estrela" },
   { icon: Medal, name: "medal", label: "Medalha" },
-  { icon: Medal2, name: "medal2", label: "Medalha 2" },
   { icon: Crown, name: "crown", label: "Coroa" },
   { icon: Heart, name: "heart", label: "Coração" },
   { icon: Shield, name: "shield", label: "Escudo" },
@@ -42,14 +41,14 @@ const BADGE_ICONS = [
   { icon: BadgeCheck, name: "badge_check", label: "Verificado" },
   { icon: Bot, name: "bot", label: "Bot" },
   { icon: Brain, name: "brain", label: "Cérebro" },
-  { icon: Flare, name: "flare", label: "Chama" },
+  { icon: Flame, name: "flame", label: "Chama" },
   { icon: Gift, name: "gift", label: "Presente" },
   { icon: HandMetal, name: "hand_metal", label: "Rock" },
   { icon: Lightbulb, name: "lightbulb", label: "Ideia" },
   { icon: Rocket, name: "rocket", label: "Foguete" },
   { icon: PartyPopper, name: "party", label: "Festa" },
   { icon: Megaphone, name: "megaphone", label: "Megafone" },
-  { icon: SquareStar, name: "square_star", label: "Destaque" },
+  { icon: SquareStack, name: "square_stack", label: "Destaque" },
 ];
 
 export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
