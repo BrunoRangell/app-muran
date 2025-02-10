@@ -19,7 +19,6 @@ interface MetricsChartProps {
     name: string;
     color: string;
     yAxisId?: string;
-    formatter?: (value: number) => string;
   }>;
 }
 
@@ -30,11 +29,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="text-sm font-medium">{label}</p>
         {payload.map((entry: any, index: number) => {
           const value = entry.payload[entry.dataKey];
-          const formattedValue = entry.payload.formatter?.[entry.dataKey]
-            ? entry.payload.formatter[entry.dataKey](value)
-            : entry.name.includes('MRR')
+          const formattedValue = entry.dataKey === 'mrr'
             ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-            : entry.name.includes('Churn Rate')
+            : entry.dataKey === 'churnRate'
             ? `${value.toFixed(1)}%`
             : value;
 
@@ -61,10 +58,18 @@ export const MetricsChart = ({
   onDateRangeChange,
   lines
 }: MetricsChartProps) => {
+  const hasTitle = title && title.length > 0;
+  const uniqueYAxisIds = [...new Set(lines.map(line => line.yAxisId))];
+
   return (
-    <Card className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">{title}</h3>
+    <div className="space-y-4">
+      {hasTitle && (
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">{title}</h3>
+        </div>
+      )}
+      
+      <div className="flex justify-end">
         <Select value={periodFilter} onValueChange={onPeriodChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Selecione o período" />
@@ -80,7 +85,7 @@ export const MetricsChart = ({
         </Select>
       </div>
 
-      <div className="h-[300px]">
+      <div className="h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
@@ -88,21 +93,59 @@ export const MetricsChart = ({
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
-            <YAxis yAxisId="left" />
-            {lines.some(line => line.yAxisId === "right") && (
-              <YAxis yAxisId="right" orientation="right" />
+            
+            {/* Eixo Y para valores monetários */}
+            {uniqueYAxisIds.includes('mrr') && (
+              <YAxis 
+                yAxisId="mrr"
+                orientation="left"
+                tickFormatter={(value) => 
+                  new Intl.NumberFormat('pt-BR', { 
+                    notation: 'compact',
+                    compactDisplay: 'short',
+                    style: 'currency',
+                    currency: 'BRL'
+                  }).format(value)
+                }
+              />
             )}
+            
+            {/* Eixo Y para contagem de clientes */}
+            {uniqueYAxisIds.includes('clients') && (
+              <YAxis 
+                yAxisId="clients"
+                orientation={uniqueYAxisIds.includes('mrr') ? 'right' : 'left'}
+                tickFormatter={(value) => 
+                  new Intl.NumberFormat('pt-BR', { 
+                    notation: 'compact',
+                    compactDisplay: 'short'
+                  }).format(value)
+                }
+              />
+            )}
+            
+            {/* Eixo Y para percentuais */}
+            {uniqueYAxisIds.includes('percentage') && (
+              <YAxis 
+                yAxisId="percentage"
+                orientation="right"
+                tickFormatter={(value) => `${value}%`}
+              />
+            )}
+
             <RechartsTooltip content={<CustomTooltip />} />
             <Legend />
+            
             {lines.map((line, index) => (
               <Line
                 key={index}
-                yAxisId={line.yAxisId || "left"}
                 type="monotone"
                 dataKey={line.key}
                 name={line.name}
                 stroke={line.color}
+                yAxisId={line.yAxisId || "left"}
                 strokeWidth={2}
+                dot={false}
               />
             ))}
           </LineChart>
@@ -115,6 +158,6 @@ export const MetricsChart = ({
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
       />
-    </Card>
+    </div>
   );
 };

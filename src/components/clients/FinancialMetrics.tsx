@@ -7,8 +7,11 @@ import { DateRangeFilter, PeriodFilter as PeriodFilterType } from "./types";
 import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears } from "date-fns";
 import { MetricsChart } from "./metrics/MetricsChart";
 import { useMetricsData } from "./metrics/useMetricsData";
-import { PeriodFilter } from "./metrics/PeriodFilter";
 import { MetricsHeader } from "./metrics/MetricsHeader";
+import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const FinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilterType>('last-12-months');
@@ -21,6 +24,13 @@ export const FinancialMetrics = () => {
   });
   
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
+  const [selectedMetrics, setSelectedMetrics] = useState({
+    mrr: true,
+    clients: false,
+    churn: false,
+    churnRate: false,
+    newClients: false,
+  });
 
   const handlePeriodChange = (value: PeriodFilterType) => {
     setPeriodFilter(value);
@@ -97,6 +107,57 @@ export const FinancialMetrics = () => {
     }).format(value);
   };
 
+  const getActiveLines = () => {
+    const lines = [];
+    
+    if (selectedMetrics.mrr) {
+      lines.push({
+        key: "mrr",
+        name: "Receita Mensal",
+        color: "#ff6e00",
+        yAxisId: "mrr"
+      });
+    }
+    
+    if (selectedMetrics.clients) {
+      lines.push({
+        key: "clients",
+        name: "Total de Clientes",
+        color: "#321e32",
+        yAxisId: "clients"
+      });
+    }
+    
+    if (selectedMetrics.churn) {
+      lines.push({
+        key: "churn",
+        name: "Clientes Cancelados",
+        color: "#ff6e00",
+        yAxisId: "clients"
+      });
+    }
+    
+    if (selectedMetrics.churnRate) {
+      lines.push({
+        key: "churnRate",
+        name: "Churn Rate",
+        color: "#321e32",
+        yAxisId: "percentage"
+      });
+    }
+    
+    if (selectedMetrics.newClients) {
+      lines.push({
+        key: "newClients",
+        name: "Clientes Adquiridos",
+        color: "#0f0f0f",
+        yAxisId: "clients"
+      });
+    }
+    
+    return lines;
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold">Métricas Financeiras</h2>
@@ -114,93 +175,87 @@ export const FinancialMetrics = () => {
           )}
 
           <div className="space-y-6">
-            <MetricsChart
-              title="Receita Mensal"
-              data={filteredClientsData || []}
-              periodFilter={periodFilter}
-              onPeriodChange={handlePeriodChange}
-              isCustomDateOpen={isCustomDateOpen}
-              onCustomDateOpenChange={setIsCustomDateOpen}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              lines={[
-                {
-                  key: "mrr",
-                  name: "Receita Mensal",
-                  color: "#ff6e00"
-                }
-              ]}
-            />
+            <Card className="p-6">
+              <div className="flex flex-col space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Métricas ao Longo do Tempo</h3>
+                </div>
 
-            <MetricsChart
-              title="Total de Clientes Ativos"
-              data={filteredClientsData || []}
-              periodFilter={periodFilter}
-              onPeriodChange={handlePeriodChange}
-              isCustomDateOpen={isCustomDateOpen}
-              onCustomDateOpenChange={setIsCustomDateOpen}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              lines={[
-                {
-                  key: "clients",
-                  name: "Total de Clientes",
-                  color: "#321e32"
-                }
-              ]}
-            />
+                <ScrollArea className="w-full p-4 border rounded-lg">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="mrr"
+                        checked={selectedMetrics.mrr}
+                        onCheckedChange={(checked) => 
+                          setSelectedMetrics(prev => ({ ...prev, mrr: checked }))
+                        }
+                      />
+                      <Label htmlFor="mrr">Receita Mensal</Label>
+                    </div>
 
-            <MetricsChart
-              title="Clientes Cancelados e Churn Rate"
-              data={filteredClientsData || []}
-              periodFilter={periodFilter}
-              onPeriodChange={handlePeriodChange}
-              isCustomDateOpen={isCustomDateOpen}
-              onCustomDateOpenChange={setIsCustomDateOpen}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              lines={[
-                {
-                  key: "churn",
-                  name: "Clientes Cancelados",
-                  color: "#ff6e00",
-                  yAxisId: "left"
-                },
-                {
-                  key: "churnRate",
-                  name: "Churn Rate",
-                  color: "#321e32",
-                  yAxisId: "right"
-                }
-              ]}
-            />
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="clients"
+                        checked={selectedMetrics.clients}
+                        onCheckedChange={(checked) => 
+                          setSelectedMetrics(prev => ({ ...prev, clients: checked }))
+                        }
+                      />
+                      <Label htmlFor="clients">Total de Clientes</Label>
+                    </div>
 
-            <MetricsChart
-              title="Clientes Adquiridos vs. Perdidos"
-              data={filteredClientsData || []}
-              periodFilter={periodFilter}
-              onPeriodChange={handlePeriodChange}
-              isCustomDateOpen={isCustomDateOpen}
-              onCustomDateOpenChange={setIsCustomDateOpen}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-              lines={[
-                {
-                  key: "newClients",
-                  name: "Clientes Adquiridos",
-                  color: "#ff6e00"
-                },
-                {
-                  key: "churn",
-                  name: "Clientes Perdidos",
-                  color: "#321e32"
-                }
-              ]}
-            />
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="churn"
+                        checked={selectedMetrics.churn}
+                        onCheckedChange={(checked) => 
+                          setSelectedMetrics(prev => ({ ...prev, churn: checked }))
+                        }
+                      />
+                      <Label htmlFor="churn">Clientes Cancelados</Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="churnRate"
+                        checked={selectedMetrics.churnRate}
+                        onCheckedChange={(checked) => 
+                          setSelectedMetrics(prev => ({ ...prev, churnRate: checked }))
+                        }
+                      />
+                      <Label htmlFor="churnRate">Churn Rate</Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="newClients"
+                        checked={selectedMetrics.newClients}
+                        onCheckedChange={(checked) => 
+                          setSelectedMetrics(prev => ({ ...prev, newClients: checked }))
+                        }
+                      />
+                      <Label htmlFor="newClients">Clientes Adquiridos</Label>
+                    </div>
+                  </div>
+                </ScrollArea>
+
+                <MetricsChart
+                  title=""
+                  data={filteredClientsData || []}
+                  periodFilter={periodFilter}
+                  onPeriodChange={handlePeriodChange}
+                  isCustomDateOpen={isCustomDateOpen}
+                  onCustomDateOpenChange={setIsCustomDateOpen}
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                  lines={getActiveLines()}
+                />
+              </div>
+            </Card>
           </div>
         </>
       )}
     </div>
   );
 };
-
