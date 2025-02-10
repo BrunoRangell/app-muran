@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Award, Trophy, BadgeCheck, Star, Medal, Ribbon, Gem, Flag, Crown, Heart, Shield, Bookmark, Target, Sparkles, Zap } from "lucide-react";
+import { 
+  Award, Trophy, BadgeCheck, Star, Medal, Ribbon, Gem, Flag, Crown, 
+  Heart, Shield, Bookmark, Target, Sparkles, Zap, Diamond, Bot, 
+  Brain, Flare, Gift, HandMetal, Lightbulb, Rocket, PartyPopper,
+  Medal2, Megaphone, SquareStar, Lightning
+} from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -22,6 +27,7 @@ const BADGE_ICONS = [
   { icon: Award, name: "award", label: "Prêmio" },
   { icon: Star, name: "star", label: "Estrela" },
   { icon: Medal, name: "medal", label: "Medalha" },
+  { icon: Medal2, name: "medal2", label: "Medalha 2" },
   { icon: Crown, name: "crown", label: "Coroa" },
   { icon: Heart, name: "heart", label: "Coração" },
   { icon: Shield, name: "shield", label: "Escudo" },
@@ -31,8 +37,19 @@ const BADGE_ICONS = [
   { icon: Zap, name: "zap", label: "Raio" },
   { icon: Ribbon, name: "ribbon", label: "Fita" },
   { icon: Gem, name: "gem", label: "Gema" },
+  { icon: Diamond, name: "diamond", label: "Diamante" },
   { icon: Flag, name: "flag", label: "Bandeira" },
-  { icon: BadgeCheck, name: "badge_check", label: "Emblema Verificado" },
+  { icon: BadgeCheck, name: "badge_check", label: "Verificado" },
+  { icon: Bot, name: "bot", label: "Bot" },
+  { icon: Brain, name: "brain", label: "Cérebro" },
+  { icon: Flare, name: "flare", label: "Chama" },
+  { icon: Gift, name: "gift", label: "Presente" },
+  { icon: HandMetal, name: "hand_metal", label: "Rock" },
+  { icon: Lightbulb, name: "lightbulb", label: "Ideia" },
+  { icon: Rocket, name: "rocket", label: "Foguete" },
+  { icon: PartyPopper, name: "party", label: "Festa" },
+  { icon: Megaphone, name: "megaphone", label: "Megafone" },
+  { icon: SquareStar, name: "square_star", label: "Destaque" },
 ];
 
 export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
@@ -55,7 +72,6 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
   };
 
   const handleCreateBadge = async () => {
-    // Verificar se já existe um emblema com o mesmo nome
     const badgeExists = allBadges?.some(
       (badge) => badge.name.toLowerCase() === newBadge.name.toLowerCase()
     );
@@ -251,19 +267,27 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ícone do Emblema</label>
                 <ScrollArea className="h-[200px]">
-                  <div className="grid grid-cols-4 gap-2 pr-4">
+                  <div className="grid grid-cols-6 gap-2 pr-4">
                     {BADGE_ICONS.map(({ icon: Icon, name, label }) => (
                       <div key={name} className="relative">
                         <Button
                           type="button"
                           variant={newBadge.icon === name ? "default" : "outline"}
-                          className={`w-full h-24 flex-col gap-2 hover:bg-muran-primary/10 group ${
-                            newBadge.icon === name ? 'ring-2 ring-muran-primary' : ''
+                          className={`w-full aspect-square flex-col gap-1 group transition-all duration-300 ${
+                            newBadge.icon === name 
+                              ? 'bg-muran-primary hover:bg-muran-primary/90' 
+                              : 'hover:bg-muran-primary/10 hover:border-muran-primary'
                           }`}
                           onClick={() => setNewBadge((prev) => ({ ...prev, icon: name }))}
+                          title={label}
                         >
-                          <Icon className={`h-8 w-8 ${newBadge.icon === name ? 'text-white' : 'text-muran-primary group-hover:text-muran-primary/80'}`} />
-                          <span className={`text-xs ${newBadge.icon === name ? 'text-white' : 'text-gray-600'}`}>{label}</span>
+                          <Icon 
+                            className={`h-5 w-5 transition-all duration-300 ${
+                              newBadge.icon === name 
+                                ? 'text-white' 
+                                : 'text-muran-primary group-hover:scale-110'
+                            }`} 
+                          />
                         </Button>
                       </div>
                     ))}
