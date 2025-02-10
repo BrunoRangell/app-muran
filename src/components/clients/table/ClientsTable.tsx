@@ -54,7 +54,7 @@ export const ClientsTable = ({
   });
 
   return (
-    <div className="min-w-full border rounded-md relative">
+    <div className="min-w-full border rounded-md">
       <div className="overflow-x-auto">
         <Table>
           <ClientsTableHeader 
