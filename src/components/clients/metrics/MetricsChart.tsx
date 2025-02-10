@@ -26,7 +26,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-4 border rounded-lg shadow-lg">
-        <p className="text-sm font-medium">{label}</p>
+        <p className="text-sm font-medium text-gray-600 mb-2">{label}</p>
         {payload.map((entry: any, index: number) => {
           const value = entry.payload[entry.dataKey];
           const formattedValue = entry.dataKey === 'mrr'
@@ -36,8 +36,20 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             : value;
 
           return (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {formattedValue}
+            <p 
+              key={index} 
+              className="text-sm flex items-center gap-2 py-1"
+            >
+              <span 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="font-medium" style={{ color: entry.color }}>
+                {entry.name}:
+              </span>
+              <span className="text-gray-700">
+                {formattedValue}
+              </span>
             </p>
           );
         })}
@@ -62,16 +74,16 @@ export const MetricsChart = ({
   const uniqueYAxisIds = [...new Set(lines.map(line => line.yAxisId))];
 
   return (
-    <div className="space-y-4">
+    <Card className="p-6 space-y-6">
       {hasTitle && (
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">{title}</h3>
+          <h3 className="text-lg font-semibold text-muran-dark">{title}</h3>
         </div>
       )}
       
       <div className="flex justify-end">
         <Select value={periodFilter} onValueChange={onPeriodChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] bg-white">
             <SelectValue placeholder="Selecione o período" />
           </SelectTrigger>
           <SelectContent>
@@ -85,14 +97,18 @@ export const MetricsChart = ({
         </Select>
       </div>
 
-      <div className="h-[400px]">
+      <div className="h-[400px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis 
+              dataKey="month" 
+              stroke="#6b7280"
+              tick={{ fill: '#6b7280', fontSize: 12 }}
+            />
             
             {/* Eixo Y para valores monetários */}
             {uniqueYAxisIds.includes('mrr') && (
@@ -107,6 +123,8 @@ export const MetricsChart = ({
                     currency: 'BRL'
                   }).format(value)
                 }
+                stroke="#6b7280"
+                tick={{ fill: '#6b7280', fontSize: 12 }}
               />
             )}
             
@@ -121,6 +139,8 @@ export const MetricsChart = ({
                     compactDisplay: 'short'
                   }).format(value)
                 }
+                stroke="#6b7280"
+                tick={{ fill: '#6b7280', fontSize: 12 }}
               />
             )}
             
@@ -130,11 +150,24 @@ export const MetricsChart = ({
                 yAxisId="percentage"
                 orientation="right"
                 tickFormatter={(value) => `${value}%`}
+                stroke="#6b7280"
+                tick={{ fill: '#6b7280', fontSize: 12 }}
               />
             )}
 
-            <RechartsTooltip content={<CustomTooltip />} />
-            <Legend />
+            <RechartsTooltip 
+              content={<CustomTooltip />}
+              cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
+            />
+            
+            <Legend 
+              verticalAlign="top"
+              height={36}
+              iconType="circle"
+              formatter={(value) => (
+                <span className="text-sm text-gray-700 font-medium">{value}</span>
+              )}
+            />
             
             {lines.map((line, index) => (
               <Line
@@ -144,8 +177,14 @@ export const MetricsChart = ({
                 name={line.name}
                 stroke={line.color}
                 yAxisId={line.yAxisId || "left"}
-                strokeWidth={2}
+                strokeWidth={2.5}
                 dot={false}
+                activeDot={{ 
+                  r: 6, 
+                  stroke: '#fff',
+                  strokeWidth: 2,
+                  fill: line.color 
+                }}
               />
             ))}
           </LineChart>
@@ -158,6 +197,6 @@ export const MetricsChart = ({
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
       />
-    </div>
+    </Card>
   );
 };
