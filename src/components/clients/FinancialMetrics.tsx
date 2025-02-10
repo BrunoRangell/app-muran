@@ -13,6 +13,15 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+// Cores consistentes para cada métrica
+const METRIC_COLORS = {
+  mrr: "#ff6e00",        // Cor principal Muran
+  clients: "#321e32",    // Cor complementar Muran
+  churn: "#c41e3a",      // Vermelho para churn (negativo)
+  churnRate: "#8b0000",  // Vermelho mais escuro para taxa
+  newClients: "#228b22", // Verde para novos clientes (positivo)
+} as const;
+
 export const FinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilterType>('last-12-months');
   const [dateRange, setDateRange] = useState<DateRangeFilter>(() => {
@@ -114,7 +123,7 @@ export const FinancialMetrics = () => {
       lines.push({
         key: "mrr",
         name: "Receita Mensal",
-        color: "#ff6e00",
+        color: METRIC_COLORS.mrr,
         yAxisId: "mrr"
       });
     }
@@ -123,7 +132,7 @@ export const FinancialMetrics = () => {
       lines.push({
         key: "clients",
         name: "Total de Clientes",
-        color: "#321e32",
+        color: METRIC_COLORS.clients,
         yAxisId: "clients"
       });
     }
@@ -132,7 +141,7 @@ export const FinancialMetrics = () => {
       lines.push({
         key: "churn",
         name: "Clientes Cancelados",
-        color: "#ff6e00",
+        color: METRIC_COLORS.churn,
         yAxisId: "clients"
       });
     }
@@ -141,7 +150,7 @@ export const FinancialMetrics = () => {
       lines.push({
         key: "churnRate",
         name: "Churn Rate",
-        color: "#321e32",
+        color: METRIC_COLORS.churnRate,
         yAxisId: "percentage"
       });
     }
@@ -150,7 +159,7 @@ export const FinancialMetrics = () => {
       lines.push({
         key: "newClients",
         name: "Clientes Adquiridos",
-        color: "#0f0f0f",
+        color: METRIC_COLORS.newClients,
         yAxisId: "clients"
       });
     }
@@ -259,3 +268,4 @@ export const FinancialMetrics = () => {
     </div>
   );
 };
+
