@@ -66,15 +66,15 @@ export const useBadges = (teamMemberId?: string) => {
       queryClient.invalidateQueries({ queryKey: ["badges"] });
       queryClient.invalidateQueries({ queryKey: ["all-badges"] });
       toast({
-        title: "Sucesso!",
-        description: "Emblema adicionado com sucesso.",
+        title: "Emblema adicionado",
+        description: "O emblema foi adicionado com sucesso ao membro da equipe.",
       });
     },
     onError: (error) => {
       console.error("Erro ao adicionar emblema:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível adicionar o emblema.",
+        title: "Erro ao adicionar emblema",
+        description: "Ocorreu um erro ao tentar adicionar o emblema. Tente novamente.",
         variant: "destructive",
       });
     },
@@ -101,15 +101,15 @@ export const useBadges = (teamMemberId?: string) => {
       queryClient.invalidateQueries({ queryKey: ["badges"] });
       queryClient.invalidateQueries({ queryKey: ["all-badges"] });
       toast({
-        title: "Sucesso!",
-        description: "Emblema removido com sucesso.",
+        title: "Emblema removido",
+        description: "O emblema foi removido com sucesso.",
       });
     },
     onError: (error) => {
       console.error("Erro ao remover emblema:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível remover o emblema.",
+        title: "Erro ao remover emblema",
+        description: "Não foi possível remover o emblema. Tente novamente.",
         variant: "destructive",
       });
     },

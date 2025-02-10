@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -41,8 +42,8 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
 
     if (!selectedMember || !newBadge.name || !newBadge.description) {
       toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios.",
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios antes de criar o emblema.",
         variant: "destructive",
       });
       return;
@@ -57,18 +58,28 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
         team_member_id: selectedMember,
       });
 
+      toast({
+        title: "Emblema criado!",
+        description: "O emblema foi criado e atribuído com sucesso.",
+      });
+
       setNewBadge({ name: "", description: "", icon: "trophy" });
       setIsOpen(false);
     } catch (error) {
       console.error("Erro ao criar emblema:", error);
+      toast({
+        title: "Erro ao criar emblema",
+        description: "Ocorreu um erro ao tentar criar o emblema. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleGiveBadge = async (badge: typeof allBadges[0]) => {
     if (!selectedMember) {
       toast({
-        title: "Erro",
-        description: "Por favor, selecione um membro da equipe.",
+        title: "Selecione um membro",
+        description: "Por favor, selecione um membro da equipe antes de dar o emblema.",
         variant: "destructive",
       });
       return;
@@ -82,8 +93,18 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
         icon: badge.icon,
         team_member_id: selectedMember,
       });
+
+      toast({
+        title: "Emblema atribuído!",
+        description: "O emblema foi atribuído com sucesso ao membro selecionado.",
+      });
     } catch (error) {
       console.error("Erro ao dar emblema:", error);
+      toast({
+        title: "Erro ao atribuir emblema",
+        description: "Não foi possível atribuir o emblema. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
