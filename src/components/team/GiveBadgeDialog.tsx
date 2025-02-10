@@ -12,6 +12,7 @@ import { useBadges } from "@/hooks/useBadges";
 import { TeamMember } from "@/types/team";
 import { useToast } from "@/components/ui/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge as UIBadge } from "@/components/ui/badge";
 
 interface GiveBadgeDialogProps {
   teamMembers: TeamMember[];
@@ -36,7 +37,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
     icon: "trophy",
   });
   const [isOpen, setIsOpen] = useState(false);
-  const { badges, addBadge, isLoading } = useBadges(selectedMember);
+  const { allBadges, userBadges, addBadge, isLoading } = useBadges(selectedMember);
   const { toast } = useToast();
 
   const getInitials = (name: string) => {
@@ -49,7 +50,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
 
   const handleCreateBadge = async () => {
     // Verificar se já existe um emblema com o mesmo nome
-    const badgeExists = badges?.some(
+    const badgeExists = allBadges?.some(
       (badge) => badge.name.toLowerCase() === newBadge.name.toLowerCase()
     );
 
@@ -82,18 +83,36 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
 
       setNewBadge({ name: "", description: "", icon: "trophy" });
       setIsOpen(false);
-      toast({
-        title: "Sucesso!",
-        description: "Emblema adicionado com sucesso.",
-      });
     } catch (error) {
       console.error("Erro ao criar emblema:", error);
+    }
+  };
+
+  const handleGiveBadge = async (badge: typeof allBadges[0]) => {
+    if (!selectedMember) {
       toast({
         title: "Erro",
-        description: "Não foi possível criar o emblema.",
+        description: "Por favor, selecione um membro da equipe.",
         variant: "destructive",
       });
+      return;
     }
+
+    try {
+      await addBadge({
+        code: badge.code,
+        name: badge.name,
+        description: badge.description,
+        icon: badge.icon,
+        team_member_id: selectedMember,
+      });
+    } catch (error) {
+      console.error("Erro ao dar emblema:", error);
+    }
+  };
+
+  const userHasBadge = (badgeCode: string) => {
+    return userBadges?.some((badge) => badge.code === badgeCode);
   };
 
   return (
@@ -149,11 +168,13 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
             <TabsContent value="existing" className="mt-4">
               {isLoading ? (
                 <div className="text-center py-4 text-gray-500">Carregando emblemas...</div>
-              ) : badges && badges.length > 0 ? (
+              ) : allBadges && allBadges.length > 0 ? (
                 <ScrollArea className="h-[400px] pr-4">
                   <div className="grid grid-cols-1 gap-4">
-                    {badges.map((badge) => {
+                    {allBadges.map((badge) => {
                       const IconComponent = BADGE_ICONS.find(icon => icon.name === badge.icon)?.icon || Trophy;
+                      const hasBadge = userHasBadge(badge.code);
+                      
                       return (
                         <div
                           key={badge.id}
@@ -164,8 +185,28 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
                               <IconComponent className="h-6 w-6 text-muran-primary" />
                             </div>
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{badge.name}</h4>
-                              <p className="text-sm text-gray-500 mt-1">{badge.description}</p>
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <h4 className="font-medium text-gray-900">{badge.name}</h4>
+                                  <p className="text-sm text-gray-500 mt-1">{badge.description}</p>
+                                </div>
+                                {selectedMember && (
+                                  hasBadge ? (
+                                    <UIBadge variant="secondary" className="shrink-0">
+                                      Usuário já possui
+                                    </UIBadge>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="shrink-0"
+                                      onClick={() => handleGiveBadge(badge)}
+                                    >
+                                      Dar emblema
+                                    </Button>
+                                  )
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -175,7 +216,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
                 </ScrollArea>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  Nenhum emblema existente para este membro.
+                  Nenhum emblema existente.
                 </div>
               )}
             </TabsContent>

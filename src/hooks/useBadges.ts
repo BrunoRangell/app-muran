@@ -8,7 +8,26 @@ export const useBadges = (teamMemberId?: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: badges, isLoading } = useQuery({
+  const { data: allBadges, isLoading: isLoadingAll } = useQuery({
+    queryKey: ["all-badges"],
+    queryFn: async () => {
+      console.log("Buscando todos os emblemas");
+      
+      const { data, error } = await supabase
+        .from("badges")
+        .select("*")
+        .order('name');
+
+      if (error) {
+        console.error("Erro ao buscar todos os emblemas:", error);
+        throw error;
+      }
+
+      return data as Badge[];
+    },
+  });
+
+  const { data: userBadges, isLoading: isLoadingUser } = useQuery({
     queryKey: ["badges", teamMemberId],
     queryFn: async () => {
       console.log("Buscando emblemas para o membro:", teamMemberId);
@@ -21,7 +40,7 @@ export const useBadges = (teamMemberId?: string) => {
         .eq("team_member_id", teamMemberId);
 
       if (error) {
-        console.error("Erro ao buscar emblemas:", error);
+        console.error("Erro ao buscar emblemas do usuário:", error);
         throw error;
       }
 
@@ -45,6 +64,7 @@ export const useBadges = (teamMemberId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["badges"] });
+      queryClient.invalidateQueries({ queryKey: ["all-badges"] });
       toast({
         title: "Sucesso!",
         description: "Emblema adicionado com sucesso.",
@@ -60,38 +80,10 @@ export const useBadges = (teamMemberId?: string) => {
     },
   });
 
-  const removeBadgeMutation = useMutation({
-    mutationFn: async (badgeId: string) => {
-      console.log("Removendo emblema:", badgeId);
-      
-      const { error } = await supabase
-        .from("badges")
-        .delete()
-        .eq("id", badgeId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["badges"] });
-      toast({
-        title: "Sucesso!",
-        description: "Emblema removido com sucesso.",
-      });
-    },
-    onError: (error) => {
-      console.error("Erro ao remover emblema:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível remover o emblema.",
-        variant: "destructive",
-      });
-    },
-  });
-
   return {
-    badges,
-    isLoading,
+    allBadges,
+    userBadges,
+    isLoading: isLoadingAll || isLoadingUser,
     addBadge: addBadgeMutation.mutate,
-    removeBadge: removeBadgeMutation.mutate,
   };
 };
