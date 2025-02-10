@@ -31,7 +31,7 @@ export function IconSelector({ selectedIcon, onSelectIcon }: IconSelectorProps) 
                   selectedIcon === name 
                     ? '' 
                     : 'group-hover:scale-110'
-                }`}>
+                }`} role="img" aria-label={label}>
                   {icon}
                 </span>
               </Button>
