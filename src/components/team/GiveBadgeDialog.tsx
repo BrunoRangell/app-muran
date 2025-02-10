@@ -23,7 +23,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
     icon: "trophy",
   });
   const [isOpen, setIsOpen] = useState(false);
-  const { allBadges, userBadges, addBadge, isLoading } = useBadges(selectedMember);
+  const { allBadges, userBadges, addBadge, deleteBadge, isLoading } = useBadges(selectedMember);
   const { toast } = useToast();
 
   const handleCreateBadge = async () => {
@@ -88,6 +88,10 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
     }
   };
 
+  const handleDeleteBadge = (code: string, memberId?: string) => {
+    deleteBadge({ code, memberId });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -122,6 +126,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
                 badges={allBadges || []}
                 userBadges={userBadges}
                 onGiveBadge={handleGiveBadge}
+                onDeleteBadge={handleDeleteBadge}
                 selectedMember={selectedMember}
                 isLoading={isLoading}
               />

@@ -80,10 +80,46 @@ export const useBadges = (teamMemberId?: string) => {
     },
   });
 
+  const deleteBadgeMutation = useMutation({
+    mutationFn: async ({ code, memberId }: { code: string; memberId?: string }) => {
+      let query = supabase
+        .from("badges")
+        .delete();
+
+      if (memberId) {
+        // Deleta apenas o emblema do membro específico
+        query = query.eq("team_member_id", memberId).eq("code", code);
+      } else {
+        // Deleta todas as instâncias deste emblema
+        query = query.eq("code", code);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["badges"] });
+      queryClient.invalidateQueries({ queryKey: ["all-badges"] });
+      toast({
+        title: "Sucesso!",
+        description: "Emblema removido com sucesso.",
+      });
+    },
+    onError: (error) => {
+      console.error("Erro ao remover emblema:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover o emblema.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     allBadges,
     userBadges,
     isLoading: isLoadingAll || isLoadingUser,
     addBadge: addBadgeMutation.mutate,
+    deleteBadge: deleteBadgeMutation.mutate,
   };
 };
