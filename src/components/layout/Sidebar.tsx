@@ -1,4 +1,3 @@
-
 import { useLocation } from "react-router-dom";
 import { 
   Users, 
@@ -19,7 +18,7 @@ interface SidebarProps {
 
 const adminMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
-  { icon: Users, label: "Clientes", path: "/clientes" },
+  { icon: DollarSign, label: "Financeiro Muran", path: "/clientes" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
