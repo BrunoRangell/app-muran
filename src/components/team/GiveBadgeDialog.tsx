@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBadges } from "@/hooks/useBadges";
 import { TeamMember } from "@/types/team";
 import { useToast } from "@/components/ui/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface GiveBadgeDialogProps {
   teamMembers: TeamMember[];
@@ -35,7 +36,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
     icon: "trophy",
   });
   const [isOpen, setIsOpen] = useState(false);
-  const { addBadge } = useBadges(selectedMember);
+  const { badges, addBadge, isLoading } = useBadges(selectedMember);
   const { toast } = useToast();
 
   const getInitials = (name: string) => {
@@ -47,6 +48,20 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
   };
 
   const handleCreateBadge = async () => {
+    // Verificar se já existe um emblema com o mesmo nome
+    const badgeExists = badges?.some(
+      (badge) => badge.name.toLowerCase() === newBadge.name.toLowerCase()
+    );
+
+    if (badgeExists) {
+      toast({
+        title: "Emblema já existe",
+        description: "Já existe um emblema com este nome. Por favor, escolha outro nome.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!selectedMember || !newBadge.name || !newBadge.description) {
       toast({
         title: "Erro",
@@ -125,10 +140,46 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
             </Select>
           </div>
 
-          <Tabs defaultValue="new" className="w-full">
+          <Tabs defaultValue="existing" className="w-full">
             <TabsList className="w-full">
+              <TabsTrigger value="existing" className="flex-1">Emblemas Existentes</TabsTrigger>
               <TabsTrigger value="new" className="flex-1">Criar Novo Emblema</TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="existing" className="mt-4">
+              {isLoading ? (
+                <div className="text-center py-4 text-gray-500">Carregando emblemas...</div>
+              ) : badges && badges.length > 0 ? (
+                <ScrollArea className="h-[400px] pr-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    {badges.map((badge) => {
+                      const IconComponent = BADGE_ICONS.find(icon => icon.name === badge.icon)?.icon || Trophy;
+                      return (
+                        <div
+                          key={badge.id}
+                          className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 bg-muran-primary/10 rounded-lg">
+                              <IconComponent className="h-6 w-6 text-muran-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900">{badge.name}</h4>
+                              <p className="text-sm text-gray-500 mt-1">{badge.description}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Nenhum emblema existente para este membro.
+                </div>
+              )}
+            </TabsContent>
+
             <TabsContent value="new" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Nome do Emblema *</label>
