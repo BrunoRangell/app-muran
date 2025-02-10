@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -53,24 +54,26 @@ export const ClientsTable = ({
   });
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <ClientsTableHeader 
-          columns={sortedColumns} 
-          sortConfig={sortConfig} 
-          onSort={onSort} 
-        />
-        <TableBody>
-          {sortedClients?.map((client) => (
-            <ClientTableRow
-              key={client.id}
-              client={client}
-              columns={sortedColumns}
-              onEditClick={onEditClick}
-            />
-          ))}
-        </TableBody>
-      </Table>
+    <div className="min-w-full border rounded-md">
+      <div className="overflow-x-auto">
+        <Table>
+          <ClientsTableHeader 
+            columns={sortedColumns} 
+            sortConfig={sortConfig} 
+            onSort={onSort} 
+          />
+          <TableBody>
+            {sortedClients?.map((client) => (
+              <ClientTableRow
+                key={client.id}
+                client={client}
+                columns={sortedColumns}
+                onEditClick={onEditClick}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };

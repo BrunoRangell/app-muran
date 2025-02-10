@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,7 @@ export const ClientsList = () => {
   };
 
   return (
-    <div>
+    <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Lista de Clientes</h2>
         <div className="flex gap-2 items-center">
@@ -141,17 +142,21 @@ export const ClientsList = () => {
         </div>
       </div>
 
-      {isLoading ? (
-        <p className="text-gray-600">Carregando clientes...</p>
-      ) : (
-        <ClientsTable 
-          clients={filteredAndSortedClients} 
-          columns={columns} 
-          onEditClick={handleEditClick}
-          sortConfig={sortConfig}
-          onSort={handleSort}
-        />
-      )}
+      <div className="flex-1 overflow-hidden">
+        {isLoading ? (
+          <p className="text-gray-600">Carregando clientes...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <ClientsTable 
+              clients={filteredAndSortedClients} 
+              columns={columns} 
+              onEditClick={handleEditClick}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+            />
+          </div>
+        )}
+      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
