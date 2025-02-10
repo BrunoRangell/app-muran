@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -114,7 +115,7 @@ export const FinancialMetrics = () => {
 
           <div className="space-y-6">
             <MetricsChart
-              title="Evolução do MRR e Total de Clientes"
+              title="Receita Mensal"
               data={filteredClientsData || []}
               periodFilter={periodFilter}
               onPeriodChange={handlePeriodChange}
@@ -125,15 +126,26 @@ export const FinancialMetrics = () => {
               lines={[
                 {
                   key: "mrr",
-                  name: "MRR",
-                  color: "#ff6e00",
-                  yAxisId: "left"
-                },
+                  name: "Receita Mensal",
+                  color: "#ff6e00"
+                }
+              ]}
+            />
+
+            <MetricsChart
+              title="Total de Clientes Ativos"
+              data={filteredClientsData || []}
+              periodFilter={periodFilter}
+              onPeriodChange={handlePeriodChange}
+              isCustomDateOpen={isCustomDateOpen}
+              onCustomDateOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              lines={[
                 {
                   key: "clients",
                   name: "Total de Clientes",
-                  color: "#321e32",
-                  yAxisId: "right"
+                  color: "#321e32"
                 }
               ]}
             />
