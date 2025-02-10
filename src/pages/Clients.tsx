@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +11,7 @@ const Clients = () => {
     <div className="space-y-4 p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
-          Clientes
+          Financeiro Muran
         </h1>
       </div>
 
@@ -19,7 +20,7 @@ const Clients = () => {
           <TabsList className="w-full md:w-auto flex flex-col md:flex-row gap-2 md:gap-0">
             <TabsTrigger value="metrics" className="flex items-center gap-2 w-full md:w-auto text-sm md:text-base">
               <DollarSign className="h-4 w-4" />
-              Métricas Financeiras
+              Saúde Financeira
             </TabsTrigger>
             <TabsTrigger value="list" className="flex items-center gap-2 w-full md:w-auto text-sm md:text-base">
               <Users className="h-4 w-4" />

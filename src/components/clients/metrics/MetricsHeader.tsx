@@ -1,4 +1,5 @@
-import { Users, DollarSign, BarChart, Calendar, CreditCard, Percent } from "lucide-react";
+
+import { Users, DollarSign, Calendar, CreditCard, Percent, TrendingUp } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { FinancialMetricsData } from "../types";
 
@@ -13,7 +14,7 @@ export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: Metric
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <MetricCard
         icon={Users}
-        title="Total de Clientes Ativos"
+        title="Clientes ativos"
         value={metrics.activeClientsCount || 0}
         tooltip="Número total de clientes ativos cadastrados no sistema"
         formatter={(value) => value.toString()}
@@ -21,17 +22,17 @@ export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: Metric
 
       <MetricCard
         icon={DollarSign}
-        title="MRR"
+        title="Receita mensal"
         value={metrics.mrr || 0}
-        tooltip="Monthly Recurring Revenue - Receita mensal recorrente total dos clientes ativos. Soma dos valores de contrato de todos os clientes ativos"
+        tooltip="Receita mensal recorrente total dos clientes ativos. Soma dos valores de contrato de todos os clientes ativos"
         formatter={formatCurrency}
       />
 
       <MetricCard
-        icon={BarChart}
-        title="ARR"
-        value={metrics.arr || 0}
-        tooltip="Annual Recurring Revenue - Receita anual recorrente. Calculado multiplicando o MRR por 12"
+        icon={TrendingUp}
+        title="CAC"
+        value={1250}
+        tooltip="Custo de Aquisição de Clientes - Valor médio investido para conquistar cada novo cliente"
         formatter={formatCurrency}
       />
 
