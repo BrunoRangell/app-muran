@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
 import { CustomDateRangeDialog } from "./CustomDateRangeDialog";
 import { PeriodFilter } from "../types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -101,79 +101,37 @@ export const MetricsChart = ({
   const getClientsForPeriod = () => {
     if (!selectedPoint || !clients) return [];
 
-    const selectedMonth = selectedPoint.month;
-    const [monthName, yearStr] = selectedMonth.split('/');
+    const [monthStr, yearStr] = selectedPoint.month.split('/');
+    const monthName = monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
     const year = Number(`20${yearStr}`);
-    const monthIndex = format(new Date(2024, 0, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 0
-      : format(new Date(2024, 1, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 1
-      : format(new Date(2024, 2, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 2
-      : format(new Date(2024, 3, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 3
-      : format(new Date(2024, 4, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 4
-      : format(new Date(2024, 5, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 5
-      : format(new Date(2024, 6, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 6
-      : format(new Date(2024, 7, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 7
-      : format(new Date(2024, 8, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 8
-      : format(new Date(2024, 9, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 9
-      : format(new Date(2024, 10, 1), 'MMM', { locale: ptBR })
-      .toLowerCase()
-      .split('')
-      .map((char, index) => index === 0 ? char.toUpperCase() : char)
-      .join('') === monthName
-      ? 10
-      : 11;
+
+    // Create a date for each month and format it to compare with the input
+    let monthIndex = -1;
+    for (let i = 0; i < 12; i++) {
+      const formattedMonth = format(new Date(2024, i, 1), 'MMM', { locale: ptBR })
+        .split('')
+        .map((char, index) => index === 0 ? char.toUpperCase() : char.toLowerCase())
+        .join('');
+      
+      if (formattedMonth === monthName) {
+        monthIndex = i;
+        break;
+      }
+    }
+
+    if (monthIndex === -1) {
+      console.error('Mês não encontrado:', monthName);
+      return [];
+    }
 
     const startDate = new Date(year, monthIndex, 1);
-    const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+    const endDate = new Date(year, monthIndex + 1, 0);
+
+    console.log('Período selecionado:', {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      metric: selectedPoint.metric
+    });
 
     switch (selectedPoint.metric) {
       case 'Clientes Adquiridos':
@@ -186,7 +144,13 @@ export const MetricsChart = ({
         return clients.filter(client => {
           if (!client.last_payment_date) return false;
           const date = new Date(client.last_payment_date);
-          return date >= startDate && date <= endDate;
+          return date >= startDate && date <= endDate && client.status === 'inactive';
+        });
+      case 'Churn Rate':
+        return clients.filter(client => {
+          if (!client.last_payment_date) return false;
+          const date = new Date(client.last_payment_date);
+          return date >= startDate && date <= endDate && client.status === 'inactive';
         });
       default:
         return clients.filter(client => {
