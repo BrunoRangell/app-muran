@@ -115,43 +115,50 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
             onSelect={setSelectedMember}
           />
 
-          <Tabs defaultValue="existing" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="existing" className="flex items-center gap-2">
-                <Award className="h-4 w-4" />
-                Emblemas Existentes
-              </TabsTrigger>
-              <TabsTrigger value="new" className="flex items-center gap-2">
-                <Award className="h-4 w-4" />
-                Criar Novo
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="existing" className="mt-4">
-              <ExistingBadgesList
-                badges={allBadges || []}
-                userBadges={userBadges}
-                onGiveBadge={handleGiveBadge}
-                onDeleteBadge={handleDeleteBadge}
-                selectedMember={selectedMember}
-                isLoading={isLoading}
-              />
-            </TabsContent>
+          <div className="bg-white rounded-lg">
+            <Tabs defaultValue="existing" className="w-full">
+              <div className="flex justify-center mb-6">
+                <TabsList className="grid grid-cols-2 w-[400px]">
+                  <TabsTrigger value="existing" className="flex items-center gap-2">
+                    <Award className="h-4 w-4" />
+                    Emblemas Existentes
+                  </TabsTrigger>
+                  <TabsTrigger value="new" className="flex items-center gap-2">
+                    <Award className="h-4 w-4" />
+                    Criar Novo
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              
+              <TabsContent value="existing" className="mt-4 px-4">
+                <ExistingBadgesList
+                  badges={allBadges || []}
+                  userBadges={userBadges}
+                  onGiveBadge={handleGiveBadge}
+                  onDeleteBadge={handleDeleteBadge}
+                  selectedMember={selectedMember}
+                  isLoading={isLoading}
+                />
+              </TabsContent>
 
-            <TabsContent value="new" className="mt-4">
-              <BadgeForm
-                name={newBadge.name}
-                description={newBadge.description}
-                icon={newBadge.icon}
-                onNameChange={(name) => setNewBadge((prev) => ({ ...prev, name }))}
-                onDescriptionChange={(description) => setNewBadge((prev) => ({ ...prev, description }))}
-                onIconChange={(icon) => setNewBadge((prev) => ({ ...prev, icon }))}
-                onSubmit={handleCreateBadge}
-              />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="new" className="mt-4">
+                <div className="max-w-xl mx-auto px-4">
+                  <BadgeForm
+                    name={newBadge.name}
+                    description={newBadge.description}
+                    icon={newBadge.icon}
+                    onNameChange={(name) => setNewBadge((prev) => ({ ...prev, name }))}
+                    onDescriptionChange={(description) => setNewBadge((prev) => ({ ...prev, description }))}
+                    onIconChange={(icon) => setNewBadge((prev) => ({ ...prev, icon }))}
+                    onSubmit={handleCreateBadge}
+                  />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
