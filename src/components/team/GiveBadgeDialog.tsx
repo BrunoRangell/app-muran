@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -100,7 +99,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
           Dar emblema
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <Award className="h-6 w-6 text-muran-primary" />
@@ -108,16 +107,16 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4">
           <MemberSelect
             teamMembers={teamMembers}
             selectedMember={selectedMember}
             onSelect={setSelectedMember}
           />
 
-          <div className="bg-white rounded-lg">
+          <div className="bg-white rounded-lg shadow-sm">
             <Tabs defaultValue="existing" className="w-full">
-              <div className="flex justify-center mb-6">
+              <div className="flex justify-center mb-4">
                 <TabsList className="grid grid-cols-2 w-[400px]">
                   <TabsTrigger value="existing" className="flex items-center gap-2">
                     <Award className="h-4 w-4" />
@@ -130,7 +129,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
                 </TabsList>
               </div>
               
-              <TabsContent value="existing" className="mt-4 px-4">
+              <TabsContent value="existing" className="mt-2 px-4 pb-4">
                 <ExistingBadgesList
                   badges={allBadges || []}
                   userBadges={userBadges}
@@ -141,7 +140,7 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
                 />
               </TabsContent>
 
-              <TabsContent value="new" className="mt-4">
+              <TabsContent value="new" className="mt-2 pb-4">
                 <div className="max-w-xl mx-auto px-4">
                   <BadgeForm
                     name={newBadge.name}
@@ -161,4 +160,3 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
     </Dialog>
   );
 }
-
