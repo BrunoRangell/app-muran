@@ -116,9 +116,15 @@ export function GiveBadgeDialog({ teamMembers }: GiveBadgeDialogProps) {
           />
 
           <Tabs defaultValue="existing" className="w-full">
-            <TabsList className="w-full">
-              <TabsTrigger value="existing" className="flex-1">Emblemas Existentes</TabsTrigger>
-              <TabsTrigger value="new" className="flex-1">Criar Novo Emblema</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="existing" className="flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                Emblemas Existentes
+              </TabsTrigger>
+              <TabsTrigger value="new" className="flex items-center gap-2">
+                <Award className="h-4 w-4" />
+                Criar Novo
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="existing" className="mt-4">
