@@ -14,7 +14,7 @@ export function IconSelector({ selectedIcon, onSelectIcon }: IconSelectorProps) 
       <label className="text-sm font-medium">Ícone do Emblema</label>
       <ScrollArea className="h-[200px]">
         <div className="grid grid-cols-6 gap-2 pr-4">
-          {BADGE_ICONS.map(({ icon: Icon, name, label }) => (
+          {BADGE_ICONS.map(({ icon, name, label }) => (
             <div key={name} className="relative">
               <Button
                 type="button"
@@ -27,13 +27,13 @@ export function IconSelector({ selectedIcon, onSelectIcon }: IconSelectorProps) 
                 onClick={() => onSelectIcon(name)}
                 title={label}
               >
-                <Icon 
-                  className={`h-5 w-5 transition-all duration-300 ${
-                    selectedIcon === name 
-                      ? 'text-white' 
-                      : 'text-muran-primary group-hover:scale-110'
-                  }`} 
-                />
+                <span className={`text-2xl transition-all duration-300 ${
+                  selectedIcon === name 
+                    ? '' 
+                    : 'group-hover:scale-110'
+                }`}>
+                  {icon}
+                </span>
               </Button>
             </div>
           ))}
