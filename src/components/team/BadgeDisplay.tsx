@@ -1,6 +1,6 @@
-
 import { Badge } from "@/types/team";
-import { Trophy, Award, Star, Medal, Ribbon, Gem, Flag, BadgeCheck, BadgeIcon } from "lucide-react";
+import { Trophy } from "lucide-react";
+import { BADGE_ICONS } from "./constants/badgeIcons";
 import { 
   Dialog,
   DialogContent,
@@ -10,18 +10,6 @@ import {
 interface BadgeDisplayProps {
   badges?: Badge[];
 }
-
-const BadgeIconMap: Record<string, React.ComponentType<any>> = {
-  trophy: Trophy,
-  award: Award,
-  star: Star,
-  medal: Medal,
-  ribbon: Ribbon,
-  gem: Gem,
-  flag: Flag,
-  badge: BadgeIcon,
-  badge_check: BadgeCheck,
-};
 
 export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
   if (!badges || badges.length === 0) return null;
@@ -36,7 +24,7 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
         
         <div className="flex flex-wrap gap-2">
           {badges.map((badge) => {
-            const IconComponent = BadgeIconMap[badge.icon] || Trophy;
+            const IconComponent = BADGE_ICONS.find(icon => icon.name === badge.icon)?.icon || Trophy;
             
             return (
               <Dialog key={badge.id}>
@@ -65,4 +53,3 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
     </div>
   );
 };
-
