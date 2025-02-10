@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Award, Trophy, BadgeCheck, Star, Medal, Ribbon, Gem, Flag, Crown, Heart, Shield, Bookmark, Target, Sparkles, Zap, Lightning } from "lucide-react";
+import { Award, Trophy, BadgeCheck, Star, Medal, Ribbon, Gem, Flag, Crown, Heart, Shield, Bookmark, Target, Sparkles, Zap } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -30,7 +29,6 @@ const BADGE_ICONS = [
   { icon: Target, name: "target", label: "Alvo" },
   { icon: Sparkles, name: "sparkles", label: "Brilhos" },
   { icon: Zap, name: "zap", label: "Raio" },
-  { icon: Lightning, name: "lightning", label: "Relâmpago" },
   { icon: Ribbon, name: "ribbon", label: "Fita" },
   { icon: Gem, name: "gem", label: "Gema" },
   { icon: Flag, name: "flag", label: "Bandeira" },
