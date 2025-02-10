@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
@@ -102,8 +101,78 @@ export const MetricsChart = ({
   const getClientsForPeriod = () => {
     if (!selectedPoint || !clients) return [];
 
-    const [month, year] = selectedPoint.month.split('/');
-    const startDate = new Date(Number(`20${year}`), ptBR.months.indexOf(month), 1);
+    const selectedMonth = selectedPoint.month;
+    const [monthName, yearStr] = selectedMonth.split('/');
+    const year = Number(`20${yearStr}`);
+    const monthIndex = format(new Date(2024, 0, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 0
+      : format(new Date(2024, 1, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 1
+      : format(new Date(2024, 2, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 2
+      : format(new Date(2024, 3, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 3
+      : format(new Date(2024, 4, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 4
+      : format(new Date(2024, 5, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 5
+      : format(new Date(2024, 6, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 6
+      : format(new Date(2024, 7, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 7
+      : format(new Date(2024, 8, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 8
+      : format(new Date(2024, 9, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 9
+      : format(new Date(2024, 10, 1), 'MMM', { locale: ptBR })
+      .toLowerCase()
+      .split('')
+      .map((char, index) => index === 0 ? char.toUpperCase() : char)
+      .join('') === monthName
+      ? 10
+      : 11;
+
+    const startDate = new Date(year, monthIndex, 1);
     const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
 
     switch (selectedPoint.metric) {
@@ -298,4 +367,3 @@ export const MetricsChart = ({
     </Card>
   );
 };
-
