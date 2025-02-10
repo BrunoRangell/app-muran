@@ -89,8 +89,8 @@ export function ExistingBadgesList({
       <ScrollArea className="h-[400px] pr-4">
         <div className="grid grid-cols-1 gap-4">
           {badges.map((badge) => {
-            const IconComponent = BADGE_ICONS.find(icon => icon.name === badge.icon)?.icon || Trophy;
-            const hasBadge = userHasBadge(badge.code);
+            const badgeIconData = BADGE_ICONS.find(icon => icon.name === badge.icon);
+            const badgeIconEmoji = badgeIconData?.icon || "🏆";
             
             return (
               <div
@@ -99,7 +99,9 @@ export function ExistingBadgesList({
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-muran-primary/10 rounded-lg">
-                    <IconComponent className="h-6 w-6 text-muran-primary" />
+                    <span role="img" aria-label={badge.name} className="text-2xl">
+                      {badgeIconEmoji}
+                    </span>
                   </div>
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-2">
@@ -110,7 +112,7 @@ export function ExistingBadgesList({
                       <div className="flex items-center gap-2 shrink-0">
                         {selectedMember && (
                           <>
-                            {hasBadge ? (
+                            {userHasBadge(badge.code) ? (
                               <>
                                 <UIBadge variant="secondary" className="shrink-0">
                                   Usuário possui
@@ -202,4 +204,3 @@ export function ExistingBadgesList({
     </TooltipProvider>
   );
 }
-

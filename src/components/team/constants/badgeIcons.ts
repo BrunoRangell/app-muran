@@ -1,6 +1,12 @@
 
 // Lista de emojis com seus identificadores e rótulos
-export const BADGE_ICONS = [
+interface BadgeIcon {
+  icon: string;
+  name: string;
+  label: string;
+}
+
+export const BADGE_ICONS: BadgeIcon[] = [
   { icon: "🏆", name: "trophy", label: "Troféu" },
   { icon: "⭐", name: "star", label: "Estrela" },
   { icon: "🎖️", name: "medal", label: "Medalha" },
@@ -14,7 +20,7 @@ export const BADGE_ICONS = [
   { icon: "🎀", name: "ribbon", label: "Fita" },
   { icon: "💎", name: "gem", label: "Gema" },
   { icon: "💫", name: "diamond", label: "Diamante" },
-  { icon: "🎌", name: "flag", label: "Bandeira" },
+  { icon: "🌟", name: "star_2", label: "Estrela Brilhante" },
   { icon: "✅", name: "badge_check", label: "Verificado" },
   { icon: "🤖", name: "bot", label: "Bot" },
   { icon: "🧠", name: "brain", label: "Cérebro" },
@@ -28,4 +34,3 @@ export const BADGE_ICONS = [
   { icon: "🏅", name: "award", label: "Prêmio" },
   { icon: "🌟", name: "square_stack", label: "Destaque" },
 ];
-
