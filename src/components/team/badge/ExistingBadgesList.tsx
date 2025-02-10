@@ -2,7 +2,13 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge as UIBadge } from "@/components/ui/badge";
-import { Trophy, Trash2, X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Trophy, Trash2, XCircle } from "lucide-react";
 import { BADGE_ICONS } from "../constants/badgeIcons";
 import {
   AlertDialog,
@@ -79,7 +85,7 @@ export function ExistingBadgesList({
   }
 
   return (
-    <>
+    <TooltipProvider>
       <ScrollArea className="h-[400px] pr-4">
         <div className="grid grid-cols-1 gap-4">
           {badges.map((badge) => {
@@ -101,7 +107,7 @@ export function ExistingBadgesList({
                         <h4 className="font-medium text-gray-900">{badge.name}</h4>
                         <p className="text-sm text-gray-500 mt-1">{badge.description}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {selectedMember && (
                           <>
                             {hasBadge ? (
@@ -109,14 +115,21 @@ export function ExistingBadgesList({
                                 <UIBadge variant="secondary" className="shrink-0">
                                   Usuário possui
                                 </UIBadge>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => handleDeleteClick(badge.code, badge.name, "member")}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8"
+                                      onClick={() => handleDeleteClick(badge.code, badge.name, "member")}
+                                    >
+                                      <XCircle className="h-5 w-5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Remover emblema deste membro</p>
+                                  </TooltipContent>
+                                </Tooltip>
                               </>
                             ) : (
                               <Button
@@ -130,14 +143,21 @@ export function ExistingBadgesList({
                             )}
                           </>
                         )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeleteClick(badge.code, badge.name, "all")}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8"
+                              onClick={() => handleDeleteClick(badge.code, badge.name, "all")}
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Excluir emblema de todos os membros</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>
@@ -179,6 +199,7 @@ export function ExistingBadgesList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </TooltipProvider>
   );
 }
+
