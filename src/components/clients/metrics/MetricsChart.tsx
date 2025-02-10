@@ -1,14 +1,14 @@
+
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CustomDateRangeDialog } from "./CustomDateRangeDialog";
 import { PeriodFilter } from "../types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { useState } from "react";
-import { formatCurrency } from "@/utils/formatters";
+import { CustomTooltip } from "./components/CustomTooltip";
+import { ClientDetailsTable } from "./components/ClientDetailsTable";
+import { useClientFiltering } from "./hooks/useClientFiltering";
 
 interface MetricsChartProps {
   title: string;
@@ -27,44 +27,6 @@ interface MetricsChartProps {
   }>;
   clients?: any[];
 }
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white p-4 border rounded-lg shadow-lg">
-        <p className="text-sm font-medium text-gray-600 mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => {
-          const value = entry.payload[entry.dataKey];
-          const formattedValue = entry.dataKey === 'mrr'
-            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-            : entry.dataKey === 'churnRate'
-            ? `${value.toFixed(1)}%`
-            : value;
-
-          return (
-            <p 
-              key={index} 
-              className="text-sm flex items-center gap-2 py-1"
-            >
-              <span 
-                className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="font-medium" style={{ color: entry.color }}>
-                {entry.name}:
-              </span>
-              <span className="text-gray-700">
-                {formattedValue}
-              </span>
-            </p>
-          );
-        })}
-        <p className="text-xs text-gray-500 mt-2">Clique para ver detalhes</p>
-      </div>
-    );
-  }
-  return null;
-};
 
 export const MetricsChart = ({
   title,
@@ -86,6 +48,7 @@ export const MetricsChart = ({
   
   const hasTitle = title && title.length > 0;
   const uniqueYAxisIds = [...new Set(lines.map(line => line.yAxisId))];
+  const { getClientsForPeriod } = useClientFiltering();
 
   const handlePointClick = (point: any) => {
     if (!point.activePayload) return;
@@ -98,69 +61,14 @@ export const MetricsChart = ({
     });
   };
 
-  const getClientsForPeriod = () => {
-    if (!selectedPoint || !clients) return [];
-
-    const [monthStr, yearStr] = selectedPoint.month.split('/');
-    const monthName = monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
-    const year = Number(`20${yearStr}`);
-
-    // Create a date for each month and format it to compare with the input
-    let monthIndex = -1;
-    for (let i = 0; i < 12; i++) {
-      const formattedMonth = format(new Date(2024, i, 1), 'MMM', { locale: ptBR })
-        .split('')
-        .map((char, index) => index === 0 ? char.toUpperCase() : char.toLowerCase())
-        .join('');
-      
-      if (formattedMonth === monthName) {
-        monthIndex = i;
-        break;
-      }
-    }
-
-    if (monthIndex === -1) {
-      console.error('Mês não encontrado:', monthName);
-      return [];
-    }
-
-    const startDate = new Date(year, monthIndex, 1);
-    const endDate = new Date(year, monthIndex + 1, 0);
-
-    console.log('Período selecionado:', {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      metric: selectedPoint.metric
-    });
-
-    switch (selectedPoint.metric) {
-      case 'Clientes Adquiridos':
-        return clients.filter(client => {
-          if (!client.first_payment_date) return false;
-          const date = new Date(client.first_payment_date);
-          return date >= startDate && date <= endDate;
-        });
-      case 'Clientes Cancelados':
-        return clients.filter(client => {
-          if (!client.last_payment_date) return false;
-          const date = new Date(client.last_payment_date);
-          return date >= startDate && date <= endDate && client.status === 'inactive';
-        });
-      case 'Churn Rate':
-        return clients.filter(client => {
-          if (!client.last_payment_date) return false;
-          const date = new Date(client.last_payment_date);
-          return date >= startDate && date <= endDate && client.status === 'inactive';
-        });
-      default:
-        return clients.filter(client => {
-          if (!client.first_payment_date) return false;
-          const startClient = new Date(client.first_payment_date);
-          const endClient = client.last_payment_date ? new Date(client.last_payment_date) : new Date();
-          return startClient <= endDate && endClient >= startDate;
-        });
-    }
-  };
+  const filteredClients = selectedPoint 
+    ? getClientsForPeriod({
+        monthStr: selectedPoint.month.split('/')[0],
+        yearStr: selectedPoint.month.split('/')[1],
+        metric: selectedPoint.metric,
+        clients
+      })
+    : [];
 
   return (
     <Card className="p-6 space-y-6">
@@ -294,38 +202,10 @@ export const MetricsChart = ({
             </DialogTitle>
           </DialogHeader>
           
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Valor do Contrato</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Canal de Aquisição</TableHead>
-                <TableHead>Início</TableHead>
-                {selectedPoint?.metric === 'Clientes Cancelados' && (
-                  <TableHead>Último Pagamento</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {getClientsForPeriod().map((client) => (
-                <TableRow key={client.id}>
-                  <TableCell className="font-medium">{client.company_name}</TableCell>
-                  <TableCell>{formatCurrency(client.contract_value)}</TableCell>
-                  <TableCell>{client.status}</TableCell>
-                  <TableCell>{client.acquisition_channel}</TableCell>
-                  <TableCell>
-                    {format(new Date(client.first_payment_date), 'dd/MM/yyyy')}
-                  </TableCell>
-                  {selectedPoint?.metric === 'Clientes Cancelados' && client.last_payment_date && (
-                    <TableCell>
-                      {format(new Date(client.last_payment_date), 'dd/MM/yyyy')}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <ClientDetailsTable 
+            clients={filteredClients}
+            metric={selectedPoint?.metric || ''}
+          />
         </DialogContent>
       </Dialog>
     </Card>
