@@ -1,3 +1,4 @@
+
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,10 +7,9 @@ import { ClientFormData } from "@/types/client";
 
 interface PaymentSectionProps {
   form: UseFormReturn<ClientFormData>;
-  showLastPaymentDate?: boolean;
 }
 
-export const PaymentSection = ({ form, showLastPaymentDate }: PaymentSectionProps) => {
+export const PaymentSection = ({ form }: PaymentSectionProps) => {
   return (
     <>
       <FormField
@@ -47,22 +47,6 @@ export const PaymentSection = ({ form, showLastPaymentDate }: PaymentSectionProp
           </FormItem>
         )}
       />
-
-      {showLastPaymentDate && (
-        <FormField
-          control={form.control}
-          name="lastPaymentDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Último Pagamento</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
     </>
   );
 };

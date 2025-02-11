@@ -33,7 +33,15 @@ const clientFormSchema = z.object({
   companyBirthday: z.string().optional(),
   contactName: z.string().optional(),
   contactPhone: z.string().optional(),
-  lastPaymentDate: z.string().optional(),
+  lastPaymentDate: z.string().optional()
+}).refine((data) => {
+  if (data.status === "inactive" && !data.lastPaymentDate) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Data do último pagamento é obrigatória quando o status é inativo",
+  path: ["lastPaymentDate"]
 });
 
 interface ClientFormProps {
@@ -202,9 +210,26 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <CompanySection form={form} />
-          <PaymentSection form={form} showLastPaymentDate={showLastPaymentDate} />
+          <PaymentSection form={form} />
           <StatusSection form={form} />
           <ContactSection form={form} />
+          {showLastPaymentDate && (
+            <div className="md:col-start-2">
+              <FormField
+                control={form.control}
+                name="lastPaymentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Último Pagamento</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between">
