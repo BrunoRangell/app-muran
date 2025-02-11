@@ -113,10 +113,10 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         payment_type: data.paymentType,
         status: data.status,
         acquisition_channel: finalAcquisitionChannel || "",
-        company_birthday: data.companyBirthday || "",
+        company_birthday: data.companyBirthday || null,
         contact_name: data.contactName || "",
         contact_phone: data.contactPhone || "",
-        last_payment_date: data.status === "inactive" ? data.lastPaymentDate || "" : "",
+        last_payment_date: data.status === "inactive" ? (data.lastPaymentDate || null) : null,
       };
 
       console.log("Dados formatados para salvar:", clientData);
