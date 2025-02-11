@@ -15,6 +15,9 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
   const mrr = activeClients.reduce((sum, client) => sum + (client.contract_value || 0), 0);
   const arr = mrr * 12;
 
+  // Ticket Médio
+  const averageTicket = activeClientsCount > 0 ? mrr / activeClientsCount : 0;
+
   // Retenção Média (em meses)
   const retentionPeriods = clients.map(client => {
     const startDate = parseISO(client.first_payment_date);
@@ -55,7 +58,8 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
     activeClientsCount,
     totalClients,
     churned,
-    activeClientsThreeMonthsAgo
+    activeClientsThreeMonthsAgo,
+    averageTicket
   });
 
   return {
@@ -65,6 +69,8 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
     churnRate,
     ltv,
     activeClientsCount,
-    totalClients
+    totalClients,
+    averageTicket
   };
 };
+

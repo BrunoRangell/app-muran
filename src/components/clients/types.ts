@@ -1,3 +1,4 @@
+
 export interface DateRangeFilter {
   start: Date;
   end: Date;
@@ -19,6 +20,7 @@ export interface FinancialMetricsData {
   ltv: number;
   totalClients: number;
   churnRate: number;
+  averageTicket: number;
 }
 
 export interface Client {

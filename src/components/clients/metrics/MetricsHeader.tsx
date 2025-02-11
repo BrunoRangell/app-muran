@@ -1,5 +1,5 @@
 
-import { Users, DollarSign, Calendar, CreditCard, Percent, TrendingUp } from "lucide-react";
+import { Users, DollarSign, Calendar, CreditCard, Percent, TrendingUp, Tag } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { FinancialMetricsData } from "../types";
 
@@ -29,6 +29,22 @@ export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: Metric
       />
 
       <MetricCard
+        icon={Tag}
+        title="Ticket Médio"
+        value={metrics.averageTicket || 0}
+        tooltip="Valor médio mensal por cliente ativo. Calculado dividindo a receita mensal pelo número de clientes ativos"
+        formatter={formatCurrency}
+      />
+
+      <MetricCard
+        icon={CreditCard}
+        title="LTV Médio"
+        value={(metrics.ltv || 0) / (metrics.totalClients || 1)}
+        tooltip="Lifetime Value Médio - Valor médio gerado por cliente durante sua permanência. Calculado dividindo o LTV total pelo número de clientes"
+        formatter={formatCurrency}
+      />
+
+      <MetricCard
         icon={TrendingUp}
         title="CAC"
         value={1250}
@@ -45,14 +61,6 @@ export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: Metric
       />
 
       <MetricCard
-        icon={CreditCard}
-        title="LTV Médio"
-        value={(metrics.ltv || 0) / (metrics.totalClients || 1)}
-        tooltip="Lifetime Value Médio - Valor médio gerado por cliente durante sua permanência. Calculado dividindo o LTV total pelo número de clientes"
-        formatter={formatCurrency}
-      />
-
-      <MetricCard
         icon={Percent}
         title="Churn Rate"
         value={metrics.churnRate || 0}
@@ -62,3 +70,4 @@ export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: Metric
     </div>
   );
 };
+
