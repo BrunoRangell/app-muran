@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,28 @@ import { ContactSection } from "./client-form/ContactSection";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Trash2 } from "lucide-react";
+import * as z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+// Schema de validação
+const clientFormSchema = z.object({
+  companyName: z.string().min(1, "Nome da empresa é obrigatório"),
+  contractValue: z.any().refine(val => {
+    const number = parseCurrencyToNumber(String(val));
+    return !isNaN(number) && number > 0;
+  }, "Valor do contrato é obrigatório"),
+  firstPaymentDate: z.string().min(1, "Data de início é obrigatória"),
+  status: z.enum(["active", "inactive"], {
+    required_error: "Status é obrigatório",
+  }),
+  paymentType: z.enum(["pre", "post"]).optional(),
+  acquisitionChannel: z.string().optional(),
+  customAcquisitionChannel: z.string().optional(),
+  companyBirthday: z.string().optional(),
+  contactName: z.string().optional(),
+  contactPhone: z.string().optional(),
+  lastPaymentDate: z.string().optional(),
+});
 
 interface ClientFormProps {
   initialData?: {
@@ -33,8 +56,23 @@ interface ClientFormProps {
 export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const form = useForm<ClientFormData>();
   const [showLastPaymentDate, setShowLastPaymentDate] = useState(false);
+
+  const form = useForm<ClientFormData>({
+    resolver: zodResolver(clientFormSchema),
+    defaultValues: {
+      companyName: "",
+      contractValue: 0,
+      firstPaymentDate: "",
+      paymentType: "pre",
+      status: "active",
+      acquisitionChannel: "",
+      companyBirthday: "",
+      contactName: "",
+      contactPhone: "",
+      lastPaymentDate: "",
+    },
+  });
 
   useEffect(() => {
     if (initialData) {
@@ -73,29 +111,41 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         first_payment_date: data.firstPaymentDate,
         payment_type: data.paymentType,
         status: data.status,
-        acquisition_channel: finalAcquisitionChannel,
-        company_birthday: data.companyBirthday,
-        contact_name: data.contactName,
-        contact_phone: data.contactPhone,
+        acquisition_channel: finalAcquisitionChannel || null,
+        company_birthday: data.companyBirthday || null,
+        contact_name: data.contactName || null,
+        contact_phone: data.contactPhone || null,
         last_payment_date: data.status === "inactive" ? data.lastPaymentDate : null,
       };
 
+      console.log("Dados formatados para salvar:", clientData);
+
+      let error;
       if (initialData) {
         const { error: dbError } = await supabase
           .from('clients')
           .update(clientData)
           .eq('id', initialData.id);
-
-        if (dbError) throw dbError;
-        console.log("Cliente atualizado com sucesso!");
+        error = dbError;
       } else {
         const { error: dbError } = await supabase
           .from('clients')
           .insert([clientData]);
-
-        if (dbError) throw dbError;
-        console.log("Cliente cadastrado com sucesso!");
+        error = dbError;
       }
+
+      if (error) {
+        console.error("Erro do Supabase:", error);
+        throw error;
+      }
+
+      console.log("Cliente salvo com sucesso!");
+      toast({
+        title: "Sucesso!",
+        description: initialData 
+          ? "Cliente atualizado com sucesso!" 
+          : "Cliente cadastrado com sucesso!",
+      });
 
       onSuccess?.();
       form.reset();
@@ -141,7 +191,6 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     }
   };
 
-  // Watch status field to show/hide last payment date
   const status = form.watch("status");
   useEffect(() => {
     setShowLastPaymentDate(status === "inactive");

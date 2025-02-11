@@ -1,14 +1,15 @@
+
 export interface ClientFormData {
   companyName: string;
   contractValue: number;
   firstPaymentDate: string;
   paymentType: "pre" | "post";
   status: "active" | "inactive";
-  acquisitionChannel: string;
-  companyBirthday: string;
-  contactName: string;
-  contactPhone: string;
+  acquisitionChannel?: string;
   customAcquisitionChannel?: string;
+  companyBirthday?: string;
+  contactName?: string;
+  contactPhone?: string;
   lastPaymentDate?: string;
 }
 
