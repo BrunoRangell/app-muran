@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -208,19 +207,15 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <CompanySection form={form} />
           <PaymentSection form={form} />
-          <div className="md:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <StatusSection form={form} showLastPaymentDate={showLastPaymentDate} />
-            </div>
-          </div>
+          <StatusSection form={form} showLastPaymentDate={showLastPaymentDate} />
           <ContactSection form={form} />
         </div>
 
-        <div className="flex justify-between">
+        <div className="flex justify-between mt-4">
           {initialData && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
