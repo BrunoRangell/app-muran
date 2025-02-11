@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -37,24 +36,38 @@ export const ClientsList = () => {
     { id: 'contact_phone', label: 'Contato', show: true }
   ]);
 
-  const { data: clients, isLoading, refetch } = useQuery({
+  const { data: clients, isLoading, error } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
-      console.log("Fetching clients...");
+      console.log("Buscando lista de clientes...");
       const { data, error } = await supabase
         .from("clients")
         .select("*")
         .order("company_name");
 
       if (error) {
-        console.error("Error fetching clients:", error);
+        console.error("Erro ao buscar clientes:", error);
         throw error;
       }
 
-      console.log("Clients fetched successfully:", data);
+      console.log("Clientes carregados com sucesso:", data);
       return data as Client[];
     },
+    staleTime: 1000 * 60 * 5, // Cache por 5 minutos
+    retry: 2, // Tentar no máximo 2 vezes em caso de erro
+    refetchOnWindowFocus: false // Não recarregar ao mudar de aba
   });
+
+  useEffect(() => {
+    if (error) {
+      console.error("Erro na query de clientes:", error);
+      toast({
+        title: "Erro ao carregar clientes",
+        description: "Não foi possível carregar a lista de clientes. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);

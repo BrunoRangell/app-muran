@@ -94,10 +94,10 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         paymentType: initialData.payment_type,
         status: initialData.status,
         acquisitionChannel: initialData.acquisition_channel,
-        companyBirthday: initialData.company_birthday,
-        contactName: initialData.contact_name,
-        contactPhone: initialData.contact_phone,
-        lastPaymentDate: initialData.last_payment_date,
+        companyBirthday: initialData.company_birthday || "",
+        contactName: initialData.contact_name || "",
+        contactPhone: initialData.contact_phone || "",
+        lastPaymentDate: initialData.last_payment_date || "",
       });
       setShowLastPaymentDate(initialData.status === "inactive");
     }
@@ -212,25 +212,12 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <CompanySection form={form} />
           <PaymentSection form={form} />
-          <StatusSection form={form} />
-          <ContactSection form={form} />
-          {showLastPaymentDate && (
-            <div className="md:col-start-2">
-              <FormField
-                control={form.control}
-                name="lastPaymentDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Último Pagamento</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <div className="md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <StatusSection form={form} showLastPaymentDate={showLastPaymentDate} />
             </div>
-          )}
+          </div>
+          <ContactSection form={form} />
         </div>
 
         <div className="flex justify-between">

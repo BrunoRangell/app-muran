@@ -1,3 +1,4 @@
+
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -7,9 +8,10 @@ import { useState, useEffect } from "react";
 
 interface StatusSectionProps {
   form: UseFormReturn<ClientFormData>;
+  showLastPaymentDate: boolean;
 }
 
-export const StatusSection = ({ form }: StatusSectionProps) => {
+export const StatusSection = ({ form, showLastPaymentDate }: StatusSectionProps) => {
   const [showCustomChannel, setShowCustomChannel] = useState(false);
 
   useEffect(() => {
@@ -40,6 +42,22 @@ export const StatusSection = ({ form }: StatusSectionProps) => {
           </FormItem>
         )}
       />
+
+      {showLastPaymentDate && (
+        <FormField
+          control={form.control}
+          name="lastPaymentDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Último Pagamento</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
 
       <FormField
         control={form.control}
