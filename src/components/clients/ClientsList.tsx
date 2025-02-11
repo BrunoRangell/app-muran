@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Filter, X } from "lucide-react";
@@ -36,7 +37,7 @@ export const ClientsList = () => {
     { id: 'contact_phone', label: 'Contato', show: true }
   ]);
 
-  const { data: clients, isLoading, error } = useQuery({
+  const { data: clients, isLoading, error, refetch } = useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
       console.log("Buscando lista de clientes...");
