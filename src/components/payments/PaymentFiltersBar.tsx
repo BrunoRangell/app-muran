@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { PaymentFilters, PaymentStatus } from "@/types/payment";
+import { PaymentFilters } from "@/types/payment";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -8,13 +8,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -84,25 +77,6 @@ export function PaymentFiltersBar({
           />
         </PopoverContent>
       </Popover>
-
-      <Select
-        value={filters.status}
-        onValueChange={(value) =>
-          onFiltersChange({ ...filters, status: value as PaymentStatus })
-        }
-      >
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="RECEIVED">Recebido</SelectItem>
-          <SelectItem value="CONFIRMED">Confirmado</SelectItem>
-          <SelectItem value="PENDING">Aguardando</SelectItem>
-          <SelectItem value="OVERDUE">Atrasado</SelectItem>
-          <SelectItem value="REFUNDED">Reembolsado</SelectItem>
-          <SelectItem value="CANCELLED">Cancelado</SelectItem>
-        </SelectContent>
-      </Select>
 
       <Button
         variant="outline"
