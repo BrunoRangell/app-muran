@@ -39,44 +39,46 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
   };
 
   return (
-    <FormField
-      control={control}
-      name="months"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Período de Referência</FormLabel>
-          <FormControl>
-            <Button
-              type="button"
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !field.value && "text-muted-foreground"
-              )}
-              onClick={() => setIsCustomDateOpen(true)}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {selectedMonths.length > 0 ? (
-                selectedMonths.length === 1 ? (
-                  format(selectedMonths[0], "MMMM'/'yyyy", { locale: ptBR })
+    <>
+      <FormField
+        control={control}
+        name="months"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Período de Referência</FormLabel>
+            <FormControl>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !field.value && "text-muted-foreground"
+                )}
+                onClick={() => setIsCustomDateOpen(true)}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedMonths.length > 0 ? (
+                  selectedMonths.length === 1 ? (
+                    format(selectedMonths[0], "MMMM'/'yyyy", { locale: ptBR })
+                  ) : (
+                    `${format(dateRange.start, "MM'/'yyyy")} - ${format(dateRange.end, "MM'/'yyyy")}`
+                  )
                 ) : (
-                  `${format(dateRange.start, "MM'/'yyyy")} - ${format(dateRange.end, "MM'/'yyyy")}`
-                )
-              ) : (
-                "Selecione o período"
-              )}
-            </Button>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
+                  "Selecione o período"
+                )}
+              </Button>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-    <CustomDateRangeDialog
-      isOpen={isCustomDateOpen}
-      onOpenChange={setIsCustomDateOpen}
-      dateRange={dateRange}
-      onDateRangeChange={handleDateRangeChange}
-    />
+      <CustomDateRangeDialog
+        isOpen={isCustomDateOpen}
+        onOpenChange={setIsCustomDateOpen}
+        dateRange={dateRange}
+        onDateRangeChange={handleDateRangeChange}
+      />
+    </>
   );
 }
