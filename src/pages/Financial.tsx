@@ -33,7 +33,7 @@ const Financial = () => {
   });
 
   return (
-    <div className="flex-1">
+    <div className="w-full">
       <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
         <div className="flex justify-between items-center">
           <h1 className="text-xl md:text-3xl font-bold text-muran-dark">
