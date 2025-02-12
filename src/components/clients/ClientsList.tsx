@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { ColumnToggle } from "./table/ColumnToggle";
 import { FilterPopover } from "./table/FilterPopover";
 import { Client, Column, SortConfig } from "./types";
 
-export const ClientsList = () => {
+export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsListProps) => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -25,16 +24,16 @@ export const ClientsList = () => {
 
   const [columns, setColumns] = useState<Column[]>([
     { id: 'company_name', label: 'Empresa', show: true, fixed: true },
-    { id: 'contract_value', label: 'Valor do Contrato', show: true, fixed: true },
+    { id: 'contract_value', label: 'Valor Mensal', show: viewMode === 'default' || viewMode === 'payments', fixed: viewMode === 'payments' },
     { id: 'status', label: 'Status', show: true, fixed: true },
-    { id: 'acquisition_channel', label: 'Canal de Aquisição', show: true, fixed: true },
-    { id: 'first_payment_date', label: 'Início da Parceria', show: true },
-    { id: 'last_payment_date', label: 'Último Pagamento', show: true },
-    { id: 'retention', label: 'Retenção', show: true },
-    { id: 'payment_type', label: 'Tipo de Pagamento', show: true },
-    { id: 'company_birthday', label: 'Aniversário da Empresa', show: true },
-    { id: 'contact_name', label: 'Responsável', show: true },
-    { id: 'contact_phone', label: 'Contato', show: true }
+    { id: 'acquisition_channel', label: 'Canal de Aquisição', show: viewMode === 'default', fixed: false },
+    { id: 'first_payment_date', label: 'Início da Parceria', show: viewMode === 'default', fixed: false },
+    { id: 'last_payment_date', label: 'Último Pagamento', show: viewMode === 'default', fixed: false },
+    { id: 'retention', label: 'Retenção', show: viewMode === 'default', fixed: false },
+    { id: 'payment_type', label: 'Tipo de Pagamento', show: viewMode === 'default', fixed: false },
+    { id: 'company_birthday', label: 'Aniversário da Empresa', show: viewMode === 'default', fixed: false },
+    { id: 'contact_name', label: 'Responsável', show: viewMode === 'default', fixed: false },
+    { id: 'contact_phone', label: 'Contato', show: viewMode === 'default', fixed: false }
   ]);
 
   const { data: clients, isLoading, error, refetch } = useQuery({
@@ -125,26 +124,30 @@ export const ClientsList = () => {
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Lista de Clientes</h2>
-        <div className="flex gap-2 items-center">
-          <ColumnToggle columns={columns.filter(col => !col.fixed)} onToggleColumn={toggleColumn} />
-          <FilterPopover filters={filters} onFilterChange={setFilters} />
-          {hasActiveFilters && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={clearFilters}
-              className="h-9 px-2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Limpar filtros
-            </Button>
-          )}
-          <Button onClick={handleCreateClick} className="bg-muran-primary hover:bg-muran-primary/90">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Cliente
-          </Button>
-        </div>
+        {viewMode === 'default' && (
+          <>
+            <h2 className="text-xl font-bold">Lista de Clientes</h2>
+            <div className="flex gap-2 items-center">
+              <ColumnToggle columns={columns.filter(col => !col.fixed)} onToggleColumn={toggleColumn} />
+              <FilterPopover filters={filters} onFilterChange={setFilters} />
+              {hasActiveFilters && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearFilters}
+                  className="h-9 px-2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpar filtros
+                </Button>
+              )}
+              <Button onClick={handleCreateClick} className="bg-muran-primary hover:bg-muran-primary/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Cliente
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -154,10 +157,12 @@ export const ClientsList = () => {
           <div className="overflow-x-auto">
             <ClientsTable 
               clients={filteredAndSortedClients} 
-              columns={columns} 
+              columns={columns.filter(col => viewMode === 'payments' ? col.fixed : col.show)} 
               onEditClick={handleEditClick}
               sortConfig={sortConfig}
               onSort={handleSort}
+              onPaymentClick={onPaymentClick}
+              viewMode={viewMode}
             />
           </div>
         )}

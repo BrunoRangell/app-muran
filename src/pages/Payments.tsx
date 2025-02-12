@@ -1,14 +1,14 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PaymentFilters, PaymentSummary } from "@/types/payment";
 import { PaymentsTable } from "@/components/payments/PaymentsTable";
 import { PaymentFiltersBar } from "@/components/payments/PaymentFiltersBar";
 import { PaymentSummaryCard } from "@/components/payments/PaymentSummaryCard";
-import { Button } from "@/components/ui/button";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { Card } from "@/components/ui/card";
+import { ClientsList } from "@/components/clients/ClientsList";
 
 export default function Payments() {
   const [filters, setFilters] = useState<PaymentFilters>({});
@@ -43,21 +43,6 @@ export default function Payments() {
     }
   });
 
-  const { data: clients } = useQuery({
-    queryKey: ['clients'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('status', { ascending: false }) // Clientes ativos primeiro
-        .order('company_name');
-      
-      if (error) throw error;
-      return data;
-    }
-  });
-
-  // Calcular os sumários de pagamentos
   const calculateSummaries = () => {
     if (!payments) return null;
 
@@ -78,6 +63,11 @@ export default function Payments() {
 
   const summaries = calculateSummaries();
 
+  const handleClientPayment = (clientId: string) => {
+    setSelectedClientId(clientId);
+    setIsNewPaymentOpen(true);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -95,43 +85,9 @@ export default function Payments() {
         </div>
       )}
 
-      <div className="border rounded-lg divide-y">
-        {clients?.map((client) => (
-          <div 
-            key={client.id} 
-            className="p-4 flex justify-between items-center hover:bg-gray-50"
-          >
-            <div>
-              <h3 className="font-medium">{client.company_name}</h3>
-              <p className="text-sm text-gray-500">
-                Valor mensal: {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(client.contract_value)}
-              </p>
-              <span 
-                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  client.status === 'active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}
-              >
-                {client.status === 'active' ? 'Ativo' : 'Inativo'}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedClientId(client.id);
-                setIsNewPaymentOpen(true);
-              }}
-              disabled={client.status !== 'active'}
-            >
-              Registrar Pagamento
-            </Button>
-          </div>
-        ))}
-      </div>
+      <Card className="p-2 md:p-6">
+        <ClientsList onPaymentClick={handleClientPayment} viewMode="payments" />
+      </Card>
 
       <PaymentsTable 
         payments={payments || []} 
