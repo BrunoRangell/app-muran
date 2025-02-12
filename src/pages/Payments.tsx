@@ -13,10 +13,11 @@ export default function Payments() {
   const [filters, setFilters] = useState<PaymentFilters>({});
   const [isNewPaymentOpen, setIsNewPaymentOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(null);
   const { toast } = useToast();
 
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
-    queryKey: ['payments', filters.startDate, filters.endDate],
+    queryKey: ['payments', dateRange?.start, dateRange?.end],
     queryFn: async () => {
       let query = supabase
         .from('payments')
@@ -29,11 +30,11 @@ export default function Payments() {
         `)
         .order('payment_date', { ascending: false });
 
-      if (filters.startDate) {
-        query = query.gte('payment_date', filters.startDate);
+      if (dateRange?.start) {
+        query = query.gte('payment_date', dateRange.start.toISOString().split('T')[0]);
       }
-      if (filters.endDate) {
-        query = query.lte('payment_date', filters.endDate);
+      if (dateRange?.end) {
+        query = query.lte('payment_date', dateRange.end.toISOString().split('T')[0]);
       }
 
       const { data, error } = await query;
@@ -75,7 +76,10 @@ export default function Payments() {
 
       {!isLoadingPayments && summaries && (
         <div className="grid grid-cols-1 gap-4">
-          <PaymentSummaryCard data={summaries.received} />
+          <PaymentSummaryCard 
+            data={summaries.received} 
+            onDateChange={setDateRange}
+          />
         </div>
       )}
 
