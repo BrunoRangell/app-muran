@@ -9,6 +9,8 @@ import { PeriodFilter } from "../types";
 import { CustomTooltip } from "./components/CustomTooltip";
 import { ClientDetailsTable } from "./components/ClientDetailsTable";
 import { useClientFiltering } from "./hooks/useClientFiltering";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface MetricsChartProps {
   title: string;
@@ -70,6 +72,18 @@ export const MetricsChart = ({
       })
     : [];
 
+  // Formatar os meses para português
+  const formatXAxis = (value: string) => {
+    try {
+      const [month, year] = value.split('/');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      return format(date, 'MMM/yyyy', { locale: ptBR });
+    } catch (error) {
+      console.error('Erro ao formatar mês:', error, value);
+      return value;
+    }
+  };
+
   return (
     <Card className="p-6 space-y-6">
       {hasTitle && (
@@ -106,6 +120,7 @@ export const MetricsChart = ({
               dataKey="month" 
               stroke="#6b7280"
               tick={{ fill: '#6b7280', fontSize: 12 }}
+              tickFormatter={formatXAxis}
             />
             
             {uniqueYAxisIds.includes('mrr') && (
