@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/table";
 import { Calendar, DollarSign } from "lucide-react";
 import { formatDate, formatCurrency } from "@/utils/formatters";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 interface Payment {
   id: string;
@@ -20,6 +22,7 @@ interface Payment {
   clients: {
     company_name: string;
   };
+  client_id: string;
 }
 
 interface PaymentsTableProps {
@@ -28,6 +31,27 @@ interface PaymentsTableProps {
 }
 
 export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
+  // Buscar total de pagamentos por cliente
+  const { data: clientTotals } = useQuery({
+    queryKey: ['client-payment-totals'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('client_id, amount')
+        .eq('status', 'RECEIVED');
+
+      if (error) throw error;
+
+      // Calcular o total por cliente
+      const totals = data.reduce((acc: Record<string, number>, payment) => {
+        acc[payment.client_id] = (acc[payment.client_id] || 0) + payment.amount;
+        return acc;
+      }, {});
+
+      return totals;
+    }
+  });
+
   if (isLoading) {
     return <div>Carregando...</div>;
   }
@@ -62,6 +86,12 @@ export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
                 Valor Líquido
               </div>
             </TableHead>
+            <TableHead>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Total Recebido
+              </div>
+            </TableHead>
             <TableHead>Observações</TableHead>
           </TableRow>
         </TableHeader>
@@ -73,6 +103,9 @@ export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
               <TableCell>{formatDate(payment.payment_date)}</TableCell>
               <TableCell>{formatCurrency(payment.amount)}</TableCell>
               <TableCell>{formatCurrency(payment.net_amount)}</TableCell>
+              <TableCell>
+                {formatCurrency(clientTotals?.[payment.client_id] || 0)}
+              </TableCell>
               <TableCell>{payment.notes || '-'}</TableCell>
             </TableRow>
           ))}
