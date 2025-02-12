@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -64,43 +65,30 @@ interface ClientFormProps {
 export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [showLastPaymentDate, setShowLastPaymentDate] = useState(false);
+  const [showLastPaymentDate, setShowLastPaymentDate] = useState(initialData?.status === "inactive");
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
-      companyName: "",
-      contractValue: 0,
-      firstPaymentDate: "",
-      paymentType: "pre",
-      status: "active",
-      acquisitionChannel: "",
+      companyName: initialData?.company_name || "",
+      contractValue: initialData?.contract_value || 0,
+      firstPaymentDate: initialData?.first_payment_date || "",
+      paymentType: initialData?.payment_type || "pre",
+      status: initialData?.status || "active",
+      acquisitionChannel: initialData?.acquisition_channel || "",
       customAcquisitionChannel: "",
-      companyBirthday: "",
-      contactName: "",
-      contactPhone: "",
-      lastPaymentDate: "",
-    },
+      companyBirthday: initialData?.company_birthday || "",
+      contactName: initialData?.contact_name || "",
+      contactPhone: initialData?.contact_phone || "",
+      lastPaymentDate: initialData?.last_payment_date || "",
+    }
   });
 
+  const status = form.watch("status");
+  
   useEffect(() => {
-    if (initialData) {
-      console.log("Setting form values with initial data:", initialData);
-      form.reset({
-        companyName: initialData.company_name,
-        contractValue: initialData.contract_value,
-        firstPaymentDate: initialData.first_payment_date,
-        paymentType: initialData.payment_type,
-        status: initialData.status,
-        acquisitionChannel: initialData.acquisition_channel,
-        companyBirthday: initialData.company_birthday || "",
-        contactName: initialData.contact_name || "",
-        contactPhone: initialData.contact_phone || "",
-        lastPaymentDate: initialData.last_payment_date || "",
-      });
-      setShowLastPaymentDate(initialData.status === "inactive");
-    }
-  }, [initialData, form]);
+    setShowLastPaymentDate(status === "inactive");
+  }, [status]);
 
   const onSubmit = async (data: ClientFormData) => {
     try {
@@ -199,11 +187,6 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       setIsLoading(false);
     }
   };
-
-  const status = form.watch("status");
-  useEffect(() => {
-    setShowLastPaymentDate(status === "inactive");
-  }, [status]);
 
   return (
     <Form {...form}>
