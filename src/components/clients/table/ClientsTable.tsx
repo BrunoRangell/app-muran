@@ -54,31 +54,25 @@ export const ClientsTable = ({
   });
 
   return (
-    <div className="flex flex-col">
-      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-        <div className="inline-block min-w-full align-middle">
-          <div className="border rounded-md">
-            <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
-              <Table>
-                <ClientsTableHeader 
-                  columns={sortedColumns} 
-                  sortConfig={sortConfig} 
-                  onSort={onSort} 
-                />
-                <TableBody>
-                  {sortedClients?.map((client) => (
-                    <ClientTableRow
-                      key={client.id}
-                      client={client}
-                      columns={sortedColumns}
-                      onEditClick={onEditClick}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </div>
+    <div className="border rounded-md">
+      <div className="overflow-auto max-h-[calc(100vh-300px)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+        <Table>
+          <ClientsTableHeader 
+            columns={sortedColumns} 
+            sortConfig={sortConfig} 
+            onSort={onSort} 
+          />
+          <TableBody>
+            {sortedClients?.map((client) => (
+              <ClientTableRow
+                key={client.id}
+                client={client}
+                columns={sortedColumns}
+                onEditClick={onEditClick}
+              />
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
