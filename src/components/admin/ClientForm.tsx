@@ -224,23 +224,24 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       } else {
         console.log("Criando novo cliente...");
         try {
-          const { data: insertData, error: insertError } = await supabase
+          const response = await supabase
             .from('clients')
             .insert([clientData])
-            .select()
-            .single();
+            .select();
 
-          if (insertError) {
-            console.error("Erro ao inserir cliente:", insertError);
-            throw insertError;
+          console.log("Resposta completa do Supabase:", response);
+
+          if (response.error) {
+            console.error("Erro do Supabase:", response.error);
+            throw new Error(response.error.message);
           }
 
-          if (!insertData) {
+          if (!response.data || response.data.length === 0) {
             console.error("Nenhum dado retornado após inserção");
             throw new Error("Erro ao inserir dados no banco");
           }
 
-          console.log("Cliente criado com sucesso:", insertData);
+          console.log("Cliente criado com sucesso:", response.data[0]);
           toast({
             title: "Sucesso!",
             description: "Cliente cadastrado com sucesso!",
@@ -259,9 +260,25 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
             contactPhone: "",
             lastPaymentDate: "",
           });
-        } catch (insertError) {
-          console.error("Erro detalhado na inserção:", insertError);
-          throw insertError; // Re-throw para ser capturado pelo try/catch externo
+        } catch (error) {
+          console.error("Erro detalhado na inserção:", error);
+          
+          // Melhor tratamento para erros do Supabase
+          if (error instanceof Error) {
+            toast({
+              title: "Erro ao salvar",
+              description: error.message,
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Erro ao salvar",
+              description: "Ocorreu um erro inesperado ao tentar salvar o cliente",
+              variant: "destructive",
+            });
+          }
+          setIsLoading(false);
+          return;
         }
       }
 
