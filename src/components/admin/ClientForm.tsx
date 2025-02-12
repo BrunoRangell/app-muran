@@ -26,17 +26,40 @@ const clientFormSchema = z.object({
       return false;
     }
   }, "Valor do contrato inválido. Use apenas números e vírgula para decimais."),
-  firstPaymentDate: z.string().min(1, "Data de início é obrigatória"),
+  firstPaymentDate: z.string().refine(val => {
+    try {
+      return Boolean(val && new Date(val).toString() !== 'Invalid Date');
+    } catch (error) {
+      return false;
+    }
+  }, "Data de início inválida"),
   status: z.enum(["active", "inactive"], {
     required_error: "Status é obrigatório",
   }),
   paymentType: z.enum(["pre", "post"]).optional(),
   acquisitionChannel: z.string().optional(),
   customAcquisitionChannel: z.string().optional(),
-  companyBirthday: z.string().optional(),
+  companyBirthday: z.string().refine(val => {
+    if (!val) return true; // Campo opcional
+    try {
+      return new Date(val).toString() !== 'Invalid Date';
+    } catch (error) {
+      return false;
+    }
+  }, "Data de aniversário inválida").optional(),
   contactName: z.string().optional(),
-  contactPhone: z.string().optional(),
-  lastPaymentDate: z.string().optional()
+  contactPhone: z.string().refine(val => {
+    if (!val) return true; // Campo opcional
+    return /^(\(\d{2}\)\s?\d{4,5}-\d{4})?$/.test(val);
+  }, "Formato de telefone inválido. Use (99) 99999-9999").optional(),
+  lastPaymentDate: z.string().refine(val => {
+    if (!val) return true; // Campo opcional
+    try {
+      return new Date(val).toString() !== 'Invalid Date';
+    } catch (error) {
+      return false;
+    }
+  }, "Data do último pagamento inválida").optional()
 }).refine((data) => {
   if (data.status === "inactive" && !data.lastPaymentDate) {
     return false;
@@ -108,6 +131,42 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         toast({
           title: "Erro no valor do contrato",
           description: "Por favor, insira um valor válido (exemplo: 1.000,00)",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const dates = {
+        firstPaymentDate: new Date(data.firstPaymentDate),
+        companyBirthday: data.companyBirthday ? new Date(data.companyBirthday) : null,
+        lastPaymentDate: data.lastPaymentDate ? new Date(data.lastPaymentDate) : null
+      };
+
+      if (dates.firstPaymentDate.toString() === 'Invalid Date') {
+        toast({
+          title: "Erro na data",
+          description: "Data de início inválida",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (dates.companyBirthday && dates.companyBirthday.toString() === 'Invalid Date') {
+        toast({
+          title: "Erro na data",
+          description: "Data de aniversário da empresa inválida",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (dates.lastPaymentDate && dates.lastPaymentDate.toString() === 'Invalid Date') {
+        toast({
+          title: "Erro na data",
+          description: "Data do último pagamento inválida",
           variant: "destructive",
         });
         setIsLoading(false);
