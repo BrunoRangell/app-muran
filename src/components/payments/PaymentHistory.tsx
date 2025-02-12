@@ -14,6 +14,12 @@ import {
 } from "@/components/ui/dialog";
 import { EditPaymentDialog } from "./EditPaymentDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PaymentHistoryProps {
   total: number;
@@ -45,15 +51,23 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
   return (
     <div className="flex items-center gap-2">
       <span>{formatCurrency(total)}</span>
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 px-2 flex items-center gap-1 text-xs hover:bg-secondary"
-        onClick={() => setIsHistoryOpen(true)}
-      >
-        <History className="h-3 w-3" />
-        Ver histórico
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-secondary"
+              onClick={() => setIsHistoryOpen(true)}
+            >
+              <History className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Ver histórico</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
         <DialogContent className="max-h-[80vh] flex flex-col">
