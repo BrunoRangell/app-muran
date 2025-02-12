@@ -42,9 +42,9 @@ Deno.serve(async (req) => {
 
     console.log('Buscando pagamentos de:', startDate, 'até:', endDate)
 
-    // Primeiro, buscar os pagamentos
+    // Primeiro, buscar os pagamentos usando dueDate para filtrar
     const paymentsResponse = await fetch(
-      `https://api.asaas.com/v3/payments?startDate=${startDate}&endDate=${endDate}&limit=100`,
+      `https://api.asaas.com/v3/payments?dueDate[ge]=${startDate}&dueDate[le]=${endDate}&limit=100`,
       {
         headers: {
           'access_token': asaasApiKey,
@@ -95,8 +95,14 @@ Deno.serve(async (req) => {
       }
     }))
 
+    // Filtramos os pagamentos para garantir que estão dentro do período selecionado
+    const filteredPayments = enrichedPayments.filter(payment => {
+      const paymentDate = payment.paymentDate || payment.dueDate;
+      return paymentDate >= startDate && paymentDate <= endDate;
+    });
+
     return new Response(
-      JSON.stringify({ payments: enrichedPayments }),
+      JSON.stringify({ payments: filteredPayments }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
