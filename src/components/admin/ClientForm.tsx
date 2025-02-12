@@ -223,64 +223,40 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         });
       } else {
         console.log("Criando novo cliente...");
-        try {
-          const response = await supabase
-            .from('clients')
-            .insert([clientData])
-            .select();
+        const { data: insertData, error: insertError } = await supabase
+          .from('clients')
+          .insert([clientData])
+          .select();
 
-          console.log("Resposta completa do Supabase:", response);
-
-          if (response.error) {
-            console.error("Erro do Supabase:", response.error);
-            throw new Error(response.error.message);
-          }
-
-          if (!response.data || response.data.length === 0) {
-            console.error("Nenhum dado retornado após inserção");
-            throw new Error("Erro ao inserir dados no banco");
-          }
-
-          console.log("Cliente criado com sucesso:", response.data[0]);
-          toast({
-            title: "Sucesso!",
-            description: "Cliente cadastrado com sucesso!",
-          });
-
-          form.reset({
-            companyName: "",
-            contractValue: 0,
-            firstPaymentDate: "",
-            paymentType: "pre",
-            status: "active",
-            acquisitionChannel: "",
-            customAcquisitionChannel: "",
-            companyBirthday: "",
-            contactName: "",
-            contactPhone: "",
-            lastPaymentDate: "",
-          });
-
-          if (onSuccess) {
-            console.log("Chamando callback de sucesso");
-            onSuccess();
-          }
-        } catch (error) {
-          console.error("Erro detalhado na inserção:", error);
-          
-          let errorMessage = "Ocorreu um erro inesperado ao tentar salvar o cliente";
-          if (error instanceof Error) {
-            console.error("Mensagem de erro:", error.message);
-            errorMessage = error.message;
-          }
-          
-          toast({
-            title: "Erro ao salvar",
-            description: errorMessage,
-            variant: "destructive",
-          });
-          return;
+        if (insertError) {
+          console.error("Erro ao inserir cliente:", insertError);
+          throw insertError;
         }
+
+        console.log("Cliente criado com sucesso!");
+        toast({
+          title: "Sucesso!",
+          description: "Cliente cadastrado com sucesso!",
+        });
+
+        form.reset({
+          companyName: "",
+          contractValue: 0,
+          firstPaymentDate: "",
+          paymentType: "pre",
+          status: "active",
+          acquisitionChannel: "",
+          customAcquisitionChannel: "",
+          companyBirthday: "",
+          contactName: "",
+          contactPhone: "",
+          lastPaymentDate: "",
+        });
+      }
+
+      if (onSuccess) {
+        console.log("Chamando callback de sucesso");
+        onSuccess();
       }
     } catch (error) {
       console.error("Erro detalhado ao salvar cliente:", error);
