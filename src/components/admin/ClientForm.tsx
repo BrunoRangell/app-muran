@@ -223,14 +223,30 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         });
       } else {
         console.log("Criando novo cliente...");
-        const { data: insertData, error: insertError } = await supabase
+        
+        // Primeira tentativa com select
+        let supabaseResponse = await supabase
           .from('clients')
           .insert([clientData])
           .select();
+        
+        console.log("Primeira tentativa de resposta do Supabase:", supabaseResponse);
 
-        if (insertError) {
-          console.error("Erro ao inserir cliente:", insertError);
-          throw insertError;
+        // Se falhar, tenta sem o select
+        if (supabaseResponse.error) {
+          console.log("Primeira tentativa falhou, tentando sem select...");
+          
+          supabaseResponse = await supabase
+            .from('clients')
+            .insert([clientData]);
+            
+          console.log("Segunda tentativa de resposta do Supabase:", supabaseResponse);
+        }
+
+        // Verifica se houve erro em ambas as tentativas
+        if (supabaseResponse.error) {
+          console.error("Erro do Supabase:", supabaseResponse.error);
+          throw new Error(`Erro ao salvar cliente: ${supabaseResponse.error.message}`);
         }
 
         console.log("Cliente criado com sucesso!");
@@ -239,6 +255,13 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
           description: "Cliente cadastrado com sucesso!",
         });
 
+        // Recarrega a lista apenas se não houver erros
+        if (onSuccess) {
+          console.log("Chamando callback de sucesso para recarregar lista");
+          onSuccess();
+        }
+
+        // Reseta o formulário apenas se não houver erros
         form.reset({
           companyName: "",
           contractValue: 0,
