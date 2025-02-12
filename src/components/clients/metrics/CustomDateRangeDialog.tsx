@@ -13,6 +13,7 @@ interface CustomDateRangeDialogProps {
   onOpenChange: (open: boolean) => void;
   dateRange: { start: Date; end: Date };
   onDateRangeChange: (range: { start: Date; end: Date }) => void;
+  multipleMonths: boolean;
 }
 
 export const CustomDateRangeDialog = ({
@@ -20,6 +21,7 @@ export const CustomDateRangeDialog = ({
   onOpenChange,
   dateRange,
   onDateRangeChange,
+  multipleMonths,
 }: CustomDateRangeDialogProps) => {
   const { toast } = useToast();
   const [tempDateRange, setTempDateRange] = useState(dateRange);
@@ -45,13 +47,20 @@ export const CustomDateRangeDialog = ({
 
   const handleDateChange = (type: 'start' | 'end', value: string) => {
     try {
-      // Adiciona o dia 1 para garantir uma data válida no mês selecionado
       const newDate = parseISO(`${value}-01`);
       if (isValid(newDate)) {
-        setTempDateRange(prev => ({
-          ...prev,
-          [type]: newDate
-        }));
+        if (!multipleMonths) {
+          // Se não for múltiplos meses, atualiza tanto start quanto end
+          setTempDateRange({
+            start: newDate,
+            end: newDate
+          });
+        } else {
+          setTempDateRange(prev => ({
+            ...prev,
+            [type]: newDate
+          }));
+        }
       }
     } catch (error) {
       console.error('Erro ao processar data:', error);
@@ -68,7 +77,7 @@ export const CustomDateRangeDialog = ({
       return;
     }
 
-    if (isBefore(tempDateRange.end, tempDateRange.start)) {
+    if (multipleMonths && isBefore(tempDateRange.end, tempDateRange.start)) {
       toast({
         title: "Erro na seleção de datas",
         description: "A data inicial deve ser anterior à data final.",
@@ -88,22 +97,35 @@ export const CustomDateRangeDialog = ({
           <DialogTitle>Selecione o período</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Mês inicial</Label>
-            <Input
-              type="month"
-              value={formatDateForInput(tempDateRange.start)}
-              onChange={(e) => handleDateChange('start', e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>Mês final</Label>
-            <Input
-              type="month"
-              value={formatDateForInput(tempDateRange.end)}
-              onChange={(e) => handleDateChange('end', e.target.value)}
-            />
-          </div>
+          {multipleMonths ? (
+            <>
+              <div className="grid gap-2">
+                <Label>Mês inicial</Label>
+                <Input
+                  type="month"
+                  value={formatDateForInput(tempDateRange.start)}
+                  onChange={(e) => handleDateChange('start', e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Mês final</Label>
+                <Input
+                  type="month"
+                  value={formatDateForInput(tempDateRange.end)}
+                  onChange={(e) => handleDateChange('end', e.target.value)}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="grid gap-2">
+              <Label>Mês de referência</Label>
+              <Input
+                type="month"
+                value={formatDateForInput(tempDateRange.start)}
+                onChange={(e) => handleDateChange('start', e.target.value)}
+              />
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button onClick={handleConfirm} className="bg-muran-primary hover:bg-muran-primary/90">

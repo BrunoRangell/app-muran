@@ -29,9 +29,13 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
     const months: Date[] = [];
     let current = range.start;
     
-    while (current <= range.end) {
-      months.push(new Date(current));
-      current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+    if (multipleMonths) {
+      while (current <= range.end) {
+        months.push(new Date(current));
+        current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+      }
+    } else {
+      months.push(range.start);
     }
     
     setSelectedMonths(months);
@@ -78,6 +82,7 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
         onOpenChange={setIsCustomDateOpen}
         dateRange={dateRange}
         onDateRangeChange={handleDateRangeChange}
+        multipleMonths={multipleMonths}
       />
     </>
   );
