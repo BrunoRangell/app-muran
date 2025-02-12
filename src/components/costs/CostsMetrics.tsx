@@ -2,21 +2,31 @@
 import { Card } from "@/components/ui/card";
 import { DollarSign, TrendingDown, TrendingUp, PieChart } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { Cost } from "@/types/cost";
+import { Cost, CostFilters } from "@/types/cost";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
 interface CostsMetricsProps {
   costs: Cost[];
+  filters: CostFilters;
 }
 
-export function CostsMetrics({ costs }: CostsMetricsProps) {
+export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
   const { data: totalRevenue } = useQuery({
-    queryKey: ["total-revenue"],
+    queryKey: ["total-revenue", filters.startDate, filters.endDate],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("payments")
         .select("amount");
+
+      if (filters.startDate) {
+        query = query.gte("reference_month", filters.startDate);
+      }
+      if (filters.endDate) {
+        query = query.lte("reference_month", filters.endDate);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

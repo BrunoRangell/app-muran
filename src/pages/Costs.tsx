@@ -12,6 +12,7 @@ import { EditCostDialog } from "@/components/costs/EditCostDialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Cost } from "@/types/cost";
+import { DateFilter } from "@/components/costs/filters/DateFilter";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
@@ -63,7 +64,11 @@ export default function Costs() {
         </Button>
       </div>
 
-      <CostsMetrics costs={costs || []} />
+      <div className="flex justify-end">
+        <DateFilter filters={filters} onFiltersChange={setFilters} />
+      </div>
+
+      <CostsMetrics costs={costs || []} filters={filters} />
 
       <Card className="p-4">
         <CostsFiltersBar filters={filters} onFiltersChange={setFilters} />
