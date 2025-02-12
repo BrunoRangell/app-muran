@@ -19,9 +19,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 const clientFormSchema = z.object({
   companyName: z.string().min(1, "Nome da empresa é obrigatório"),
   contractValue: z.any().refine(val => {
-    const number = parseCurrencyToNumber(String(val));
-    return !isNaN(number) && number > 0;
-  }, "Valor do contrato é obrigatório"),
+    try {
+      const number = parseCurrencyToNumber(String(val));
+      return !isNaN(number) && number > 0;
+    } catch (error) {
+      return false;
+    }
+  }, "Valor do contrato inválido. Use apenas números e vírgula para decimais."),
   firstPaymentDate: z.string().min(1, "Data de início é obrigatória"),
   status: z.enum(["active", "inactive"], {
     required_error: "Status é obrigatório",
@@ -94,11 +98,25 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     setIsLoading(true);
     
     try {
+      let contractValue: number;
+      try {
+        contractValue = parseCurrencyToNumber(String(data.contractValue));
+        if (isNaN(contractValue) || contractValue <= 0) {
+          throw new Error("Valor do contrato inválido");
+        }
+      } catch (error) {
+        toast({
+          title: "Erro no valor do contrato",
+          description: "Por favor, insira um valor válido (exemplo: 1.000,00)",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const finalAcquisitionChannel = data.acquisitionChannel === "outro" 
         ? data.customAcquisitionChannel 
         : data.acquisitionChannel;
-
-      const contractValue = parseCurrencyToNumber(data.contractValue.toString());
 
       const clientData = {
         company_name: data.companyName,
@@ -113,26 +131,32 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         last_payment_date: data.status === "inactive" ? (data.lastPaymentDate || null) : null,
       };
 
-      if (initialData?.id) {
-        const { error: updateError } = await supabase
-          .from('clients')
-          .update(clientData)
-          .eq('id', initialData.id)
-          .single();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Tempo limite excedido")), 10000);
+      });
 
-        if (updateError) throw updateError;
+      if (initialData?.id) {
+        await Promise.race([
+          supabase
+            .from('clients')
+            .update(clientData)
+            .eq('id', initialData.id)
+            .single(),
+          timeoutPromise
+        ]);
 
         toast({
           title: "Sucesso!",
           description: "Cliente atualizado com sucesso!",
         });
       } else {
-        const { error: insertError } = await supabase
-          .from('clients')
-          .insert([clientData])
-          .single();
-
-        if (insertError) throw insertError;
+        await Promise.race([
+          supabase
+            .from('clients')
+            .insert([clientData])
+            .single(),
+          timeoutPromise
+        ]);
 
         toast({
           title: "Sucesso!",
@@ -159,9 +183,15 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       }
     } catch (error) {
       console.error("Erro ao salvar cliente:", error);
+      
+      let errorMessage = "Não foi possível salvar o cliente. Por favor, tente novamente.";
+      if (error instanceof Error && error.message === "Tempo limite excedido") {
+        errorMessage = "A operação demorou muito tempo. Por favor, tente novamente.";
+      }
+      
       toast({
         title: "Erro",
-        description: "Não foi possível salvar o cliente. Por favor, tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
