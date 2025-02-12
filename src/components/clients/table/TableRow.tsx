@@ -51,7 +51,6 @@ export const ClientTableRow = ({
             variant="outline"
             size="sm"
             onClick={() => onPaymentClick?.(client.id)}
-            disabled={client.status !== 'active'}
             className="gap-2"
           >
             <DollarSign className="h-4 w-4" />
