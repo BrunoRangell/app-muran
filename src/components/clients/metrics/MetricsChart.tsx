@@ -75,10 +75,9 @@ export const MetricsChart = ({
     try {
       const [month, year] = monthYear.split('/');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return format(date, "LLL'/'yy", { locale: ptBR })
-        .replace('.', '') // Remover ponto final
-        .toLowerCase(); // Opcional: para "mai"
+      return format(date, "LLL'/'yy", { locale: ptBR }).toLowerCase();
     } catch (error) {
+      console.error('Erro ao formatar mês:', error, monthYear);
       return monthYear;
     }
   };
@@ -123,10 +122,9 @@ export const MetricsChart = ({
                 try {
                   const [month, year] = value.split('/');
                   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-                  return format(date, "LLL'/'yy", { locale: ptBR })
-                    .replace('.', '') // Remover ponto final
-                    .toLowerCase(); // Opcional: para "mai"
+                  return format(date, "LLL'/'yy", { locale: ptBR }).toLowerCase();
                 } catch (error) {
+                  console.error('Erro ao formatar mês:', error, value);
                   return value;
                 }
               }}
