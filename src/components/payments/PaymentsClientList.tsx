@@ -23,7 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface PaymentsClientListProps {
@@ -168,10 +168,12 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
 
   const formatReferenceMonth = (monthStr: string) => {
     try {
-      const date = new Date(monthStr);
+      // Aqui está a correção principal: usando parseISO para garantir que a data seja interpretada corretamente
+      const date = parseISO(monthStr);
+      // Formatamos o mês mantendo o timezone original
       return format(date, "MMMM'/'yyyy", { locale: ptBR });
     } catch (error) {
-      console.error('Erro ao formatar mês:', error);
+      console.error('Erro ao formatar mês:', error, monthStr);
       return monthStr;
     }
   };
