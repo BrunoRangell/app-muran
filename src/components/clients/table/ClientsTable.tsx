@@ -54,29 +54,31 @@ export const ClientsTable = ({
   });
 
   return (
-    <div className="min-w-full border rounded-md flex flex-col">
-      <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          <Table>
-            <ClientsTableHeader 
-              columns={sortedColumns} 
-              sortConfig={sortConfig} 
-              onSort={onSort} 
-            />
-            <TableBody>
-              {sortedClients?.map((client) => (
-                <ClientTableRow
-                  key={client.id}
-                  client={client}
-                  columns={sortedColumns}
-                  onEditClick={onEditClick}
-                />
-              ))}
-            </TableBody>
-          </Table>
+    <div className="flex flex-col gap-2">
+      <div className="border rounded-md">
+        <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+          <div className="overflow-x-auto">
+            <Table>
+              <ClientsTableHeader 
+                columns={sortedColumns} 
+                sortConfig={sortConfig} 
+                onSort={onSort} 
+              />
+              <TableBody>
+                {sortedClients?.map((client) => (
+                  <ClientTableRow
+                    key={client.id}
+                    client={client}
+                    columns={sortedColumns}
+                    onEditClick={onEditClick}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
-      <div className="mt-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 border rounded-md">
         <div className="h-2 min-w-full"></div>
       </div>
     </div>
