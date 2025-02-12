@@ -53,29 +53,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     }
   });
 
-  // Buscar total de pagamentos por cliente
-  const { data: clientTotals } = useQuery({
-    queryKey: ['client-payment-totals'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('payments')
-        .select('client_id, amount')
-        .eq('status', 'RECEIVED');
-
-      if (error) throw error;
-
-      // Calcular o total por cliente
-      const totals = data.reduce((acc: Record<string, number>, payment) => {
-        if (payment.client_id) { // Garantir que client_id não é null
-          acc[payment.client_id] = (acc[payment.client_id] || 0) + payment.amount;
-        }
-        return acc;
-      }, {});
-
-      return totals;
-    }
-  });
-
   const handleSort = (key: string) => {
     setSortConfig(prevConfig => ({
       key,
@@ -101,10 +78,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
           return a.company_name.localeCompare(b.company_name) * direction;
         case 'contract_value':
           return (a.contract_value - b.contract_value) * direction;
-        case 'total_received':
-          const totalA = clientTotals?.[a.id] || 0;
-          const totalB = clientTotals?.[b.id] || 0;
-          return (totalA - totalB) * direction;
         default:
           return 0;
       }
@@ -153,9 +126,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                     <TableHead>
                       <SortButton column="contract_value" label="Valor Mensal" />
                     </TableHead>
-                    <TableHead>
-                      <SortButton column="total_received" label="Total Recebido" />
-                    </TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -163,7 +133,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4">
+                      <TableCell colSpan={4} className="text-center py-4">
                         Carregando clientes...
                       </TableCell>
                     </TableRow>
@@ -171,7 +141,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                     <TableRow key={client.id}>
                       <TableCell>{client.company_name}</TableCell>
                       <TableCell>{formatCurrency(client.contract_value)}</TableCell>
-                      <TableCell>{formatCurrency(clientTotals?.[client.id] || 0)}</TableCell>
                       <TableCell>
                         <Badge 
                           variant={client.status === 'active' ? 'default' : 'destructive'}
