@@ -53,22 +53,31 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
       </div>
 
       <Select
-        value={filters.macro_category}
-        onValueChange={(value: any) => {
-          const newCategories = COST_CATEGORIES_HIERARCHY[value].categories;
-          setAvailableCategories(newCategories);
-          onFiltersChange({ 
-            ...filters, 
-            macro_category: value,
-            category: undefined // Limpa a categoria quando muda a macro
-          });
+        value={filters.macro_category || "all"}
+        onValueChange={(value) => {
+          if (value === "all") {
+            onFiltersChange({ 
+              ...filters, 
+              macro_category: undefined,
+              category: undefined
+            });
+            setAvailableCategories([]);
+          } else {
+            const newCategories = COST_CATEGORIES_HIERARCHY[value as keyof typeof COST_CATEGORIES_HIERARCHY].categories;
+            setAvailableCategories(newCategories);
+            onFiltersChange({ 
+              ...filters, 
+              macro_category: value as any,
+              category: undefined
+            });
+          }
         }}
       >
         <SelectTrigger className="w-full md:w-[200px]">
           <SelectValue placeholder="Categoria Principal" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todas</SelectItem>
+          <SelectItem value="all">Todas</SelectItem>
           {MACRO_CATEGORIES.map((category) => (
             <SelectItem key={category.value} value={category.value}>
               {category.label}
@@ -78,16 +87,19 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
       </Select>
 
       <Select
-        value={filters.category}
-        onValueChange={(value: any) =>
-          onFiltersChange({ ...filters, category: value })
+        value={filters.category || "all"}
+        onValueChange={(value) =>
+          onFiltersChange({ 
+            ...filters, 
+            category: value === "all" ? undefined : value as any 
+          })
         }
       >
         <SelectTrigger className="w-full md:w-[200px]">
           <SelectValue placeholder="Subcategoria" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todas</SelectItem>
+          <SelectItem value="all">Todas</SelectItem>
           {availableCategories.map((category) => (
             <SelectItem key={category.value} value={category.value}>
               {category.label}
