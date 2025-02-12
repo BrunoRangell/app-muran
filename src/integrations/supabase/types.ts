@@ -92,6 +92,39 @@ export type Database = {
         }
         Relationships: []
       }
+      costs: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["cost_category"]
+          created_at: string
+          date: string
+          description: string | null
+          id: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["cost_category"]
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["cost_category"]
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           completed_at: string | null
@@ -269,6 +302,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      cost_category:
+        | "marketing"
+        | "salarios"
+        | "impostos"
+        | "servicos"
+        | "equipamentos"
+        | "software"
+        | "outros"
       payment_status:
         | "RECEIVED"
         | "CONFIRMED"
