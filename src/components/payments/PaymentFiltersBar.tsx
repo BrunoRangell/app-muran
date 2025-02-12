@@ -108,6 +108,9 @@ export function PaymentFiltersBar({
           <SelectItem value="RECEIVED">Recebido</SelectItem>
           <SelectItem value="CONFIRMED">Confirmado</SelectItem>
           <SelectItem value="PENDING">Aguardando</SelectItem>
+          <SelectItem value="OVERDUE">Atrasado</SelectItem>
+          <SelectItem value="REFUNDED">Reembolsado</SelectItem>
+          <SelectItem value="CANCELLED">Cancelado</SelectItem>
         </SelectContent>
       </Select>
 

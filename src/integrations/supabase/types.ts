@@ -143,7 +143,7 @@ export type Database = {
           id: number
           notes: string | null
           payment_date: string | null
-          status: string
+          status: Database["public"]["Enums"]["payment_status"] | null
         }
         Insert: {
           amount: number
@@ -153,7 +153,7 @@ export type Database = {
           id?: never
           notes?: string | null
           payment_date?: string | null
-          status: string
+          status?: Database["public"]["Enums"]["payment_status"] | null
         }
         Update: {
           amount?: number
@@ -163,7 +163,7 @@ export type Database = {
           id?: never
           notes?: string | null
           payment_date?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["payment_status"] | null
         }
         Relationships: [
           {
@@ -272,7 +272,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      payment_status:
+        | "RECEIVED"
+        | "CONFIRMED"
+        | "PENDING"
+        | "OVERDUE"
+        | "REFUNDED"
+        | "CANCELLED"
     }
     CompositeTypes: {
       [_ in never]: never

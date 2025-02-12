@@ -1,5 +1,5 @@
 
-export type PaymentStatus = 'RECEIVED' | 'CONFIRMED' | 'PENDING';
+export type PaymentStatus = 'RECEIVED' | 'CONFIRMED' | 'PENDING' | 'OVERDUE' | 'REFUNDED' | 'CANCELLED';
 
 export interface PaymentSummary {
   title: string;
