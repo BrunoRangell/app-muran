@@ -26,7 +26,6 @@ import { parseCurrencyToNumber } from "@/utils/formatters";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
-  netAmount: z.string().min(1, "Informe o valor líquido"),
   referenceMonth: z.string().min(1, "Informe o mês de referência"),
   notes: z.string().optional(),
 });
@@ -66,7 +65,6 @@ export function NewPaymentDialog({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       amount: client?.contract_value.toString() || '',
-      netAmount: client?.contract_value.toString() || '',
       referenceMonth: new Date().toISOString().split('T')[0].slice(0, 7), // YYYY-MM
       notes: '',
     }
@@ -82,10 +80,12 @@ export function NewPaymentDialog({
         .insert({
           client_id: clientId,
           amount: parseCurrencyToNumber(data.amount),
-          net_amount: parseCurrencyToNumber(data.netAmount),
+          net_amount: parseCurrencyToNumber(data.amount), // Mantendo o mesmo valor já que não há mais distinção
           reference_month: new Date(data.referenceMonth + '-01'), // Primeiro dia do mês
           notes: data.notes,
-          status: 'RECEIVED'
+          status: 'RECEIVED',
+          due_date: new Date(), // Data atual como vencimento
+          payment_date: new Date() // Data atual como data de pagamento
         });
 
       if (error) throw error;
@@ -113,21 +113,7 @@ export function NewPaymentDialog({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor Bruto</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="R$ 0,00" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="netAmount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Valor Líquido</FormLabel>
+                  <FormLabel>Valor</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="R$ 0,00" />
                   </FormControl>
