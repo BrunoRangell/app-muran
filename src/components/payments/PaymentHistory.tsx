@@ -60,7 +60,7 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
           <DialogHeader>
             <DialogTitle>Histórico de Pagamentos - {clientName}</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="h-[50vh] w-full pr-4">
             <div className="space-y-4">
               {payments && payments.length > 0 ? (
                 payments.map((payment) => (
