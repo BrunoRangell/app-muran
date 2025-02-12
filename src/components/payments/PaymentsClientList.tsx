@@ -12,10 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { DollarSign, ArrowDown, ArrowUp } from "lucide-react";
+import { DollarSign, ArrowDown, ArrowUp, Search } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 interface PaymentsClientListProps {
   onPaymentClick: (clientId: string) => void;
@@ -31,6 +32,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     key: 'company_name',
     direction: 'asc'
   });
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["payments-clients"],
@@ -58,20 +60,28 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     }));
   };
 
-  const sortedClients = clients?.sort((a, b) => {
-    const direction = sortConfig.direction === 'asc' ? 1 : -1;
-    
-    switch (sortConfig.key) {
-      case 'company_name':
-        return a.company_name.localeCompare(b.company_name) * direction;
-      case 'contract_value':
-        return (a.contract_value - b.contract_value) * direction;
-      case 'status':
-        return a.status.localeCompare(b.status) * direction;
-      default:
-        return 0;
-    }
-  });
+  const filteredAndSortedClients = clients
+    ?.filter(client => 
+      client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    ?.sort((a, b) => {
+      // Primeiro ordena por status (ativos primeiro)
+      if (a.status !== b.status) {
+        return a.status === 'active' ? -1 : 1;
+      }
+
+      // Depois aplica a ordenação selecionada
+      const direction = sortConfig.direction === 'asc' ? 1 : -1;
+      
+      switch (sortConfig.key) {
+        case 'company_name':
+          return a.company_name.localeCompare(b.company_name) * direction;
+        case 'contract_value':
+          return (a.contract_value - b.contract_value) * direction;
+        default:
+          return 0;
+      }
+    });
 
   const SortButton = ({ column, label }: { column: string, label: string }) => (
     <Button
@@ -94,7 +104,16 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
 
   return (
     <Card className="p-2 md:p-6">
-      <div className="flex flex-col">
+      <div className="flex flex-col space-y-4">
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Pesquisar cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
         <div className="overflow-x-auto">
           <div className="inline-block min-w-full align-middle">
             <div className="overflow-hidden border rounded-lg">
@@ -107,9 +126,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                     <TableHead>
                       <SortButton column="contract_value" label="Valor Mensal" />
                     </TableHead>
-                    <TableHead>
-                      <SortButton column="status" label="Status" />
-                    </TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -120,14 +137,14 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                         Carregando clientes...
                       </TableCell>
                     </TableRow>
-                  ) : sortedClients?.map((client) => (
+                  ) : filteredAndSortedClients?.map((client) => (
                     <TableRow key={client.id}>
                       <TableCell>{client.company_name}</TableCell>
                       <TableCell>{formatCurrency(client.contract_value)}</TableCell>
                       <TableCell>
                         <Badge 
                           variant={client.status === 'active' ? 'default' : 'destructive'}
-                          className="capitalize"
+                          className={`capitalize ${client.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}`}
                         >
                           {client.status === 'active' ? 'Ativo' : 'Inativo'}
                         </Badge>
