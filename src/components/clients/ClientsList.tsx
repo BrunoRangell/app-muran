@@ -16,9 +16,9 @@ export const ClientsList = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: '', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'company_name', direction: 'asc' });
   const [filters, setFilters] = useState({
-    status: '',
+    status: 'active',
     acquisition_channel: '',
     payment_type: ''
   });
@@ -110,15 +110,6 @@ export const ClientsList = () => {
       (!filters.acquisition_channel || client.acquisition_channel === filters.acquisition_channel) &&
       (!filters.payment_type || client.payment_type === filters.payment_type)
     );
-  }).sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    
-    const aValue = a[sortConfig.key as keyof Client];
-    const bValue = b[sortConfig.key as keyof Client];
-    
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
   });
 
   const hasActiveFilters = Object.values(filters).some(value => value !== "");
