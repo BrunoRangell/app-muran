@@ -37,7 +37,8 @@ Deno.serve(async (req) => {
     const thirtyDaysAgo = new Date(today)
     thirtyDaysAgo.setDate(today.getDate() - 30)
 
-    const response = await fetch(
+    // Primeiro, buscar os pagamentos
+    const paymentsResponse = await fetch(
       `https://api.asaas.com/v3/payments?startDate=${thirtyDaysAgo.toISOString().split('T')[0]}&endDate=${today.toISOString().split('T')[0]}`,
       {
         headers: {
@@ -46,26 +47,51 @@ Deno.serve(async (req) => {
       }
     )
 
-    if (!response.ok) {
-      throw new Error(`Erro na API do Asaas: ${response.statusText}`)
+    if (!paymentsResponse.ok) {
+      throw new Error(`Erro na API do Asaas ao buscar pagamentos: ${paymentsResponse.statusText}`)
     }
 
-    const data = await response.json()
-    console.log('Dados recebidos do Asaas:', data)
+    const paymentsData = await paymentsResponse.json()
+    console.log('Dados de pagamentos recebidos do Asaas:', paymentsData)
 
-    // Mapear os pagamentos do Asaas para o formato da nossa aplicação
-    const payments = data.data.map((payment: any) => ({
-      id: payment.id,
-      customer: payment.customer,
-      value: payment.value,
-      netValue: payment.netValue,
-      status: payment.status,
-      paymentDate: payment.paymentDate,
-      customerName: payment.customerName,
+    // Buscar informações dos clientes para cada pagamento
+    const enrichedPayments = await Promise.all(paymentsData.data.map(async (payment: any) => {
+      try {
+        const customerResponse = await fetch(
+          `https://api.asaas.com/v3/customers/${payment.customer}`,
+          {
+            headers: {
+              'access_token': asaasApiKey,
+            },
+          }
+        )
+
+        if (!customerResponse.ok) {
+          console.error(`Erro ao buscar cliente ${payment.customer}: ${customerResponse.statusText}`)
+          return {
+            ...payment,
+            customerName: 'Cliente não encontrado'
+          }
+        }
+
+        const customerData = await customerResponse.json()
+        console.log('Dados do cliente recebidos:', customerData)
+
+        return {
+          ...payment,
+          customerName: customerData.name || customerData.company || 'Nome não informado'
+        }
+      } catch (error) {
+        console.error(`Erro ao buscar dados do cliente ${payment.customer}:`, error)
+        return {
+          ...payment,
+          customerName: 'Erro ao buscar cliente'
+        }
+      }
     }))
 
     return new Response(
-      JSON.stringify({ payments }),
+      JSON.stringify({ payments: enrichedPayments }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
