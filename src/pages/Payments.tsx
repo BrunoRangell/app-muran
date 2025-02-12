@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PaymentFilters, PaymentSummary } from "@/types/payment";
+import { PaymentFilters } from "@/types/payment";
 import { PaymentsTable } from "@/components/payments/PaymentsTable";
 import { PaymentsClientList } from "@/components/payments/PaymentsClientList";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
