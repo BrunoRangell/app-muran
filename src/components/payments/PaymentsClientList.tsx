@@ -135,8 +135,8 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                   <TableFooter className="bg-muted/50">
                     <TableRow>
                       <TableHead className="text-left">Total</TableHead>
-                      <TableHead className="text-right">{formatCurrency(totals.monthlyTotal)}</TableHead>
-                      <TableHead className="text-right">{formatCurrency(totals.receivedTotal)}</TableHead>
+                      <TableHead>{formatCurrency(totals.monthlyTotal)}</TableHead>
+                      <TableHead>{formatCurrency(totals.receivedTotal)}</TableHead>
                       <TableHead colSpan={2}></TableHead>
                     </TableRow>
                   </TableFooter>
