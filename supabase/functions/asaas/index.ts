@@ -32,11 +32,13 @@ Deno.serve(async (req) => {
       throw new Error('ASAAS_API_KEY não encontrada')
     }
 
-    // Definir período: primeiro dia do mês atual até hoje
+    // Receber as datas do request ou usar o mês atual como padrão
+    const { startDate: customStartDate, endDate: customEndDate } = await req.json().catch(() => ({}));
+    
     const today = new Date()
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-    const startDate = startOfMonth.toISOString().split('T')[0]
-    const endDate = today.toISOString().split('T')[0]
+    const startDate = customStartDate || startOfMonth.toISOString().split('T')[0]
+    const endDate = customEndDate || today.toISOString().split('T')[0]
 
     console.log('Buscando pagamentos de:', startDate, 'até:', endDate)
 

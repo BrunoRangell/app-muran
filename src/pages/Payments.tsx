@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PaymentStatus, PaymentFilters, PaymentSummary } from "@/types/payment";
@@ -9,6 +10,7 @@ import { Plus } from "lucide-react";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
 
 export default function Payments() {
   const [filters, setFilters] = useState<PaymentFilters>({});
@@ -16,9 +18,14 @@ export default function Payments() {
   const { toast } = useToast();
 
   const { data: asaasPayments, isLoading: isLoadingAsaas } = useQuery({
-    queryKey: ['asaas-payments'],
+    queryKey: ['asaas-payments', filters.startDate, filters.endDate],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('asaas');
+      const { data, error } = await supabase.functions.invoke('asaas', {
+        body: {
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+        }
+      });
       if (error) throw error;
       console.log('Pagamentos recebidos do Asaas:', data.payments);
       return data.payments;
