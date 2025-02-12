@@ -1,27 +1,43 @@
 
-export type PaymentStatus = 'pending' | 'completed';
+export type PaymentStatus = 'RECEIVED' | 'CONFIRMED' | 'PENDING';
+
+export interface PaymentSummary {
+  title: string;
+  grossAmount: number;
+  netAmount: number;
+  clientCount: number;
+  paymentCount: number;
+  color: string;
+  status: PaymentStatus;
+}
 
 export interface Payment {
-  id: number;
-  client_id: number;
+  id: string;
+  client_id: string;
   amount: number;
-  due_date: string;
   payment_date: string | null;
   status: PaymentStatus;
   notes: string | null;
   created_at: string;
-}
-
-export interface PaymentFormData {
-  clientId: number;
-  amount: number;
-  dueDate: string;
-  notes?: string;
+  clients: {
+    company_name: string;
+  };
+  net_amount: number;
 }
 
 export interface PaymentFilters {
   startDate?: string;
   endDate?: string;
-  clientId?: number;
+  clientId?: string;
   status?: PaymentStatus;
+}
+
+export interface AsaasPayment {
+  id: string;
+  customer: string;
+  value: number;
+  netValue: number;
+  status: string;
+  paymentDate: string;
+  customerName: string;
 }
