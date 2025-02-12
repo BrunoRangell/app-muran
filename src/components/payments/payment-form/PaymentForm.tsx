@@ -22,7 +22,7 @@ import { formatCurrency } from "@/utils/formatters";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
-  months: z.array(z.string()).min(1, "Selecione pelo menos um mês"),
+  months: z.array(z.string()).nonempty("Selecione pelo menos um mês"),
   notes: z.string().optional(),
 });
 
@@ -42,7 +42,7 @@ export function PaymentForm({ client, onSubmit, onCancel, isLoading }: PaymentFo
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       amount: client?.contract_value ? formatCurrency(client.contract_value) : '',
-      months: [],
+      months: [new Date().toISOString().slice(0, 7)], // Define o mês atual como valor padrão
       notes: '',
     }
   });
