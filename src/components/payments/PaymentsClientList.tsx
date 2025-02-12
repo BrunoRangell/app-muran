@@ -2,49 +2,21 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Client } from "@/components/clients/types";
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { DollarSign, ArrowDown, ArrowUp, Search } from "lucide-react";
+import { DollarSign, Search } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
-
-interface PaymentsClientListProps {
-  onPaymentClick: (clientId: string) => void;
-}
-
-interface SortConfig {
-  key: string;
-  direction: 'asc' | 'desc';
-}
-
-interface Payment {
-  amount: number;
-  reference_month: string;
-  notes: string | null;
-}
-
-interface ClientWithTotalPayments extends Client {
-  total_received: number;
-  payments: Payment[];
-}
+import { PaymentsTableHeader } from "./table/PaymentsTableHeader";
+import { PaymentHistory } from "./PaymentHistory";
+import { PaymentsClientListProps, SortConfig, ClientWithTotalPayments } from "./types";
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -58,7 +30,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     queryFn: async () => {
       console.log("Buscando lista de clientes para recebimentos...");
       
-      // Primeiro, buscamos os clientes
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select("*")
@@ -70,7 +41,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         throw clientsError;
       }
 
-      // Depois, buscamos os pagamentos
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
         .select("*")
@@ -81,8 +51,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         throw paymentsError;
       }
 
-      // Organizamos os pagamentos por cliente
-      const paymentsByClient = paymentsData.reduce((acc: { [key: string]: Payment[] }, payment) => {
+      const paymentsByClient = paymentsData.reduce((acc: { [key: string]: any[] }, payment) => {
         if (payment.client_id) {
           if (!acc[payment.client_id]) {
             acc[payment.client_id] = [];
@@ -96,7 +65,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         return acc;
       }, {});
 
-      // Calculamos os totais por cliente
       const totalsByClient = paymentsData.reduce((acc: { [key: string]: number }, payment) => {
         if (payment.client_id) {
           acc[payment.client_id] = (acc[payment.client_id] || 0) + Number(payment.amount);
@@ -104,7 +72,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         return acc;
       }, {});
 
-      // Combinamos os dados
       const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => ({
         ...client,
         total_received: totalsByClient[client.id] || 0,
@@ -127,12 +94,10 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
       client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
     )
     ?.sort((a, b) => {
-      // Primeiro ordena por status (ativos primeiro)
       if (a.status !== b.status) {
         return a.status === 'active' ? -1 : 1;
       }
 
-      // Depois aplica a ordenação selecionada
       const direction = sortConfig.direction === 'asc' ? 1 : -1;
       
       switch (sortConfig.key) {
@@ -146,37 +111,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
           return 0;
       }
     });
-
-  const SortButton = ({ column, label }: { column: string, label: string }) => (
-    <Button
-      variant="ghost"
-      onClick={() => handleSort(column)}
-      className="h-8 p-0 font-medium"
-    >
-      {label}
-      {sortConfig.key === column && (
-        <span className="ml-2">
-          {sortConfig.direction === 'asc' ? (
-            <ArrowUp className="h-4 w-4" />
-          ) : (
-            <ArrowDown className="h-4 w-4" />
-          )}
-        </span>
-      )}
-    </Button>
-  );
-
-  const formatReferenceMonth = (monthStr: string) => {
-    try {
-      // Aqui está a correção principal: usando parseISO para garantir que a data seja interpretada corretamente
-      const date = parseISO(monthStr);
-      // Formatamos o mês mantendo o timezone original
-      return format(date, "MMMM'/'yyyy", { locale: ptBR });
-    } catch (error) {
-      console.error('Erro ao formatar mês:', error, monthStr);
-      return monthStr;
-    }
-  };
 
   return (
     <Card className="p-2 md:p-6">
@@ -194,21 +128,10 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
           <div className="inline-block min-w-full align-middle">
             <div className="overflow-hidden border rounded-lg">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
-                      <SortButton column="company_name" label="Empresa" />
-                    </TableHead>
-                    <TableHead>
-                      <SortButton column="contract_value" label="Valor Mensal" />
-                    </TableHead>
-                    <TableHead>
-                      <SortButton column="total_received" label="Valor Total Recebido" />
-                    </TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <PaymentsTableHeader 
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
@@ -221,47 +144,10 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                       <TableCell>{client.company_name}</TableCell>
                       <TableCell>{formatCurrency(client.contract_value)}</TableCell>
                       <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">
-                                {formatCurrency(client.total_received)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent 
-                              side="right" 
-                              className="max-w-[400px] p-4"
-                              sideOffset={40}
-                            >
-                              <div className="space-y-2">
-                                <p className="font-medium text-sm mb-2">Histórico de Pagamentos:</p>
-                                <div className="max-h-[300px] overflow-y-auto space-y-2">
-                                  {client.payments && client.payments.length > 0 ? (
-                                    client.payments.map((payment, index) => (
-                                      <div key={index} className="border-b last:border-0 pb-2">
-                                        <p className="text-sm font-medium">
-                                          {formatReferenceMonth(payment.reference_month)}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                          {formatCurrency(payment.amount)}
-                                        </p>
-                                        {payment.notes && (
-                                          <p className="text-xs text-muted-foreground mt-1">
-                                            {payment.notes}
-                                          </p>
-                                        )}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground">
-                                      Nenhum pagamento registrado
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <PaymentHistory 
+                          total={client.total_received}
+                          payments={client.payments}
+                        />
                       </TableCell>
                       <TableCell>
                         <Badge 
