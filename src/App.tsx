@@ -31,6 +31,11 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route path="/clientes/relatorio" element={
+          <PrivateRoute requireAdmin>
+            <Clients />
+          </PrivateRoute>
+        } />
         <Route path="/financeiro" element={<ManagerFinancial />} />
         <Route path="/tarefas" element={<Tasks />} />
         <Route path="*" element={<NotFound />} />
