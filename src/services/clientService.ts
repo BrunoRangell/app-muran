@@ -44,13 +44,15 @@ export const verifySession = async () => {
 };
 
 export const prepareClientData = async (formData: ClientFormData): Promise<ClientData> => {
+  console.log("Preparando dados para salvar:", formData);
+  
   const contractValue = parseCurrencyToNumber(String(formData.contractValue));
   
   if (isNaN(contractValue) || contractValue <= 0) {
     throw new Error("Valor do contrato inválido");
   }
 
-  return {
+  const clientData = {
     company_name: formData.companyName,
     contract_value: contractValue,
     first_payment_date: formData.firstPaymentDate,
@@ -63,38 +65,47 @@ export const prepareClientData = async (formData: ClientFormData): Promise<Clien
     contact_name: formData.contactName || "",
     contact_phone: formData.contactPhone || "",
     last_payment_date: formData.status === "inactive" 
-      ? (formData.lastPaymentDate || null) 
+      ? formData.lastPaymentDate || null
       : null,
   };
+
+  console.log("Dados preparados:", clientData);
+  return clientData;
 };
 
 export const saveClient = async (clientData: ClientData, clientId?: string) => {
-  console.log("=== INICIANDO OPERAÇÃO NO SUPABASE ===");
+  console.log("=== INICIANDO SALVAMENTO DO CLIENTE ===");
+  console.log("Dados a serem salvos:", { clientData, clientId });
   const startTime = performance.now();
 
   try {
+    let response;
+    
     if (clientId) {
-      const { data, error } = await supabase
+      response = await supabase
         .from('clients')
         .update(clientData)
         .eq('id', clientId)
+        .select()
         .single();
-
-      console.log("Tempo de resposta (update):", `${performance.now() - startTime}ms`);
-
-      if (error) throw error;
-      return { success: true, data };
     } else {
-      const { data, error } = await supabase
+      response = await supabase
         .from('clients')
         .insert([clientData])
-        .select();
-
-      console.log("Tempo de resposta (insert):", `${performance.now() - startTime}ms`);
-
-      if (error) throw error;
-      return { success: true, data };
+        .select()
+        .single();
     }
+
+    const { data, error } = response;
+    console.log("Resposta do Supabase:", { data, error });
+    console.log("Tempo de resposta:", `${performance.now() - startTime}ms`);
+
+    if (error) {
+      console.error("Erro ao salvar cliente:", error);
+      throw error;
+    }
+
+    return { success: true, data };
   } catch (error) {
     console.error("Erro na operação:", error);
     return { 
