@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,7 @@ export function NewPaymentDialog({
 }: NewPaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: client } = useQuery({
     queryKey: ['client', clientId],
@@ -49,12 +50,18 @@ export function NewPaymentDialog({
     
     setIsLoading(true);
     try {
-      const payments = data.months.map(month => ({
-        client_id: clientId,
-        amount: parseCurrencyToNumber(data.amount),
-        reference_month: new Date(month + '-01').toISOString(), // Corrigido aqui
-        notes: data.notes || null
-      }));
+      // Cria um array de pagamentos com datas formatadas corretamente
+      const payments = data.months.map(month => {
+        const [year, monthStr] = month.split('-');
+        const dateStr = `${year}-${monthStr}-01`;
+        
+        return {
+          client_id: clientId,
+          amount: parseCurrencyToNumber(data.amount),
+          reference_month: dateStr,
+          notes: data.notes || null
+        };
+      });
 
       console.log('Dados do(s) pagamento(s) a serem salvos:', payments);
 
@@ -66,6 +73,9 @@ export function NewPaymentDialog({
         console.error('Erro detalhado:', error);
         throw error;
       }
+      
+      // Invalida as queries relacionadas para atualizar os dados
+      queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
       
       toast({
         title: "Sucesso!",
