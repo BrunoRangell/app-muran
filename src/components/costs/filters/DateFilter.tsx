@@ -108,11 +108,6 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
     }
   };
 
-  const handleCustomPeriodClick = () => {
-    setIsCustomPeriodOpen(true);
-    setIsDropdownOpen(false);
-  };
-
   return (
     <div className="relative">
       <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
@@ -159,9 +154,11 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
             Este ano
           </DropdownMenuItem>
           <DropdownMenuItem 
-            onSelect={(e) => {
+            onClick={(e) => {
               e.preventDefault();
-              handleCustomPeriodClick();
+              e.stopPropagation();
+              setIsCustomPeriodOpen(true);
+              setIsDropdownOpen(false);
             }}
             className="font-normal"
           >
@@ -170,8 +167,18 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Popover open={isCustomPeriodOpen} onOpenChange={setIsCustomPeriodOpen}>
-        <PopoverTrigger className="sr-only" />
+      <Popover 
+        open={isCustomPeriodOpen} 
+        onOpenChange={(open) => {
+          setIsCustomPeriodOpen(open);
+          if (!open) {
+            setIsDropdownOpen(false);
+          }
+        }}
+      >
+        <PopoverTrigger asChild>
+          <div className="sr-only">Abrir calendário</div>
+        </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="center">
           <Calendar
             initialFocus
