@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 interface PaymentsTableRowProps {
   client: ClientWithTotalPayments;
@@ -24,11 +25,16 @@ export function PaymentsTableRow({
   onPaymentClick,
   onPaymentUpdated 
 }: PaymentsTableRowProps) {
+  const needsPayment = client.status === 'active' && !client.hasCurrentMonthPayment;
+
   return (
-    <TableRow>
+    <TableRow className={cn(
+      needsPayment && "bg-[#FEC6A1]/10 hover:bg-[#FEC6A1]/20",
+      "transition-colors duration-200"
+    )}>
       <TableCell>
         <div className="flex items-center gap-2">
-          {client.status === 'active' && !client.hasCurrentMonthPayment && (
+          {needsPayment && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
