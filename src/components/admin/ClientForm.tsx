@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -93,13 +92,49 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   const { toast } = useToast();
   const [showLastPaymentDate, setShowLastPaymentDate] = useState(initialData?.status === "inactive");
 
-  // Log o estado da sessão no carregamento do componente
+  // Log inicial do componente
+  useEffect(() => {
+    console.log("ClientForm montado", {
+      initialData,
+      isEditing: !!initialData,
+      currentTimestamp: new Date().toISOString()
+    });
+  }, [initialData]);
+
+  // Log detalhado da sessão no carregamento e a cada 30 segundos
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log("Estado da sessão:", { session, error });
+      console.log("Iniciando verificação de sessão...");
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        console.log("Estado detalhado da sessão:", {
+          hasSession: !!session,
+          user: session?.user,
+          expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null,
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+
+        if (session?.user) {
+          const { data: userRoles, error: rolesError } = await supabase
+            .from('team_members')
+            .select('*')
+            .eq('email', session.user.email)
+            .single();
+          
+          console.log("Permissões do usuário:", {
+            roles: userRoles,
+            error: rolesError?.message
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao verificar sessão:", error);
+      }
     };
+
     checkSession();
+    const interval = setInterval(checkSession, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const form = useForm<ClientFormData>({
@@ -119,39 +154,80 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     }
   });
 
+  // Log mudanças nos valores do formulário
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      console.log("Mudança no formulário:", {
+        field: name,
+        type,
+        newValue: value,
+        timestamp: new Date().toISOString()
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   const status = form.watch("status");
   
   useEffect(() => {
+    console.log("Status alterado:", {
+      newStatus: status,
+      showLastPaymentDate: status === "inactive",
+      timestamp: new Date().toISOString()
+    });
     setShowLastPaymentDate(status === "inactive");
   }, [status]);
 
   const onSubmit = async (data: ClientFormData) => {
+    console.log("=== INÍCIO DO PROCESSO DE SUBMISSÃO ===");
+    console.log("Timestamp:", new Date().toISOString());
+    console.log("Dados recebidos:", data);
+
     if (isLoading) {
       console.log("Formulário já está sendo enviado, ignorando novo envio");
       return;
     }
 
-    console.log("Iniciando envio do formulário com dados:", data);
     setIsLoading(true);
+    console.log("Estado de loading atualizado:", true);
     
     try {
-      // Verificar estado da sessão antes da inserção
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log("Estado da sessão antes da inserção:", session);
+      console.log("Verificando sessão antes da inserção...");
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      console.log("Detalhes da sessão:", {
+        hasSession: !!session,
+        sessionError,
+        user: session?.user,
+        accessToken: session?.access_token ? "Presente" : "Ausente",
+        expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null
+      });
 
       if (!session) {
+        console.error("Sessão ausente!");
         throw new Error("Sessão expirada. Por favor, faça login novamente.");
       }
 
+      console.log("Iniciando conversão do valor do contrato...");
       let contractValue: number;
       try {
         contractValue = parseCurrencyToNumber(String(data.contractValue));
-        console.log("Valor do contrato convertido:", contractValue, "Tipo:", typeof contractValue);
+        console.log("Detalhes da conversão do valor:", {
+          original: data.contractValue,
+          converted: contractValue,
+          type: typeof contractValue,
+          isValid: !isNaN(contractValue) && contractValue > 0
+        });
+
         if (isNaN(contractValue) || contractValue <= 0) {
           throw new Error("Valor do contrato inválido");
         }
       } catch (error) {
-        console.error("Erro ao converter valor do contrato:", error);
+        console.error("Erro detalhado na conversão do valor:", {
+          error,
+          input: data.contractValue,
+          timestamp: new Date().toISOString()
+        });
         toast({
           title: "Erro no valor do contrato",
           description: "Por favor, insira um valor válido (exemplo: 1.000,00)",
@@ -161,13 +237,19 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         return;
       }
 
+      console.log("Processando datas...");
       const dates = {
         firstPaymentDate: new Date(data.firstPaymentDate),
         companyBirthday: data.companyBirthday ? new Date(data.companyBirthday) : null,
         lastPaymentDate: data.lastPaymentDate ? new Date(data.lastPaymentDate) : null
       };
 
-      console.log("Datas convertidas:", dates);
+      console.log("Datas processadas:", {
+        dates,
+        isFirstPaymentValid: dates.firstPaymentDate.toString() !== 'Invalid Date',
+        isBirthdayValid: !dates.companyBirthday || dates.companyBirthday.toString() !== 'Invalid Date',
+        isLastPaymentValid: !dates.lastPaymentDate || dates.lastPaymentDate.toString() !== 'Invalid Date'
+      });
 
       if (dates.firstPaymentDate.toString() === 'Invalid Date') {
         console.error("Data de início inválida");
@@ -219,18 +301,44 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         last_payment_date: data.status === "inactive" ? (data.lastPaymentDate || null) : null,
       };
 
-      console.log("Dados do cliente preparados para envio:", clientData);
+      console.log("=== DADOS PREPARADOS PARA ENVIO ===");
+      console.log("Dados do cliente:", clientData);
+      console.log("Tipos dos dados:", {
+        company_name: typeof clientData.company_name,
+        contract_value: typeof clientData.contract_value,
+        first_payment_date: typeof clientData.first_payment_date,
+        payment_type: typeof clientData.payment_type,
+        status: typeof clientData.status,
+        acquisition_channel: typeof clientData.acquisition_channel,
+        company_birthday: typeof clientData.company_birthday,
+        contact_name: typeof clientData.contact_name,
+        contact_phone: typeof clientData.contact_phone,
+        last_payment_date: typeof clientData.last_payment_date
+      });
 
       if (initialData?.id) {
-        console.log("Atualizando cliente existente...");
+        console.log("=== INICIANDO ATUALIZAÇÃO ===");
+        console.log("ID do cliente:", initialData.id);
+        
         const { data: updateData, error: updateError } = await supabase
           .from('clients')
           .update(clientData)
           .eq('id', initialData.id)
           .single();
 
+        console.log("Resposta da atualização:", {
+          success: !updateError,
+          data: updateData,
+          error: updateError ? {
+            message: updateError.message,
+            code: updateError.code,
+            details: updateError.details,
+            hint: updateError.hint
+          } : null
+        });
+
         if (updateError) {
-          console.error("Erro ao atualizar cliente:", updateError);
+          console.error("Erro detalhado na atualização:", updateError);
           throw updateError;
         }
 
@@ -240,31 +348,52 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
           description: "Cliente atualizado com sucesso!",
         });
       } else {
-        console.log("Criando novo cliente...");
+        console.log("=== INICIANDO INSERÇÃO ===");
+        console.log("Timestamp início inserção:", new Date().toISOString());
         
         try {
-          const { error: insertError } = await supabase
+          console.log("Chamando Supabase insert...");
+          const startTime = performance.now();
+          
+          const { data: insertData, error: insertError } = await supabase
             .from('clients')
             .insert([clientData]);
               
-          console.log("Resposta do Supabase:", { error: insertError });
+          const endTime = performance.now();
+          console.log("Tempo de resposta do Supabase:", `${endTime - startTime}ms`);
+          
+          console.log("Resposta completa do Supabase:", {
+            data: insertData,
+            error: insertError ? {
+              message: insertError.message,
+              code: insertError.code,
+              details: insertError.details,
+              hint: insertError.hint
+            } : null,
+            timestamp: new Date().toISOString()
+          });
 
           if (insertError) {
+            console.error("=== ERRO NA INSERÇÃO ===");
             console.error("Erro detalhado do Supabase:", {
               code: insertError.code,
               message: insertError.message,
               details: insertError.details,
-              hint: insertError.hint
+              hint: insertError.hint,
+              timestamp: new Date().toISOString()
             });
             throw new Error(`Erro ao salvar cliente: ${insertError.message}`);
           }
 
-          console.log("Cliente criado com sucesso!");
+          console.log("=== INSERÇÃO BEM-SUCEDIDA ===");
+          console.log("Timestamp conclusão:", new Date().toISOString());
+          
           toast({
             title: "Sucesso!",
             description: "Cliente cadastrado com sucesso!",
           });
 
+          console.log("Resetando formulário...");
           form.reset({
             companyName: "",
             contractValue: 0,
@@ -278,19 +407,30 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
             contactPhone: "",
             lastPaymentDate: "",
           });
+          console.log("Formulário resetado com sucesso");
+          
         } catch (insertError) {
-          console.error("Erro na operação de inserção:", insertError);
+          console.error("Erro na operação de inserção:", {
+            error: insertError,
+            timestamp: new Date().toISOString(),
+            stack: insertError instanceof Error ? insertError.stack : undefined
+          });
           throw insertError;
         }
       }
 
       if (onSuccess) {
-        console.log("Chamando callback de sucesso");
+        console.log("Executando callback de sucesso");
         onSuccess();
       }
 
     } catch (error) {
-      console.error("Erro detalhado ao salvar cliente:", error);
+      console.error("=== ERRO GERAL NA SUBMISSÃO ===");
+      console.error("Erro detalhado:", {
+        error,
+        timestamp: new Date().toISOString(),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       
       let errorMessage = "Não foi possível salvar o cliente. Por favor, tente novamente.";
       if (error instanceof Error) {
@@ -304,7 +444,8 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         variant: "destructive",
       });
     } finally {
-      console.log("Finalizando processo de salvamento");
+      console.log("=== FINALIZANDO PROCESSO DE SUBMISSÃO ===");
+      console.log("Timestamp final:", new Date().toISOString());
       setIsLoading(false);
     }
   };
@@ -390,4 +531,3 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     </Form>
   );
 };
-
