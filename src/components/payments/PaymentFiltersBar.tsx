@@ -78,9 +78,9 @@ export function PaymentFiltersBar({
       </Popover>
 
       <Select
-        value={filters.clientId?.toString()}
+        value={filters.clientId}
         onValueChange={(value) =>
-          onFiltersChange({ ...filters, clientId: parseInt(value) })
+          onFiltersChange({ ...filters, clientId: value })
         }
       >
         <SelectTrigger className="w-[280px]">
@@ -105,8 +105,9 @@ export function PaymentFiltersBar({
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="completed">Pago</SelectItem>
-          <SelectItem value="pending">Pendente</SelectItem>
+          <SelectItem value="RECEIVED">Recebido</SelectItem>
+          <SelectItem value="CONFIRMED">Confirmado</SelectItem>
+          <SelectItem value="PENDING">Aguardando</SelectItem>
         </SelectContent>
       </Select>
 

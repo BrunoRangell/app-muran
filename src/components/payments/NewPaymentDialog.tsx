@@ -29,7 +29,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { PaymentFormData } from "@/types/payment";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 
 const paymentFormSchema = z.object({
@@ -73,11 +72,11 @@ export function NewPaymentDialog({
       const { error } = await supabase
         .from('payments')
         .insert({
-          client_id: parseInt(data.clientId),
+          client_id: data.clientId,
           amount: parseCurrencyToNumber(data.amount),
           due_date: data.dueDate,
           notes: data.notes,
-          status: 'pending'
+          status: 'PENDING'
         });
 
       if (error) throw error;
