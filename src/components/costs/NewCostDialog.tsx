@@ -86,6 +86,16 @@ export function NewCostDialog({ open, onOpenChange }: NewCostDialogProps) {
     );
   };
 
+  const resetForm = () => {
+    form.reset({
+      name: "",
+      amount: "",
+      category: "outros",
+      date: new Date().toISOString().split("T")[0],
+      description: "",
+    });
+  };
+
   async function onSubmit(data: CostFormData) {
     setIsLoading(true);
     try {
@@ -97,14 +107,23 @@ export function NewCostDialog({ open, onOpenChange }: NewCostDialogProps) {
         description: data.description || null,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao registrar custo:", error);
+        throw error;
+      }
 
       toast({
         title: "Custo registrado",
         description: "O custo foi registrado com sucesso!",
       });
 
-      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      // Reseta o formulário
+      resetForm();
+      
+      // Atualiza a lista de custos
+      await queryClient.invalidateQueries({ queryKey: ["costs"] });
+      
+      // Fecha o modal
       onOpenChange(false);
     } catch (error) {
       console.error("Erro ao registrar custo:", error);
@@ -219,7 +238,11 @@ export function NewCostDialog({ open, onOpenChange }: NewCostDialogProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  resetForm();
+                  onOpenChange(false);
+                }}
+                disabled={isLoading}
               >
                 Cancelar
               </Button>
