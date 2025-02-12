@@ -1,3 +1,4 @@
+
 export const formatCurrency = (value: string | number) => {
   const numericValue = typeof value === 'string' ? 
     parseFloat(value.replace(/\D/g, "")) / 100 :
@@ -29,8 +30,29 @@ export const formatPhoneNumber = (value: string) => {
 
 export const formatDate = (dateString: string) => {
   if (!dateString) return '';
-  const date = new Date(dateString);
-  // Ajusta o fuso horário para considerar UTC
-  date.setUTCHours(0, 0, 0, 0);
-  return new Intl.DateTimeFormat('pt-BR').format(date);
+  
+  try {
+    // Garantir que a data está no formato YYYY-MM-DD
+    const [year, month, day] = dateString.split('T')[0].split('-').map(Number);
+    
+    // Criar data com horário meio-dia para evitar problemas de fuso horário
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) {
+      console.error('Data inválida:', dateString);
+      return '';
+    }
+
+    console.log('Formatando data:', {
+      original: dateString,
+      parsed: date.toISOString(),
+      final: new Intl.DateTimeFormat('pt-BR').format(date)
+    });
+
+    return new Intl.DateTimeFormat('pt-BR').format(date);
+  } catch (error) {
+    console.error('Erro ao formatar data:', error, dateString);
+    return '';
+  }
 };
