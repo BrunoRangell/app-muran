@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -16,6 +17,14 @@ import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface PaymentsClientListProps {
   onPaymentClick: (clientId: string) => void;
@@ -28,6 +37,11 @@ interface SortConfig {
 
 interface ClientWithTotalPayments extends Client {
   total_received: number;
+  payments?: {
+    amount: number;
+    reference_month: string;
+    notes: string | null;
+  }[];
 }
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
@@ -56,25 +70,32 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
       // Buscar todos os pagamentos
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
-        .select("client_id, amount");
+        .select("client_id, amount, reference_month, notes");
 
       if (paymentsError) {
         console.error("Erro ao buscar pagamentos:", paymentsError);
         throw paymentsError;
       }
 
-      // Calcular o total recebido por cliente
+      // Organizar pagamentos por cliente
+      const paymentsByClient: { [key: string]: any[] } = {};
       const totalsByClient: { [key: string]: number } = {};
+
       paymentsData.forEach(payment => {
         if (payment.client_id) {
+          if (!paymentsByClient[payment.client_id]) {
+            paymentsByClient[payment.client_id] = [];
+          }
+          paymentsByClient[payment.client_id].push(payment);
           totalsByClient[payment.client_id] = (totalsByClient[payment.client_id] || 0) + Number(payment.amount);
         }
       });
 
-      // Combinar os dados de clientes com os totais
+      // Combinar os dados de clientes com os totais e pagamentos
       const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => ({
         ...client,
-        total_received: totalsByClient[client.id] || 0
+        total_received: totalsByClient[client.id] || 0,
+        payments: paymentsByClient[client.id] || []
       }));
 
       return clientsWithTotals;
@@ -132,6 +153,15 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     </Button>
   );
 
+  const formatReferenceMonth = (monthStr: string) => {
+    try {
+      return format(new Date(monthStr), "MMMM'/'yyyy", { locale: ptBR });
+    } catch (error) {
+      console.error('Erro ao formatar mês:', error);
+      return monthStr;
+    }
+  };
+
   return (
     <Card className="p-2 md:p-6">
       <div className="flex flex-col space-y-4">
@@ -174,7 +204,43 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                     <TableRow key={client.id}>
                       <TableCell>{client.company_name}</TableCell>
                       <TableCell>{formatCurrency(client.contract_value)}</TableCell>
-                      <TableCell>{formatCurrency(client.total_received)}</TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help">
+                                {formatCurrency(client.total_received)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[400px] p-4">
+                              <div className="space-y-2">
+                                <p className="font-medium text-sm mb-2">Histórico de Pagamentos:</p>
+                                {client.payments && client.payments.length > 0 ? (
+                                  client.payments.map((payment, index) => (
+                                    <div key={index} className="border-b last:border-0 pb-2">
+                                      <p className="text-sm font-medium">
+                                        {formatReferenceMonth(payment.reference_month)}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {formatCurrency(payment.amount)}
+                                      </p>
+                                      {payment.notes && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {payment.notes}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">
+                                    Nenhum pagamento registrado
+                                  </p>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
                       <TableCell>
                         <Badge 
                           variant={client.status === 'active' ? 'default' : 'destructive'}
@@ -188,7 +254,6 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                           variant="outline"
                           size="sm"
                           onClick={() => onPaymentClick(client.id)}
-                          disabled={client.status !== 'active'}
                           className="gap-2"
                         >
                           <DollarSign className="h-4 w-4" />
