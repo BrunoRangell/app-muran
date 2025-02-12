@@ -39,7 +39,7 @@ export const SidebarMenuItem = ({
         }}
         className={cn(
           "flex items-center justify-between p-3 rounded-lg transition-colors",
-          isActive 
+          isActive && !hasSubmenu
             ? "bg-muran-primary text-white" 
             : "hover:bg-muran-complementary/80 text-gray-300",
         )}
@@ -65,7 +65,7 @@ export const SidebarMenuItem = ({
             <SidebarMenuItem
               key={item.path}
               {...item}
-              isActive={isActive && path === item.path}
+              isActive={path === item.path}
               onClick={onClick}
             />
           ))}
