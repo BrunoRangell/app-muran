@@ -31,10 +31,19 @@ export function PaymentFiltersBar({
   const handleDateSelect = (range: DateRange | undefined) => {
     setDate(range);
     if (range?.from) {
+      const start = new Date(range.from);
+      start.setUTCHours(0, 0, 0, 0);
+      
+      let end;
+      if (range.to) {
+        end = new Date(range.to);
+        end.setUTCHours(23, 59, 59, 999);
+      }
+
       onFiltersChange({
         ...filters,
-        startDate: format(range.from, 'yyyy-MM-dd'),
-        endDate: range.to ? format(range.to, 'yyyy-MM-dd') : undefined
+        startDate: format(start, 'yyyy-MM-dd'),
+        endDate: end ? format(end, 'yyyy-MM-dd') : undefined
       });
     } else {
       const { startDate, endDate, ...restFilters } = filters;

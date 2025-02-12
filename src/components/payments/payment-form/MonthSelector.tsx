@@ -20,6 +20,7 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
 
   const formatDateForInput = (date: Date) => {
     try {
+      date.setUTCHours(12, 0, 0, 0); // Define meio-dia UTC para evitar problemas de fuso horário
       return format(date, 'yyyy-MM');
     } catch (error) {
       console.error('Erro ao formatar data:', error, date);
@@ -31,8 +32,9 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
     try {
       console.log('Valor da data selecionada:', value);
       
-      // Parse a data usando o formato correto yyyy-MM
+      // Parse a data usando o formato correto yyyy-MM e define meio-dia UTC
       const newDate = parse(value, 'yyyy-MM', new Date());
+      newDate.setUTCHours(12, 0, 0, 0);
       console.log('Data após parse:', newDate);
       
       const newDateRange = multipleMonths 
@@ -50,11 +52,12 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
       // Calcula os meses selecionados
       const months: Date[] = [];
       let current = new Date(newDateRange.start);
+      current.setUTCHours(12, 0, 0, 0);
       
       if (multipleMonths) {
         while (current <= newDateRange.end) {
           months.push(new Date(current));
-          current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+          current = new Date(current.getFullYear(), current.getMonth() + 1, 1, 12); // Mantém meio-dia UTC
         }
       } else {
         months.push(new Date(newDateRange.start));

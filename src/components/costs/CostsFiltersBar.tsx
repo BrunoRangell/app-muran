@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/popover";
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import {
   DropdownMenu,
@@ -99,6 +98,10 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
       start: format(start, "dd/MM/yyyy"),
       end: format(end, "dd/MM/yyyy")
     });
+
+    // Garantir que as datas comecem e terminem no UTC correto
+    start.setUTCHours(0, 0, 0, 0);
+    end.setUTCHours(23, 59, 59, 999);
 
     onFiltersChange({
       ...filters,
@@ -242,13 +245,25 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
                 to: filters.endDate ? new Date(filters.endDate) : undefined,
               }}
               onSelect={(range) => {
-                onFiltersChange({
-                  ...filters,
-                  startDate: range?.from ? format(range.from, "yyyy-MM-dd") : undefined,
-                  endDate: range?.to ? format(range.to, "yyyy-MM-dd") : undefined,
-                });
-                if (range?.to) {
-                  setIsCustomPeriodOpen(false);
+                if (range?.from) {
+                  const start = new Date(range.from);
+                  start.setUTCHours(0, 0, 0, 0);
+                  
+                  let end;
+                  if (range.to) {
+                    end = new Date(range.to);
+                    end.setUTCHours(23, 59, 59, 999);
+                  }
+
+                  onFiltersChange({
+                    ...filters,
+                    startDate: format(start, "yyyy-MM-dd"),
+                    endDate: end ? format(end, "yyyy-MM-dd") : undefined,
+                  });
+
+                  if (range.to) {
+                    setIsCustomPeriodOpen(false);
+                  }
                 }
               }}
               numberOfMonths={2}
