@@ -1,15 +1,21 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Filter, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { ClientForm } from "@/components/admin/ClientForm";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { ClientsTable } from "./table/ClientsTable";
 import { ColumnToggle } from "./table/ColumnToggle";
 import { FilterPopover } from "./table/FilterPopover";
 import { Client, Column, SortConfig } from "./types";
+
+interface ClientsListProps {
+  onPaymentClick?: (clientId: string) => void;
+  viewMode?: 'default' | 'payments';
+}
 
 export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsListProps) => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -156,12 +162,11 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
         ) : (
           <div className="overflow-x-auto">
             <ClientsTable 
-              clients={filteredAndSortedClients} 
+              clients={filteredAndSortedClients || []} 
               columns={columns.filter(col => viewMode === 'payments' ? col.fixed : col.show)} 
               onEditClick={handleEditClick}
               sortConfig={sortConfig}
               onSort={handleSort}
-              onPaymentClick={onPaymentClick}
               viewMode={viewMode}
             />
           </div>

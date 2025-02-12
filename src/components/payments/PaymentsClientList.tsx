@@ -126,7 +126,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                       <TableCell>{formatCurrency(client.contract_value)}</TableCell>
                       <TableCell>
                         <Badge 
-                          variant={client.status === 'active' ? 'success' : 'destructive'}
+                          variant={client.status === 'active' ? 'default' : 'destructive'}
                           className="capitalize"
                         >
                           {client.status === 'active' ? 'Ativo' : 'Inativo'}
