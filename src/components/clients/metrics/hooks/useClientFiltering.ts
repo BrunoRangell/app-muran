@@ -10,31 +10,35 @@ interface FilterParams {
   clients?: Client[];
 }
 
+const MONTH_MAPPINGS = {
+  // Meses em português
+  'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5,
+  'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11,
+  // Meses em inglês
+  'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+  'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+};
+
 export const useClientFiltering = () => {
+  const getMonthIndex = (monthStr: string): number => {
+    const normalizedMonth = monthStr.toLowerCase();
+    const monthIndex = MONTH_MAPPINGS[normalizedMonth];
+
+    if (monthIndex === undefined) {
+      console.error('Mês não reconhecido:', monthStr);
+      return -1;
+    }
+
+    return monthIndex;
+  };
+
   const getClientsForPeriod = ({ monthStr, yearStr, metric, clients }: FilterParams) => {
     if (!clients) return [];
 
-    const monthName = monthStr.charAt(0).toUpperCase() + monthStr.slice(1).toLowerCase();
+    const monthIndex = getMonthIndex(monthStr);
+    if (monthIndex === -1) return [];
+
     const year = Number(`20${yearStr}`);
-
-    let monthIndex = -1;
-    for (let i = 0; i < 12; i++) {
-      const formattedMonth = format(new Date(2024, i, 1), 'MMM', { locale: ptBR })
-        .split('')
-        .map((char, index) => index === 0 ? char.toUpperCase() : char.toLowerCase())
-        .join('');
-      
-      if (formattedMonth === monthName) {
-        monthIndex = i;
-        break;
-      }
-    }
-
-    if (monthIndex === -1) {
-      console.error('Mês não encontrado:', monthName);
-      return [];
-    }
-
     const startDate = new Date(year, monthIndex, 1);
     const endDate = new Date(year, monthIndex + 1, 0);
 
