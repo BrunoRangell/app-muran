@@ -29,8 +29,11 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
 
   const handleDateChange = (type: 'start' | 'end', value: string) => {
     try {
+      console.log('Valor da data selecionada:', value);
+      
       // Parse a data usando o formato correto yyyy-MM
       const newDate = parse(value, 'yyyy-MM', new Date());
+      console.log('Data após parse:', newDate);
       
       const newDateRange = multipleMonths 
         ? {
@@ -57,7 +60,10 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
         months.push(new Date(newDateRange.start));
       }
       
-      setValue('months', months.map(date => format(date, 'yyyy-MM')));
+      // Formata as datas no formato yyyy-MM e atualiza o formulário
+      const formattedMonths = months.map(date => format(date, 'yyyy-MM'));
+      console.log('Meses formatados:', formattedMonths);
+      setValue('months', formattedMonths);
     } catch (error) {
       console.error('Erro ao processar data:', error);
     }
