@@ -7,7 +7,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  subMonths, 
+  startOfYear, 
+  endOfYear, 
+  setHours, 
+  setMinutes, 
+  setSeconds, 
+  setMilliseconds 
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
 import { CostFilters } from "@/types/cost";
@@ -17,7 +35,10 @@ interface DateFilterProps {
   onFiltersChange: (filters: CostFilters) => void;
 }
 
+type PeriodOption = "custom" | "this-month" | "last-month" | "last-3-months" | "this-year" | "last-year";
+
 export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>("custom");
   const [date, setDate] = useState<{ from: Date; to?: Date } | undefined>(() => {
     if (filters.startDate) {
       return {
@@ -28,7 +49,52 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
     return undefined;
   });
 
+  const handlePeriodChange = (period: PeriodOption) => {
+    setSelectedPeriod(period);
+    
+    const now = new Date();
+    let start: Date;
+    let end: Date;
+
+    switch (period) {
+      case "this-month":
+        start = startOfMonth(now);
+        end = endOfMonth(now);
+        break;
+      case "last-month":
+        start = startOfMonth(subMonths(now, 1));
+        end = endOfMonth(subMonths(now, 1));
+        break;
+      case "last-3-months":
+        start = startOfMonth(subMonths(now, 2));
+        end = endOfMonth(now);
+        break;
+      case "this-year":
+        start = startOfYear(now);
+        end = endOfYear(now);
+        break;
+      case "last-year":
+        const lastYear = new Date(now.getFullYear() - 1, 0, 1);
+        start = startOfYear(lastYear);
+        end = endOfYear(lastYear);
+        break;
+      default:
+        return;
+    }
+
+    start = setHours(setMinutes(setSeconds(setMilliseconds(start, 0), 0), 0), 0);
+    end = setHours(setMinutes(setSeconds(setMilliseconds(end, 999), 59), 59), 23);
+
+    setDate({ from: start, to: end });
+    onFiltersChange({
+      ...filters,
+      startDate: format(start, "yyyy-MM-dd"),
+      endDate: format(end, "yyyy-MM-dd"),
+    });
+  };
+
   const handleDateSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    setSelectedPeriod("custom");
     setDate(range as { from: Date; to?: Date });
     
     if (range?.from) {
@@ -53,7 +119,21 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
   };
 
   return (
-    <div className="relative">
+    <div className="flex flex-col md:flex-row gap-2">
+      <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+        <SelectTrigger className="w-full md:w-[180px]">
+          <SelectValue placeholder="Período" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="this-month">Este mês</SelectItem>
+          <SelectItem value="last-month">Mês passado</SelectItem>
+          <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
+          <SelectItem value="this-year">Este ano</SelectItem>
+          <SelectItem value="last-year">Ano passado</SelectItem>
+          <SelectItem value="custom">Personalizado</SelectItem>
+        </SelectContent>
+      </Select>
+
       <Popover>
         <PopoverTrigger asChild>
           <Button
