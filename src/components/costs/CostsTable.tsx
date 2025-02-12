@@ -18,10 +18,13 @@ interface CostsTableProps {
 const categoryLabels: Record<string, string> = {
   marketing: "Marketing",
   salarios: "Salários",
+  comissoes: "Comissões",
   impostos: "Impostos",
-  servicos: "Serviços",
-  equipamentos: "Equipamentos",
-  software: "Software",
+  alimentacao: "Alimentação",
+  ferramentas_e_softwares: "Ferramentas e Softwares",
+  viagem_e_hospedagem: "Viagem e Hospedagem",
+  equipamentos_e_escritorio: "Equipamentos e Escritório",
+  despesas_financeiras: "Despesas Financeiras",
   outros: "Outros",
 };
 

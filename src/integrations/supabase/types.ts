@@ -305,10 +305,13 @@ export type Database = {
       cost_category:
         | "marketing"
         | "salarios"
+        | "comissoes"
         | "impostos"
-        | "servicos"
-        | "equipamentos"
-        | "software"
+        | "alimentacao"
+        | "ferramentas_e_softwares"
+        | "viagem_e_hospedagem"
+        | "equipamentos_e_escritorio"
+        | "despesas_financeiras"
         | "outros"
       payment_status:
         | "RECEIVED"
