@@ -260,31 +260,27 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
             contactPhone: "",
             lastPaymentDate: "",
           });
+
+          if (onSuccess) {
+            console.log("Chamando callback de sucesso");
+            onSuccess();
+          }
         } catch (error) {
           console.error("Erro detalhado na inserção:", error);
           
-          // Melhor tratamento para erros do Supabase
+          let errorMessage = "Ocorreu um erro inesperado ao tentar salvar o cliente";
           if (error instanceof Error) {
-            toast({
-              title: "Erro ao salvar",
-              description: error.message,
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Erro ao salvar",
-              description: "Ocorreu um erro inesperado ao tentar salvar o cliente",
-              variant: "destructive",
-            });
+            console.error("Mensagem de erro:", error.message);
+            errorMessage = error.message;
           }
-          setIsLoading(false);
+          
+          toast({
+            title: "Erro ao salvar",
+            description: errorMessage,
+            variant: "destructive",
+          });
           return;
         }
-      }
-
-      if (onSuccess) {
-        console.log("Chamando callback de sucesso");
-        onSuccess();
       }
     } catch (error) {
       console.error("Erro detalhado ao salvar cliente:", error);
@@ -292,12 +288,7 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       let errorMessage = "Não foi possível salvar o cliente. Por favor, tente novamente.";
       if (error instanceof Error) {
         console.error("Mensagem de erro:", error.message);
-        if (error.message === "Tempo limite excedido") {
-          errorMessage = "A operação demorou muito tempo. Por favor, tente novamente.";
-        } else {
-          // Adiciona detalhes do erro à mensagem
-          errorMessage = `Erro ao salvar: ${error.message}`;
-        }
+        errorMessage = `Erro ao salvar: ${error.message}`;
       }
       
       toast({
