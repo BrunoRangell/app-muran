@@ -27,6 +27,10 @@ interface SortConfig {
   direction: 'asc' | 'desc';
 }
 
+interface ClientWithTotalPayments extends Client {
+  total_received: number;
+}
+
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: 'company_name',
@@ -38,18 +42,44 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     queryKey: ["payments-clients"],
     queryFn: async () => {
       console.log("Buscando lista de clientes para recebimentos...");
-      const { data, error } = await supabase
+      
+      const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select("*")
         .order("status", { ascending: false })
         .order("company_name");
 
-      if (error) {
-        console.error("Erro ao buscar clientes:", error);
-        throw error;
+      if (clientsError) {
+        console.error("Erro ao buscar clientes:", clientsError);
+        throw clientsError;
       }
 
-      return data as Client[];
+      // Buscar todos os pagamentos
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from("payments")
+        .select("client_id, amount")
+        .eq("status", "RECEIVED");
+
+      if (paymentsError) {
+        console.error("Erro ao buscar pagamentos:", paymentsError);
+        throw paymentsError;
+      }
+
+      // Calcular o total recebido por cliente
+      const totalsByClient: { [key: string]: number } = {};
+      paymentsData.forEach(payment => {
+        if (payment.client_id) {
+          totalsByClient[payment.client_id] = (totalsByClient[payment.client_id] || 0) + Number(payment.amount);
+        }
+      });
+
+      // Combinar os dados de clientes com os totais
+      const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => ({
+        ...client,
+        total_received: totalsByClient[client.id] || 0
+      }));
+
+      return clientsWithTotals;
     }
   });
 
@@ -78,6 +108,8 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
           return a.company_name.localeCompare(b.company_name) * direction;
         case 'contract_value':
           return (a.contract_value - b.contract_value) * direction;
+        case 'total_received':
+          return (a.total_received - b.total_received) * direction;
         default:
           return 0;
       }
@@ -126,6 +158,9 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                     <TableHead>
                       <SortButton column="contract_value" label="Valor Mensal" />
                     </TableHead>
+                    <TableHead>
+                      <SortButton column="total_received" label="Valor Total Recebido" />
+                    </TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -133,7 +168,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-4">
+                      <TableCell colSpan={5} className="text-center py-4">
                         Carregando clientes...
                       </TableCell>
                     </TableRow>
@@ -141,6 +176,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                     <TableRow key={client.id}>
                       <TableCell>{client.company_name}</TableCell>
                       <TableCell>{formatCurrency(client.contract_value)}</TableCell>
+                      <TableCell>{formatCurrency(client.total_received)}</TableCell>
                       <TableCell>
                         <Badge 
                           variant={client.status === 'active' ? 'default' : 'destructive'}
