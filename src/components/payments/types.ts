@@ -16,6 +16,7 @@ export interface Payment {
 export interface ClientWithTotalPayments extends Client {
   total_received: number;
   payments: Payment[];
+  hasCurrentMonthPayment: boolean;
 }
 
 export interface PaymentsClientListProps {

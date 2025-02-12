@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Search } from "lucide-react";
+import { DollarSign, Search, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -17,6 +17,13 @@ import { Input } from "@/components/ui/input";
 import { PaymentsTableHeader } from "./table/PaymentsTableHeader";
 import { PaymentHistory } from "./PaymentHistory";
 import { PaymentsClientListProps, SortConfig, ClientWithTotalPayments } from "./types";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -41,6 +48,9 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         console.error("Erro ao buscar clientes:", clientsError);
         throw clientsError;
       }
+
+      const currentMonthStart = startOfMonth(new Date());
+      const currentMonthEnd = endOfMonth(new Date());
 
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
@@ -74,11 +84,20 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         return acc;
       }, {});
 
-      const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => ({
-        ...client,
-        total_received: totalsByClient[client.id] || 0,
-        payments: paymentsByClient[client.id] || []
-      }));
+      const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => {
+        const clientPayments = paymentsByClient[client.id] || [];
+        const hasCurrentMonthPayment = clientPayments.some(payment => {
+          const paymentDate = new Date(payment.reference_month);
+          return paymentDate >= currentMonthStart && paymentDate <= currentMonthEnd;
+        });
+
+        return {
+          ...client,
+          total_received: totalsByClient[client.id] || 0,
+          payments: clientPayments,
+          hasCurrentMonthPayment
+        };
+      });
 
       return clientsWithTotals;
     }
@@ -147,7 +166,23 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                     </TableRow>
                   ) : filteredAndSortedClients?.map((client) => (
                     <TableRow key={client.id}>
-                      <TableCell>{client.company_name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {client.status === 'active' && !client.hasCurrentMonthPayment && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Pagamento do mês atual não registrado</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {client.company_name}
+                        </div>
+                      </TableCell>
                       <TableCell>{formatCurrency(client.contract_value)}</TableCell>
                       <TableCell>
                         <PaymentHistory 
