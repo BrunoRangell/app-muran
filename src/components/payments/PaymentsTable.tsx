@@ -30,7 +30,7 @@ export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
             <TableHead>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Data de Vencimento
+                Data do Pagamento
               </div>
             </TableHead>
             <TableHead>
@@ -47,22 +47,29 @@ export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
           {payments?.map((payment) => (
             <TableRow key={payment.id}>
               <TableCell>{payment.clients?.company_name}</TableCell>
-              <TableCell>{formatDate(payment.due_date)}</TableCell>
+              <TableCell>{formatDate(payment.payment_date || '')}</TableCell>
               <TableCell>{formatCurrency(payment.amount)}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  {payment.status === 'completed' ? (
+                  {payment.status === 'RECEIVED' ? (
                     <>
                       <Check className="h-4 w-4 text-green-500" />
                       <span className="text-sm font-medium text-green-500">
-                        Pago
+                        Recebido
+                      </span>
+                    </>
+                  ) : payment.status === 'CONFIRMED' ? (
+                    <>
+                      <Check className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium text-blue-500">
+                        Confirmado
                       </span>
                     </>
                   ) : (
                     <>
-                      <X className="h-4 w-4 text-red-500" />
-                      <span className="text-sm font-medium text-red-500">
-                        Pendente
+                      <X className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-medium text-orange-500">
+                        Aguardando
                       </span>
                     </>
                   )}
