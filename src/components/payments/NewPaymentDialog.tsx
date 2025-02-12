@@ -52,7 +52,7 @@ export function NewPaymentDialog({
       const payments = data.months.map(month => ({
         client_id: clientId,
         amount: parseCurrencyToNumber(data.amount),
-        reference_month: new Date(month + '-01'),
+        reference_month: new Date(month + '-01').toISOString(), // Corrigido aqui
         notes: data.notes || null
       }));
 
