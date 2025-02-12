@@ -91,6 +91,8 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   }, [status]);
 
   const onSubmit = async (data: ClientFormData) => {
+    if (isLoading) return; // Previne múltiplos submits
+
     try {
       setIsLoading(true);
       console.log("Salvando cliente:", data);
@@ -117,35 +119,50 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
 
       console.log("Dados formatados para salvar:", clientData);
 
-      let error;
       if (initialData) {
-        const { error: dbError } = await supabase
+        const { error } = await supabase
           .from('clients')
           .update(clientData)
           .eq('id', initialData.id);
-        error = dbError;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso!",
+          description: "Cliente atualizado com sucesso!",
+        });
       } else {
-        const { error: dbError } = await supabase
+        const { error } = await supabase
           .from('clients')
           .insert([clientData]);
-        error = dbError;
+
+        if (error) throw error;
+        
+        toast({
+          title: "Sucesso!",
+          description: "Cliente cadastrado com sucesso!",
+        });
+        
+        form.reset({
+          companyName: "",
+          contractValue: 0,
+          firstPaymentDate: "",
+          paymentType: "pre",
+          status: "active",
+          acquisitionChannel: "",
+          customAcquisitionChannel: "",
+          companyBirthday: "",
+          contactName: "",
+          contactPhone: "",
+          lastPaymentDate: "",
+        });
       }
 
-      if (error) {
-        console.error("Erro do Supabase:", error);
-        throw error;
+      // Chama o callback de sucesso antes de resetar o loading
+      if (onSuccess) {
+        onSuccess();
       }
 
-      console.log("Cliente salvo com sucesso!");
-      toast({
-        title: "Sucesso!",
-        description: initialData 
-          ? "Cliente atualizado com sucesso!" 
-          : "Cliente cadastrado com sucesso!",
-      });
-
-      onSuccess?.();
-      form.reset();
     } catch (error) {
       console.error("Erro ao salvar cliente:", error);
       toast({
