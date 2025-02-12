@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PaymentFilters, PaymentSummary } from "@/types/payment";
 import { PaymentsTable } from "@/components/payments/PaymentsTable";
-import { PaymentFiltersBar } from "@/components/payments/PaymentFiltersBar";
 import { PaymentSummaryCard } from "@/components/payments/PaymentSummaryCard";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -73,11 +72,6 @@ export default function Payments() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Recebimentos</h1>
       </div>
-
-      <PaymentFiltersBar 
-        filters={filters} 
-        onFiltersChange={setFilters} 
-      />
 
       {!isLoadingPayments && summaries && (
         <div className="grid grid-cols-1 gap-4">
