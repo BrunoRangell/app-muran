@@ -48,42 +48,57 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
 
   const handlePresetPeriod = (preset: string) => {
     const now = new Date();
-    let start: Date;
-    let end: Date;
+    let start: Date = new Date();
+    let end: Date = new Date();
 
     switch (preset) {
-      case 'this-month':
-        start = startOfMonth(now);
-        end = endOfMonth(now);
+      case 'this-month': {
+        const thisMonth = startOfMonth(now);
+        start = thisMonth;
+        end = endOfMonth(thisMonth);
         break;
-      case 'last-month':
-        const lastMonth = subMonths(now, 1);
-        start = startOfMonth(lastMonth);
+      }
+      case 'last-month': {
+        const lastMonth = subMonths(startOfMonth(now), 1);
+        start = lastMonth;
         end = endOfMonth(lastMonth);
         break;
-      case 'last-3-months':
-        start = startOfMonth(subMonths(now, 3));
+      }
+      case 'last-3-months': {
+        start = startOfMonth(subMonths(now, 2));
         end = endOfMonth(now);
         break;
-      case 'last-6-months':
-        start = startOfMonth(subMonths(now, 6));
+      }
+      case 'last-6-months': {
+        start = startOfMonth(subMonths(now, 5));
         end = endOfMonth(now);
         break;
-      case 'last-12-months':
-        start = startOfMonth(subMonths(now, 12));
+      }
+      case 'last-12-months': {
+        start = startOfMonth(subMonths(now, 11));
         end = endOfMonth(now);
         break;
-      case 'last-24-months':
-        start = startOfMonth(subMonths(now, 24));
+      }
+      case 'last-24-months': {
+        start = startOfMonth(subMonths(now, 23));
         end = endOfMonth(now);
         break;
-      case 'this-year':
+      }
+      case 'this-year': {
+        const thisYear = now.getFullYear();
         start = startOfYear(now);
         end = endOfYear(now);
         break;
+      }
       default:
         return;
     }
+
+    console.log('Período selecionado:', {
+      preset,
+      start: format(start, "dd/MM/yyyy"),
+      end: format(end, "dd/MM/yyyy")
+    });
 
     onFiltersChange({
       ...filters,
