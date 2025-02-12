@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { MonthSelector } from "./MonthSelector";
-import { Client } from "@/types/client";
+import { Client } from "@/components/clients/types";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
