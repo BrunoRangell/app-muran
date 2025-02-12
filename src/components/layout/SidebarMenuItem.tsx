@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { MenuItem } from "@/types/sidebar";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ export const SidebarMenuItem = ({
   onClick 
 }: SidebarMenuItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
-
+  const location = useLocation();
   const hasSubmenu = submenu && submenu.length > 0;
 
   const toggleSubmenu = (e: React.MouseEvent) => {
@@ -28,6 +28,10 @@ export const SidebarMenuItem = ({
       setIsOpen(!isOpen);
     }
   };
+
+  const isItemActive = hasSubmenu 
+    ? isActive || (isOpen && submenu?.some(item => item.path === location.pathname))
+    : isActive;
 
   return (
     <div>
@@ -39,7 +43,7 @@ export const SidebarMenuItem = ({
         }}
         className={cn(
           "flex items-center justify-between p-3 rounded-lg transition-colors",
-          isActive && !hasSubmenu
+          isItemActive
             ? "bg-muran-primary text-white" 
             : "hover:bg-muran-complementary/80 text-gray-300",
         )}
@@ -65,7 +69,7 @@ export const SidebarMenuItem = ({
             <SidebarMenuItem
               key={item.path}
               {...item}
-              isActive={path === item.path}
+              isActive={location.pathname === item.path}
               onClick={onClick}
             />
           ))}

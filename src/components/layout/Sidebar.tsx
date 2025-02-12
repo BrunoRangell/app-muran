@@ -79,7 +79,7 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
 
   const isPathActive = (path: string, submenu?: MenuItem[]) => {
     if (submenu) {
-      return submenu.some(item => location.pathname === item.path || location.pathname.startsWith(item.path));
+      return submenu.some(item => location.pathname === item.path);
     }
     return location.pathname === path;
   };
