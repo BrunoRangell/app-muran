@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { ClientFormData } from "@/types/client";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { clientFormSchema } from "@/validations/clientFormSchema";
+import { verifySession, prepareClientData, saveClient } from "@/services/clientService";
 
 interface UseClientFormProps {
   initialData?: {
