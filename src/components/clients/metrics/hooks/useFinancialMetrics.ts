@@ -53,6 +53,12 @@ export const useFinancialMetrics = () => {
           end: endOfMonth(now)
         });
         break;
+      case 'last-24-months':
+        setDateRange({
+          start: startOfMonth(addMonths(now, -23)),
+          end: endOfMonth(now)
+        });
+        break;
       case 'this-year':
         setDateRange({
           start: startOfYear(now),

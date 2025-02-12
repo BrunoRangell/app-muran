@@ -7,7 +7,8 @@ export interface DateRangeFilter {
 export type PeriodFilter = 
   | 'last-3-months' 
   | 'last-6-months' 
-  | 'last-12-months' 
+  | 'last-12-months'
+  | 'last-24-months'
   | 'this-year' 
   | 'last-year' 
   | 'custom';
