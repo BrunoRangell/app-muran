@@ -7,7 +7,6 @@ import { PaymentSummaryCard } from "@/components/payments/PaymentSummaryCard";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { PaymentsClientList } from "@/components/payments/PaymentsClientList";
 
 export default function Payments() {
   const [filters, setFilters] = useState<PaymentFilters>({});
@@ -82,8 +81,6 @@ export default function Payments() {
           />
         </div>
       )}
-
-      <PaymentsClientList onPaymentClick={handleClientPayment} />
 
       <PaymentsTable 
         payments={payments || []} 
