@@ -17,9 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CostFormData, getCategoriesForMacroCategory } from "./schemas/costFormSchema";
+import { CostFormData } from "./schemas/costFormSchema";
 import { UseFormReturn } from "react-hook-form";
-import { MACRO_CATEGORIES } from "@/types/cost";
+import { MACRO_CATEGORIES, getCategoriesForMacroCategory } from "@/types/cost";
 import { useState } from "react";
 
 interface CostFormProps {
