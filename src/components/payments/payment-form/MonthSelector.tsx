@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Control } from "react-hook-form";
@@ -29,8 +29,8 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
 
   const handleDateChange = (type: 'start' | 'end', value: string) => {
     try {
-      // Adiciona o dia 1 para garantir uma data válida no mês selecionado
-      const newDate = new Date(`${value}-01`);
+      // Parse a data usando o formato correto yyyy-MM
+      const newDate = parse(value, 'yyyy-MM', new Date());
       
       const newDateRange = multipleMonths 
         ? {
@@ -46,7 +46,7 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
 
       // Calcula os meses selecionados
       const months: Date[] = [];
-      let current = newDateRange.start;
+      let current = new Date(newDateRange.start);
       
       if (multipleMonths) {
         while (current <= newDateRange.end) {
@@ -54,7 +54,7 @@ export function MonthSelector({ control, multipleMonths, setValue }: MonthSelect
           current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
         }
       } else {
-        months.push(newDateRange.start);
+        months.push(new Date(newDateRange.start));
       }
       
       setValue('months', months.map(date => format(date, 'yyyy-MM')));
