@@ -15,7 +15,9 @@ export const costFormSchema = z.object({
     "viagem_e_hospedagem",
     "equipamentos_e_escritorio",
     "despesas_financeiras",
-    "outros"
+    "outros",
+    "eventos_e_treinamentos",
+    "doacoes"
   ] as const),
   date: z.string().min(1, "Data é obrigatória"),
   description: z.string().optional(),
@@ -38,5 +40,7 @@ export const costCategories: { value: CostCategory; label: string }[] = [
   { value: "viagem_e_hospedagem", label: "Viagem e Hospedagem" },
   { value: "equipamentos_e_escritorio", label: "Equipamentos e Escritório" },
   { value: "despesas_financeiras", label: "Despesas Financeiras" },
+  { value: "eventos_e_treinamentos", label: "Eventos e Treinamentos" },
+  { value: "doacoes", label: "Doações" },
   { value: "outros", label: "Outros" },
 ];

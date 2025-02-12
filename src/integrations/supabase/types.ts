@@ -313,6 +313,8 @@ export type Database = {
         | "equipamentos_e_escritorio"
         | "despesas_financeiras"
         | "outros"
+        | "eventos_e_treinamentos"
+        | "doacoes"
       payment_status:
         | "RECEIVED"
         | "CONFIRMED"

@@ -1,5 +1,5 @@
 
-export type CostCategory = 'marketing' | 'salarios' | 'comissoes' | 'impostos' | 'alimentacao' | 'ferramentas_e_softwares' | 'viagem_e_hospedagem' | 'equipamentos_e_escritorio' | 'despesas_financeiras' | 'outros';
+export type CostCategory = 'marketing' | 'salarios' | 'comissoes' | 'impostos' | 'alimentacao' | 'ferramentas_e_softwares' | 'viagem_e_hospedagem' | 'equipamentos_e_escritorio' | 'despesas_financeiras' | 'outros' | 'eventos_e_treinamentos' | 'doacoes';
 
 export interface Cost {
   id: number;

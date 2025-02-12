@@ -28,6 +28,8 @@ const categoryLabels: Record<string, string> = {
   viagem_e_hospedagem: "Viagem e Hospedagem",
   equipamentos_e_escritorio: "Equipamentos e Escritório",
   despesas_financeiras: "Despesas Financeiras",
+  eventos_e_treinamentos: "Eventos e Treinamentos",
+  doacoes: "Doações",
   outros: "Outros",
 };
 
