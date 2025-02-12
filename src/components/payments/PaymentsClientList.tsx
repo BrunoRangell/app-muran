@@ -1,5 +1,5 @@
 
-import { Table, TableBody } from "@/components/ui/table";
+import { Table, TableBody, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { usePaymentsClients } from "./hooks/usePaymentsClients";
 import { usePaymentsSort } from "./hooks/usePaymentsSort";
 import { QuickFiltersBar } from "./QuickFiltersBar";
 import { useState } from "react";
+import { formatCurrency } from "@/utils/formatters";
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
   const { clients, isLoading, handlePaymentUpdated } = usePaymentsClients();
@@ -76,6 +77,12 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
 
   const finalFilteredClients = applyFilters(clients);
 
+  // Calcula os totais dos clientes filtrados
+  const totals = finalFilteredClients.reduce((acc, client) => ({
+    monthlyTotal: acc.monthlyTotal + client.contract_value,
+    receivedTotal: acc.receivedTotal + client.total_received
+  }), { monthlyTotal: 0, receivedTotal: 0 });
+
   return (
     <Card className="p-2 md:p-6">
       <div className="flex flex-col space-y-4">
@@ -124,6 +131,16 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                     />
                   ))}
                 </TableBody>
+                {finalFilteredClients.length > 0 && (
+                  <TableFooter className="bg-muted/50">
+                    <TableRow>
+                      <TableHead>Total</TableHead>
+                      <TableHead>{formatCurrency(totals.monthlyTotal)}</TableHead>
+                      <TableHead>{formatCurrency(totals.receivedTotal)}</TableHead>
+                      <TableHead colSpan={2}></TableHead>
+                    </TableRow>
+                  </TableFooter>
+                )}
               </Table>
             </div>
           </div>
