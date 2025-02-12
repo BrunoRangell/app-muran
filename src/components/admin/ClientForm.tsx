@@ -116,18 +116,24 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   }, [status]);
 
   const onSubmit = async (data: ClientFormData) => {
-    if (isLoading) return;
+    if (isLoading) {
+      console.log("Formulário já está sendo enviado, ignorando novo envio");
+      return;
+    }
 
+    console.log("Iniciando envio do formulário com dados:", data);
     setIsLoading(true);
     
     try {
       let contractValue: number;
       try {
         contractValue = parseCurrencyToNumber(String(data.contractValue));
+        console.log("Valor do contrato convertido:", contractValue);
         if (isNaN(contractValue) || contractValue <= 0) {
           throw new Error("Valor do contrato inválido");
         }
       } catch (error) {
+        console.error("Erro ao converter valor do contrato:", error);
         toast({
           title: "Erro no valor do contrato",
           description: "Por favor, insira um valor válido (exemplo: 1.000,00)",
@@ -143,7 +149,10 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         lastPaymentDate: data.lastPaymentDate ? new Date(data.lastPaymentDate) : null
       };
 
+      console.log("Datas convertidas:", dates);
+
       if (dates.firstPaymentDate.toString() === 'Invalid Date') {
+        console.error("Data de início inválida");
         toast({
           title: "Erro na data",
           description: "Data de início inválida",
@@ -154,6 +163,7 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       }
 
       if (dates.companyBirthday && dates.companyBirthday.toString() === 'Invalid Date') {
+        console.error("Data de aniversário inválida");
         toast({
           title: "Erro na data",
           description: "Data de aniversário da empresa inválida",
@@ -164,6 +174,7 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       }
 
       if (dates.lastPaymentDate && dates.lastPaymentDate.toString() === 'Invalid Date') {
+        console.error("Data do último pagamento inválida");
         toast({
           title: "Erro na data",
           description: "Data do último pagamento inválida",
@@ -190,33 +201,39 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         last_payment_date: data.status === "inactive" ? (data.lastPaymentDate || null) : null,
       };
 
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Tempo limite excedido")), 10000);
-      });
+      console.log("Dados do cliente preparados para envio:", clientData);
 
       if (initialData?.id) {
-        await Promise.race([
-          supabase
-            .from('clients')
-            .update(clientData)
-            .eq('id', initialData.id)
-            .single(),
-          timeoutPromise
-        ]);
+        console.log("Atualizando cliente existente...");
+        const { data: updateData, error: updateError } = await supabase
+          .from('clients')
+          .update(clientData)
+          .eq('id', initialData.id)
+          .single();
 
+        if (updateError) {
+          console.error("Erro ao atualizar cliente:", updateError);
+          throw updateError;
+        }
+
+        console.log("Cliente atualizado com sucesso:", updateData);
         toast({
           title: "Sucesso!",
           description: "Cliente atualizado com sucesso!",
         });
       } else {
-        await Promise.race([
-          supabase
-            .from('clients')
-            .insert([clientData])
-            .single(),
-          timeoutPromise
-        ]);
+        console.log("Criando novo cliente...");
+        const { data: insertData, error: insertError } = await supabase
+          .from('clients')
+          .insert([clientData])
+          .single();
 
+        if (insertError) {
+          console.error("Erro ao inserir cliente:", insertError);
+          throw insertError;
+        }
+
+        console.log("Cliente criado com sucesso:", insertData);
         toast({
           title: "Sucesso!",
           description: "Cliente cadastrado com sucesso!",
@@ -238,14 +255,21 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       }
 
       if (onSuccess) {
+        console.log("Chamando callback de sucesso");
         onSuccess();
       }
     } catch (error) {
-      console.error("Erro ao salvar cliente:", error);
+      console.error("Erro detalhado ao salvar cliente:", error);
       
       let errorMessage = "Não foi possível salvar o cliente. Por favor, tente novamente.";
-      if (error instanceof Error && error.message === "Tempo limite excedido") {
-        errorMessage = "A operação demorou muito tempo. Por favor, tente novamente.";
+      if (error instanceof Error) {
+        console.error("Mensagem de erro:", error.message);
+        if (error.message === "Tempo limite excedido") {
+          errorMessage = "A operação demorou muito tempo. Por favor, tente novamente.";
+        } else {
+          // Adiciona detalhes do erro à mensagem
+          errorMessage = `Erro ao salvar: ${error.message}`;
+        }
       }
       
       toast({
@@ -253,9 +277,10 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      console.log("Finalizando processo de salvamento");
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const handleDelete = async () => {
