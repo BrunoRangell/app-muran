@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -24,7 +25,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
   });
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: clients, isLoading } = useQuery({
+  const { data: clients, isLoading, refetch } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
       console.log("Buscando lista de clientes para recebimentos...");
@@ -56,6 +57,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
             acc[payment.client_id] = [];
           }
           acc[payment.client_id].push({
+            id: payment.id,
             amount: payment.amount,
             reference_month: payment.reference_month,
             notes: payment.notes
@@ -89,7 +91,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
   };
 
   const handlePaymentUpdated = () => {
-    clients.refetch();
+    refetch();
   };
 
   const filteredAndSortedClients = clients

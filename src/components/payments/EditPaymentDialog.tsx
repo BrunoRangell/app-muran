@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,9 +25,19 @@ export function EditPaymentDialog({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    amount: payment?.amount.toString() || "",
-    notes: payment?.notes || ""
+    amount: "",
+    notes: ""
   });
+
+  // Atualiza o formulário quando o pagamento muda
+  useEffect(() => {
+    if (payment) {
+      setFormData({
+        amount: payment.amount.toString(),
+        notes: payment.notes || ""
+      });
+    }
+  }, [payment]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
