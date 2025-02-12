@@ -1,10 +1,11 @@
 
 import { z } from "zod";
-import { CostCategory } from "@/types/cost";
+import { CostCategory, CostMacroCategory, COST_CATEGORIES_HIERARCHY } from "@/types/cost";
 
 export const costFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   amount: z.string().min(1, "Valor é obrigatório"),
+  macro_category: z.enum(['despesas_operacionais', 'despesas_administrativas', 'investimentos_e_outros'] as const),
   category: z.enum([
     "marketing",
     "salarios",
@@ -30,17 +31,6 @@ export interface NewCostDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const costCategories: { value: CostCategory; label: string }[] = [
-  { value: "marketing", label: "Marketing" },
-  { value: "salarios", label: "Salários" },
-  { value: "comissoes", label: "Comissões" },
-  { value: "impostos", label: "Impostos" },
-  { value: "alimentacao", label: "Alimentação" },
-  { value: "ferramentas_e_softwares", label: "Ferramentas e Softwares" },
-  { value: "viagem_e_hospedagem", label: "Viagem e Hospedagem" },
-  { value: "equipamentos_e_escritorio", label: "Equipamentos e Escritório" },
-  { value: "despesas_financeiras", label: "Despesas Financeiras" },
-  { value: "eventos_e_treinamentos", label: "Eventos e Treinamentos" },
-  { value: "doacoes", label: "Doações" },
-  { value: "outros", label: "Outros" },
-];
+export const getCategoriesForMacroCategory = (macroCategory: CostMacroCategory) => {
+  return COST_CATEGORIES_HIERARCHY[macroCategory].categories;
+};

@@ -17,8 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { costCategories, CostFormData } from "./schemas/costFormSchema";
+import { CostFormData, getCategoriesForMacroCategory } from "./schemas/costFormSchema";
 import { UseFormReturn } from "react-hook-form";
+import { MACRO_CATEGORIES } from "@/types/cost";
+import { useState } from "react";
 
 interface CostFormProps {
   form: UseFormReturn<CostFormData>;
@@ -35,6 +37,10 @@ export function CostForm({
   handleAmountChange,
   onCancel,
 }: CostFormProps) {
+  const [availableCategories, setAvailableCategories] = useState(() => 
+    getCategoriesForMacroCategory(form.getValues().macro_category || 'despesas_operacionais')
+  );
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -72,18 +78,52 @@ export function CostForm({
 
         <FormField
           control={form.control}
-          name="category"
+          name="macro_category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Categoria</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormLabel>Categoria Principal</FormLabel>
+              <Select
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  const newCategories = getCategoriesForMacroCategory(value as any);
+                  setAvailableCategories(newCategories);
+                  // Reset the category when macro_category changes
+                  form.setValue('category', newCategories[0].value);
+                }}
+                defaultValue={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
+                    <SelectValue placeholder="Selecione uma categoria principal" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {costCategories.map((category) => (
+                  {MACRO_CATEGORIES.map((category) => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Subcategoria</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma subcategoria" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {availableCategories.map((category) => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
                     </SelectItem>

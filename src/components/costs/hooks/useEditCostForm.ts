@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Cost, CostCategory } from "@/types/cost";
+import { Cost, CostCategory, CostMacroCategory } from "@/types/cost";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { costFormSchema, CostFormData } from "../schemas/costFormSchema";
 
@@ -19,6 +19,7 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
     defaultValues: {
       name: "",
       amount: "",
+      macro_category: "despesas_operacionais",
       category: "outros",
       date: new Date().toISOString().split("T")[0],
       description: "",
@@ -33,6 +34,7 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
           style: "currency",
           currency: "BRL",
         }),
+        macro_category: cost.macro_category,
         category: cost.category,
         date: cost.date,
         description: cost.description || "",
@@ -60,6 +62,7 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
           style: "currency",
           currency: "BRL",
         }),
+        macro_category: cost.macro_category,
         category: cost.category,
         date: cost.date,
         description: cost.description || "",
@@ -72,22 +75,12 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
     
     setIsLoading(true);
     try {
-      console.log("Atualizando custo:", {
-        id: cost.id,
-        dados: {
-          name: data.name,
-          amount: parseCurrencyToNumber(data.amount),
-          category: data.category,
-          date: data.date,
-          description: data.description || null,
-        }
-      });
-
       const { data: updatedCost, error } = await supabase
         .from("costs")
         .update({
           name: data.name,
           amount: parseCurrencyToNumber(data.amount),
+          macro_category: data.macro_category as CostMacroCategory,
           category: data.category as CostCategory,
           date: data.date,
           description: data.description || null,
@@ -104,8 +97,6 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
       if (!updatedCost) {
         throw new Error("Não foi possível atualizar o custo");
       }
-
-      console.log("Custo atualizado com sucesso:", updatedCost);
 
       toast({
         title: "Custo atualizado",

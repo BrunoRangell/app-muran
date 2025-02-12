@@ -100,6 +100,7 @@ export type Database = {
           date: string
           description: string | null
           id: number
+          macro_category: Database["public"]["Enums"]["cost_macro_category"]
           name: string
           updated_at: string
         }
@@ -110,6 +111,7 @@ export type Database = {
           date: string
           description?: string | null
           id?: number
+          macro_category?: Database["public"]["Enums"]["cost_macro_category"]
           name: string
           updated_at?: string
         }
@@ -120,6 +122,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: number
+          macro_category?: Database["public"]["Enums"]["cost_macro_category"]
           name?: string
           updated_at?: string
         }
@@ -315,6 +318,10 @@ export type Database = {
         | "outros"
         | "eventos_e_treinamentos"
         | "doacoes"
+      cost_macro_category:
+        | "despesas_operacionais"
+        | "despesas_administrativas"
+        | "investimentos_e_outros"
       payment_status:
         | "RECEIVED"
         | "CONFIRMED"

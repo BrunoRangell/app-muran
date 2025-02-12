@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { CostCategory } from "@/types/cost";
+import { CostCategory, CostMacroCategory } from "@/types/cost";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { costFormSchema, CostFormData } from "../schemas/costFormSchema";
 
@@ -19,6 +19,7 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
     defaultValues: {
       name: "",
       amount: "",
+      macro_category: "despesas_operacionais",
       category: "outros",
       date: new Date().toISOString().split("T")[0],
       description: "",
@@ -41,6 +42,7 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
     form.reset({
       name: "",
       amount: "",
+      macro_category: "despesas_operacionais",
       category: "outros",
       date: new Date().toISOString().split("T")[0],
       description: "",
@@ -53,6 +55,7 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
       const { error } = await supabase.from("costs").insert({
         name: data.name,
         amount: parseCurrencyToNumber(data.amount),
+        macro_category: data.macro_category as CostMacroCategory,
         category: data.category as CostCategory,
         date: data.date,
         description: data.description || null,
