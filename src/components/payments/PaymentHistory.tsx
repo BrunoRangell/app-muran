@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EditPaymentDialog } from "./EditPaymentDialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PaymentHistoryProps {
   total: number;
@@ -55,45 +56,47 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
       </Button>
 
       <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Histórico de Pagamentos - {clientName}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            {payments && payments.length > 0 ? (
-              payments.map((payment) => (
-                <div key={payment.id} className="border-b last:border-0 pb-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-medium">
-                        {formatReferenceMonth(payment.reference_month)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCurrency(payment.amount)}
-                      </p>
-                      {payment.notes && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {payment.notes}
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4">
+              {payments && payments.length > 0 ? (
+                payments.map((payment) => (
+                  <div key={payment.id} className="border-b last:border-0 pb-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {formatReferenceMonth(payment.reference_month)}
                         </p>
-                      )}
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(payment.amount)}
+                        </p>
+                        {payment.notes && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {payment.notes}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleEdit(payment)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => handleEdit(payment)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Nenhum pagamento registrado
-              </p>
-            )}
-          </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum pagamento registrado
+                </p>
+              )}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
