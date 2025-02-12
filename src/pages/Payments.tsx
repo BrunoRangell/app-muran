@@ -9,49 +9,124 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
-
-const ASAAS_API_URL = 'https://api.asaas.com/v3';
+import { supabase } from "@/lib/supabase";
 
 export default function Payments() {
   const [filters, setFilters] = useState<PaymentFilters>({});
   const [isNewPaymentOpen, setIsNewPaymentOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: payments, isLoading } = useQuery({
-    queryKey: ['payments', filters],
+  const { data: asaasPayments, isLoading: isLoadingAsaas } = useQuery({
+    queryKey: ['asaas-payments'],
     queryFn: async () => {
-      // TODO: Implementar chamada real à API do Asaas quando tivermos a chave
-      return {
-        received: {
-          title: "Recebidas",
-          grossAmount: 18579.00,
-          netAmount: 18547.16,
-          clientCount: 16,
-          paymentCount: 16,
-          color: "#16A34A",
-          status: "RECEIVED" as PaymentStatus
-        },
-        confirmed: {
-          title: "Confirmadas",
-          grossAmount: 0,
-          netAmount: 0,
-          clientCount: 0,
-          paymentCount: 0,
-          color: "#2563EB",
-          status: "CONFIRMED" as PaymentStatus
-        },
-        pending: {
-          title: "Aguardando pagamento",
-          grossAmount: 6137.00,
-          netAmount: 6131.03,
-          clientCount: 3,
-          paymentCount: 3,
-          color: "#EA580C",
-          status: "PENDING" as PaymentStatus
-        }
-      };
+      const { data, error } = await supabase.functions.invoke('asaas');
+      if (error) throw error;
+      return data.payments;
     }
   });
+
+  // Função para mapear os status do Asaas para nossos status
+  const mapAsaasStatus = (asaasStatus: string): PaymentStatus => {
+    switch (asaasStatus.toUpperCase()) {
+      case 'RECEIVED':
+      case 'CONFIRMED':
+        return 'RECEIVED';
+      case 'PENDING':
+        return 'PENDING';
+      case 'OVERDUE':
+        return 'OVERDUE';
+      case 'REFUNDED':
+        return 'REFUNDED';
+      case 'CANCELLED':
+        return 'CANCELLED';
+      default:
+        return 'PENDING';
+    }
+  };
+
+  // Transformar os pagamentos do Asaas para o formato da nossa aplicação
+  const payments = asaasPayments?.map(payment => ({
+    id: payment.id,
+    client_id: payment.customer,
+    amount: payment.value,
+    net_amount: payment.netValue,
+    payment_date: payment.paymentDate,
+    status: mapAsaasStatus(payment.status),
+    notes: null,
+    created_at: payment.paymentDate,
+    clients: {
+      company_name: payment.customerName
+    }
+  }));
+
+  // Calcular os sumários de pagamentos
+  const calculateSummaries = () => {
+    if (!payments) return null;
+
+    const summaries = {
+      received: {
+        title: "Recebidas",
+        grossAmount: 0,
+        netAmount: 0,
+        clientCount: 0,
+        paymentCount: 0,
+        color: "#16A34A",
+        status: "RECEIVED" as PaymentStatus
+      },
+      confirmed: {
+        title: "Confirmadas",
+        grossAmount: 0,
+        netAmount: 0,
+        clientCount: 0,
+        paymentCount: 0,
+        color: "#2563EB",
+        status: "CONFIRMED" as PaymentStatus
+      },
+      pending: {
+        title: "Aguardando pagamento",
+        grossAmount: 0,
+        netAmount: 0,
+        clientCount: 0,
+        paymentCount: 0,
+        color: "#EA580C",
+        status: "PENDING" as PaymentStatus
+      }
+    };
+
+    const clients = new Set<string>();
+
+    payments.forEach(payment => {
+      let category: keyof typeof summaries;
+      
+      switch (payment.status) {
+        case 'RECEIVED':
+          category = 'received';
+          break;
+        case 'CONFIRMED':
+          category = 'confirmed';
+          break;
+        case 'PENDING':
+          category = 'pending';
+          break;
+        default:
+          return; // Ignora outros status para os cards de sumário
+      }
+
+      summaries[category].grossAmount += payment.amount;
+      summaries[category].netAmount += payment.net_amount;
+      summaries[category].paymentCount += 1;
+      clients.add(payment.client_id);
+    });
+
+    // Atualiza a contagem de clientes para cada categoria
+    Object.values(summaries).forEach(summary => {
+      summary.clientCount = clients.size;
+    });
+
+    return summaries;
+  };
+
+  const summaries = calculateSummaries();
 
   return (
     <div className="p-6 space-y-6">
@@ -68,13 +143,18 @@ export default function Payments() {
         onFiltersChange={setFilters} 
       />
 
-      {!isLoading && payments && (
+      {!isLoadingAsaas && summaries && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <PaymentSummaryCard data={payments.received} />
-          <PaymentSummaryCard data={payments.confirmed} />
-          <PaymentSummaryCard data={payments.pending} />
+          <PaymentSummaryCard data={summaries.received} />
+          <PaymentSummaryCard data={summaries.confirmed} />
+          <PaymentSummaryCard data={summaries.pending} />
         </div>
       )}
+
+      <PaymentsTable 
+        payments={payments} 
+        isLoading={isLoadingAsaas}
+      />
 
       <NewPaymentDialog 
         open={isNewPaymentOpen}
