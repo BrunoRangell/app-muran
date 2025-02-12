@@ -145,7 +145,7 @@ export type Database = {
           notes: string | null
           payment_date: string | null
           reference_month: string
-          status: Database["public"]["Enums"]["payment_status"] | null
+          status: Database["public"]["Enums"]["payment_status"]
         }
         Insert: {
           amount: number
@@ -157,7 +157,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string | null
           reference_month: string
-          status?: Database["public"]["Enums"]["payment_status"] | null
+          status?: Database["public"]["Enums"]["payment_status"]
         }
         Update: {
           amount?: number
@@ -169,7 +169,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string | null
           reference_month?: string
-          status?: Database["public"]["Enums"]["payment_status"] | null
+          status?: Database["public"]["Enums"]["payment_status"]
         }
         Relationships: [
           {

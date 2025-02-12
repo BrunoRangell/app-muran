@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { parseCurrencyToNumber } from "@/utils/formatters";
+import { useToast } from "@/hooks/use-toast";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
@@ -44,6 +45,7 @@ export function NewPaymentDialog({
   clientId
 }: NewPaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const { data: client } = useQuery({
     queryKey: ['client', clientId],
@@ -75,24 +77,43 @@ export function NewPaymentDialog({
     
     setIsLoading(true);
     try {
+      const paymentData = {
+        client_id: clientId,
+        amount: parseCurrencyToNumber(data.amount),
+        net_amount: parseCurrencyToNumber(data.amount),
+        reference_month: new Date(data.referenceMonth + '-01'), // Primeiro dia do mês
+        notes: data.notes || null,
+        status: 'RECEIVED' as const,
+        payment_date: new Date().toISOString().split('T')[0],
+        due_date: new Date().toISOString().split('T')[0]
+      };
+
+      console.log('Dados do pagamento a serem salvos:', paymentData);
+
       const { error } = await supabase
         .from('payments')
-        .insert({
-          client_id: clientId,
-          amount: parseCurrencyToNumber(data.amount),
-          net_amount: parseCurrencyToNumber(data.amount),
-          reference_month: new Date(data.referenceMonth + '-01'), // Primeiro dia do mês
-          notes: data.notes,
-          status: 'RECEIVED'
-        });
+        .insert(paymentData);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro detalhado:', error);
+        throw error;
+      }
+      
+      toast({
+        title: "Sucesso!",
+        description: "Pagamento registrado com sucesso.",
+      });
       
       onSuccess();
       form.reset();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao registrar pagamento:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível registrar o pagamento.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
