@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -57,8 +56,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
       // Buscar todos os pagamentos
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
-        .select("client_id, amount")
-        .eq("status", "RECEIVED");
+        .select("client_id, amount");
 
       if (paymentsError) {
         console.error("Erro ao buscar pagamentos:", paymentsError);

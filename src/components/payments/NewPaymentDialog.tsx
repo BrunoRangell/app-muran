@@ -80,12 +80,8 @@ export function NewPaymentDialog({
       const paymentData = {
         client_id: clientId,
         amount: parseCurrencyToNumber(data.amount),
-        net_amount: parseCurrencyToNumber(data.amount),
         reference_month: new Date(data.referenceMonth + '-01'), // Primeiro dia do mês
-        notes: data.notes || null,
-        status: 'RECEIVED' as const,
-        payment_date: new Date().toISOString().split('T')[0],
-        due_date: new Date().toISOString().split('T')[0]
+        notes: data.notes || null
       };
 
       console.log('Dados do pagamento a serem salvos:', paymentData);

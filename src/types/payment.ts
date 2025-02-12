@@ -15,21 +15,18 @@ export interface Payment {
   id: string;
   client_id: string;
   amount: number;
-  payment_date: string | null;
-  status: PaymentStatus;
+  reference_month: string;
   notes: string | null;
   created_at: string;
   clients: {
     company_name: string;
   };
-  net_amount: number;
 }
 
 export interface PaymentFilters {
   startDate?: string;
   endDate?: string;
   clientId?: string;
-  status?: PaymentStatus;
 }
 
 export interface AsaasPayment {

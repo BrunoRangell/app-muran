@@ -139,37 +139,25 @@ export type Database = {
           amount: number
           client_id: string | null
           created_at: string
-          due_date: string
           id: number
-          net_amount: number
           notes: string | null
-          payment_date: string | null
           reference_month: string
-          status: Database["public"]["Enums"]["payment_status"]
         }
         Insert: {
           amount: number
           client_id?: string | null
           created_at?: string
-          due_date?: string
           id?: never
-          net_amount: number
           notes?: string | null
-          payment_date?: string | null
           reference_month: string
-          status?: Database["public"]["Enums"]["payment_status"]
         }
         Update: {
           amount?: number
           client_id?: string | null
           created_at?: string
-          due_date?: string
           id?: never
-          net_amount?: number
           notes?: string | null
-          payment_date?: string | null
           reference_month?: string
-          status?: Database["public"]["Enums"]["payment_status"]
         }
         Relationships: [
           {
