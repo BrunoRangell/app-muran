@@ -224,29 +224,15 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       } else {
         console.log("Criando novo cliente...");
         
-        // Primeira tentativa com select
-        let supabaseResponse = await supabase
+        const { error: insertError } = await supabase
           .from('clients')
-          .insert([clientData])
-          .select();
-        
-        console.log("Primeira tentativa de resposta do Supabase:", supabaseResponse);
-
-        // Se falhar, tenta sem o select
-        if (supabaseResponse.error) {
-          console.log("Primeira tentativa falhou, tentando sem select...");
-          
-          supabaseResponse = await supabase
-            .from('clients')
-            .insert([clientData]);
+          .insert([clientData]);
             
-          console.log("Segunda tentativa de resposta do Supabase:", supabaseResponse);
-        }
+        console.log("Resposta do Supabase:", { error: insertError });
 
-        // Verifica se houve erro em ambas as tentativas
-        if (supabaseResponse.error) {
-          console.error("Erro do Supabase:", supabaseResponse.error);
-          throw new Error(`Erro ao salvar cliente: ${supabaseResponse.error.message}`);
+        if (insertError) {
+          console.error("Erro do Supabase:", insertError);
+          throw new Error(`Erro ao salvar cliente: ${insertError.message}`);
         }
 
         console.log("Cliente criado com sucesso!");
@@ -255,13 +241,6 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
           description: "Cliente cadastrado com sucesso!",
         });
 
-        // Recarrega a lista apenas se não houver erros
-        if (onSuccess) {
-          console.log("Chamando callback de sucesso para recarregar lista");
-          onSuccess();
-        }
-
-        // Reseta o formulário apenas se não houver erros
         form.reset({
           companyName: "",
           contractValue: 0,
@@ -281,13 +260,14 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         console.log("Chamando callback de sucesso");
         onSuccess();
       }
+
     } catch (error) {
       console.error("Erro detalhado ao salvar cliente:", error);
       
       let errorMessage = "Não foi possível salvar o cliente. Por favor, tente novamente.";
       if (error instanceof Error) {
         console.error("Mensagem de erro:", error.message);
-        errorMessage = `Erro ao salvar: ${error.message}`;
+        errorMessage = error.message;
       }
       
       toast({
