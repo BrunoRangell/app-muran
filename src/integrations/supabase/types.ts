@@ -142,6 +142,7 @@ export type Database = {
           id: number
           notes: string | null
           reference_month: string
+          updated_at: string | null
         }
         Insert: {
           amount: number
@@ -150,6 +151,7 @@ export type Database = {
           id?: number
           notes?: string | null
           reference_month: string
+          updated_at?: string | null
         }
         Update: {
           amount?: number
@@ -158,6 +160,7 @@ export type Database = {
           id?: number
           notes?: string | null
           reference_month?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
