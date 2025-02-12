@@ -1,6 +1,5 @@
-
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Calendar as CalendarIcon, ChevronDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -30,7 +29,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
 
 interface CostsFiltersBarProps {
   filters: CostFilters;
