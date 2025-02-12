@@ -1,3 +1,4 @@
+
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import {
@@ -215,8 +216,8 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
         </DropdownMenu>
 
         <Popover open={isCustomPeriodOpen} onOpenChange={setIsCustomPeriodOpen}>
-          <PopoverTrigger className="hidden" />
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverTrigger className="sr-only" />
+          <PopoverContent className="w-auto p-0" align="center">
             <Calendar
               initialFocus
               mode="range"
@@ -231,6 +232,9 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
                   startDate: range?.from ? format(range.from, "yyyy-MM-dd") : undefined,
                   endDate: range?.to ? format(range.to, "yyyy-MM-dd") : undefined,
                 });
+                if (range?.to) {
+                  setIsCustomPeriodOpen(false);
+                }
               }}
               numberOfMonths={2}
               locale={ptBR}
