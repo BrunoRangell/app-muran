@@ -85,6 +85,7 @@ export const MetricsChart = ({
         onOpenChange={onCustomDateOpenChange}
         dateRange={dateRange}
         onDateRangeChange={onDateRangeChange}
+        multipleMonths={false}
       />
 
       <DetailsDialog 
@@ -94,4 +95,4 @@ export const MetricsChart = ({
       />
     </Card>
   );
-};
+}
