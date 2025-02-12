@@ -23,7 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -87,8 +87,8 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
       const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => {
         const clientPayments = paymentsByClient[client.id] || [];
         const hasCurrentMonthPayment = clientPayments.some(payment => {
-          const paymentDate = new Date(payment.reference_month);
-          return paymentDate >= currentMonthStart && paymentDate <= currentMonthEnd;
+          const paymentDate = parseISO(payment.reference_month);
+          return isWithinInterval(paymentDate, { start: currentMonthStart, end: currentMonthEnd });
         });
 
         return {
