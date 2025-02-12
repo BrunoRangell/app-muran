@@ -8,11 +8,14 @@ import { CostsMetrics } from "@/components/costs/CostsMetrics";
 import { CostsTable } from "@/components/costs/CostsTable";
 import { CostsFiltersBar } from "@/components/costs/CostsFiltersBar";
 import { NewCostDialog } from "@/components/costs/NewCostDialog";
+import { EditCostDialog } from "@/components/costs/EditCostDialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { Cost } from "@/types/cost";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
+  const [selectedCost, setSelectedCost] = useState<Cost | null>(null);
   const [filters, setFilters] = useState<CostFilters>({});
 
   const { data: costs, isLoading } = useQuery({
@@ -61,12 +64,22 @@ export default function Costs() {
 
       <Card className="p-4">
         <CostsFiltersBar filters={filters} onFiltersChange={setFilters} />
-        <CostsTable costs={costs || []} isLoading={isLoading} />
+        <CostsTable 
+          costs={costs || []} 
+          isLoading={isLoading} 
+          onEditClick={setSelectedCost}
+        />
       </Card>
 
       <NewCostDialog
         open={isNewCostOpen}
         onOpenChange={setIsNewCostOpen}
+      />
+
+      <EditCostDialog 
+        cost={selectedCost}
+        open={!!selectedCost}
+        onOpenChange={(open) => !open && setSelectedCost(null)}
       />
     </div>
   );

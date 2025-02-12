@@ -7,12 +7,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import { Cost } from "@/types/cost";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 
 interface CostsTableProps {
   costs: Cost[];
   isLoading: boolean;
+  onEditClick: (cost: Cost) => void;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -28,7 +31,7 @@ const categoryLabels: Record<string, string> = {
   outros: "Outros",
 };
 
-export function CostsTable({ costs, isLoading }: CostsTableProps) {
+export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
   if (isLoading) {
     return <div className="text-center py-4">Carregando custos...</div>;
   }
@@ -47,6 +50,7 @@ export function CostsTable({ costs, isLoading }: CostsTableProps) {
             <TableHead>Data</TableHead>
             <TableHead>Valor</TableHead>
             <TableHead>Descrição</TableHead>
+            <TableHead className="w-[100px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -57,6 +61,15 @@ export function CostsTable({ costs, isLoading }: CostsTableProps) {
               <TableCell>{formatDate(cost.date)}</TableCell>
               <TableCell>{formatCurrency(cost.amount)}</TableCell>
               <TableCell>{cost.description || "-"}</TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEditClick(cost)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
