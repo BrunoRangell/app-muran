@@ -134,9 +134,9 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                 {finalFilteredClients.length > 0 && (
                   <TableFooter className="bg-muted/50">
                     <TableRow>
-                      <TableHead>Total</TableHead>
-                      <TableHead>{formatCurrency(totals.monthlyTotal)}</TableHead>
-                      <TableHead>{formatCurrency(totals.receivedTotal)}</TableHead>
+                      <TableHead className="text-left">Total</TableHead>
+                      <TableHead className="text-right">{formatCurrency(totals.monthlyTotal)}</TableHead>
+                      <TableHead className="text-right">{formatCurrency(totals.receivedTotal)}</TableHead>
                       <TableHead colSpan={2}></TableHead>
                     </TableRow>
                   </TableFooter>
