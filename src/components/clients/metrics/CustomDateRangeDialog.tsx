@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format, isValid, parseISO } from "date-fns";
+import { format, isValid, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface CustomDateRangeDialogProps {
   isOpen: boolean;
@@ -19,6 +21,9 @@ export const CustomDateRangeDialog = ({
   dateRange,
   onDateRangeChange,
 }: CustomDateRangeDialogProps) => {
+  const { toast } = useToast();
+  const [tempDateRange, setTempDateRange] = useState(dateRange);
+
   const formatDateForInput = (date: Date) => {
     if (!isValid(date)) {
       console.error('Data inválida:', date);
@@ -36,18 +41,52 @@ export const CustomDateRangeDialog = ({
     try {
       const newDate = parseISO(value);
       if (isValid(newDate)) {
-        onDateRangeChange({
-          ...dateRange,
+        setTempDateRange(prev => ({
+          ...prev,
           [type]: newDate
-        });
+        }));
       }
     } catch (error) {
       console.error('Erro ao processar data:', error);
     }
   };
 
+  const handleConfirm = () => {
+    // Validar se as datas são válidas
+    if (!isValid(tempDateRange.start) || !isValid(tempDateRange.end)) {
+      toast({
+        title: "Erro na seleção de datas",
+        description: "Por favor, selecione datas válidas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar se a data inicial é anterior à data final
+    if (isBefore(tempDateRange.end, tempDateRange.start)) {
+      toast({
+        title: "Erro na seleção de datas",
+        description: "A data inicial deve ser anterior à data final.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Se passou pelas validações, atualiza as datas
+    onDateRangeChange(tempDateRange);
+    onOpenChange(false);
+  };
+
+  // Reseta o tempDateRange quando o diálogo é aberto
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      setTempDateRange(dateRange);
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Selecione o período</DialogTitle>
@@ -57,7 +96,7 @@ export const CustomDateRangeDialog = ({
             <Label>Data inicial</Label>
             <Input
               type="date"
-              value={formatDateForInput(dateRange.start)}
+              value={formatDateForInput(tempDateRange.start)}
               onChange={(e) => handleDateChange('start', e.target.value)}
             />
           </div>
@@ -65,13 +104,13 @@ export const CustomDateRangeDialog = ({
             <Label>Data final</Label>
             <Input
               type="date"
-              value={formatDateForInput(dateRange.end)}
+              value={formatDateForInput(tempDateRange.end)}
               onChange={(e) => handleDateChange('end', e.target.value)}
             />
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)} className="bg-muran-primary hover:bg-muran-primary/90">
+          <Button onClick={handleConfirm} className="bg-muran-primary hover:bg-muran-primary/90">
             Confirmar
           </Button>
         </DialogFooter>
