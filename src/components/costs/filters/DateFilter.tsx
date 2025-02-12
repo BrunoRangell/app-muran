@@ -110,75 +110,67 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
 
   return (
     <div className="relative">
-      <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-full md:w-[240px] justify-between text-left font-normal">
-            <div className="flex items-center">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {filters.startDate ? (
-                filters.endDate ? (
-                  <>
-                    {format(new Date(filters.startDate), "dd/MM/yyyy", { locale: ptBR })} -{" "}
-                    {format(new Date(filters.endDate), "dd/MM/yyyy", { locale: ptBR })}
-                  </>
-                ) : (
-                  format(new Date(filters.startDate), "dd/MM/yyyy", { locale: ptBR })
-                )
-              ) : (
-                <span>Selecione um período</span>
-              )}
-            </div>
-            <ChevronDown className="h-4 w-4 opacity-50" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[240px]">
-          <DropdownMenuItem onSelect={() => handlePresetPeriod('this-month')}>
-            Este mês
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handlePresetPeriod('last-month')}>
-            Mês passado
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handlePresetPeriod('last-3-months')}>
-            Últimos 3 meses
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handlePresetPeriod('last-6-months')}>
-            Últimos 6 meses
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handlePresetPeriod('last-12-months')}>
-            Últimos 12 meses
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handlePresetPeriod('last-24-months')}>
-            Últimos 24 meses
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => handlePresetPeriod('this-year')}>
-            Este ano
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsCustomPeriodOpen(true);
-              setIsDropdownOpen(false);
-            }}
-            className="font-normal"
-          >
-            Personalizar período
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
       <Popover 
         open={isCustomPeriodOpen} 
-        onOpenChange={(open) => {
-          setIsCustomPeriodOpen(open);
-          if (!open) {
-            setIsDropdownOpen(false);
-          }
-        }}
+        onOpenChange={setIsCustomPeriodOpen}
       >
-        <PopoverTrigger asChild>
-          <div className="sr-only">Abrir calendário</div>
-        </PopoverTrigger>
+        <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full md:w-[240px] justify-between text-left font-normal">
+              <div className="flex items-center">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {filters.startDate ? (
+                  filters.endDate ? (
+                    <>
+                      {format(new Date(filters.startDate), "dd/MM/yyyy", { locale: ptBR })} -{" "}
+                      {format(new Date(filters.endDate), "dd/MM/yyyy", { locale: ptBR })}
+                    </>
+                  ) : (
+                    format(new Date(filters.startDate), "dd/MM/yyyy", { locale: ptBR })
+                  )
+                ) : (
+                  <span>Selecione um período</span>
+                )}
+              </div>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[240px]">
+            <DropdownMenuItem onSelect={() => handlePresetPeriod('this-month')}>
+              Este mês
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handlePresetPeriod('last-month')}>
+              Mês passado
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handlePresetPeriod('last-3-months')}>
+              Últimos 3 meses
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handlePresetPeriod('last-6-months')}>
+              Últimos 6 meses
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handlePresetPeriod('last-12-months')}>
+              Últimos 12 meses
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handlePresetPeriod('last-24-months')}>
+              Últimos 24 meses
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handlePresetPeriod('this-year')}>
+              Este ano
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsCustomPeriodOpen(true);
+                setIsDropdownOpen(false);
+              }}
+              className="font-normal"
+            >
+              Personalizar período
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <PopoverContent className="w-auto p-0" align="center">
           <Calendar
             initialFocus
