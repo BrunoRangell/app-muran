@@ -23,7 +23,17 @@ export interface CostFilters {
   search?: string;
 }
 
-export const COST_CATEGORIES_HIERARCHY = {
+interface CategoryOption {
+  value: CostCategory;
+  label: string;
+}
+
+interface MacroCategoryDefinition {
+  label: string;
+  categories: CategoryOption[];
+}
+
+export const COST_CATEGORIES_HIERARCHY: Record<CostMacroCategory, MacroCategoryDefinition> = {
   despesas_operacionais: {
     label: "Despesas Operacionais",
     categories: [
