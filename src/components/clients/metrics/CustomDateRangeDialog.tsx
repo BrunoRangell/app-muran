@@ -1,8 +1,9 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface CustomDateRangeDialogProps {
@@ -18,6 +19,19 @@ export const CustomDateRangeDialog = ({
   dateRange,
   onDateRangeChange,
 }: CustomDateRangeDialogProps) => {
+  const formatDateForInput = (date: Date) => {
+    if (!isValid(date)) {
+      console.error('Data inválida:', date);
+      return '';
+    }
+    try {
+      return format(date, 'yyyy-MM-dd');
+    } catch (error) {
+      console.error('Erro ao formatar data:', error, date);
+      return '';
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -29,13 +43,15 @@ export const CustomDateRangeDialog = ({
             <Label>Data inicial</Label>
             <Input
               type="date"
-              value={format(dateRange.start, 'yyyy-MM-dd')}
+              value={formatDateForInput(dateRange.start)}
               onChange={(e) => {
                 const newDate = new Date(e.target.value);
-                onDateRangeChange({
-                  ...dateRange,
-                  start: newDate
-                });
+                if (isValid(newDate)) {
+                  onDateRangeChange({
+                    ...dateRange,
+                    start: newDate
+                  });
+                }
               }}
             />
           </div>
@@ -43,13 +59,15 @@ export const CustomDateRangeDialog = ({
             <Label>Data final</Label>
             <Input
               type="date"
-              value={format(dateRange.end, 'yyyy-MM-dd')}
+              value={formatDateForInput(dateRange.end)}
               onChange={(e) => {
                 const newDate = new Date(e.target.value);
-                onDateRangeChange({
-                  ...dateRange,
-                  end: newDate
-                });
+                if (isValid(newDate)) {
+                  onDateRangeChange({
+                    ...dateRange,
+                    end: newDate
+                  });
+                }
               }}
             />
           </div>
