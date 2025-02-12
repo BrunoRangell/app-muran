@@ -26,10 +26,15 @@ import { parseCurrencyToNumber } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { addYears, format, subYears, setMonth } from "date-fns";
+import { format, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const paymentFormSchema = z.object({
@@ -45,11 +50,6 @@ interface NewPaymentDialogProps {
   clientId: string | null;
 }
 
-const MONTHS = [
-  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-];
-
 export function NewPaymentDialog({ 
   open, 
   onOpenChange,
@@ -59,6 +59,7 @@ export function NewPaymentDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [multipleMonths, setMultipleMonths] = useState(false);
   const { toast } = useToast();
+  const [selectedMonths, setSelectedMonths] = useState<Date[]>([new Date()]);
 
   const { data: client } = useQuery({
     queryKey: ['client', clientId],
@@ -76,23 +77,6 @@ export function NewPaymentDialog({
     enabled: !!clientId
   });
 
-  // Gerar lista de anos para seleção
-  const generateYearOptions = () => {
-    const options = [];
-    const today = new Date();
-    
-    // Adiciona os últimos 2 anos e o ano atual
-    for (let i = -2; i <= 0; i++) {
-      const date = i < 0 ? subYears(today, Math.abs(i)) : addYears(today, i);
-      const year = format(date, 'yyyy');
-      options.push(year);
-    }
-    
-    return options;
-  };
-
-  const years = generateYearOptions();
-
   const form = useForm<z.infer<typeof paymentFormSchema>>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
@@ -101,6 +85,35 @@ export function NewPaymentDialog({
       notes: '',
     }
   });
+
+  const handleMonthSelect = (date: Date) => {
+    const formattedDate = format(date, 'yyyy-MM');
+    const currentMonths = form.getValues('months');
+    
+    if (!multipleMonths) {
+      setSelectedMonths([date]);
+      form.setValue('months', [formattedDate]);
+      return;
+    }
+
+    if (currentMonths.includes(formattedDate)) {
+      const newMonths = currentMonths.filter(m => m !== formattedDate);
+      const newSelectedMonths = selectedMonths.filter(
+        d => format(d, 'yyyy-MM') !== formattedDate
+      );
+      setSelectedMonths(newSelectedMonths);
+      form.setValue('months', newMonths);
+    } else {
+      setSelectedMonths([...selectedMonths, date]);
+      form.setValue('months', [...currentMonths, formattedDate]);
+    }
+  };
+
+  const isMonthSelected = (date: Date) => {
+    return selectedMonths.some(
+      selectedDate => format(selectedDate, 'yyyy-MM') === format(date, 'yyyy-MM')
+    );
+  };
 
   async function onSubmit(data: z.infer<typeof paymentFormSchema>) {
     if (!clientId) return;
@@ -147,31 +160,9 @@ export function NewPaymentDialog({
     }
   }
 
-  const handleMonthToggle = (year: string, monthIndex: number) => {
-    const monthStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}`;
-    const currentMonths = form.getValues('months');
-    const isSelected = currentMonths.includes(monthStr);
-
-    if (!multipleMonths) {
-      form.setValue('months', [monthStr]);
-      return;
-    }
-
-    if (isSelected) {
-      form.setValue('months', currentMonths.filter(m => m !== monthStr));
-    } else {
-      form.setValue('months', [...currentMonths, monthStr]);
-    }
-  };
-
-  const isMonthSelected = (year: string, monthIndex: number) => {
-    const monthStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}`;
-    return form.getValues('months').includes(monthStr);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Registrar Pagamento - {client?.company_name}</DialogTitle>
         </DialogHeader>
@@ -196,7 +187,14 @@ export function NewPaymentDialog({
               <Switch
                 id="multiple-months"
                 checked={multipleMonths}
-                onCheckedChange={setMultipleMonths}
+                onCheckedChange={(checked) => {
+                  setMultipleMonths(checked);
+                  if (!checked) {
+                    const lastSelected = selectedMonths[selectedMonths.length - 1];
+                    setSelectedMonths([lastSelected]);
+                    form.setValue('months', [format(lastSelected, 'yyyy-MM')]);
+                  }
+                }}
               />
               <Label htmlFor="multiple-months">Registrar em múltiplos meses</Label>
             </div>
@@ -208,39 +206,67 @@ export function NewPaymentDialog({
                 <FormItem>
                   <FormLabel>Mês de Referência</FormLabel>
                   <FormControl>
-                    <Tabs defaultValue={years[years.length - 1]} className="w-full">
-                      <TabsList className="grid w-full grid-cols-3">
-                        {years.map((year) => (
-                          <TabsTrigger key={year} value={year}>{year}</TabsTrigger>
-                        ))}
-                      </TabsList>
-                      {years.map((year) => (
-                        <TabsContent key={year} value={year}>
-                          <div className="grid grid-cols-4 gap-2">
-                            {MONTHS.map((month, index) => (
-                              <button
-                                key={month}
-                                type="button"
-                                onClick={() => handleMonthToggle(year, index)}
-                                className={cn(
-                                  "p-2 text-sm rounded-md transition-colors text-center",
-                                  isMonthSelected(year, index)
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-secondary hover:bg-secondary/80"
-                                )}
-                              >
-                                {month}
-                              </button>
-                            ))}
-                          </div>
-                        </TabsContent>
-                      ))}
-                    </Tabs>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {selectedMonths.length > 0 ? (
+                            selectedMonths.length === 1 ? (
+                              format(selectedMonths[0], "MMMM'/'yyyy", { locale: ptBR })
+                            ) : (
+                              `${selectedMonths.length} meses selecionados`
+                            )
+                          ) : (
+                            "Selecione o mês"
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedMonths[0]}
+                          onSelect={(date) => date && handleMonthSelect(date)}
+                          modifiersStyles={{
+                            selected: {
+                              backgroundColor: 'hsl(var(--primary))',
+                              color: 'white'
+                            }
+                          }}
+                          modifiers={{
+                            selected: (date) => isMonthSelected(date)
+                          }}
+                          locale={ptBR}
+                          ISOWeek
+                          className="rounded-md border"
+                          disabled={{ after: addMonths(new Date(), 12) }}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {selectedMonths.length > 1 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedMonths.map((date, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-1 text-sm bg-primary/10 text-primary rounded-full px-3 py-1"
+                  >
+                    <Check className="h-3 w-3" />
+                    {format(date, "MMMM'/'yyyy", { locale: ptBR })}
+                  </div>
+                ))}
+              </div>
+            )}
 
             <FormField
               control={form.control}
