@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PaymentFilters } from "@/types/payment";
 import { PaymentsClientList } from "@/components/payments/PaymentsClientList";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
@@ -12,6 +12,7 @@ export default function Payments() {
   const [isNewPaymentOpen, setIsNewPaymentOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleClientPayment = (clientId: string) => {
     setSelectedClientId(clientId);
@@ -33,6 +34,7 @@ export default function Payments() {
         onSuccess={() => {
           setIsNewPaymentOpen(false);
           setSelectedClientId(null);
+          queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
           toast({
             title: "Pagamento registrado",
             description: "O pagamento foi registrado com sucesso!",

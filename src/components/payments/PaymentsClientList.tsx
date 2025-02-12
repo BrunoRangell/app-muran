@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import {
   Table,
@@ -24,6 +24,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     direction: 'asc'
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
 
   const { data: clients, isLoading, refetch } = useQuery({
     queryKey: ["payments-clients"],
@@ -91,7 +92,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
   };
 
   const handlePaymentUpdated = () => {
-    refetch();
+    queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
   };
 
   const filteredAndSortedClients = clients
