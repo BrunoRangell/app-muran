@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { SalaryChart } from "@/components/managers/SalaryChart";
 import { useQuery } from "@tanstack/react-query";
@@ -32,7 +33,7 @@ const Financial = () => {
   });
 
   return (
-    <div className="space-y-4 p-4 md:p-8">
+    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
       <div className="flex justify-between items-center">
         <h1 className="text-xl md:text-3xl font-bold text-muran-dark">
           Meu Financeiro
