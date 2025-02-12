@@ -1,47 +1,16 @@
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { CustomDateRangeDialog } from "@/components/clients/metrics/CustomDateRangeDialog";
-
-const paymentFormSchema = z.object({
-  amount: z.string().min(1, "Informe o valor"),
-  months: z.array(z.string()).min(1, "Selecione pelo menos um mês"),
-  notes: z.string().optional(),
-});
+import { PaymentForm, PaymentFormData } from "./payment-form/PaymentForm";
 
 interface NewPaymentDialogProps {
   open: boolean;
@@ -57,14 +26,7 @@ export function NewPaymentDialog({
   clientId
 }: NewPaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [multipleMonths, setMultipleMonths] = useState(false);
-  const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
   const { toast } = useToast();
-  const [selectedMonths, setSelectedMonths] = useState<Date[]>([new Date()]);
-  const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
-    start: new Date(),
-    end: new Date()
-  });
 
   const { data: client } = useQuery({
     queryKey: ['client', clientId],
@@ -82,30 +44,7 @@ export function NewPaymentDialog({
     enabled: !!clientId
   });
 
-  const form = useForm<z.infer<typeof paymentFormSchema>>({
-    resolver: zodResolver(paymentFormSchema),
-    defaultValues: {
-      amount: client?.contract_value.toString() || '',
-      months: [format(new Date(), 'yyyy-MM')],
-      notes: '',
-    }
-  });
-
-  const handleDateRangeChange = (range: { start: Date; end: Date }) => {
-    setDateRange(range);
-    const months: Date[] = [];
-    let current = range.start;
-    
-    while (current <= range.end) {
-      months.push(new Date(current));
-      current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
-    }
-    
-    setSelectedMonths(months);
-    form.setValue('months', months.map(date => format(date, 'yyyy-MM')));
-  };
-
-  async function onSubmit(data: z.infer<typeof paymentFormSchema>) {
+  async function handleSubmit(data: PaymentFormData) {
     if (!clientId) return;
     
     setIsLoading(true);
@@ -113,7 +52,7 @@ export function NewPaymentDialog({
       const payments = data.months.map(month => ({
         client_id: clientId,
         amount: parseCurrencyToNumber(data.amount),
-        reference_month: new Date(month + '-01'), // Primeiro dia do mês
+        reference_month: new Date(month + '-01'),
         notes: data.notes || null
       }));
 
@@ -136,7 +75,6 @@ export function NewPaymentDialog({
       });
       
       onSuccess();
-      form.reset();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Erro ao registrar pagamento:', error);
@@ -157,105 +95,12 @@ export function NewPaymentDialog({
           <DialogTitle>Registrar Pagamento - {client?.company_name}</DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Valor</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="R$ 0,00" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex items-center space-x-2 py-2">
-              <Switch
-                id="multiple-months"
-                checked={multipleMonths}
-                onCheckedChange={(checked) => {
-                  setMultipleMonths(checked);
-                  if (!checked) {
-                    const lastSelected = selectedMonths[selectedMonths.length - 1];
-                    setSelectedMonths([lastSelected]);
-                    form.setValue('months', [format(lastSelected, 'yyyy-MM')]);
-                  }
-                }}
-              />
-              <Label htmlFor="multiple-months">Registrar em múltiplos meses</Label>
-            </div>
-
-            <FormField
-              control={form.control}
-              name="months"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Período de Referência</FormLabel>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                      onClick={() => setIsCustomDateOpen(true)}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedMonths.length > 0 ? (
-                        selectedMonths.length === 1 ? (
-                          format(selectedMonths[0], "MMMM'/'yyyy", { locale: ptBR })
-                        ) : (
-                          `${format(dateRange.start, "MM'/'yyyy")} - ${format(dateRange.end, "MM'/'yyyy")}`
-                        )
-                      ) : (
-                        "Selecione o período"
-                      )}
-                    </Button>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <CustomDateRangeDialog
-              isOpen={isCustomDateOpen}
-              onOpenChange={setIsCustomDateOpen}
-              dateRange={dateRange}
-              onDateRangeChange={handleDateRangeChange}
-            />
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Salvando..." : "Salvar"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+        <PaymentForm
+          client={client}
+          onSubmit={handleSubmit}
+          onCancel={() => onOpenChange(false)}
+          isLoading={isLoading}
+        />
       </DialogContent>
     </Dialog>
   );
