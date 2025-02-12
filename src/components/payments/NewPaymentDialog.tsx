@@ -24,10 +24,23 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { addMonths, format, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
-  referenceMonth: z.string().min(1, "Informe o mês de referência"),
+  months: z.array(z.string()).min(1, "Selecione pelo menos um mês"),
   notes: z.string().optional(),
 });
 
@@ -45,6 +58,7 @@ export function NewPaymentDialog({
   clientId
 }: NewPaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [multipleMonths, setMultipleMonths] = useState(false);
   const { toast } = useToast();
 
   const { data: client } = useQuery({
@@ -63,11 +77,29 @@ export function NewPaymentDialog({
     enabled: !!clientId
   });
 
+  // Gerar lista de meses para seleção
+  const generateMonthOptions = () => {
+    const options = [];
+    const today = new Date();
+    
+    // Adiciona os últimos 6 meses e os próximos 6 meses
+    for (let i = -6; i <= 6; i++) {
+      const date = i < 0 ? subMonths(today, Math.abs(i)) : addMonths(today, i);
+      const value = format(date, 'yyyy-MM');
+      const label = format(date, "MMMM'/'yyyy", { locale: ptBR });
+      options.push({ value, label });
+    }
+    
+    return options;
+  };
+
+  const monthOptions = generateMonthOptions();
+
   const form = useForm<z.infer<typeof paymentFormSchema>>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       amount: client?.contract_value.toString() || '',
-      referenceMonth: new Date().toISOString().split('T')[0].slice(0, 7), // YYYY-MM
+      months: [format(new Date(), 'yyyy-MM')],
       notes: '',
     }
   });
@@ -77,18 +109,18 @@ export function NewPaymentDialog({
     
     setIsLoading(true);
     try {
-      const paymentData = {
+      const payments = data.months.map(month => ({
         client_id: clientId,
         amount: parseCurrencyToNumber(data.amount),
-        reference_month: new Date(data.referenceMonth + '-01'), // Primeiro dia do mês
+        reference_month: new Date(month + '-01'), // Primeiro dia do mês
         notes: data.notes || null
-      };
+      }));
 
-      console.log('Dados do pagamento a serem salvos:', paymentData);
+      console.log('Dados do(s) pagamento(s) a serem salvos:', payments);
 
       const { error } = await supabase
         .from('payments')
-        .insert(paymentData);
+        .insert(payments);
 
       if (error) {
         console.error('Erro detalhado:', error);
@@ -97,7 +129,9 @@ export function NewPaymentDialog({
       
       toast({
         title: "Sucesso!",
-        description: "Pagamento registrado com sucesso.",
+        description: payments.length > 1 
+          ? `${payments.length} pagamentos registrados com sucesso.`
+          : "Pagamento registrado com sucesso.",
       });
       
       onSuccess();
@@ -138,14 +172,59 @@ export function NewPaymentDialog({
               )}
             />
 
+            <div className="flex items-center space-x-2 py-2">
+              <Switch
+                id="multiple-months"
+                checked={multipleMonths}
+                onCheckedChange={setMultipleMonths}
+              />
+              <Label htmlFor="multiple-months">Registrar em múltiplos meses</Label>
+            </div>
+
             <FormField
               control={form.control}
-              name="referenceMonth"
+              name="months"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Mês de Referência</FormLabel>
                   <FormControl>
-                    <Input {...field} type="month" />
+                    {multipleMonths ? (
+                      <ScrollArea className="h-[200px] border rounded-md p-4">
+                        <div className="space-y-2">
+                          {monthOptions.map(({ value, label }) => (
+                            <div key={value} className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={field.value.includes(value)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    field.onChange([...field.value, value]);
+                                  } else {
+                                    field.onChange(field.value.filter(v => v !== value));
+                                  }
+                                }}
+                              />
+                              <Label>{label}</Label>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    ) : (
+                      <Select
+                        value={field.value[0]}
+                        onValueChange={(value) => field.onChange([value])}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o mês" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monthOptions.map(({ value, label }) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </FormControl>
                   <FormMessage />
                 </FormItem>
