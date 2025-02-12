@@ -118,7 +118,16 @@ export const MetricsChart = ({
               dataKey="month" 
               stroke="#6b7280"
               tick={{ fill: '#6b7280', fontSize: 12 }}
-              tickFormatter={formatMonthYear}
+              tickFormatter={(value) => {
+                try {
+                  const [month, year] = value.split('/');
+                  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+                  return format(date, "LLL'/'yy", { locale: ptBR }).toLowerCase();
+                } catch (error) {
+                  console.error('Erro ao formatar mês:', error, value);
+                  return value;
+                }
+              }}
             />
             
             {uniqueYAxisIds.includes('mrr') && (
