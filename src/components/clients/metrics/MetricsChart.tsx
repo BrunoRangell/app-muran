@@ -75,7 +75,7 @@ export const MetricsChart = ({
     try {
       const [month, year] = monthYear.split('/');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return format(date, "LLL'/'yy", { locale: ptBR }).toLowerCase();
+      return format(date, "MMM'/'yy", { locale: ptBR }).replace('.', '');
     } catch (error) {
       console.error('Erro ao formatar mês:', error, monthYear);
       return monthYear;
@@ -118,60 +118,9 @@ export const MetricsChart = ({
               dataKey="month" 
               stroke="#6b7280"
               tick={{ fill: '#6b7280', fontSize: 12 }}
-              tickFormatter={(value) => {
-                try {
-                  const [month, year] = value.split('/');
-                  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-                  return format(date, "LLL'/'yy", { locale: ptBR }).toLowerCase();
-                } catch (error) {
-                  console.error('Erro ao formatar mês:', error, value);
-                  return value;
-                }
-              }}
+              tickFormatter={formatMonthYear}
             />
             
-            {uniqueYAxisIds.includes('mrr') && (
-              <YAxis 
-                yAxisId="mrr"
-                orientation="left"
-                tickFormatter={(value) => 
-                  new Intl.NumberFormat('pt-BR', { 
-                    notation: 'compact',
-                    compactDisplay: 'short',
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(value)
-                }
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-            )}
-            
-            {uniqueYAxisIds.includes('clients') && (
-              <YAxis 
-                yAxisId="clients"
-                orientation={uniqueYAxisIds.includes('mrr') ? 'right' : 'left'}
-                tickFormatter={(value) => 
-                  new Intl.NumberFormat('pt-BR', { 
-                    notation: 'compact',
-                    compactDisplay: 'short'
-                  }).format(value)
-                }
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-            )}
-            
-            {uniqueYAxisIds.includes('percentage') && (
-              <YAxis 
-                yAxisId="percentage"
-                orientation="right"
-                tickFormatter={(value) => `${value}%`}
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-            )}
-
             <RechartsTooltip 
               content={<CustomTooltip />}
               cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
@@ -208,28 +157,6 @@ export const MetricsChart = ({
           </LineChart>
         </ResponsiveContainer>
       </div>
-
-      <CustomDateRangeDialog
-        isOpen={isCustomDateOpen}
-        onOpenChange={onCustomDateOpenChange}
-        dateRange={dateRange}
-        onDateRangeChange={onDateRangeChange}
-      />
-
-      <Dialog open={!!selectedPoint} onOpenChange={() => setSelectedPoint(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedPoint?.metric} - {selectedPoint?.month ? formatMonthYear(selectedPoint.month) : ''}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <ClientDetailsTable 
-            clients={filteredClients}
-            metric={selectedPoint?.metric || ''}
-          />
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 };
