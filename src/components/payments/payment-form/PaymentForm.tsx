@@ -15,9 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MonthSelector } from "./MonthSelector";
 import { Client } from "@/components/clients/types";
+import { formatCurrency } from "@/utils/formatters";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
@@ -40,11 +41,26 @@ export function PaymentForm({ client, onSubmit, onCancel, isLoading }: PaymentFo
   const form = useForm<PaymentFormData>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
-      amount: client?.contract_value.toString() || '',
+      amount: client?.contract_value ? formatCurrency(client.contract_value) : '',
       months: [],
       notes: '',
     }
   });
+
+  // Atualiza o valor quando o cliente muda
+  useEffect(() => {
+    if (client?.contract_value) {
+      form.setValue('amount', formatCurrency(client.contract_value));
+    }
+  }, [client, form]);
+
+  const handleAmountChange = (value: string) => {
+    // Remove todos os caracteres não numéricos
+    const numericValue = value.replace(/\D/g, '');
+    // Converte para número e divide por 100 para considerar os centavos
+    const amount = numericValue ? parseFloat(numericValue) / 100 : 0;
+    form.setValue('amount', formatCurrency(amount));
+  };
 
   return (
     <Form {...form}>
@@ -56,7 +72,11 @@ export function PaymentForm({ client, onSubmit, onCancel, isLoading }: PaymentFo
             <FormItem>
               <FormLabel>Valor</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="R$ 0,00" />
+                <Input
+                  {...field}
+                  placeholder="R$ 0,00"
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

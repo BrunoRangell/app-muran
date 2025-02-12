@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { EditPaymentDialogProps } from "./types";
-import { parseCurrencyToNumber } from "@/utils/formatters";
+import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
 
 export function EditPaymentDialog({ 
   payment,
@@ -33,11 +33,19 @@ export function EditPaymentDialog({
   useEffect(() => {
     if (payment) {
       setFormData({
-        amount: payment.amount.toString(),
+        amount: formatCurrency(payment.amount),
         notes: payment.notes || ""
       });
     }
   }, [payment]);
+
+  const handleAmountChange = (value: string) => {
+    // Remove todos os caracteres não numéricos
+    const numericValue = value.replace(/\D/g, '');
+    // Converte para número e divide por 100 para considerar os centavos
+    const amount = numericValue ? parseFloat(numericValue) / 100 : 0;
+    setFormData(prev => ({ ...prev, amount: formatCurrency(amount) }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +98,7 @@ export function EditPaymentDialog({
               id="amount"
               type="text"
               value={formData.amount}
-              onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+              onChange={(e) => handleAmountChange(e.target.value)}
               placeholder="R$ 0,00"
               className="w-full"
             />
