@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -72,15 +71,14 @@ export const MetricsChart = ({
       })
     : [];
 
-  // Formatar os meses para português
-  const formatXAxis = (value: string) => {
+  const formatMonthYear = (monthYear: string) => {
     try {
-      const [month, year] = value.split('/');
+      const [month, year] = monthYear.split('/');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
       return format(date, 'MMM/yy', { locale: ptBR }).toLowerCase();
     } catch (error) {
-      console.error('Erro ao formatar mês:', error, value);
-      return value;
+      console.error('Erro ao formatar mês:', error, monthYear);
+      return monthYear;
     }
   };
 
@@ -120,7 +118,7 @@ export const MetricsChart = ({
               dataKey="month" 
               stroke="#6b7280"
               tick={{ fill: '#6b7280', fontSize: 12 }}
-              tickFormatter={formatXAxis}
+              tickFormatter={formatMonthYear}
             />
             
             {uniqueYAxisIds.includes('mrr') && (
@@ -213,7 +211,7 @@ export const MetricsChart = ({
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedPoint?.metric} - {selectedPoint?.month}
+              {selectedPoint?.metric} - {selectedPoint?.month ? formatMonthYear(selectedPoint.month) : ''}
             </DialogTitle>
           </DialogHeader>
           

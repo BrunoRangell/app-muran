@@ -1,5 +1,7 @@
 
 import { formatCurrency } from "@/utils/formatters";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -9,9 +11,21 @@ interface CustomTooltipProps {
 
 export const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
+    // Formatar o mês/ano para português
+    const formatMonthYear = (monthYear: string) => {
+      try {
+        const [month, year] = monthYear.split('/');
+        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+        return format(date, 'MMM/yy', { locale: ptBR }).toLowerCase();
+      } catch (error) {
+        console.error('Erro ao formatar mês:', error, monthYear);
+        return monthYear;
+      }
+    };
+
     return (
       <div className="bg-white p-4 border rounded-lg shadow-lg">
-        <p className="text-sm font-medium text-gray-600 mb-2">{label}</p>
+        <p className="text-sm font-medium text-gray-600 mb-2">{formatMonthYear(label || '')}</p>
         {payload.map((entry: any, index: number) => {
           const value = entry.payload[entry.dataKey];
           const formattedValue = entry.dataKey === 'mrr'
