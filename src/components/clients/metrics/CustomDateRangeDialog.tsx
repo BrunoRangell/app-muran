@@ -24,7 +24,6 @@ export const CustomDateRangeDialog = ({
   const { toast } = useToast();
   const [tempDateRange, setTempDateRange] = useState(dateRange);
 
-  // Atualiza o tempDateRange quando dateRange muda (quando o diálogo é reaberto)
   useEffect(() => {
     if (isOpen) {
       setTempDateRange(dateRange);
@@ -34,19 +33,20 @@ export const CustomDateRangeDialog = ({
   const formatDateForInput = (date: Date) => {
     if (!isValid(date)) {
       console.error('Data inválida:', date);
-      return format(new Date(), 'yyyy-MM-dd');
+      return format(new Date(), 'yyyy-MM');
     }
     try {
-      return format(date, 'yyyy-MM-dd');
+      return format(date, 'yyyy-MM');
     } catch (error) {
       console.error('Erro ao formatar data:', error, date);
-      return format(new Date(), 'yyyy-MM-dd');
+      return format(new Date(), 'yyyy-MM');
     }
   };
 
   const handleDateChange = (type: 'start' | 'end', value: string) => {
     try {
-      const newDate = parseISO(value);
+      // Adiciona o dia 1 para garantir uma data válida no mês selecionado
+      const newDate = parseISO(`${value}-01`);
       if (isValid(newDate)) {
         setTempDateRange(prev => ({
           ...prev,
@@ -59,7 +59,6 @@ export const CustomDateRangeDialog = ({
   };
 
   const handleConfirm = () => {
-    // Validar se as datas são válidas
     if (!isValid(tempDateRange.start) || !isValid(tempDateRange.end)) {
       toast({
         title: "Erro na seleção de datas",
@@ -69,7 +68,6 @@ export const CustomDateRangeDialog = ({
       return;
     }
 
-    // Validar se a data inicial é anterior à data final
     if (isBefore(tempDateRange.end, tempDateRange.start)) {
       toast({
         title: "Erro na seleção de datas",
@@ -79,7 +77,6 @@ export const CustomDateRangeDialog = ({
       return;
     }
 
-    // Se passou pelas validações, atualiza as datas
     onDateRangeChange(tempDateRange);
     onOpenChange(false);
   };
@@ -92,17 +89,17 @@ export const CustomDateRangeDialog = ({
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Data inicial</Label>
+            <Label>Mês inicial</Label>
             <Input
-              type="date"
+              type="month"
               value={formatDateForInput(tempDateRange.start)}
               onChange={(e) => handleDateChange('start', e.target.value)}
             />
           </div>
           <div className="grid gap-2">
-            <Label>Data final</Label>
+            <Label>Mês final</Label>
             <Input
-              type="date"
+              type="month"
               value={formatDateForInput(tempDateRange.end)}
               onChange={(e) => handleDateChange('end', e.target.value)}
             />
