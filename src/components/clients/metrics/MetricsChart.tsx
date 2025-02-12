@@ -71,17 +71,6 @@ export const MetricsChart = ({
       })
     : [];
 
-  const formatMonthYear = (monthYear: string) => {
-    try {
-      const [month, year] = monthYear.split('/');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return format(date, "MMMM'/'yy", { locale: ptBR });
-    } catch (error) {
-      console.error('Erro ao formatar mês:', error, monthYear);
-      return monthYear;
-    }
-  };
-
   return (
     <Card className="p-6 space-y-6">
       {hasTitle && (
@@ -129,7 +118,6 @@ export const MetricsChart = ({
                 }
               }}
             />
-            
             {uniqueYAxisIds.includes('mrr') && (
               <YAxis 
                 yAxisId="mrr"
@@ -146,46 +134,8 @@ export const MetricsChart = ({
                 tick={{ fill: '#6b7280', fontSize: 12 }}
               />
             )}
-            
-            {uniqueYAxisIds.includes('clients') && (
-              <YAxis 
-                yAxisId="clients"
-                orientation={uniqueYAxisIds.includes('mrr') ? 'right' : 'left'}
-                tickFormatter={(value) => 
-                  new Intl.NumberFormat('pt-BR', { 
-                    notation: 'compact',
-                    compactDisplay: 'short'
-                  }).format(value)
-                }
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-            )}
-            
-            {uniqueYAxisIds.includes('percentage') && (
-              <YAxis 
-                yAxisId="percentage"
-                orientation="right"
-                tickFormatter={(value) => `${value}%`}
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-            )}
-
-            <RechartsTooltip 
-              content={<CustomTooltip />}
-              cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
-            />
-            
-            <Legend 
-              verticalAlign="top"
-              height={36}
-              iconType="circle"
-              formatter={(value) => (
-                <span className="text-sm text-gray-700 font-medium">{value}</span>
-              )}
-            />
-            
+            <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }} />
+            <Legend verticalAlign="top" height={36} iconType="circle" formatter={(value) => (<span className="text-sm text-gray-700 font-medium">{value}</span>)} />
             {lines.map((line, index) => (
               <Line
                 key={index}
@@ -208,28 +158,6 @@ export const MetricsChart = ({
           </LineChart>
         </ResponsiveContainer>
       </div>
-
-      <CustomDateRangeDialog
-        isOpen={isCustomDateOpen}
-        onOpenChange={onCustomDateOpenChange}
-        dateRange={dateRange}
-        onDateRangeChange={onDateRangeChange}
-      />
-
-      <Dialog open={!!selectedPoint} onOpenChange={() => setSelectedPoint(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedPoint?.metric} - {selectedPoint?.month ? formatMonthYear(selectedPoint.month) : ''}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <ClientDetailsTable 
-            clients={filteredClients}
-            metric={selectedPoint?.metric || ''}
-          />
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 };
