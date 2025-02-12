@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { EditPaymentDialogProps } from "./types";
 import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function EditPaymentDialog({ 
   payment,
@@ -24,6 +25,7 @@ export function EditPaymentDialog({
 }: EditPaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     amount: "",
     notes: ""
@@ -62,6 +64,9 @@ export function EditPaymentDialog({
         .eq('id', payment.id);
 
       if (error) throw error;
+
+      // Invalida a query para recarregar os dados
+      queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
 
       toast({
         title: "Sucesso!",
@@ -120,6 +125,7 @@ export function EditPaymentDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isLoading}
             >
               Cancelar
             </Button>
@@ -127,7 +133,7 @@ export function EditPaymentDialog({
               type="submit"
               disabled={isLoading}
             >
-              Salvar Alterações
+              {isLoading ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </div>
         </form>
