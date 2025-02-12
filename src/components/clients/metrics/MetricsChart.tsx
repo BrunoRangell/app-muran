@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,7 +76,7 @@ export const MetricsChart = ({
     try {
       const [month, year] = monthYear.split('/');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return format(date, "LLL'/'yy", { locale: ptBR }).toLowerCase();
+      return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
     } catch (error) {
       console.error('Erro ao formatar mês:', error, monthYear);
       return monthYear;
@@ -99,6 +100,7 @@ export const MetricsChart = ({
             <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
             <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
             <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
+            <SelectItem value="last-24-months">Últimos 24 meses</SelectItem>
             <SelectItem value="this-year">Este ano</SelectItem>
             <SelectItem value="last-year">Ano passado</SelectItem>
             <SelectItem value="custom">Data personalizada</SelectItem>
@@ -122,7 +124,7 @@ export const MetricsChart = ({
                 try {
                   const [month, year] = value.split('/');
                   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-                  return format(date, "LLL'/'yy", { locale: ptBR }).toLowerCase();
+                  return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
                 } catch (error) {
                   console.error('Erro ao formatar mês:', error, value);
                   return value;
