@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PaymentFilters, PaymentSummary } from "@/types/payment";
@@ -7,8 +8,7 @@ import { PaymentSummaryCard } from "@/components/payments/PaymentSummaryCard";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Card } from "@/components/ui/card";
-import { ClientsList } from "@/components/clients/ClientsList";
+import { PaymentsClientList } from "@/components/payments/PaymentsClientList";
 
 export default function Payments() {
   const [filters, setFilters] = useState<PaymentFilters>({});
@@ -85,9 +85,7 @@ export default function Payments() {
         </div>
       )}
 
-      <Card className="p-2 md:p-6">
-        <ClientsList onPaymentClick={handleClientPayment} viewMode="payments" />
-      </Card>
+      <PaymentsClientList onPaymentClick={handleClientPayment} />
 
       <PaymentsTable 
         payments={payments || []} 
