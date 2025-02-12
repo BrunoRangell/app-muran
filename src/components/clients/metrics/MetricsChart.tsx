@@ -75,7 +75,7 @@ export const MetricsChart = ({
     try {
       const [month, year] = monthYear.split('/');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return format(date, 'MMM/yy', { locale: ptBR }).toLowerCase();
+      return format(date, "LLL'/'yy", { locale: ptBR }).toLowerCase();
     } catch (error) {
       console.error('Erro ao formatar mês:', error, monthYear);
       return monthYear;
