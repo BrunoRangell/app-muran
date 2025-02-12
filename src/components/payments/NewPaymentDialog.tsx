@@ -24,19 +24,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { addMonths, format, subMonths } from "date-fns";
+import { addYears, format, subYears, setMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
@@ -50,6 +44,11 @@ interface NewPaymentDialogProps {
   onSuccess: () => void;
   clientId: string | null;
 }
+
+const MONTHS = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
 
 export function NewPaymentDialog({ 
   open, 
@@ -77,23 +76,22 @@ export function NewPaymentDialog({
     enabled: !!clientId
   });
 
-  // Gerar lista de meses para seleção
-  const generateMonthOptions = () => {
+  // Gerar lista de anos para seleção
+  const generateYearOptions = () => {
     const options = [];
     const today = new Date();
     
-    // Adiciona os últimos 6 meses e os próximos 6 meses
-    for (let i = -6; i <= 6; i++) {
-      const date = i < 0 ? subMonths(today, Math.abs(i)) : addMonths(today, i);
-      const value = format(date, 'yyyy-MM');
-      const label = format(date, "MMMM'/'yyyy", { locale: ptBR });
-      options.push({ value, label });
+    // Adiciona os últimos 2 anos e o ano atual
+    for (let i = -2; i <= 0; i++) {
+      const date = i < 0 ? subYears(today, Math.abs(i)) : addYears(today, i);
+      const year = format(date, 'yyyy');
+      options.push(year);
     }
     
     return options;
   };
 
-  const monthOptions = generateMonthOptions();
+  const years = generateYearOptions();
 
   const form = useForm<z.infer<typeof paymentFormSchema>>({
     resolver: zodResolver(paymentFormSchema),
@@ -149,9 +147,31 @@ export function NewPaymentDialog({
     }
   }
 
+  const handleMonthToggle = (year: string, monthIndex: number) => {
+    const monthStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}`;
+    const currentMonths = form.getValues('months');
+    const isSelected = currentMonths.includes(monthStr);
+
+    if (!multipleMonths) {
+      form.setValue('months', [monthStr]);
+      return;
+    }
+
+    if (isSelected) {
+      form.setValue('months', currentMonths.filter(m => m !== monthStr));
+    } else {
+      form.setValue('months', [...currentMonths, monthStr]);
+    }
+  };
+
+  const isMonthSelected = (year: string, monthIndex: number) => {
+    const monthStr = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}`;
+    return form.getValues('months').includes(monthStr);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Registrar Pagamento - {client?.company_name}</DialogTitle>
         </DialogHeader>
@@ -188,43 +208,34 @@ export function NewPaymentDialog({
                 <FormItem>
                   <FormLabel>Mês de Referência</FormLabel>
                   <FormControl>
-                    {multipleMonths ? (
-                      <ScrollArea className="h-[200px] border rounded-md p-4">
-                        <div className="space-y-2">
-                          {monthOptions.map(({ value, label }) => (
-                            <div key={value} className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={field.value.includes(value)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    field.onChange([...field.value, value]);
-                                  } else {
-                                    field.onChange(field.value.filter(v => v !== value));
-                                  }
-                                }}
-                              />
-                              <Label>{label}</Label>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    ) : (
-                      <Select
-                        value={field.value[0]}
-                        onValueChange={(value) => field.onChange([value])}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o mês" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {monthOptions.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                    <Tabs defaultValue={years[years.length - 1]} className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        {years.map((year) => (
+                          <TabsTrigger key={year} value={year}>{year}</TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {years.map((year) => (
+                        <TabsContent key={year} value={year}>
+                          <div className="grid grid-cols-4 gap-2">
+                            {MONTHS.map((month, index) => (
+                              <button
+                                key={month}
+                                type="button"
+                                onClick={() => handleMonthToggle(year, index)}
+                                className={cn(
+                                  "p-2 text-sm rounded-md transition-colors text-center",
+                                  isMonthSelected(year, index)
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-secondary hover:bg-secondary/80"
+                                )}
+                              >
+                                {month}
+                              </button>
+                            ))}
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
