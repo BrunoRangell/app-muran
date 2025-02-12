@@ -31,7 +31,6 @@ export function EditPaymentDialog({
     notes: ""
   });
 
-  // Atualiza o formulário quando o pagamento muda
   useEffect(() => {
     if (payment) {
       setFormData({
@@ -42,9 +41,7 @@ export function EditPaymentDialog({
   }, [payment]);
 
   const handleAmountChange = (value: string) => {
-    // Remove todos os caracteres não numéricos
     const numericValue = value.replace(/\D/g, '');
-    // Converte para número e divide por 100 para considerar os centavos
     const amount = numericValue ? parseFloat(numericValue) / 100 : 0;
     setFormData(prev => ({ ...prev, amount: formatCurrency(amount) }));
   };
@@ -54,32 +51,46 @@ export function EditPaymentDialog({
     if (!payment?.id) return;
 
     setIsLoading(true);
+    console.log('Iniciando atualização do pagamento:', payment.id);
+
     try {
-      const { error } = await supabase
+      const updateData = {
+        amount: parseCurrencyToNumber(formData.amount),
+        notes: formData.notes || null
+      };
+
+      console.log('Dados a serem atualizados:', updateData);
+
+      const { data, error } = await supabase
         .from('payments')
-        .update({
-          amount: parseCurrencyToNumber(formData.amount),
-          notes: formData.notes || null
-        })
-        .eq('id', payment.id);
+        .update(updateData)
+        .eq('id', payment.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na atualização:', error);
+        throw error;
+      }
 
-      // Invalida a query para recarregar os dados
-      queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
+      console.log('Pagamento atualizado com sucesso:', data);
+
+      // Invalida as queries relacionadas
+      await queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
 
       toast({
         title: "Sucesso!",
         description: "Pagamento atualizado com sucesso.",
       });
 
+      // Limpa o formulário e fecha o diálogo
+      setFormData({ amount: "", notes: "" });
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar pagamento:', error);
       toast({
         title: "Erro ao atualizar",
-        description: "Não foi possível atualizar o pagamento.",
+        description: error.message || "Não foi possível atualizar o pagamento.",
         variant: "destructive",
       });
     } finally {
@@ -90,7 +101,11 @@ export function EditPaymentDialog({
   if (!payment) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!isLoading) {
+        onOpenChange(open);
+      }
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Editar Pagamento - {clientName}</DialogTitle>
@@ -106,6 +121,7 @@ export function EditPaymentDialog({
               onChange={(e) => handleAmountChange(e.target.value)}
               placeholder="R$ 0,00"
               className="w-full"
+              disabled={isLoading}
             />
           </div>
 
@@ -117,6 +133,7 @@ export function EditPaymentDialog({
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="Observações sobre o pagamento..."
               className="min-h-[100px]"
+              disabled={isLoading}
             />
           </div>
 
