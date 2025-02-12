@@ -80,18 +80,17 @@ export function NewPaymentDialog({
         .insert({
           client_id: clientId,
           amount: parseCurrencyToNumber(data.amount),
-          net_amount: parseCurrencyToNumber(data.amount), // Mantendo o mesmo valor já que não há mais distinção
+          net_amount: parseCurrencyToNumber(data.amount),
           reference_month: new Date(data.referenceMonth + '-01'), // Primeiro dia do mês
           notes: data.notes,
-          status: 'RECEIVED',
-          due_date: new Date(), // Data atual como vencimento
-          payment_date: new Date() // Data atual como data de pagamento
+          status: 'RECEIVED'
         });
 
       if (error) throw error;
       
       onSuccess();
       form.reset();
+      onOpenChange(false);
     } catch (error) {
       console.error('Erro ao registrar pagamento:', error);
     } finally {
