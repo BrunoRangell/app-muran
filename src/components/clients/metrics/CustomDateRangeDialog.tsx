@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format, isValid, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CustomDateRangeDialogProps {
@@ -23,6 +23,13 @@ export const CustomDateRangeDialog = ({
 }: CustomDateRangeDialogProps) => {
   const { toast } = useToast();
   const [tempDateRange, setTempDateRange] = useState(dateRange);
+
+  // Atualiza o tempDateRange quando dateRange muda (quando o diálogo é reaberto)
+  useEffect(() => {
+    if (isOpen) {
+      setTempDateRange(dateRange);
+    }
+  }, [dateRange, isOpen]);
 
   const formatDateForInput = (date: Date) => {
     if (!isValid(date)) {
@@ -77,16 +84,8 @@ export const CustomDateRangeDialog = ({
     onOpenChange(false);
   };
 
-  // Reseta o tempDateRange quando o diálogo é aberto
-  const handleOpenChange = (open: boolean) => {
-    if (open) {
-      setTempDateRange(dateRange);
-    }
-    onOpenChange(open);
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Selecione o período</DialogTitle>
