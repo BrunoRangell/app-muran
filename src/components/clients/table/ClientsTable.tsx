@@ -9,7 +9,7 @@ import { ClientTableRow } from "./TableRow";
 import { calculateRetention } from "./utils";
 
 interface ClientsTableProps {
-  clients: Client[] | undefined;
+  clients: Client[];
   columns: Column[];
   onEditClick: (client: Client) => void;
   sortConfig: SortConfig;

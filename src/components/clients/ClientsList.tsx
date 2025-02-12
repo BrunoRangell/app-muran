@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Filter, X } from "lucide-react";
@@ -167,7 +167,6 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
               onEditClick={handleEditClick}
               sortConfig={sortConfig}
               onSort={handleSort}
-              viewMode={viewMode}
             />
           </div>
         )}
