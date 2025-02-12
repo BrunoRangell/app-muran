@@ -223,35 +223,46 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         });
       } else {
         console.log("Criando novo cliente...");
-        const { data: insertData, error: insertError } = await supabase
-          .from('clients')
-          .insert([clientData])
-          .single();
+        try {
+          const { data: insertData, error: insertError } = await supabase
+            .from('clients')
+            .insert([clientData])
+            .select()
+            .single();
 
-        if (insertError) {
-          console.error("Erro ao inserir cliente:", insertError);
-          throw insertError;
+          if (insertError) {
+            console.error("Erro ao inserir cliente:", insertError);
+            throw insertError;
+          }
+
+          if (!insertData) {
+            console.error("Nenhum dado retornado após inserção");
+            throw new Error("Erro ao inserir dados no banco");
+          }
+
+          console.log("Cliente criado com sucesso:", insertData);
+          toast({
+            title: "Sucesso!",
+            description: "Cliente cadastrado com sucesso!",
+          });
+
+          form.reset({
+            companyName: "",
+            contractValue: 0,
+            firstPaymentDate: "",
+            paymentType: "pre",
+            status: "active",
+            acquisitionChannel: "",
+            customAcquisitionChannel: "",
+            companyBirthday: "",
+            contactName: "",
+            contactPhone: "",
+            lastPaymentDate: "",
+          });
+        } catch (insertError) {
+          console.error("Erro detalhado na inserção:", insertError);
+          throw insertError; // Re-throw para ser capturado pelo try/catch externo
         }
-
-        console.log("Cliente criado com sucesso:", insertData);
-        toast({
-          title: "Sucesso!",
-          description: "Cliente cadastrado com sucesso!",
-        });
-
-        form.reset({
-          companyName: "",
-          contractValue: 0,
-          firstPaymentDate: "",
-          paymentType: "pre",
-          status: "active",
-          acquisitionChannel: "",
-          customAcquisitionChannel: "",
-          companyBirthday: "",
-          contactName: "",
-          contactPhone: "",
-          lastPaymentDate: "",
-        });
       }
 
       if (onSuccess) {
