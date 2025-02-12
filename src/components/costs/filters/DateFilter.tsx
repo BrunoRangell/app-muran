@@ -119,54 +119,56 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-2">
-      <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
-        <SelectTrigger className="w-full md:w-[180px]">
-          <SelectValue placeholder="Período" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="this-month">Este mês</SelectItem>
-          <SelectItem value="last-month">Mês passado</SelectItem>
-          <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-          <SelectItem value="this-year">Este ano</SelectItem>
-          <SelectItem value="last-year">Ano passado</SelectItem>
-          <SelectItem value="custom">Personalizado</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-full md:w-[240px] justify-start text-left font-normal"
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date?.from ? (
-              date.to ? (
-                <>
-                  {format(date.from, "dd/MM/yyyy", { locale: ptBR })} -{" "}
-                  {format(date.to, "dd/MM/yyyy", { locale: ptBR })}
-                </>
-              ) : (
-                format(date.from, "dd/MM/yyyy", { locale: ptBR })
-              )
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full md:w-[240px] justify-start text-left font-normal"
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date?.from ? (
+            date.to ? (
+              <>
+                {format(date.from, "dd/MM/yyyy", { locale: ptBR })} -{" "}
+                {format(date.to, "dd/MM/yyyy", { locale: ptBR })}
+              </>
             ) : (
-              <span>Selecione um período</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={date?.from || new Date()}
-            selected={date}
-            onSelect={handleDateSelect}
-            numberOfMonths={2}
-            locale={ptBR}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+              format(date.from, "dd/MM/yyyy", { locale: ptBR })
+            )
+          ) : (
+            <span>Selecione um período</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-4" align="start">
+        <div className="space-y-4">
+          <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="this-month">Este mês</SelectItem>
+              <SelectItem value="last-month">Mês passado</SelectItem>
+              <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
+              <SelectItem value="this-year">Este ano</SelectItem>
+              <SelectItem value="last-year">Ano passado</SelectItem>
+              <SelectItem value="custom">Personalizado</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {selectedPeriod === "custom" && (
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from || new Date()}
+              selected={date}
+              onSelect={handleDateSelect}
+              numberOfMonths={2}
+              locale={ptBR}
+            />
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
