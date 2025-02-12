@@ -20,6 +20,7 @@ export default function Payments() {
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('asaas');
       if (error) throw error;
+      console.log('Pagamentos recebidos do Asaas:', data.payments);
       return data.payments;
     }
   });
@@ -44,17 +45,22 @@ export default function Payments() {
   };
 
   // Transformar os pagamentos do Asaas para o formato da nossa aplicação
-  const payments = asaasPayments?.map(payment => ({
-    id: payment.id,
-    client_id: payment.customer,
-    amount: payment.value,
-    net_amount: payment.netValue,
-    payment_date: payment.paymentDate,
-    status: mapAsaasStatus(payment.status),
-    notes: null,
-    created_at: payment.paymentDate,
-    clients: payment.customerName
-  }));
+  const payments = asaasPayments?.map(payment => {
+    console.log('Mapeando pagamento:', payment);
+    return {
+      id: payment.id,
+      client_id: payment.customer,
+      amount: payment.value,
+      net_amount: payment.netValue,
+      payment_date: payment.paymentDate,
+      status: mapAsaasStatus(payment.status),
+      notes: null,
+      created_at: payment.paymentDate,
+      clients: {
+        company_name: payment.customerName || 'Nome não disponível'
+      }
+    };
+  });
 
   // Calcular os sumários de pagamentos
   const calculateSummaries = () => {
@@ -124,6 +130,8 @@ export default function Payments() {
   };
 
   const summaries = calculateSummaries();
+
+  console.log('Pagamentos após mapeamento:', payments);
 
   return (
     <div className="p-6 space-y-6">

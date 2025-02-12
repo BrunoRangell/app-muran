@@ -59,6 +59,8 @@ export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
     }
   };
 
+  console.log('Renderizando tabela com pagamentos:', payments);
+
   return (
     <div className="border rounded-lg">
       <Table>
@@ -83,6 +85,7 @@ export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
         </TableHeader>
         <TableBody>
           {payments?.map((payment) => {
+            console.log('Renderizando linha para pagamento:', payment);
             const status = getStatusText(payment.status);
             return (
               <TableRow key={payment.id}>
