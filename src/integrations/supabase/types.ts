@@ -141,8 +141,10 @@ export type Database = {
           created_at: string
           due_date: string
           id: number
+          net_amount: number
           notes: string | null
           payment_date: string | null
+          reference_month: string
           status: Database["public"]["Enums"]["payment_status"] | null
         }
         Insert: {
@@ -151,8 +153,10 @@ export type Database = {
           created_at?: string
           due_date: string
           id?: never
+          net_amount: number
           notes?: string | null
           payment_date?: string | null
+          reference_month: string
           status?: Database["public"]["Enums"]["payment_status"] | null
         }
         Update: {
@@ -161,8 +165,10 @@ export type Database = {
           created_at?: string
           due_date?: string
           id?: never
+          net_amount?: number
           notes?: string | null
           payment_date?: string | null
+          reference_month?: string
           status?: Database["public"]["Enums"]["payment_status"] | null
         }
         Relationships: [

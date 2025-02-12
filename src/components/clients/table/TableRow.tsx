@@ -1,7 +1,7 @@
 
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { DollarSign, Pencil } from "lucide-react";
 import { Client, Column } from "../types";
 import { formatCellContent } from "./utils";
 
@@ -9,9 +9,17 @@ interface ClientTableRowProps {
   client: Client;
   columns: Column[];
   onEditClick: (client: Client) => void;
+  onPaymentClick?: (clientId: string) => void;
+  viewMode?: 'default' | 'payments';
 }
 
-export const ClientTableRow = ({ client, columns, onEditClick }: ClientTableRowProps) => {
+export const ClientTableRow = ({ 
+  client, 
+  columns, 
+  onEditClick,
+  onPaymentClick,
+  viewMode = 'default'
+}: ClientTableRowProps) => {
   return (
     <TableRow>
       {columns.filter(col => col.show).map(column => {
@@ -37,14 +45,27 @@ export const ClientTableRow = ({ client, columns, onEditClick }: ClientTableRowP
           <TableCell key={column.id}>{content}</TableCell>
         );
       })}
-      <TableCell>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onEditClick(client)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+      <TableCell className="text-right">
+        {viewMode === 'payments' ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPaymentClick?.(client.id)}
+            disabled={client.status !== 'active'}
+            className="gap-2"
+          >
+            <DollarSign className="h-4 w-4" />
+            Registrar Pagamento
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onEditClick(client)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
       </TableCell>
     </TableRow>
   );
