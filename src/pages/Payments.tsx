@@ -1,72 +1,60 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PaymentStatus, PaymentFilters, PaymentSummary } from "@/types/payment";
+import { PaymentFilters, PaymentSummary } from "@/types/payment";
 import { PaymentsTable } from "@/components/payments/PaymentsTable";
 import { PaymentFiltersBar } from "@/components/payments/PaymentFiltersBar";
 import { PaymentSummaryCard } from "@/components/payments/PaymentSummaryCard";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { format } from "date-fns";
 
 export default function Payments() {
   const [filters, setFilters] = useState<PaymentFilters>({});
   const [isNewPaymentOpen, setIsNewPaymentOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: asaasPayments, isLoading: isLoadingAsaas } = useQuery({
-    queryKey: ['asaas-payments', filters.startDate, filters.endDate],
+  const { data: payments, isLoading: isLoadingPayments } = useQuery({
+    queryKey: ['payments', filters.startDate, filters.endDate],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('asaas', {
-        body: {
-          startDate: filters.startDate,
-          endDate: filters.endDate,
-        }
-      });
+      let query = supabase
+        .from('payments')
+        .select(`
+          *,
+          clients:client_id (
+            company_name,
+            status
+          )
+        `)
+        .order('payment_date', { ascending: false });
+
+      if (filters.startDate) {
+        query = query.gte('payment_date', filters.startDate);
+      }
+      if (filters.endDate) {
+        query = query.lte('payment_date', filters.endDate);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      console.log('Pagamentos recebidos do Asaas:', data.payments);
-      return data.payments;
+      return data;
     }
   });
 
-  // Função para mapear os status do Asaas para nossos status
-  const mapAsaasStatus = (asaasStatus: string): PaymentStatus => {
-    switch (asaasStatus.toUpperCase()) {
-      case 'RECEIVED':
-      case 'CONFIRMED':
-        return 'RECEIVED';
-      case 'PENDING':
-        return 'PENDING';
-      case 'OVERDUE':
-        return 'OVERDUE';
-      case 'REFUNDED':
-        return 'REFUNDED';
-      case 'CANCELLED':
-        return 'CANCELLED';
-      default:
-        return 'PENDING';
+  const { data: clients } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('status', { ascending: false }) // Clientes ativos primeiro
+        .order('company_name');
+      
+      if (error) throw error;
+      return data;
     }
-  };
-
-  // Transformar os pagamentos do Asaas para o formato da nossa aplicação
-  const payments = asaasPayments?.map(payment => {
-    console.log('Mapeando pagamento:', payment);
-    return {
-      id: payment.id,
-      client_id: payment.customer,
-      amount: payment.value,
-      net_amount: payment.netValue,
-      payment_date: payment.paymentDate,
-      status: mapAsaasStatus(payment.status),
-      notes: null,
-      created_at: payment.paymentDate,
-      clients: {
-        company_name: payment.customerName || 'Nome não disponível'
-      }
-    };
   });
 
   // Calcular os sumários de pagamentos
@@ -76,78 +64,24 @@ export default function Payments() {
     const summaries = {
       received: {
         title: "Recebidas",
-        grossAmount: 0,
-        netAmount: 0,
-        clientCount: 0,
-        paymentCount: 0,
+        grossAmount: payments.reduce((sum, p) => sum + p.amount, 0),
+        netAmount: payments.reduce((sum, p) => sum + p.net_amount, 0),
+        clientCount: new Set(payments.map(p => p.client_id)).size,
+        paymentCount: payments.length,
         color: "#16A34A",
-        status: "RECEIVED" as PaymentStatus
-      },
-      confirmed: {
-        title: "Confirmadas",
-        grossAmount: 0,
-        netAmount: 0,
-        clientCount: 0,
-        paymentCount: 0,
-        color: "#2563EB",
-        status: "CONFIRMED" as PaymentStatus
-      },
-      pending: {
-        title: "Aguardando pagamento",
-        grossAmount: 0,
-        netAmount: 0,
-        clientCount: 0,
-        paymentCount: 0,
-        color: "#EA580C",
-        status: "PENDING" as PaymentStatus
+        status: "RECEIVED" as const
       }
     };
-
-    const clients = new Set<string>();
-
-    payments.forEach(payment => {
-      let category: keyof typeof summaries;
-      
-      switch (payment.status) {
-        case 'RECEIVED':
-          category = 'received';
-          break;
-        case 'CONFIRMED':
-          category = 'confirmed';
-          break;
-        case 'PENDING':
-          category = 'pending';
-          break;
-        default:
-          return; // Ignora outros status para os cards de sumário
-      }
-
-      summaries[category].grossAmount += payment.amount;
-      summaries[category].netAmount += payment.net_amount;
-      summaries[category].paymentCount += 1;
-      clients.add(payment.client_id);
-    });
-
-    // Atualiza a contagem de clientes para cada categoria
-    Object.values(summaries).forEach(summary => {
-      summary.clientCount = clients.size;
-    });
 
     return summaries;
   };
 
   const summaries = calculateSummaries();
 
-  console.log('Pagamentos após mapeamento:', payments);
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Recebimentos</h1>
-        <Button onClick={() => setIsNewPaymentOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Cobrança
-        </Button>
       </div>
 
       <PaymentFiltersBar 
@@ -155,27 +89,65 @@ export default function Payments() {
         onFiltersChange={setFilters} 
       />
 
-      {!isLoadingAsaas && summaries && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {!isLoadingPayments && summaries && (
+        <div className="grid grid-cols-1 gap-4">
           <PaymentSummaryCard data={summaries.received} />
-          <PaymentSummaryCard data={summaries.confirmed} />
-          <PaymentSummaryCard data={summaries.pending} />
         </div>
       )}
 
+      <div className="border rounded-lg divide-y">
+        {clients?.map((client) => (
+          <div 
+            key={client.id} 
+            className="p-4 flex justify-between items-center hover:bg-gray-50"
+          >
+            <div>
+              <h3 className="font-medium">{client.company_name}</h3>
+              <p className="text-sm text-gray-500">
+                Valor mensal: {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL'
+                }).format(client.contract_value)}
+              </p>
+              <span 
+                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                  client.status === 'active' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}
+              >
+                {client.status === 'active' ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedClientId(client.id);
+                setIsNewPaymentOpen(true);
+              }}
+              disabled={client.status !== 'active'}
+            >
+              Registrar Pagamento
+            </Button>
+          </div>
+        ))}
+      </div>
+
       <PaymentsTable 
-        payments={payments} 
-        isLoading={isLoadingAsaas}
+        payments={payments || []} 
+        isLoading={isLoadingPayments}
       />
 
       <NewPaymentDialog 
         open={isNewPaymentOpen}
         onOpenChange={setIsNewPaymentOpen}
+        clientId={selectedClientId}
         onSuccess={() => {
           setIsNewPaymentOpen(false);
+          setSelectedClientId(null);
           toast({
-            title: "Cobrança criada",
-            description: "A cobrança foi registrada com sucesso!",
+            title: "Pagamento registrado",
+            description: "O pagamento foi registrado com sucesso!",
           });
         }}
       />

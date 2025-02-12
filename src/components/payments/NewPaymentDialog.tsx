@@ -18,13 +18,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
@@ -32,9 +25,9 @@ import { supabase } from "@/lib/supabase";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 
 const paymentFormSchema = z.object({
-  clientId: z.string().min(1, "Selecione um cliente"),
   amount: z.string().min(1, "Informe o valor"),
-  dueDate: z.string().min(1, "Informe a data de vencimento"),
+  netAmount: z.string().min(1, "Informe o valor líquido"),
+  referenceMonth: z.string().min(1, "Informe o mês de referência"),
   notes: z.string().optional(),
 });
 
@@ -42,41 +35,57 @@ interface NewPaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  clientId: string | null;
 }
 
 export function NewPaymentDialog({ 
   open, 
   onOpenChange,
-  onSuccess 
+  onSuccess,
+  clientId
 }: NewPaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof paymentFormSchema>>({
-    resolver: zodResolver(paymentFormSchema),
+  const { data: client } = useQuery({
+    queryKey: ['client', clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientId
   });
 
-  const { data: clients } = useQuery({
-    queryKey: ['clients'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('clients')
-        .select('id, company_name')
-        .order('company_name');
-      return data || [];
+  const form = useForm<z.infer<typeof paymentFormSchema>>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: {
+      amount: client?.contract_value.toString() || '',
+      netAmount: client?.contract_value.toString() || '',
+      referenceMonth: new Date().toISOString().split('T')[0].slice(0, 7), // YYYY-MM
+      notes: '',
     }
   });
 
   async function onSubmit(data: z.infer<typeof paymentFormSchema>) {
+    if (!clientId) return;
+    
     setIsLoading(true);
     try {
       const { error } = await supabase
         .from('payments')
         .insert({
-          client_id: data.clientId,
+          client_id: clientId,
           amount: parseCurrencyToNumber(data.amount),
-          due_date: data.dueDate,
+          net_amount: parseCurrencyToNumber(data.netAmount),
+          reference_month: new Date(data.referenceMonth + '-01'), // Primeiro dia do mês
           notes: data.notes,
-          status: 'PENDING'
+          status: 'RECEIVED'
         });
 
       if (error) throw error;
@@ -84,7 +93,7 @@ export function NewPaymentDialog({
       onSuccess();
       form.reset();
     } catch (error) {
-      console.error('Erro ao criar cobrança:', error);
+      console.error('Erro ao registrar pagamento:', error);
     } finally {
       setIsLoading(false);
     }
@@ -94,48 +103,17 @@ export function NewPaymentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nova Cobrança</DialogTitle>
+          <DialogTitle>Registrar Pagamento - {client?.company_name}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um cliente" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {clients?.map((client) => (
-                        <SelectItem 
-                          key={client.id} 
-                          value={client.id.toString()}
-                        >
-                          {client.company_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valor</FormLabel>
+                  <FormLabel>Valor Bruto</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="R$ 0,00" />
                   </FormControl>
@@ -146,12 +124,26 @@ export function NewPaymentDialog({
 
             <FormField
               control={form.control}
-              name="dueDate"
+              name="netAmount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Data de Vencimento</FormLabel>
+                  <FormLabel>Valor Líquido</FormLabel>
                   <FormControl>
-                    <Input {...field} type="date" />
+                    <Input {...field} placeholder="R$ 0,00" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="referenceMonth"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mês de Referência</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="month" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
