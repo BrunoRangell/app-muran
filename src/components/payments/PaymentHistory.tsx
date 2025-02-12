@@ -49,25 +49,27 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span>{formatCurrency(total)}</span>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 hover:bg-secondary"
-              onClick={() => setIsHistoryOpen(true)}
-            >
-              <History className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Ver histórico</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <div className="flex items-center">
+      <span className="w-28 text-right">{formatCurrency(total)}</span>
+      <div className="flex-shrink-0">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:bg-secondary"
+                onClick={() => setIsHistoryOpen(true)}
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Ver histórico</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
       <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
         <DialogContent className="max-h-[80vh] flex flex-col">
