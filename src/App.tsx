@@ -9,6 +9,7 @@ import NotFound from "@/pages/NotFound";
 import Managers from "@/pages/Managers";
 import ManagerFinancial from "@/pages/ManagerFinancial";
 import Tasks from "@/pages/Tasks";
+import FinancialReport from "@/pages/FinancialReport";
 
 function App() {
   return (
@@ -31,11 +32,14 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route path="/clientes/relatorio" element={
-          <PrivateRoute requireAdmin>
-            <Clients />
-          </PrivateRoute>
-        } />
+        <Route
+          path="/clientes/relatorio"
+          element={
+            <PrivateRoute requireAdmin>
+              <FinancialReport />
+            </PrivateRoute>
+          }
+        />
         <Route path="/financeiro" element={<ManagerFinancial />} />
         <Route path="/tarefas" element={<Tasks />} />
         <Route path="*" element={<NotFound />} />
