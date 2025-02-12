@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import { Trash2 } from "lucide-react";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Schema de validação
 const clientFormSchema = z.object({
   companyName: z.string().min(1, "Nome da empresa é obrigatório"),
   contractValue: z.any().refine(val => {
@@ -91,18 +89,16 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   }, [status]);
 
   const onSubmit = async (data: ClientFormData) => {
-    if (isLoading) return; // Previne múltiplos submits
+    if (isLoading) return;
 
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
-      console.log("Salvando cliente:", data);
-      
       const finalAcquisitionChannel = data.acquisitionChannel === "outro" 
         ? data.customAcquisitionChannel 
         : data.acquisitionChannel;
 
       const contractValue = parseCurrencyToNumber(data.contractValue.toString());
-      console.log('Contract value being saved:', contractValue);
 
       const clientData = {
         company_name: data.companyName,
@@ -117,32 +113,32 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         last_payment_date: data.status === "inactive" ? (data.lastPaymentDate || null) : null,
       };
 
-      console.log("Dados formatados para salvar:", clientData);
-
-      if (initialData) {
-        const { error } = await supabase
+      if (initialData?.id) {
+        const { error: updateError } = await supabase
           .from('clients')
           .update(clientData)
-          .eq('id', initialData.id);
+          .eq('id', initialData.id)
+          .single();
 
-        if (error) throw error;
-        
+        if (updateError) throw updateError;
+
         toast({
           title: "Sucesso!",
           description: "Cliente atualizado com sucesso!",
         });
       } else {
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('clients')
-          .insert([clientData]);
+          .insert([clientData])
+          .single();
 
-        if (error) throw error;
-        
+        if (insertError) throw insertError;
+
         toast({
           title: "Sucesso!",
           description: "Cliente cadastrado com sucesso!",
         });
-        
+
         form.reset({
           companyName: "",
           contractValue: 0,
@@ -158,11 +154,9 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         });
       }
 
-      // Chama o callback de sucesso antes de resetar o loading
       if (onSuccess) {
         onSuccess();
       }
-
     } catch (error) {
       console.error("Erro ao salvar cliente:", error);
       toast({
@@ -170,20 +164,22 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         description: "Não foi possível salvar o cliente. Por favor, tente novamente.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   const handleDelete = async () => {
-    if (!initialData?.id) return;
+    if (!initialData?.id || isLoading) return;
+
+    setIsLoading(true);
 
     try {
-      setIsLoading(true);
       const { error } = await supabase
         .from('clients')
         .delete()
-        .eq('id', initialData.id);
+        .eq('id', initialData.id)
+        .single();
 
       if (error) throw error;
 
@@ -192,7 +188,9 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         description: "Cliente excluído com sucesso!",
       });
 
-      onSuccess?.();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);
       toast({
@@ -200,9 +198,9 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
         description: "Não foi possível excluir o cliente. Por favor, tente novamente.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   return (
