@@ -7,6 +7,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from "@/components/ui/tooltip";
 
 interface PaymentSummaryCardProps {
@@ -19,14 +20,16 @@ export function PaymentSummaryCard({ data }: PaymentSummaryCardProps) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">
           {data.title}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-4 w-4 ml-2 inline-block text-muted-foreground" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Valor líquido: {formatCurrency(data.netAmount)}</p>
-            </TooltipContent>
-          </Tooltip>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 ml-2 inline-block text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Valor líquido: {formatCurrency(data.netAmount)}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardTitle>
       </CardHeader>
       <CardContent>
