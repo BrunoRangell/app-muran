@@ -1,6 +1,6 @@
 
 import { z } from "zod";
-import { CostCategory, CostMacroCategory, COST_CATEGORIES_HIERARCHY } from "@/types/cost";
+import { CostCategory, CostMacroCategory } from "@/types/cost";
 
 export const costFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
@@ -30,7 +30,3 @@ export interface NewCostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-export const getCategoriesForMacroCategory = (macroCategory: CostMacroCategory) => {
-  return COST_CATEGORIES_HIERARCHY[macroCategory].categories;
-};

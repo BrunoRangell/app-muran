@@ -71,3 +71,7 @@ export const MACRO_CATEGORIES = Object.entries(COST_CATEGORIES_HIERARCHY).map(([
 export const ALL_COST_CATEGORIES = Object.values(COST_CATEGORIES_HIERARCHY).flatMap(
   ({ categories }) => categories
 );
+
+export const getCategoriesForMacroCategory = (macroCategory: CostMacroCategory) => {
+  return COST_CATEGORIES_HIERARCHY[macroCategory].categories;
+};
