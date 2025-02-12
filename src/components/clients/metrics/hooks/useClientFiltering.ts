@@ -12,17 +12,24 @@ interface FilterParams {
 
 const MONTH_MAPPINGS = {
   // Meses em português
-  'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5,
-  'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11,
+  'jan-pt': 0, 'fev': 1, 'mar-pt': 2, 'abr': 3, 'mai': 4, 'jun-pt': 5,
+  'jul-pt': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov-pt': 10, 'dez': 11,
   // Meses em inglês
-  'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
-  'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+  'jan-en': 0, 'feb': 1, 'mar-en': 2, 'apr': 3, 'may': 4, 'jun-en': 5,
+  'jul-en': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov-en': 10, 'dec': 11
 };
 
 export const useClientFiltering = () => {
   const getMonthIndex = (monthStr: string): number => {
     const normalizedMonth = monthStr.toLowerCase();
-    const monthIndex = MONTH_MAPPINGS[normalizedMonth];
+    
+    // Tenta encontrar o mês em português primeiro
+    let monthIndex = MONTH_MAPPINGS[`${normalizedMonth}-pt`] ?? MONTH_MAPPINGS[normalizedMonth];
+    
+    // Se não encontrar, tenta em inglês
+    if (monthIndex === undefined) {
+      monthIndex = MONTH_MAPPINGS[`${normalizedMonth}-en`];
+    }
 
     if (monthIndex === undefined) {
       console.error('Mês não reconhecido:', monthStr);
