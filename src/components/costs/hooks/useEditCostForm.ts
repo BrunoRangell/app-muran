@@ -72,7 +72,18 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
     
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      console.log("Atualizando custo:", {
+        id: cost.id,
+        dados: {
+          name: data.name,
+          amount: parseCurrencyToNumber(data.amount),
+          category: data.category,
+          date: data.date,
+          description: data.description || null,
+        }
+      });
+
+      const { data: updatedCost, error } = await supabase
         .from("costs")
         .update({
           name: data.name,
@@ -81,12 +92,20 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
           date: data.date,
           description: data.description || null,
         })
-        .eq("id", cost.id);
+        .eq("id", cost.id)
+        .select()
+        .single();
 
       if (error) {
         console.error("Erro ao atualizar custo:", error);
         throw error;
       }
+
+      if (!updatedCost) {
+        throw new Error("Não foi possível atualizar o custo");
+      }
+
+      console.log("Custo atualizado com sucesso:", updatedCost);
 
       toast({
         title: "Custo atualizado",
