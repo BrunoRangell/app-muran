@@ -32,14 +32,17 @@ Deno.serve(async (req) => {
       throw new Error('ASAAS_API_KEY não encontrada')
     }
 
-    // Define o período para buscar os pagamentos (30 dias atrás até hoje)
+    // Definir período: primeiro dia do mês atual até hoje
     const today = new Date()
-    const thirtyDaysAgo = new Date(today)
-    thirtyDaysAgo.setDate(today.getDate() - 30)
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const startDate = startOfMonth.toISOString().split('T')[0]
+    const endDate = today.toISOString().split('T')[0]
+
+    console.log('Buscando pagamentos de:', startDate, 'até:', endDate)
 
     // Primeiro, buscar os pagamentos
     const paymentsResponse = await fetch(
-      `https://api.asaas.com/v3/payments?startDate=${thirtyDaysAgo.toISOString().split('T')[0]}&endDate=${today.toISOString().split('T')[0]}`,
+      `https://api.asaas.com/v3/payments?startDate=${startDate}&endDate=${endDate}&limit=100`,
       {
         headers: {
           'access_token': asaasApiKey,
