@@ -26,9 +26,8 @@ import { parseCurrencyToNumber } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { format, addMonths } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -36,6 +35,7 @@ import {
 } from "@/components/ui/popover";
 import { CalendarIcon, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CustomDateRangeDialog } from "@/components/clients/metrics/CustomDateRangeDialog";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
@@ -58,8 +58,13 @@ export function NewPaymentDialog({
 }: NewPaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [multipleMonths, setMultipleMonths] = useState(false);
+  const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
   const { toast } = useToast();
   const [selectedMonths, setSelectedMonths] = useState<Date[]>([new Date()]);
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
+    start: new Date(),
+    end: new Date()
+  });
 
   const { data: client } = useQuery({
     queryKey: ['client', clientId],
@@ -86,33 +91,18 @@ export function NewPaymentDialog({
     }
   });
 
-  const handleMonthSelect = (date: Date) => {
-    const formattedDate = format(date, 'yyyy-MM');
-    const currentMonths = form.getValues('months');
+  const handleDateRangeChange = (range: { start: Date; end: Date }) => {
+    setDateRange(range);
+    const months: Date[] = [];
+    let current = range.start;
     
-    if (!multipleMonths) {
-      setSelectedMonths([date]);
-      form.setValue('months', [formattedDate]);
-      return;
+    while (current <= range.end) {
+      months.push(new Date(current));
+      current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
     }
-
-    if (currentMonths.includes(formattedDate)) {
-      const newMonths = currentMonths.filter(m => m !== formattedDate);
-      const newSelectedMonths = selectedMonths.filter(
-        d => format(d, 'yyyy-MM') !== formattedDate
-      );
-      setSelectedMonths(newSelectedMonths);
-      form.setValue('months', newMonths);
-    } else {
-      setSelectedMonths([...selectedMonths, date]);
-      form.setValue('months', [...currentMonths, formattedDate]);
-    }
-  };
-
-  const isMonthSelected = (date: Date) => {
-    return selectedMonths.some(
-      selectedDate => format(selectedDate, 'yyyy-MM') === format(date, 'yyyy-MM')
-    );
+    
+    setSelectedMonths(months);
+    form.setValue('months', months.map(date => format(date, 'yyyy-MM')));
   };
 
   async function onSubmit(data: z.infer<typeof paymentFormSchema>) {
@@ -204,69 +194,39 @@ export function NewPaymentDialog({
               name="months"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mês de Referência</FormLabel>
+                  <FormLabel>Período de Referência</FormLabel>
                   <FormControl>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {selectedMonths.length > 0 ? (
-                            selectedMonths.length === 1 ? (
-                              format(selectedMonths[0], "MMMM'/'yyyy", { locale: ptBR })
-                            ) : (
-                              `${selectedMonths.length} meses selecionados`
-                            )
-                          ) : (
-                            "Selecione o mês"
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={selectedMonths[0]}
-                          onSelect={(date) => date && handleMonthSelect(date)}
-                          modifiersStyles={{
-                            selected: {
-                              backgroundColor: 'hsl(var(--primary))',
-                              color: 'white'
-                            }
-                          }}
-                          modifiers={{
-                            selected: (date) => isMonthSelected(date)
-                          }}
-                          locale={ptBR}
-                          ISOWeek
-                          className="rounded-md border"
-                          disabled={{ after: addMonths(new Date(), 12) }}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                      onClick={() => setIsCustomDateOpen(true)}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedMonths.length > 0 ? (
+                        selectedMonths.length === 1 ? (
+                          format(selectedMonths[0], "MMMM'/'yyyy", { locale: ptBR })
+                        ) : (
+                          `${format(dateRange.start, "MM'/'yyyy")} - ${format(dateRange.end, "MM'/'yyyy")}`
+                        )
+                      ) : (
+                        "Selecione o período"
+                      )}
+                    </Button>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {selectedMonths.length > 1 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedMonths.map((date, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-1 text-sm bg-primary/10 text-primary rounded-full px-3 py-1"
-                  >
-                    <Check className="h-3 w-3" />
-                    {format(date, "MMMM'/'yyyy", { locale: ptBR })}
-                  </div>
-                ))}
-              </div>
-            )}
+            <CustomDateRangeDialog
+              isOpen={isCustomDateOpen}
+              onOpenChange={setIsCustomDateOpen}
+              dateRange={dateRange}
+              onDateRangeChange={handleDateRangeChange}
+            />
 
             <FormField
               control={form.control}
