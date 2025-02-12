@@ -10,6 +10,7 @@ import Managers from "@/pages/Managers";
 import ManagerFinancial from "@/pages/ManagerFinancial";
 import Tasks from "@/pages/Tasks";
 import FinancialReport from "@/pages/FinancialReport";
+import Payments from "@/pages/Payments";
 
 function App() {
   return (
@@ -37,6 +38,14 @@ function App() {
           element={
             <PrivateRoute requireAdmin>
               <FinancialReport />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/clientes/recebimentos"
+          element={
+            <PrivateRoute requireAdmin>
+              <Payments />
             </PrivateRoute>
           }
         />
