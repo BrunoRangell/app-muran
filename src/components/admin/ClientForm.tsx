@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,15 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
   const { toast } = useToast();
   const [showLastPaymentDate, setShowLastPaymentDate] = useState(initialData?.status === "inactive");
 
+  // Log o estado da sessão no carregamento do componente
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log("Estado da sessão:", { session, error });
+    };
+    checkSession();
+  }, []);
+
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
@@ -125,10 +135,18 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     setIsLoading(true);
     
     try {
+      // Verificar estado da sessão antes da inserção
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("Estado da sessão antes da inserção:", session);
+
+      if (!session) {
+        throw new Error("Sessão expirada. Por favor, faça login novamente.");
+      }
+
       let contractValue: number;
       try {
         contractValue = parseCurrencyToNumber(String(data.contractValue));
-        console.log("Valor do contrato convertido:", contractValue);
+        console.log("Valor do contrato convertido:", contractValue, "Tipo:", typeof contractValue);
         if (isNaN(contractValue) || contractValue <= 0) {
           throw new Error("Valor do contrato inválido");
         }
@@ -224,36 +242,46 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
       } else {
         console.log("Criando novo cliente...");
         
-        const { error: insertError } = await supabase
-          .from('clients')
-          .insert([clientData]);
-            
-        console.log("Resposta do Supabase:", { error: insertError });
+        try {
+          const { error: insertError } = await supabase
+            .from('clients')
+            .insert([clientData]);
+              
+          console.log("Resposta do Supabase:", { error: insertError });
 
-        if (insertError) {
-          console.error("Erro do Supabase:", insertError);
-          throw new Error(`Erro ao salvar cliente: ${insertError.message}`);
+          if (insertError) {
+            console.error("Erro detalhado do Supabase:", {
+              code: insertError.code,
+              message: insertError.message,
+              details: insertError.details,
+              hint: insertError.hint
+            });
+            throw new Error(`Erro ao salvar cliente: ${insertError.message}`);
+          }
+
+          console.log("Cliente criado com sucesso!");
+          toast({
+            title: "Sucesso!",
+            description: "Cliente cadastrado com sucesso!",
+          });
+
+          form.reset({
+            companyName: "",
+            contractValue: 0,
+            firstPaymentDate: "",
+            paymentType: "pre",
+            status: "active",
+            acquisitionChannel: "",
+            customAcquisitionChannel: "",
+            companyBirthday: "",
+            contactName: "",
+            contactPhone: "",
+            lastPaymentDate: "",
+          });
+        } catch (insertError) {
+          console.error("Erro na operação de inserção:", insertError);
+          throw insertError;
         }
-
-        console.log("Cliente criado com sucesso!");
-        toast({
-          title: "Sucesso!",
-          description: "Cliente cadastrado com sucesso!",
-        });
-
-        form.reset({
-          companyName: "",
-          contractValue: 0,
-          firstPaymentDate: "",
-          paymentType: "pre",
-          status: "active",
-          acquisitionChannel: "",
-          customAcquisitionChannel: "",
-          companyBirthday: "",
-          contactName: "",
-          contactPhone: "",
-          lastPaymentDate: "",
-        });
       }
 
       if (onSuccess) {
@@ -362,3 +390,4 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     </Form>
   );
 };
+
