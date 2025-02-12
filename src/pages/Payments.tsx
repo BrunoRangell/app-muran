@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PaymentStatus, PaymentFilters, PaymentSummary } from "@/types/payment";
@@ -54,9 +53,7 @@ export default function Payments() {
     status: mapAsaasStatus(payment.status),
     notes: null,
     created_at: payment.paymentDate,
-    clients: {
-      company_name: payment.customerName
-    }
+    clients: payment.customerName
   }));
 
   // Calcular os sumários de pagamentos
