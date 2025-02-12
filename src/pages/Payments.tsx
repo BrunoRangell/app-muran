@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PaymentFilters, PaymentSummary } from "@/types/payment";
 import { PaymentsTable } from "@/components/payments/PaymentsTable";
-import { PaymentSummaryCard } from "@/components/payments/PaymentSummaryCard";
+import { PaymentsClientList } from "@/components/payments/PaymentsClientList";
 import { NewPaymentDialog } from "@/components/payments/NewPaymentDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -42,26 +42,6 @@ export default function Payments() {
     }
   });
 
-  const calculateSummaries = () => {
-    if (!payments) return null;
-
-    const summaries = {
-      received: {
-        title: "Recebidas",
-        grossAmount: payments.reduce((sum, p) => sum + p.amount, 0),
-        netAmount: payments.reduce((sum, p) => sum + p.net_amount, 0),
-        clientCount: new Set(payments.map(p => p.client_id)).size,
-        paymentCount: payments.length,
-        color: "#16A34A",
-        status: "RECEIVED" as const
-      }
-    };
-
-    return summaries;
-  };
-
-  const summaries = calculateSummaries();
-
   const handleClientPayment = (clientId: string) => {
     setSelectedClientId(clientId);
     setIsNewPaymentOpen(true);
@@ -73,14 +53,7 @@ export default function Payments() {
         <h1 className="text-2xl font-bold text-gray-900">Recebimentos</h1>
       </div>
 
-      {!isLoadingPayments && summaries && (
-        <div className="grid grid-cols-1 gap-4">
-          <PaymentSummaryCard 
-            data={summaries.received} 
-            onDateChange={setDateRange}
-          />
-        </div>
-      )}
+      <PaymentsClientList onPaymentClick={handleClientPayment} />
 
       <PaymentsTable 
         payments={payments || []} 
