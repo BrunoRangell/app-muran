@@ -192,19 +192,38 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     console.log("Estado de loading atualizado:", true);
     
     try {
-      console.log("Verificando sessão antes da inserção...");
+      console.log("=== VERIFICAÇÃO DA SESSÃO ===");
+      const startSessionCheck = performance.now();
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const endSessionCheck = performance.now();
       
-      console.log("Detalhes da sessão:", {
+      console.log("Tempo de verificação da sessão:", `${endSessionCheck - startSessionCheck}ms`);
+      console.log("Estado detalhado da sessão:", {
         hasSession: !!session,
-        sessionError,
-        user: session?.user,
-        accessToken: session?.access_token ? "Presente" : "Ausente",
-        expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null
+        sessionError: sessionError ? {
+          message: sessionError.message,
+          name: sessionError.name,
+          stack: sessionError.stack,
+        } : null,
+        user: session?.user ? {
+          id: session.user.id,
+          email: session.user.email,
+          role: session.user.role,
+          lastSignInAt: session.user.last_sign_in_at,
+        } : null,
+        accessToken: session?.access_token ? {
+          length: session.access_token.length,
+          expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null,
+        } : null,
+        timestamp: new Date().toISOString()
       });
 
       if (!session) {
-        console.error("Sessão ausente!");
+        console.error("=== ERRO DE SESSÃO ===");
+        console.error("Detalhes:", {
+          error: sessionError,
+          timestamp: new Date().toISOString()
+        });
         throw new Error("Sessão expirada. Por favor, faça login novamente.");
       }
 
