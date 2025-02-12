@@ -35,13 +35,15 @@ interface SortConfig {
   direction: 'asc' | 'desc';
 }
 
+interface Payment {
+  amount: number;
+  reference_month: string;
+  notes: string | null;
+}
+
 interface ClientWithTotalPayments extends Client {
   total_received: number;
-  payments?: {
-    amount: number;
-    reference_month: string;
-    notes: string | null;
-  }[];
+  payments: Payment[];
 }
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
@@ -56,6 +58,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     queryFn: async () => {
       console.log("Buscando lista de clientes para recebimentos...");
       
+      // Primeiro, buscamos os clientes
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select("*")
@@ -67,31 +70,41 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         throw clientsError;
       }
 
-      // Buscar todos os pagamentos
+      // Depois, buscamos os pagamentos
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
-        .select("client_id, amount, reference_month, notes");
+        .select("*")
+        .order('reference_month', { ascending: false });
 
       if (paymentsError) {
         console.error("Erro ao buscar pagamentos:", paymentsError);
         throw paymentsError;
       }
 
-      // Organizar pagamentos por cliente
-      const paymentsByClient: { [key: string]: any[] } = {};
-      const totalsByClient: { [key: string]: number } = {};
-
-      paymentsData.forEach(payment => {
+      // Organizamos os pagamentos por cliente
+      const paymentsByClient = paymentsData.reduce((acc: { [key: string]: Payment[] }, payment) => {
         if (payment.client_id) {
-          if (!paymentsByClient[payment.client_id]) {
-            paymentsByClient[payment.client_id] = [];
+          if (!acc[payment.client_id]) {
+            acc[payment.client_id] = [];
           }
-          paymentsByClient[payment.client_id].push(payment);
-          totalsByClient[payment.client_id] = (totalsByClient[payment.client_id] || 0) + Number(payment.amount);
+          acc[payment.client_id].push({
+            amount: payment.amount,
+            reference_month: payment.reference_month,
+            notes: payment.notes
+          });
         }
-      });
+        return acc;
+      }, {});
 
-      // Combinar os dados de clientes com os totais e pagamentos
+      // Calculamos os totais por cliente
+      const totalsByClient = paymentsData.reduce((acc: { [key: string]: number }, payment) => {
+        if (payment.client_id) {
+          acc[payment.client_id] = (acc[payment.client_id] || 0) + Number(payment.amount);
+        }
+        return acc;
+      }, {});
+
+      // Combinamos os dados
       const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => ({
         ...client,
         total_received: totalsByClient[client.id] || 0,
@@ -155,7 +168,8 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
 
   const formatReferenceMonth = (monthStr: string) => {
     try {
-      return format(new Date(monthStr), "MMMM'/'yyyy", { locale: ptBR });
+      const date = new Date(monthStr);
+      return format(date, "MMMM'/'yyyy", { locale: ptBR });
     } catch (error) {
       console.error('Erro ao formatar mês:', error);
       return monthStr;
@@ -212,30 +226,36 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                                 {formatCurrency(client.total_received)}
                               </span>
                             </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-[400px] p-4">
+                            <TooltipContent 
+                              side="right" 
+                              className="max-w-[400px] p-4"
+                              sideOffset={40}
+                            >
                               <div className="space-y-2">
                                 <p className="font-medium text-sm mb-2">Histórico de Pagamentos:</p>
-                                {client.payments && client.payments.length > 0 ? (
-                                  client.payments.map((payment, index) => (
-                                    <div key={index} className="border-b last:border-0 pb-2">
-                                      <p className="text-sm font-medium">
-                                        {formatReferenceMonth(payment.reference_month)}
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {formatCurrency(payment.amount)}
-                                      </p>
-                                      {payment.notes && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          {payment.notes}
+                                <div className="max-h-[300px] overflow-y-auto space-y-2">
+                                  {client.payments && client.payments.length > 0 ? (
+                                    client.payments.map((payment, index) => (
+                                      <div key={index} className="border-b last:border-0 pb-2">
+                                        <p className="text-sm font-medium">
+                                          {formatReferenceMonth(payment.reference_month)}
                                         </p>
-                                      )}
-                                    </div>
-                                  ))
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">
-                                    Nenhum pagamento registrado
-                                  </p>
-                                )}
+                                        <p className="text-sm text-muted-foreground">
+                                          {formatCurrency(payment.amount)}
+                                        </p>
+                                        {payment.notes && (
+                                          <p className="text-xs text-muted-foreground mt-1">
+                                            {payment.notes}
+                                          </p>
+                                        )}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                      Nenhum pagamento registrado
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             </TooltipContent>
                           </Tooltip>
