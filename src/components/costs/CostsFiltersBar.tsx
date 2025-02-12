@@ -8,7 +8,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CostCategory, CostFilters } from "@/types/cost";
+import { 
+  CostFilters, 
+  COST_CATEGORIES_HIERARCHY, 
+  MACRO_CATEGORIES, 
+  getCategoriesForMacroCategory 
+} from "@/types/cost";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -19,26 +24,20 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
+import { useState } from "react";
 
 interface CostsFiltersBarProps {
   filters: CostFilters;
   onFiltersChange: (filters: CostFilters) => void;
 }
 
-const costCategories: { value: CostCategory; label: string }[] = [
-  { value: "marketing", label: "Marketing" },
-  { value: "salarios", label: "Salários" },
-  { value: "comissoes", label: "Comissões" },
-  { value: "impostos", label: "Impostos" },
-  { value: "alimentacao", label: "Alimentação" },
-  { value: "ferramentas_e_softwares", label: "Ferramentas e Softwares" },
-  { value: "viagem_e_hospedagem", label: "Viagem e Hospedagem" },
-  { value: "equipamentos_e_escritorio", label: "Equipamentos e Escritório" },
-  { value: "despesas_financeiras", label: "Despesas Financeiras" },
-  { value: "outros", label: "Outros" },
-];
-
 export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarProps) {
+  const [availableCategories, setAvailableCategories] = useState(() => 
+    filters.macro_category 
+      ? COST_CATEGORIES_HIERARCHY[filters.macro_category].categories
+      : []
+  );
+
   return (
     <div className="flex flex-col md:flex-row gap-4 mb-4">
       <div className="relative flex-1">
@@ -54,16 +53,42 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
       </div>
 
       <Select
+        value={filters.macro_category}
+        onValueChange={(value: any) => {
+          const newCategories = COST_CATEGORIES_HIERARCHY[value].categories;
+          setAvailableCategories(newCategories);
+          onFiltersChange({ 
+            ...filters, 
+            macro_category: value,
+            category: undefined // Limpa a categoria quando muda a macro
+          });
+        }}
+      >
+        <SelectTrigger className="w-full md:w-[200px]">
+          <SelectValue placeholder="Categoria Principal" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">Todas</SelectItem>
+          {MACRO_CATEGORIES.map((category) => (
+            <SelectItem key={category.value} value={category.value}>
+              {category.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
         value={filters.category}
-        onValueChange={(value: CostCategory) =>
+        onValueChange={(value: any) =>
           onFiltersChange({ ...filters, category: value })
         }
       >
-        <SelectTrigger className="w-full md:w-[180px]">
-          <SelectValue placeholder="Categoria" />
+        <SelectTrigger className="w-full md:w-[200px]">
+          <SelectValue placeholder="Subcategoria" />
         </SelectTrigger>
         <SelectContent>
-          {costCategories.map((category) => (
+          <SelectItem value="">Todas</SelectItem>
+          {availableCategories.map((category) => (
             <SelectItem key={category.value} value={category.value}>
               {category.label}
             </SelectItem>

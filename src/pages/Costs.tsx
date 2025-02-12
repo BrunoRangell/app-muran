@@ -35,6 +35,9 @@ export default function Costs() {
       if (filters.category) {
         query = query.eq("category", filters.category);
       }
+      if (filters.macro_category) {
+        query = query.eq("macro_category", filters.macro_category);
+      }
       if (filters.search) {
         query = query.ilike("name", `%${filters.search}%`);
       }
