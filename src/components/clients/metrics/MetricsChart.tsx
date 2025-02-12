@@ -1,16 +1,12 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CustomDateRangeDialog } from "./CustomDateRangeDialog";
 import { PeriodFilter } from "../types";
-import { CustomTooltip } from "./components/CustomTooltip";
-import { ClientDetailsTable } from "./components/ClientDetailsTable";
 import { useClientFiltering } from "./hooks/useClientFiltering";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ChartHeader } from "./components/ChartHeader";
+import { MetricsLineChart } from "./components/MetricsLineChart";
+import { DetailsDialog } from "./components/DetailsDialog";
+import { CustomDateRangeDialog } from "./CustomDateRangeDialog";
 
 interface MetricsChartProps {
   title: string;
@@ -47,9 +43,7 @@ export const MetricsChart = ({
     metric: string;
     value: number;
   } | null>(null);
-  
-  const hasTitle = title && title.length > 0;
-  const uniqueYAxisIds = [...new Set(lines.map(line => line.yAxisId))];
+
   const { getClientsForPeriod } = useClientFiltering();
 
   const handlePointClick = (point: any) => {
@@ -72,144 +66,19 @@ export const MetricsChart = ({
       })
     : [];
 
-  const formatMonthYear = (monthYear: string) => {
-    try {
-      const [month, year] = monthYear.split('/');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
-    } catch (error) {
-      console.error('Erro ao formatar mês:', error, monthYear);
-      return monthYear;
-    }
-  };
-
   return (
     <Card className="p-6 space-y-6">
-      {hasTitle && (
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-muran-dark">{title}</h3>
-        </div>
-      )}
+      <ChartHeader 
+        title={title}
+        periodFilter={periodFilter}
+        onPeriodChange={onPeriodChange}
+      />
       
-      <div className="flex justify-end">
-        <Select value={periodFilter} onValueChange={onPeriodChange}>
-          <SelectTrigger className="w-[180px] bg-white">
-            <SelectValue placeholder="Selecione o período" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
-            <SelectItem value="last-6-months">Últimos 6 meses</SelectItem>
-            <SelectItem value="last-12-months">Últimos 12 meses</SelectItem>
-            <SelectItem value="last-24-months">Últimos 24 meses</SelectItem>
-            <SelectItem value="this-year">Este ano</SelectItem>
-            <SelectItem value="last-year">Ano passado</SelectItem>
-            <SelectItem value="custom">Data personalizada</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="h-[400px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={data}
-            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-            onClick={handlePointClick}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis 
-              dataKey="month" 
-              stroke="#6b7280"
-              tick={{ fill: '#6b7280', fontSize: 12 }}
-              tickFormatter={(value) => {
-                try {
-                  const [month, year] = value.split('/');
-                  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-                  return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
-                } catch (error) {
-                  console.error('Erro ao formatar mês:', error, value);
-                  return value;
-                }
-              }}
-            />
-            
-            {uniqueYAxisIds.includes('mrr') && (
-              <YAxis 
-                yAxisId="mrr"
-                orientation="left"
-                tickFormatter={(value) => 
-                  new Intl.NumberFormat('pt-BR', { 
-                    notation: 'compact',
-                    compactDisplay: 'short',
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(value)
-                }
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-            )}
-            
-            {uniqueYAxisIds.includes('clients') && (
-              <YAxis 
-                yAxisId="clients"
-                orientation={uniqueYAxisIds.includes('mrr') ? 'right' : 'left'}
-                tickFormatter={(value) => 
-                  new Intl.NumberFormat('pt-BR', { 
-                    notation: 'compact',
-                    compactDisplay: 'short'
-                  }).format(value)
-                }
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-            )}
-            
-            {uniqueYAxisIds.includes('percentage') && (
-              <YAxis 
-                yAxisId="percentage"
-                orientation="right"
-                tickFormatter={(value) => `${value}%`}
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-              />
-            )}
-
-            <RechartsTooltip 
-              content={<CustomTooltip />}
-              cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
-            />
-            
-            <Legend 
-              verticalAlign="top"
-              height={36}
-              iconType="circle"
-              formatter={(value) => (
-                <span className="text-sm text-gray-700 font-medium">{value}</span>
-              )}
-            />
-            
-            {lines.map((line, index) => (
-              <Line
-                key={index}
-                type="monotone"
-                dataKey={line.key}
-                name={line.name}
-                stroke={line.color}
-                yAxisId={line.yAxisId || "left"}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ 
-                  r: 6, 
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                  fill: line.color,
-                  style: { cursor: 'pointer' }
-                }}
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      <MetricsLineChart 
+        data={data}
+        lines={lines}
+        onClick={handlePointClick}
+      />
 
       <CustomDateRangeDialog
         isOpen={isCustomDateOpen}
@@ -218,20 +87,11 @@ export const MetricsChart = ({
         onDateRangeChange={onDateRangeChange}
       />
 
-      <Dialog open={!!selectedPoint} onOpenChange={() => setSelectedPoint(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedPoint?.metric} - {selectedPoint?.month ? formatMonthYear(selectedPoint.month) : ''}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <ClientDetailsTable 
-            clients={filteredClients}
-            metric={selectedPoint?.metric || ''}
-          />
-        </DialogContent>
-      </Dialog>
+      <DetailsDialog 
+        selectedPoint={selectedPoint}
+        onOpenChange={() => setSelectedPoint(null)}
+        clients={filteredClients}
+      />
     </Card>
   );
 };
