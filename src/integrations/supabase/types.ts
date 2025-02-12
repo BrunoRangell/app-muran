@@ -147,7 +147,7 @@ export type Database = {
           amount: number
           client_id?: string | null
           created_at?: string
-          id?: never
+          id?: number
           notes?: string | null
           reference_month: string
         }
@@ -155,7 +155,7 @@ export type Database = {
           amount?: number
           client_id?: string | null
           created_at?: string
-          id?: never
+          id?: number
           notes?: string | null
           reference_month?: string
         }

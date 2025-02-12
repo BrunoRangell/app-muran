@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -89,6 +88,10 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     }));
   };
 
+  const handlePaymentUpdated = () => {
+    clients.refetch();
+  };
+
   const filteredAndSortedClients = clients
     ?.filter(client => 
       client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -147,6 +150,8 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                         <PaymentHistory 
                           total={client.total_received}
                           payments={client.payments}
+                          clientName={client.company_name}
+                          onPaymentUpdated={handlePaymentUpdated}
                         />
                       </TableCell>
                       <TableCell>

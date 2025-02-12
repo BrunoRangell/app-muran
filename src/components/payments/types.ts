@@ -7,6 +7,7 @@ export interface SortConfig {
 }
 
 export interface Payment {
+  id: number;
   amount: number;
   reference_month: string;
   notes: string | null;
@@ -19,4 +20,12 @@ export interface ClientWithTotalPayments extends Client {
 
 export interface PaymentsClientListProps {
   onPaymentClick: (clientId: string) => void;
+}
+
+export interface EditPaymentDialogProps {
+  payment: Payment | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+  clientName: string;
 }
