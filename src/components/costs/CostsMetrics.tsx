@@ -16,11 +16,6 @@ const COLORS = ['#FF6E00', '#321E32', '#EBEBF0', '#0F0F0F', '#FF8533', '#4D2F4D'
 export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
   const categories = useCostCategories();
   
-  const totalAmount = useMemo(() => 
-    costs.reduce((sum, cost) => sum + cost.amount, 0),
-    [costs]
-  );
-
   const costsByCategory = useMemo(() => {
     const categoriesMap = new Map<string, number>();
 
@@ -57,10 +52,10 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
   }, [costs]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card className="p-4">
-        <h3 className="font-semibold mb-4">Custos por Categoria</h3>
-        <div className="h-[300px]">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <Card className="p-6">
+        <h3 className="font-semibold mb-6">Custos por Categoria</h3>
+        <div className="h-[400px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -69,9 +64,10 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
+                outerRadius={150}
                 fill="#FF6E00"
                 label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
+                labelLine={true}
               >
                 {costsByCategory.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -85,42 +81,52 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
         </div>
       </Card>
 
-      <Card className="p-4">
-        <h3 className="font-semibold mb-4">Evolução Mensal dos Custos</h3>
-        <div className="h-[300px]">
+      <Card className="p-6">
+        <h3 className="font-semibold mb-6">Evolução Mensal dos Custos</h3>
+        <div className="h-[400px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlyCosts}>
-              <XAxis dataKey="month" />
+            <BarChart 
+              data={monthlyCosts}
+              margin={{
+                top: 20,
+                right: 30,
+                left: 40,
+                bottom: 60
+              }}
+            >
+              <XAxis 
+                dataKey="month" 
+                angle={-45}
+                textAnchor="end"
+                height={60}
+                interval={0}
+                tick={{
+                  fontSize: 12,
+                  fill: '#6b7280'
+                }}
+              />
               <YAxis
                 tickFormatter={(value) => formatCurrency(value)}
+                tick={{
+                  fontSize: 12,
+                  fill: '#6b7280'
+                }}
+                width={100}
               />
               <Tooltip
                 formatter={(value: number) => formatCurrency(value)}
+                labelStyle={{
+                  color: '#374151',
+                  fontWeight: 500
+                }}
               />
-              <Bar dataKey="value" fill="#FF6E00" />
+              <Bar 
+                dataKey="value" 
+                fill="#FF6E00" 
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      </Card>
-
-      <Card className="p-4 md:col-span-2">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <h4 className="text-sm font-medium text-gray-500">Total de Custos</h4>
-            <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalAmount)}</p>
-          </div>
-          
-          <div>
-            <h4 className="text-sm font-medium text-gray-500">Média Mensal</h4>
-            <p className="text-2xl font-bold text-gray-900">
-              {formatCurrency(totalAmount / Math.max(1, monthlyCosts.length))}
-            </p>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-medium text-gray-500">Quantidade de Registros</h4>
-            <p className="text-2xl font-bold text-gray-900">{costs.length}</p>
-          </div>
         </div>
       </Card>
     </div>
