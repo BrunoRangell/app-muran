@@ -33,11 +33,11 @@ export default function Costs() {
       if (filters.endDate) {
         query = query.lte("date", filters.endDate);
       }
-      if (filters.category) {
-        query = query.eq("category", filters.category);
+      if (filters.subcategory) {
+        query = query.eq("subcategory", filters.subcategory);
       }
-      if (filters.macro_category) {
-        query = query.eq("macro_category", filters.macro_category);
+      if (filters.main_category) {
+        query = query.eq("main_category", filters.main_category);
       }
       if (filters.search) {
         query = query.ilike("name", `%${filters.search}%`);

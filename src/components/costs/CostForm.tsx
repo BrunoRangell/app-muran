@@ -19,7 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { CostFormData } from "./schemas/costFormSchema";
 import { UseFormReturn } from "react-hook-form";
-import { MACRO_CATEGORIES, getCategoriesForMacroCategory } from "@/types/cost";
+import { MAIN_CATEGORIES, getCategoriesForMainCategory } from "@/types/cost";
 import { useState } from "react";
 
 interface CostFormProps {
@@ -38,7 +38,7 @@ export function CostForm({
   onCancel,
 }: CostFormProps) {
   const [availableCategories, setAvailableCategories] = useState(() => 
-    getCategoriesForMacroCategory(form.getValues().macro_category || 'despesas_operacionais')
+    getCategoriesForMainCategory(form.getValues().main_category || 'custos_diretos_operacao')
   );
 
   return (
@@ -78,17 +78,17 @@ export function CostForm({
 
         <FormField
           control={form.control}
-          name="macro_category"
+          name="main_category"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoria Principal</FormLabel>
               <Select
                 onValueChange={(value) => {
                   field.onChange(value);
-                  const newCategories = getCategoriesForMacroCategory(value as any);
+                  const newCategories = getCategoriesForMainCategory(value as any);
                   setAvailableCategories(newCategories);
-                  // Reset the category when macro_category changes
-                  form.setValue('category', newCategories[0].value);
+                  // Reset the subcategory when main_category changes
+                  form.setValue('subcategory', newCategories[0].value);
                 }}
                 defaultValue={field.value}
               >
@@ -98,7 +98,7 @@ export function CostForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {MACRO_CATEGORIES.map((category) => (
+                  {MAIN_CATEGORIES.map((category) => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
                     </SelectItem>
@@ -112,7 +112,7 @@ export function CostForm({
 
         <FormField
           control={form.control}
-          name="category"
+          name="subcategory"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Subcategoria</FormLabel>

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Cost, CostCategory, CostMacroCategory } from "@/types/cost";
+import { Cost, CostMainCategory, CostSubcategory } from "@/types/cost";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { costFormSchema, CostFormData } from "../schemas/costFormSchema";
 
@@ -19,10 +19,11 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
     defaultValues: {
       name: "",
       amount: "",
-      macro_category: "despesas_operacionais",
-      category: "outros",
+      main_category: "custos_diretos_operacao",
+      subcategory: "marketing_aquisicao",
       date: new Date().toISOString().split("T")[0],
       description: "",
+      tags: [],
     },
   });
 
@@ -34,10 +35,11 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
           style: "currency",
           currency: "BRL",
         }),
-        macro_category: cost.macro_category,
-        category: cost.category,
+        main_category: cost.main_category,
+        subcategory: cost.subcategory,
         date: cost.date,
         description: cost.description || "",
+        tags: cost.tags?.map(tag => tag.name) || [],
       });
     }
   }, [cost, form]);
@@ -62,10 +64,11 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
           style: "currency",
           currency: "BRL",
         }),
-        macro_category: cost.macro_category,
-        category: cost.category,
+        main_category: cost.main_category,
+        subcategory: cost.subcategory,
         date: cost.date,
         description: cost.description || "",
+        tags: cost.tags?.map(tag => tag.name) || [],
       });
     }
   };
@@ -80,8 +83,8 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
         .update({
           name: data.name,
           amount: parseCurrencyToNumber(data.amount),
-          macro_category: data.macro_category as CostMacroCategory,
-          category: data.category as CostCategory,
+          main_category: data.main_category as CostMainCategory,
+          subcategory: data.subcategory as CostSubcategory,
           date: data.date,
           description: data.description || null,
         })
