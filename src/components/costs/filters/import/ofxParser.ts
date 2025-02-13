@@ -11,7 +11,9 @@ export function parseOFX(ofxText: string) {
     if (line.startsWith('<STMTTRN>')) {
       currentTransaction = {};
     } else if (line.startsWith('</STMTTRN>')) {
-      if (Object.keys(currentTransaction).length > 0) {
+      // Só incluímos transações que são custos (PAYMENT ou valor negativo)
+      if (Object.keys(currentTransaction).length > 0 && 
+          (currentTransaction.type === 'PAYMENT' || Number(currentTransaction.amount) < 0)) {
         transactions.push(currentTransaction);
       }
     } else if (line.startsWith('<TRNTYPE>')) {
@@ -36,5 +38,6 @@ export function parseOFX(ofxText: string) {
     }
   }
   
+  console.log('Transações filtradas (apenas custos):', transactions);
   return { bankAccounts: [{ transactions }] };
 }

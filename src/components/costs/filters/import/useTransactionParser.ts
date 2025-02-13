@@ -34,7 +34,7 @@ export function useTransactionParser() {
         return {
           fitid: t.fitId,
           name: t.name,
-          amount: Math.abs(Number(t.amount)), // Convertemos para positivo pois tratamos tudo como despesa
+          amount: Math.abs(Number(t.amount)), // Mantemos apenas o valor absoluto
           date: t.date,
           selected: true,
           mainCategory: mapping?.main_category,
