@@ -24,8 +24,7 @@ const financialSubMenu: MenuItem[] = [
   { icon: DollarSign, label: "Relatório Financeiro", path: "/clientes/relatorio" },
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: Receipt, label: "Recebimentos", path: "/clientes/recebimentos" },
-  { icon: CreditCard, label: "Registro de Custos", path: "/clientes/custos" },
-  { icon: BarChart, label: "Relatórios e Métricas", path: "/clientes/metricas" }
+  { icon: CreditCard, label: "Registro de Custos", path: "/clientes/custos" }
 ];
 
 const adminMenuItems: MenuItem[] = [
