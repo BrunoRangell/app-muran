@@ -2,10 +2,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ChevronsUpDown } from "lucide-react";
-import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { CostCategory } from "@/types/cost";
 import { Transaction } from "./types";
 import { COST_CATEGORIES } from "../../schemas/costFormSchema";
@@ -32,6 +28,12 @@ export function ImportTransactionsTable({
   onSelectionChange,
   onCategoryChange,
 }: ImportTransactionsTableProps) {
+  const getCategoryName = (categoryId?: CostCategory) => {
+    if (!categoryId) return "";
+    const category = COST_CATEGORIES.find(c => c.id === categoryId);
+    return category?.name || "";
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -75,7 +77,9 @@ export function ImportTransactionsTable({
                 onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecione uma categoria" />
+                  <SelectValue>
+                    {getCategoryName(transaction.category)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
@@ -83,13 +87,14 @@ export function ImportTransactionsTable({
                       <SelectItem 
                         key={category.id} 
                         value={category.id}
-                        className="cursor-pointer"
                       >
                         <div className="flex flex-col">
-                          <span className="font-medium">{category.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {category.description}
-                          </span>
+                          <span>{category.name}</span>
+                          {!transaction.category && (
+                            <span className="text-sm text-muted-foreground">
+                              {category.description}
+                            </span>
+                          )}
                         </div>
                       </SelectItem>
                     ))}
