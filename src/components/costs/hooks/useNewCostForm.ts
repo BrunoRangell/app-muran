@@ -79,7 +79,7 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
             .from("cost_tags")
             .select("id")
             .eq("name", tagName)
-            .single();
+            .maybeSingle();
 
           if (existingTag) {
             return existingTag.id;

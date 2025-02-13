@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -108,7 +107,7 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
             .from("cost_tags")
             .select("id")
             .eq("name", tagName)
-            .single();
+            .maybeSingle();
 
           if (existingTag) {
             return existingTag.id;
