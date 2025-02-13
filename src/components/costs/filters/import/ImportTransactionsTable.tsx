@@ -92,9 +92,9 @@ export function ImportTransactionsTable({
                         <SelectItem 
                           key={category.id} 
                           value={category.id}
-                          className="flex flex-col py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
+                          className="flex items-center py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
                         >
-                          <div className="flex flex-col gap-1">
+                          <div className="flex flex-col gap-1 ml-6">
                             <span className="font-medium">
                               {category.name}
                             </span>
