@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { CostFilters } from "@/types/cost";
+import { CostFilters, CostCategory } from "@/types/cost";
 import { useCostCategories } from "../schemas/costFormSchema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -28,7 +28,7 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
   const categories = useCostCategories();
   const selectedCategories = filters.categories || [];
 
-  const toggleCategory = (categoryId: string) => {
+  const toggleCategory = (categoryId: CostCategory) => {
     const newCategories = selectedCategories.includes(categoryId)
       ? selectedCategories.filter(id => id !== categoryId)
       : [...selectedCategories, categoryId];
@@ -78,14 +78,14 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
                 <CommandItem
                   key={category.id}
                   value={category.id}
-                  onSelect={() => toggleCategory(category.id)}
+                  onSelect={() => toggleCategory(category.id as CostCategory)}
                 >
                   <div className="flex flex-col flex-1 py-2">
                     <div className="flex items-center">
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4",
-                          selectedCategories.includes(category.id)
+                          selectedCategories.includes(category.id as CostCategory)
                             ? "opacity-100"
                             : "opacity-0"
                         )}
