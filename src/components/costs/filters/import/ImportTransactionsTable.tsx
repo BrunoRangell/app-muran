@@ -2,15 +2,27 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CostCategory } from "@/types/cost";
 import { Transaction } from "./types";
 import { COST_CATEGORIES } from "../../schemas/costFormSchema";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface ImportTransactionsTableProps {
   transactions: Transaction[];
@@ -91,42 +103,45 @@ export function ImportTransactionsTable({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-[380px] p-0">
-                  <ScrollArea className="h-[300px]">
-                    <div className="p-4 space-y-2">
-                      {COST_CATEGORIES.map((category) => {
-                        const isSelected = transaction.categories?.includes(category.id as CostCategory);
-                        
-                        return (
-                          <button
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Procurar categoria..." />
+                    <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                    <CommandGroup>
+                      <ScrollArea className="h-[300px]">
+                        {COST_CATEGORIES.map((category) => (
+                          <CommandItem
                             key={category.id}
-                            type="button"
-                            className={cn(
-                              "flex items-start w-full gap-2 rounded-md p-2 cursor-pointer hover:bg-muted transition-colors text-left",
-                              isSelected && "bg-muted"
-                            )}
-                            onClick={() => {
+                            value={category.id}
+                            onSelect={() => {
+                              const isSelected = transaction.categories?.includes(category.id as CostCategory);
                               const newCategories = isSelected
                                 ? (transaction.categories || []).filter(id => id !== category.id)
                                 : [...(transaction.categories || []), category.id as CostCategory];
                               onCategoryChange(transaction.fitid, newCategories);
                             }}
                           >
-                            <Checkbox 
-                              checked={isSelected}
-                              className="mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="font-medium">{category.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {category.description}
+                            <div className="flex flex-col">
+                              <div className="flex items-center">
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    transaction.categories?.includes(category.id as CostCategory) 
+                                      ? "opacity-100" 
+                                      : "opacity-0"
+                                  )}
+                                />
+                                <span className="font-medium">{category.name}</span>
                               </div>
+                              <p className="ml-6 text-sm text-muted-foreground">
+                                {category.description}
+                              </p>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
+                          </CommandItem>
+                        ))}
+                      </ScrollArea>
+                    </CommandGroup>
+                  </Command>
                 </PopoverContent>
               </Popover>
             </TableCell>
