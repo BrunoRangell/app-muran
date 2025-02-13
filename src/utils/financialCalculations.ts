@@ -1,8 +1,9 @@
 
 import { differenceInMonths, parseISO, subMonths } from "date-fns";
 import { Client } from "@/components/clients/types";
+import { supabase } from "@/lib/supabase";
 
-export const calculateFinancialMetrics = (clients: Client[]) => {
+export const calculateFinancialMetrics = async (clients: Client[]) => {
   const today = new Date();
   const threeMonthsAgo = subMonths(today, 3);
   const activeClients = clients.filter(client => client.status === "active");
@@ -49,6 +50,13 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
   // LTV (Lifetime Value) - usando valor do contrato * retenção média
   const ltv = mrr * averageRetention;
 
+  // Buscar total de custos
+  const { data: costs } = await supabase
+    .from("costs")
+    .select("amount");
+
+  const totalCosts = (costs || []).reduce((acc, cost) => acc + Number(cost.amount), 0);
+
   console.log("Financial metrics calculated:", {
     mrr,
     arr,
@@ -59,7 +67,8 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
     totalClients,
     churned,
     activeClientsThreeMonthsAgo,
-    averageTicket
+    averageTicket,
+    totalCosts
   });
 
   return {
@@ -70,7 +79,7 @@ export const calculateFinancialMetrics = (clients: Client[]) => {
     ltv,
     activeClientsCount,
     totalClients,
-    averageTicket
+    averageTicket,
+    totalCosts
   };
 };
-
