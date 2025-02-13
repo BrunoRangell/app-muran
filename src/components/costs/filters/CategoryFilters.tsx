@@ -25,7 +25,7 @@ interface CategoryFiltersProps {
 }
 
 export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersProps) {
-  const categories = useCostCategories() || []; // Garantir que sempre temos um array
+  const categories = useCostCategories();
   const selectedCategories = filters.categories || [];
 
   const toggleCategory = (categoryId: CostCategory) => {
@@ -38,6 +38,11 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
       categories: newCategories.length > 0 ? newCategories : undefined
     });
   };
+
+  // Garantir que temos um array de categorias válido para o Command
+  if (!Array.isArray(categories)) {
+    return null;
+  }
 
   return (
     <Popover>

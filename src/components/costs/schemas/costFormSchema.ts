@@ -29,7 +29,7 @@ export interface NewCostDialogProps {
 }
 
 export const useCostCategories = () => {
-  const { data: categories } = useQuery({
+  const { data } = useQuery({
     queryKey: ["cost-categories"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -45,8 +45,8 @@ export const useCostCategories = () => {
       console.log("Categorias retornadas:", data);
       return data as CategoryInfo[];
     },
-    initialData: [], // Garantir que sempre temos um array, mesmo antes da primeira busca
+    initialData: [] as CategoryInfo[], // Garantir tipo correto para initialData
   });
 
-  return categories;
+  return data;
 };
