@@ -23,7 +23,7 @@ export async function suggestCategory(transaction: Transaction) {
   const { data: mappings, error: mappingError } = await supabase
     .from('transaction_categories_mapping')
     .select('category_id, usage_count')
-    .or(`original_pattern.eq.${pattern},last_edited_pattern.eq.${pattern}`)
+    .or(`original_pattern.eq.'${pattern}',last_edited_pattern.eq.'${pattern}'`)
     .order('usage_count', { ascending: false })
     .limit(1)
     .maybeSingle();
