@@ -9,10 +9,15 @@ export function useImportService() {
   const importTransactions = async (selectedTransactions: Transaction[]): Promise<number> => {
     // Verificar transações já importadas
     const fitIds = selectedTransactions.map(t => t.fitid);
-    const { data: existingImports } = await supabase
+    const { data: existingImports, error: checkError } = await supabase
       .from('imported_transactions')
       .select('fitid')
       .in('fitid', fitIds);
+
+    if (checkError) {
+      console.error("Erro ao verificar transações existentes:", checkError);
+      throw new Error("Erro ao verificar transações existentes");
+    }
 
     const alreadyImported = new Set(existingImports?.map(i => i.fitid) || []);
     const newTransactions = selectedTransactions.filter(t => !alreadyImported.has(t.fitid));
@@ -25,6 +30,8 @@ export function useImportService() {
       });
       return 0;
     }
+
+    let importedCount = 0;
 
     // Importar transações como custos
     for (const transaction of newTransactions) {
@@ -42,11 +49,19 @@ export function useImportService() {
             name: transaction.name,
             amount: transaction.amount,
             date: transaction.date,
+            description: null,
           })
           .select()
           .single();
 
-        if (costError) throw costError;
+        if (costError) {
+          console.error("Erro ao inserir custo:", costError);
+          throw costError;
+        }
+
+        if (!cost) {
+          throw new Error("Custo não foi criado corretamente");
+        }
 
         // Inserir a categoria do custo
         const { error: categoriesError } = await supabase
@@ -56,7 +71,10 @@ export function useImportService() {
             category_id: transaction.category
           });
 
-        if (categoriesError) throw categoriesError;
+        if (categoriesError) {
+          console.error("Erro ao inserir categoria do custo:", categoriesError);
+          throw categoriesError;
+        }
 
         // Registrar transação importada
         const { error: importError } = await supabase
@@ -66,7 +84,12 @@ export function useImportService() {
             cost_id: cost.id
           });
 
-        if (importError) throw importError;
+        if (importError) {
+          console.error("Erro ao registrar importação:", importError);
+          throw importError;
+        }
+
+        importedCount++;
 
       } catch (error) {
         console.error("Erro ao importar transação:", error);
@@ -75,10 +98,11 @@ export function useImportService() {
           description: `Erro ao importar "${transaction.name}": ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
           variant: "destructive"
         });
+        // Não interrompe o loop, continua tentando importar as outras transações
       }
     }
 
-    return newTransactions.length;
+    return importedCount;
   };
 
   return { importTransactions };
