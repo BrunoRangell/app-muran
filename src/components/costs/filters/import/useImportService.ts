@@ -2,7 +2,6 @@
 import { useToast } from "@/hooks/use-toast";
 import { Transaction } from "./types";
 import { checkExistingTransactions } from "./services/existingTransactionsService";
-import { suggestCategory } from "./services/categorizationService";
 import { 
   createCost, 
   assignCategoryToCost, 
@@ -45,20 +44,16 @@ export function useImportService() {
           console.log("[Transação] Iniciando processamento:", transaction.name);
           console.log("[Transação] Detalhes completos:", transaction);
           
-          // Determinar categoria
-          const suggestedCategory = await suggestCategory(transaction);
-          const categoryId = transaction.category || suggestedCategory;
-
-          // Validar categoria
-          if (!categoryId) {
+          // Verificar se tem categoria selecionada
+          if (!transaction.category) {
             console.warn("[Categoria] Transação sem categoria, pulando...");
             skippedCount++;
             continue;
           }
 
           // Criar e categorizar o custo
-          const cost = await createCost(transaction, categoryId);
-          await assignCategoryToCost(cost.id, categoryId);
+          const cost = await createCost(transaction, transaction.category);
+          await assignCategoryToCost(cost.id, transaction.category);
           await registerImportedTransaction(transaction.fitid, cost.id);
           
           importedCount++;
