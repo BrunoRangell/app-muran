@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ImportTransactionsTableProps {
   transactions: Transaction[];
@@ -77,23 +77,27 @@ export function ImportTransactionsTable({
                 onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
               >
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Selecionar categoria" />
+                  <SelectValue placeholder="Selecionar categoria">
+                    {getCategoryName(transaction.category)}
+                  </SelectValue>
                 </SelectTrigger>
-                <SelectContent align="center" className="w-[280px]">
-                  <SelectGroup className="max-h-[300px]">
-                    {COST_CATEGORIES.map((category) => (
-                      <SelectItem 
-                        key={category.id} 
-                        value={category.id}
-                        className="flex flex-col space-y-1 py-2"
-                      >
-                        <span className="font-medium">{category.name}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {category.description}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+                <SelectContent align="center" side="right" className="w-[280px]">
+                  <ScrollArea className="h-[200px] w-full p-1">
+                    <SelectGroup>
+                      {COST_CATEGORIES.map((category) => (
+                        <SelectItem 
+                          key={category.id} 
+                          value={category.id}
+                          className="flex flex-col space-y-1 py-2 cursor-pointer"
+                        >
+                          <span className="font-medium">{category.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {category.description}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </ScrollArea>
                 </SelectContent>
               </Select>
             </TableCell>
