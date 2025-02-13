@@ -18,14 +18,22 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
     [costs]
   );
 
-  const costsByMainCategory = useMemo(() => {
-    const data = Object.entries(COST_CATEGORIES_HIERARCHY).map(([key, value]) => ({
-      name: value.label,
-      value: costs
-        .filter(cost => cost.main_category === key)
-        .reduce((sum, cost) => sum + cost.amount, 0)
-    }));
-    return data.filter(item => item.value > 0);
+  const costsByCategory = useMemo(() => {
+    const categories = Object.entries(COST_CATEGORIES_HIERARCHY).reduce((acc, [_, value]) => {
+      const categoryAmount = costs
+        .filter(cost => value.categories.some(cat => cat.value === cost.category))
+        .reduce((sum, cost) => sum + cost.amount, 0);
+      
+      if (categoryAmount > 0) {
+        acc.push({
+          name: value.label,
+          value: categoryAmount
+        });
+      }
+      return acc;
+    }, [] as Array<{ name: string; value: number }>);
+
+    return categories;
   }, [costs]);
 
   const monthlyCosts = useMemo(() => {
@@ -50,7 +58,7 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={costsByMainCategory}
+                data={costsByCategory}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
@@ -59,7 +67,7 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
                 fill="#FF6E00"
                 label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
               >
-                {costsByMainCategory.map((_, index) => (
+                {costsByCategory.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>

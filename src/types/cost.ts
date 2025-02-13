@@ -28,6 +28,7 @@ export interface Cost {
   description: string | null;
   created_at: string;
   updated_at: string;
+  tags?: { name: string }[];
 }
 
 export interface CostFilters {
@@ -35,6 +36,7 @@ export interface CostFilters {
   endDate?: string;
   category?: CostSubcategory;
   search?: string;
+  tags?: string[];
 }
 
 interface CategoryOption {
@@ -57,3 +59,37 @@ export const COST_CATEGORIES: CategoryOption[] = [
   { value: "despesas_nao_planejadas", label: "Despesas Não Planejadas" },
 ];
 
+export const COST_CATEGORIES_HIERARCHY = {
+  custos_diretos_operacao: {
+    label: "Custos Diretos de Operação",
+    categories: [
+      { value: "marketing_aquisicao", label: "Marketing e Aquisição" },
+      { value: "custos_vendas", label: "Custos de Vendas" },
+      { value: "infraestrutura_operacional", label: "Infraestrutura Operacional" }
+    ]
+  },
+  custos_fixos_administrativos: {
+    label: "Custos Fixos Administrativos",
+    categories: [
+      { value: "pessoal_administrativo", label: "Pessoal Administrativo" },
+      { value: "estrutura_fisica_digital", label: "Estrutura Física/Digital" },
+      { value: "taxas_impostos", label: "Taxas e Impostos" },
+      { value: "despesas_financeiras", label: "Despesas Financeiras" }
+    ]
+  },
+  investimentos_desenvolvimento: {
+    label: "Investimentos e Desenvolvimento",
+    categories: [
+      { value: "expansao_negocio", label: "Expansão de Negócio" },
+      { value: "eventos_networking", label: "Eventos e Networking" },
+      { value: "responsabilidade_social", label: "Responsabilidade Social" }
+    ]
+  },
+  outros_excepcionais: {
+    label: "Outros e Excepcionais",
+    categories: [
+      { value: "despesas_corriqueiras", label: "Despesas Corriqueiras" },
+      { value: "despesas_nao_planejadas", label: "Despesas Não Planejadas" }
+    ]
+  }
+} as const;
