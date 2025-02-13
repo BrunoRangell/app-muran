@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CostCategory } from "@/types/cost";
 import { Transaction } from "./types";
+import { COST_CATEGORIES } from "../../schemas/costFormSchema";
 
 interface ImportTransactionsTableProps {
   transactions: Transaction[];
@@ -17,49 +18,6 @@ interface ImportTransactionsTableProps {
   onSelectionChange: (fitid: string, checked: boolean) => void;
   onCategoryChange: (fitid: string, categories: CostCategory[]) => void;
 }
-
-const CATEGORIES = [
-  {
-    id: 'marketing' as CostCategory,
-    name: 'Marketing',
-    description: 'Gastos com publicidade, propaganda e marketing digital'
-  },
-  {
-    id: 'vendas' as CostCategory,
-    name: 'Vendas',
-    description: 'Custos relacionados à equipe e atividades de vendas'
-  },
-  {
-    id: 'plataformas_ferramentas' as CostCategory,
-    name: 'Plataformas e Ferramentas',
-    description: 'Assinaturas de software, hosting e ferramentas'
-  },
-  {
-    id: 'despesas_pessoal' as CostCategory,
-    name: 'Despesas com Pessoal',
-    description: 'Salários, benefícios e despesas relacionadas à equipe'
-  },
-  {
-    id: 'taxas_impostos' as CostCategory,
-    name: 'Taxas e Impostos',
-    description: 'Pagamentos de impostos, taxas e contribuições'
-  },
-  {
-    id: 'servicos_profissionais' as CostCategory,
-    name: 'Serviços Profissionais',
-    description: 'Consultoria, contabilidade e outros serviços terceirizados'
-  },
-  {
-    id: 'eventos_networking' as CostCategory,
-    name: 'Eventos e Networking',
-    description: 'Participação em eventos, conferências e networking'
-  },
-  {
-    id: 'acoes_sociais' as CostCategory,
-    name: 'Ações Sociais',
-    description: 'Investimentos em responsabilidade social e sustentabilidade'
-  }
-];
 
 export function ImportTransactionsTable({
   transactions,
@@ -125,7 +83,7 @@ export function ImportTransactionsTable({
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {transaction.categories.map((categoryId) => {
-                          const category = CATEGORIES.find((c) => c.id === categoryId);
+                          const category = COST_CATEGORIES.find((c) => c.id === categoryId);
                           return category ? (
                             <Badge
                               key={category.id}
@@ -146,7 +104,7 @@ export function ImportTransactionsTable({
                     <CommandInput placeholder="Procurar categoria..." />
                     <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
                     <CommandGroup>
-                      {CATEGORIES.map((category) => (
+                      {COST_CATEGORIES.map((category) => (
                         <CommandItem
                           key={category.id}
                           value={category.id}

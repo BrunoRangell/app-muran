@@ -28,21 +28,27 @@ export function useImportService() {
 
     // Importar transações como custos
     for (const transaction of newTransactions) {
-      // Inserir o custo básico primeiro
-      const { data: cost, error: costError } = await supabase
-        .from('costs')
-        .insert({
-          name: transaction.name,
-          amount: transaction.amount,
-          date: transaction.date,
-        })
-        .select()
-        .single();
+      // Validar categorias
+      if (!transaction.categories || transaction.categories.length === 0) {
+        console.error("Transação sem categoria:", transaction);
+        continue;
+      }
 
-      if (costError) throw costError;
+      try {
+        // Inserir o custo
+        const { data: cost, error: costError } = await supabase
+          .from('costs')
+          .insert({
+            name: transaction.name,
+            amount: transaction.amount,
+            date: transaction.date,
+          })
+          .select()
+          .single();
 
-      // Inserir as categorias do custo
-      if (transaction.categories && transaction.categories.length > 0) {
+        if (costError) throw costError;
+
+        // Inserir as categorias do custo
         const categoriesInsertData = transaction.categories.map(categoryId => ({
           cost_id: cost.id,
           category_id: categoryId
@@ -53,20 +59,18 @@ export function useImportService() {
           .insert(categoriesInsertData);
 
         if (categoriesError) throw categoriesError;
-      }
 
-      // Registrar transação importada
-      const { error: importError } = await supabase
-        .from('imported_transactions')
-        .insert({
-          fitid: transaction.fitid,
-          cost_id: cost.id
-        });
+        // Registrar transação importada
+        const { error: importError } = await supabase
+          .from('imported_transactions')
+          .insert({
+            fitid: transaction.fitid,
+            cost_id: cost.id
+          });
 
-      if (importError) throw importError;
+        if (importError) throw importError;
 
-      // Registrar ou atualizar mapeamento de categoria
-      if (transaction.categories && transaction.categories.length > 0) {
+        // Atualizar mapeamentos de categoria
         for (const categoryId of transaction.categories) {
           const { error: mappingError } = await supabase
             .from('transaction_categories_mapping')
@@ -82,6 +86,13 @@ export function useImportService() {
 
           if (mappingError) throw mappingError;
         }
+      } catch (error) {
+        console.error("Erro ao importar transação:", error);
+        toast({
+          title: "Erro ao importar transação",
+          description: `Erro ao importar "${transaction.name}": ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+          variant: "destructive"
+        });
       }
     }
 

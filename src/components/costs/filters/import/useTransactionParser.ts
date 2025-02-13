@@ -11,10 +11,10 @@ export function useTransactionParser() {
   const parseOFXFile = async (file: File): Promise<Transaction[]> => {
     try {
       const text = await file.text();
-      console.log("Conteúdo do arquivo:", text.substring(0, 500)); // Log primeiros 500 caracteres
+      console.log("Processando arquivo OFX...");
       
       const ofx = parseOFX(text);
-      console.log("OFX parseado:", ofx);
+      console.log("Arquivo OFX parseado:", ofx);
       
       if (!ofx.bankAccounts?.[0]?.transactions) {
         throw new Error("Nenhuma transação encontrada no arquivo");
@@ -31,26 +31,30 @@ export function useTransactionParser() {
         throw error;
       }
 
-      console.log("Mapeamentos encontrados:", existingMappings);
-
-      // Remover caracteres especiais e converter para minúsculas para melhor comparação
+      // Função para normalizar texto
       const normalizeText = (text: string) => 
         text.toLowerCase()
           .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim();
 
-      return ofx.bankAccounts[0].transactions.map(t => {
+      // Processar transações
+      const transactions = ofx.bankAccounts[0].transactions.map(t => {
         const normalizedName = normalizeText(t.name);
         
-        // Tentar encontrar um mapeamento existente
+        // Encontrar categorias mapeadas
         const mappedCategories = existingMappings
-          ?.filter(m => normalizeText(m.description_pattern).includes(normalizedName) || 
-                       normalizedName.includes(normalizeText(m.description_pattern)))
-          .map(m => m.category_id)
-          .filter((id): id is CostCategory => id !== null) || [];
+          ?.filter(m => {
+            const normalizedPattern = normalizeText(m.description_pattern);
+            return normalizedName.includes(normalizedPattern) || 
+                   normalizedPattern.includes(normalizedName);
+          })
+          .map(m => m.category_id as CostCategory)
+          .filter(Boolean) || [];
 
         console.log(`Categorias encontradas para "${t.name}":`, mappedCategories);
 
+        // Criar objeto de transação
         return {
           fitid: t.fitId,
           name: t.name,
@@ -60,6 +64,9 @@ export function useTransactionParser() {
           categories: mappedCategories
         };
       });
+
+      console.log("Transações processadas:", transactions);
+      return transactions;
     } catch (error) {
       console.error("Erro ao processar arquivo OFX:", error);
       toast({
