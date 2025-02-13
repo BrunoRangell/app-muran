@@ -52,10 +52,10 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
   }, [costs]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-6">
         <h3 className="font-semibold mb-6">Custos por Categoria</h3>
-        <div className="h-[400px] w-full">
+        <div className="h-[450px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -64,7 +64,7 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={150}
+                outerRadius={130}
                 fill="#FF6E00"
                 label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
                 labelLine={true}
@@ -75,6 +75,12 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
               </Pie>
               <Tooltip
                 formatter={(value: number) => formatCurrency(value)}
+                contentStyle={{
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.375rem',
+                  padding: '0.5rem'
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -83,22 +89,22 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
 
       <Card className="p-6">
         <h3 className="font-semibold mb-6">Evolução Mensal dos Custos</h3>
-        <div className="h-[400px] w-full">
+        <div className="h-[450px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart 
               data={monthlyCosts}
               margin={{
                 top: 20,
-                right: 30,
-                left: 40,
-                bottom: 60
+                right: 40,
+                left: 60,
+                bottom: 70
               }}
             >
               <XAxis 
                 dataKey="month" 
                 angle={-45}
                 textAnchor="end"
-                height={60}
+                height={70}
                 interval={0}
                 tick={{
                   fontSize: 12,
@@ -111,13 +117,20 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
                   fontSize: 12,
                   fill: '#6b7280'
                 }}
-                width={100}
+                width={120}
               />
               <Tooltip
                 formatter={(value: number) => formatCurrency(value)}
+                contentStyle={{
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.375rem',
+                  padding: '0.5rem'
+                }}
                 labelStyle={{
                   color: '#374151',
-                  fontWeight: 500
+                  fontWeight: 500,
+                  marginBottom: '0.25rem'
                 }}
               />
               <Bar 
