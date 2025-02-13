@@ -92,9 +92,9 @@ export function ImportTransactionsTable({
                         <SelectItem 
                           key={category.id} 
                           value={category.id}
-                          className="flex flex-col space-y-1 py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
+                          className="flex flex-col py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
                         >
-                          <span className="font-medium">{category.name}</span>
+                          <span className="font-medium mb-1 border-b pb-1">{category.name}</span>
                           <span className="text-sm text-muted-foreground">
                             {category.description}
                           </span>
