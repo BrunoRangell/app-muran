@@ -76,13 +76,13 @@ export function ImportTransactionsTable({
                 value={transaction.category}
                 onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
               >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[250px]">
                   <SelectValue placeholder="Selecionar categoria">
                     {getCategoryName(transaction.category)}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent 
-                  className="bg-popover w-[280px] rounded-md"
+                  className="bg-popover w-[400px] rounded-md"
                   position="popper"
                   side="left"
                   align="start"
