@@ -84,6 +84,8 @@ export function ImportTransactionsTable({
                 <SelectContent 
                   className="bg-popover w-[280px] rounded-md"
                   position="popper"
+                  side="left"
+                  align="start"
                   sideOffset={5}
                 >
                   <div className="max-h-[300px] overflow-y-auto">
