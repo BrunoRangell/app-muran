@@ -33,10 +33,19 @@ export function useTransactionParser() {
 
       console.log("Mapeamentos encontrados:", existingMappings);
 
+      // Remover caracteres especiais e converter para minúsculas para melhor comparação
+      const normalizeText = (text: string) => 
+        text.toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+
       return ofx.bankAccounts[0].transactions.map(t => {
+        const normalizedName = normalizeText(t.name);
+        
         // Tentar encontrar um mapeamento existente
         const mappedCategories = existingMappings
-          ?.filter(m => t.name.toLowerCase().includes(m.description_pattern.toLowerCase()))
+          ?.filter(m => normalizeText(m.description_pattern).includes(normalizedName) || 
+                       normalizedName.includes(normalizeText(m.description_pattern)))
           .map(m => m.category_id)
           .filter((id): id is CostCategory => id !== null) || [];
 
