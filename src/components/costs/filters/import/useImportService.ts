@@ -38,6 +38,7 @@ export function useImportService() {
       }
 
       let importedCount = 0;
+      let skippedCount = 0;
 
       // Importar transações como custos
       for (const transaction of newTransactions) {
@@ -60,6 +61,7 @@ export function useImportService() {
 
           if (mappingError) {
             console.error("[Categoria] Erro ao buscar mapeamento:", mappingError);
+            throw mappingError;
           }
 
           // Usar categoria sugerida ou a selecionada pelo usuário
@@ -69,11 +71,7 @@ export function useImportService() {
           // Validar categoria
           if (!categoryId) {
             console.warn("[Categoria] Transação sem categoria, pulando...");
-            toast({
-              title: "Atenção",
-              description: `A transação "${transaction.name}" não possui categoria definida.`,
-              variant: "destructive"
-            });
+            skippedCount++;
             continue;
           }
 
@@ -142,17 +140,27 @@ export function useImportService() {
             description: `Erro ao importar "${transaction.name}": ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
             variant: "destructive"
           });
+          throw error; // Re-throw para interromper o processo em caso de erro
         }
       }
 
       console.log("==================================");
       console.log("Importação finalizada. Total importado:", importedCount);
       
-      if (importedCount > 0) {
+      // Feedback mais detalhado no final da importação
+      if (importedCount > 0 || skippedCount > 0) {
+        let description = "";
+        if (importedCount > 0) {
+          description += `${importedCount} transações importadas com sucesso. `;
+        }
+        if (skippedCount > 0) {
+          description += `${skippedCount} transações puladas por falta de categoria.`;
+        }
+        
         toast({
           title: "Importação concluída",
-          description: `${importedCount} transações foram importadas com sucesso.`,
-          variant: "default"
+          description: description.trim(),
+          variant: importedCount > 0 ? "default" : "destructive"
         });
       }
 
@@ -162,7 +170,7 @@ export function useImportService() {
       console.error("Erro geral na importação:", error);
       toast({
         title: "Erro na importação",
-        description: "Ocorreu um erro durante o processo de importação.",
+        description: error instanceof Error ? error.message : "Ocorreu um erro durante o processo de importação.",
         variant: "destructive"
       });
       throw error;
