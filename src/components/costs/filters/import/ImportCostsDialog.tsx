@@ -16,7 +16,7 @@ import { ImportTransactionsTable } from "./ImportTransactionsTable";
 import { Transaction } from "./types";
 import { useTransactionParser } from "./useTransactionParser";
 import { useImportService } from "./useImportService";
-import { CostMainCategory, CostSubcategory } from "@/types/cost";
+import { CostCategory } from "@/types/cost";
 
 export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -58,16 +58,16 @@ export function ImportCostsDialog() {
     );
   };
 
-  const handleCategoryChange = (fitid: string, mainCategory: CostMainCategory, subcategory: CostSubcategory) => {
+  const handleCategoryChange = (fitid: string, category: CostCategory) => {
     setTransactions(prev => 
-      prev.map(t => t.fitid === fitid ? { ...t, mainCategory, subcategory } : t)
+      prev.map(t => t.fitid === fitid ? { ...t, category } : t)
     );
   };
 
   const handleImport = async () => {
     setIsLoading(true);
     try {
-      const selectedTransactions = transactions.filter(t => t.selected && t.mainCategory && t.subcategory);
+      const selectedTransactions = transactions.filter(t => t.selected && t.category);
       
       if (selectedTransactions.length === 0) {
         toast({

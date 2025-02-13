@@ -29,6 +29,7 @@ export interface CostFilters {
   endDate?: string;
   category?: CostCategory;
   search?: string;
+  tags?: string[];
 }
 
 interface CategoryOption {

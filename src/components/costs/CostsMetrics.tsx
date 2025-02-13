@@ -1,7 +1,7 @@
 
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
-import { Cost, CostFilters, COST_CATEGORIES_HIERARCHY } from "@/types/cost";
+import { Cost, CostFilters, COST_CATEGORIES } from "@/types/cost";
 import { formatCurrency } from "@/utils/formatters";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
@@ -19,21 +19,20 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
   );
 
   const costsByCategory = useMemo(() => {
-    const categories = Object.entries(COST_CATEGORIES_HIERARCHY).reduce((acc, [_, value]) => {
-      const categoryAmount = costs
-        .filter(cost => value.categories.some(cat => cat.value === cost.category))
-        .reduce((sum, cost) => sum + cost.amount, 0);
-      
-      if (categoryAmount > 0) {
-        acc.push({
-          name: value.label,
-          value: categoryAmount
-        });
-      }
-      return acc;
-    }, [] as Array<{ name: string; value: number }>);
+    const categoriesMap = new Map<string, number>();
 
-    return categories;
+    costs.forEach(cost => {
+      if (cost.category) {
+        const categoryLabel = COST_CATEGORIES.find(cat => cat.value === cost.category)?.label || cost.category;
+        const currentAmount = categoriesMap.get(categoryLabel) || 0;
+        categoriesMap.set(categoryLabel, currentAmount + cost.amount);
+      }
+    });
+
+    return Array.from(categoriesMap).map(([name, value]) => ({
+      name,
+      value
+    }));
   }, [costs]);
 
   const monthlyCosts = useMemo(() => {

@@ -34,8 +34,7 @@ export function useImportService() {
           name: transaction.name,
           amount: transaction.amount,
           date: transaction.date,
-          main_category: transaction.mainCategory,
-          subcategory: transaction.subcategory
+          category: transaction.category
         })
         .select()
         .single();
@@ -57,8 +56,7 @@ export function useImportService() {
         .from('transaction_categories_mapping')
         .upsert({
           description_pattern: transaction.name,
-          main_category: transaction.mainCategory,
-          subcategory: transaction.subcategory,
+          category: transaction.category,
           usage_count: 1,
           last_used_at: new Date().toISOString()
         }, {
