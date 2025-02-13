@@ -5,38 +5,41 @@ import { Transaction } from "../types";
 export async function suggestCategory(transaction: Transaction) {
   const description = transaction.originalName || transaction.name;
   
-  console.log("[Entrada] Descrição da transação:", description);
+  console.log("[Entrada] Descrição exata da transação:", JSON.stringify(description));
   
-  // Extrair padrão da transação atual
-  const { data: pattern, error: patternError } = await supabase
-    .rpc('extract_transaction_pattern', {
-      description: description
-    });
-
-  if (patternError) {
-    console.error("[Padrão] Erro ao extrair padrão:", patternError);
-    throw patternError;
-  }
-
-  console.log("[Padrão] Extraído:", pattern);
-  
-  // Buscar categoria sugerida do mapeamento usando a própria descrição como padrão
-  // Aqui vamos tentar uma correspondência exata da descrição
+  // Buscar diretamente pelo padrão original ou editado na tabela de mapeamentos
   const { data: mappings, error: mappingError } = await supabase
     .from('transaction_categories_mapping')
     .select('*')
-    .eq('description_pattern', description)
-    .order('usage_count', { ascending: false });
+    .eq('description_pattern', description);
 
   if (mappingError) {
     console.error("[Categoria] Erro ao buscar mapeamento:", mappingError);
     throw mappingError;
   }
 
-  console.log("[Categoria] Todos os mapeamentos encontrados:", mappings);
-  
+  if (!mappings || mappings.length === 0) {
+    console.log("[Categoria] Tentativa 1 - Nenhum mapeamento encontrado com description_pattern");
+    
+    // Se não encontrou, tenta pelo padrão original
+    const { data: originalMappings, error: originalError } = await supabase
+      .from('transaction_categories_mapping')
+      .select('*')
+      .eq('original_pattern', description);
+
+    if (originalError) {
+      console.error("[Categoria] Erro ao buscar mapeamento original:", originalError);
+      throw originalError;
+    }
+
+    console.log("[Categoria] Tentativa 2 - Mapeamentos encontrados por original_pattern:", originalMappings);
+    mappings = originalMappings;
+  } else {
+    console.log("[Categoria] Mapeamentos encontrados por description_pattern:", mappings);
+  }
+
   const bestMatch = mappings?.[0];
-  console.log("[Categoria] Melhor correspondência:", bestMatch);
+  console.log("[Categoria] Melhor correspondência encontrada:", bestMatch);
   
   return bestMatch?.category_id;
 }
