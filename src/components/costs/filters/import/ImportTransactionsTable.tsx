@@ -25,19 +25,6 @@ export function ImportTransactionsTable({
   onSelectionChange,
   onCategoryChange,
 }: ImportTransactionsTableProps) {
-  const handleCategoryToggle = (transaction: Transaction, categoryId: CostCategory) => {
-    console.log('Tentando alternar categoria:', categoryId);
-    console.log('Categorias atuais:', transaction.categories);
-    
-    const isSelected = transaction.categories.includes(categoryId);
-    const newCategories = isSelected
-      ? transaction.categories.filter(id => id !== categoryId)
-      : [...transaction.categories, categoryId];
-    
-    console.log('Novas categorias:', newCategories);
-    onCategoryChange(transaction.fitid, newCategories);
-  };
-
   return (
     <Table>
       <TableHeader>
@@ -83,11 +70,11 @@ export function ImportTransactionsTable({
                     role="combobox"
                     className="w-full justify-between"
                   >
-                    {transaction.categories.length === 0 ? (
+                    {transaction.categories?.length === 0 ? (
                       <span className="text-muted-foreground">Selecione as categorias...</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
-                        {transaction.categories.map((categoryId) => {
+                        {transaction.categories?.map((categoryId) => {
                           const category = COST_CATEGORIES.find((c) => c.id === categoryId);
                           return category ? (
                             <Badge
@@ -108,30 +95,34 @@ export function ImportTransactionsTable({
                   <ScrollArea className="h-[300px]">
                     <div className="p-4 space-y-2">
                       {COST_CATEGORIES.map((category) => {
-                        const isSelected = transaction.categories.includes(category.id as CostCategory);
+                        const isSelected = transaction.categories?.includes(category.id as CostCategory);
                         
                         return (
-                          <div
+                          <button
                             key={category.id}
+                            type="button"
                             className={cn(
-                              "flex items-start gap-2 rounded-md p-2 cursor-pointer hover:bg-muted transition-colors",
+                              "flex items-start w-full gap-2 rounded-md p-2 cursor-pointer hover:bg-muted transition-colors text-left",
                               isSelected && "bg-muted"
                             )}
+                            onClick={() => {
+                              const newCategories = isSelected
+                                ? (transaction.categories || []).filter(id => id !== category.id)
+                                : [...(transaction.categories || []), category.id as CostCategory];
+                              onCategoryChange(transaction.fitid, newCategories);
+                            }}
                           >
                             <Checkbox 
                               checked={isSelected}
-                              onCheckedChange={() => handleCategoryToggle(transaction, category.id as CostCategory)}
+                              className="mt-1"
                             />
-                            <div 
-                              className="flex-1"
-                              onClick={() => handleCategoryToggle(transaction, category.id as CostCategory)}
-                            >
+                            <div className="flex-1">
                               <div className="font-medium">{category.name}</div>
                               <div className="text-sm text-muted-foreground">
                                 {category.description}
                               </div>
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
