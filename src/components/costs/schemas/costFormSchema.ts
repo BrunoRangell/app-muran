@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -33,12 +34,19 @@ export const useCostCategories = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cost_categories")
-        .select("*");
+        .select("*")
+        .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar categorias:", error);
+        return [];
+      }
+
+      console.log("Categorias retornadas:", data);
       return data as CategoryInfo[];
     },
+    initialData: [], // Garantir que sempre temos um array, mesmo antes da primeira busca
   });
 
-  return categories || [];
+  return categories;
 };
