@@ -1,9 +1,8 @@
-
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Cost, CostFilters } from "@/types/cost";
 import { formatCurrency } from "@/utils/formatters";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { useCostCategories } from "./schemas/costFormSchema";
 
 interface CostsMetricsProps {
@@ -51,25 +50,44 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
       .sort((a, b) => a.month.localeCompare(b.month));
   }, [costs]);
 
+  const renderLegend = (props: any) => {
+    const { payload } = props;
+    
+    return (
+      <ul className="text-sm">
+        {payload.map((entry: any, index: number) => (
+          <li key={`item-${index}`} className="mb-2">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: entry.color }}
+              />
+              <span>
+                {entry.payload.name}: {formatCurrency(entry.payload.value)} 
+                ({(entry.payload.value / costs.reduce((sum, cost) => sum + cost.amount, 0) * 100).toFixed(1)}%)
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-6">
         <h3 className="font-semibold mb-6">Custos por Categoria</h3>
         <div className="h-[450px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 20, right: 120, bottom: 20, left: 20 }}>
+            <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <Pie
                 data={costsByCategory}
                 dataKey="value"
                 nameKey="name"
-                cx="35%"
+                cx="50%"
                 cy="50%"
-                outerRadius={110}
+                outerRadius={120}
                 fill="#FF6E00"
-                label={({ name, value, percent }) => 
-                  `${name}: ${formatCurrency(value)} (${(percent * 100).toFixed(1)}%)`
-                }
-                labelLine={{ strokeWidth: 1, stroke: '#6b7280' }}
               >
                 {costsByCategory.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -82,6 +100,15 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
                   border: '1px solid #e5e7eb',
                   borderRadius: '0.375rem',
                   padding: '0.5rem'
+                }}
+              />
+              <Legend
+                content={renderLegend}
+                layout="vertical"
+                align="right"
+                verticalAlign="middle"
+                wrapperStyle={{
+                  paddingLeft: "20px",
                 }}
               />
             </PieChart>
