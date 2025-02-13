@@ -57,17 +57,19 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
         <h3 className="font-semibold mb-6">Custos por Categoria</h3>
         <div className="h-[450px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+            <PieChart margin={{ top: 20, right: 120, bottom: 20, left: 20 }}>
               <Pie
                 data={costsByCategory}
                 dataKey="value"
                 nameKey="name"
-                cx="50%"
+                cx="35%"
                 cy="50%"
-                outerRadius={130}
+                outerRadius={110}
                 fill="#FF6E00"
-                label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
-                labelLine={true}
+                label={({ name, value, percent }) => 
+                  `${name}: ${formatCurrency(value)} (${(percent * 100).toFixed(1)}%)`
+                }
+                labelLine={{ strokeWidth: 1, stroke: '#6b7280' }}
               >
                 {costsByCategory.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
