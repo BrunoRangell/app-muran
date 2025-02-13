@@ -1,5 +1,4 @@
 
-import { FinancialMetrics } from "@/components/clients/FinancialMetrics";
 import { CostFilters } from "@/types/cost";
 import { useState } from "react";
 import { DateFilter } from "@/components/costs/filters/DateFilter";
@@ -19,7 +18,12 @@ const FinancialReport = () => {
         <DateFilter filters={filters} onFiltersChange={setFilters} />
       </div>
 
-      <FinancialMetrics />
+      {/* Conteúdo do relatório será implementado aqui */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <p className="text-gray-500 text-center">
+          Em desenvolvimento
+        </p>
+      </div>
     </div>
   );
 };
