@@ -82,17 +82,17 @@ export function ImportTransactionsTable({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent 
-                  sideOffset={5} 
-                  position="popper" 
-                  className="w-[280px] max-h-[300px] overflow-hidden"
+                  className="bg-popover w-[280px] rounded-md"
+                  position="popper"
+                  sideOffset={5}
                 >
-                  <ScrollArea className="max-h-[300px]">
-                    <SelectGroup className="p-1">
+                  <div className="max-h-[300px] overflow-y-auto">
+                    <SelectGroup className="p-2">
                       {COST_CATEGORIES.map((category) => (
                         <SelectItem 
                           key={category.id} 
                           value={category.id}
-                          className="flex flex-col space-y-1 py-2 cursor-pointer rounded-md hover:bg-accent"
+                          className="flex flex-col space-y-1 py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
                         >
                           <span className="font-medium">{category.name}</span>
                           <span className="text-sm text-muted-foreground">
@@ -101,7 +101,7 @@ export function ImportTransactionsTable({
                         </SelectItem>
                       ))}
                     </SelectGroup>
-                  </ScrollArea>
+                  </div>
                 </SelectContent>
               </Select>
             </TableCell>
