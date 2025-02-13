@@ -11,9 +11,9 @@ export function parseOFX(ofxText: string) {
     if (line.startsWith('<STMTTRN>')) {
       currentTransaction = {};
     } else if (line.startsWith('</STMTTRN>')) {
-      // Só incluímos transações que são custos (PAYMENT ou valor negativo)
+      // Verificamos se é um custo: deve ter valor negativo (não importa o TRNTYPE)
       if (Object.keys(currentTransaction).length > 0 && 
-          (currentTransaction.type === 'PAYMENT' || Number(currentTransaction.amount) < 0)) {
+          Number(currentTransaction.amount) < 0) {
         transactions.push(currentTransaction);
       }
     } else if (line.startsWith('<TRNTYPE>')) {
