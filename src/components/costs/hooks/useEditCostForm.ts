@@ -19,7 +19,7 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
     defaultValues: {
       name: "",
       amount: "",
-      category: null,
+      categories: [],
       date: new Date().toISOString().split("T")[0],
       description: "",
     },
@@ -33,7 +33,7 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
           style: "currency",
           currency: "BRL",
         }),
-        category: cost.category,
+        categories: cost.categories || [],
         date: cost.date,
         description: cost.description || "",
       });
@@ -60,7 +60,7 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
           style: "currency",
           currency: "BRL",
         }),
-        category: cost.category,
+        categories: cost.categories || [],
         date: cost.date,
         description: cost.description || "",
       });
@@ -78,13 +78,32 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
         .update({
           name: data.name,
           amount: parseCurrencyToNumber(data.amount),
-          category: data.category,
           date: data.date,
           description: data.description || null,
         })
         .eq("id", cost.id);
 
       if (costError) throw costError;
+
+      // Remove todas as categorias antigas
+      const { error: deleteError } = await supabase
+        .from("costs_categories")
+        .delete()
+        .eq("cost_id", cost.id);
+
+      if (deleteError) throw deleteError;
+
+      // Insere as novas categorias
+      const { error: categoriesError } = await supabase
+        .from("costs_categories")
+        .insert(
+          data.categories.map(categoryId => ({
+            cost_id: cost.id,
+            category_id: categoryId
+          }))
+        );
+
+      if (categoriesError) throw categoriesError;
 
       toast({
         title: "Custo atualizado",

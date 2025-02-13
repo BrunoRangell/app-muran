@@ -1,9 +1,10 @@
 
 import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
-import { Cost, CostFilters, COST_CATEGORIES } from "@/types/cost";
+import { Cost, CostFilters } from "@/types/cost";
 import { formatCurrency } from "@/utils/formatters";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { useCostCategories } from "./schemas/costFormSchema";
 
 interface CostsMetricsProps {
   costs: Cost[];
@@ -13,6 +14,8 @@ interface CostsMetricsProps {
 const COLORS = ['#FF6E00', '#321E32', '#EBEBF0', '#0F0F0F', '#FF8533', '#4D2F4D', '#D4D4D9', '#262626'];
 
 export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
+  const categories = useCostCategories();
+  
   const totalAmount = useMemo(() => 
     costs.reduce((sum, cost) => sum + cost.amount, 0),
     [costs]
@@ -22,10 +25,14 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
     const categoriesMap = new Map<string, number>();
 
     costs.forEach(cost => {
-      if (cost.category) {
-        const categoryLabel = COST_CATEGORIES.find(cat => cat.value === cost.category)?.label || cost.category;
-        const currentAmount = categoriesMap.get(categoryLabel) || 0;
-        categoriesMap.set(categoryLabel, currentAmount + cost.amount);
+      if (cost.categories) {
+        cost.categories.forEach(categoryId => {
+          const category = categories.find(c => c.id === categoryId);
+          if (category) {
+            const currentAmount = categoriesMap.get(category.name) || 0;
+            categoriesMap.set(category.name, currentAmount + cost.amount);
+          }
+        });
       }
     });
 
@@ -33,7 +40,7 @@ export function CostsMetrics({ costs, filters }: CostsMetricsProps) {
       name,
       value
     }));
-  }, [costs]);
+  }, [costs, categories]);
 
   const monthlyCosts = useMemo(() => {
     const months: { [key: string]: number } = {};

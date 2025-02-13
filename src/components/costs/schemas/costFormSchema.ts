@@ -1,6 +1,7 @@
-
 import { z } from "zod";
-import { CostCategory } from "@/types/cost";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { CostCategory, CategoryInfo } from "@/types/cost";
 
 export const costFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),

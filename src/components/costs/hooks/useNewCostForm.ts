@@ -18,7 +18,7 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
     defaultValues: {
       name: "",
       amount: "",
-      category: null,
+      categories: [],
       date: new Date().toISOString().split("T")[0],
       description: "",
     },
@@ -40,7 +40,7 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
     form.reset({
       name: "",
       amount: "",
-      category: null,
+      categories: [],
       date: new Date().toISOString().split("T")[0],
       description: "",
     });
@@ -55,7 +55,6 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
         .insert({
           name: data.name,
           amount: parseCurrencyToNumber(data.amount),
-          category: data.category,
           date: data.date,
           description: data.description || null,
         })
@@ -64,6 +63,18 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
 
       if (costError) throw costError;
       if (!newCost) throw new Error("Falha ao criar custo");
+
+      // Insere as categorias do custo
+      const { error: categoriesError } = await supabase
+        .from("costs_categories")
+        .insert(
+          data.categories.map(categoryId => ({
+            cost_id: newCost.id,
+            category_id: categoryId
+          }))
+        );
+
+      if (categoriesError) throw categoriesError;
 
       toast({
         title: "Custo registrado",
