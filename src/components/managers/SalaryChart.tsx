@@ -1,3 +1,4 @@
+
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { format } from "date-fns";
@@ -17,7 +18,10 @@ export const SalaryChart = ({ salaries }: SalaryChartProps) => {
   const formattedData = [...salaries]
     .reverse()
     .map((item) => {
-      const date = new Date(item.month);
+      // Cria a data no primeiro dia do mês para evitar problemas com fuso horário
+      const [year, month] = item.month.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      
       return {
         month: format(date, "MMM/yyyy", { locale: ptBR }),
         amount: item.amount,
