@@ -21,6 +21,7 @@ import { CostFormData } from "./schemas/costFormSchema";
 import { UseFormReturn } from "react-hook-form";
 import { MAIN_CATEGORIES, getCategoriesForMainCategory } from "@/types/cost";
 import { useState } from "react";
+import { TagsInput } from "./tags/TagsInput";
 
 interface CostFormProps {
   form: UseFormReturn<CostFormData>;
@@ -87,7 +88,6 @@ export function CostForm({
                   field.onChange(value);
                   const newCategories = getCategoriesForMainCategory(value as any);
                   setAvailableCategories(newCategories);
-                  // Reset the subcategory when main_category changes
                   form.setValue('subcategory', newCategories[0].value);
                 }}
                 defaultValue={field.value}
@@ -143,6 +143,23 @@ export function CostForm({
               <FormLabel>Data</FormLabel>
               <FormControl>
                 <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="tags"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tags</FormLabel>
+              <FormControl>
+                <TagsInput
+                  value={field.value || []}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

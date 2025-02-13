@@ -24,7 +24,16 @@ export default function Costs() {
     queryFn: async () => {
       let query = supabase
         .from("costs")
-        .select("*")
+        .select(`
+          *,
+          tags:costs_tags(
+            cost_tags(
+              id,
+              name,
+              created_at
+            )
+          )
+        `)
         .order("date", { ascending: false });
 
       if (filters.startDate) {
@@ -42,6 +51,27 @@ export default function Costs() {
       if (filters.search) {
         query = query.ilike("name", `%${filters.search}%`);
       }
+      if (filters.tags && filters.tags.length > 0) {
+        // Filtra por custos que têm todas as tags selecionadas
+        const { data: tagIds } = await supabase
+          .from("cost_tags")
+          .select("id")
+          .in("name", filters.tags);
+
+        if (tagIds && tagIds.length > 0) {
+          const tagIdsArray = tagIds.map(t => t.id);
+          const { data: costIds } = await supabase
+            .from("costs_tags")
+            .select("cost_id")
+            .in("tag_id", tagIdsArray);
+
+          if (costIds && costIds.length > 0) {
+            query = query.in("id", costIds.map(c => c.cost_id));
+          } else {
+            return [];
+          }
+        }
+      }
 
       const { data, error } = await query;
 
@@ -50,7 +80,15 @@ export default function Costs() {
         throw error;
       }
 
-      return data;
+      // Transforma os dados aninhados em um formato mais simples
+      return data.map(cost => ({
+        ...cost,
+        tags: cost.tags
+          ? cost.tags
+              .map((t: any) => t.cost_tags)
+              .filter(Boolean)
+          : [],
+      }));
     },
   });
 
