@@ -25,12 +25,6 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
     return calculateRetention(b) - calculateRetention(a);
   }).slice(0, 5); // Pega os top 5
 
-  // Calcula os totais para cada métrica
-  const totalRevenue = activeClients.reduce((sum, client) => sum + client.contract_value, 0);
-  const avgRetention = activeClients.length > 0
-    ? activeClients.reduce((sum, client) => sum + calculateRetention(client), 0) / activeClients.length
-    : 0;
-
   return (
     <Card className="p-6">
       <div className="flex flex-col space-y-6">
@@ -53,25 +47,6 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
               <Clock className="h-4 w-4" />
               Por Retenção
             </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-muran-primary/10 rounded-lg p-4 border-l-4 border-muran-primary">
-            <span className="text-sm font-medium text-muran-complementary block">
-              Receita Total Mensal
-            </span>
-            <span className="text-2xl font-bold text-muran-primary">
-              {formatCurrency(totalRevenue)}
-            </span>
-          </div>
-          <div className="bg-muran-secondary/10 rounded-lg p-4 border-l-4 border-muran-complementary">
-            <span className="text-sm font-medium text-muran-complementary block">
-              Média de Retenção
-            </span>
-            <span className="text-2xl font-bold text-muran-complementary">
-              {avgRetention.toFixed(1)} meses
-            </span>
           </div>
         </div>
 
