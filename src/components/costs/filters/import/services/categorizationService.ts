@@ -7,40 +7,43 @@ export async function suggestCategory(transaction: Transaction) {
   
   console.log("[Entrada] Descrição exata da transação:", JSON.stringify(description));
   console.log("[Entrada] Tipo da descrição:", typeof description);
-  
-  // Primeiro, tentar encontrar por qualquer um dos padrões usando in
-  const { data, error: mappingError } = await supabase
+
+  // Primeiro tentar encontrar por correspondência exata
+  const { data: exactMatches, error: exactError } = await supabase
     .from('transaction_categories_mapping')
     .select('*')
-    .or('description_pattern.eq.' + JSON.stringify(description) + ',original_pattern.eq.' + JSON.stringify(description));
+    .eq('description_pattern', description);
 
-  if (mappingError) {
-    console.error("[Categoria] Erro ao buscar mapeamento:", mappingError);
-    throw mappingError;
+  if (exactError) {
+    console.error("[Categoria] Erro ao buscar mapeamento exato:", exactError);
+    throw exactError;
   }
 
-  console.log("[Categoria] Mapeamentos encontrados:", data);
-
-  // Se não encontrou nada, vamos logar os valores para debug
-  if (!data || data.length === 0) {
-    console.log("[Debug] Buscando todos os mapeamentos para comparação:");
-    const { data: allMappings } = await supabase
-      .from('transaction_categories_mapping')
-      .select('*');
-    
-    console.log("[Debug] Todos os mapeamentos disponíveis:", allMappings);
-    console.log("[Debug] Comparando com a descrição:", description);
-    
-    // Tentar encontrar por correspondência exata sem usar .or
-    const { data: exactMatch } = await supabase
-      .from('transaction_categories_mapping')
-      .select('*')
-      .eq('description_pattern', description);
-      
-    console.log("[Debug] Tentativa de correspondência exata:", exactMatch);
+  if (exactMatches && exactMatches.length > 0) {
+    console.log("[Categoria] Encontrada correspondência exata:", exactMatches[0]);
+    return exactMatches[0].category_id;
   }
 
-  const bestMatch = data?.[0];
+  // Se não encontrar correspondência exata, tentar por similaridade
+  const searchTerm = description.includes('UNCLIK') ? 'UNCLIK' : 
+                    description.includes('MINISTERIO DA FAZENDA') ? 'MINISTERIO DA FAZENDA' :
+                    description.split('"')[1]?.split('-')[1] || description;
+
+  console.log("[Categoria] Buscando por termo similar:", searchTerm);
+
+  const { data: similarMatches, error: similarError } = await supabase
+    .from('transaction_categories_mapping')
+    .select('*')
+    .or(`description_pattern.ilike.%${searchTerm}%,original_pattern.ilike.%${searchTerm}%,last_edited_pattern.ilike.%${searchTerm}%`);
+
+  if (similarError) {
+    console.error("[Categoria] Erro ao buscar mapeamento similar:", similarError);
+    throw similarError;
+  }
+
+  console.log("[Categoria] Correspondências similares encontradas:", similarMatches);
+
+  const bestMatch = similarMatches?.[0];
   console.log("[Categoria] Melhor correspondência encontrada:", bestMatch);
   
   return bestMatch?.category_id;
