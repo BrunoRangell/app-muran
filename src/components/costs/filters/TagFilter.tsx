@@ -31,13 +31,11 @@ export function TagFilter({ filters, onFiltersChange }: TagFilterProps) {
       const { data, error } = await supabase
         .from("cost_tags")
         .select(`
-          id,
           name,
-          costs_tags!inner (
+          costs_tags (
             cost_id
           )
-        `)
-        .order('name');
+        `);
 
       if (error) {
         console.error("Erro ao carregar tags:", error);
