@@ -92,10 +92,27 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_categories: {
+        Row: {
+          description: string
+          id: Database["public"]["Enums"]["cost_category_new"]
+          name: string
+        }
+        Insert: {
+          description: string
+          id: Database["public"]["Enums"]["cost_category_new"]
+          name: string
+        }
+        Update: {
+          description?: string
+          id?: Database["public"]["Enums"]["cost_category_new"]
+          name?: string
+        }
+        Relationships: []
+      }
       costs: {
         Row: {
           amount: number
-          category: Database["public"]["Enums"]["cost_category"] | null
           created_at: string
           date: string
           description: string | null
@@ -105,7 +122,6 @@ export type Database = {
         }
         Insert: {
           amount: number
-          category?: Database["public"]["Enums"]["cost_category"] | null
           created_at?: string
           date: string
           description?: string | null
@@ -115,7 +131,6 @@ export type Database = {
         }
         Update: {
           amount?: number
-          category?: Database["public"]["Enums"]["cost_category"] | null
           created_at?: string
           date?: string
           description?: string | null
@@ -124,6 +139,36 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      costs_categories: {
+        Row: {
+          category_id: Database["public"]["Enums"]["cost_category_new"]
+          cost_id: number
+        }
+        Insert: {
+          category_id: Database["public"]["Enums"]["cost_category_new"]
+          cost_id: number
+        }
+        Update: {
+          category_id?: Database["public"]["Enums"]["cost_category_new"]
+          cost_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "costs_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "costs_categories_cost_id_fkey"
+            columns: ["cost_id"]
+            isOneToOne: false
+            referencedRelation: "costs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       goals: {
         Row: {
@@ -373,6 +418,15 @@ export type Database = {
         | "responsabilidade_social"
         | "despesas_corriqueiras"
         | "despesas_nao_planejadas"
+      cost_category_new:
+        | "marketing"
+        | "vendas"
+        | "plataformas_ferramentas"
+        | "despesas_pessoal"
+        | "taxas_impostos"
+        | "servicos_profissionais"
+        | "eventos_networking"
+        | "acoes_sociais"
       cost_macro_category:
         | "despesas_operacionais"
         | "despesas_administrativas"

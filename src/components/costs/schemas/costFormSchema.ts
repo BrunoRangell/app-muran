@@ -1,23 +1,20 @@
 
 import { z } from "zod";
+import { CostCategory } from "@/types/cost";
 
 export const costFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   amount: z.string().min(1, "Valor é obrigatório"),
-  category: z.enum([
-    "marketing_aquisicao",
-    "custos_vendas",
-    "infraestrutura_operacional",
-    "pessoal_administrativo",
-    "estrutura_fisica_digital",
-    "taxas_impostos",
-    "despesas_financeiras",
-    "expansao_negocio",
-    "eventos_networking",
-    "responsabilidade_social",
-    "despesas_corriqueiras",
-    "despesas_nao_planejadas"
-  ] as const).nullable(),
+  categories: z.array(z.enum([
+    'marketing',
+    'vendas',
+    'plataformas_ferramentas',
+    'despesas_pessoal',
+    'taxas_impostos',
+    'servicos_profissionais',
+    'eventos_networking',
+    'acoes_sociais'
+  ] as const)).min(1, "Selecione pelo menos uma categoria"),
   date: z.string().min(1, "Data é obrigatória"),
   description: z.string().optional(),
 });
@@ -28,3 +25,19 @@ export interface NewCostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+export const useCostCategories = () => {
+  const { data: categories } = useQuery({
+    queryKey: ["cost-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cost_categories")
+        .select("*");
+
+      if (error) throw error;
+      return data as CategoryInfo[];
+    },
+  });
+
+  return categories || [];
+};
