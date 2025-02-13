@@ -92,24 +92,6 @@ export type Database = {
         }
         Relationships: []
       }
-      cost_tags: {
-        Row: {
-          created_at: string
-          id: number
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          name: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          name?: string
-        }
-        Relationships: []
-      }
       costs: {
         Row: {
           amount: number
@@ -142,39 +124,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      costs_tags: {
-        Row: {
-          cost_id: number
-          created_at: string
-          tag_id: number
-        }
-        Insert: {
-          cost_id: number
-          created_at?: string
-          tag_id: number
-        }
-        Update: {
-          cost_id?: number
-          created_at?: string
-          tag_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "costs_tags_cost_id_fkey"
-            columns: ["cost_id"]
-            isOneToOne: false
-            referencedRelation: "costs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "costs_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "cost_tags"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       goals: {
         Row: {
