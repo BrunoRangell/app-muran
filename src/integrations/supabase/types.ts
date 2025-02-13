@@ -92,24 +92,6 @@ export type Database = {
         }
         Relationships: []
       }
-      cost_categories: {
-        Row: {
-          description: string
-          id: Database["public"]["Enums"]["cost_category_new"]
-          name: string
-        }
-        Insert: {
-          description: string
-          id: Database["public"]["Enums"]["cost_category_new"]
-          name: string
-        }
-        Update: {
-          description?: string
-          id?: Database["public"]["Enums"]["cost_category_new"]
-          name?: string
-        }
-        Relationships: []
-      }
       costs: {
         Row: {
           amount: number
@@ -142,25 +124,18 @@ export type Database = {
       }
       costs_categories: {
         Row: {
-          category_id: Database["public"]["Enums"]["cost_category_new"]
+          category_id: string
           cost_id: number
         }
         Insert: {
-          category_id: Database["public"]["Enums"]["cost_category_new"]
+          category_id: string
           cost_id: number
         }
         Update: {
-          category_id?: Database["public"]["Enums"]["cost_category_new"]
+          category_id?: string
           cost_id?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "costs_categories_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "cost_categories"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "costs_categories_cost_id_fkey"
             columns: ["cost_id"]
@@ -367,32 +342,24 @@ export type Database = {
       }
       transaction_categories_mapping: {
         Row: {
-          category_id: Database["public"]["Enums"]["cost_category_new"] | null
+          category_id: string | null
           description_pattern: string
           last_used_at: string
           usage_count: number | null
         }
         Insert: {
-          category_id?: Database["public"]["Enums"]["cost_category_new"] | null
+          category_id?: string | null
           description_pattern: string
           last_used_at?: string
           usage_count?: number | null
         }
         Update: {
-          category_id?: Database["public"]["Enums"]["cost_category_new"] | null
+          category_id?: string | null
           description_pattern?: string
           last_used_at?: string
           usage_count?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "transaction_categories_mapping_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "cost_categories"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
