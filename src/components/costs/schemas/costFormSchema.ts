@@ -29,7 +29,7 @@ export interface NewCostDialogProps {
 }
 
 export const useCostCategories = () => {
-  const { data, isLoading } = useQuery({
+  const { data: categories, isLoading } = useQuery({
     queryKey: ["cost-categories"],
     queryFn: async () => {
       console.log("Buscando categorias...");
@@ -40,14 +40,21 @@ export const useCostCategories = () => {
 
       if (error) {
         console.error("Erro ao buscar categorias:", error);
+        throw error;
+      }
+
+      if (!data) {
+        console.log("Nenhuma categoria encontrada, retornando array vazio");
         return [];
       }
 
       console.log("Categorias retornadas:", data);
       return data as CategoryInfo[];
     },
-    initialData: [], // Garantindo que sempre temos um array, mesmo que vazio
+    initialData: [] as CategoryInfo[],
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
-  return isLoading ? [] : data;
+  return categories;
 };
