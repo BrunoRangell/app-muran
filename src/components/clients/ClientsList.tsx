@@ -11,22 +11,29 @@ import { ClientsTable } from "./table/ClientsTable";
 import { ColumnToggle } from "./table/ColumnToggle";
 import { FilterPopover } from "./table/FilterPopover";
 import { Client, Column, SortConfig } from "./types";
+import { RankingMetrics } from "./rankings/RankingMetrics";
+import { calculateRetention } from "./table/utils";
 
 interface ClientsListProps {
   onPaymentClick?: (clientId: string) => void;
   viewMode?: 'default' | 'payments';
+  rankingMetric?: 'revenue' | 'retention';
 }
 
-export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsListProps) => {
+export const ClientsList = ({ onPaymentClick, viewMode = 'default', rankingMetric = 'revenue' }: ClientsListProps) => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'company_name', direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ 
+    key: rankingMetric === 'revenue' ? 'contract_value' : 'retention',
+    direction: 'desc' 
+  });
   const [filters, setFilters] = useState({
     status: 'active',
     acquisition_channel: '',
     payment_type: ''
   });
+  const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'retention'>(rankingMetric);
 
   const [columns, setColumns] = useState<Column[]>([
     { id: 'company_name', label: 'Empresa', show: true, fixed: true },
@@ -109,12 +116,26 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
     }));
   };
 
+  const handleMetricChange = (metric: 'revenue' | 'retention') => {
+    setSelectedMetric(metric);
+    setSortConfig({
+      key: metric === 'revenue' ? 'contract_value' : 'retention',
+      direction: 'desc'
+    });
+  };
+
   const filteredAndSortedClients = clients?.filter(client => {
     return (
       (!filters.status || client.status === filters.status) &&
       (!filters.acquisition_channel || client.acquisition_channel === filters.acquisition_channel) &&
       (!filters.payment_type || client.payment_type === filters.payment_type)
     );
+  }).sort((a, b) => {
+    const direction = sortConfig.direction === 'asc' ? 1 : -1;
+    if (sortConfig.key === 'retention') {
+      return (calculateRetention(b) - calculateRetention(a)) * direction;
+    }
+    return ((b[sortConfig.key as keyof Client] as number) - (a[sortConfig.key as keyof Client] as number)) * direction;
   });
 
   const hasActiveFilters = Object.values(filters).some(value => value !== "");
@@ -132,7 +153,13 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
       <div className="flex justify-between items-center mb-6">
         {viewMode === 'default' && (
           <>
-            <h2 className="text-xl font-bold">Lista de Clientes</h2>
+            <div className="flex-1">
+              <RankingMetrics
+                clients={clients || []}
+                onMetricChange={handleMetricChange}
+                selectedMetric={selectedMetric}
+              />
+            </div>
             <div className="flex gap-2 items-center">
               <ColumnToggle columns={columns.filter(col => !col.fixed)} onToggleColumn={toggleColumn} />
               <FilterPopover filters={filters} onFilterChange={setFilters} />
