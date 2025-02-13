@@ -14,6 +14,7 @@ import { Plus } from "lucide-react";
 import { Cost } from "@/types/cost";
 import { DateFilter } from "@/components/costs/filters/DateFilter";
 import { Separator } from "@/components/ui/separator";
+import { ImportCostsDialog } from "@/components/costs/filters/import/ImportCostsDialog";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
@@ -62,7 +63,7 @@ export default function Costs() {
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 p-4 md:p-6">
-      {/* Cabeçalho com título e botão de novo custo */}
+      {/* Cabeçalho com título e botões de ação */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Registro de Custos</h1>
@@ -70,18 +71,48 @@ export default function Costs() {
             Gerencie e acompanhe todos os custos do seu negócio
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <DateFilter filters={filters} onFiltersChange={setFilters} />
-          <Button onClick={() => setIsNewCostOpen(true)} className="bg-muran-primary hover:bg-muran-primary/90">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Custo
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={() => setIsNewCostOpen(true)} className="bg-muran-primary hover:bg-muran-primary/90">
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar custo manualmente
+            </Button>
+            <ImportCostsDialog />
+          </div>
         </div>
       </div>
 
       <Separator className="my-6" />
 
-      {/* Métricas e gráficos */}
+      {/* Card com métricas principais */}
+      <Card className="p-6 bg-gray-50">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <h4 className="text-sm font-medium text-gray-500">Total de Custos</h4>
+            <p className="text-2xl font-bold text-gray-900">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                .format((costs || []).reduce((sum, cost) => sum + cost.amount, 0))}
+            </p>
+          </div>
+          
+          <div>
+            <h4 className="text-sm font-medium text-gray-500">Média Mensal</h4>
+            <p className="text-2xl font-bold text-gray-900">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                .format((costs || []).reduce((sum, cost) => sum + cost.amount, 0) / 
+                  Math.max(1, new Set((costs || []).map(c => c.date.substring(0, 7))).size))}
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium text-gray-500">Quantidade de Registros</h4>
+            <p className="text-2xl font-bold text-gray-900">{(costs || []).length}</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Gráficos */}
       <CostsMetrics costs={costs || []} filters={filters} />
 
       {/* Barra de filtros e tabela */}

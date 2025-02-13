@@ -2,7 +2,6 @@
 import { CostFilters } from "@/types/cost";
 import { SearchFilter } from "./filters/SearchFilter";
 import { CategoryFilters } from "./filters/CategoryFilters";
-import { ImportCostsDialog } from "./filters/import/ImportCostsDialog";
 
 interface CostsFiltersBarProps {
   filters: CostFilters;
@@ -17,7 +16,6 @@ export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarPro
       </div>
       <div className="flex flex-col md:flex-row gap-4 md:items-center">
         <CategoryFilters filters={filters} onFiltersChange={onFiltersChange} />
-        <ImportCostsDialog />
       </div>
     </div>
   );
