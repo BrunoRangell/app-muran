@@ -100,6 +100,8 @@ export type Database = {
           description: string | null
           id: number
           name: string
+          name_customized: boolean | null
+          original_name: string | null
           updated_at: string
         }
         Insert: {
@@ -109,6 +111,8 @@ export type Database = {
           description?: string | null
           id?: never
           name: string
+          name_customized?: boolean | null
+          original_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -118,6 +122,8 @@ export type Database = {
           description?: string | null
           id?: never
           name?: string
+          name_customized?: boolean | null
+          original_name?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -4,10 +4,11 @@ import { CostCategory } from "@/types/cost";
 export interface Transaction {
   fitid: string;
   name: string;
+  originalName?: string;
   amount: number;
   date: string;
   selected: boolean;
-  category?: CostCategory; // Mudamos de categories[] para category opcional única
+  category?: CostCategory;
 }
 
 export interface ImportService {

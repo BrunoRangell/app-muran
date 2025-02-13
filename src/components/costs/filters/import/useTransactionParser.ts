@@ -22,6 +22,7 @@ export function useTransactionParser() {
       const transactions = ofx.bankAccounts[0].transactions.map(t => ({
         fitid: t.fitId,
         name: t.name,
+        originalName: t.name, // Salvamos o nome original
         amount: Math.abs(Number(t.amount)),
         date: t.date,
         selected: true,

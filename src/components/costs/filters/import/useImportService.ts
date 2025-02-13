@@ -81,6 +81,8 @@ export function useImportService() {
             .from('costs')
             .insert({
               name: transaction.name,
+              original_name: transaction.originalName || transaction.name,
+              name_customized: transaction.originalName !== undefined && transaction.originalName !== transaction.name,
               amount: transaction.amount,
               date: transaction.date,
               description: null,
