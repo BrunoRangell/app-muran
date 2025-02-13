@@ -10,10 +10,10 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 interface ImportTransactionsTableProps {
   transactions: Transaction[];
@@ -76,28 +76,21 @@ export function ImportTransactionsTable({
                 value={transaction.category}
                 onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecione uma categoria">
-                    {getCategoryName(transaction.category)}
-                  </SelectValue>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Selecionar categoria" />
                 </SelectTrigger>
-                <SelectContent 
-                  className="h-[300px]" 
-                  position="popper" 
-                  sideOffset={5}
-                >
-                  <SelectGroup className="overflow-y-auto max-h-[300px]">
+                <SelectContent align="center" className="w-[280px]">
+                  <SelectGroup className="max-h-[300px]">
                     {COST_CATEGORIES.map((category) => (
                       <SelectItem 
                         key={category.id} 
                         value={category.id}
+                        className="flex flex-col space-y-1 py-2"
                       >
-                        <div className="flex flex-col">
-                          <span>{category.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {category.description}
-                          </span>
-                        </div>
+                        <span className="font-medium">{category.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {category.description}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectGroup>

@@ -132,7 +132,7 @@ export function ImportCostsDialog() {
           Importar OFX
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[80vh]">
+      <DialogContent className="max-w-5xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Importar custos do OFX</DialogTitle>
           <DialogDescription>
