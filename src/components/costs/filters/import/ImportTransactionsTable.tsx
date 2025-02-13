@@ -25,14 +25,6 @@ export function ImportTransactionsTable({
   onSelectionChange,
   onCategoryChange,
 }: ImportTransactionsTableProps) {
-  const toggleCategory = (fitid: string, categoryId: CostCategory, currentCategories: CostCategory[]) => {
-    const newCategories = currentCategories.includes(categoryId)
-      ? currentCategories.filter(id => id !== categoryId)
-      : [...currentCategories, categoryId];
-    
-    onCategoryChange(fitid, newCategories);
-  };
-
   return (
     <Table>
       <TableHeader>
@@ -99,40 +91,39 @@ export function ImportTransactionsTable({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[380px] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Procurar categoria..." />
-                    <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
-                    <CommandGroup className="max-h-[300px] overflow-y-auto">
-                      {COST_CATEGORIES.map((category) => (
-                        <CommandItem
+                <PopoverContent align="start" className="w-[380px] max-h-[300px] overflow-y-auto">
+                  <div className="p-2 space-y-2">
+                    {COST_CATEGORIES.map((category) => {
+                      const isSelected = transaction.categories.includes(category.id as CostCategory);
+                      
+                      return (
+                        <div
                           key={category.id}
-                          value={category.id}
-                          onSelect={() => toggleCategory(
-                            transaction.fitid, 
-                            category.id as CostCategory,
-                            transaction.categories
+                          className={cn(
+                            "flex flex-col space-y-1 rounded-md p-2 cursor-pointer hover:bg-muted",
+                            isSelected && "bg-muted"
                           )}
-                          className="flex flex-col items-start py-2"
+                          onClick={() => {
+                            const newCategories = isSelected
+                              ? transaction.categories.filter(id => id !== category.id)
+                              : [...transaction.categories, category.id as CostCategory];
+                            
+                            onCategoryChange(transaction.fitid, newCategories);
+                          }}
                         >
-                          <div className="flex items-center w-full">
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                transaction.categories.includes(category.id as CostCategory)
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4">
+                              {isSelected && <Check className="h-4 w-4" />}
+                            </div>
                             <span className="font-medium">{category.name}</span>
                           </div>
-                          <p className="text-sm text-muted-foreground ml-6">
+                          <p className="text-sm text-muted-foreground pl-6">
                             {category.description}
                           </p>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </PopoverContent>
               </Popover>
             </TableCell>
