@@ -29,12 +29,35 @@ export function ImportCostsDialog() {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      toast({
+        title: "Nenhum arquivo selecionado",
+        description: "Por favor, selecione um arquivo OFX para importar.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log("Iniciando processamento do arquivo:", file.name);
       const parsedTransactions = await parseOFXFile(file);
+      console.log("Transações parseadas:", parsedTransactions);
+      
+      if (!parsedTransactions || parsedTransactions.length === 0) {
+        toast({
+          title: "Nenhuma transação encontrada",
+          description: "O arquivo não contém transações válidas para importação.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       setTransactions(parsedTransactions);
+      toast({
+        title: "Arquivo processado com sucesso",
+        description: `${parsedTransactions.length} transações encontradas.`
+      });
     } catch (error) {
       console.error("Erro ao processar arquivo:", error);
       toast({
@@ -66,19 +89,19 @@ export function ImportCostsDialog() {
   };
 
   const handleImport = async () => {
+    const selectedTransactions = transactions.filter(t => t.selected && t.categories && t.categories.length > 0);
+    
+    if (selectedTransactions.length === 0) {
+      toast({
+        title: "Nenhuma transação selecionada",
+        description: "Selecione ao menos uma transação e categorize-a para importar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const selectedTransactions = transactions.filter(t => t.selected && t.categories && t.categories.length > 0);
-      
-      if (selectedTransactions.length === 0) {
-        toast({
-          title: "Nenhuma transação selecionada",
-          description: "Selecione ao menos uma transação e categorize-a para importar.",
-          variant: "destructive"
-        });
-        return;
-      }
-
       const importedCount = await importTransactions(selectedTransactions);
       
       if (importedCount > 0) {
@@ -128,7 +151,7 @@ export function ImportCostsDialog() {
                 disabled={isLoading}
               />
               <p className="text-sm text-gray-500 mt-2">
-                Selecione um arquivo OFX para começar
+                {isLoading ? "Processando arquivo..." : "Selecione um arquivo OFX para começar"}
               </p>
             </div>
           ) : (
@@ -149,6 +172,7 @@ export function ImportCostsDialog() {
                     setTransactions([]);
                     setIsOpen(false);
                   }}
+                  disabled={isLoading}
                 >
                   Cancelar
                 </Button>
@@ -156,7 +180,7 @@ export function ImportCostsDialog() {
                   onClick={handleImport}
                   disabled={isLoading || !transactions.some(t => t.selected)}
                 >
-                  Importar Selecionados
+                  {isLoading ? "Importando..." : "Importar Selecionados"}
                 </Button>
               </div>
             </div>
