@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
-import { Cost, COST_CATEGORIES } from "@/types/cost";
+import { Cost } from "@/types/cost";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import {
   AlertDialog,
@@ -26,6 +26,8 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { useCostCategories } from "./schemas/costFormSchema";
 
 interface CostsTableProps {
   costs: Cost[];
@@ -37,6 +39,7 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
   const [costToDelete, setCostToDelete] = useState<Cost | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const categories = useCostCategories();
 
   if (isLoading) {
     return <div className="text-center py-4">Carregando custos...</div>;
@@ -46,9 +49,15 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
     return <div className="text-center py-4">Nenhum custo encontrado.</div>;
   }
 
-  const getCategoryLabel = (cost: Cost) => {
-    const category = COST_CATEGORIES.find(cat => cat.value === cost.category);
-    return category?.label || cost.category;
+  const getCategoryNames = (cost: Cost) => {
+    if (!cost.categories) return "-";
+    
+    return cost.categories
+      .map(categoryId => {
+        const category = categories.find(c => c.id === categoryId);
+        return category ? category.name : categoryId;
+      })
+      .join(", ");
   };
 
   const totalAmount = costs.reduce((acc, cost) => acc + Number(cost.amount), 0);
@@ -77,7 +86,6 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
         description: "O custo foi excluído com sucesso.",
       });
       
-      // Atualizar a query dos custos
       await queryClient.invalidateQueries({ queryKey: ["costs"] });
       console.log('Cache de custos invalidado');
     }
@@ -92,7 +100,7 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Categoria</TableHead>
+              <TableHead>Categorias</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Valor</TableHead>
               <TableHead>Descrição</TableHead>
@@ -103,7 +111,18 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
             {costs.map((cost) => (
               <TableRow key={cost.id}>
                 <TableCell>{cost.name}</TableCell>
-                <TableCell>{cost.category ? getCategoryLabel(cost) : "-"}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {cost.categories?.map(categoryId => {
+                      const category = categories.find(c => c.id === categoryId);
+                      return category ? (
+                        <Badge key={categoryId} variant="secondary">
+                          {category.name}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
+                </TableCell>
                 <TableCell>{formatDate(cost.date)}</TableCell>
                 <TableCell>{formatCurrency(cost.amount)}</TableCell>
                 <TableCell>{cost.description || "-"}</TableCell>

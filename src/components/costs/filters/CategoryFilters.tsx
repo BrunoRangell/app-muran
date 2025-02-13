@@ -6,10 +6,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  CostFilters, 
-  COST_CATEGORIES 
-} from "@/types/cost";
+import { CostFilters } from "@/types/cost";
+import { useCostCategories } from "../schemas/costFormSchema";
 
 interface CategoryFiltersProps {
   filters: CostFilters;
@@ -17,6 +15,8 @@ interface CategoryFiltersProps {
 }
 
 export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersProps) {
+  const categories = useCostCategories();
+
   return (
     <Select
       value={filters.category || "all"}
@@ -32,9 +32,9 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">Todas</SelectItem>
-        {COST_CATEGORIES.map((category) => (
-          <SelectItem key={category.value} value={category.value}>
-            {category.label}
+        {categories.map((category) => (
+          <SelectItem key={category.id} value={category.id}>
+            {category.name}
           </SelectItem>
         ))}
       </SelectContent>

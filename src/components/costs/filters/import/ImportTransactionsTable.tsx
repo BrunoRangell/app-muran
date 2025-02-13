@@ -3,8 +3,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CostCategory, COST_CATEGORIES } from "@/types/cost";
+import { CostCategory } from "@/types/cost";
 import { Transaction } from "./types";
+import { useCostCategories } from "../../schemas/costFormSchema";
 
 interface ImportTransactionsTableProps {
   transactions: Transaction[];
@@ -19,6 +20,8 @@ export function ImportTransactionsTable({
   onSelectionChange,
   onCategoryChange,
 }: ImportTransactionsTableProps) {
+  const categories = useCostCategories();
+
   return (
     <Table>
       <TableHeader>
@@ -67,9 +70,9 @@ export function ImportTransactionsTable({
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {COST_CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
