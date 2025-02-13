@@ -14,9 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CostMainCategory, CostSubcategory, COST_CATEGORIES_HIERARCHY, ALL_COST_CATEGORIES } from "@/types/cost";
+import { CostMainCategory, CostSubcategory, COST_CATEGORIES_HIERARCHY } from "@/types/cost";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { Banking } from 'ofx-js';
 
 interface Transaction {
   fitid: string;
@@ -40,26 +41,37 @@ export function ImportCostsDialog() {
 
     setIsLoading(true);
     try {
-      // TODO: Implementar parser OFX
-      // Por enquanto, vamos simular algumas transações
-      const mockTransactions: Transaction[] = [
-        {
-          fitid: "1",
-          name: "COMPRA SUPERMERCADO",
-          amount: 150.0,
-          date: "2024-03-20",
-          selected: true
-        },
-        {
-          fitid: "2",
-          name: "PAGAMENTO ENERGIA",
-          amount: 200.0,
-          date: "2024-03-19",
-          selected: true
-        }
-      ];
+      const text = await file.text();
+      const ofx = await Banking.parse(text);
       
-      setTransactions(mockTransactions);
+      if (!ofx.bankAccounts?.[0]?.transactions) {
+        throw new Error("Nenhuma transação encontrada no arquivo");
+      }
+
+      // Buscar mapeamentos existentes
+      const { data: existingMappings } = await supabase
+        .from('transaction_categories_mapping')
+        .select('*')
+        .order('usage_count', { ascending: false });
+
+      const parsedTransactions: Transaction[] = ofx.bankAccounts[0].transactions.map(t => {
+        // Tentar encontrar um mapeamento existente
+        const mapping = existingMappings?.find(m => 
+          t.name.toLowerCase().includes(m.description_pattern.toLowerCase())
+        );
+
+        return {
+          fitid: t.fitId,
+          name: t.name,
+          amount: Math.abs(Number(t.amount)), // Convertemos para positivo pois tratamos tudo como despesa
+          date: new Date(t.date).toISOString().split('T')[0],
+          selected: true,
+          mainCategory: mapping?.main_category,
+          subcategory: mapping?.subcategory
+        };
+      });
+      
+      setTransactions(parsedTransactions);
     } catch (error) {
       console.error("Erro ao processar arquivo:", error);
       toast({
@@ -104,8 +116,27 @@ export function ImportCostsDialog() {
         return;
       }
 
+      // Verificar transações já importadas
+      const fitIds = selectedTransactions.map(t => t.fitid);
+      const { data: existingImports } = await supabase
+        .from('imported_transactions')
+        .select('fitid')
+        .in('fitid', fitIds);
+
+      const alreadyImported = new Set(existingImports?.map(i => i.fitid) || []);
+      const newTransactions = selectedTransactions.filter(t => !alreadyImported.has(t.fitid));
+
+      if (newTransactions.length === 0) {
+        toast({
+          title: "Transações já importadas",
+          description: "Todas as transações selecionadas já foram importadas anteriormente.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Importar transações como custos
-      for (const transaction of selectedTransactions) {
+      for (const transaction of newTransactions) {
         const { data: cost, error: costError } = await supabase
           .from('costs')
           .insert({
@@ -149,7 +180,7 @@ export function ImportCostsDialog() {
 
       toast({
         title: "Importação concluída",
-        description: `${selectedTransactions.length} transações foram importadas com sucesso.`
+        description: `${newTransactions.length} transações foram importadas com sucesso.`
       });
 
       setIsOpen(false);
@@ -190,6 +221,7 @@ export function ImportCostsDialog() {
                 accept=".ofx"
                 onChange={handleFileUpload}
                 className="max-w-xs"
+                disabled={isLoading}
               />
               <p className="text-sm text-gray-500 mt-2">
                 Selecione um arquivo OFX para começar
