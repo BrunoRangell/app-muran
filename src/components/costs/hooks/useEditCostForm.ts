@@ -78,7 +78,8 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
     
     setIsLoading(true);
     try {
-      const { data: updatedCost, error } = await supabase
+      // 1. Atualiza o custo
+      const { error: costError } = await supabase
         .from("costs")
         .update({
           name: data.name,
@@ -88,17 +89,53 @@ export function useEditCostForm(cost: Cost | null, onOpenChange: (open: boolean)
           date: data.date,
           description: data.description || null,
         })
-        .eq("id", cost.id)
-        .select()
-        .single();
+        .eq("id", cost.id);
 
-      if (error) {
-        console.error("Erro ao atualizar custo:", error);
-        throw error;
-      }
+      if (costError) throw costError;
 
-      if (!updatedCost) {
-        throw new Error("Não foi possível atualizar o custo");
+      // 2. Remove todas as tags antigas
+      const { error: deleteError } = await supabase
+        .from("costs_tags")
+        .delete()
+        .eq("cost_id", cost.id);
+
+      if (deleteError) throw deleteError;
+
+      // 3. Adiciona as novas tags
+      if (data.tags && data.tags.length > 0) {
+        const tagsPromises = data.tags.map(async (tagName) => {
+          const { data: existingTag } = await supabase
+            .from("cost_tags")
+            .select("id")
+            .eq("name", tagName)
+            .single();
+
+          if (existingTag) {
+            return existingTag.id;
+          } else {
+            const { data: newTag, error: tagError } = await supabase
+              .from("cost_tags")
+              .insert({ name: tagName })
+              .select("id")
+              .single();
+
+            if (tagError) throw tagError;
+            return newTag.id;
+          }
+        });
+
+        const tagIds = await Promise.all(tagsPromises);
+
+        const costsTagsData = tagIds.map((tagId) => ({
+          cost_id: cost.id,
+          tag_id: tagId,
+        }));
+
+        const { error: insertError } = await supabase
+          .from("costs_tags")
+          .insert(costsTagsData);
+
+        if (insertError) throw insertError;
       }
 
       toast({
