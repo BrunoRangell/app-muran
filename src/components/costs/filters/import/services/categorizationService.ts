@@ -8,7 +8,7 @@ export async function suggestCategory(transaction: Transaction) {
   console.log("[Entrada] Descrição exata da transação:", JSON.stringify(description));
   
   // Buscar diretamente pelo padrão original ou editado na tabela de mapeamentos
-  const { data: mappings, error: mappingError } = await supabase
+  const { data, error: mappingError } = await supabase
     .from('transaction_categories_mapping')
     .select('*')
     .eq('description_pattern', description);
@@ -17,6 +17,8 @@ export async function suggestCategory(transaction: Transaction) {
     console.error("[Categoria] Erro ao buscar mapeamento:", mappingError);
     throw mappingError;
   }
+
+  let mappings = data;
 
   if (!mappings || mappings.length === 0) {
     console.log("[Categoria] Tentativa 1 - Nenhum mapeamento encontrado com description_pattern");
