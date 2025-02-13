@@ -108,7 +108,7 @@ export function ImportCostsDialog() {
           Importar OFX
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="max-w-5xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Importar custos do OFX</DialogTitle>
           <DialogDescription>
@@ -116,7 +116,7 @@ export function ImportCostsDialog() {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4">
+        <div className="flex-1 min-h-0 py-4">
           {transactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8">
               <Input
@@ -131,15 +131,17 @@ export function ImportCostsDialog() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <ImportTransactionsTable
-                transactions={transactions}
-                onNameChange={handleNameChange}
-                onSelectionChange={handleSelectionChange}
-                onCategoryChange={handleCategoryChange}
-              />
+            <div className="space-y-4 h-full flex flex-col">
+              <div className="flex-1 min-h-0 overflow-auto">
+                <ImportTransactionsTable
+                  transactions={transactions}
+                  onNameChange={handleNameChange}
+                  onSelectionChange={handleSelectionChange}
+                  onCategoryChange={handleCategoryChange}
+                />
+              </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => {
