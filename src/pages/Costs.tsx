@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -62,8 +61,7 @@ export default function Costs() {
   });
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-6 p-4 md:p-6">
-      {/* Cabeçalho com título e botões de ação */}
+    <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Registro de Custos</h1>
@@ -85,7 +83,6 @@ export default function Costs() {
 
       <Separator className="my-6" />
 
-      {/* Card com métricas principais */}
       <Card className="p-6 bg-gray-50">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
@@ -112,10 +109,8 @@ export default function Costs() {
         </div>
       </Card>
 
-      {/* Gráficos */}
       <CostsMetrics costs={costs || []} filters={filters} />
 
-      {/* Barra de filtros e tabela */}
       <Card className="overflow-hidden">
         <div className="p-4 bg-gray-50 border-b">
           <CostsFiltersBar filters={filters} onFiltersChange={setFilters} />
@@ -129,7 +124,6 @@ export default function Costs() {
         </div>
       </Card>
 
-      {/* Diálogos */}
       <NewCostDialog
         open={isNewCostOpen}
         onOpenChange={setIsNewCostOpen}
