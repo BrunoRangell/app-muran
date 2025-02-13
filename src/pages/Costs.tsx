@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { Cost } from "@/types/cost";
 import { DateFilter } from "@/components/costs/filters/DateFilter";
 import { Separator } from "@/components/ui/separator";
 import { ImportCostsDialog } from "@/components/costs/filters/import/ImportCostsDialog";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
@@ -134,6 +136,8 @@ export default function Costs() {
         open={!!selectedCost}
         onOpenChange={(open) => !open && setSelectedCost(null)}
       />
+
+      <Toaster />
     </div>
   );
 }
