@@ -92,6 +92,39 @@ export type Database = {
         }
         Relationships: []
       }
+      costs: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["cost_category"] | null
+          created_at: string
+          date: string
+          description: string | null
+          id: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: Database["public"]["Enums"]["cost_category"] | null
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: never
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["cost_category"] | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: never
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           completed_at: string | null
@@ -133,6 +166,32 @@ export type Database = {
           target_value?: number
         }
         Relationships: []
+      }
+      imported_transactions: {
+        Row: {
+          cost_id: number | null
+          created_at: string
+          fitid: string
+        }
+        Insert: {
+          cost_id?: number | null
+          created_at?: string
+          fitid: string
+        }
+        Update: {
+          cost_id?: number | null
+          created_at?: string
+          fitid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_transactions_cost_id_fkey"
+            columns: ["cost_id"]
+            isOneToOne: false
+            referencedRelation: "costs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
