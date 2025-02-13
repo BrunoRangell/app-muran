@@ -8,7 +8,9 @@ export function useImportService() {
 
   const importTransactions = async (selectedTransactions: Transaction[]): Promise<number> => {
     try {
+      console.log("==================================");
       console.log("Iniciando importação de", selectedTransactions.length, "transações");
+      console.log("Transações a importar:", selectedTransactions);
       
       // Verificar transações já importadas
       const fitIds = selectedTransactions.map(t => t.fitid);
@@ -21,12 +23,15 @@ export function useImportService() {
 
       if (checkError) {
         console.error("Erro ao verificar transações existentes:", checkError);
-        throw new Error("Erro ao verificar transações existentes");
+        throw new Error(`Erro ao verificar transações existentes: ${checkError.message}`);
       }
+
+      console.log("Resultado da verificação de transações existentes:", existingImports);
 
       const alreadyImported = new Set(existingImports?.map(i => i.fitid) || []);
       const newTransactions = selectedTransactions.filter(t => !alreadyImported.has(t.fitid));
       console.log("Transações novas para importar:", newTransactions.length);
+      console.log("Detalhes das novas transações:", newTransactions);
 
       if (newTransactions.length === 0) {
         toast({
@@ -45,9 +50,7 @@ export function useImportService() {
         try {
           console.log("----------------------------------");
           console.log("[Transação] Iniciando processamento:", transaction.name);
-          console.log("[Transação] Valor:", transaction.amount);
-          console.log("[Transação] Data:", transaction.date);
-          console.log("[Transação] FitId:", transaction.fitid);
+          console.log("[Transação] Detalhes completos:", transaction);
           
           // Buscar categoria sugerida do mapeamento
           console.log("[Categoria] Buscando sugestão para:", transaction.name);
@@ -64,6 +67,8 @@ export function useImportService() {
             throw mappingError;
           }
 
+          console.log("[Categoria] Mapeamento encontrado:", mappings);
+
           // Usar categoria sugerida ou a selecionada pelo usuário
           const categoryId = transaction.category || mappings?.category_id;
           console.log("[Categoria] ID final:", categoryId);
@@ -76,7 +81,14 @@ export function useImportService() {
           }
 
           // Inserir o custo
-          console.log("[Custo] Inserindo custo para transação");
+          console.log("[Custo] Inserindo custo para transação com dados:", {
+            name: transaction.name,
+            original_name: transaction.originalName || transaction.name,
+            name_customized: transaction.originalName !== undefined && transaction.originalName !== transaction.name,
+            amount: transaction.amount,
+            date: transaction.date,
+          });
+
           const { data: cost, error: costError } = await supabase
             .from('costs')
             .insert({
@@ -100,10 +112,10 @@ export function useImportService() {
             throw new Error("Custo não foi criado corretamente");
           }
 
-          console.log("[Custo] Criado com sucesso, ID:", cost.id);
+          console.log("[Custo] Criado com sucesso:", cost);
 
           // Inserir a categoria do custo
-          console.log("[Categoria] Inserindo relação com custo");
+          console.log("[Categoria] Inserindo relação com custo. ID:", cost.id, "Categoria:", categoryId);
           const { error: categoriesError } = await supabase
             .from('costs_categories')
             .insert({
@@ -119,7 +131,7 @@ export function useImportService() {
           console.log("[Categoria] Relação criada com sucesso");
 
           // Registrar transação importada
-          console.log("[Importação] Registrando transação");
+          console.log("[Importação] Registrando transação. FitId:", transaction.fitid, "CostId:", cost.id);
           const { error: importError } = await supabase
             .from('imported_transactions')
             .insert({
@@ -147,7 +159,9 @@ export function useImportService() {
       }
 
       console.log("==================================");
-      console.log("Importação finalizada. Total importado:", importedCount);
+      console.log("Importação finalizada.");
+      console.log("Total importado:", importedCount);
+      console.log("Total pulado:", skippedCount);
       
       // Feedback mais detalhado no final da importação
       if (importedCount > 0 || skippedCount > 0) {
