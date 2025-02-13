@@ -1,7 +1,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trophy, TrendingUp, Clock } from "lucide-react";
+import { Trophy, TrendingUp, Clock, BarChart3 } from "lucide-react";
 import { Client } from "../types";
 import { formatCurrency } from "@/utils/formatters";
 import { useState } from "react";
@@ -11,33 +11,64 @@ interface ClientsRankingProps {
   clients: Client[];
 }
 
+type RankingMetric = 'monthly_revenue' | 'total_revenue' | 'retention';
+
 export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
-  const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'retention'>('revenue');
+  const [selectedMetric, setSelectedMetric] = useState<RankingMetric>('monthly_revenue');
 
   // Filtra apenas clientes ativos
   const activeClients = clients.filter(client => client.status === 'active');
 
   // Calcula o ranking baseado na métrica selecionada
   const rankedClients = [...activeClients].sort((a, b) => {
-    if (selectedMetric === 'revenue') {
-      return b.contract_value - a.contract_value;
+    switch (selectedMetric) {
+      case 'monthly_revenue':
+        return b.contract_value - a.contract_value;
+      case 'total_revenue':
+        const totalA = a.contract_value * calculateRetention(a);
+        const totalB = b.contract_value * calculateRetention(b);
+        return totalB - totalA;
+      case 'retention':
+        return calculateRetention(b) - calculateRetention(a);
+      default:
+        return 0;
     }
-    return calculateRetention(b) - calculateRetention(a);
   }).slice(0, 5); // Pega os top 5
+
+  const getMetricValue = (client: Client) => {
+    switch (selectedMetric) {
+      case 'monthly_revenue':
+        return formatCurrency(client.contract_value);
+      case 'total_revenue':
+        return formatCurrency(client.contract_value * calculateRetention(client));
+      case 'retention':
+        return `${calculateRetention(client)} meses`;
+      default:
+        return '';
+    }
+  };
 
   return (
     <Card className="p-6">
       <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center flex-wrap gap-4">
           <h2 className="text-xl font-bold text-muran-dark">Ranking de Clientes</h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
-              variant={selectedMetric === 'revenue' ? 'default' : 'outline'}
-              onClick={() => setSelectedMetric('revenue')}
+              variant={selectedMetric === 'monthly_revenue' ? 'default' : 'outline'}
+              onClick={() => setSelectedMetric('monthly_revenue')}
+              className="gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Por Receita Mensal
+            </Button>
+            <Button
+              variant={selectedMetric === 'total_revenue' ? 'default' : 'outline'}
+              onClick={() => setSelectedMetric('total_revenue')}
               className="gap-2"
             >
               <Trophy className="h-4 w-4" />
-              Por Receita
+              Por Receita Total
             </Button>
             <Button
               variant={selectedMetric === 'retention' ? 'default' : 'outline'}
@@ -63,9 +94,7 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
                 <div>
                   <h3 className="font-semibold text-muran-dark">{client.company_name}</h3>
                   <p className="text-sm text-gray-500">
-                    {selectedMetric === 'revenue' 
-                      ? formatCurrency(client.contract_value)
-                      : `${calculateRetention(client)} meses`}
+                    {getMetricValue(client)}
                   </p>
                 </div>
               </div>
