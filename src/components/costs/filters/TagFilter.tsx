@@ -31,20 +31,23 @@ export function TagFilter({ filters, onFiltersChange }: TagFilterProps) {
       const { data, error } = await supabase
         .from("cost_tags")
         .select(`
+          id,
           name,
-          costs_tags (
-            count
+          costs_tags!inner (
+            cost_id
           )
-        `);
+        `)
+        .order('name');
 
       if (error) {
         console.error("Erro ao carregar tags:", error);
         return;
       }
 
-      const tags = data.map(tag => ({
+      // Transforma os dados para contar as ocorrências de cada tag
+      const tags = (data || []).map(tag => ({
         name: tag.name,
-        count: tag.costs_tags.length
+        count: Array.isArray(tag.costs_tags) ? tag.costs_tags.length : 0
       }))
       .sort((a, b) => b.count - a.count);
 
