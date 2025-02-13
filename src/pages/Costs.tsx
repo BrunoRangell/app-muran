@@ -22,6 +22,8 @@ export default function Costs() {
   const { data: costs, isLoading } = useQuery({
     queryKey: ["costs", filters],
     queryFn: async () => {
+      console.log('Buscando custos com filtros:', filters);
+      
       let query = supabase
         .from("costs")
         .select("*")
@@ -47,6 +49,7 @@ export default function Costs() {
         throw error;
       }
 
+      console.log('Custos retornados:', data);
       return data;
     },
   });

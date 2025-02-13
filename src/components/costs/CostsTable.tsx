@@ -56,6 +56,8 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
   const handleDelete = async () => {
     if (!costToDelete) return;
 
+    console.log('Iniciando exclusão do custo:', costToDelete);
+
     const { error } = await supabase
       .from('costs')
       .delete()
@@ -69,11 +71,15 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
         variant: "destructive",
       });
     } else {
+      console.log('Custo excluído com sucesso');
       toast({
         title: "Custo excluído",
         description: "O custo foi excluído com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      
+      // Atualizar a query dos custos
+      await queryClient.invalidateQueries({ queryKey: ["costs"] });
+      console.log('Cache de custos invalidado');
     }
 
     setCostToDelete(null);
@@ -113,7 +119,10 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setCostToDelete(cost)}
+                      onClick={() => {
+                        console.log('Clicou para excluir custo:', cost);
+                        setCostToDelete(cost);
+                      }}
                       className="text-red-600 hover:text-red-700 hover:bg-red-100"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -137,7 +146,13 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
         </Table>
       </div>
 
-      <AlertDialog open={!!costToDelete} onOpenChange={(open) => !open && setCostToDelete(null)}>
+      <AlertDialog 
+        open={!!costToDelete} 
+        onOpenChange={(open) => {
+          console.log('Dialog onOpenChange:', open);
+          if (!open) setCostToDelete(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
