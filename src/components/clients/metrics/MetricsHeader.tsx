@@ -1,5 +1,5 @@
 
-import { Users, DollarSign, Calendar, CreditCard, Percent, TrendingUp, Tag } from "lucide-react";
+import { Users, DollarSign, Calendar, CreditCard, Percent, TrendingUp, Tag, TrendingDown, PieChart } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { FinancialMetricsData } from "../types";
 
@@ -10,6 +10,9 @@ interface MetricsHeaderProps {
 }
 
 export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: MetricsHeaderProps) => {
+  const profit = (metrics.mrr || 0) - (metrics.totalCosts || 0);
+  const marginProfit = metrics.mrr ? (profit / metrics.mrr) * 100 : 0;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <MetricCard
@@ -67,7 +70,30 @@ export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: Metric
         tooltip="Taxa de cancelamento mensal de clientes. Porcentagem de clientes que cancelaram em relação ao total"
         formatter={(value) => `${formatDecimal(value)}%`}
       />
+
+      <MetricCard
+        icon={DollarSign}
+        title="Total de Custos"
+        value={metrics.totalCosts || 0}
+        tooltip="Soma total dos custos no período selecionado"
+        formatter={formatCurrency}
+      />
+
+      <MetricCard
+        icon={profit >= 0 ? TrendingUp : TrendingDown}
+        title="Lucro"
+        value={profit}
+        tooltip="Lucro total no período (Receita - Custos)"
+        formatter={formatCurrency}
+      />
+
+      <MetricCard
+        icon={PieChart}
+        title="Margem de Lucro"
+        value={marginProfit}
+        tooltip="Percentual do lucro em relação à receita total"
+        formatter={(value) => `${formatDecimal(value)}%`}
+      />
     </div>
   );
 };
-

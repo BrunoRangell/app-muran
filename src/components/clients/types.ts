@@ -22,6 +22,7 @@ export interface FinancialMetricsData {
   totalClients: number;
   churnRate: number;
   averageTicket: number;
+  totalCosts: number;
 }
 
 export interface Client {
