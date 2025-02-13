@@ -1,70 +1,99 @@
 
-export type CostMacroCategory = 'despesas_operacionais' | 'despesas_administrativas' | 'investimentos_e_outros';
+export type CostMainCategory = 
+  | 'custos_diretos_operacao'
+  | 'custos_fixos_administrativos'
+  | 'investimentos_desenvolvimento'
+  | 'outros_excepcionais';
 
-export type CostCategory = 'marketing' | 'salarios' | 'comissoes' | 'impostos' | 'alimentacao' | 'ferramentas_e_softwares' | 'viagem_e_hospedagem' | 'equipamentos_e_escritorio' | 'despesas_financeiras' | 'outros' | 'eventos_e_treinamentos' | 'doacoes';
+export type CostSubcategory = 
+  | 'marketing_aquisicao'
+  | 'custos_vendas'
+  | 'infraestrutura_operacional'
+  | 'pessoal_administrativo'
+  | 'estrutura_fisica_digital'
+  | 'taxas_impostos'
+  | 'despesas_financeiras'
+  | 'expansao_negocio'
+  | 'eventos_networking'
+  | 'responsabilidade_social'
+  | 'despesas_corriqueiras'
+  | 'despesas_nao_planejadas';
+
+export interface CostTag {
+  id: number;
+  name: string;
+  created_at: string;
+}
 
 export interface Cost {
   id: number;
   name: string;
   amount: number;
-  category: CostCategory;
-  macro_category: CostMacroCategory;
+  main_category: CostMainCategory;
+  subcategory: CostSubcategory;
   date: string;
   description: string | null;
   created_at: string;
   updated_at: string;
+  tags?: CostTag[];
 }
 
 export interface CostFilters {
   startDate?: string;
   endDate?: string;
-  category?: CostCategory;
-  macro_category?: CostMacroCategory;
+  subcategory?: CostSubcategory;
+  main_category?: CostMainCategory;
   search?: string;
+  tags?: string[];
 }
 
 interface CategoryOption {
-  value: CostCategory;
+  value: CostSubcategory;
   label: string;
 }
 
-interface MacroCategoryDefinition {
+interface MainCategoryDefinition {
   label: string;
   categories: CategoryOption[];
 }
 
-export const COST_CATEGORIES_HIERARCHY: Record<CostMacroCategory, MacroCategoryDefinition> = {
-  despesas_operacionais: {
-    label: "Despesas Operacionais",
+export const COST_CATEGORIES_HIERARCHY: Record<CostMainCategory, MainCategoryDefinition> = {
+  custos_diretos_operacao: {
+    label: "Custos Diretos de Operação",
     categories: [
-      { value: "marketing", label: "Marketing" },
-      { value: "salarios", label: "Salários" },
-      { value: "comissoes", label: "Comissões" },
-      { value: "viagem_e_hospedagem", label: "Viagem e Hospedagem" },
-      { value: "alimentacao", label: "Alimentação" },
+      { value: "marketing_aquisicao", label: "Marketing e Aquisição de Clientes" },
+      { value: "custos_vendas", label: "Custos de Vendas" },
+      { value: "infraestrutura_operacional", label: "Infraestrutura Operacional" },
     ],
   },
-  despesas_administrativas: {
-    label: "Despesas Administrativas",
+  custos_fixos_administrativos: {
+    label: "Custos Fixos e Administrativos",
     categories: [
-      { value: "equipamentos_e_escritorio", label: "Equipamentos e Escritório" },
-      { value: "ferramentas_e_softwares", label: "Ferramentas e Softwares" },
-      { value: "impostos", label: "Impostos" },
+      { value: "pessoal_administrativo", label: "Pessoal Administrativo" },
+      { value: "estrutura_fisica_digital", label: "Estrutura Física/Digital" },
+      { value: "taxas_impostos", label: "Taxas e Impostos" },
       { value: "despesas_financeiras", label: "Despesas Financeiras" },
     ],
   },
-  investimentos_e_outros: {
-    label: "Investimentos e Outros",
+  investimentos_desenvolvimento: {
+    label: "Investimentos e Desenvolvimento",
     categories: [
-      { value: "eventos_e_treinamentos", label: "Eventos e Treinamentos" },
-      { value: "doacoes", label: "Doações" },
-      { value: "outros", label: "Outros" },
+      { value: "expansao_negocio", label: "Expansão de Negócio" },
+      { value: "eventos_networking", label: "Eventos e Networking" },
+      { value: "responsabilidade_social", label: "Responsabilidade Social" },
+    ],
+  },
+  outros_excepcionais: {
+    label: "Outros/Excepcionais",
+    categories: [
+      { value: "despesas_corriqueiras", label: "Despesas Corriqueiras" },
+      { value: "despesas_nao_planejadas", label: "Despesas Não Planejadas" },
     ],
   },
 } as const;
 
-export const MACRO_CATEGORIES = Object.entries(COST_CATEGORIES_HIERARCHY).map(([value, { label }]) => ({
-  value: value as CostMacroCategory,
+export const MAIN_CATEGORIES = Object.entries(COST_CATEGORIES_HIERARCHY).map(([value, { label }]) => ({
+  value: value as CostMainCategory,
   label,
 }));
 
@@ -72,6 +101,7 @@ export const ALL_COST_CATEGORIES = Object.values(COST_CATEGORIES_HIERARCHY).flat
   ({ categories }) => categories
 );
 
-export const getCategoriesForMacroCategory = (macroCategory: CostMacroCategory) => {
-  return COST_CATEGORIES_HIERARCHY[macroCategory].categories;
+export const getCategoriesForMainCategory = (mainCategory: CostMainCategory) => {
+  return COST_CATEGORIES_HIERARCHY[mainCategory].categories;
 };
+

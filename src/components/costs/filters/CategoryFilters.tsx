@@ -10,7 +10,7 @@ import {
 import { 
   CostFilters, 
   COST_CATEGORIES_HIERARCHY, 
-  MACRO_CATEGORIES
+  MAIN_CATEGORIES
 } from "@/types/cost";
 
 interface CategoryFiltersProps {
@@ -20,21 +20,21 @@ interface CategoryFiltersProps {
 
 export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersProps) {
   const [availableCategories, setAvailableCategories] = useState(() => 
-    filters.macro_category 
-      ? COST_CATEGORIES_HIERARCHY[filters.macro_category].categories
+    filters.main_category 
+      ? COST_CATEGORIES_HIERARCHY[filters.main_category].categories
       : []
   );
 
   return (
     <>
       <Select
-        value={filters.macro_category || "all"}
+        value={filters.main_category || "all"}
         onValueChange={(value) => {
           if (value === "all") {
             onFiltersChange({ 
               ...filters, 
-              macro_category: undefined,
-              category: undefined
+              main_category: undefined,
+              subcategory: undefined
             });
             setAvailableCategories([]);
           } else {
@@ -42,8 +42,8 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
             setAvailableCategories(newCategories);
             onFiltersChange({ 
               ...filters, 
-              macro_category: value as any,
-              category: undefined
+              main_category: value as any,
+              subcategory: undefined
             });
           }
         }}
@@ -53,7 +53,7 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">Todas</SelectItem>
-          {MACRO_CATEGORIES.map((category) => (
+          {MAIN_CATEGORIES.map((category) => (
             <SelectItem key={category.value} value={category.value}>
               {category.label}
             </SelectItem>
@@ -62,11 +62,11 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
       </Select>
 
       <Select
-        value={filters.category || "all"}
+        value={filters.subcategory || "all"}
         onValueChange={(value) =>
           onFiltersChange({ 
             ...filters, 
-            category: value === "all" ? undefined : value as any 
+            subcategory: value === "all" ? undefined : value as any 
           })
         }
       >
