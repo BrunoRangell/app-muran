@@ -2,10 +2,10 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CostCategory } from "@/types/cost";
@@ -91,39 +91,49 @@ export function ImportTransactionsTable({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-[380px] max-h-[300px] overflow-y-auto">
-                  <div className="p-2 space-y-2">
-                    {COST_CATEGORIES.map((category) => {
-                      const isSelected = transaction.categories.includes(category.id as CostCategory);
-                      
-                      return (
-                        <div
-                          key={category.id}
-                          className={cn(
-                            "flex flex-col space-y-1 rounded-md p-2 cursor-pointer hover:bg-muted",
-                            isSelected && "bg-muted"
-                          )}
-                          onClick={() => {
-                            const newCategories = isSelected
-                              ? transaction.categories.filter(id => id !== category.id)
-                              : [...transaction.categories, category.id as CostCategory];
-                            
-                            onCategoryChange(transaction.fitid, newCategories);
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4">
-                              {isSelected && <Check className="h-4 w-4" />}
+                <PopoverContent align="start" className="w-[380px] p-0">
+                  <ScrollArea className="h-[300px]">
+                    <div className="p-4 space-y-2">
+                      {COST_CATEGORIES.map((category) => {
+                        const isSelected = transaction.categories.includes(category.id as CostCategory);
+                        
+                        return (
+                          <div
+                            key={category.id}
+                            className={cn(
+                              "flex items-start gap-2 rounded-md p-2 cursor-pointer hover:bg-muted transition-colors",
+                              isSelected && "bg-muted"
+                            )}
+                            onClick={() => {
+                              const newCategories = isSelected
+                                ? transaction.categories.filter(id => id !== category.id)
+                                : [...transaction.categories, category.id as CostCategory];
+                              
+                              onCategoryChange(transaction.fitid, newCategories);
+                            }}
+                          >
+                            <Checkbox 
+                              checked={isSelected}
+                              className="mt-1"
+                              onCheckedChange={() => {
+                                const newCategories = isSelected
+                                  ? transaction.categories.filter(id => id !== category.id)
+                                  : [...transaction.categories, category.id as CostCategory];
+                                
+                                onCategoryChange(transaction.fitid, newCategories);
+                              }}
+                            />
+                            <div>
+                              <div className="font-medium">{category.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {category.description}
+                              </div>
                             </div>
-                            <span className="font-medium">{category.name}</span>
                           </div>
-                          <p className="text-sm text-muted-foreground pl-6">
-                            {category.description}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
                 </PopoverContent>
               </Popover>
             </TableCell>
