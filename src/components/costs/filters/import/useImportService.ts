@@ -28,8 +28,8 @@ export function useImportService() {
 
     // Importar transações como custos
     for (const transaction of newTransactions) {
-      // Validar categorias
-      if (!transaction.categories || transaction.categories.length === 0) {
+      // Validar categoria
+      if (!transaction.category) {
         console.error("Transação sem categoria:", transaction);
         continue;
       }
@@ -48,15 +48,13 @@ export function useImportService() {
 
         if (costError) throw costError;
 
-        // Inserir as categorias do custo
-        const categoriesInsertData = transaction.categories.map(categoryId => ({
-          cost_id: cost.id,
-          category_id: categoryId
-        }));
-
+        // Inserir a categoria do custo
         const { error: categoriesError } = await supabase
           .from('costs_categories')
-          .insert(categoriesInsertData);
+          .insert({
+            cost_id: cost.id,
+            category_id: transaction.category
+          });
 
         if (categoriesError) throw categoriesError;
 
