@@ -227,6 +227,35 @@ export type Database = {
         }
         Relationships: []
       }
+      imported_transactions: {
+        Row: {
+          cost_id: number | null
+          created_at: string
+          fitid: string
+          id: number
+        }
+        Insert: {
+          cost_id?: number | null
+          created_at?: string
+          fitid: string
+          id?: number
+        }
+        Update: {
+          cost_id?: number | null
+          created_at?: string
+          fitid?: string
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_transactions_cost_id_fkey"
+            columns: ["cost_id"]
+            isOneToOne: false
+            referencedRelation: "costs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -351,6 +380,36 @@ export type Database = {
           start_date?: string | null
           tiktok?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      transaction_categories_mapping: {
+        Row: {
+          created_at: string
+          description_pattern: string
+          id: number
+          last_used_at: string
+          main_category: Database["public"]["Enums"]["cost_main_category"]
+          subcategory: Database["public"]["Enums"]["cost_subcategory"]
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          description_pattern: string
+          id?: number
+          last_used_at?: string
+          main_category: Database["public"]["Enums"]["cost_main_category"]
+          subcategory: Database["public"]["Enums"]["cost_subcategory"]
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          description_pattern?: string
+          id?: number
+          last_used_at?: string
+          main_category?: Database["public"]["Enums"]["cost_main_category"]
+          subcategory?: Database["public"]["Enums"]["cost_subcategory"]
+          usage_count?: number
         }
         Relationships: []
       }
