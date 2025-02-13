@@ -1,7 +1,7 @@
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Banking } from 'ofx-js';
+import { parseOFX } from 'ofx-js';
 import { Transaction } from "./types";
 
 export function useTransactionParser() {
@@ -9,7 +9,7 @@ export function useTransactionParser() {
 
   const parseOFXFile = async (file: File): Promise<Transaction[]> => {
     const text = await file.text();
-    const ofx = await Banking.parse(text);
+    const ofx = await parseOFX(text);
     
     if (!ofx.bankAccounts?.[0]?.transactions) {
       throw new Error("Nenhuma transação encontrada no arquivo");
