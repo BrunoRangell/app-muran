@@ -3,10 +3,12 @@ import { supabase } from "@/lib/supabase";
 import { Transaction } from "../types";
 
 export async function suggestCategory(transaction: Transaction) {
-  // Executar função de extração de padrão
+  const description = transaction.originalName || transaction.name;
+  
+  // Extrair padrão da transação atual
   const { data: pattern, error: patternError } = await supabase
     .rpc('extract_transaction_pattern', {
-      description: transaction.originalName || transaction.name
+      description: description
     });
 
   if (patternError) {
@@ -16,12 +18,12 @@ export async function suggestCategory(transaction: Transaction) {
 
   console.log("[Padrão] Extraído:", pattern);
   
-  // Buscar categoria sugerida do mapeamento
+  // Buscar categoria sugerida do mapeamento, verificando tanto o padrão original quanto o editado
   console.log("[Categoria] Buscando sugestão para padrão:", pattern);
   const { data: mappings, error: mappingError } = await supabase
     .from('transaction_categories_mapping')
-    .select('category_id')
-    .eq('description_pattern', pattern)
+    .select('category_id, usage_count')
+    .or(`original_pattern.eq.${pattern},last_edited_pattern.eq.${pattern}`)
     .order('usage_count', { ascending: false })
     .limit(1)
     .maybeSingle();

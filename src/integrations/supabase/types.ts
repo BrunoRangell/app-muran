@@ -350,19 +350,25 @@ export type Database = {
         Row: {
           category_id: string | null
           description_pattern: string
+          last_edited_pattern: string | null
           last_used_at: string
+          original_pattern: string | null
           usage_count: number | null
         }
         Insert: {
           category_id?: string | null
           description_pattern: string
+          last_edited_pattern?: string | null
           last_used_at?: string
+          original_pattern?: string | null
           usage_count?: number | null
         }
         Update: {
           category_id?: string | null
           description_pattern?: string
+          last_edited_pattern?: string | null
           last_used_at?: string
+          original_pattern?: string | null
           usage_count?: number | null
         }
         Relationships: []
