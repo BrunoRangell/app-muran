@@ -25,6 +25,19 @@ export function ImportTransactionsTable({
   onSelectionChange,
   onCategoryChange,
 }: ImportTransactionsTableProps) {
+  const handleCategoryToggle = (transaction: Transaction, categoryId: CostCategory) => {
+    console.log('Tentando alternar categoria:', categoryId);
+    console.log('Categorias atuais:', transaction.categories);
+    
+    const isSelected = transaction.categories.includes(categoryId);
+    const newCategories = isSelected
+      ? transaction.categories.filter(id => id !== categoryId)
+      : [...transaction.categories, categoryId];
+    
+    console.log('Novas categorias:', newCategories);
+    onCategoryChange(transaction.fitid, newCategories);
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -104,26 +117,15 @@ export function ImportTransactionsTable({
                               "flex items-start gap-2 rounded-md p-2 cursor-pointer hover:bg-muted transition-colors",
                               isSelected && "bg-muted"
                             )}
-                            onClick={() => {
-                              const newCategories = isSelected
-                                ? transaction.categories.filter(id => id !== category.id)
-                                : [...transaction.categories, category.id as CostCategory];
-                              
-                              onCategoryChange(transaction.fitid, newCategories);
-                            }}
                           >
                             <Checkbox 
                               checked={isSelected}
-                              className="mt-1"
-                              onCheckedChange={() => {
-                                const newCategories = isSelected
-                                  ? transaction.categories.filter(id => id !== category.id)
-                                  : [...transaction.categories, category.id as CostCategory];
-                                
-                                onCategoryChange(transaction.fitid, newCategories);
-                              }}
+                              onCheckedChange={() => handleCategoryToggle(transaction, category.id as CostCategory)}
                             />
-                            <div>
+                            <div 
+                              className="flex-1"
+                              onClick={() => handleCategoryToggle(transaction, category.id as CostCategory)}
+                            >
                               <div className="font-medium">{category.name}</div>
                               <div className="text-sm text-muted-foreground">
                                 {category.description}
