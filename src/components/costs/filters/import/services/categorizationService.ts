@@ -20,14 +20,12 @@ export async function suggestCategory(transaction: Transaction) {
 
   console.log("[Padrão] Extraído:", pattern);
   
-  // Buscar categoria sugerida do mapeamento, verificando tanto o padrão original quanto o editado
-  const query = 'original_pattern.eq.' + JSON.stringify(pattern) + ',last_edited_pattern.eq.' + JSON.stringify(pattern);
-  console.log("[Categoria] Query de busca:", query);
-  
+  // Buscar categoria sugerida do mapeamento usando a própria descrição como padrão
+  // Aqui vamos tentar uma correspondência exata da descrição
   const { data: mappings, error: mappingError } = await supabase
     .from('transaction_categories_mapping')
     .select('*')
-    .or(query)
+    .eq('description_pattern', description)
     .order('usage_count', { ascending: false });
 
   if (mappingError) {
