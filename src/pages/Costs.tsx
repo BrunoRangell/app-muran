@@ -24,15 +24,7 @@ export default function Costs() {
     queryFn: async () => {
       let query = supabase
         .from("costs")
-        .select(`
-          *,
-          costs_tags (
-            cost_tags (
-              id,
-              name
-            )
-          )
-        `)
+        .select("*")
         .order("date", { ascending: false });
 
       if (filters.startDate) {
@@ -47,22 +39,6 @@ export default function Costs() {
       if (filters.search) {
         query = query.ilike("name", `%${filters.search}%`);
       }
-      if (filters.tags && filters.tags.length > 0) {
-        const { data: costIds } = await supabase
-          .from("costs_tags")
-          .select("cost_id")
-          .in("tag_id", (await supabase
-            .from("cost_tags")
-            .select("id")
-            .in("name", filters.tags)
-          ).data?.map(t => t.id) || []);
-
-        if (costIds && costIds.length > 0) {
-          query = query.in("id", costIds.map(c => c.cost_id));
-        } else {
-          return [];
-        }
-      }
 
       const { data, error } = await query;
 
@@ -71,15 +47,7 @@ export default function Costs() {
         throw error;
       }
 
-      // Transforma os dados aninhados em um formato mais simples
-      return data.map(cost => ({
-        ...cost,
-        tags: cost.costs_tags
-          ? cost.costs_tags
-              .map((t: any) => t.cost_tags)
-              .filter(Boolean)
-          : [],
-      }));
+      return data;
     },
   });
 
