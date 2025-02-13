@@ -92,98 +92,38 @@ export type Database = {
         }
         Relationships: []
       }
-      cost_tags: {
-        Row: {
-          created_at: string
-          id: number
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          name: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          name?: string
-        }
-        Relationships: []
-      }
       costs: {
         Row: {
           amount: number
+          category: Database["public"]["Enums"]["cost_subcategory"] | null
           created_at: string
           date: string
           description: string | null
           id: number
-          main_category:
-            | Database["public"]["Enums"]["cost_main_category"]
-            | null
           name: string
-          subcategory: Database["public"]["Enums"]["cost_subcategory"] | null
           updated_at: string
         }
         Insert: {
           amount: number
+          category?: Database["public"]["Enums"]["cost_subcategory"] | null
           created_at?: string
           date: string
           description?: string | null
           id?: number
-          main_category?:
-            | Database["public"]["Enums"]["cost_main_category"]
-            | null
           name: string
-          subcategory?: Database["public"]["Enums"]["cost_subcategory"] | null
           updated_at?: string
         }
         Update: {
           amount?: number
+          category?: Database["public"]["Enums"]["cost_subcategory"] | null
           created_at?: string
           date?: string
           description?: string | null
           id?: number
-          main_category?:
-            | Database["public"]["Enums"]["cost_main_category"]
-            | null
           name?: string
-          subcategory?: Database["public"]["Enums"]["cost_subcategory"] | null
           updated_at?: string
         }
         Relationships: []
-      }
-      costs_tags: {
-        Row: {
-          cost_id: number
-          created_at: string
-          tag_id: number
-        }
-        Insert: {
-          cost_id: number
-          created_at?: string
-          tag_id: number
-        }
-        Update: {
-          cost_id?: number
-          created_at?: string
-          tag_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "costs_tags_cost_id_fkey"
-            columns: ["cost_id"]
-            isOneToOne: false
-            referencedRelation: "costs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "costs_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "cost_tags"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       goals: {
         Row: {
@@ -385,30 +325,27 @@ export type Database = {
       }
       transaction_categories_mapping: {
         Row: {
+          category: Database["public"]["Enums"]["cost_subcategory"]
           created_at: string
           description_pattern: string
           id: number
           last_used_at: string
-          main_category: Database["public"]["Enums"]["cost_main_category"]
-          subcategory: Database["public"]["Enums"]["cost_subcategory"]
           usage_count: number
         }
         Insert: {
+          category: Database["public"]["Enums"]["cost_subcategory"]
           created_at?: string
           description_pattern: string
           id?: number
           last_used_at?: string
-          main_category: Database["public"]["Enums"]["cost_main_category"]
-          subcategory: Database["public"]["Enums"]["cost_subcategory"]
           usage_count?: number
         }
         Update: {
+          category?: Database["public"]["Enums"]["cost_subcategory"]
           created_at?: string
           description_pattern?: string
           id?: number
           last_used_at?: string
-          main_category?: Database["public"]["Enums"]["cost_main_category"]
-          subcategory?: Database["public"]["Enums"]["cost_subcategory"]
           usage_count?: number
         }
         Relationships: []
