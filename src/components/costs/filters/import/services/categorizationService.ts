@@ -28,7 +28,7 @@ export async function suggestCategory(transaction: Transaction) {
   const { data: similarMatches, error: similarError } = await supabase
     .from('transaction_categories_mapping')
     .select('*')
-    .eq('last_edited_pattern', 'UNCLIK CONTABILIDADE DIGITAL LTDA');
+    .eq('description_pattern', 'Pix enviado: "Cp :15111975-UNCLIK CONTABILIDADE DIGITAL LTDA"');
 
   if (similarError) {
     console.error("[Categoria] Erro ao buscar mapeamento similar:", similarError);
