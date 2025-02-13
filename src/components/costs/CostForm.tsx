@@ -19,9 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { CostFormData } from "./schemas/costFormSchema";
 import { UseFormReturn } from "react-hook-form";
-import { MAIN_CATEGORIES, getCategoriesForMainCategory } from "@/types/cost";
-import { useState } from "react";
-import { TagsInput } from "./tags/TagsInput";
+import { COST_CATEGORIES } from "@/types/cost";
 
 interface CostFormProps {
   form: UseFormReturn<CostFormData>;
@@ -38,10 +36,6 @@ export function CostForm({
   handleAmountChange,
   onCancel,
 }: CostFormProps) {
-  const [availableCategories, setAvailableCategories] = useState(() => 
-    getCategoriesForMainCategory(form.getValues().main_category || 'custos_diretos_operacao')
-  );
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -79,51 +73,18 @@ export function CostForm({
 
         <FormField
           control={form.control}
-          name="main_category"
+          name="category"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Categoria Principal</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  field.onChange(value);
-                  const newCategories = getCategoriesForMainCategory(value as any);
-                  setAvailableCategories(newCategories);
-                  form.setValue('subcategory', newCategories[0].value);
-                }}
-                defaultValue={field.value}
-              >
+              <FormLabel>Categoria</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || undefined}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria principal" />
+                    <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {MAIN_CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="subcategory"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Subcategoria</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma subcategoria" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {availableCategories.map((category) => (
+                  {COST_CATEGORIES.map((category) => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
                     </SelectItem>
@@ -143,23 +104,6 @@ export function CostForm({
               <FormLabel>Data</FormLabel>
               <FormControl>
                 <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="tags"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tags</FormLabel>
-              <FormControl>
-                <TagsInput
-                  value={field.value || []}
-                  onChange={field.onChange}
-                />
               </FormControl>
               <FormMessage />
             </FormItem>
