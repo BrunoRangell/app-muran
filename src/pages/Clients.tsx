@@ -30,13 +30,15 @@ const Clients = () => {
 
       return data as Client[];
     },
-    onError: (error) => {
-      console.error("Erro na query de clientes:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar clientes",
-        description: error instanceof Error ? error.message : "Tente novamente mais tarde",
-      });
+    meta: {
+      onError: (error: Error) => {
+        console.error("Erro na query de clientes:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar clientes",
+          description: error instanceof Error ? error.message : "Tente novamente mais tarde",
+        });
+      }
     }
   });
 
