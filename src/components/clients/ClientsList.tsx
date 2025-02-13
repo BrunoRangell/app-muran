@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter, X } from "lucide-react";
+import { Plus, Filter, X, Loader } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { ClientForm } from "@/components/admin/ClientForm";
@@ -43,13 +43,25 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
   ]);
 
   const { data: clients, isLoading, error, refetch } = useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", filters], // Adiciona filters como dependência
     queryFn: async () => {
-      console.log("Buscando lista de clientes...");
-      const { data, error } = await supabase
+      console.log("Buscando lista de clientes com filtros:", filters);
+      let query = supabase
         .from("clients")
-        .select("*")
-        .order("company_name");
+        .select("*");
+
+      // Aplica filtros dinâmicos
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters.acquisition_channel) {
+        query = query.eq('acquisition_channel', filters.acquisition_channel);
+      }
+      if (filters.payment_type) {
+        query = query.eq('payment_type', filters.payment_type);
+      }
+
+      const { data, error } = await query.order("company_name");
 
       if (error) {
         console.error("Erro ao buscar clientes:", error);
@@ -59,21 +71,19 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
       console.log("Clientes carregados com sucesso:", data);
       return data as Client[];
     },
+    meta: {
+      onError: (error: Error) => {
+        console.error("Erro na query de clientes:", error);
+        toast({
+          title: "Erro ao carregar clientes",
+          description: "Não foi possível carregar a lista de clientes. Por favor, tente novamente.",
+          variant: "destructive",
+        });
+      }
+    },
     staleTime: 1000 * 60 * 5, // Cache por 5 minutos
-    retry: 2, // Tentar no máximo 2 vezes em caso de erro
-    refetchOnWindowFocus: false // Não recarregar ao mudar de aba
+    refetchOnWindowFocus: false // Não recarrega ao mudar de aba
   });
-
-  useEffect(() => {
-    if (error) {
-      console.error("Erro na query de clientes:", error);
-      toast({
-        title: "Erro ao carregar clientes",
-        description: "Não foi possível carregar a lista de clientes. Por favor, tente novamente.",
-        variant: "destructive",
-      });
-    }
-  }, [error, toast]);
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);
@@ -109,14 +119,6 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
     }));
   };
 
-  const filteredAndSortedClients = clients?.filter(client => {
-    return (
-      (!filters.status || client.status === filters.status) &&
-      (!filters.acquisition_channel || client.acquisition_channel === filters.acquisition_channel) &&
-      (!filters.payment_type || client.payment_type === filters.payment_type)
-    );
-  });
-
   const hasActiveFilters = Object.values(filters).some(value => value !== "");
 
   const clearFilters = () => {
@@ -127,8 +129,31 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
     });
   };
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4 animate-fade-in">
+        <div className="p-4 bg-red-50 rounded-full">
+          <X className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
+        <p className="text-center text-gray-600">
+          Não foi possível carregar a lista de clientes.
+          <br />
+          Por favor, tente novamente mais tarde.
+        </p>
+        <Button 
+          variant="outline" 
+          onClick={() => refetch()}
+          className="mt-4"
+        >
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         {viewMode === 'default' && (
           <>
@@ -158,11 +183,14 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
 
       <div className="flex-1 overflow-hidden">
         {isLoading ? (
-          <p className="text-gray-600">Carregando clientes...</p>
+          <div className="flex flex-col items-center justify-center p-8 gap-4">
+            <Loader className="h-8 w-8 animate-spin text-muran-primary" />
+            <p className="text-gray-600">Carregando clientes...</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <ClientsTable 
-              clients={filteredAndSortedClients || []} 
+              clients={clients || []} 
               columns={columns.filter(col => viewMode === 'payments' ? col.fixed : col.show)} 
               onEditClick={handleEditClick}
               sortConfig={sortConfig}
