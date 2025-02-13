@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ImportTransactionsTableProps {
   transactions: Transaction[];
@@ -81,22 +82,24 @@ export function ImportTransactionsTable({
                     {getCategoryName(transaction.category)}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px] overflow-y-auto">
-                  <SelectGroup>
-                    {COST_CATEGORIES.map((category) => (
-                      <SelectItem 
-                        key={category.id} 
-                        value={category.id}
-                      >
-                        <div className="flex flex-col">
-                          <span>{category.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {category.description}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+                <SelectContent>
+                  <ScrollArea className="h-[200px]">
+                    <SelectGroup>
+                      {COST_CATEGORIES.map((category) => (
+                        <SelectItem 
+                          key={category.id} 
+                          value={category.id}
+                        >
+                          <div className="flex flex-col">
+                            <span>{category.name}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {category.description}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </ScrollArea>
                 </SelectContent>
               </Select>
             </TableCell>
