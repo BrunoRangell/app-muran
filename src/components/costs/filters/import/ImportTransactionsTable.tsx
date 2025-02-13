@@ -99,33 +99,36 @@ export function ImportTransactionsTable({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[380px] p-0">
+                <PopoverContent className="w-[380px] p-0" align="start">
                   <Command>
                     <CommandInput placeholder="Procurar categoria..." />
                     <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
-                    <CommandGroup>
+                    <CommandGroup className="max-h-[300px] overflow-y-auto">
                       {COST_CATEGORIES.map((category) => (
                         <CommandItem
                           key={category.id}
                           value={category.id}
-                          onSelect={() => toggleCategory(transaction.fitid, category.id, transaction.categories)}
+                          onSelect={() => toggleCategory(
+                            transaction.fitid, 
+                            category.id as CostCategory,
+                            transaction.categories
+                          )}
+                          className="flex flex-col items-start py-2"
                         >
-                          <div className="flex flex-col flex-1 py-2">
-                            <div className="flex items-center">
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  transaction.categories.includes(category.id)
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                              <span className="font-medium">{category.name}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground ml-6">
-                              {category.description}
-                            </p>
+                          <div className="flex items-center w-full">
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                transaction.categories.includes(category.id as CostCategory)
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            <span className="font-medium">{category.name}</span>
                           </div>
+                          <p className="text-sm text-muted-foreground ml-6">
+                            {category.description}
+                          </p>
                         </CommandItem>
                       ))}
                     </CommandGroup>

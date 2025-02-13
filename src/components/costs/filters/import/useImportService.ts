@@ -70,22 +70,6 @@ export function useImportService() {
 
         if (importError) throw importError;
 
-        // Atualizar mapeamentos de categoria
-        for (const categoryId of transaction.categories) {
-          const { error: mappingError } = await supabase
-            .from('transaction_categories_mapping')
-            .upsert({
-              description_pattern: transaction.name,
-              category_id: categoryId,
-              usage_count: 1,
-              last_used_at: new Date().toISOString()
-            }, {
-              onConflict: 'description_pattern,category_id',
-              ignoreDuplicates: false
-            });
-
-          if (mappingError) throw mappingError;
-        }
       } catch (error) {
         console.error("Erro ao importar transação:", error);
         toast({
