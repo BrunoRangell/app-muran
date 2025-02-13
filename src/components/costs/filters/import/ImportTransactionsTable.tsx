@@ -81,8 +81,12 @@ export function ImportTransactionsTable({
                     {getCategoryName(transaction.category)}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent align="end" className="max-h-[300px] overflow-y-scroll">
-                  <SelectGroup>
+                <SelectContent 
+                  className="h-[300px]" 
+                  position="popper" 
+                  sideOffset={5}
+                >
+                  <SelectGroup className="overflow-y-auto max-h-[300px]">
                     {COST_CATEGORIES.map((category) => (
                       <SelectItem 
                         key={category.id} 
