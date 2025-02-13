@@ -7,7 +7,7 @@ export interface Transaction {
   amount: number;
   date: string;
   selected: boolean;
-  categories?: CostCategory[];
+  categories: CostCategory[];
 }
 
 export interface ImportService {

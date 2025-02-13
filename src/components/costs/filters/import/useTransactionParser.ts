@@ -27,9 +27,9 @@ export function useTransactionParser() {
 
       return ofx.bankAccounts[0].transactions.map(t => {
         // Tentar encontrar um mapeamento existente
-        const mapping = existingMappings?.find(m => 
+        const mappings = existingMappings?.filter(m => 
           t.name.toLowerCase().includes(m.description_pattern.toLowerCase())
-        );
+        ) || [];
 
         return {
           fitid: t.fitId,
@@ -37,8 +37,8 @@ export function useTransactionParser() {
           amount: Math.abs(Number(t.amount)), // Mantemos apenas o valor absoluto
           date: t.date,
           selected: true,
-          mainCategory: mapping?.main_category,
-          subcategory: mapping?.subcategory
+          // Garantir que categories sempre seja um array
+          categories: mappings.map(m => m.category_id).filter((id): id is CostCategory => id !== null)
         };
       });
     } catch (error) {
