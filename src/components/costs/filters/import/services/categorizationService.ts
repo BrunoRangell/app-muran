@@ -5,9 +5,12 @@ import { Transaction } from "../types";
 function normalizeString(str: string): string {
   return str
     .trim()
+    .replace(/["']/g, '') // Remove aspas simples e duplas
     .replace(/\s+/g, ' ')  // Remove espaços extras
+    .replace(/[-:]/g, '')  // Remove hífens e dois pontos
     .normalize('NFD')      // Normaliza caracteres Unicode
-    .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .toLowerCase();        // Converte para minúsculas
 }
 
 export async function suggestCategory(transaction: Transaction) {
@@ -28,9 +31,15 @@ export async function suggestCategory(transaction: Transaction) {
 
   // Procurar por correspondência exata após normalização
   const normalizedDescription = normalizeString(description);
-  const exactMatch = allMappings?.find(mapping => 
-    normalizeString(mapping.description_pattern) === normalizedDescription
-  );
+  const exactMatch = allMappings?.find(mapping => {
+    const normalizedPattern = normalizeString(mapping.description_pattern);
+    console.log("[Debug] Comparando normalizado:", {
+      entrada: normalizedDescription,
+      padrao: normalizedPattern,
+      igual: normalizedPattern === normalizedDescription
+    });
+    return normalizedPattern === normalizedDescription;
+  });
 
   if (exactMatch) {
     console.log("[Categoria] Encontrada correspondência exata após normalização:", exactMatch);
@@ -39,16 +48,14 @@ export async function suggestCategory(transaction: Transaction) {
 
   console.log("[Categoria] Nenhuma correspondência exata encontrada após normalização");
   
-  // Comparar strings para debug
+  // Log detalhado para todas as strings no banco
   if (allMappings) {
+    console.log("[Debug] Todos os padrões disponíveis:");
     allMappings.forEach(mapping => {
-      const normalizedPattern = normalizeString(mapping.description_pattern);
-      console.log("[Debug] Comparando:", {
-        pattern: mapping.description_pattern,
-        normalizedPattern,
-        matches: normalizedPattern === normalizedDescription,
-        lengthPattern: normalizedPattern.length,
-        lengthDescription: normalizedDescription.length
+      console.log({
+        original: mapping.description_pattern,
+        normalizado: normalizeString(mapping.description_pattern),
+        categoria: mapping.category_id
       });
     });
   }
