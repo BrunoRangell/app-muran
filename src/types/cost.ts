@@ -104,4 +104,3 @@ export const ALL_COST_CATEGORIES = Object.values(COST_CATEGORIES_HIERARCHY).flat
 export const getCategoriesForMainCategory = (mainCategory: CostMainCategory) => {
   return COST_CATEGORIES_HIERARCHY[mainCategory].categories;
 };
-
