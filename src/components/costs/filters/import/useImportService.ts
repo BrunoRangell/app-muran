@@ -70,9 +70,9 @@ export function useImportService() {
           if (!categoryId) {
             console.warn("[Categoria] Transação sem categoria, pulando...");
             toast({
-              title: "Transação pulada",
+              title: "Atenção",
               description: `A transação "${transaction.name}" não possui categoria definida.`,
-              variant: "warning"
+              variant: "destructive"
             });
             continue;
           }
