@@ -92,39 +92,6 @@ export type Database = {
         }
         Relationships: []
       }
-      costs: {
-        Row: {
-          amount: number
-          category: Database["public"]["Enums"]["cost_subcategory"] | null
-          created_at: string
-          date: string
-          description: string | null
-          id: number
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          category?: Database["public"]["Enums"]["cost_subcategory"] | null
-          created_at?: string
-          date: string
-          description?: string | null
-          id?: number
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          category?: Database["public"]["Enums"]["cost_subcategory"] | null
-          created_at?: string
-          date?: string
-          description?: string | null
-          id?: number
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       goals: {
         Row: {
           completed_at: string | null
@@ -166,35 +133,6 @@ export type Database = {
           target_value?: number
         }
         Relationships: []
-      }
-      imported_transactions: {
-        Row: {
-          cost_id: number | null
-          created_at: string
-          fitid: string
-          id: number
-        }
-        Insert: {
-          cost_id?: number | null
-          created_at?: string
-          fitid: string
-          id?: number
-        }
-        Update: {
-          cost_id?: number | null
-          created_at?: string
-          fitid?: string
-          id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "imported_transactions_cost_id_fkey"
-            columns: ["cost_id"]
-            isOneToOne: false
-            referencedRelation: "costs"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       payments: {
         Row: {
@@ -320,33 +258,6 @@ export type Database = {
           start_date?: string | null
           tiktok?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      transaction_categories_mapping: {
-        Row: {
-          category: Database["public"]["Enums"]["cost_subcategory"]
-          created_at: string
-          description_pattern: string
-          id: number
-          last_used_at: string
-          usage_count: number
-        }
-        Insert: {
-          category: Database["public"]["Enums"]["cost_subcategory"]
-          created_at?: string
-          description_pattern: string
-          id?: number
-          last_used_at?: string
-          usage_count?: number
-        }
-        Update: {
-          category?: Database["public"]["Enums"]["cost_subcategory"]
-          created_at?: string
-          description_pattern?: string
-          id?: number
-          last_used_at?: string
-          usage_count?: number
         }
         Relationships: []
       }

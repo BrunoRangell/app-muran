@@ -1,5 +1,5 @@
 
-import { CostMainCategory, CostSubcategory } from "@/types/cost";
+import { CostCategory } from "@/types/cost";
 
 export interface Transaction {
   fitid: string;
@@ -7,8 +7,7 @@ export interface Transaction {
   amount: number;
   date: string;
   selected: boolean;
-  mainCategory?: CostMainCategory;
-  subcategory?: CostSubcategory;
+  category?: CostCategory;
 }
 
 export interface ImportService {
