@@ -70,7 +70,7 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[380px] p-0" align="start">
-        <Command>
+        <Command shouldFilter={true}>
           <CommandInput placeholder="Procurar categoria..." />
           <CommandList>
             <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
@@ -79,7 +79,7 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
                 {categories.map((category) => (
                   <CommandItem
                     key={category.id}
-                    value={category.id}
+                    value={`${category.name}-${category.id}`}
                     onSelect={() => toggleCategory(category.id as CostCategory)}
                   >
                     <div className="flex flex-col flex-1 py-2">
