@@ -3,7 +3,7 @@ import { CostFilters } from "@/types/cost";
 import { SearchFilter } from "./filters/SearchFilter";
 import { CategoryFilters } from "./filters/CategoryFilters";
 import { TagFilter } from "./filters/TagFilter";
-import { ImportCostsDialog } from "./import/ImportCostsDialog";
+import { ImportCostsDialog } from "./filters/import/ImportCostsDialog";
 
 interface CostsFiltersBarProps {
   filters: CostFilters;
