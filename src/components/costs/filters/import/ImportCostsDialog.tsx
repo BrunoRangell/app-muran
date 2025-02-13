@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import { Transaction } from "./types";
 import { useTransactionParser } from "./useTransactionParser";
 import { useImportService } from "./useImportService";
 import { CostCategory } from "@/types/cost";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -130,7 +132,7 @@ export function ImportCostsDialog() {
           Importar OFX
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[90vw] w-full lg:max-w-5xl h-[90vh] flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Importar custos do OFX</DialogTitle>
           <DialogDescription>
@@ -138,7 +140,7 @@ export function ImportCostsDialog() {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0">
           {transactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8">
               <Input
@@ -153,15 +155,15 @@ export function ImportCostsDialog() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4 h-full flex flex-col">
-              <div className="flex-1 overflow-auto border rounded-md">
+            <div className="space-y-4">
+              <ScrollArea className="h-[calc(80vh-220px)] w-full rounded-md border p-4">
                 <ImportTransactionsTable
                   transactions={transactions}
                   onNameChange={handleNameChange}
                   onSelectionChange={handleSelectionChange}
                   onCategoryChange={handleCategoryChange}
                 />
-              </div>
+              </ScrollArea>
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button
