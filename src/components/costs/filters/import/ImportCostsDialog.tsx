@@ -18,6 +18,7 @@ import { useTransactionParser } from "./useTransactionParser";
 import { useImportService } from "./useImportService";
 import { CostCategory } from "@/types/cost";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,6 +28,7 @@ export function ImportCostsDialog() {
   const { toast } = useToast();
   const { parseOFXFile } = useTransactionParser();
   const { importTransactions } = useImportService();
+  const queryClient = useQueryClient();
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -151,6 +153,9 @@ export function ImportCostsDialog() {
       const importedCount = await importTransactions(selectedTransactions);
       
       if (importedCount > 0) {
+        // Invalidar a cache do React Query para atualizar a lista de custos
+        await queryClient.invalidateQueries({ queryKey: ["costs"] });
+        
         toast({
           title: "Importação concluída",
           description: `${importedCount} transações foram importadas com sucesso.`
