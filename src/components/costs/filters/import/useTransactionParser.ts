@@ -3,6 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { parseOFX } from "./ofxParser";
 import { Transaction } from "./types";
+import { CostCategory } from "@/types/cost";
 
 export function useTransactionParser() {
   const { toast } = useToast();
@@ -31,14 +32,23 @@ export function useTransactionParser() {
           t.name.toLowerCase().includes(m.description_pattern.toLowerCase())
         ) || [];
 
+        // Extrair as categorias e garantir que são válidas
+        const validCategories = mappings
+          .map(m => m.category_id)
+          .filter((id): id is CostCategory => 
+            id !== null && 
+            ['marketing', 'vendas', 'plataformas_ferramentas', 'despesas_pessoal', 
+             'taxas_impostos', 'servicos_profissionais', 'eventos_networking', 
+             'acoes_sociais'].includes(id)
+          );
+
         return {
           fitid: t.fitId,
           name: t.name,
           amount: Math.abs(Number(t.amount)), // Mantemos apenas o valor absoluto
           date: t.date,
           selected: true,
-          // Garantir que categories sempre seja um array
-          categories: mappings.map(m => m.category_id).filter((id): id is CostCategory => id !== null)
+          categories: validCategories // Já garantimos que é um array válido de CostCategory
         };
       });
     } catch (error) {
