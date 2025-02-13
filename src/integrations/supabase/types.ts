@@ -68,7 +68,7 @@ export type Database = {
           company_name: string
           contact_name: string
           contact_phone: string
-          contract_value: number
+          contract_value?: number
           created_at?: string
           first_payment_date: string
           id?: string
@@ -105,7 +105,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          amount: number
+          amount?: number
           created_at?: string
           date: string
           description?: string | null
@@ -230,7 +230,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          amount: number
+          amount?: number
           client_id?: string | null
           created_at?: string
           id?: number
@@ -248,6 +248,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "client_exists"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_client_id_fkey"
             columns: ["client_id"]

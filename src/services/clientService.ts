@@ -48,22 +48,34 @@ export const prepareClientData = async (formData: ClientFormData): Promise<Clien
   
   const contractValue = parseCurrencyToNumber(String(formData.contractValue));
   
-  if (isNaN(contractValue) || contractValue <= 0) {
-    throw new Error("Valor do contrato inválido");
+  if (isNaN(contractValue) || contractValue < 0) {
+    throw new Error("Valor do contrato inválido: deve ser maior ou igual a zero");
+  }
+
+  if (!formData.companyName?.trim()) {
+    throw new Error("Nome da empresa é obrigatório");
+  }
+
+  if (!formData.firstPaymentDate) {
+    throw new Error("Data do primeiro pagamento é obrigatória");
+  }
+
+  if (formData.status === "inactive" && !formData.lastPaymentDate) {
+    throw new Error("Data do último pagamento é obrigatória para clientes inativos");
   }
 
   const clientData = {
-    company_name: formData.companyName,
+    company_name: formData.companyName.trim(),
     contract_value: contractValue,
     first_payment_date: formData.firstPaymentDate,
     payment_type: formData.paymentType,
     status: formData.status,
     acquisition_channel: formData.acquisitionChannel === "outro" 
-      ? formData.customAcquisitionChannel 
+      ? formData.customAcquisitionChannel?.trim() 
       : formData.acquisitionChannel,
     company_birthday: formData.companyBirthday || null,
-    contact_name: formData.contactName || "",
-    contact_phone: formData.contactPhone || "",
+    contact_name: formData.contactName?.trim() || "",
+    contact_phone: formData.contactPhone?.trim() || "",
     last_payment_date: formData.status === "inactive" 
       ? formData.lastPaymentDate || null
       : null,
@@ -79,6 +91,11 @@ export const saveClient = async (clientData: ClientData, clientId?: string) => {
   const startTime = performance.now();
 
   try {
+    const sessionCheck = await verifySession();
+    if (!sessionCheck.success) {
+      throw new Error(sessionCheck.error);
+    }
+
     let response;
     
     if (clientId) {
@@ -86,14 +103,12 @@ export const saveClient = async (clientData: ClientData, clientId?: string) => {
         .from('clients')
         .update(clientData)
         .eq('id', clientId)
-        .select()
-        .single();
+        .select();
     } else {
       response = await supabase
         .from('clients')
         .insert([clientData])
-        .select()
-        .single();
+        .select();
     }
 
     const { data, error } = response;
@@ -102,10 +117,22 @@ export const saveClient = async (clientData: ClientData, clientId?: string) => {
 
     if (error) {
       console.error("Erro ao salvar cliente:", error);
-      throw error;
+      let errorMessage = "Erro ao salvar cliente";
+      
+      if (error.code === '23505') {
+        errorMessage = "Já existe um cliente com este nome";
+      } else if (error.code === '23514') {
+        errorMessage = "Dados inválidos. Verifique os valores informados";
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    return { success: true, data };
+    if (!data || data.length === 0) {
+      throw new Error("Nenhum dado retornado após salvar");
+    }
+
+    return { success: true, data: data[0] };
   } catch (error) {
     console.error("Erro na operação:", error);
     return { 
