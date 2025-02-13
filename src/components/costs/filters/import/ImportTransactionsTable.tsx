@@ -77,7 +77,7 @@ export function ImportTransactionsTable({
                 onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue>
+                  <SelectValue placeholder="Selecione uma categoria">
                     {getCategoryName(transaction.category)}
                   </SelectValue>
                 </SelectTrigger>
@@ -90,11 +90,9 @@ export function ImportTransactionsTable({
                       >
                         <div className="flex flex-col">
                           <span>{category.name}</span>
-                          {!transaction.category && (
-                            <span className="text-sm text-muted-foreground">
-                              {category.description}
-                            </span>
-                          )}
+                          <span className="text-sm text-muted-foreground">
+                            {category.description}
+                          </span>
                         </div>
                       </SelectItem>
                     ))}
