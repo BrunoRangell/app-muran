@@ -27,14 +27,46 @@ export interface NewCostDialogProps {
 }
 
 export const COST_CATEGORIES: CategoryInfo[] = [
-  { id: 'marketing', name: 'Marketing', description: 'Gastos com publicidade e marketing' },
-  { id: 'vendas', name: 'Vendas', description: 'Custos relacionados a vendas' },
-  { id: 'plataformas_ferramentas', name: 'Plataformas e Ferramentas', description: 'Assinaturas e ferramentas' },
-  { id: 'despesas_pessoal', name: 'Despesas com Pessoal', description: 'Custos com equipe' },
-  { id: 'taxas_impostos', name: 'Taxas e Impostos', description: 'Pagamentos de impostos e taxas' },
-  { id: 'servicos_profissionais', name: 'Serviços Profissionais', description: 'Serviços terceirizados' },
-  { id: 'eventos_networking', name: 'Eventos e Networking', description: 'Eventos e relacionamentos' },
-  { id: 'acoes_sociais', name: 'Ações Sociais', description: 'Investimentos sociais' }
+  { 
+    id: 'marketing', 
+    name: 'Marketing', 
+    description: 'Campanhas de marketing, mídia paga (Google Ads, Meta Ads), produção de conteúdo, ferramentas de marketing (CRM, automação), Brindes corporativos para equipe e clientes'
+  },
+  { 
+    id: 'vendas', 
+    name: 'Vendas', 
+    description: 'Salários da equipe comercial, comissões de vendas, treinamentos comerciais, viagens relacionadas a vendas'
+  },
+  { 
+    id: 'plataformas_ferramentas', 
+    name: 'Plataformas e ferramentas digitais', 
+    description: 'Custos de softwares, hospedagem em nuvem, licenças de ferramentas online (ex: Slack, Zoom), APIs e integrações'
+  },
+  { 
+    id: 'despesas_pessoal', 
+    name: 'Despesas com Pessoal', 
+    description: 'Salários administrativos, benefícios, treinamentos corporativos, bonificações'
+  },
+  { 
+    id: 'taxas_impostos', 
+    name: 'Taxas e impostos', 
+    description: 'DAS, DARF, taxas bancárias, impostos municipais/estaduais'
+  },
+  { 
+    id: 'servicos_profissionais', 
+    name: 'Serviços profissionais', 
+    description: 'Contabilidade, consultorias, assessoria jurídica, serviços de TI externos e outros profissionais especializados'
+  },
+  { 
+    id: 'eventos_networking', 
+    name: 'Eventos e Networking', 
+    description: 'Participação em eventos corporativos, feiras, conferências, coffee breaks'
+  },
+  { 
+    id: 'acoes_sociais', 
+    name: 'Ações sociais / Doações', 
+    description: 'Doações para instituições, projetos comunitários, patrocínios sociais'
+  }
 ] as const;
 
 export const useCostCategories = () => {
