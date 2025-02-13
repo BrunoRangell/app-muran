@@ -23,7 +23,7 @@ export interface Cost {
 export interface CostFilters {
   startDate?: string;
   endDate?: string;
-  category?: CostCategory;
+  categories?: CostCategory[];
   search?: string;
 }
 

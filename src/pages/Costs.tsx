@@ -26,7 +26,7 @@ export default function Costs() {
       
       let query = supabase
         .from("costs")
-        .select("*")
+        .select("*, costs_categories(category_id)")
         .order("date", { ascending: false });
 
       if (filters.startDate) {
@@ -35,8 +35,8 @@ export default function Costs() {
       if (filters.endDate) {
         query = query.lte("date", filters.endDate);
       }
-      if (filters.category) {
-        query = query.eq("category", filters.category);
+      if (filters.categories && filters.categories.length > 0) {
+        query = query.in("costs_categories.category_id", filters.categories);
       }
       if (filters.search) {
         query = query.ilike("name", `%${filters.search}%`);
@@ -49,8 +49,14 @@ export default function Costs() {
         throw error;
       }
 
-      console.log('Custos retornados:', data);
-      return data;
+      // Processa os dados para incluir as categorias no formato esperado
+      const processedData = data.map(cost => ({
+        ...cost,
+        categories: cost.costs_categories.map((cc: any) => cc.category_id)
+      }));
+
+      console.log('Custos retornados:', processedData);
+      return processedData;
     },
   });
 
