@@ -8,11 +8,11 @@ export async function suggestCategory(transaction: Transaction) {
   console.log("[Entrada] Descrição exata da transação:", JSON.stringify(description));
   console.log("[Entrada] Tipo da descrição:", typeof description);
   
-  // Primeiro, tentar encontrar por qualquer um dos padrões
+  // Primeiro, tentar encontrar por qualquer um dos padrões usando in
   const { data, error: mappingError } = await supabase
     .from('transaction_categories_mapping')
     .select('*')
-    .or(`description_pattern.eq.${description},original_pattern.eq.${description}`);
+    .or('description_pattern.eq.' + JSON.stringify(description) + ',original_pattern.eq.' + JSON.stringify(description));
 
   if (mappingError) {
     console.error("[Categoria] Erro ao buscar mapeamento:", mappingError);
@@ -30,6 +30,14 @@ export async function suggestCategory(transaction: Transaction) {
     
     console.log("[Debug] Todos os mapeamentos disponíveis:", allMappings);
     console.log("[Debug] Comparando com a descrição:", description);
+    
+    // Tentar encontrar por correspondência exata sem usar .or
+    const { data: exactMatch } = await supabase
+      .from('transaction_categories_mapping')
+      .select('*')
+      .eq('description_pattern', description);
+      
+    console.log("[Debug] Tentativa de correspondência exata:", exactMatch);
   }
 
   const bestMatch = data?.[0];
