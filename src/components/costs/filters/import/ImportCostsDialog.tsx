@@ -59,16 +59,16 @@ export function ImportCostsDialog() {
     );
   };
 
-  const handleCategoryChange = (fitid: string, category: CostCategory) => {
+  const handleCategoryChange = (fitid: string, categories: CostCategory[]) => {
     setTransactions(prev => 
-      prev.map(t => t.fitid === fitid ? { ...t, category } : t)
+      prev.map(t => t.fitid === fitid ? { ...t, categories } : t)
     );
   };
 
   const handleImport = async () => {
     setIsLoading(true);
     try {
-      const selectedTransactions = transactions.filter(t => t.selected && t.category);
+      const selectedTransactions = transactions.filter(t => t.selected && t.categories && t.categories.length > 0);
       
       if (selectedTransactions.length === 0) {
         toast({

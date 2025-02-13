@@ -28,18 +28,32 @@ export function useImportService() {
 
     // Importar transações como custos
     for (const transaction of newTransactions) {
+      // Inserir o custo básico primeiro
       const { data: cost, error: costError } = await supabase
         .from('costs')
         .insert({
           name: transaction.name,
           amount: transaction.amount,
           date: transaction.date,
-          category: transaction.category
         })
         .select()
         .single();
 
       if (costError) throw costError;
+
+      // Inserir as categorias do custo
+      if (transaction.categories && transaction.categories.length > 0) {
+        const categoriesInsertData = transaction.categories.map(categoryId => ({
+          cost_id: cost.id,
+          category_id: categoryId
+        }));
+
+        const { error: categoriesError } = await supabase
+          .from('costs_categories')
+          .insert(categoriesInsertData);
+
+        if (categoriesError) throw categoriesError;
+      }
 
       // Registrar transação importada
       const { error: importError } = await supabase
@@ -52,19 +66,23 @@ export function useImportService() {
       if (importError) throw importError;
 
       // Registrar ou atualizar mapeamento de categoria
-      const { error: mappingError } = await supabase
-        .from('transaction_categories_mapping')
-        .upsert({
-          description_pattern: transaction.name,
-          category: transaction.category,
-          usage_count: 1,
-          last_used_at: new Date().toISOString()
-        }, {
-          onConflict: 'description_pattern',
-          ignoreDuplicates: false
-        });
+      if (transaction.categories && transaction.categories.length > 0) {
+        for (const categoryId of transaction.categories) {
+          const { error: mappingError } = await supabase
+            .from('transaction_categories_mapping')
+            .upsert({
+              description_pattern: transaction.name,
+              category_id: categoryId,
+              usage_count: 1,
+              last_used_at: new Date().toISOString()
+            }, {
+              onConflict: 'description_pattern,category_id',
+              ignoreDuplicates: false
+            });
 
-      if (mappingError) throw mappingError;
+          if (mappingError) throw mappingError;
+        }
+      }
     }
 
     return newTransactions.length;
