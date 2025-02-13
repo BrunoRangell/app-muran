@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Cost } from "@/types/cost";
 import { DateFilter } from "@/components/costs/filters/DateFilter";
+import { Separator } from "@/components/ui/separator";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
@@ -49,7 +50,6 @@ export default function Costs() {
         throw error;
       }
 
-      // Processa os dados para incluir as categorias no formato esperado
       const processedData = data.map(cost => ({
         ...cost,
         categories: cost.costs_categories.map((cc: any) => cc.category_id)
@@ -61,30 +61,44 @@ export default function Costs() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Registro de Custos</h1>
-        <Button onClick={() => setIsNewCostOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Custo
-        </Button>
+    <div className="max-w-[1600px] mx-auto space-y-6 p-4 md:p-6">
+      {/* Cabeçalho com título e botão de novo custo */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Registro de Custos</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gerencie e acompanhe todos os custos do seu negócio
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <DateFilter filters={filters} onFiltersChange={setFilters} />
+          <Button onClick={() => setIsNewCostOpen(true)} className="bg-muran-primary hover:bg-muran-primary/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Custo
+          </Button>
+        </div>
       </div>
 
-      <div className="flex justify-end">
-        <DateFilter filters={filters} onFiltersChange={setFilters} />
-      </div>
+      <Separator className="my-6" />
 
+      {/* Métricas e gráficos */}
       <CostsMetrics costs={costs || []} filters={filters} />
 
-      <Card className="p-4">
-        <CostsFiltersBar filters={filters} onFiltersChange={setFilters} />
-        <CostsTable 
-          costs={costs || []} 
-          isLoading={isLoading} 
-          onEditClick={setSelectedCost}
-        />
+      {/* Barra de filtros e tabela */}
+      <Card className="overflow-hidden">
+        <div className="p-4 bg-gray-50 border-b">
+          <CostsFiltersBar filters={filters} onFiltersChange={setFilters} />
+        </div>
+        <div className="p-4">
+          <CostsTable 
+            costs={costs || []} 
+            isLoading={isLoading} 
+            onEditClick={setSelectedCost}
+          />
+        </div>
       </Card>
 
+      {/* Diálogos */}
       <NewCostDialog
         open={isNewCostOpen}
         onOpenChange={setIsNewCostOpen}

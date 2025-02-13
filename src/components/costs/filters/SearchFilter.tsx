@@ -10,15 +10,15 @@ interface SearchFilterProps {
 
 export function SearchFilter({ filters, onFiltersChange }: SearchFilterProps) {
   return (
-    <div className="relative flex-1">
-      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div className="relative w-full">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
-        placeholder="Pesquisar custo..."
+        placeholder="Buscar por nome do custo..."
         value={filters.search || ""}
         onChange={(e) =>
           onFiltersChange({ ...filters, search: e.target.value })
         }
-        className="pl-8"
+        className="pl-10 w-full"
       />
     </div>
   );

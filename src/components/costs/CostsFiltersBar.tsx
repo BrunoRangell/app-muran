@@ -11,14 +11,13 @@ interface CostsFiltersBarProps {
 
 export function CostsFiltersBar({ filters, onFiltersChange }: CostsFiltersBarProps) {
   return (
-    <div className="flex flex-col md:flex-row gap-4 mb-4">
-      <div className="flex flex-1 items-center gap-4">
+    <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex-1">
         <SearchFilter filters={filters} onFiltersChange={onFiltersChange} />
-        <div className="flex-1" />
-        <ImportCostsDialog />
       </div>
-      <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row gap-4 md:items-center">
         <CategoryFilters filters={filters} onFiltersChange={onFiltersChange} />
+        <ImportCostsDialog />
       </div>
     </div>
   );
