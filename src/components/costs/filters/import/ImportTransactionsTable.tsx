@@ -40,9 +40,7 @@ export function ImportTransactionsTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[50px]">
-            <Checkbox />
-          </TableHead>
+          <TableHead className="w-[50px]">Selecionar</TableHead>
           <TableHead>Nome</TableHead>
           <TableHead>Data</TableHead>
           <TableHead>Valor</TableHead>
