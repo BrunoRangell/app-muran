@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { CostFilters, CostCategory } from "@/types/cost";
 import { useCostCategories } from "../schemas/costFormSchema";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from "react";
 
 interface CategoryFiltersProps {
   filters: CostFilters;
@@ -26,6 +27,7 @@ interface CategoryFiltersProps {
 }
 
 export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersProps) {
+  const [open, setOpen] = useState(false);
   const categories = useCostCategories() || [];
   const selectedCategories = filters.categories || [];
 
@@ -40,12 +42,22 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
     });
   };
 
+  if (!categories.length) {
+    return (
+      <Button variant="outline" className="w-full md:w-[280px] justify-between" disabled>
+        <span className="text-muted-foreground">Carregando categorias...</span>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    );
+  }
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
+          aria-expanded={open}
           className="w-full md:w-[280px] justify-between"
         >
           {selectedCategories.length === 0 ? (
@@ -70,8 +82,10 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[380px] p-0" align="start">
-        <Command shouldFilter={true}>
-          <CommandInput placeholder="Procurar categoria..." />
+        <Command>
+          <CommandInput
+            placeholder="Procurar categoria..."
+          />
           <CommandList>
             <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
             <CommandGroup>
