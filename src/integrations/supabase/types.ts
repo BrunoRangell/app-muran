@@ -320,6 +320,27 @@ export type Database = {
         }
         Relationships: []
       }
+      transaction_categories_mapping: {
+        Row: {
+          category: Database["public"]["Enums"]["cost_category"] | null
+          description_pattern: string
+          last_used_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["cost_category"] | null
+          description_pattern: string
+          last_used_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["cost_category"] | null
+          description_pattern?: string
+          last_used_at?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
