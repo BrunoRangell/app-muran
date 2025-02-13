@@ -1,25 +1,17 @@
 
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CostFilters, CostCategory } from "@/types/cost";
 import { useCostCategories } from "../schemas/costFormSchema";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CategoryFiltersProps {
   filters: CostFilters;
@@ -27,8 +19,7 @@ interface CategoryFiltersProps {
 }
 
 export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersProps) {
-  const [open, setOpen] = useState(false);
-  const categories = useCostCategories() || [];
+  const categories = useCostCategories();
   const selectedCategories = filters.categories || [];
 
   const toggleCategory = (categoryId: CostCategory) => {
@@ -42,7 +33,7 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
     });
   };
 
-  if (!categories.length) {
+  if (!categories?.length) {
     return (
       <Button variant="outline" className="w-full md:w-[280px] justify-between" disabled>
         <span className="text-muted-foreground">Carregando categorias...</span>
@@ -52,14 +43,9 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full md:w-[280px] justify-between"
-        >
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="w-full md:w-[280px] justify-between">
           {selectedCategories.length === 0 ? (
             <span className="text-muted-foreground">Selecione as categorias...</span>
           ) : (
@@ -80,45 +66,34 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[380px] p-0" align="start">
-        <Command>
-          <CommandInput
-            placeholder="Procurar categoria..."
-          />
-          <CommandList>
-            <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
-            <CommandGroup>
-              <ScrollArea className="h-[300px]">
-                {categories.map((category) => (
-                  <CommandItem
-                    key={category.id}
-                    value={`${category.name}-${category.id}`}
-                    onSelect={() => toggleCategory(category.id as CostCategory)}
-                  >
-                    <div className="flex flex-col flex-1 py-2">
-                      <div className="flex items-center">
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            selectedCategories.includes(category.id as CostCategory)
-                              ? "opacity-100"
-                              : "opacity-0"
-                          )}
-                        />
-                        <span className="font-medium">{category.name}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground ml-6">
-                        {category.description}
-                      </p>
-                    </div>
-                  </CommandItem>
-                ))}
-              </ScrollArea>
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-[380px] max-h-[300px] overflow-y-auto">
+        {categories.map((category) => (
+          <DropdownMenuItem
+            key={category.id}
+            onSelect={(event) => {
+              event.preventDefault();
+              toggleCategory(category.id as CostCategory);
+            }}
+            className="flex flex-col items-start py-2"
+          >
+            <div className="flex items-center w-full">
+              <Check
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  selectedCategories.includes(category.id as CostCategory)
+                    ? "opacity-100"
+                    : "opacity-0"
+                )}
+              />
+              <span className="font-medium">{category.name}</span>
+            </div>
+            <p className="text-sm text-muted-foreground ml-6">
+              {category.description}
+            </p>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
