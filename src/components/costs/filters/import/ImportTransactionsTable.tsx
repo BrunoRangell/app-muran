@@ -94,10 +94,14 @@ export function ImportTransactionsTable({
                           value={category.id}
                           className="flex flex-col py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
                         >
-                          <span className="font-medium mb-1 border-b pb-1">{category.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {category.description}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">
+                              {category.name}
+                            </span>
+                            <span className="text-sm text-muted-foreground pl-2">
+                              {category.description}
+                            </span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectGroup>
