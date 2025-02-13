@@ -42,8 +42,20 @@ export function useImportService() {
     for (const transaction of newTransactions) {
       console.log("Processando transação:", transaction.name);
       
+      // Buscar categoria sugerida do mapeamento
+      const { data: mappings } = await supabase
+        .from('transaction_categories_mapping')
+        .select('category_id')
+        .eq('description_pattern', transaction.name)
+        .order('usage_count', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // Usar categoria sugerida ou a selecionada pelo usuário
+      const categoryId = transaction.category || mappings?.category_id;
+
       // Validar categoria
-      if (!transaction.category) {
+      if (!categoryId) {
         console.error("Transação sem categoria:", transaction);
         continue;
       }
@@ -78,7 +90,7 @@ export function useImportService() {
           .from('costs_categories')
           .insert({
             cost_id: cost.id,
-            category_id: transaction.category
+            category_id: categoryId
           });
 
         if (categoriesError) {
@@ -105,7 +117,6 @@ export function useImportService() {
 
       } catch (error) {
         console.error("Erro ao importar transação:", error);
-        // Mostrar erro para o usuário
         toast({
           title: "Erro ao importar transação",
           description: `Erro ao importar "${transaction.name}": ${error instanceof Error ? error.message : 'Erro desconhecido'}`,

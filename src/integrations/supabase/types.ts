@@ -366,7 +366,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      extract_transaction_pattern: {
+        Args: {
+          description: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       cost_category:
