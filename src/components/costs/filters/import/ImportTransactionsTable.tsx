@@ -81,23 +81,21 @@ export function ImportTransactionsTable({
                     {getCategoryName(transaction.category)}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent align="center" side="right" className="w-[280px]">
-                  <ScrollArea className="h-[200px] w-full p-1">
-                    <SelectGroup>
-                      {COST_CATEGORIES.map((category) => (
-                        <SelectItem 
-                          key={category.id} 
-                          value={category.id}
-                          className="flex flex-col space-y-1 py-2 cursor-pointer"
-                        >
-                          <span className="font-medium">{category.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {category.description}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </ScrollArea>
+                <SelectContent sideOffset={5} position="popper" className="w-[280px]">
+                  <SelectGroup>
+                    {COST_CATEGORIES.map((category) => (
+                      <SelectItem 
+                        key={category.id} 
+                        value={category.id}
+                        className="flex flex-col space-y-1 py-2 cursor-pointer"
+                      >
+                        <span className="font-medium">{category.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {category.description}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </TableCell>
