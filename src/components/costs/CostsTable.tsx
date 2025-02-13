@@ -6,6 +6,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
@@ -42,6 +43,8 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
     return <div className="text-center py-4">Nenhum custo encontrado.</div>;
   }
 
+  const totalAmount = costs.reduce((acc, cost) => acc + Number(cost.amount), 0);
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -75,6 +78,17 @@ export function CostsTable({ costs, isLoading, onEditClick }: CostsTableProps) {
             </TableRow>
           ))}
         </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell colSpan={3} className="text-right font-medium">
+              Total
+            </TableCell>
+            <TableCell className="font-medium">
+              {formatCurrency(totalAmount)}
+            </TableCell>
+            <TableCell colSpan={2} />
+          </TableRow>
+        </TableFooter>
       </Table>
     </div>
   );
