@@ -150,7 +150,9 @@ export function ImportCostsDialog() {
 
     setIsLoading(true);
     try {
+      console.log("Iniciando importação de", selectedTransactions.length, "transações");
       const importedCount = await importTransactions(selectedTransactions);
+      console.log("Importação finalizada. Total importado:", importedCount);
       
       if (importedCount > 0) {
         // Invalidar a cache do React Query para atualizar a lista de custos
