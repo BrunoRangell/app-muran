@@ -25,7 +25,7 @@ interface CategoryFiltersProps {
 }
 
 export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersProps) {
-  const categories = useCostCategories();
+  const categories = useCostCategories() || []; // Garantir que sempre temos um array
   const selectedCategories = filters.categories || [];
 
   const toggleCategory = (categoryId: CostCategory) => {
