@@ -81,7 +81,7 @@ export function ImportTransactionsTable({
                     {getCategoryName(transaction.category)}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent style={{ maxHeight: "200px", overflow: "auto" }}>
+                <SelectContent align="end" className="max-h-[300px] overflow-y-scroll">
                   <SelectGroup>
                     {COST_CATEGORIES.map((category) => (
                       <SelectItem 
