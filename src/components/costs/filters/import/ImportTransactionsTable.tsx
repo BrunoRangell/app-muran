@@ -20,6 +20,7 @@ interface ImportTransactionsTableProps {
   onNameChange: (fitid: string, newName: string) => void;
   onSelectionChange: (fitid: string, checked: boolean) => void;
   onCategoryChange: (fitid: string, category?: CostCategory) => void;
+  errors: { [key: string]: string };
 }
 
 export function ImportTransactionsTable({
@@ -27,6 +28,7 @@ export function ImportTransactionsTable({
   onNameChange,
   onSelectionChange,
   onCategoryChange,
+  errors,
 }: ImportTransactionsTableProps) {
   const getCategoryName = (categoryId?: CostCategory) => {
     if (!categoryId) return "";
@@ -59,10 +61,18 @@ export function ImportTransactionsTable({
               />
             </TableCell>
             <TableCell>
-              <Input
-                value={transaction.name}
-                onChange={(e) => onNameChange(transaction.fitid, e.target.value)}
-              />
+              <div className="space-y-1">
+                <Input
+                  value={transaction.name}
+                  onChange={(e) => onNameChange(transaction.fitid, e.target.value)}
+                  className={errors[`name-${transaction.fitid}`] ? "border-red-500" : ""}
+                />
+                {errors[`name-${transaction.fitid}`] && (
+                  <p className="text-sm text-red-500">
+                    {errors[`name-${transaction.fitid}`]}
+                  </p>
+                )}
+              </div>
             </TableCell>
             <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
             <TableCell>
@@ -72,44 +82,53 @@ export function ImportTransactionsTable({
               }).format(transaction.amount)}
             </TableCell>
             <TableCell>
-              <Select
-                value={transaction.category}
-                onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
-              >
-                <SelectTrigger className="w-[250px]">
-                  <SelectValue placeholder="Selecionar categoria">
-                    {getCategoryName(transaction.category)}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent 
-                  className="bg-popover w-[400px] rounded-md"
-                  position="popper"
-                  side="left"
-                  align="start"
-                  sideOffset={5}
+              <div className="space-y-1">
+                <Select
+                  value={transaction.category}
+                  onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
                 >
-                  <div className="max-h-[300px] overflow-y-auto">
-                    <SelectGroup className="p-2">
-                      {COST_CATEGORIES.map((category) => (
-                        <SelectItem 
-                          key={category.id} 
-                          value={category.id}
-                          className="flex items-center py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
-                        >
-                          <div className="flex flex-col gap-1 ml-6">
-                            <span className="font-medium">
-                              {category.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground pl-2">
-                              {category.description}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </div>
-                </SelectContent>
-              </Select>
+                  <SelectTrigger 
+                    className={`w-[250px] ${errors[`category-${transaction.fitid}`] ? "border-red-500" : ""}`}
+                  >
+                    <SelectValue placeholder="Selecionar categoria">
+                      {getCategoryName(transaction.category)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent 
+                    className="bg-popover w-[400px] rounded-md"
+                    position="popper"
+                    side="left"
+                    align="start"
+                    sideOffset={5}
+                  >
+                    <div className="max-h-[300px] overflow-y-auto">
+                      <SelectGroup className="p-2">
+                        {COST_CATEGORIES.map((category) => (
+                          <SelectItem 
+                            key={category.id} 
+                            value={category.id}
+                            className="flex items-center py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
+                          >
+                            <div className="flex flex-col gap-1 ml-6">
+                              <span className="font-medium">
+                                {category.name}
+                              </span>
+                              <span className="text-sm text-muted-foreground pl-2">
+                                {category.description}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </div>
+                  </SelectContent>
+                </Select>
+                {errors[`category-${transaction.fitid}`] && (
+                  <p className="text-sm text-red-500">
+                    {errors[`category-${transaction.fitid}`]}
+                  </p>
+                )}
+              </div>
             </TableCell>
           </TableRow>
         ))}

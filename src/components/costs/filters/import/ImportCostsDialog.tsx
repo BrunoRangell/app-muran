@@ -23,6 +23,7 @@ export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { toast } = useToast();
   const { parseOFXFile } = useTransactionParser();
   const { importTransactions } = useImportService();
@@ -70,10 +71,37 @@ export function ImportCostsDialog() {
     }
   };
 
+  const validateTransactions = (selectedTransactions: Transaction[]) => {
+    const newErrors: { [key: string]: string } = {};
+    let hasErrors = false;
+
+    selectedTransactions.forEach(transaction => {
+      if (!transaction.name?.trim()) {
+        newErrors[`name-${transaction.fitid}`] = "Nome é obrigatório";
+        hasErrors = true;
+      }
+      if (!transaction.category) {
+        newErrors[`category-${transaction.fitid}`] = "Categoria é obrigatória";
+        hasErrors = true;
+      }
+    });
+
+    setErrors(newErrors);
+    return !hasErrors;
+  };
+
   const handleNameChange = (fitid: string, newName: string) => {
     setTransactions(prev => 
       prev.map(t => t.fitid === fitid ? { ...t, name: newName } : t)
     );
+    // Limpa o erro quando o campo é preenchido
+    if (newName.trim()) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`name-${fitid}`];
+        return newErrors;
+      });
+    }
   };
 
   const handleSelectionChange = (fitid: string, checked: boolean) => {
@@ -86,15 +114,33 @@ export function ImportCostsDialog() {
     setTransactions(prev => 
       prev.map(t => t.fitid === fitid ? { ...t, category } : t)
     );
+    // Limpa o erro quando uma categoria é selecionada
+    if (category) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`category-${fitid}`];
+        return newErrors;
+      });
+    }
   };
 
   const handleImport = async () => {
-    const selectedTransactions = transactions.filter(t => t.selected && t.category);
+    const selectedTransactions = transactions.filter(t => t.selected);
     
     if (selectedTransactions.length === 0) {
       toast({
         title: "Nenhuma transação selecionada",
-        description: "Selecione ao menos uma transação e categorize-a para importar.",
+        description: "Selecione ao menos uma transação para importar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Valida as transações antes de importar
+    if (!validateTransactions(selectedTransactions)) {
+      toast({
+        title: "Erro de validação",
+        description: "Por favor, preencha todos os campos obrigatórios.",
         variant: "destructive"
       });
       return;
@@ -116,7 +162,7 @@ export function ImportCostsDialog() {
       console.error("Erro ao importar transações:", error);
       toast({
         title: "Erro ao importar",
-        description: "Ocorreu um erro ao importar as transações. Tente novamente.",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao importar as transações. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -162,6 +208,7 @@ export function ImportCostsDialog() {
                   onNameChange={handleNameChange}
                   onSelectionChange={handleSelectionChange}
                   onCategoryChange={handleCategoryChange}
+                  errors={errors}
                 />
               </ScrollArea>
 
@@ -170,6 +217,7 @@ export function ImportCostsDialog() {
                   variant="outline"
                   onClick={() => {
                     setTransactions([]);
+                    setErrors({});
                     setIsOpen(false);
                   }}
                   disabled={isLoading}
