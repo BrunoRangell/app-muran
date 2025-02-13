@@ -367,24 +367,32 @@ export type Database = {
       }
       transaction_categories_mapping: {
         Row: {
-          category: Database["public"]["Enums"]["cost_category"] | null
+          category_id: Database["public"]["Enums"]["cost_category_new"] | null
           description_pattern: string
           last_used_at: string
           usage_count: number | null
         }
         Insert: {
-          category?: Database["public"]["Enums"]["cost_category"] | null
+          category_id?: Database["public"]["Enums"]["cost_category_new"] | null
           description_pattern: string
           last_used_at?: string
           usage_count?: number | null
         }
         Update: {
-          category?: Database["public"]["Enums"]["cost_category"] | null
+          category_id?: Database["public"]["Enums"]["cost_category_new"] | null
           description_pattern?: string
           last_used_at?: string
           usage_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transaction_categories_mapping_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "cost_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -21,38 +21,43 @@ export function useTransactionParser() {
       }
 
       // Buscar mapeamentos existentes
-      const { data: existingMappings } = await supabase
+      const { data: existingMappings, error } = await supabase
         .from('transaction_categories_mapping')
-        .select('*')
+        .select('category_id, description_pattern')
         .order('usage_count', { ascending: false });
+
+      if (error) {
+        console.error("Erro ao buscar mapeamentos:", error);
+        throw error;
+      }
+
+      console.log("Mapeamentos encontrados:", existingMappings);
 
       return ofx.bankAccounts[0].transactions.map(t => {
         // Tentar encontrar um mapeamento existente
-        const mappings = existingMappings?.filter(m => 
-          t.name.toLowerCase().includes(m.description_pattern.toLowerCase())
-        ) || [];
-
-        // Extrair as categorias e garantir que são válidas
-        const validCategories = mappings
+        const mappedCategories = existingMappings
+          ?.filter(m => t.name.toLowerCase().includes(m.description_pattern.toLowerCase()))
           .map(m => m.category_id)
-          .filter((id): id is CostCategory => 
-            id !== null && 
-            ['marketing', 'vendas', 'plataformas_ferramentas', 'despesas_pessoal', 
-             'taxas_impostos', 'servicos_profissionais', 'eventos_networking', 
-             'acoes_sociais'].includes(id)
-          );
+          .filter((id): id is CostCategory => id !== null) || [];
+
+        console.log(`Categorias encontradas para "${t.name}":`, mappedCategories);
 
         return {
           fitid: t.fitId,
           name: t.name,
-          amount: Math.abs(Number(t.amount)), // Mantemos apenas o valor absoluto
+          amount: Math.abs(Number(t.amount)),
           date: t.date,
           selected: true,
-          categories: validCategories // Já garantimos que é um array válido de CostCategory
+          categories: mappedCategories
         };
       });
     } catch (error) {
       console.error("Erro ao processar arquivo OFX:", error);
+      toast({
+        title: "Erro ao processar arquivo",
+        description: error instanceof Error ? error.message : "Erro desconhecido ao processar o arquivo",
+        variant: "destructive",
+      });
       throw error;
     }
   };
