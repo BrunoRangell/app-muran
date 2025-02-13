@@ -6,7 +6,8 @@ import {
   Home,
   ListTodo,
   Receipt,
-  CreditCard
+  CreditCard,
+  BarChart
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -23,7 +24,8 @@ const financialSubMenu: MenuItem[] = [
   { icon: DollarSign, label: "Relatório Financeiro", path: "/clientes/relatorio" },
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: Receipt, label: "Recebimentos", path: "/clientes/recebimentos" },
-  { icon: CreditCard, label: "Registro de Custos", path: "/clientes/custos" }
+  { icon: CreditCard, label: "Registro de Custos", path: "/clientes/custos" },
+  { icon: BarChart, label: "Relatórios e Métricas", path: "/clientes/metricas" }
 ];
 
 const adminMenuItems: MenuItem[] = [
