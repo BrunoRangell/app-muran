@@ -5,6 +5,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -25,7 +26,7 @@ interface CategoryFiltersProps {
 }
 
 export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersProps) {
-  const categories = useCostCategories();
+  const categories = useCostCategories() || [];
   const selectedCategories = filters.categories || [];
 
   const toggleCategory = (categoryId: CostCategory) => {
@@ -38,11 +39,6 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
       categories: newCategories.length > 0 ? newCategories : undefined
     });
   };
-
-  // Garantir que temos um array de categorias válido para o Command
-  if (!Array.isArray(categories)) {
-    return null;
-  }
 
   return (
     <Popover>
@@ -76,35 +72,37 @@ export function CategoryFilters({ filters, onFiltersChange }: CategoryFiltersPro
       <PopoverContent className="w-[380px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Procurar categoria..." />
-          <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
-          <CommandGroup>
-            <ScrollArea className="h-[300px]">
-              {categories.map((category) => (
-                <CommandItem
-                  key={category.id}
-                  value={category.id}
-                  onSelect={() => toggleCategory(category.id as CostCategory)}
-                >
-                  <div className="flex flex-col flex-1 py-2">
-                    <div className="flex items-center">
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          selectedCategories.includes(category.id as CostCategory)
-                            ? "opacity-100"
-                            : "opacity-0"
-                        )}
-                      />
-                      <span className="font-medium">{category.name}</span>
+          <CommandList>
+            <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+            <CommandGroup>
+              <ScrollArea className="h-[300px]">
+                {categories.map((category) => (
+                  <CommandItem
+                    key={category.id}
+                    value={category.id}
+                    onSelect={() => toggleCategory(category.id as CostCategory)}
+                  >
+                    <div className="flex flex-col flex-1 py-2">
+                      <div className="flex items-center">
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedCategories.includes(category.id as CostCategory)
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        />
+                        <span className="font-medium">{category.name}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground ml-6">
+                        {category.description}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground ml-6">
-                      {category.description}
-                    </p>
-                  </div>
-                </CommandItem>
-              ))}
-            </ScrollArea>
-          </CommandGroup>
+                  </CommandItem>
+                ))}
+              </ScrollArea>
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>

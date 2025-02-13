@@ -32,6 +32,7 @@ export const useCostCategories = () => {
   const { data } = useQuery({
     queryKey: ["cost-categories"],
     queryFn: async () => {
+      console.log("Buscando categorias...");
       const { data, error } = await supabase
         .from("cost_categories")
         .select("*")
@@ -43,10 +44,9 @@ export const useCostCategories = () => {
       }
 
       console.log("Categorias retornadas:", data);
-      return data as CategoryInfo[];
+      return (data || []) as CategoryInfo[];
     },
-    initialData: [] as CategoryInfo[], // Garantir tipo correto para initialData
   });
 
-  return data;
+  return data || [];
 };
