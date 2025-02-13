@@ -29,7 +29,7 @@ export interface NewCostDialogProps {
 }
 
 export const useCostCategories = () => {
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["cost-categories"],
     queryFn: async () => {
       console.log("Buscando categorias...");
@@ -44,9 +44,10 @@ export const useCostCategories = () => {
       }
 
       console.log("Categorias retornadas:", data);
-      return (data || []) as CategoryInfo[];
+      return data as CategoryInfo[];
     },
+    initialData: [], // Garantindo que sempre temos um array, mesmo que vazio
   });
 
-  return data || [];
+  return isLoading ? [] : data;
 };
