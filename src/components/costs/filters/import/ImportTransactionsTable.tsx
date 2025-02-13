@@ -2,7 +2,12 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { CostCategory } from "@/types/cost";
 import { Transaction } from "./types";
 import { useCostCategories } from "../../schemas/costFormSchema";
@@ -11,7 +16,7 @@ interface ImportTransactionsTableProps {
   transactions: Transaction[];
   onNameChange: (fitid: string, newName: string) => void;
   onSelectionChange: (fitid: string, checked: boolean) => void;
-  onCategoryChange: (fitid: string, category: CostCategory) => void;
+  onCategoryChange: (fitid: string, categories: CostCategory[]) => void;
 }
 
 export function ImportTransactionsTable({
@@ -21,6 +26,18 @@ export function ImportTransactionsTable({
   onCategoryChange,
 }: ImportTransactionsTableProps) {
   const categories = useCostCategories();
+
+  const getSelectedCategories = (transaction: Transaction) => {
+    return transaction.categories || [];
+  };
+
+  const toggleCategory = (fitid: string, categoryId: CostCategory, currentCategories: CostCategory[]) => {
+    const newCategories = currentCategories.includes(categoryId)
+      ? currentCategories.filter(id => id !== categoryId)
+      : [...currentCategories, categoryId];
+    
+    onCategoryChange(fitid, newCategories);
+  };
 
   return (
     <Table>
@@ -36,50 +53,98 @@ export function ImportTransactionsTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {transactions.map((transaction) => (
-          <TableRow key={transaction.fitid}>
-            <TableCell>
-              <Checkbox
-                checked={transaction.selected}
-                onCheckedChange={(checked) => 
-                  onSelectionChange(transaction.fitid, checked as boolean)
-                }
-              />
-            </TableCell>
-            <TableCell>
-              <Input
-                value={transaction.name}
-                onChange={(e) => onNameChange(transaction.fitid, e.target.value)}
-              />
-            </TableCell>
-            <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-            <TableCell>
-              {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-              }).format(transaction.amount)}
-            </TableCell>
-            <TableCell>
-              <Select
-                value={transaction.category || ""}
-                onValueChange={(value: CostCategory) => {
-                  onCategoryChange(transaction.fitid, value);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </TableCell>
-          </TableRow>
-        ))}
+        {transactions.map((transaction) => {
+          const selectedCategories = getSelectedCategories(transaction);
+
+          return (
+            <TableRow key={transaction.fitid}>
+              <TableCell>
+                <Checkbox
+                  checked={transaction.selected}
+                  onCheckedChange={(checked) => 
+                    onSelectionChange(transaction.fitid, checked as boolean)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <Input
+                  value={transaction.name}
+                  onChange={(e) => onNameChange(transaction.fitid, e.target.value)}
+                />
+              </TableCell>
+              <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
+              <TableCell>
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL'
+                }).format(transaction.amount)}
+              </TableCell>
+              <TableCell>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                    >
+                      {selectedCategories.length === 0 ? (
+                        <span className="text-muted-foreground">Selecione as categorias...</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedCategories.map((categoryId) => {
+                            const category = categories.find((c) => c.id === categoryId);
+                            return category ? (
+                              <Badge
+                                key={category.id}
+                                variant="secondary"
+                                className="truncate max-w-[100px]"
+                              >
+                                {category.name}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[380px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Procurar categoria..." />
+                      <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                      <CommandGroup>
+                        {categories.map((category) => (
+                          <CommandItem
+                            key={category.id}
+                            value={category.id}
+                            onSelect={() => toggleCategory(transaction.fitid, category.id as CostCategory, selectedCategories)}
+                          >
+                            <div className="flex flex-col flex-1 py-2">
+                              <div className="flex items-center">
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedCategories.includes(category.id as CostCategory)
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                <span className="font-medium">{category.name}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground ml-6">
+                                {category.description}
+                              </p>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );
