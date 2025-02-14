@@ -1,15 +1,14 @@
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Plus, Filter, X, Loader } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClientForm } from "@/components/admin/ClientForm";
 import { ClientsTable } from "./table/ClientsTable";
-import { ColumnToggle } from "./table/ColumnToggle";
-import { FilterPopover } from "./table/FilterPopover";
 import { Column, SortConfig } from "./types";
 import { useClients } from "@/hooks/queries/useClients";
 import { useClientFilters } from "@/hooks/useClientFilters";
+import { ClientsHeader } from "./components/ClientsHeader";
+import { LoadingState } from "./components/LoadingState";
+import { ErrorState } from "./components/ErrorState";
 
 interface ClientsListProps {
   onPaymentClick?: (clientId: string) => void;
@@ -74,57 +73,26 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
   };
 
   if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4 animate-fade-in">
-        <div className="p-4 bg-red-50 rounded-full">
-          <X className="h-8 w-8" />
-        </div>
-        <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
-        <p className="text-center text-gray-600">
-          Você não tem permissão para visualizar os clientes ou ocorreu um erro de conexão.
-        </p>
-      </div>
-    );
+    return <ErrorState />;
   }
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
-        {viewMode === 'default' && (
-          <>
-            <h2 className="text-xl font-bold">Lista de Clientes</h2>
-            <div className="flex gap-2 items-center">
-              <ColumnToggle columns={columns.filter(col => !col.fixed)} onToggleColumn={toggleColumn} />
-              <FilterPopover 
-                filters={filters}
-                onFilterChange={(key, value) => updateFilter(key as keyof typeof filters, value)}
-              />
-              {hasActiveFilters && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={clearFilters}
-                  className="h-9 px-2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Limpar filtros
-                </Button>
-              )}
-              <Button onClick={handleCreateClick} className="bg-muran-primary hover:bg-muran-primary/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Cliente
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+      {viewMode === 'default' && (
+        <ClientsHeader
+          columns={columns}
+          filters={filters}
+          hasActiveFilters={hasActiveFilters}
+          onToggleColumn={toggleColumn}
+          onFilterChange={(key, value) => updateFilter(key as keyof typeof filters, value)}
+          onClearFilters={clearFilters}
+          onCreateClick={handleCreateClick}
+        />
+      )}
 
       <div className="flex-1 overflow-hidden">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center p-8 gap-4">
-            <Loader className="h-8 w-8 animate-spin text-muran-primary" />
-            <p className="text-gray-600">Carregando clientes...</p>
-          </div>
+          <LoadingState />
         ) : (
           <div className="overflow-x-auto">
             <ClientsTable 
@@ -147,7 +115,7 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
           </DialogHeader>
           <ClientForm 
             initialData={selectedClient}
-            onSuccess={handleFormSuccess}
+            onSuccess={(data) => handleFormSuccess(data)}
           />
         </DialogContent>
       </Dialog>
