@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -10,7 +11,7 @@ import { useClientForm } from "@/hooks/useClientForm";
 
 interface ClientFormProps {
   initialData?: any;
-  onSuccess: (data: any) => Promise<void> | void;
+  onSuccess?: (data: any) => Promise<void> | void;
 }
 
 export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
@@ -20,7 +21,10 @@ export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
     showLastPaymentDate,
     handleSubmit,
     handleDelete,
-  } = useClientForm({ initialData, onSuccess });
+  } = useClientForm({ 
+    initialData, 
+    onSuccess: onSuccess || (() => {})
+  });
 
   return (
     <Form {...form}>

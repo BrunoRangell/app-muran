@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,20 +10,8 @@ import { clientFormSchema } from "@/validations/clientFormSchema";
 import { verifySession, prepareClientData, saveClient } from "@/services/clientService";
 
 interface UseClientFormProps {
-  initialData?: {
-    id: string;
-    company_name: string;
-    contract_value: number;
-    first_payment_date: string;
-    payment_type: "pre" | "post";
-    status: "active" | "inactive";
-    acquisition_channel: string;
-    company_birthday: string;
-    contact_name: string;
-    contact_phone: string;
-    last_payment_date?: string;
-  } | null;
-  onSuccess?: () => void;
+  initialData?: any;
+  onSuccess?: (data: any) => Promise<void> | void;
 }
 
 export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) => {
@@ -31,11 +20,6 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
   const [showLastPaymentDate, setShowLastPaymentDate] = useState(
     initialData?.status === "inactive"
   );
-
-  console.log("=== DADOS INICIAIS DO FORMULÁRIO ===", {
-    initialData,
-    timestamp: new Date().toISOString()
-  });
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientFormSchema),
@@ -102,7 +86,7 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
 
         if (onSuccess) {
           console.log("Executando callback de sucesso");
-          onSuccess();
+          onSuccess(clientData);
         }
       } else {
         console.error("Falha na operação:", result.error);
@@ -148,7 +132,7 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
       });
 
       if (onSuccess) {
-        onSuccess();
+        onSuccess(null);
       }
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);
@@ -170,14 +154,6 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
     });
     return () => subscription.unsubscribe();
   }, [form]);
-
-  useEffect(() => {
-    console.log("=== FORMULÁRIO MONTADO/ATUALIZADO ===", {
-      isEditing: !!initialData,
-      clientId: initialData?.id,
-      timestamp: new Date().toISOString()
-    });
-  }, [initialData]);
 
   return {
     form,
