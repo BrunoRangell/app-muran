@@ -95,7 +95,10 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
             <h2 className="text-xl font-bold">Lista de Clientes</h2>
             <div className="flex gap-2 items-center">
               <ColumnToggle columns={columns.filter(col => !col.fixed)} onToggleColumn={toggleColumn} />
-              <FilterPopover filters={filters} onFilterChange={updateFilter} />
+              <FilterPopover 
+                filters={filters}
+                onFilterChange={(key, value) => updateFilter(key as keyof typeof filters, value)}
+              />
               {hasActiveFilters && (
                 <Button 
                   variant="ghost" 

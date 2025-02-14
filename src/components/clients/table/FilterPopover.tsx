@@ -1,3 +1,4 @@
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Filter } from "lucide-react";
@@ -9,12 +10,12 @@ interface FilterPopoverProps {
     acquisition_channel: string;
     payment_type: string;
   };
-  onFilterChange: (filters: any) => void;
+  onFilterChange: (key: string, value: string) => void;
 }
 
 export const FilterPopover = ({ filters, onFilterChange }: FilterPopoverProps) => {
   const handleFilterChange = (key: string, value: string) => {
-    onFilterChange({ ...filters, [key]: value === "all" ? "" : value });
+    onFilterChange(key, value === "all" ? "" : value);
   };
 
   const getSelectValue = (value: string) => {
