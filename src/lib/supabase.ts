@@ -65,24 +65,28 @@ export const checkSession = async () => {
   }
 };
 
+// Função auxiliar para redirecionar ao login
+const redirectToLogin = () => {
+  console.log('Redirecionando para login e limpando storage');
+  localStorage.clear();
+  window.location.href = '/login';
+};
+
 // Configurar listener para mudanças de autenticação
 supabase.auth.onAuthStateChange(async (event, session) => {
   console.log('Evento de autenticação:', event);
   console.log('Sessão atual:', session);
 
   // Se o usuário foi desconectado
-  if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-    console.log('Usuário desconectado, limpando storage e redirecionando');
-    localStorage.clear();
-    window.location.href = '/login';
+  if (event === 'SIGNED_OUT') {
+    redirectToLogin();
     return;
   }
 
-  // Se a sessão expirou
-  if (event === 'TOKEN_REFRESHED' && !session) {
-    console.log('Sessão expirada, redirecionando para login');
-    localStorage.clear();
-    window.location.href = '/login';
+  // Se a sessão expirou ou foi atualizada sem sessão válida
+  if ((event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && !session) {
+    console.log('Sessão inválida detectada após evento:', event);
+    redirectToLogin();
     return;
   }
   
@@ -92,8 +96,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     const authData = localStorage.getItem('muran-auth-token');
     if (!authData) {
       console.warn('Token não encontrado na storage após login');
-      localStorage.clear();
-      window.location.href = '/login';
+      redirectToLogin();
     }
   }
 });
@@ -102,9 +105,6 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 setInterval(async () => {
   const isSessionValid = await checkSession();
   if (!isSessionValid && window.location.pathname !== '/login') {
-    console.log('Sessão inválida detectada, redirecionando para login');
-    localStorage.clear();
-    window.location.href = '/login';
+    redirectToLogin();
   }
 }, 60000); // Verifica a cada minuto
-
