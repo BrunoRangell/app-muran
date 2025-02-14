@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -10,20 +9,8 @@ import { ContactSection } from "./client-form/ContactSection";
 import { useClientForm } from "@/hooks/useClientForm";
 
 interface ClientFormProps {
-  initialData?: {
-    id: string;
-    company_name: string;
-    contract_value: number;
-    first_payment_date: string;
-    payment_type: "pre" | "post";
-    status: "active" | "inactive";
-    acquisition_channel: string;
-    company_birthday: string;
-    contact_name: string;
-    contact_phone: string;
-    last_payment_date?: string;
-  } | null;
-  onSuccess?: () => void;
+  initialData?: any;
+  onSuccess: (data: any) => Promise<void> | void;
 }
 
 export const ClientForm = ({ initialData, onSuccess }: ClientFormProps) => {
