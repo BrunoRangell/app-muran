@@ -51,4 +51,35 @@ export function usePaymentsClients() {
         return acc;
       }, {});
 
-      const totalsByClient
+      const totalsByClient = paymentsData.reduce((acc: { [key: string]: number }, payment) => {
+        if (payment.client_id) {
+          acc[payment.client_id] = (acc[payment.client_id] || 0) + Number(payment.amount);
+        }
+        return acc;
+      }, {});
+
+      const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => {
+        const clientPayments = paymentsByClient[client.id] || [];
+        const hasCurrentMonthPayment = clientPayments.some(payment => {
+          const paymentDate = parseISO(payment.reference_month);
+          return isWithinInterval(paymentDate, { start: currentMonthStart, end: currentMonthEnd });
+        });
+
+        return {
+          ...client,
+          total_received: totalsByClient[client.id] || 0,
+          payments: clientPayments,
+          hasCurrentMonthPayment
+        };
+      });
+
+      return clientsWithTotals;
+    }
+  });
+
+  const handlePaymentUpdated = () => {
+    queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
+  };
+
+  return { clients, isLoading, handlePaymentUpdated };
+}
