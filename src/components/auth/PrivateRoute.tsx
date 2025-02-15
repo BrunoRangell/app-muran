@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { errorMessages } from "@/lib/errors";
+import { useToast } from "@/components/ui/use-toast";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -12,16 +14,25 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const location = useLocation();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("Verificando sessão do usuário...");
+        console.log("Verificando autenticação do usuário...");
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.error("Erro ao verificar sessão:", sessionError);
+          console.error("Erro ao verificar sessão:", {
+            error: sessionError,
+            timestamp: new Date().toISOString()
+          });
           setIsAuthenticated(false);
+          toast({
+            title: "Erro de autenticação",
+            description: errorMessages.AUTH_EXPIRED,
+            variant: "destructive",
+          });
           return;
         }
 
@@ -51,19 +62,43 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
             .single();
 
           if (teamError) {
-            console.error("Erro ao verificar permissões:", teamError);
+            console.error("Erro ao verificar permissões:", {
+              error: teamError,
+              timestamp: new Date().toISOString()
+            });
             setIsAdmin(false);
+            toast({
+              title: "Erro de permissão",
+              description: errorMessages.PERMISSION_DENIED,
+              variant: "destructive",
+            });
             return;
           }
 
           const userIsAdmin = teamMember?.permission === 'admin';
           console.log("Usuário é admin?", userIsAdmin);
           setIsAdmin(userIsAdmin);
+
+          if (!userIsAdmin) {
+            toast({
+              title: "Acesso negado",
+              description: errorMessages.PERMISSION_DENIED,
+              variant: "destructive",
+            });
+          }
         }
       } catch (error) {
-        console.error("Erro ao verificar autenticação:", error);
+        console.error("Erro ao verificar autenticação:", {
+          error,
+          timestamp: new Date().toISOString()
+        });
         setIsAuthenticated(false);
         setIsAdmin(false);
+        toast({
+          title: "Erro",
+          description: errorMessages.OPERATION_FAILED,
+          variant: "destructive",
+        });
       }
     };
 
@@ -72,7 +107,10 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
 
     // Configura listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Mudança no estado de autenticação:", event);
+      console.log("Mudança no estado de autenticação:", {
+        event,
+        timestamp: new Date().toISOString()
+      });
       
       if (!session) {
         setIsAuthenticated(false);
@@ -94,13 +132,13 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
     });
 
     // Verifica a sessão periodicamente
-    const interval = setInterval(checkAuth, 30000); // Verifica a cada 30 segundos
+    const interval = setInterval(checkAuth, 30000);
 
     return () => {
       subscription.unsubscribe();
       clearInterval(interval);
     };
-  }, [requireAdmin]);
+  }, [requireAdmin, toast]);
 
   // Estado de carregamento
   if (isAuthenticated === null || (requireAdmin && isAdmin === null)) {

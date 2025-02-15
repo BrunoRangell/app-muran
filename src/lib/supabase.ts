@@ -1,5 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { errorMessages, AppError } from './errors';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -48,45 +49,72 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Função para verificar o estado da sessão
+// Função para verificar o estado da sessão com mais detalhes
 export const checkSession = async () => {
   try {
+    console.log('Verificando sessão...');
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error) {
-      console.error('Erro ao verificar sessão:', error);
+      console.error('Erro ao verificar sessão:', {
+        error,
+        timestamp: new Date().toISOString()
+      });
+      throw new AppError(errorMessages.AUTH_EXPIRED, 'AUTH_EXPIRED');
+    }
+
+    if (!session) {
+      console.warn('Sessão não encontrada');
       return false;
     }
 
-    return !!session;
+    // Verifica se o token está próximo de expirar (30 minutos)
+    const expiresAt = new Date(session.expires_at! * 1000);
+    const thirtyMinutes = 30 * 60 * 1000;
+    
+    if (expiresAt.getTime() - Date.now() < thirtyMinutes) {
+      console.warn('Sessão próxima de expirar, tentando renovar...');
+      await supabase.auth.refreshSession();
+    }
+
+    return true;
   } catch (error) {
     console.error('Erro ao verificar sessão:', error);
     return false;
   }
 };
 
-// Função auxiliar para redirecionar ao login
-const redirectToLogin = () => {
-  console.log('Redirecionando para login e limpando storage');
+// Função auxiliar para redirecionar ao login com feedback
+const redirectToLogin = (message?: string) => {
+  console.log('Redirecionando para login:', { message, timestamp: new Date().toISOString() });
   localStorage.clear();
+  
+  // Salva a mensagem para ser exibida após o redirecionamento
+  if (message) {
+    sessionStorage.setItem('auth_message', message);
+  }
+  
   window.location.href = '/login';
 };
 
-// Configurar listener para mudanças de autenticação
+// Configurar listener para mudanças de autenticação com mais logs
 supabase.auth.onAuthStateChange(async (event, session) => {
-  console.log('Evento de autenticação:', event);
-  console.log('Sessão atual:', session);
+  console.log('Evento de autenticação:', {
+    event,
+    sessionExists: !!session,
+    timestamp: new Date().toISOString()
+  });
 
   // Se o usuário foi desconectado
   if (event === 'SIGNED_OUT') {
-    redirectToLogin();
+    redirectToLogin('Você foi desconectado com sucesso.');
     return;
   }
 
   // Se a sessão expirou ou foi atualizada sem sessão válida
   if ((event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && !session) {
-    console.log('Sessão inválida detectada após evento:', event);
-    redirectToLogin();
+    console.warn('Sessão inválida detectada após evento:', event);
+    redirectToLogin(errorMessages.AUTH_EXPIRED);
     return;
   }
   
@@ -96,15 +124,42 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     const authData = localStorage.getItem('muran-auth-token');
     if (!authData) {
       console.warn('Token não encontrado na storage após login');
-      redirectToLogin();
+      redirectToLogin(errorMessages.AUTH_INVALID);
     }
   }
 });
 
-// Verificar sessão periodicamente
+// Verificar sessão periodicamente com intervalo variável
+let checkInterval = 60000; // Começa com 1 minuto
+let consecutiveFailures = 0;
+
 setInterval(async () => {
-  const isSessionValid = await checkSession();
-  if (!isSessionValid && window.location.pathname !== '/login') {
-    redirectToLogin();
+  try {
+    const isSessionValid = await checkSession();
+    
+    if (!isSessionValid && window.location.pathname !== '/login') {
+      console.warn('Sessão inválida detectada na verificação periódica');
+      redirectToLogin(errorMessages.AUTH_EXPIRED);
+      return;
+    }
+
+    // Se chegou aqui, resetamos as falhas e podemos aumentar o intervalo
+    consecutiveFailures = 0;
+    checkInterval = Math.min(checkInterval * 2, 300000); // Máximo de 5 minutos
+  } catch (error) {
+    console.error('Erro na verificação periódica:', error);
+    consecutiveFailures++;
+    
+    // Reduz o intervalo se houver falhas consecutivas
+    if (consecutiveFailures > 2) {
+      checkInterval = Math.max(checkInterval / 2, 30000); // Mínimo de 30 segundos
+    }
   }
-}, 60000); // Verifica a cada minuto
+}, checkInterval);
+
+// Interceptor para requisições do Supabase
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED') {
+    console.log('Token atualizado com sucesso');
+  }
+});
