@@ -1,9 +1,9 @@
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Loader2, Users, AlertCircle } from "lucide-react";
+import { UserPlus, Users, AlertCircle } from "lucide-react";
 import { TeamMemberCard } from "@/components/team/TeamMemberCard";
 import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
@@ -11,6 +11,8 @@ import { TeamMemberForm } from "@/components/admin/TeamMemberForm";
 import { GiveBadgeDialog } from "@/components/team/GiveBadgeDialog";
 import { supabase } from "@/lib/supabase";
 import { EditFormData, TeamMember } from "@/types/team";
+import { ErrorState } from "@/components/clients/components/ErrorState";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -92,18 +94,7 @@ const Managers = () => {
   };
 
   if (error) {
-    return (
-      <div className="min-h-screen p-8 flex flex-col items-center justify-center text-center">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-800 mb-2">
-          Erro ao carregar membros
-        </h2>
-        <p className="text-gray-600 max-w-md">
-          Ocorreu um erro ao tentar carregar a lista de membros. Por favor, tente
-          recarregar a página.
-        </p>
-      </div>
-    );
+    return <ErrorState />;
   }
 
   return (
@@ -135,37 +126,36 @@ const Managers = () => {
       </header>
 
       <Card className="p-4 md:p-6 bg-white/95 backdrop-blur-sm border border-gray-100 shadow-lg">
-        {isLoadingTeam || isLoadingUser ? (
-          <div className="min-h-[300px] flex flex-col items-center justify-center gap-4">
-            <Loader2 className="h-8 w-8 text-muran-primary animate-spin" />
-            <p className="text-gray-600 text-sm">Carregando equipe...</p>
-          </div>
-        ) : teamMembers && teamMembers.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {teamMembers.map((member) => (
-              <TeamMemberCard
-                key={member.id}
-                member={member}
-                currentUserPermission={currentUser?.permission}
-                currentUserId={currentUser?.id}
-                onEdit={handleEdit}
-                className="hover:shadow-md transition-all duration-300 ease-in-out"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 text-center p-4">
-            <AlertCircle className="h-12 w-12 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-900">
-              Nenhum membro encontrado
-            </h3>
-            <p className="text-gray-600 max-w-sm text-sm">
-              Parece que ainda não há membros cadastrados na equipe.
-              {currentUser?.permission === "admin" &&
-                " Clique no botão acima para adicionar um novo."}
-            </p>
-          </div>
-        )}
+        <Suspense fallback={<TeamSkeleton />}>
+          {isLoadingTeam || isLoadingUser ? (
+            <TeamSkeleton />
+          ) : teamMembers && teamMembers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              {teamMembers.map((member) => (
+                <TeamMemberCard
+                  key={member.id}
+                  member={member}
+                  currentUserPermission={currentUser?.permission}
+                  currentUserId={currentUser?.id}
+                  onEdit={handleEdit}
+                  className="hover:shadow-md transition-all duration-300 ease-in-out"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 text-center p-4">
+              <AlertCircle className="h-12 w-12 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900">
+                Nenhum membro encontrado
+              </h3>
+              <p className="text-gray-600 max-w-sm text-sm">
+                Parece que ainda não há membros cadastrados na equipe.
+                {currentUser?.permission === "admin" &&
+                  " Clique no botão acima para adicionar um novo."}
+              </p>
+            </div>
+          )}
+        </Suspense>
       </Card>
 
       <EditMemberDialog
@@ -190,5 +180,21 @@ const Managers = () => {
   );
 };
 
-export default Managers;
+const TeamSkeleton = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+    {[...Array(8)].map((_, i) => (
+      <Card key={i} className="p-4 space-y-4">
+        <div className="flex justify-center">
+          <Skeleton className="h-24 w-24 rounded-full" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-3/4 mx-auto" />
+          <Skeleton className="h-4 w-1/2 mx-auto" />
+          <Skeleton className="h-4 w-2/3 mx-auto" />
+        </div>
+      </Card>
+    ))}
+  </div>
+);
 
+export default Managers;
