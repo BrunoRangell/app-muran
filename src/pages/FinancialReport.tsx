@@ -1,7 +1,7 @@
 
 import { FinancialMetrics } from "@/components/clients/FinancialMetrics";
 import { CostFilters } from "@/types/cost";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { DateFilter } from "@/components/costs/filters/DateFilter";
 import { BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
