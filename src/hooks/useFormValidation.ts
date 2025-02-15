@@ -1,12 +1,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, DefaultValues } from "react-hook-form";
 import { toast } from "@/components/ui/use-toast";
 import { z } from "zod";
 
 interface UseFormValidationProps<T extends z.ZodType> {
   schema: T;
-  defaultValues?: Partial<z.infer<T>>;
+  defaultValues?: DefaultValues<z.infer<T>>;
   onSubmit: (data: z.infer<T>) => Promise<void>;
 }
 
