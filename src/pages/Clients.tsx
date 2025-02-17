@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Client } from "@/components/clients/types";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
-import { LoadingState } from "@/components/clients/components/LoadingState";
+import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
 import { Suspense } from "react";
 
 const Clients = () => {
@@ -58,27 +58,23 @@ const Clients = () => {
     );
   }
 
+  if (isLoading) {
+    return <ClientsLoadingState />;
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
-      <Suspense fallback={<LoadingState />}>
-        {isLoading ? (
-          <LoadingState />
-        ) : (
-          <>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
-                Lista de Clientes
-              </h1>
-            </div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
+          Lista de Clientes
+        </h1>
+      </div>
 
-            <Card className="p-2 md:p-6">
-              <ClientsList />
-            </Card>
+      <Card className="p-2 md:p-6">
+        <ClientsList />
+      </Card>
 
-            <ClientsRanking clients={clients || []} />
-          </>
-        )}
-      </Suspense>
+      <ClientsRanking clients={clients || []} />
     </div>
   );
 };
