@@ -91,19 +91,16 @@ export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsLis
       )}
 
       <div className="flex-1 overflow-hidden">
-        {isLoading ? (
-          <LoadingState />
-        ) : (
-          <div className="overflow-x-auto">
-            <ClientsTable 
-              clients={clients || []} 
-              columns={columns.filter(col => viewMode === 'payments' ? col.fixed : col.show)} 
-              onEditClick={handleEditClick}
-              sortConfig={sortConfig}
-              onSort={handleSort}
-            />
-          </div>
-        )}
+        <div className="overflow-x-auto">
+          <ClientsTable 
+            clients={clients || []} 
+            columns={columns.filter(col => viewMode === 'payments' ? col.fixed : col.show)} 
+            onEditClick={handleEditClick}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            isLoading={isLoading}
+          />
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
