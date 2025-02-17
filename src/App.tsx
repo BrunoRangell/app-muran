@@ -4,9 +4,9 @@ import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import { Suspense, lazy } from "react";
 import { LoadingState } from "@/components/ui/loading-state";
+import Login from "@/pages/Login";
 
 // Lazy load pages
-const Login = lazy(() => import("@/pages/Login"));
 const Index = lazy(() => import("@/pages/Index"));
 const Clients = lazy(() => import("@/pages/Clients"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
