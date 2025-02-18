@@ -50,6 +50,7 @@ const Tasks = lazyWithTimeout(() => import("@/pages/Tasks"));
 const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
 const Payments = lazyWithTimeout(() => import("@/pages/Payments"));
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
+const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
       >
         <Route path="/" element={<Index />} />
         <Route path="/equipe" element={<Managers />} />
+        <Route path="/configuracoes" element={<Settings />} />
         <Route
           path="/clientes"
           element={
