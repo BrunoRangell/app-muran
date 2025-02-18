@@ -46,9 +46,10 @@ export const Layout = () => {
           ease-in-out
         `}
       >
-        <Suspense fallback={<LoadingState />}>
-          <Outlet />
-        </Suspense>
+        <Suspense 
+          fallback={<LoadingState />}
+          children={<Outlet />} 
+        />
       </main>
     </div>
   );

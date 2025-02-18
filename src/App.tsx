@@ -2,19 +2,40 @@
 import { Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 import Login from "@/pages/Login";
 
-// Lazy load pages
-const Index = lazy(() => import("@/pages/Index"));
-const Clients = lazy(() => import("@/pages/Clients"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
-const Managers = lazy(() => import("@/pages/Managers"));
-const ManagerFinancial = lazy(() => import("@/pages/ManagerFinancial"));
-const Tasks = lazy(() => import("@/pages/Tasks"));
-const FinancialReport = lazy(() => import("@/pages/FinancialReport"));
-const Payments = lazy(() => import("@/pages/Payments"));
-const Costs = lazy(() => import("@/pages/Costs"));
+// Pré-carregamento das rotas principais
+const Index = lazy(() => {
+  const page = import("@/pages/Index");
+  // Pré-carregar outras páginas após a página inicial carregar
+  page.then(() => {
+    import("@/pages/Clients");
+    import("@/pages/Managers");
+  });
+  return page;
+});
+
+// Lazy load das demais páginas com timeout menor
+const lazyWithTimeout = (importFn: () => Promise<any>) => {
+  return lazy(() => {
+    return Promise.race([
+      importFn(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Tempo limite excedido')), 3000)
+      )
+    ]);
+  });
+};
+
+const Clients = lazyWithTimeout(() => import("@/pages/Clients"));
+const NotFound = lazyWithTimeout(() => import("@/pages/NotFound"));
+const Managers = lazyWithTimeout(() => import("@/pages/Managers"));
+const ManagerFinancial = lazyWithTimeout(() => import("@/pages/ManagerFinancial"));
+const Tasks = lazyWithTimeout(() => import("@/pages/Tasks"));
+const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
+const Payments = lazyWithTimeout(() => import("@/pages/Payments"));
+const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 
 function App() {
   return (
