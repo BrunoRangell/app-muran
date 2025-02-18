@@ -10,21 +10,35 @@ const Index = lazy(() => {
   const page = import("@/pages/Index");
   // Pré-carregar outras páginas após a página inicial carregar
   page.then(() => {
-    import("@/pages/Clients");
-    import("@/pages/Managers");
+    Promise.all([
+      import("@/pages/Clients"),
+      import("@/pages/Managers")
+    ]).catch(error => {
+      console.error("Erro no pré-carregamento:", error);
+    });
   });
   return page;
 });
 
-// Lazy load das demais páginas com timeout menor
+// Lazy load das demais páginas com timeout maior e retry
 const lazyWithTimeout = (importFn: () => Promise<any>) => {
   return lazy(() => {
-    return Promise.race([
-      importFn(),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Tempo limite excedido')), 3000)
-      )
-    ]);
+    const loadWithRetry = (retries = 2): Promise<any> => {
+      return Promise.race([
+        importFn(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Tempo limite excedido')), 8000)
+        )
+      ]).catch(error => {
+        if (retries > 0) {
+          console.log(`Tentando novamente... ${retries} tentativas restantes`);
+          return loadWithRetry(retries - 1);
+        }
+        throw error;
+      });
+    };
+
+    return loadWithRetry();
   });
 };
 
