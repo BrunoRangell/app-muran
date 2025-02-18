@@ -12,7 +12,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 export const ClientsList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const { columns, toggleColumn } = useClientColumns(true); // Adicionado argumento requerido
+  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' }); // Corrigido para passar o objeto correto
   const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
   const { clients, isLoading } = useClients(filters);
 
@@ -50,7 +50,7 @@ export const ClientsList = () => {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-2xl">
           <ClientForm
-            initialData={selectedClient} // Corrigido para usar initialData em vez de client
+            initialData={selectedClient}
             onSuccess={() => setIsFormOpen(false)}
           />
         </DialogContent>
