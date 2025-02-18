@@ -2,8 +2,7 @@
 import { Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
-import { Suspense, lazy } from "react";
-import { LoadingState } from "@/components/ui/loading-state";
+import { lazy } from "react";
 import Login from "@/pages/Login";
 
 // Lazy load pages
@@ -19,56 +18,54 @@ const Costs = lazy(() => import("@/pages/Costs"));
 
 function App() {
   return (
-    <Suspense fallback={<LoadingState />}>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        element={
+          <PrivateRoute>
+            <Layout />
+          </PrivateRoute>
+        }
+      >
+        <Route path="/" element={<Index />} />
+        <Route path="/equipe" element={<Managers />} />
         <Route
+          path="/clientes"
           element={
-            <PrivateRoute>
-              <Layout />
+            <PrivateRoute requireAdmin>
+              <Clients />
             </PrivateRoute>
           }
-        >
-          <Route path="/" element={<Index />} />
-          <Route path="/equipe" element={<Managers />} />
-          <Route
-            path="/clientes"
-            element={
-              <PrivateRoute requireAdmin>
-                <Clients />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clientes/relatorio"
-            element={
-              <PrivateRoute requireAdmin>
-                <FinancialReport />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clientes/recebimentos"
-            element={
-              <PrivateRoute requireAdmin>
-                <Payments />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clientes/custos"
-            element={
-              <PrivateRoute requireAdmin>
-                <Costs />
-              </PrivateRoute>
-            }
-          />
-          <Route path="/financeiro" element={<ManagerFinancial />} />
-          <Route path="/tarefas" element={<Tasks />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
-    </Suspense>
+        />
+        <Route
+          path="/clientes/relatorio"
+          element={
+            <PrivateRoute requireAdmin>
+              <FinancialReport />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/clientes/recebimentos"
+          element={
+            <PrivateRoute requireAdmin>
+              <Payments />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/clientes/custos"
+          element={
+            <PrivateRoute requireAdmin>
+              <Costs />
+            </PrivateRoute>
+          }
+        />
+        <Route path="/financeiro" element={<ManagerFinancial />} />
+        <Route path="/tarefas" element={<Tasks />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }
 
