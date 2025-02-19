@@ -44,11 +44,11 @@ export const UserProfileMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="focus:outline-none w-full">
-        <div className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-muran-complementary/10 transition-colors">
+        <div className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={user.photo_url || ""} alt={user.name} />
-              <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="bg-muran-primary text-white">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium text-white">{user.name}</span>
