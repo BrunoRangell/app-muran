@@ -44,7 +44,7 @@ export const UserProfileMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="focus:outline-none w-full">
-        <div className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
+        <div className="flex items-center justify-between w-full p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={user.photo_url || ""} alt={user.name} />
