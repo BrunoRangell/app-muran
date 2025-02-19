@@ -86,7 +86,9 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
   return (
     <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col">
       <SidebarLogo />
-      
+      <div className="my-4">
+        <UserProfileMenu />
+      </div>
       <nav className="flex-1 space-y-2">
         {menuItems.map((item) => (
           <SidebarMenuItem
@@ -97,10 +99,6 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
           />
         ))}
       </nav>
-
-      <div className="mt-auto pt-4 border-t border-muran-complementary/20">
-        <UserProfileMenu />
-      </div>
     </div>
   );
 };
