@@ -59,15 +59,15 @@ export const UserProfileMenu = () => {
         </div>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-56 bg-white/10 backdrop-blur-sm text-white border border-white/20">
-        <DropdownMenuItem onClick={() => navigate("/configuracoes")} className="cursor-pointer hover:bg-white/10">
+      <DropdownMenuContent align="end" className="w-56 bg-[#4a2f4a] text-white border border-white/20">
+        <DropdownMenuItem onClick={() => navigate("/configuracoes")} className="cursor-pointer hover:bg-[#5a3a5a]">
           <Settings className="mr-2 h-4 w-4" />
           <span>Configurações</span>
         </DropdownMenuItem>
         
         <DropdownMenuSeparator className="bg-white/10" />
         
-        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 hover:bg-white/10">
+        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 hover:bg-[#5a3a5a]">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sair</span>
         </DropdownMenuItem>
