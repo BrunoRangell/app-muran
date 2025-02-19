@@ -44,7 +44,7 @@ export const UserProfileMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="focus:outline-none w-full">
-        <div className="flex items-center justify-between w-full p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
+        <div className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={user.photo_url || ""} alt={user.name} />
@@ -59,15 +59,15 @@ export const UserProfileMenu = () => {
         </div>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-56 bg-muran-complementary text-white border-muran-complementary">
-        <DropdownMenuItem onClick={() => navigate("/configuracoes")} className="cursor-pointer hover:bg-muran-complementary/80">
+      <DropdownMenuContent align="end" className="w-56 bg-white/10 backdrop-blur-sm text-white border border-white/20">
+        <DropdownMenuItem onClick={() => navigate("/configuracoes")} className="cursor-pointer hover:bg-white/10">
           <Settings className="mr-2 h-4 w-4" />
           <span>Configurações</span>
         </DropdownMenuItem>
         
-        <DropdownMenuSeparator className="bg-muran-complementary/20" />
+        <DropdownMenuSeparator className="bg-white/10" />
         
-        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 hover:bg-muran-complementary/80 hover:text-red-300">
+        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 hover:bg-white/10">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sair</span>
         </DropdownMenuItem>
