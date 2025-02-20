@@ -24,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { socialMediaSchema } from "@/components/team/schemas/memberSchema";
 
 export default function Settings() {
   const { data: user, isLoading: isLoadingUser } = useCurrentUser();
@@ -32,6 +34,7 @@ export default function Settings() {
   const isAdmin = user?.permission === 'admin';
   
   const { register, handleSubmit, formState: { errors }, setValue } = useForm({
+    resolver: zodResolver(socialMediaSchema),
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
@@ -125,8 +128,11 @@ export default function Settings() {
                 <Label htmlFor="name">Nome Completo</Label>
                 <Input
                   id="name"
-                  {...register("name", { required: true })}
+                  {...register("name")}
                 />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message as string}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -173,6 +179,9 @@ export default function Settings() {
                   type="date"
                   {...register("birthday")}
                 />
+                {errors.birthday && (
+                  <p className="text-sm text-red-500">{errors.birthday.message as string}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -194,6 +203,9 @@ export default function Settings() {
                 placeholder="Conte um pouco sobre você..."
                 className="h-32"
               />
+              {errors.bio && (
+                <p className="text-sm text-red-500">{errors.bio.message as string}</p>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
@@ -202,8 +214,11 @@ export default function Settings() {
                 <Input
                   id="instagram"
                   {...register("instagram")}
-                  placeholder="@seuperfil"
+                  placeholder="https://instagram.com/seuperfil"
                 />
+                {errors.instagram && (
+                  <p className="text-sm text-red-500">{errors.instagram.message as string}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -211,8 +226,11 @@ export default function Settings() {
                 <Input
                   id="linkedin"
                   {...register("linkedin")}
-                  placeholder="URL do seu perfil"
+                  placeholder="https://linkedin.com/in/seuperfil"
                 />
+                {errors.linkedin && (
+                  <p className="text-sm text-red-500">{errors.linkedin.message as string}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -220,8 +238,11 @@ export default function Settings() {
                 <Input
                   id="tiktok"
                   {...register("tiktok")}
-                  placeholder="@seuperfil"
+                  placeholder="https://tiktok.com/@seuperfil"
                 />
+                {errors.tiktok && (
+                  <p className="text-sm text-red-500">{errors.tiktok.message as string}</p>
+                )}
               </div>
             </div>
 
