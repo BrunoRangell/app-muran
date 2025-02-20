@@ -17,13 +17,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Settings() {
   const { data: user, isLoading: isLoadingUser } = useCurrentUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const isAdmin = user?.permission === 'admin';
   
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue } = useForm({
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
@@ -33,6 +41,9 @@ export default function Settings() {
       linkedin: user?.linkedin || "",
       tiktok: user?.tiktok || "",
       photo_url: user?.photo_url || "",
+      permission: user?.permission || "",
+      start_date: user?.start_date || "",
+      birthday: user?.birthday || "",
     }
   });
 
@@ -40,16 +51,23 @@ export default function Settings() {
     try {
       setIsSubmitting(true);
       
+      const updateData = {
+        name: data.name,
+        bio: data.bio,
+        instagram: data.instagram,
+        linkedin: data.linkedin,
+        tiktok: data.tiktok,
+        photo_url: data.photo_url,
+        birthday: data.birthday,
+        ...(isAdmin && {
+          permission: data.permission,
+          start_date: data.start_date,
+        }),
+      };
+
       const { error } = await supabase
         .from('team_members')
-        .update({
-          name: data.name,
-          bio: data.bio,
-          instagram: data.instagram,
-          linkedin: data.linkedin,
-          tiktok: data.tiktok,
-          photo_url: data.photo_url,
-        })
+        .update(updateData)
         .eq('id', user?.id);
 
       if (error) throw error;
@@ -127,6 +145,43 @@ export default function Settings() {
                   id="role"
                   disabled
                   value={user?.role}
+                />
+              </div>
+
+              {isAdmin && (
+                <div className="space-y-2">
+                  <Label htmlFor="permission">Nível de Permissão</Label>
+                  <Select 
+                    defaultValue={user?.permission}
+                    onValueChange={(value) => setValue("permission", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a permissão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">Membro</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="birthday">Aniversário</Label>
+                <Input
+                  id="birthday"
+                  type="date"
+                  {...register("birthday")}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="start_date">Na Muran desde</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  {...register("start_date")}
+                  disabled={!isAdmin}
                 />
               </div>
             </div>
