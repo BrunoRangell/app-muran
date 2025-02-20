@@ -34,6 +34,8 @@ export interface EditFormData {
   linkedin?: string;
   instagram?: string;
   tiktok?: string;
+  permission?: string;
+  start_date?: string;
 }
 
 export interface TeamMemberCardProps {
