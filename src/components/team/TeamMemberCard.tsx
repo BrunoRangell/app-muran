@@ -71,15 +71,22 @@ export const TeamMemberCard = ({
           </Button>
         )}
         
-        <Avatar className="h-24 w-24">
-          {member.photo_url ? (
-            <AvatarImage src={convertGoogleDriveLink(member.photo_url)} alt={member.name} />
-          ) : (
-            <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
-              {getInitials(member.name)}
-            </AvatarFallback>
-          )}
+        <Avatar className="h-24 w-24 rounded-full overflow-hidden">
+          <div className="w-full h-full relative">
+            {member.photo_url ? (
+              <AvatarImage 
+                src={convertGoogleDriveLink(member.photo_url)} 
+                alt={member.name}
+                className="object-cover w-full h-full"
+              />
+            ) : (
+              <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
+                {getInitials(member.name)}
+              </AvatarFallback>
+            )}
+          </div>
         </Avatar>
+        
         <div className="text-center space-y-2">
           <h3 className="font-semibold text-lg">{member.name}</h3>
           <p className="text-gray-600">{member.role}</p>
@@ -113,4 +120,3 @@ export const TeamMemberCard = ({
     </>
   );
 };
-
