@@ -36,19 +36,14 @@ export function usePaymentsClients() {
         throw paymentsError;
       }
 
-      // Garante que os valores sejam sempre numéricos
       const paymentsByClient = paymentsData.reduce((acc: { [key: string]: any[] }, payment) => {
         if (payment.client_id) {
           if (!acc[payment.client_id]) {
             acc[payment.client_id] = [];
           }
-          const amount = typeof payment.amount === 'string' 
-            ? parseFloat(payment.amount) 
-            : Number(payment.amount);
-
           acc[payment.client_id].push({
             id: payment.id,
-            amount: amount || 0,
+            amount: Number(payment.amount),
             reference_month: payment.reference_month,
             notes: payment.notes
           });
@@ -56,27 +51,17 @@ export function usePaymentsClients() {
         return acc;
       }, {});
 
-      // Calcula os totais garantindo valores numéricos
+      // Garante que os valores sejam sempre numéricos
       const totalsByClient = paymentsData.reduce((acc: { [key: string]: number }, payment) => {
         if (payment.client_id) {
-          const amount = typeof payment.amount === 'string' 
-            ? parseFloat(payment.amount) 
-            : Number(payment.amount);
-            
-          acc[payment.client_id] = (acc[payment.client_id] || 0) + (amount || 0);
+          const amount = Number(payment.amount) || 0;
+          acc[payment.client_id] = (acc[payment.client_id] || 0) + amount;
         }
         return acc;
       }, {});
 
       const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => {
         const clientPayments = paymentsByClient[client.id] || [];
-        const total = totalsByClient[client.id] || 0;
-
-        console.log(`Cliente ${client.company_name}:`, {
-          total: total,
-          paymentCount: clientPayments.length
-        });
-
         const hasCurrentMonthPayment = clientPayments.some(payment => {
           const paymentDate = parseISO(payment.reference_month);
           return isWithinInterval(paymentDate, { start: currentMonthStart, end: currentMonthEnd });
@@ -84,16 +69,15 @@ export function usePaymentsClients() {
 
         return {
           ...client,
-          total_received: total,
+          total_received: totalsByClient[client.id] || 0,
           payments: clientPayments,
           hasCurrentMonthPayment
         };
       });
 
+      console.log("Clientes processados com totais:", clientsWithTotals);
       return clientsWithTotals;
-    },
-    staleTime: 0, // Força revalidação imediata
-    cacheTime: 0  // Desabilita cache para garantir dados frescos
+    }
   });
 
   const handlePaymentUpdated = () => {
