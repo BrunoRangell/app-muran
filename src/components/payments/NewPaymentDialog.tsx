@@ -46,10 +46,15 @@ export function NewPaymentDialog({
   });
 
   async function handleSubmit(data: PaymentFormData) {
-    if (!clientId) return;
+    if (!clientId || isLoading) {
+      console.log("Submissão bloqueada:", !clientId ? "Sem clientId" : "Já está carregando");
+      return;
+    }
     
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      console.log("Iniciando salvamento de pagamento(s)");
+
       // Cria um array de pagamentos com datas formatadas corretamente
       const payments = data.months.map(month => {
         const [year, monthStr] = month.split('-');
@@ -75,7 +80,7 @@ export function NewPaymentDialog({
       }
       
       // Invalida as queries relacionadas para atualizar os dados
-      queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
+      await queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
       
       toast({
         title: "Sucesso!",
@@ -99,7 +104,10 @@ export function NewPaymentDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (isLoading) return; // Impede fechamento durante o carregamento
+      onOpenChange(newOpen);
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Registrar Pagamento - {client?.company_name}</DialogTitle>
@@ -108,10 +116,9 @@ export function NewPaymentDialog({
         <PaymentForm
           client={client}
           onSubmit={handleSubmit}
-          onCancel={() => onOpenChange(false)}
+          onCancel={() => !isLoading && onOpenChange(false)}
           isLoading={isLoading}
         />
       </DialogContent>
     </Dialog>
   );
-}

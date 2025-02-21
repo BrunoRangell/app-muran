@@ -47,6 +47,11 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
   };
 
   const onSubmit = async (data: CostFormData) => {
+    if (isLoading) {
+      console.log("Já existe uma submissão em andamento");
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Insere o custo
@@ -65,16 +70,18 @@ export function useNewCostForm(onOpenChange: (open: boolean) => void) {
       if (!newCost) throw new Error("Falha ao criar custo");
 
       // Insere as categorias do custo
-      const { error: categoriesError } = await supabase
-        .from("costs_categories")
-        .insert(
-          data.categories.map(categoryId => ({
-            cost_id: newCost.id,
-            category_id: categoryId
-          }))
-        );
+      if (data.categories.length > 0) {
+        const { error: categoriesError } = await supabase
+          .from("costs_categories")
+          .insert(
+            data.categories.map(categoryId => ({
+              cost_id: newCost.id,
+              category_id: categoryId
+            }))
+          );
 
-      if (categoriesError) throw categoriesError;
+        if (categoriesError) throw categoriesError;
+      }
 
       toast({
         title: "Custo registrado",
