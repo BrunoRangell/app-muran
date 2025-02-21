@@ -43,7 +43,7 @@ export function usePaymentsClients() {
           }
           acc[payment.client_id].push({
             id: payment.id,
-            amount: payment.amount,
+            amount: Number(payment.amount),
             reference_month: payment.reference_month,
             notes: payment.notes
           });
@@ -51,9 +51,11 @@ export function usePaymentsClients() {
         return acc;
       }, {});
 
+      // Garante que os valores sejam sempre numéricos
       const totalsByClient = paymentsData.reduce((acc: { [key: string]: number }, payment) => {
         if (payment.client_id) {
-          acc[payment.client_id] = (acc[payment.client_id] || 0) + Number(payment.amount);
+          const amount = Number(payment.amount) || 0;
+          acc[payment.client_id] = (acc[payment.client_id] || 0) + amount;
         }
         return acc;
       }, {});
@@ -73,6 +75,7 @@ export function usePaymentsClients() {
         };
       });
 
+      console.log("Clientes processados com totais:", clientsWithTotals);
       return clientsWithTotals;
     }
   });
