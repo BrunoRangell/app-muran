@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +27,6 @@ export function NewPaymentDialog({
 }: NewPaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: client } = useQuery({
     queryKey: ['client', clientId],
@@ -59,10 +58,17 @@ export function NewPaymentDialog({
       const payments = data.months.map(month => {
         const [year, monthStr] = month.split('-');
         const dateStr = `${year}-${monthStr}-01`;
+        const amount = parseCurrencyToNumber(data.amount);
+        
+        console.log('Processando pagamento:', {
+          month: dateStr,
+          amount: amount,
+          parsed: typeof amount
+        });
         
         return {
           client_id: clientId,
-          amount: parseCurrencyToNumber(data.amount),
+          amount: amount,
           reference_month: dateStr,
           notes: data.notes || null
         };
@@ -79,9 +85,6 @@ export function NewPaymentDialog({
         throw error;
       }
       
-      // Invalida as queries relacionadas para atualizar os dados
-      await queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
-      
       toast({
         title: "Sucesso!",
         description: payments.length > 1 
@@ -89,8 +92,13 @@ export function NewPaymentDialog({
           : "Pagamento registrado com sucesso.",
       });
       
-      onSuccess();
-      onOpenChange(false);
+      // Aguarda um momento antes de chamar onSuccess para garantir que os dados foram atualizados
+      setTimeout(() => {
+        onSuccess();
+        onOpenChange(false);
+        setIsLoading(false);
+      }, 500);
+      
     } catch (error: any) {
       console.error('Erro ao registrar pagamento:', error);
       toast({
@@ -98,7 +106,6 @@ export function NewPaymentDialog({
         description: error.message || "Não foi possível registrar o pagamento.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   }
