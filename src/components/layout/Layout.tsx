@@ -1,12 +1,10 @@
-
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { LoadingState } from "@/components/ui/loading-state";
 
 export const Layout = () => {
   const location = useLocation();
@@ -46,10 +44,7 @@ export const Layout = () => {
           ease-in-out
         `}
       >
-        <Suspense 
-          fallback={<LoadingState />}
-          children={<Outlet />} 
-        />
+        <Outlet />
       </main>
     </div>
   );

@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { SidebarLogo } from "./SidebarLogo";
 import { SidebarMenuItem } from "./SidebarMenuItem";
-import { UserProfileMenu } from "./UserProfileMenu";
+import { SidebarLogout } from "./SidebarLogout";
 import { MenuItem } from "@/types/sidebar";
 
 interface SidebarProps {
@@ -84,12 +84,10 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
   };
 
   return (
-    <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col">
+    <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0">
       <SidebarLogo />
-      <div>
-        <UserProfileMenu />
-      </div>
-      <nav className="flex-1 space-y-2 mt-4">
+      
+      <nav className="space-y-2">
         {menuItems.map((item) => (
           <SidebarMenuItem
             key={item.path}
@@ -99,6 +97,8 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
           />
         ))}
       </nav>
+
+      <SidebarLogout />
     </div>
   );
 };

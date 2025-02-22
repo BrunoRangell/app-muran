@@ -12,8 +12,7 @@ export const useTeamMembers = () => {
         const { data: members, error: membersError } = await supabase
           .from('team_members')
           .select('*')
-          .order('start_date', { ascending: true })
-          .order('name', { ascending: true });
+          .order('start_date', { ascending: true });
 
         if (membersError) {
           console.error("Erro ao buscar membros:", membersError);

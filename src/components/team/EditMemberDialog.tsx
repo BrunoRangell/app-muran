@@ -12,13 +12,6 @@ import { toast } from "@/components/ui/use-toast";
 import { useEffect } from "react";
 import { socialMediaSchema, SocialMediaSchemaType } from "./schemas/memberSchema";
 import { SocialMediaForm } from "./forms/SocialMediaForm";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface EditMemberDialogProps {
   isOpen: boolean;
@@ -43,9 +36,7 @@ export const EditMemberDialog = ({
       bio: '',
       instagram: '',
       linkedin: '',
-      tiktok: '',
-      permission: '',
-      start_date: ''
+      tiktok: ''
     }
   });
 
@@ -60,9 +51,7 @@ export const EditMemberDialog = ({
         bio: selectedMember.bio || '',
         instagram: selectedMember.instagram || '',
         linkedin: selectedMember.linkedin || '',
-        tiktok: selectedMember.tiktok || '',
-        permission: selectedMember.permission || '',
-        start_date: selectedMember.start_date || ''
+        tiktok: selectedMember.tiktok || ''
       });
     }
   }, [selectedMember, form]);
@@ -108,46 +97,19 @@ export const EditMemberDialog = ({
               />
 
               {isAdmin && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cargo</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="permission"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nível de Permissão</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a permissão" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="member">Membro</SelectItem>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cargo</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
 
               <FormField
@@ -176,24 +138,6 @@ export const EditMemberDialog = ({
                     <FormLabel>Data de Aniversário *</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="start_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Na Muran desde</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="date" 
-                        {...field} 
-                        disabled={!isAdmin}
-                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

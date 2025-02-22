@@ -1,6 +1,6 @@
-
 import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
+
 import { cn } from "@/lib/utils"
 
 const Avatar = React.forwardRef<
@@ -32,7 +32,7 @@ const AvatarImage = React.forwardRef<
     <AvatarPrimitive.Image
       ref={ref}
       onError={() => setHasError(true)}
-      className={cn("aspect-square h-full w-full object-cover", className)}
+      className={cn("aspect-square h-full w-full", className)}
       {...props}
     />
   )

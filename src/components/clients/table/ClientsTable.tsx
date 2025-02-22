@@ -7,7 +7,6 @@ import { Client, Column, SortConfig } from "../types";
 import { ClientsTableHeader } from "./TableHeader";
 import { ClientTableRow } from "./TableRow";
 import { calculateRetention } from "./utils";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClientsTableProps {
   clients: Client[];
@@ -15,7 +14,6 @@ interface ClientsTableProps {
   onEditClick: (client: Client) => void;
   sortConfig: SortConfig;
   onSort: (key: string) => void;
-  isLoading?: boolean;
 }
 
 export const ClientsTable = ({ 
@@ -23,8 +21,7 @@ export const ClientsTable = ({
   columns, 
   onEditClick, 
   sortConfig, 
-  onSort,
-  isLoading
+  onSort 
 }: ClientsTableProps) => {
   const sortedColumns = [...columns].sort((a, b) => {
     if (a.fixed && !b.fixed) return -1;
@@ -55,25 +52,6 @@ export const ClientsTable = ({
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(5)].map((_, index) => (
-          <div key={index} className="flex gap-4 p-4 border-b animate-pulse">
-            {sortedColumns.filter(col => col.show).map((col, colIndex) => (
-              <div key={colIndex} className="flex-1">
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ))}
-            <div className="w-10">
-              <Skeleton className="h-8 w-8" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col">

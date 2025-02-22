@@ -9,7 +9,6 @@ import { MetricsCard } from "@/components/index/MetricsCard";
 import { BirthdayCard } from "@/components/team/BirthdayCard";
 import { GoalCard } from "@/components/index/GoalCard";
 import { Quote } from "lucide-react";
-import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
 
 const Index = () => {
   const [userName, setUserName] = useState<string>("");
@@ -18,7 +17,7 @@ const Index = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
 
-  const { data: teamMembers, isLoading: isTeamLoading } = useQuery({
+  const { data: teamMembers } = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
       const { data, error } = await supabase.from("team_members").select("*");
@@ -27,7 +26,7 @@ const Index = () => {
     },
   });
 
-  const { data: clientMetrics, isLoading: isMetricsLoading } = useQuery({
+  const { data: clientMetrics } = useQuery({
     queryKey: ["client_metrics"],
     queryFn: async () => {
       const now = new Date();
@@ -102,10 +101,6 @@ const Index = () => {
   };
 
   const todaysQuote = getRandomQuote();
-
-  if (isTeamLoading || isMetricsLoading) {
-    return <DashboardLoadingState />;
-  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
