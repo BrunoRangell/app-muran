@@ -40,6 +40,11 @@ export function usePaymentsClients() {
         throw paymentsError;
       }
 
+      if (!Array.isArray(paymentsData)) {
+        console.error('Dados de pagamentos inválidos:', paymentsData);
+        return [];
+      }
+
       console.log('Dados brutos de pagamentos:', paymentsData);
 
       const currentMonthStart = startOfMonth(new Date());
@@ -58,32 +63,41 @@ export function usePaymentsClients() {
         return 0;
       };
 
-      // Organiza pagamentos por cliente com validação de valores
-      const paymentsByClient: PaymentsByClient = paymentsData.reduce((acc: PaymentsByClient, payment) => {
-        if (!payment.client_id) return acc;
-        
-        if (!acc[payment.client_id]) {
-          acc[payment.client_id] = [];
+      // Organiza pagamentos por cliente
+      const paymentsByClient: PaymentsByClient = {};
+      
+      for (const payment of paymentsData) {
+        if (!payment?.client_id) continue;
+
+        if (!paymentsByClient[payment.client_id]) {
+          paymentsByClient[payment.client_id] = [];
         }
 
         const amount = parseAmount(payment.amount);
 
         console.log('Processando pagamento:', {
           id: payment.id,
+          clientId: payment.client_id,
           originalAmount: payment.amount,
           parsedAmount: amount,
           type: typeof amount
         });
 
-        acc[payment.client_id].push({
+        if (isNaN(amount)) {
+          console.error('Valor inválido detectado:', {
+            payment,
+            amount
+          });
+          continue;
+        }
+
+        paymentsByClient[payment.client_id].push({
           id: payment.id,
           amount: amount,
           reference_month: payment.reference_month,
           notes: payment.notes
         });
-        
-        return acc;
-      }, {});
+      }
 
       // Calcula totais por cliente
       const totalsByClient: { [key: string]: number } = {};
@@ -93,7 +107,9 @@ export function usePaymentsClients() {
         
         for (const payment of payments) {
           const amount = parseAmount(payment.amount);
-          total += amount;
+          if (!isNaN(amount)) {
+            total += amount;
+          }
 
           console.log('Somando pagamento:', {
             clientId,
@@ -140,6 +156,9 @@ export function usePaymentsClients() {
 
       return clientsWithTotals;
     },
+    staleTime: 30000, // Dados considerados "frescos" por 30 segundos
+    cacheTime: 5 * 60 * 1000, // Cache mantido por 5 minutos
+    refetchOnWindowFocus: false, // Não recarrega ao focar a janela
   });
 
   const handlePaymentUpdated = () => {
