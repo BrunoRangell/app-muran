@@ -4,7 +4,6 @@ import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ClientWithTotalPayments, Payment } from "../types";
 
-// Interface para o objeto de pagamentos por cliente
 interface PaymentsByClient {
   [key: string]: Payment[];
 }
@@ -15,8 +14,6 @@ export function usePaymentsClients() {
   const { data: clients, isLoading } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
-      console.log("Buscando lista de clientes para recebimentos...");
-      
       // Busca clientes
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
@@ -27,6 +24,11 @@ export function usePaymentsClients() {
       if (clientsError) {
         console.error("Erro ao buscar clientes:", clientsError);
         throw clientsError;
+      }
+
+      if (!clientsData) {
+        console.error("Nenhum cliente encontrado");
+        return [];
       }
 
       // Busca pagamentos
@@ -40,110 +42,69 @@ export function usePaymentsClients() {
         throw paymentsError;
       }
 
-      if (!Array.isArray(paymentsData)) {
-        console.error('Dados de pagamentos inválidos:', paymentsData);
-        return [];
+      if (!paymentsData || !Array.isArray(paymentsData)) {
+        console.error("Dados de pagamentos inválidos ou vazios");
+        return clientsData.map(client => ({
+          ...client,
+          total_received: 0,
+          payments: [],
+          hasCurrentMonthPayment: false
+        }));
       }
-
-      console.log('Dados brutos de pagamentos:', paymentsData);
 
       const currentMonthStart = startOfMonth(new Date());
       const currentMonthEnd = endOfMonth(new Date());
 
-      // Função auxiliar para converter valor para número
-      const parseAmount = (value: any): number => {
-        if (typeof value === 'number' && !isNaN(value)) {
-          return value;
-        }
-        if (typeof value === 'string') {
-          const cleanValue = value.replace(/[^0-9.-]+/g, '');
-          const parsed = parseFloat(cleanValue);
-          return isNaN(parsed) ? 0 : parsed;
-        }
-        return 0;
-      };
-
       // Organiza pagamentos por cliente
       const paymentsByClient: PaymentsByClient = {};
-      
-      for (const payment of paymentsData) {
-        if (!payment?.client_id) continue;
+      const totalsByClient: { [key: string]: number } = {};
 
-        if (!paymentsByClient[payment.client_id]) {
-          paymentsByClient[payment.client_id] = [];
-        }
+      // Inicializa arrays vazios para cada cliente
+      clientsData.forEach(client => {
+        paymentsByClient[client.id] = [];
+        totalsByClient[client.id] = 0;
+      });
 
-        const amount = parseAmount(payment.amount);
+      // Processa os pagamentos
+      paymentsData.forEach(payment => {
+        if (!payment?.client_id || !payment?.amount) return;
 
-        console.log('Processando pagamento:', {
-          id: payment.id,
-          clientId: payment.client_id,
-          originalAmount: payment.amount,
-          parsedAmount: amount,
-          type: typeof amount
-        });
-
+        const amount = Number(payment.amount);
+        
         if (isNaN(amount)) {
-          console.error('Valor inválido detectado:', {
-            payment,
-            amount
-          });
-          continue;
+          console.error('Valor inválido detectado:', payment);
+          return;
         }
 
+        // Adiciona o pagamento ao array do cliente
         paymentsByClient[payment.client_id].push({
           id: payment.id,
           amount: amount,
           reference_month: payment.reference_month,
           notes: payment.notes
         });
-      }
 
-      // Calcula totais por cliente
-      const totalsByClient: { [key: string]: number } = {};
+        // Atualiza o total do cliente
+        totalsByClient[payment.client_id] = 
+          (totalsByClient[payment.client_id] || 0) + amount;
+      });
 
-      for (const [clientId, payments] of Object.entries(paymentsByClient)) {
-        let total = 0;
-        
-        for (const payment of payments) {
-          const amount = parseAmount(payment.amount);
-          if (!isNaN(amount)) {
-            total += amount;
-          }
-
-          console.log('Somando pagamento:', {
-            clientId,
-            paymentId: payment.id,
-            originalAmount: payment.amount,
-            parsedAmount: amount,
-            runningTotal: total
-          });
-        }
-
-        totalsByClient[clientId] = total;
-        
-        console.log('Total calculado para cliente:', {
-          clientId,
-          total,
-          paymentsCount: payments.length
-        });
-      }
-
-      // Monta objeto final com os dados dos clientes
+      // Monta o objeto final com os dados dos clientes
       const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => {
         const clientPayments = paymentsByClient[client.id] || [];
         const total = totalsByClient[client.id] || 0;
 
-        console.log(`Processando cliente ${client.company_name}:`, {
-          id: client.id,
-          total,
-          paymentCount: clientPayments.length,
-          payments: clientPayments.map(p => ({ id: p.id, amount: p.amount }))
-        });
-
         const hasCurrentMonthPayment = clientPayments.some(payment => {
-          const paymentDate = parseISO(payment.reference_month);
-          return isWithinInterval(paymentDate, { start: currentMonthStart, end: currentMonthEnd });
+          try {
+            const paymentDate = parseISO(payment.reference_month);
+            return isWithinInterval(paymentDate, { 
+              start: currentMonthStart, 
+              end: currentMonthEnd 
+            });
+          } catch (error) {
+            console.error('Erro ao processar data:', error);
+            return false;
+          }
         });
 
         return {
@@ -156,13 +117,12 @@ export function usePaymentsClients() {
 
       return clientsWithTotals;
     },
-    staleTime: 30000, // Dados considerados "frescos" por 30 segundos
+    staleTime: 1000, // Dados considerados frescos por 1 segundo
     cacheTime: 5 * 60 * 1000, // Cache mantido por 5 minutos
-    refetchOnWindowFocus: false, // Não recarrega ao focar a janela
+    refetchOnWindowFocus: true, // Recarrega ao focar a janela
   });
 
   const handlePaymentUpdated = () => {
-    // Invalida o cache e força uma nova busca
     queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
   };
 
