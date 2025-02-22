@@ -48,10 +48,10 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
       return;
     }
 
+    setIsLoading(true);
+    console.log("Estado de loading atualizado para true");
+    
     try {
-      setIsLoading(true);
-      console.log("Estado de loading atualizado para true");
-      
       console.log("Iniciando verificação de sessão...");
       const sessionResult = await verifySession();
       console.log("Resultado da verificação de sessão:", sessionResult);
@@ -86,7 +86,7 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
 
         if (onSuccess) {
           console.log("Executando callback de sucesso");
-          await onSuccess(clientData);
+          onSuccess(clientData);
         }
       } else {
         console.error("Falha na operação:", result.error);
@@ -115,9 +115,9 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
   const handleDelete = async () => {
     if (!initialData?.id || isLoading) return;
 
-    try {
-      setIsLoading(true);
+    setIsLoading(true);
 
+    try {
       const { error } = await supabase
         .from('clients')
         .delete()
@@ -132,7 +132,7 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
       });
 
       if (onSuccess) {
-        await onSuccess(null);
+        onSuccess(null);
       }
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);

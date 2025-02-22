@@ -73,12 +73,8 @@ const Managers = () => {
         bio: data.bio,
         linkedin: data.linkedin,
         instagram: data.instagram,
-        tiktok: data.tiktok,
-        permission: data.permission,
-        start_date: data.start_date
+        tiktok: data.tiktok
       };
-
-      console.log("Dados a serem atualizados:", updateData);
 
       const { error } = await supabase
         .from("team_members")
