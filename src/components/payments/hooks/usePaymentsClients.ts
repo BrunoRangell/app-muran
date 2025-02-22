@@ -45,6 +45,19 @@ export function usePaymentsClients() {
       const currentMonthStart = startOfMonth(new Date());
       const currentMonthEnd = endOfMonth(new Date());
 
+      // Função auxiliar para converter valor para número
+      const parseAmount = (value: any): number => {
+        if (typeof value === 'number' && !isNaN(value)) {
+          return value;
+        }
+        if (typeof value === 'string') {
+          const cleanValue = value.replace(/[^0-9.-]+/g, '');
+          const parsed = parseFloat(cleanValue);
+          return isNaN(parsed) ? 0 : parsed;
+        }
+        return 0;
+      };
+
       // Organiza pagamentos por cliente com validação de valores
       const paymentsByClient: PaymentsByClient = paymentsData.reduce((acc: PaymentsByClient, payment) => {
         if (!payment.client_id) return acc;
@@ -53,33 +66,14 @@ export function usePaymentsClients() {
           acc[payment.client_id] = [];
         }
 
-        // Normaliza o valor do pagamento para número
-        const rawAmount = payment.amount;
-        let amount = 0;
+        const amount = parseAmount(payment.amount);
 
-        console.log('Processando valor do pagamento:', {
+        console.log('Processando pagamento:', {
           id: payment.id,
-          rawAmount,
-          type: typeof rawAmount
+          originalAmount: payment.amount,
+          parsedAmount: amount,
+          type: typeof amount
         });
-
-        if (typeof rawAmount === 'string') {
-          // Remove qualquer caractere não numérico exceto ponto e hífen
-          const cleanValue = rawAmount.replace(/[^0-9.-]+/g, '');
-          amount = parseFloat(cleanValue);
-        } else if (typeof rawAmount === 'number') {
-          amount = rawAmount;
-        }
-
-        // Validação final do valor
-        if (isNaN(amount)) {
-          console.error('Valor inválido encontrado:', {
-            payment,
-            rawAmount,
-            parsedAmount: amount
-          });
-          amount = 0;
-        }
 
         acc[payment.client_id].push({
           id: payment.id,
@@ -91,32 +85,33 @@ export function usePaymentsClients() {
         return acc;
       }, {});
 
-      // Calcula totais por cliente com validação adicional
-      const totalsByClient = Object.entries(paymentsByClient).reduce<{ [key: string]: number }>(
-        (acc, [clientId, payments]) => {
-          const total = payments.reduce((sum, payment) => {
-            const paymentAmount = Number(payment.amount) || 0;
-            console.log('Somando pagamento:', {
-              clientId,
-              paymentId: payment.id,
-              amount: payment.amount,
-              parsedAmount: paymentAmount,
-              currentSum: sum
-            });
-            return sum + paymentAmount;
-          }, 0);
+      // Calcula totais por cliente
+      const totalsByClient: { [key: string]: number } = {};
 
-          console.log('Total calculado para cliente:', {
+      for (const [clientId, payments] of Object.entries(paymentsByClient)) {
+        let total = 0;
+        
+        for (const payment of payments) {
+          const amount = parseAmount(payment.amount);
+          total += amount;
+
+          console.log('Somando pagamento:', {
             clientId,
-            total,
-            paymentsCount: payments.length
+            paymentId: payment.id,
+            originalAmount: payment.amount,
+            parsedAmount: amount,
+            runningTotal: total
           });
+        }
 
-          acc[clientId] = total;
-          return acc;
-        },
-        {}
-      );
+        totalsByClient[clientId] = total;
+        
+        console.log('Total calculado para cliente:', {
+          clientId,
+          total,
+          paymentsCount: payments.length
+        });
+      }
 
       // Monta objeto final com os dados dos clientes
       const clientsWithTotals: ClientWithTotalPayments[] = clientsData.map(client => {
