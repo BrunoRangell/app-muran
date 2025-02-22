@@ -2,7 +2,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
-import { ClientWithTotalPayments } from "../types";
+import { ClientWithTotalPayments, Payment } from "../types";
+
+// Interface para o objeto de pagamentos por cliente
+interface PaymentsByClient {
+  [key: string]: Payment[];
+}
 
 export function usePaymentsClients() {
   const queryClient = useQueryClient();
@@ -39,7 +44,7 @@ export function usePaymentsClients() {
       const currentMonthEnd = endOfMonth(new Date());
 
       // Organiza pagamentos por cliente
-      const paymentsByClient = paymentsData.reduce((acc: { [key: string]: any[] }, payment) => {
+      const paymentsByClient: PaymentsByClient = paymentsData.reduce((acc: PaymentsByClient, payment) => {
         if (!payment.client_id) return acc;
         
         if (!acc[payment.client_id]) {
@@ -71,10 +76,9 @@ export function usePaymentsClients() {
       }, {});
 
       // Calcula totais por cliente
-      const totalsByClient = Object.entries(paymentsByClient).reduce(
-        (acc: { [key: string]: number }, [clientId, payments]) => {
+      const totalsByClient = Object.entries(paymentsByClient).reduce<{ [key: string]: number }>(
+        (acc, [clientId, payments]) => {
           acc[clientId] = payments.reduce((total, payment) => {
-            // Garante que estamos somando números
             const amount = typeof payment.amount === 'number' ? payment.amount : 0;
             return total + amount;
           }, 0);
