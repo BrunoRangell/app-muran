@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { Client } from "@/components/clients/types";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
+import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
+import { Suspense } from "react";
 
 const Clients = () => {
   const { toast } = useToast();
@@ -54,6 +56,10 @@ const Clients = () => {
         </p>
       </div>
     );
+  }
+
+  if (isLoading) {
+    return <ClientsLoadingState />;
   }
 
   return (

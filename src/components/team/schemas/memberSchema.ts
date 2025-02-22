@@ -18,7 +18,9 @@ export const socialMediaSchema = z.object({
   tiktok: z.string().optional()
     .refine(value => !value || value.match(/^https:\/\/(www\.)?tiktok\.com\/.+/), {
       message: "O link do TikTok deve começar com 'https://www.tiktok.com/' ou 'https://tiktok.com/'"
-    })
+    }),
+  permission: z.string().optional(),
+  start_date: z.string().optional()
 });
 
 export type SocialMediaSchemaType = z.infer<typeof socialMediaSchema>;

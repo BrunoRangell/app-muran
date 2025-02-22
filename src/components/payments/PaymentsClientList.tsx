@@ -11,6 +11,7 @@ import { usePaymentsSort } from "./hooks/usePaymentsSort";
 import { QuickFiltersBar } from "./QuickFiltersBar";
 import { useState } from "react";
 import { formatCurrency } from "@/utils/formatters";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
   const { clients, isLoading, handlePaymentUpdated } = usePaymentsClients();
@@ -111,11 +112,16 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                 />
                 <TableBody>
                   {isLoading ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-4">
-                        Carregando clientes...
-                      </td>
-                    </tr>
+                    // Loading skeleton
+                    [...Array(5)].map((_, index) => (
+                      <TableRow key={index} className="animate-pulse">
+                        <td className="p-4"><Skeleton className="h-4 w-48" /></td>
+                        <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="p-4"><Skeleton className="h-8 w-8" /></td>
+                      </TableRow>
+                    ))
                   ) : finalFilteredClients.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-4 text-muted-foreground">

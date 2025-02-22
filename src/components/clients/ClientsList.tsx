@@ -1,124 +1,60 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClientForm } from "@/components/admin/ClientForm";
-import { ClientsTable } from "./table/ClientsTable";
-import { Column, SortConfig } from "./types";
 import { useClients } from "@/hooks/queries/useClients";
+import { useClientColumns } from "@/hooks/useClientColumns";
 import { useClientFilters } from "@/hooks/useClientFilters";
+import { ClientsTable } from "./table/ClientsTable";
 import { ClientsHeader } from "./components/ClientsHeader";
-import { LoadingState } from "./components/LoadingState";
-import { ErrorState } from "./components/ErrorState";
+import { Client } from "./types";
+import { ClientForm } from "@/components/admin/ClientForm";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-interface ClientsListProps {
-  onPaymentClick?: (clientId: string) => void;
-  viewMode?: 'default' | 'payments';
-}
+export const ClientsList = () => {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' }); // Corrigido para passar o objeto correto
+  const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
+  const { clients, isLoading } = useClients(filters);
 
-export const ClientsList = ({ onPaymentClick, viewMode = 'default' }: ClientsListProps) => {
-  const [selectedClient, setSelectedClient] = useState<any | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'company_name', direction: 'asc' });
-  const { filters, hasActiveFilters, clearFilters, updateFilter } = useClientFilters();
-  const { clients, isLoading, error, createClient, updateClient } = useClients(filters);
-
-  const [columns, setColumns] = useState<Column[]>([
-    { id: 'company_name', label: 'Empresa', show: true, fixed: true },
-    { id: 'contract_value', label: 'Valor Mensal', show: viewMode === 'default' || viewMode === 'payments', fixed: viewMode === 'payments' },
-    { id: 'status', label: 'Status', show: true, fixed: true },
-    { id: 'acquisition_channel', label: 'Canal de Aquisição', show: viewMode === 'default', fixed: false },
-    { id: 'first_payment_date', label: 'Início da Parceria', show: viewMode === 'default', fixed: false },
-    { id: 'last_payment_date', label: 'Último Pagamento', show: viewMode === 'default', fixed: false },
-    { id: 'retention', label: 'Retenção', show: viewMode === 'default', fixed: false },
-    { id: 'payment_type', label: 'Tipo de Pagamento', show: viewMode === 'default', fixed: false },
-    { id: 'company_birthday', label: 'Aniversário da Empresa', show: viewMode === 'default', fixed: false },
-    { id: 'contact_name', label: 'Responsável', show: viewMode === 'default', fixed: false },
-    { id: 'contact_phone', label: 'Contato', show: viewMode === 'default', fixed: false }
-  ]);
-
-  const handleEditClick = (client: any) => {
+  const handleEditClick = (client: Client) => {
     setSelectedClient(client);
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
 
   const handleCreateClick = () => {
     setSelectedClient(null);
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
-
-  const handleFormSuccess = async (data: any) => {
-    try {
-      if (selectedClient) {
-        await updateClient.mutateAsync({ ...data, id: selectedClient.id });
-      } else {
-        await createClient.mutateAsync(data);
-      }
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Erro ao salvar cliente:", error);
-    }
-  };
-
-  const toggleColumn = (columnId: string) => {
-    setColumns(columns.map(col => 
-      col.fixed ? col : { ...col, show: col.id === columnId ? !col.show : col.show }
-    ));
-  };
-
-  const handleSort = (key: string) => {
-    setSortConfig(prevConfig => ({
-      key,
-      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
-    }));
-  };
-
-  if (error) {
-    return <ErrorState />;
-  }
 
   return (
-    <div className="h-full flex flex-col animate-fade-in">
-      {viewMode === 'default' && (
-        <ClientsHeader
-          columns={columns}
-          filters={filters}
-          hasActiveFilters={hasActiveFilters}
-          onToggleColumn={toggleColumn}
-          onFilterChange={(key, value) => updateFilter(key as keyof typeof filters, value)}
-          onClearFilters={clearFilters}
-          onCreateClick={handleCreateClick}
-        />
-      )}
+    <>
+      <ClientsHeader
+        columns={columns}
+        filters={filters}
+        hasActiveFilters={hasActiveFilters}
+        onToggleColumn={toggleColumn}
+        onFilterChange={updateFilter}
+        onClearFilters={clearFilters}
+        onCreateClick={handleCreateClick}
+      />
 
-      <div className="flex-1 overflow-hidden">
-        {isLoading ? (
-          <LoadingState />
-        ) : (
-          <div className="overflow-x-auto">
-            <ClientsTable 
-              clients={clients || []} 
-              columns={columns.filter(col => viewMode === 'payments' ? col.fixed : col.show)} 
-              onEditClick={handleEditClick}
-              sortConfig={sortConfig}
-              onSort={handleSort}
-            />
-          </div>
-        )}
-      </div>
+      <ClientsTable
+        clients={clients || []}
+        columns={columns}
+        onEditClick={handleEditClick}
+        sortConfig={{ key: "", direction: "asc" }}
+        onSort={() => {}}
+        isLoading={isLoading}
+      />
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedClient ? "Editar Cliente" : "Novo Cliente"}
-            </DialogTitle>
-          </DialogHeader>
-          <ClientForm 
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="max-w-2xl">
+          <ClientForm
             initialData={selectedClient}
-            onSuccess={(data) => handleFormSuccess(data)}
+            onSuccess={() => setIsFormOpen(false)}
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
