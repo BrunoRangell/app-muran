@@ -1,41 +1,56 @@
-
 export const formatCurrency = (value: string | number) => {
   // Se o valor for undefined ou null, retorna R$ 0,00
   if (value == null) return 'R$ 0,00';
 
-  // Se for string, converte para número
-  const numericValue = typeof value === 'string' ? 
-    Number(value.replace(/\D/g, "")) / 100 :
-    value;
+  let numericValue: number;
+
+  if (typeof value === 'string') {
+    // Remove tudo que não for número ou ponto decimal
+    const cleanValue = value.replace(/[^\d.,]/g, '').replace(',', '.');
+    numericValue = parseFloat(cleanValue);
+  } else {
+    numericValue = value;
+  }
 
   // Se o valor não for um número válido, retorna R$ 0,00
   if (isNaN(numericValue)) {
-    console.error('Valor inválido para formatação:', value);
+    console.error('Valor inválido para formatação:', { value, tipo: typeof value });
     return 'R$ 0,00';
   }
 
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(numericValue);
+  try {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(numericValue);
+  } catch (error) {
+    console.error('Erro ao formatar valor:', { valor: numericValue, erro: error });
+    return 'R$ 0,00';
+  }
 };
 
 export const parseCurrencyToNumber = (value: string) => {
   if (!value) return 0;
 
-  const cleanValue = value
-    .replace(/^R\$\s*/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.');
-  
-  const numberValue = parseFloat(cleanValue);
-  
-  if (isNaN(numberValue)) {
-    console.error('Erro ao converter valor para número:', { valor_original: value, valor_limpo: cleanValue });
+  try {
+    // Remove o símbolo da moeda e espaços
+    const cleanValue = value
+      .replace(/^R\$\s*/g, '')
+      .replace(/\./g, '')
+      .replace(',', '.');
+    
+    const numberValue = parseFloat(cleanValue);
+    
+    if (isNaN(numberValue)) {
+      console.error('Valor inválido para conversão:', value);
+      return 0;
+    }
+
+    return numberValue;
+  } catch (error) {
+    console.error('Erro ao converter valor para número:', error);
     return 0;
   }
-
-  return numberValue;
 };
 
 export const formatPhoneNumber = (value: string) => {
