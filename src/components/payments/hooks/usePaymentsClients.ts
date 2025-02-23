@@ -14,6 +14,8 @@ export function usePaymentsClients() {
   const { data: clients, isLoading } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
+      console.log("Iniciando busca de clientes e pagamentos");
+      
       // Busca clientes
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
@@ -31,6 +33,8 @@ export function usePaymentsClients() {
         return [];
       }
 
+      console.log("Clientes encontrados:", clientsData.length);
+
       // Busca pagamentos
       const { data: paymentsData, error: paymentsError } = await supabase
         .from("payments")
@@ -42,8 +46,10 @@ export function usePaymentsClients() {
         throw paymentsError;
       }
 
+      console.log("Pagamentos encontrados:", paymentsData?.length || 0);
+
+      // Se não houver pagamentos, retorna clientes com totais zerados
       if (!paymentsData || !Array.isArray(paymentsData)) {
-        console.error("Dados de pagamentos inválidos ou vazios");
         return clientsData.map(client => ({
           ...client,
           total_received: 0,
@@ -55,38 +61,44 @@ export function usePaymentsClients() {
       const currentMonthStart = startOfMonth(new Date());
       const currentMonthEnd = endOfMonth(new Date());
 
-      // Organiza pagamentos por cliente
+      // Inicializa os maps para armazenar pagamentos e totais
       const paymentsByClient: PaymentsByClient = {};
       const totalsByClient: { [key: string]: number } = {};
 
-      // Inicializa arrays vazios para cada cliente
+      // Inicializa arrays e totais para cada cliente
       clientsData.forEach(client => {
         paymentsByClient[client.id] = [];
         totalsByClient[client.id] = 0;
       });
 
-      // Processa os pagamentos
+      // Processa cada pagamento
       paymentsData.forEach(payment => {
-        if (!payment?.client_id || !payment?.amount) return;
+        // Verifica se o pagamento tem cliente_id e amount válidos
+        if (!payment?.client_id || payment?.amount == null) {
+          console.warn('Pagamento inválido encontrado:', payment);
+          return;
+        }
 
+        // Converte o valor para número e valida
         const amount = Number(payment.amount);
-        
         if (isNaN(amount)) {
-          console.error('Valor inválido detectado:', payment);
+          console.error('Valor de pagamento inválido:', payment);
           return;
         }
 
         // Adiciona o pagamento ao array do cliente
-        paymentsByClient[payment.client_id].push({
-          id: payment.id,
-          amount: amount,
-          reference_month: payment.reference_month,
-          notes: payment.notes
-        });
+        if (paymentsByClient[payment.client_id]) {
+          paymentsByClient[payment.client_id].push({
+            id: payment.id,
+            amount: amount,
+            reference_month: payment.reference_month,
+            notes: payment.notes
+          });
 
-        // Atualiza o total do cliente
-        totalsByClient[payment.client_id] = 
-          (totalsByClient[payment.client_id] || 0) + amount;
+          // Atualiza o total do cliente
+          totalsByClient[payment.client_id] = 
+            (totalsByClient[payment.client_id] || 0) + amount;
+        }
       });
 
       // Monta o objeto final com os dados dos clientes
@@ -94,6 +106,7 @@ export function usePaymentsClients() {
         const clientPayments = paymentsByClient[client.id] || [];
         const total = totalsByClient[client.id] || 0;
 
+        // Verifica se há pagamento no mês atual
         const hasCurrentMonthPayment = clientPayments.some(payment => {
           try {
             const paymentDate = parseISO(payment.reference_month);
@@ -115,10 +128,19 @@ export function usePaymentsClients() {
         };
       });
 
+      console.log("Processamento finalizado. Exemplo do primeiro cliente:", 
+        clientsWithTotals[0] ? {
+          id: clientsWithTotals[0].id,
+          company_name: clientsWithTotals[0].company_name,
+          total_received: clientsWithTotals[0].total_received,
+          payments_count: clientsWithTotals[0].payments.length
+        } : "Nenhum cliente encontrado"
+      );
+
       return clientsWithTotals;
     },
     staleTime: 1000, // Dados considerados frescos por 1 segundo
-    gcTime: 5 * 60 * 1000, // Cache mantido por 5 minutos (anteriormente cacheTime)
+    gcTime: 5 * 60 * 1000, // Cache mantido por 5 minutos
     refetchOnWindowFocus: true, // Recarrega ao focar a janela
   });
 
