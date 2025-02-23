@@ -118,7 +118,7 @@ export function usePaymentsClients() {
       return clientsWithTotals;
     },
     staleTime: 1000, // Dados considerados frescos por 1 segundo
-    cacheTime: 5 * 60 * 1000, // Cache mantido por 5 minutos
+    gcTime: 5 * 60 * 1000, // Cache mantido por 5 minutos (anteriormente cacheTime)
     refetchOnWindowFocus: true, // Recarrega ao focar a janela
   });
 
