@@ -2,7 +2,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
-import { ClientWithTotalPayments, Payment } from "../types";
+import { ClientWithTotalPayments } from "../types";
 
 export function usePaymentsClients() {
   const queryClient = useQueryClient();
@@ -10,11 +10,14 @@ export function usePaymentsClients() {
   const { data: clients, isLoading } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
-      // Primeiro, buscamos os clientes
+      // Buscamos os clientes com seus pagamentos usando join
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select(`
-          *,
+          id,
+          company_name,
+          contract_value,
+          status,
           payments (
             id,
             amount,
@@ -35,53 +38,47 @@ export function usePaymentsClients() {
         return [];
       }
 
-      console.log("Dados brutos dos clientes:", clientsData);
-
       const currentMonthStart = startOfMonth(new Date());
       const currentMonthEnd = endOfMonth(new Date());
 
-      // Processamos os dados de cada cliente
-      const processedClients: ClientWithTotalPayments[] = clientsData.map(client => {
-        // Garantimos que payments é um array
-        const payments = Array.isArray(client.payments) ? client.payments : [];
+      // Processa cada cliente
+      const processedClients = clientsData.map(client => {
+        const payments = client.payments || [];
         
-        // Calculamos o total recebido somando todos os pagamentos
-        const total_received = payments.reduce((sum, payment) => {
-          // Garantimos que amount é um número
-          const amount = typeof payment.amount === 'string' 
-            ? parseFloat(payment.amount) 
-            : payment.amount;
+        // Log para debug dos pagamentos do cliente
+        console.log(`Pagamentos do cliente ${client.company_name}:`, payments);
 
-          // Só somamos se for um número válido
-          return !isNaN(amount) ? sum + amount : sum;
+        // Calcula o total recebido
+        const total_received = payments.reduce((sum, payment) => {
+          const amount = Number(payment.amount);
+          if (isNaN(amount)) {
+            console.warn(`Valor inválido encontrado para o pagamento:`, payment);
+            return sum;
+          }
+          return sum + amount;
         }, 0);
 
-        console.log(`Processando cliente ${client.company_name}:`, {
-          total_payments: payments.length,
-          total_received: total_received
+        // Log do total calculado
+        console.log(`Total calculado para ${client.company_name}:`, {
+          payments_count: payments.length,
+          total: total_received
         });
 
-        // Verificamos se há pagamento no mês atual
+        // Verifica pagamentos do mês atual
         const hasCurrentMonthPayment = payments.some(payment => {
-          try {
-            const paymentDate = parseISO(payment.reference_month);
-            return isWithinInterval(paymentDate, {
-              start: currentMonthStart,
-              end: currentMonthEnd
-            });
-          } catch (error) {
-            console.error('Erro ao processar data do pagamento:', error);
-            return false;
-          }
+          const paymentDate = parseISO(payment.reference_month);
+          return isWithinInterval(paymentDate, {
+            start: currentMonthStart,
+            end: currentMonthEnd
+          });
         });
 
-        // Retornamos o cliente processado
         return {
           ...client,
-          total_received: total_received,
+          total_received,
           payments: payments.map(p => ({
             id: p.id,
-            amount: typeof p.amount === 'string' ? parseFloat(p.amount) : p.amount,
+            amount: Number(p.amount),
             reference_month: p.reference_month,
             notes: p.notes
           })),
@@ -100,9 +97,5 @@ export function usePaymentsClients() {
     queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
   };
 
-  return { 
-    clients, 
-    isLoading, 
-    handlePaymentUpdated 
-  };
+  return { clients, isLoading, handlePaymentUpdated };
 }
