@@ -69,7 +69,9 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         case 'contract_value':
           return (a.contract_value - b.contract_value) * direction;
         case 'total_received':
-          return (a.total_received - b.total_received) * direction;
+          const totalA = Number(a.total_received) || 0;
+          const totalB = Number(b.total_received) || 0;
+          return (totalA - totalB) * direction;
         default:
           return 0;
       }
@@ -80,8 +82,8 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
 
   // Calcula os totais dos clientes filtrados
   const totals = finalFilteredClients.reduce((acc, client) => ({
-    monthlyTotal: acc.monthlyTotal + client.contract_value,
-    receivedTotal: acc.receivedTotal + client.total_received
+    monthlyTotal: acc.monthlyTotal + (Number(client.contract_value) || 0),
+    receivedTotal: acc.receivedTotal + (Number(client.total_received) || 0)
   }), { monthlyTotal: 0, receivedTotal: 0 });
 
   return (

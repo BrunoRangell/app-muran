@@ -1,8 +1,18 @@
 
 export const formatCurrency = (value: string | number) => {
+  // Se o valor for undefined ou null, retorna R$ 0,00
+  if (value == null) return 'R$ 0,00';
+
+  // Se for string, converte para número
   const numericValue = typeof value === 'string' ? 
-    parseFloat(value.replace(/\D/g, "")) / 100 :
+    Number(value.replace(/\D/g, "")) / 100 :
     value;
+
+  // Se o valor não for um número válido, retorna R$ 0,00
+  if (isNaN(numericValue)) {
+    console.error('Valor inválido para formatação:', value);
+    return 'R$ 0,00';
+  }
 
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -11,13 +21,20 @@ export const formatCurrency = (value: string | number) => {
 };
 
 export const parseCurrencyToNumber = (value: string) => {
+  if (!value) return 0;
+
   const cleanValue = value
     .replace(/^R\$\s*/g, '')
     .replace(/\./g, '')
     .replace(',', '.');
   
   const numberValue = parseFloat(cleanValue);
-  console.log('Parsing currency value:', { original: value, cleaned: cleanValue, final: numberValue });
+  
+  if (isNaN(numberValue)) {
+    console.error('Erro ao converter valor para número:', { valor_original: value, valor_limpo: cleanValue });
+    return 0;
+  }
+
   return numberValue;
 };
 
