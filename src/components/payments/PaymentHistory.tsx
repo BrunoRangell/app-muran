@@ -43,6 +43,14 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
+  // Log para debug dos valores
+  console.log(`Histórico de pagamentos - ${clientName}:`, {
+    total,
+    formatted_total: formatCurrency(total),
+    payments_count: payments.length,
+    payments
+  });
+
   const handleEdit = (payment: Payment) => {
     setSelectedPayment(payment);
     setIsEditDialogOpen(true);
