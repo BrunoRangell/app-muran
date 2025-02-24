@@ -18,6 +18,13 @@ export function usePaymentsClients() {
           company_name,
           contract_value,
           status,
+          first_payment_date,
+          payment_type,
+          acquisition_channel,
+          company_birthday,
+          contact_name,
+          contact_phone,
+          last_payment_date,
           payments (
             id,
             amount,
@@ -42,7 +49,7 @@ export function usePaymentsClients() {
       const currentMonthEnd = endOfMonth(new Date());
 
       // Processa cada cliente
-      const processedClients = clientsData.map(client => {
+      const processedClients: ClientWithTotalPayments[] = clientsData.map(client => {
         const payments = client.payments || [];
         
         // Log para debug dos pagamentos do cliente
@@ -73,8 +80,19 @@ export function usePaymentsClients() {
           });
         });
 
+        // Retornamos o cliente processado com todas as propriedades necessárias
         return {
-          ...client,
+          id: client.id,
+          company_name: client.company_name,
+          contract_value: client.contract_value,
+          status: client.status,
+          first_payment_date: client.first_payment_date,
+          payment_type: client.payment_type as "pre" | "post",
+          acquisition_channel: client.acquisition_channel,
+          company_birthday: client.company_birthday,
+          contact_name: client.contact_name,
+          contact_phone: client.contact_phone,
+          last_payment_date: client.last_payment_date,
           total_received,
           payments: payments.map(p => ({
             id: p.id,
