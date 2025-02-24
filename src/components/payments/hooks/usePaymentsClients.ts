@@ -4,43 +4,46 @@ import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ClientWithTotalPayments, Payment } from "../types";
 
-// Função auxiliar para calcular o total recebido com validação rigorosa
-const calculateTotalReceived = (payments: Payment[]) => {
+// Função auxiliar para calcular o total recebido
+const calculateTotalReceived = (payments: any[]) => {
   if (!Array.isArray(payments)) {
-    console.warn('Payments não é um array:', payments);
+    console.warn('Payments inválido:', payments);
     return 0;
   }
 
   const total = payments.reduce((sum, payment) => {
-    // Garantimos que amount seja sempre um número
-    const amount = typeof payment.amount === 'string' 
-      ? parseFloat(payment.amount) 
-      : Number(payment.amount);
-
-    if (isNaN(amount)) {
-      console.warn('Valor inválido encontrado:', {
-        payment,
-        amount: payment.amount,
-        parsed: amount
-      });
-      return sum;
+    // Garante que o valor seja um número válido
+    let amount = 0;
+    
+    if (typeof payment.amount === 'string') {
+      amount = parseFloat(payment.amount.replace(',', '.'));
+    } else if (typeof payment.amount === 'number') {
+      amount = payment.amount;
     }
 
-    console.log('Somando pagamento:', {
+    // Log detalhado do processamento do valor
+    console.log('Processando valor:', {
       original: payment.amount,
-      parsed: amount,
-      running_total: sum + amount
+      tipo: typeof payment.amount,
+      convertido: amount,
+      soma_atual: sum
     });
+
+    if (isNaN(amount)) {
+      console.warn('Valor inválido encontrado:', payment);
+      return sum;
+    }
 
     return sum + amount;
   }, 0);
 
+  // Log do total calculado
   console.log('Total calculado:', total);
   return total;
 };
 
 // Função auxiliar para verificar pagamento no mês atual
-const hasPaymentInCurrentMonth = (payments: Payment[]) => {
+const hasPaymentInCurrentMonth = (payments: any[]) => {
   if (!Array.isArray(payments)) return false;
   
   const currentMonthStart = startOfMonth(new Date());
@@ -60,51 +63,18 @@ const hasPaymentInCurrentMonth = (payments: Payment[]) => {
   });
 };
 
-// Função auxiliar para processar os pagamentos com validação rigorosa
-const processPayments = (payments: any[]): Payment[] => {
-  if (!Array.isArray(payments)) {
-    console.warn('Payments não é um array:', payments);
-    return [];
-  }
-
-  return payments.map(p => {
-    const amount = typeof p.amount === 'string' 
-      ? parseFloat(p.amount) 
-      : Number(p.amount);
-
-    if (isNaN(amount)) {
-      console.warn('Valor inválido encontrado ao processar pagamento:', p);
-    }
-
-    return {
-      id: p.id,
-      amount: amount,
-      reference_month: p.reference_month,
-      notes: p.notes
-    };
-  });
-};
-
 export function usePaymentsClients() {
   const queryClient = useQueryClient();
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
+      console.log('Iniciando busca de clientes...');
+      
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select(`
-          id,
-          company_name,
-          contract_value,
-          status,
-          first_payment_date,
-          payment_type,
-          acquisition_channel,
-          company_birthday,
-          contact_name,
-          contact_phone,
-          last_payment_date,
+          *,
           payments (
             id,
             amount,
@@ -112,8 +82,8 @@ export function usePaymentsClients() {
             notes
           )
         `)
-        .order("status", { ascending: false })
-        .order("company_name");
+        .order('status', { ascending: false })
+        .order('company_name');
 
       if (clientsError) {
         console.error("Erro ao buscar clientes:", clientsError);
@@ -125,24 +95,28 @@ export function usePaymentsClients() {
         return [];
       }
 
+      // Log dos dados brutos recebidos
+      console.log('Dados brutos recebidos:', clientsData);
+
       // Processa cada cliente
       const processedClients: ClientWithTotalPayments[] = clientsData.map(client => {
-        const payments = client.payments || [];
-
-        // Log detalhado dos dados brutos
+        // Garante que payments seja um array
+        const payments = Array.isArray(client.payments) ? client.payments : [];
+        
+        // Log detalhado do cliente e seus pagamentos
         console.log(`Processando cliente ${client.company_name}:`, {
-          raw_payments: payments,
-          payment_count: payments.length
+          id: client.id,
+          payments_count: payments.length,
+          raw_payments: payments
         });
 
-        // Processa os pagamentos com validação
-        const processedPayments = processPayments(payments);
-        const total_received = calculateTotalReceived(processedPayments);
+        // Calcula o total recebido
+        const total_received = calculateTotalReceived(payments);
 
         // Log do resultado do processamento
         console.log(`Resultado do processamento para ${client.company_name}:`, {
-          processed_payments: processedPayments,
-          total_received
+          total_received,
+          payments_count: payments.length
         });
 
         return {
@@ -158,10 +132,18 @@ export function usePaymentsClients() {
           contact_phone: client.contact_phone,
           last_payment_date: client.last_payment_date,
           total_received,
-          payments: processedPayments,
-          hasCurrentMonthPayment: hasPaymentInCurrentMonth(processedPayments)
+          payments: payments.map(p => ({
+            id: p.id,
+            amount: Number(p.amount) || 0,
+            reference_month: p.reference_month,
+            notes: p.notes
+          })),
+          hasCurrentMonthPayment: hasPaymentInCurrentMonth(payments)
         };
       });
+
+      // Log final dos clientes processados
+      console.log('Clientes processados:', processedClients);
 
       return processedClients;
     },
