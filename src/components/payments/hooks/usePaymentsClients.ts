@@ -10,12 +10,21 @@ export function usePaymentsClients() {
   const { data: clients, isLoading } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
-      // Primeiro, buscamos os clientes com seus pagamentos
+      console.log("Iniciando busca de clientes e pagamentos...");
+
+      // Primeiro, vamos fazer uma query separada para ver os pagamentos brutos
+      const { data: rawPayments, error: paymentsError } = await supabase
+        .from("payments")
+        .select("*");
+
+      console.log("Pagamentos brutos do banco:", rawPayments);
+
+      // Agora buscamos os clientes com seus pagamentos
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select(`
           *,
-          payments (
+          payments!inner (
             id,
             amount,
             reference_month,
@@ -30,7 +39,7 @@ export function usePaymentsClients() {
         throw clientsError;
       }
 
-      console.log("Dados brutos dos clientes:", clientsData);
+      console.log("Dados brutos dos clientes:", JSON.stringify(clientsData, null, 2));
 
       if (!clientsData) {
         console.warn("Nenhum cliente encontrado");
@@ -39,30 +48,55 @@ export function usePaymentsClients() {
 
       // Processa os clientes e seus pagamentos
       const processedClients: ClientWithTotalPayments[] = clientsData.map(client => {
+        // Debug do cliente atual
+        console.log(`\n==== Processando cliente: ${client.company_name} ====`);
+        console.log("Dados brutos do cliente:", client);
+
         // Garante que payments seja sempre um array
         const payments = Array.isArray(client.payments) ? client.payments : [];
+        console.log(`Pagamentos encontrados: ${payments.length}`);
 
         // Processa os pagamentos e calcula o total
-        const processedPayments = payments.map(payment => ({
-          id: payment.id,
-          amount: typeof payment.amount === 'string' ? 
-            parseFloat(payment.amount.replace(',', '.')) : 
-            Number(payment.amount) || 0,
-          reference_month: payment.reference_month,
-          notes: payment.notes
-        }));
+        const processedPayments = payments.map(payment => {
+          console.log("\nProcessando pagamento:", payment);
+          
+          let amount: number;
+          if (typeof payment.amount === 'string') {
+            amount = parseFloat(payment.amount.replace(',', '.'));
+          } else {
+            amount = Number(payment.amount);
+          }
+
+          console.log("Valor processado:", {
+            original: payment.amount,
+            processado: amount,
+            tipo_original: typeof payment.amount
+          });
+
+          return {
+            id: payment.id,
+            amount: amount || 0,
+            reference_month: payment.reference_month,
+            notes: payment.notes
+          };
+        });
 
         // Calcula o total recebido
         const total_received = processedPayments.reduce((sum, payment) => {
-          const amount = Number(payment.amount) || 0;
-          console.log(`Processando pagamento para ${client.company_name}:`, {
-            payment_id: payment.id,
-            amount: amount,
-            sum_atual: sum,
-            novo_total: sum + amount
+          const currentSum = sum + (payment.amount || 0);
+          console.log(`Somando pagamento:`, {
+            pagamento_atual: payment.amount,
+            soma_anterior: sum,
+            nova_soma: currentSum
           });
-          return sum + amount;
+          return currentSum;
         }, 0);
+
+        console.log(`\nResumo do cliente ${client.company_name}:`, {
+          total_pagamentos: processedPayments.length,
+          valor_total_calculado: total_received,
+          pagamentos_processados: processedPayments.map(p => p.amount)
+        });
 
         // Verifica se tem pagamento no mês atual
         const currentMonthStart = startOfMonth(new Date());
@@ -78,12 +112,6 @@ export function usePaymentsClients() {
             console.error('Erro ao verificar pagamento do mês:', error);
             return false;
           }
-        });
-
-        console.log(`Processamento do cliente ${client.company_name} concluído:`, {
-          total_pagamentos: processedPayments.length,
-          valor_total: total_received,
-          tem_pagamento_mes_atual: hasCurrentMonthPayment
         });
 
         return {
@@ -103,6 +131,14 @@ export function usePaymentsClients() {
           hasCurrentMonthPayment
         };
       });
+
+      console.log("\n==== Resumo final do processamento ====");
+      console.log("Total de clientes processados:", processedClients.length);
+      console.log("Clientes e seus totais:", processedClients.map(c => ({
+        cliente: c.company_name,
+        total: c.total_received,
+        num_pagamentos: c.payments.length
+      })));
 
       return processedClients;
     },
