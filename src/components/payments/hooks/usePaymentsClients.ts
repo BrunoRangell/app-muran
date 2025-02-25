@@ -112,7 +112,7 @@ export function usePaymentsClients() {
 
       return processedClients;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 4 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
     refetchOnWindowFocus: true,
   });
