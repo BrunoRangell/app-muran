@@ -30,7 +30,6 @@ interface PaymentHistoryProps {
 
 const formatReferenceMonth = (monthStr: string) => {
   if (!monthStr) return '';
-  
   try {
     const date = parseISO(monthStr);
     return format(date, "MMMM'/'yyyy", { locale: ptBR });
@@ -45,11 +44,9 @@ export function PaymentHistory({ total = 0, payments = [], clientName = '', onPa
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
-  // Log para debug dos valores
-  console.log(`Histórico de pagamentos - ${clientName}:`, {
+  console.log(`Renderizando histórico - ${clientName}:`, {
     total,
-    formatted_total: formatCurrency(total),
-    payments_count: payments?.length || 0,
+    payments_count: payments?.length,
     payments
   });
 
@@ -60,7 +57,7 @@ export function PaymentHistory({ total = 0, payments = [], clientName = '', onPa
 
   return (
     <div className="flex items-center">
-      <span className="w-28 text-right">{formatCurrency(total || 0)}</span>
+      <span className="w-28 text-right">{formatCurrency(total)}</span>
       <div className="flex-shrink-0">
         <TooltipProvider>
           <Tooltip>
@@ -97,7 +94,7 @@ export function PaymentHistory({ total = 0, payments = [], clientName = '', onPa
                           {formatReferenceMonth(payment.reference_month)}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {formatCurrency(payment.amount || 0)}
+                          {formatCurrency(payment.amount)}
                         </p>
                         {payment.notes && (
                           <p className="text-xs text-muted-foreground mt-1">

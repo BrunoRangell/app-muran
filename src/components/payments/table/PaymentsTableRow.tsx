@@ -27,10 +27,9 @@ export function PaymentsTableRow({
 }: PaymentsTableRowProps) {
   const needsPayment = client.status === 'active' && !client.hasCurrentMonthPayment;
   
-  // Log para debug dos valores
-  console.log(`Renderizando linha do cliente ${client.company_name}:`, {
+  console.log(`Renderizando linha - ${client.company_name}:`, {
     total_received: client.total_received,
-    formatted_total: formatCurrency(client.total_received)
+    payments: client.payments?.length || 0
   });
 
   return (
