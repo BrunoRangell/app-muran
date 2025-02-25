@@ -22,14 +22,14 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     setSearchTerm, 
     handleSort, 
     filteredAndSortedClients 
-  } = usePaymentsSort(clients);
+  } = usePaymentsSort(clients || []); // Garantir que nunca seja undefined
 
   const handleFilterChange = (filter: string) => {
     setActiveFilter(activeFilter === filter ? '' : filter);
   };
 
   const applyFilters = (clients: any[] | undefined) => {
-    if (!clients) return [];
+    if (!clients || !Array.isArray(clients)) return [];
     
     let filtered = [...clients];
 
@@ -57,6 +57,8 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
 
     // Aplica a ordenação
     return filtered.sort((a, b) => {
+      if (!a || !b) return 0;
+      
       if (a.status !== b.status) {
         return a.status === 'active' ? -1 : 1;
       }
@@ -65,9 +67,9 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
       
       switch (sortConfig.key) {
         case 'company_name':
-          return a.company_name.localeCompare(b.company_name) * direction;
+          return (a.company_name || '').localeCompare(b.company_name || '') * direction;
         case 'contract_value':
-          return (a.contract_value - b.contract_value) * direction;
+          return ((a.contract_value || 0) - (b.contract_value || 0)) * direction;
         case 'total_received':
           const totalA = Number(a.total_received) || 0;
           const totalB = Number(b.total_received) || 0;
@@ -80,10 +82,10 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
 
   const finalFilteredClients = applyFilters(clients);
 
-  // Calcula os totais dos clientes filtrados
-  const totals = finalFilteredClients.reduce((acc, client) => ({
-    monthlyTotal: acc.monthlyTotal + (Number(client.contract_value) || 0),
-    receivedTotal: acc.receivedTotal + (Number(client.total_received) || 0)
+  // Calcula os totais dos clientes filtrados com verificação de undefined
+  const totals = (finalFilteredClients || []).reduce((acc, client) => ({
+    monthlyTotal: acc.monthlyTotal + (Number(client?.contract_value) || 0),
+    receivedTotal: acc.receivedTotal + (Number(client?.total_received) || 0)
   }), { monthlyTotal: 0, receivedTotal: 0 });
 
   return (
@@ -124,22 +126,24 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
                         <td className="p-4"><Skeleton className="h-8 w-8" /></td>
                       </TableRow>
                     ))
-                  ) : finalFilteredClients.length === 0 ? (
-                    <tr>
+                  ) : !finalFilteredClients || finalFilteredClients.length === 0 ? (
+                    <TableRow>
                       <td colSpan={5} className="text-center py-4 text-muted-foreground">
                         Nenhum cliente encontrado
                       </td>
-                    </tr>
-                  ) : finalFilteredClients.map((client) => (
-                    <PaymentsTableRow
-                      key={client.id}
-                      client={client}
-                      onPaymentClick={onPaymentClick}
-                      onPaymentUpdated={handlePaymentUpdated}
-                    />
-                  ))}
+                    </TableRow>
+                  ) : (
+                    finalFilteredClients.map((client) => (
+                      <PaymentsTableRow
+                        key={client.id}
+                        client={client}
+                        onPaymentClick={onPaymentClick}
+                        onPaymentUpdated={handlePaymentUpdated}
+                      />
+                    ))
+                  )}
                 </TableBody>
-                {finalFilteredClients.length > 0 && (
+                {finalFilteredClients && finalFilteredClients.length > 0 && (
                   <TableFooter className="bg-muted/50">
                     <TableRow>
                       <TableHead className="text-left">Total</TableHead>
