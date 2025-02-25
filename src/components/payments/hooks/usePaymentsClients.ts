@@ -117,7 +117,7 @@ export function usePaymentsClients() {
           total_received,
           payments: clientPayments,
           hasCurrentMonthPayment
-        };
+        };a
       });
 
       console.log("[usePaymentsClients] Total de clientes processados:", processedClients.length);
