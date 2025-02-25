@@ -1,7 +1,8 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
-import { ClientWithTotalPayments } from "../types";
+import { ClientWithTotalPayments, Payment } from "../types";
 
 export function usePaymentsClients() {
   const queryClient = useQueryClient();
@@ -9,9 +10,9 @@ export function usePaymentsClients() {
   const { data: clients, isLoading } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
-      console.log("[usePaymentsClients] Iniciando busca...");
+      console.log("Iniciando busca de clientes e pagamentos...");
 
-      // Busca todos os clientes
+      // Busca os clientes com seus pagamentos em uma única query
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select(`
@@ -25,81 +26,74 @@ export function usePaymentsClients() {
           company_birthday,
           contact_name,
           contact_phone,
-          last_payment_date
+          last_payment_date,
+          payments (
+            id,
+            amount,
+            reference_month,
+            notes
+          )
         `)
         .order('status', { ascending: false })
         .order('company_name');
 
       if (clientsError) {
-        console.error("[usePaymentsClients] Erro ao buscar clientes:", clientsError);
+        console.error("Erro ao buscar clientes:", clientsError);
         throw clientsError;
       }
 
-      // Busca todos os pagamentos
-      const { data: allPayments, error: paymentsError } = await supabase
-        .from("payments")
-        .select("*")
-        .order('reference_month', { ascending: false });
-
-      if (paymentsError) {
-        console.error("[usePaymentsClients] Erro ao buscar pagamentos:", paymentsError);
-        throw paymentsError;
+      if (!clientsData) {
+        console.warn("Nenhum cliente encontrado");
+        return [];
       }
 
-      console.log("[usePaymentsClients] Pagamentos encontrados:", allPayments?.length || 0);
+      console.log("Dados brutos recebidos do banco:", JSON.stringify(clientsData, null, 2));
 
-      // Mapeia os pagamentos por client_id para acesso rápido
-      const paymentsMap = new Map<string, any[]>();
-      allPayments?.forEach(payment => {
-        const clientId = String(payment.client_id); // Garante que o ID seja uma string
-        if (!paymentsMap.has(clientId)) {
-          paymentsMap.set(clientId, []);
-        }
-        paymentsMap.get(clientId)?.push({
-          id: payment.id,
-          amount: Number(payment.amount) || 0,
-          reference_month: payment.reference_month,
-          notes: payment.notes
-        });
-      });
+      // Processa os clientes e seus pagamentos
+      const processedClients: ClientWithTotalPayments[] = clientsData.map(client => {
+        // Garante que payments seja sempre um array
+        const payments = client.payments || [];
+        
+        // Processa os pagamentos e calcula o total
+        const processedPayments = payments.map(payment => {
+          // Garante que o amount seja um número
+          const amount = typeof payment.amount === 'string' 
+            ? parseFloat(payment.amount.replace(',', '.'))
+            : Number(payment.amount);
 
-      console.log("[usePaymentsClients] Mapa de pagamentos:", paymentsMap);
-
-      // Processa os clientes com seus pagamentos
-      const processedClients: ClientWithTotalPayments[] = (clientsData || []).map(client => {
-        const clientId = String(client.id); // Garante que o ID seja uma string
-        const clientPayments = (paymentsMap.get(clientId)) || [];
-
-        console.log(`[usePaymentsClients] Pagamentos de ${client.company_name}:`, clientPayments);
-
-        if (!Array.isArray(clientPayments)) {
-          console.error(`[usePaymentsClients] Pagamentos inválidos para ${client.company_name}:`, clientPayments);
           return {
-            ...client,
-            total_received: 0, // Define um valor padrão
-            payments: [],
-            hasCurrentMonthPayment: false
+            id: payment.id,
+            amount: Number.isNaN(amount) ? 0 : amount,
+            reference_month: payment.reference_month || '',
+            notes: payment.notes || null
           };
-        }
+        });
 
         // Calcula o total recebido
-        const total_received = clientPayments.reduce(
-          (sum, payment) => sum + (Number(payment.amount) || 0),
-          0
-        );
+        const total_received = processedPayments.reduce((sum, payment) => {
+          return sum + (Number.isNaN(payment.amount) ? 0 : payment.amount);
+        }, 0);
 
-        console.log(`[usePaymentsClients] Total de ${client.company_name}: ${total_received}`);
+        console.log(`Total calculado para ${client.company_name}:`, {
+          payments_count: processedPayments.length,
+          total_received: total_received
+        });
 
-        // Verifica se há pagamento no mês atual
+        // Verifica se tem pagamento no mês atual
         const currentMonthStart = startOfMonth(new Date());
         const currentMonthEnd = endOfMonth(new Date());
-        const hasCurrentMonthPayment = clientPayments.some(payment => {
+        const hasCurrentMonthPayment = processedPayments.some(payment => {
           if (!payment.reference_month) return false;
-          const paymentDate = parseISO(payment.reference_month);
-          return isWithinInterval(paymentDate, {
-            start: currentMonthStart,
-            end: currentMonthEnd
-          });
+          try {
+            const paymentDate = parseISO(payment.reference_month);
+            return isWithinInterval(paymentDate, {
+              start: currentMonthStart,
+              end: currentMonthEnd
+            });
+          } catch (error) {
+            console.error('Erro ao verificar data do pagamento:', error);
+            return false;
+          }
         });
 
         return {
@@ -114,23 +108,20 @@ export function usePaymentsClients() {
           contact_name: client.contact_name,
           contact_phone: client.contact_phone,
           last_payment_date: client.last_payment_date,
-          total_received,
-          payments: clientPayments,
+          total_received: total_received,
+          payments: processedPayments,
           hasCurrentMonthPayment
         };
       });
 
-      console.log("[usePaymentsClients] Total de clientes processados:", processedClients.length);
-
       return processedClients;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 1000,
+    gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 
   const handlePaymentUpdated = () => {
-    console.log("[usePaymentsClients] Atualizando dados...");
     queryClient.invalidateQueries({ queryKey: ["payments-clients"] });
   };
 
