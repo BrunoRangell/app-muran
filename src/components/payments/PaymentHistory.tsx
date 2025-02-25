@@ -29,6 +29,8 @@ interface PaymentHistoryProps {
 }
 
 const formatReferenceMonth = (monthStr: string) => {
+  if (!monthStr) return '';
+  
   try {
     const date = parseISO(monthStr);
     return format(date, "MMMM'/'yyyy", { locale: ptBR });
@@ -38,7 +40,7 @@ const formatReferenceMonth = (monthStr: string) => {
   }
 };
 
-export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }: PaymentHistoryProps) {
+export function PaymentHistory({ total = 0, payments = [], clientName = '', onPaymentUpdated }: PaymentHistoryProps) {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -47,7 +49,7 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
   console.log(`Histórico de pagamentos - ${clientName}:`, {
     total,
     formatted_total: formatCurrency(total),
-    payments_count: payments.length,
+    payments_count: payments?.length || 0,
     payments
   });
 
@@ -58,7 +60,7 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
 
   return (
     <div className="flex items-center">
-      <span className="w-28 text-right">{formatCurrency(total)}</span>
+      <span className="w-28 text-right">{formatCurrency(total || 0)}</span>
       <div className="flex-shrink-0">
         <TooltipProvider>
           <Tooltip>
@@ -86,7 +88,7 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
           </DialogHeader>
           <ScrollArea className="h-[50vh] w-full pr-4">
             <div className="space-y-4">
-              {payments && payments.length > 0 ? (
+              {Array.isArray(payments) && payments.length > 0 ? (
                 payments.map((payment) => (
                   <div key={payment.id} className="border-b last:border-0 pb-4">
                     <div className="flex items-start justify-between">
@@ -95,7 +97,7 @@ export function PaymentHistory({ total, payments, clientName, onPaymentUpdated }
                           {formatReferenceMonth(payment.reference_month)}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {formatCurrency(payment.amount)}
+                          {formatCurrency(payment.amount || 0)}
                         </p>
                         {payment.notes && (
                           <p className="text-xs text-muted-foreground mt-1">
