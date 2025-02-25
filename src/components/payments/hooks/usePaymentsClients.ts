@@ -63,12 +63,24 @@ export function usePaymentsClients() {
         });
       });
 
+      console.log("[usePaymentsClients] Mapa de pagamentos:", paymentsMap);
+
       // Processa os clientes com seus pagamentos
       const processedClients: ClientWithTotalPayments[] = (clientsData || []).map(client => {
         const clientId = String(client.id); // Garante que o ID seja uma string
-        const clientPayments = (paymentsMap.get(clientId) || []).filter(p => p); // Filtra valores inválidos
+        const clientPayments = (paymentsMap.get(clientId)) || [];
 
-        console.log(`[usePaymentsClients] Pagamentos do cliente ${client.company_name}:`, clientPayments);
+        console.log(`[usePaymentsClients] Pagamentos de ${client.company_name}:`, clientPayments);
+
+        if (!Array.isArray(clientPayments)) {
+          console.error(`[usePaymentsClients] Pagamentos inválidos para ${client.company_name}:`, clientPayments);
+          return {
+            ...client,
+            total_received: 0, // Define um valor padrão
+            payments: [],
+            hasCurrentMonthPayment: false
+          };
+        }
 
         // Calcula o total recebido
         const total_received = clientPayments.reduce(
