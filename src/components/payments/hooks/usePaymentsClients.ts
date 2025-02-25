@@ -4,74 +4,18 @@ import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ClientWithTotalPayments, Payment } from "../types";
 
-// Função auxiliar para processar pagamento individual
-const processPayment = (payment: any): Payment => {
-  const amount = typeof payment.amount === 'string' 
-    ? Number(payment.amount.replace(',', '.'))
-    : Number(payment.amount);
-
-  console.log('Processando pagamento:', {
-    id: payment.id,
-    valor_original: payment.amount,
-    valor_processado: amount
-  });
-
-  return {
-    id: payment.id,
-    amount: isNaN(amount) ? 0 : amount,
-    reference_month: payment.reference_month,
-    notes: payment.notes
-  };
-};
-
-// Função auxiliar para calcular o total recebido
-const calculateTotalReceived = (payments: Payment[]): number => {
-  const total = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  
-  console.log('Total calculado:', {
-    numero_pagamentos: payments.length,
-    pagamentos: payments,
-    total: total
-  });
-  
-  return total;
-};
-
-// Função auxiliar para verificar pagamento no mês atual
-const hasPaymentInCurrentMonth = (payments: Payment[]): boolean => {
-  const currentMonthStart = startOfMonth(new Date());
-  const currentMonthEnd = endOfMonth(new Date());
-
-  return payments.some(payment => {
-    const paymentDate = parseISO(payment.reference_month);
-    return isWithinInterval(paymentDate, {
-      start: currentMonthStart,
-      end: currentMonthEnd
-    });
-  });
-};
-
 export function usePaymentsClients() {
   const queryClient = useQueryClient();
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
+      // Primeiro, buscamos os clientes com seus pagamentos
       const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select(`
-          id,
-          company_name,
-          contract_value,
-          status,
-          first_payment_date,
-          payment_type,
-          acquisition_channel,
-          company_birthday,
-          contact_name,
-          contact_phone,
-          last_payment_date,
-          payments!inner (
+          *,
+          payments (
             id,
             amount,
             reference_month,
@@ -86,24 +30,60 @@ export function usePaymentsClients() {
         throw clientsError;
       }
 
-      if (!clientsData || !Array.isArray(clientsData)) {
-        console.warn("Nenhum cliente encontrado ou formato inválido");
+      console.log("Dados brutos dos clientes:", clientsData);
+
+      if (!clientsData) {
+        console.warn("Nenhum cliente encontrado");
         return [];
       }
 
+      // Processa os clientes e seus pagamentos
       const processedClients: ClientWithTotalPayments[] = clientsData.map(client => {
         // Garante que payments seja sempre um array
-        const rawPayments = Array.isArray(client.payments) ? client.payments : [];
-        
-        // Processa cada pagamento individualmente
-        const processedPayments = rawPayments.map(processPayment);
-        
-        // Calcula o total recebido
-        const totalReceived = calculateTotalReceived(processedPayments);
+        const payments = Array.isArray(client.payments) ? client.payments : [];
 
-        console.log(`Cliente ${client.company_name}:`, {
-          pagamentos_processados: processedPayments,
-          total_recebido: totalReceived
+        // Processa os pagamentos e calcula o total
+        const processedPayments = payments.map(payment => ({
+          id: payment.id,
+          amount: typeof payment.amount === 'string' ? 
+            parseFloat(payment.amount.replace(',', '.')) : 
+            Number(payment.amount) || 0,
+          reference_month: payment.reference_month,
+          notes: payment.notes
+        }));
+
+        // Calcula o total recebido
+        const total_received = processedPayments.reduce((sum, payment) => {
+          const amount = Number(payment.amount) || 0;
+          console.log(`Processando pagamento para ${client.company_name}:`, {
+            payment_id: payment.id,
+            amount: amount,
+            sum_atual: sum,
+            novo_total: sum + amount
+          });
+          return sum + amount;
+        }, 0);
+
+        // Verifica se tem pagamento no mês atual
+        const currentMonthStart = startOfMonth(new Date());
+        const currentMonthEnd = endOfMonth(new Date());
+        const hasCurrentMonthPayment = processedPayments.some(payment => {
+          try {
+            const paymentDate = parseISO(payment.reference_month);
+            return isWithinInterval(paymentDate, {
+              start: currentMonthStart,
+              end: currentMonthEnd
+            });
+          } catch (error) {
+            console.error('Erro ao verificar pagamento do mês:', error);
+            return false;
+          }
+        });
+
+        console.log(`Processamento do cliente ${client.company_name} concluído:`, {
+          total_pagamentos: processedPayments.length,
+          valor_total: total_received,
+          tem_pagamento_mes_atual: hasCurrentMonthPayment
         });
 
         return {
@@ -118,9 +98,9 @@ export function usePaymentsClients() {
           contact_name: client.contact_name,
           contact_phone: client.contact_phone,
           last_payment_date: client.last_payment_date,
-          total_received: totalReceived,
+          total_received: total_received,
           payments: processedPayments,
-          hasCurrentMonthPayment: hasPaymentInCurrentMonth(processedPayments)
+          hasCurrentMonthPayment
         };
       });
 
