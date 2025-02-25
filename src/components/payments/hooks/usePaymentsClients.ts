@@ -24,7 +24,7 @@ export function usePaymentsClients() {
         .from("clients")
         .select(`
           *,
-          payments!inner (
+          payments (
             id,
             amount,
             reference_month,
