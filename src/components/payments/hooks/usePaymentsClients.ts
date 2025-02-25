@@ -117,14 +117,14 @@ export function usePaymentsClients() {
           total_received,
           payments: clientPayments,
           hasCurrentMonthPayment
-        };a
+        };
       });
 
       console.log("[usePaymentsClients] Total de clientes processados:", processedClients.length);
 
       return processedClients;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 4 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
     refetchOnWindowFocus: true,
   });
