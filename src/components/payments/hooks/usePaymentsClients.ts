@@ -11,13 +11,17 @@ export function usePaymentsClients() {
     queryKey: ["payments-clients"],
     queryFn: async () => {
       try {
-        console.log("=== Iniciando busca de pagamentos e clientes ===");
+        console.log("🔍 Iniciando busca de dados...");
 
-        // Busca mais detalhada dos pagamentos incluindo informações do cliente
-        const { data: paymentsData, error: paymentsError } = await supabase
+        // Buscar pagamentos com join em clients para garantir integridade dos dados
+        const { data: payments, error: paymentsError } = await supabase
           .from('payments')
           .select(`
-            *,
+            id,
+            amount,
+            reference_month,
+            notes,
+            client_id,
             clients (
               id,
               company_name
@@ -29,23 +33,18 @@ export function usePaymentsClients() {
           throw paymentsError;
         }
 
-        console.log("✅ Pagamentos encontrados:", paymentsData?.length || 0);
-        console.log("📊 Amostra dos primeiros 3 pagamentos:", paymentsData?.slice(0, 3));
+        console.log("💰 Total de pagamentos encontrados:", payments?.length);
 
-        // Criar mapa de pagamentos por client_id de forma mais robusta
-        const paymentsMap = new Map<string, Payment[]>();
-        paymentsData?.forEach(payment => {
-          const clientId = payment.client_id;
-          if (!clientId) {
-            console.warn("⚠️ Pagamento sem client_id:", payment);
-            return;
+        // Mapear pagamentos por cliente
+        const paymentsMap: Record<string, Payment[]> = {};
+        payments?.forEach(payment => {
+          if (!payment.client_id) return;
+          
+          if (!paymentsMap[payment.client_id]) {
+            paymentsMap[payment.client_id] = [];
           }
 
-          if (!paymentsMap.has(clientId)) {
-            paymentsMap.set(clientId, []);
-          }
-
-          paymentsMap.get(clientId)?.push({
+          paymentsMap[payment.client_id].push({
             id: payment.id,
             amount: Number(payment.amount),
             reference_month: payment.reference_month,
@@ -53,22 +52,10 @@ export function usePaymentsClients() {
           });
         });
 
-        // Buscar clientes com informações completas
+        // Buscar clientes
         const { data: clientsData, error: clientsError } = await supabase
           .from("clients")
-          .select(`
-            id,
-            company_name,
-            contract_value,
-            status,
-            first_payment_date,
-            payment_type,
-            acquisition_channel,
-            company_birthday,
-            contact_name,
-            contact_phone,
-            last_payment_date
-          `)
+          .select('*')
           .order('status', { ascending: false })
           .order('company_name');
 
@@ -77,43 +64,30 @@ export function usePaymentsClients() {
           throw clientsError;
         }
 
-        console.log("✅ Clientes encontrados:", clientsData?.length || 0);
-        console.log("📊 Amostra dos primeiros 3 clientes:", clientsData?.slice(0, 3));
+        console.log("👥 Total de clientes encontrados:", clientsData?.length);
 
-        if (!clientsData || clientsData.length === 0) {
-          console.warn("⚠️ Nenhum cliente encontrado");
-          return [];
-        }
+        // Processar clientes com seus pagamentos
+        const processedClients = (clientsData || []).map(client => {
+          const clientPayments = paymentsMap[client.id] || [];
+          const total_received = clientPayments.reduce((sum, payment) => 
+            sum + (Number(payment.amount) || 0), 0);
 
-        // Processar os clientes com seus pagamentos
-        const processedClients: ClientWithTotalPayments[] = clientsData.map(client => {
-          const clientPayments = paymentsMap.get(client.id) || [];
-          
-          // Calcular o total recebido
-          const total_received = clientPayments.reduce((sum, payment) => {
-            return sum + (Number(payment.amount) || 0);
-          }, 0);
-
-          // Debug para cada cliente processado
-          console.log(`📝 Cliente ${client.company_name}:`, {
-            id: client.id,
-            pagamentos: clientPayments.length,
-            total: total_received
+          console.log(`📊 Cliente ${client.company_name}:`, {
+            total_received,
+            num_payments: clientPayments.length
           });
 
-          // Verificar pagamento do mês atual
           const currentMonthStart = startOfMonth(new Date());
           const currentMonthEnd = endOfMonth(new Date());
+          
           const hasCurrentMonthPayment = clientPayments.some(payment => {
-            if (!payment.reference_month) return false;
             try {
               const paymentDate = parseISO(payment.reference_month);
               return isWithinInterval(paymentDate, {
                 start: currentMonthStart,
                 end: currentMonthEnd
               });
-            } catch (error) {
-              console.error('❌ Erro ao verificar data do pagamento:', error);
+            } catch {
               return false;
             }
           });
@@ -136,8 +110,10 @@ export function usePaymentsClients() {
           };
         });
 
-        console.log("=== Finalizado processamento ===");
-        console.log("📊 Total de clientes processados:", processedClients.length);
+        console.log("✅ Processamento finalizado:", {
+          total_clients: processedClients.length,
+          total_payments: payments?.length
+        });
 
         return processedClients;
       } catch (error) {
@@ -145,13 +121,9 @@ export function usePaymentsClients() {
         throw error;
       }
     },
-    staleTime: 30000,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
-    placeholderData: (previousData) => previousData,
-    meta: {
-      errorMessage: "Erro ao carregar os dados dos clientes"
-    }
+    staleTime: 1000 * 60, // 1 minuto
+    gcTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnWindowFocus: true
   });
 
   const handlePaymentUpdated = () => {
