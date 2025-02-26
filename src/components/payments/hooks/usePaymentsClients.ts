@@ -118,9 +118,13 @@ export function usePaymentsClients() {
 
       return processedClients;
     },
-    staleTime: 0, // Removido o staleTime para sempre buscar dados frescos
+    staleTime: 30000, // Dados considerados frescos por 30 segundos
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
+    keepPreviousData: true, // Mantém os dados anteriores durante a revalidação
+    meta: {
+      errorMessage: "Erro ao carregar os dados dos clientes"
+    }
   });
 
   const handlePaymentUpdated = () => {
