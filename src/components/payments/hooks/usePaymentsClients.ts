@@ -22,9 +22,12 @@ export function usePaymentsClients() {
         throw paymentsError;
       }
 
-      // Criar um mapa de pagamentos por cliente_id
+      console.log("Dados brutos dos pagamentos:", paymentsData);
+
+      // Criar um mapa de pagamentos por client_id
       const paymentsMap = new Map<string, Payment[]>();
       paymentsData?.forEach(payment => {
+        console.log("Processando pagamento:", payment);
         if (!paymentsMap.has(payment.client_id)) {
           paymentsMap.set(payment.client_id, []);
         }
@@ -36,6 +39,7 @@ export function usePaymentsClients() {
         });
       });
 
+      console.log("Mapa de pagamentos por cliente:", Object.fromEntries(paymentsMap));
       console.log("Total de pagamentos encontrados:", paymentsData?.length);
 
       // Buscar os clientes
@@ -67,6 +71,8 @@ export function usePaymentsClients() {
         return [];
       }
 
+      console.log("Dados brutos dos clientes:", clientsData);
+
       // Processar os clientes com seus pagamentos
       const processedClients: ClientWithTotalPayments[] = clientsData.map(client => {
         const clientPayments = paymentsMap.get(client.id) || [];
@@ -77,8 +83,10 @@ export function usePaymentsClients() {
         }, 0);
 
         console.log(`Processando cliente ${client.company_name}:`, {
+          id: client.id,
           payments_count: clientPayments.length,
-          total_received: total_received
+          total_received: total_received,
+          payments: clientPayments
         });
 
         // Verificar se tem pagamento no mês atual
@@ -121,7 +129,7 @@ export function usePaymentsClients() {
     staleTime: 30000, // Dados considerados frescos por 30 segundos
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
-    placeholderData: (previousData) => previousData, // Substitui keepPreviousData
+    placeholderData: (previousData) => previousData,
     meta: {
       errorMessage: "Erro ao carregar os dados dos clientes"
     }
