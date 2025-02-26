@@ -121,7 +121,7 @@ export function usePaymentsClients() {
     staleTime: 30000, // Dados considerados frescos por 30 segundos
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
-    keepPreviousData: true, // Mantém os dados anteriores durante a revalidação
+    placeholderData: (previousData) => previousData, // Substitui keepPreviousData
     meta: {
       errorMessage: "Erro ao carregar os dados dos clientes"
     }
