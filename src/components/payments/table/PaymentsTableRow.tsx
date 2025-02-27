@@ -2,7 +2,7 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, AlertCircle } from "lucide-react";
+import { DollarSign, AlertCircle, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { PaymentHistory } from "../PaymentHistory";
 import { ClientWithTotalPayments } from "../types";

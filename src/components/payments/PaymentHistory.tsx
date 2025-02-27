@@ -4,7 +4,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Payment } from "./types";
 import { formatCurrency } from "@/utils/formatters";
-import { Pencil, History } from "lucide-react";
+import { Pencil, History, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

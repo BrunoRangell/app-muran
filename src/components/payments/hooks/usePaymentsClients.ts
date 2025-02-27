@@ -3,15 +3,25 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ClientWithTotalPayments, Payment } from "../types";
+import { useToast } from "@/hooks/use-toast";
 
 export function usePaymentsClients() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const { data: clients, isLoading } = useQuery({
+  const { data: clients, isLoading, error } = useQuery({
     queryKey: ["payments-clients"],
     queryFn: async () => {
       try {
         console.log("🔍 Iniciando busca de dados...");
+
+        // Verificar se o usuário está autenticado
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !sessionData.session) {
+          console.error("❌ Erro de autenticação:", sessionError || "Sessão não encontrada");
+          throw new Error("Erro de autenticação ou sessão expirada");
+        }
 
         // Buscar todos os clientes primeiro
         const { data: clientsData, error: clientsError } = await supabase
@@ -117,12 +127,22 @@ export function usePaymentsClients() {
         return processedClients;
       } catch (error) {
         console.error("❌ Erro durante o processamento:", error);
+        
+        // Mostrar toast de erro
+        toast({
+          title: "Erro ao carregar dados",
+          description: "Não foi possível carregar os dados de clientes e pagamentos.",
+          variant: "destructive",
+        });
+        
         throw error;
       }
     },
     staleTime: 1000 * 60, // 1 minuto
     gcTime: 1000 * 60 * 5, // 5 minutos
-    refetchOnWindowFocus: true
+    refetchOnWindowFocus: true,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const handlePaymentUpdated = () => {
@@ -132,6 +152,7 @@ export function usePaymentsClients() {
   return { 
     clients: clients || [], 
     isLoading, 
+    error,
     handlePaymentUpdated 
   };
 }
