@@ -49,6 +49,7 @@ const ManagerFinancial = lazyWithTimeout(() => import("@/pages/ManagerFinancial"
 const Tasks = lazyWithTimeout(() => import("@/pages/Tasks"));
 const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
 const Payments = lazyWithTimeout(() => import("@/pages/Payments"));
+const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"));
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 
@@ -87,6 +88,14 @@ function App() {
           element={
             <PrivateRoute requireAdmin>
               <Payments />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/recebimentos-nova"
+          element={
+            <PrivateRoute requireAdmin>
+              <RecebimentosNova />
             </PrivateRoute>
           }
         />

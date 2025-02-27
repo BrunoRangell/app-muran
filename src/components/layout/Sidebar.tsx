@@ -38,6 +38,7 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
+  { icon: Receipt, label: "Recebimentos Nova", path: "/recebimentos-nova" },
 ];
 
 const regularMenuItems: MenuItem[] = [
