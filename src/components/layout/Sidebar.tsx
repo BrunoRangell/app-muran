@@ -1,104 +1,110 @@
 
-import { useLocation } from "react-router-dom";
-import { 
-  Users, 
-  DollarSign,
-  Home,
-  ListTodo,
-  Receipt,
-  CreditCard,
-  BarChart
-} from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { ElementRef, useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import { NavLink, useLocation } from "react-router-dom";
 import { SidebarLogo } from "./SidebarLogo";
 import { SidebarMenuItem } from "./SidebarMenuItem";
+import { SidebarLogout } from "./SidebarLogout";
+import { Button } from "@/components/ui/button";
 import { UserProfileMenu } from "./UserProfileMenu";
-import { MenuItem } from "@/types/sidebar";
+import { PanelLeftInactive } from "lucide-react";
+import { useMobile } from "@/hooks/use-mobile";
+import { menuItems } from "@/components/layout/menuItems";
 
-interface SidebarProps {
-  onMobileItemClick?: () => void;
-}
-
-const financialSubMenu: MenuItem[] = [
-  { icon: DollarSign, label: "Relatório Financeiro", path: "/clientes/relatorio" },
-  { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: Receipt, label: "Recebimentos", path: "/clientes/recebimentos" },
-  { icon: CreditCard, label: "Registro de Custos", path: "/clientes/custos" }
-];
-
-const adminMenuItems: MenuItem[] = [
-  { icon: Home, label: "Início", path: "/" },
-  { 
-    icon: DollarSign, 
-    label: "Financeiro Muran", 
-    path: "/clientes",
-    submenu: financialSubMenu
-  },
-  { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
-  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
-];
-
-const regularMenuItems: MenuItem[] = [
-  { icon: Home, label: "Início", path: "/" },
-  { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
-  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
-];
-
-export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
+export const Sidebar = () => {
   const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const isMobile = useMobile();
+  const pathname = location.pathname;
+
+  const isActive = (path: string) => {
+    if (path === "/") {
+      return pathname === "/";
+    }
+    return pathname.startsWith(path);
+  };
+
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarRef = useRef<ElementRef<"aside">>(null);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          const { data: teamMember } = await supabase
-            .from('team_members')
-            .select('permission')
-            .eq('email', session.user.email)
-            .single();
-
-          setIsAdmin(teamMember?.permission === 'admin');
-        }
-      } catch (error) {
-        console.error("Erro ao verificar status de admin:", error);
-        setIsAdmin(false);
-      }
-    };
-
-    checkAdminStatus();
-  }, []);
-
-  const menuItems = isAdmin ? adminMenuItems : regularMenuItems;
-
-  const isPathActive = (path: string, submenu?: MenuItem[]) => {
-    if (submenu) {
-      return submenu.some(item => location.pathname === item.path);
+    if (isMobile) {
+      handleCollapse();
+    } else {
+      handleExpand();
     }
-    return location.pathname === path;
+  }, [isMobile]);
+
+  const handleExpand = () => {
+    if (!sidebarRef.current) return;
+    setIsCollapsed(false);
+  };
+
+  const handleCollapse = () => {
+    if (!sidebarRef.current) return;
+    setIsCollapsed(true);
+  };
+
+  const resetWidth = () => {
+    if (!sidebarRef.current) return;
+    setIsCollapsed(false);
+  };
+
+  const toggleSidebar = () => {
+    if (isCollapsed) {
+      handleExpand();
+    } else {
+      handleCollapse();
+    }
   };
 
   return (
-    <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col">
-      <SidebarLogo />
-      <div>
-        <UserProfileMenu />
+    <aside
+      ref={sidebarRef}
+      className={cn(
+        "group/sidebar relative h-full bg-card duration-500 flex flex-col",
+        isCollapsed ? "w-[70px]" : "w-60"
+      )}
+    >
+      <div
+        onClick={toggleSidebar}
+        role="button"
+        className={cn(
+          "h-6 w-6 text-muted-foreground rounded-sm hover:bg-zinc-300 dark:hover:bg-zinc-600 absolute top-3 right-2 opacity-0 group-hover/sidebar:opacity-100 transition",
+          isCollapsed && "opacity-100 rotate-180"
+        )}
+      >
+        <PanelLeftInactive className="h-6 w-6" />
       </div>
-      <nav className="flex-1 space-y-2 mt-4">
-        {menuItems.map((item) => (
+      <SidebarLogo isCollapsed={isCollapsed} />
+      <div className="mt-4 flex flex-col gap-1 px-2">
+        {menuItems.map((item, index) => (
           <SidebarMenuItem
-            key={item.path}
-            {...item}
-            isActive={isPathActive(item.path, item.submenu)}
-            onClick={onMobileItemClick}
+            key={index}
+            isCollapsed={isCollapsed}
+            isActive={
+              item.href === "/novo-recebimentos" 
+                ? isActive("/novo-recebimentos") 
+                : isActive(item.href)
+            }
+            icon={item.icon}
+            label={item.label}
+            href={item.href}
           />
         ))}
-      </nav>
-    </div>
+
+        {/* Nova opção de menu para a página recriada */}
+        <SidebarMenuItem
+          isCollapsed={isCollapsed}
+          isActive={isActive("/novo-recebimentos")}
+          icon="DollarSign"
+          label="Novo Recebimentos"
+          href="/novo-recebimentos"
+        />
+      </div>
+      <div className="mt-auto px-2 mb-4">
+        <UserProfileMenu isCollapsed={isCollapsed} />
+        <SidebarLogout isCollapsed={isCollapsed} />
+      </div>
+    </aside>
   );
 };
