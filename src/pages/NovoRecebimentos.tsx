@@ -13,6 +13,12 @@ import { NovoRegistrarPagamentoDialog } from "@/components/payments/novo/NovoReg
 import { NovoHistoricoPagamentos } from "@/components/payments/novo/NovoHistoricoPagamentos";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
 
 export default function NovoRecebimentos() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -198,7 +204,16 @@ export default function NovoRecebimentos() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {cliente.status === 'active' && !cliente.temPagamentoMesAtual && (
-                          <AlertCircle className="h-4 w-4 text-orange-500" title="Pagamento pendente" />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertCircle className="h-4 w-4 text-orange-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Pagamento pendente</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                         {cliente.company_name}
                       </div>

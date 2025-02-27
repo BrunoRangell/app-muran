@@ -7,13 +7,17 @@ import { SidebarMenuItem } from "./SidebarMenuItem";
 import { SidebarLogout } from "./SidebarLogout";
 import { Button } from "@/components/ui/button";
 import { UserProfileMenu } from "./UserProfileMenu";
-import { PanelLeftInactive } from "lucide-react";
-import { useMobile } from "@/hooks/use-mobile";
+import { PanelLeftInactive, DollarSign } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { menuItems } from "@/components/layout/menuItems";
 
-export const Sidebar = () => {
+interface SidebarProps {
+  onMobileItemClick?: () => void;
+}
+
+export const Sidebar = ({ onMobileItemClick }: SidebarProps = {}) => {
   const location = useLocation();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const pathname = location.pathname;
 
   const isActive = (path: string) => {
@@ -89,6 +93,7 @@ export const Sidebar = () => {
             icon={item.icon}
             label={item.label}
             href={item.href}
+            onClick={onMobileItemClick}
           />
         ))}
 
@@ -96,9 +101,10 @@ export const Sidebar = () => {
         <SidebarMenuItem
           isCollapsed={isCollapsed}
           isActive={isActive("/novo-recebimentos")}
-          icon="DollarSign"
+          icon={DollarSign}
           label="Novo Recebimentos"
           href="/novo-recebimentos"
+          onClick={onMobileItemClick}
         />
       </div>
       <div className="mt-auto px-2 mb-4">
