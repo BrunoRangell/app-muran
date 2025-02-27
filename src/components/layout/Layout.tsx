@@ -14,10 +14,6 @@ export const Layout = () => {
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const handleMobileItemClick = () => {
-    setIsMobileMenuOpen(false);
-  };
-
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-muran-secondary">
       {isMobile ? (
@@ -32,7 +28,7 @@ export const Layout = () => {
           </Button>
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetContent side="left" className="p-0 w-64">
-              <Sidebar onMobileItemClick={handleMobileItemClick} />
+              <Sidebar onMobileItemClick={() => setIsMobileMenuOpen(false)} />
             </SheetContent>
           </Sheet>
         </>
@@ -52,9 +48,8 @@ export const Layout = () => {
       >
         <Suspense 
           fallback={<LoadingState />}
-        >
-          <Outlet />
-        </Suspense>
+          children={<Outlet />} 
+        />
       </main>
     </div>
   );

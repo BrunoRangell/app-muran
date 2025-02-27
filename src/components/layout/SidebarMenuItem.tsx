@@ -4,27 +4,18 @@ import { Link, useLocation } from "react-router-dom";
 import { MenuItem } from "@/types/sidebar";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
 
-interface SidebarMenuItemProps {
-  icon: LucideIcon;
-  label: string;
-  href: string;
+interface SidebarMenuItemProps extends MenuItem {
   isActive: boolean;
-  isCollapsed?: boolean;
-  path?: string;
-  submenu?: any[];
   onClick?: () => void;
 }
 
 export const SidebarMenuItem = ({ 
   icon: Icon, 
   label, 
-  href,
-  path,
+  path, 
   submenu,
   isActive,
-  isCollapsed = false,
   onClick 
 }: SidebarMenuItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,31 +33,10 @@ export const SidebarMenuItem = ({
     ? isActive || (isOpen && submenu?.some(item => item.path === location.pathname))
     : isActive;
 
-  if (isCollapsed) {
-    return (
-      <Link
-        to={hasSubmenu ? "#" : href}
-        onClick={(e) => {
-          toggleSubmenu(e);
-          if (!hasSubmenu && onClick) onClick();
-        }}
-        className={cn(
-          "flex items-center justify-center p-3 rounded-lg transition-colors",
-          isItemActive
-            ? "bg-muran-primary text-white" 
-            : "hover:bg-muran-complementary/80 text-gray-300",
-        )}
-        title={label}
-      >
-        <Icon size={20} />
-      </Link>
-    );
-  }
-
   return (
     <div>
       <Link
-        to={hasSubmenu ? "#" : href}
+        to={hasSubmenu ? "#" : path}
         onClick={(e) => {
           toggleSubmenu(e);
           if (!hasSubmenu && onClick) onClick();
@@ -98,12 +68,8 @@ export const SidebarMenuItem = ({
           {submenu.map((item) => (
             <SidebarMenuItem
               key={item.path}
-              icon={item.icon}
-              label={item.label}
-              href={item.href || '#'}
-              path={item.path}
+              {...item}
               isActive={location.pathname === item.path}
-              isCollapsed={isCollapsed}
               onClick={onClick}
             />
           ))}

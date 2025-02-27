@@ -1,76 +1,108 @@
 
-import { Routes, Route, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-import { Toaster } from "@/components/ui/toaster";
+import { Routes, Route } from "react-router-dom";
+import { Layout } from "@/components/layout/Layout";
+import { PrivateRoute } from "@/components/auth/PrivateRoute";
+import { lazy, Suspense } from "react";
+import Login from "@/pages/Login";
 
-// Layouts
-import { Layout } from "./components/layout/Layout";
+// Pré-carregamento das rotas principais
+const Index = lazy(() => {
+  const page = import("@/pages/Index");
+  // Pré-carregar outras páginas após a página inicial carregar
+  page.then(() => {
+    Promise.all([
+      import("@/pages/Clients"),
+      import("@/pages/Managers")
+    ]).catch(error => {
+      console.error("Erro no pré-carregamento:", error);
+    });
+  });
+  return page;
+});
 
-// Pages
-import Login from "./pages/Login";
-import Index from "./pages/Index";
-import Clients from "./pages/Clients";
-import Payments from "./pages/Payments";
-import NovoRecebimentos from "./pages/NovoRecebimentos";
-import Costs from "./pages/Costs";
-import Tasks from "./pages/Tasks";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
-import Financial from "./pages/Financial";
-import Managers from "./pages/Managers";
-import ManagerFinancial from "./pages/ManagerFinancial";
-import UserDashboard from "./pages/UserDashboard";
-import FinancialReport from "./pages/FinancialReport";
+// Lazy load das demais páginas com timeout maior e retry
+const lazyWithTimeout = (importFn: () => Promise<any>) => {
+  return lazy(() => {
+    const loadWithRetry = (retries = 2): Promise<any> => {
+      return Promise.race([
+        importFn(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Tempo limite excedido')), 8000)
+        )
+      ]).catch(error => {
+        if (retries > 0) {
+          console.log(`Tentando novamente... ${retries} tentativas restantes`);
+          return loadWithRetry(retries - 1);
+        }
+        throw error;
+      });
+    };
 
-// Components
-import { PrivateRoute } from "./components/auth/PrivateRoute";
-import { AuthCallback } from "./components/auth/AuthCallback";
+    return loadWithRetry();
+  });
+};
+
+const Clients = lazyWithTimeout(() => import("@/pages/Clients"));
+const NotFound = lazyWithTimeout(() => import("@/pages/NotFound"));
+const Managers = lazyWithTimeout(() => import("@/pages/Managers"));
+const ManagerFinancial = lazyWithTimeout(() => import("@/pages/ManagerFinancial"));
+const Tasks = lazyWithTimeout(() => import("@/pages/Tasks"));
+const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
+const Payments = lazyWithTimeout(() => import("@/pages/Payments"));
+const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
+const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 
 function App() {
   return (
-    <>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        element={
+          <PrivateRoute>
+            <Layout />
+          </PrivateRoute>
+        }
+      >
+        <Route path="/" element={<Index />} />
+        <Route path="/equipe" element={<Managers />} />
+        <Route path="/configuracoes" element={<Settings />} />
         <Route
-          path="/"
+          path="/clientes"
           element={
-            <PrivateRoute>
-              <Layout />
+            <PrivateRoute requireAdmin>
+              <Clients />
             </PrivateRoute>
           }
-        >
-          <Route index element={<Index />} />
-          <Route path="clientes" element={<Clients />} />
-          <Route path="clientes/recebimentos" element={<Payments />} />
-          <Route path="novo-recebimentos" element={<NovoRecebimentos />} />
-          <Route path="financeiro" element={<Financial />} />
-          <Route path="financeiro/relatorio" element={<FinancialReport />} />
-          <Route path="custos" element={<Costs />} />
-          <Route path="tarefas" element={<Tasks />} />
-          <Route path="configuracoes" element={<Settings />} />
-          <Route path="dashboard" element={<UserDashboard />} />
-          <Route
-            path="gerentes"
-            element={
-              <PrivateRoute requireAdmin>
-                <Managers />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="gerentes/financeiro"
-            element={
-              <PrivateRoute requireAdmin>
-                <ManagerFinancial />
-              </PrivateRoute>
-            }
-          />
-        </Route>
+        />
+        <Route
+          path="/clientes/relatorio"
+          element={
+            <PrivateRoute requireAdmin>
+              <FinancialReport />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/clientes/recebimentos"
+          element={
+            <PrivateRoute requireAdmin>
+              <Payments />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/clientes/custos"
+          element={
+            <PrivateRoute requireAdmin>
+              <Costs />
+            </PrivateRoute>
+          }
+        />
+        <Route path="/financeiro" element={<ManagerFinancial />} />
+        <Route path="/tarefas" element={<Tasks />} />
         <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster />
-    </>
+      </Route>
+    </Routes>
   );
 }
 
