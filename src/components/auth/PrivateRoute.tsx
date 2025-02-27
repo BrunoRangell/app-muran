@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { errorMessages } from "@/lib/errors";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -42,15 +42,11 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
           return;
         }
 
-        // Verifica se há dados de autenticação no localStorage
-        const authData = localStorage.getItem('muran-auth-token');
-        if (!authData) {
-          console.warn("Dados de autenticação não encontrados no localStorage");
-          setIsAuthenticated(false);
-          return;
-        }
-
-        console.log("Sessão válida encontrada");
+        // Se chegou aqui, o usuário está autenticado
+        console.log("Sessão válida encontrada", {
+          user: session.user.email,
+          expires: new Date(session.expires_at! * 1000)
+        });
         setIsAuthenticated(true);
 
         if (requireAdmin) {
@@ -76,7 +72,11 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
           }
 
           const userIsAdmin = teamMember?.permission === 'admin';
-          console.log("Usuário é admin?", userIsAdmin);
+          console.log("Usuário é admin?", userIsAdmin, {
+            email: session.user.email,
+            role: teamMember?.role,
+            permission: teamMember?.permission
+          });
           setIsAdmin(userIsAdmin);
 
           if (!userIsAdmin) {
@@ -127,18 +127,20 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
           .eq('email', session.user.email)
           .single();
         
-        setIsAdmin(teamMember?.permission === 'admin');
+        const userIsAdmin = teamMember?.permission === 'admin';
+        console.log("Verificação de admin após mudança de auth:", userIsAdmin);
+        setIsAdmin(userIsAdmin);
       }
     });
 
-    // Verifica a sessão periodicamente
+    // Verifica a sessão periodicamente a cada 30 segundos
     const interval = setInterval(checkAuth, 30000);
 
     return () => {
       subscription.unsubscribe();
       clearInterval(interval);
     };
-  }, [requireAdmin, toast]);
+  }, [requireAdmin, toast, location.pathname]);
 
   // Estado de carregamento
   if (isAuthenticated === null || (requireAdmin && isAdmin === null)) {
