@@ -25,13 +25,19 @@ export function PaymentsTableRow({
   onPaymentClick,
   onPaymentUpdated 
 }: PaymentsTableRowProps) {
-  const needsPayment = client.status === 'active' && !client.hasCurrentMonthPayment;
+  // Garantir que temos valores válidos para evitar erros
+  const { 
+    id = "", 
+    company_name = "Cliente sem nome", 
+    contract_value = 0, 
+    status = "inactive",
+    total_received = 0,
+    payments = [],
+    hasCurrentMonthPayment = false
+  } = client || {};
   
-  console.log(`Renderizando linha - ${client.company_name}:`, {
-    total_received: client.total_received,
-    payments: client.payments?.length || 0
-  });
-
+  const needsPayment = status === 'active' && !hasCurrentMonthPayment;
+  
   return (
     <TableRow className={cn(
       needsPayment && "bg-[#FEC6A1]/10 hover:bg-[#FEC6A1]/20",
@@ -51,31 +57,31 @@ export function PaymentsTableRow({
               </Tooltip>
             </TooltipProvider>
           )}
-          {client.company_name}
+          {company_name}
         </div>
       </TableCell>
-      <TableCell>{formatCurrency(client.contract_value)}</TableCell>
+      <TableCell>{formatCurrency(contract_value)}</TableCell>
       <TableCell>
         <PaymentHistory 
-          total={client.total_received}
-          payments={client.payments}
-          clientName={client.company_name}
+          total={total_received}
+          payments={payments}
+          clientName={company_name}
           onPaymentUpdated={onPaymentUpdated}
         />
       </TableCell>
       <TableCell>
         <Badge 
-          variant={client.status === 'active' ? 'default' : 'destructive'}
-          className={`capitalize ${client.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}`}
+          variant={status === 'active' ? 'default' : 'destructive'}
+          className={`capitalize ${status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}`}
         >
-          {client.status === 'active' ? 'Ativo' : 'Inativo'}
+          {status === 'active' ? 'Ativo' : 'Inativo'}
         </Badge>
       </TableCell>
       <TableCell className="text-right">
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onPaymentClick(client.id)}
+          onClick={() => onPaymentClick(id)}
           className="gap-2"
         >
           <DollarSign className="h-4 w-4" />
