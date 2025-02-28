@@ -76,7 +76,12 @@ export function HistoricoPagamentosDialog({
         description: "Pagamento excluído com sucesso"
       });
       
+      // Após excluir com sucesso, atualiza os dados
       onPagamentoAtualizado();
+      
+      // Fecha o diálogo de confirmação
+      // Já não precisamos fechar explicitamente pois o AlertDialogAction cuida disso
+      
     } catch (error) {
       console.error("Erro ao excluir pagamento:", error);
       toast({
