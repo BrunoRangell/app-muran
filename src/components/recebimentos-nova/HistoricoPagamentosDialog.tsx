@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,15 @@ export function HistoricoPagamentosDialog({
   const [pagamentoSelecionado, setPagamentoSelecionado] = useState<any>(null);
   const [editarDialogAberto, setEditarDialogAberto] = useState(false);
   const [excluindoPagamento, setExcluindoPagamento] = useState(false);
+  const [pagamentos, setPagamentos] = useState<any[]>([]);
   const { toast } = useToast();
+
+  // Atualiza a lista de pagamentos quando o diálogo é aberto ou quando o cliente muda
+  useEffect(() => {
+    if (cliente?.pagamentos) {
+      setPagamentos([...cliente.pagamentos]);
+    }
+  }, [cliente?.pagamentos, open]);
 
   // Formata a data de referência do pagamento
   const formatarData = (data: string) => {
@@ -71,16 +79,16 @@ export function HistoricoPagamentosDialog({
       
       if (error) throw error;
       
+      // Atualiza a lista local de pagamentos removendo o pagamento excluído
+      setPagamentos(pagamentos.filter(p => p.id !== pagamento.id));
+      
       toast({
         title: "Sucesso",
         description: "Pagamento excluído com sucesso"
       });
       
-      // Após excluir com sucesso, atualiza os dados
+      // Notifica o componente pai para atualizar
       onPagamentoAtualizado();
-      
-      // Fecha o diálogo de confirmação
-      // Já não precisamos fechar explicitamente pois o AlertDialogAction cuida disso
       
     } catch (error) {
       console.error("Erro ao excluir pagamento:", error);
@@ -95,7 +103,7 @@ export function HistoricoPagamentosDialog({
   };
 
   // Organiza os pagamentos por data (mais recentes primeiro)
-  const pagamentosOrdenados = [...(cliente?.pagamentos || [])].sort((a, b) => {
+  const pagamentosOrdenados = [...pagamentos].sort((a, b) => {
     const dataA = a.reference_month ? new Date(a.reference_month) : new Date(0);
     const dataB = b.reference_month ? new Date(b.reference_month) : new Date(0);
     return dataB.getTime() - dataA.getTime();
@@ -191,6 +199,12 @@ export function HistoricoPagamentosDialog({
           nomeCliente={cliente?.company_name}
           onSuccess={() => {
             setEditarDialogAberto(false);
+            
+            // Recarrega os pagamentos do cliente após a edição
+            if (cliente?.pagamentos) {
+              setPagamentos([...cliente.pagamentos]);
+            }
+            
             onPagamentoAtualizado();
           }}
         />
