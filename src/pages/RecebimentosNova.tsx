@@ -37,8 +37,7 @@ export default function RecebimentosNova() {
         // Buscar clientes
         const { data: clientes, error: erroClientes } = await supabase
           .from("clients")
-          .select("*")
-          .order("company_name");
+          .select("*");
 
         if (erroClientes) throw erroClientes;
 
@@ -87,6 +86,17 @@ export default function RecebimentosNova() {
             totalRecebido,
             temPagamentoNoMesAtual
           };
+        });
+
+        // Ordenar por status (ativos primeiro) e depois por nome
+        clientesProcessados.sort((a, b) => {
+          // Primeiro critério: status (ativos primeiro)
+          if (a.status !== b.status) {
+            return a.status === 'active' ? -1 : 1;
+          }
+          
+          // Segundo critério: ordem alfabética por nome
+          return a.company_name.localeCompare(b.company_name);
         });
 
         return clientesProcessados;

@@ -88,6 +88,7 @@ export function RegistroPagamentoDialog({
             description: "Período inválido. A data final deve ser posterior à data inicial.",
             variant: "destructive"
           });
+          setIsLoading(false);
           return;
         }
         
@@ -107,6 +108,8 @@ export function RegistroPagamentoDialog({
           title: "Sucesso",
           description: `${pagamentos.length} pagamentos registrados com sucesso`
         });
+        
+        onSuccess();
       } else {
         // Registrar pagamento único
         const { error } = await supabase.from("payments").insert({
@@ -122,9 +125,9 @@ export function RegistroPagamentoDialog({
           title: "Sucesso",
           description: "Pagamento registrado com sucesso"
         });
+        
+        onSuccess();
       }
-      
-      onSuccess();
     } catch (error) {
       console.error("Erro ao registrar pagamento:", error);
       toast({
