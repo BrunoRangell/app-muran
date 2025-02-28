@@ -3,11 +3,24 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarPagamentoDialog } from "./EditarPagamentoDialog";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
 
 interface HistoricoPagamentosDialogProps {
   open: boolean;
@@ -24,6 +37,8 @@ export function HistoricoPagamentosDialog({
 }: HistoricoPagamentosDialogProps) {
   const [pagamentoSelecionado, setPagamentoSelecionado] = useState<any>(null);
   const [editarDialogAberto, setEditarDialogAberto] = useState(false);
+  const [excluindoPagamento, setExcluindoPagamento] = useState(false);
+  const { toast } = useToast();
 
   // Formata a data de referência do pagamento
   const formatarData = (data: string) => {
@@ -40,6 +55,38 @@ export function HistoricoPagamentosDialog({
   const handleEditarPagamento = (pagamento: any) => {
     setPagamentoSelecionado(pagamento);
     setEditarDialogAberto(true);
+  };
+
+  // Exclui um pagamento
+  const handleExcluirPagamento = async (pagamento: any) => {
+    if (!pagamento || excluindoPagamento) return;
+    
+    try {
+      setExcluindoPagamento(true);
+      
+      const { error } = await supabase
+        .from("payments")
+        .delete()
+        .eq("id", pagamento.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Sucesso",
+        description: "Pagamento excluído com sucesso"
+      });
+      
+      onPagamentoAtualizado();
+    } catch (error) {
+      console.error("Erro ao excluir pagamento:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o pagamento",
+        variant: "destructive"
+      });
+    } finally {
+      setExcluindoPagamento(false);
+    }
   };
 
   // Organiza os pagamentos por data (mais recentes primeiro)
@@ -70,14 +117,53 @@ export function HistoricoPagamentosDialog({
                           <p className="text-sm text-gray-500 mt-1">{pagamento.notes}</p>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => handleEditarPagamento(pagamento)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleEditarPagamento(pagamento)}
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              title="Excluir"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir este pagamento de {formatCurrency(pagamento.amount)} 
+                                referente a {formatarData(pagamento.reference_month)}?
+                                <br /><br />
+                                <span className="text-red-500 font-medium flex items-center gap-1">
+                                  <AlertCircle className="h-4 w-4" />
+                                  Esta ação não pode ser desfeita.
+                                </span>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleExcluirPagamento(pagamento)}
+                                className="bg-red-500 hover:bg-red-600"
+                              >
+                                {excluindoPagamento ? "Excluindo..." : "Excluir"}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </div>
                 ))}

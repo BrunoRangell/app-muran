@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Search, DollarSign, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { RegistroPagamentoDialog } from "@/components/recebimentos-nova/RegistroPagamentoDialog";
@@ -50,8 +50,8 @@ export default function RecebimentosNova() {
 
         // Processar dados
         const dataAtual = new Date();
-        const mesAtual = dataAtual.getMonth();
-        const anoAtual = dataAtual.getFullYear();
+        const mesAtualInicio = startOfMonth(dataAtual);
+        const mesAtualFim = endOfMonth(dataAtual);
 
         // Agrupar pagamentos por cliente
         const pagamentosPorCliente: Record<string, any[]> = {};
@@ -73,11 +73,20 @@ export default function RecebimentosNova() {
             return acc + Number(pagamento.amount || 0);
           }, 0);
           
-          // Verificar se tem pagamento no mês atual
+          // Verificar se tem pagamento no mês atual usando intervalo de datas
           const temPagamentoNoMesAtual = pagamentosCliente.some(pagamento => {
             if (!pagamento.reference_month) return false;
-            const data = new Date(pagamento.reference_month);
-            return data.getMonth() === mesAtual && data.getFullYear() === anoAtual;
+            
+            try {
+              const dataPagamento = parseISO(pagamento.reference_month);
+              return isWithinInterval(dataPagamento, {
+                start: mesAtualInicio,
+                end: mesAtualFim
+              });
+            } catch (error) {
+              console.error("Erro ao verificar data:", error);
+              return false;
+            }
           });
           
           return {
