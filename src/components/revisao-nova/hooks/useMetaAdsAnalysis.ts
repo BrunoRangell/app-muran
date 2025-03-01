@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMetaTokenService } from "./useMetaTokenService";
@@ -38,7 +37,8 @@ export const useMetaAdsAnalysis = () => {
       }
       
       const { startDate, endDate, today } = prepareDateRangeForCurrentMonth();
-      
+      console.log("[DEBUG] Date Range:", { startDate, endDate }); // Log para verificar datas
+
       try {
         console.log("[useMetaAdsAnalysis] Tentando invocar função Edge...");
         
@@ -49,20 +49,23 @@ export const useMetaAdsAnalysis = () => {
           accessToken: token,
           clientName: clientData.company_name,
           metaAccountId: clientData.meta_account_id,
+          fields: "status,name,spend,insights{spend}", // Campos explícitos
           dateRange: {
             start: startDate,
             end: endDate
           },
+          time_range: `{'since':'${startDate}','until':'${endDate}'}`, // Time range formatado
           debug: true
         };
         
         const { result, error: edgeError } = await invokeEdgeFunction(payload);
+        console.log("[DEBUG] Resposta Bruta da API:", result); // Log para inspecionar dados
         
         if (edgeError) {
           throw edgeError;
         }
         
-        if (!result) {
+        if (!result || !result.data) {
           throw new Error("A função retornou dados vazios ou inválidos");
         }
         
@@ -93,10 +96,7 @@ export const useMetaAdsAnalysis = () => {
       }
       
     } catch (err) {
-      // Obter os detalhes do erro
       const errorData = processErrorDetails(err);
-      
-      // Usar apenas a mensagem de erro para o estado
       setError(errorData.message);
       
       toast({
