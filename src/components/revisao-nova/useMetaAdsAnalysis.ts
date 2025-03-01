@@ -87,20 +87,6 @@ export const useMetaAdsAnalysis = () => {
             description: "Não foi possível conectar com a função Edge. Use as ferramentas de diagnóstico para identificar o problema.",
             variant: "destructive",
           });
-        } else if (edgeError.message?.includes("Corpo da requisição vazio")) {
-          setError(`Erro no formato da requisição: ${edgeError.message}. O corpo da requisição não está sendo recebido pela função Edge.`);
-          
-          setDebugInfo({
-            edgeError: edgeError.message,
-            requestType: "JSON stringified payload",
-            suggestion: "Verifique se o payload está sendo corretamente serializado e enviado com content-type: application/json"
-          });
-          
-          toast({
-            title: "Erro no formato da requisição",
-            description: "O corpo da requisição está vazio. Verifique a ferramenta de diagnóstico para mais detalhes.",
-            variant: "destructive",
-          });
         } else {
           throw edgeError;
         }
