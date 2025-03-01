@@ -22,6 +22,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
       name: c.name,
       id: c.id,
       spendRaw: c.spend,
+      spendInsights: c.insights?.data?.[0]?.spend,
       spendType: typeof c.spend
     }))
   );
@@ -30,50 +31,47 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   const normalizedCampaigns = campaigns.map(campaign => {
     // Certifique-se de que campaign.spend seja um número válido
     let spendValue: number;
+    let spendSource = "desconhecido";
     
-    // Tratar diferentes formatos de spend
-    if (typeof campaign.spend === 'number') {
-      // Caso seja um número simples
+    // Verificar primeiro nos insights, que é o formato mais comum na resposta da API do Graph
+    if (campaign.insights?.data && campaign.insights.data.length > 0 && campaign.insights.data[0].spend !== undefined) {
+      spendValue = parseFloat(String(campaign.insights.data[0].spend));
+      spendSource = "insights.data[0].spend";
+    }
+    // Se não tiver nos insights, verificar no formato direto
+    else if (typeof campaign.spend === 'number') {
       spendValue = campaign.spend;
-    } else if (typeof campaign.spend === 'string') {
-      // Caso seja uma string, converter para número
+      spendSource = "spend (number)";
+    } 
+    else if (typeof campaign.spend === 'string') {
       spendValue = parseFloat(campaign.spend);
-    } else if (typeof campaign.spend === 'object' && campaign.spend !== null) {
-      // Caso seja um objeto (formato comum da API do Meta), extrair valor
+      spendSource = "spend (string)";
+    } 
+    else if (typeof campaign.spend === 'object' && campaign.spend !== null) {
+      // Formato de objeto como { value: "123.45" }
       const spendObj = campaign.spend as any;
-      
       if (spendObj.value !== undefined) {
         spendValue = parseFloat(String(spendObj.value));
-      } else if (spendObj.amount !== undefined) {
-        spendValue = parseFloat(String(spendObj.amount));
+        spendSource = "spend.value";
       } else {
-        // Tentar outras propriedades comuns do objeto spend
-        const possibleValues = [
-          spendObj.spend, 
-          spendObj.cost, 
-          spendObj.total_spend,
-          spendObj.total_amount
-        ];
-        
-        // Usar o primeiro valor não-nulo encontrado
-        const foundValue = possibleValues.find(v => v !== undefined && v !== null);
-        spendValue = foundValue ? parseFloat(String(foundValue)) : 0;
+        // Tentar outras propriedades comuns
+        spendValue = 0;
+        spendSource = "objeto sem valor reconhecido";
       }
-    } else if (campaign.insights && campaign.insights.data && campaign.insights.data.length > 0) {
-      // Tentar buscar dados de gasto dos insights
-      const insightSpend = campaign.insights.data[0].spend;
-      spendValue = insightSpend !== undefined ? parseFloat(String(insightSpend)) : 0;
-    } else {
+    } 
+    else {
       // Sem dados de gasto, usar zero
       spendValue = 0;
+      spendSource = "valor não encontrado";
     }
     
     // Verificar se o valor obtido é válido
     spendValue = isNaN(spendValue) ? 0 : spendValue;
     
-    console.log(`[CampaignsTable] Processando campanha ${campaign.name} (${campaign.id}): 
+    console.log(`[CampaignsTable] Campanha ${campaign.name} (${campaign.id}): 
+      Fonte do gasto: ${spendSource}, 
       Gasto original: ${JSON.stringify(campaign.spend)}, 
-      Tipo: ${typeof campaign.spend}, 
+      Gasto insights: ${campaign.insights?.data?.[0]?.spend},
       Gasto normalizado: ${spendValue}`);
     
     return {
@@ -82,7 +80,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     };
   });
 
-  // Calcular o total gasto com segurança
+  // Calcular o total gasto
   const totalSpent = normalizedCampaigns.reduce((sum, campaign) => {
     return sum + campaign.spend;
   }, 0);

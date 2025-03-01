@@ -16,11 +16,19 @@ export interface SimpleMetaCampaign {
   id: string;
   name: string;
   status: string;
-  spend: number;
+  spend: number | string | { value?: string | number } | null;
   insights?: {
     data?: Array<{
-      spend?: number | string;
+      spend?: string | number;
+      date_start?: string;
+      date_stop?: string;
     }>;
+    paging?: {
+      cursors?: {
+        before?: string;
+        after?: string;
+      }
+    }
   };
 }
 
