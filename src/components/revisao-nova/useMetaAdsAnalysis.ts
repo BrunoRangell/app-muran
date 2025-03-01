@@ -16,6 +16,7 @@ export const useMetaAdsAnalysis = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rawApiResponse, setRawApiResponse] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const { toast } = useToast();
 
   const fetchAnalysis = async (clientId: string) => {
@@ -23,6 +24,7 @@ export const useMetaAdsAnalysis = () => {
     setError(null);
     setAnalysis(null);
     setRawApiResponse(null);
+    setDebugInfo(null);
 
     try {
       console.log("[useMetaAdsAnalysis] Iniciando análise para cliente:", clientId);
@@ -109,10 +111,40 @@ export const useMetaAdsAnalysis = () => {
         }, null, 2)
       );
       
+      // Fazer uma chamada direta à API Graph do Facebook para validação
+      const testUrl = `https://graph.facebook.com/v20.0/act_${clientData.meta_account_id}?access_token=${tokenData.value}&fields=name,id`;
+      try {
+        const testResponse = await fetch(testUrl);
+        const testResult = await testResponse.json();
+        console.log("[useMetaAdsAnalysis] Teste direto à API Graph:", testResult);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          directApiTest: testResult
+        }));
+        
+        if (testResult.error) {
+          console.error("[useMetaAdsAnalysis] Erro no teste direto à API:", testResult.error);
+        }
+      } catch (testError) {
+        console.error("[useMetaAdsAnalysis] Falha no teste direto à API:", testError);
+        setDebugInfo(prev => ({
+          ...prev,
+          directApiError: testError instanceof Error ? testError.message : String(testError)
+        }));
+      }
+      
       const { data: result, error: functionError } = await supabase.functions.invoke(
         "daily-budget-reviews",
-        { body: payload }
+        { 
+          body: payload,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
       );
+      
+      console.log("[useMetaAdsAnalysis] Resposta bruta da função Edge:", result);
       
       if (functionError) {
         console.error("[useMetaAdsAnalysis] Erro na função Edge:", functionError);
@@ -132,15 +164,22 @@ export const useMetaAdsAnalysis = () => {
       
       console.log("[useMetaAdsAnalysis] Resposta completa da API Meta Ads:", result);
       
+      // Se tiver erro, mostrar detalhes específicos
+      if (result.error) {
+        console.error("[useMetaAdsAnalysis] Erro reportado na resposta:", result.error);
+        
+        // Tentar extrair mais informações do erro
+        const errorDetails = typeof result.error === 'object' ? 
+          JSON.stringify(result.error) : 
+          String(result.error);
+        
+        throw new Error(`Erro na API do Meta Ads: ${errorDetails}`);
+      }
+      
       // Verificação rigorosa dos dados recebidos
       if (!result.meta) {
         console.error("[useMetaAdsAnalysis] Dados recebidos inválidos ou incompletos (sem meta):", result);
         throw new Error("Os dados recebidos da API do Meta Ads estão incompletos ou em formato inválido");
-      }
-      
-      // Tratamento especial para errors no meta
-      if (result.error) {
-        console.error("[useMetaAdsAnalysis] Erro reportado no objeto result:", result.error);
       }
       
       // Garantir que meta.campaigns existe, mesmo que vazio
@@ -239,6 +278,15 @@ export const useMetaAdsAnalysis = () => {
           message: err.message,
           details: err.stack
         };
+      } else if (typeof err === 'object' && err !== null) {
+        try {
+          errorDetails = {
+            ...err,
+            stringified: JSON.stringify(err)
+          };
+        } catch (e) {
+          errorDetails = { raw: String(err) };
+        }
       } else {
         errorDetails = {
           raw: String(err)
@@ -247,6 +295,11 @@ export const useMetaAdsAnalysis = () => {
       
       // Incluir detalhes do erro na resposta bruta
       setRawApiResponse(prev => ({
+        ...prev,
+        error: errorDetails
+      }));
+      
+      setDebugInfo(prev => ({
         ...prev,
         error: errorDetails
       }));
@@ -261,12 +314,74 @@ export const useMetaAdsAnalysis = () => {
     }
   };
 
+  const testMetaToken = async () => {
+    setIsLoading(true);
+    setError(null);
+    setDebugInfo(null);
+
+    try {
+      // Buscar token
+      const { data: tokenData, error: tokenError } = await supabase
+        .from("api_tokens")
+        .select("value")
+        .eq("name", "meta_access_token")
+        .single();
+      
+      if (tokenError || !tokenData?.value) {
+        throw new Error("Token do Meta Ads não configurado ou erro ao buscar");
+      }
+
+      // Teste básico de validação do token
+      const testUrl = `https://graph.facebook.com/v20.0/me?access_token=${tokenData.value}&fields=id,name`;
+      
+      const response = await fetch(testUrl);
+      const result = await response.json();
+      
+      setDebugInfo({
+        tokenTest: {
+          url: testUrl.replace(tokenData.value, "***TOKEN***"),
+          status: response.status,
+          statusText: response.statusText,
+          result
+        }
+      });
+      
+      if (result.error) {
+        throw new Error(`Erro no teste do token: ${result.error.message || JSON.stringify(result.error)}`);
+      }
+      
+      toast({
+        title: "Token válido",
+        description: `Token do Meta Ads válido. Usuário: ${result.name || result.id}`,
+      });
+      
+      return true;
+    } catch (err) {
+      console.error("[testMetaToken] Erro ao testar token:", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      
+      setError("Erro ao testar token: " + errorMessage);
+      
+      toast({
+        title: "Erro no token",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     client,
     analysis,
     isLoading,
     error,
     fetchAnalysis,
-    rawApiResponse
+    rawApiResponse,
+    debugInfo,
+    testMetaToken
   };
 };

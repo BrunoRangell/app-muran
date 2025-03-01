@@ -1,48 +1,37 @@
 
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
+import { Campaign } from "@/components/daily-reviews/hooks/types";
 import { formatCurrency } from "@/utils/formatters";
-import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CampaignsTableProps {
-  campaigns: SimpleMetaCampaign[];
+  campaigns: Campaign[];
 }
 
-export const CampaignsTable = ({ campaigns }: CampaignsTableProps) => {
-  // Validar e garantir que todos os dados são números antes de ordenar
-  const processedCampaigns = campaigns.map(campaign => ({
-    ...campaign,
-    spend: typeof campaign.spend === 'number' 
-      ? campaign.spend 
-      : parseFloat(String(campaign.spend || '0'))
-  }));
-  
-  // Ordenar campanhas pelo valor gasto (do maior para o menor)
-  const sortedCampaigns = [...processedCampaigns].sort((a, b) => b.spend - a.spend);
-  
-  // Calcular o total
-  const totalSpend = processedCampaigns.reduce((total, campaign) => {
-    const spend = typeof campaign.spend === 'number' 
-      ? campaign.spend 
-      : parseFloat(String(campaign.spend || '0'));
-    return total + (isNaN(spend) ? 0 : spend);
-  }, 0);
-  
-  // Log detalhado para conferência dos valores
-  console.log("[CampaignsTable] Renderizando tabela com dados reais");
-  console.log(`[CampaignsTable] Total de campanhas: ${campaigns.length}`);
-  console.log(`[CampaignsTable] Total gasto: ${totalSpend}`);
-  campaigns.forEach((campaign, index) => {
-    console.log(`[CampaignsTable] Campanha ${index + 1}: ${campaign.name}, Gasto: ${campaign.spend}, Status: ${campaign.status}`);
-  });
-  
+export function CampaignsTable({ campaigns }: CampaignsTableProps) {
+  if (!campaigns || campaigns.length === 0) {
+    return (
+      <div className="text-center py-6 text-gray-500">
+        Nenhuma campanha encontrada para este período.
+      </div>
+    );
+  }
+
+  const getCampaignStatus = (status: string | undefined) => {
+    if (!status) return { label: "Desconhecido", color: "bg-gray-300" };
+    
+    const statusLower = String(status).toLowerCase();
+    
+    if (statusLower === "active") return { label: "Ativa", color: "bg-green-500" };
+    if (statusLower === "paused") return { label: "Pausada", color: "bg-amber-500" };
+    if (statusLower === "deleted") return { label: "Excluída", color: "bg-red-500" };
+    if (statusLower === "archived") return { label: "Arquivada", color: "bg-gray-500" };
+    
+    return { label: String(status), color: "bg-gray-300" };
+  };
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -50,57 +39,49 @@ export const CampaignsTable = ({ campaigns }: CampaignsTableProps) => {
           <TableRow>
             <TableHead>Nome da Campanha</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Gasto (R$)</TableHead>
-            <TableHead className="text-right">% do Total</TableHead>
+            <TableHead className="text-right">Valor Gasto</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedCampaigns.map((campaign) => {
+          {campaigns.map((campaign) => {
+            const status = getCampaignStatus(campaign.status);
             const spendValue = typeof campaign.spend === 'number' 
               ? campaign.spend 
-              : parseFloat(String(campaign.spend || '0'));
-            
-            const percentage = totalSpend > 0 
-              ? (spendValue / totalSpend) * 100 
-              : 0;
-            
+              : parseFloat(String(campaign.spend || "0"));
+              
             return (
               <TableRow key={campaign.id}>
                 <TableCell className="font-medium">{campaign.name}</TableCell>
                 <TableCell>
-                  <StatusBadge status={campaign.status} />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center">
+                          <div className={`w-2 h-2 rounded-full ${status.color} mr-2`}></div>
+                          <span>{status.label}</span>
+                          <Info className="h-3 w-3 ml-1 text-gray-400" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Status original: {campaign.status}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </TableCell>
-                <TableCell className="text-right">{formatCurrency(spendValue)}</TableCell>
                 <TableCell className="text-right">
-                  {totalSpend > 0 
-                    ? `${percentage.toFixed(1)}%` 
-                    : '0%'}
+                  {isNaN(spendValue) ? (
+                    <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
+                      Valor inválido
+                    </Badge>
+                  ) : (
+                    formatCurrency(spendValue)
+                  )}
                 </TableCell>
               </TableRow>
             );
           })}
-          <TableRow className="bg-gray-50 font-medium">
-            <TableCell colSpan={2}>Total</TableCell>
-            <TableCell className="text-right">{formatCurrency(totalSpend)}</TableCell>
-            <TableCell className="text-right">100%</TableCell>
-          </TableRow>
         </TableBody>
       </Table>
     </div>
   );
-};
-
-const StatusBadge = ({ status }: { status: string }) => {
-  const statusMap: Record<string, { label: string, variant: "default" | "outline" | "secondary" | "destructive" }> = {
-    'ACTIVE': { label: 'Ativa', variant: 'default' },
-    'PAUSED': { label: 'Pausada', variant: 'secondary' },
-    'DELETED': { label: 'Excluída', variant: 'destructive' },
-    'ARCHIVED': { label: 'Arquivada', variant: 'outline' }
-  };
-
-  const statusInfo = statusMap[status] || { label: status, variant: 'outline' };
-
-  return (
-    <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
-  );
-};
+}

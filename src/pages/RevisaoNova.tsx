@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader, Info, AlertTriangle, Copy } from "lucide-react";
+import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader, Info, AlertTriangle, Copy, Search } from "lucide-react";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { useMetaAdsAnalysis } from "@/components/revisao-nova/useMetaAdsAnalysis";
 import { ClientSelector } from "@/components/revisao-nova/ClientSelector";
@@ -12,6 +12,7 @@ import { CampaignsTable } from "@/components/revisao-nova/CampaignsTable";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { TokensSetupForm } from "@/components/daily-reviews/TokensSetupForm";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function RevisaoNova() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -22,7 +23,9 @@ export default function RevisaoNova() {
     isLoading, 
     error, 
     fetchAnalysis,
-    rawApiResponse
+    rawApiResponse,
+    debugInfo,
+    testMetaToken
   } = useMetaAdsAnalysis();
 
   const handleClientSelect = (clientId: string) => {
@@ -33,6 +36,10 @@ export default function RevisaoNova() {
     if (selectedClientId) {
       fetchAnalysis(selectedClientId);
     }
+  };
+
+  const handleTestToken = async () => {
+    await testMetaToken();
   };
 
   const handleCopyToken = () => {
@@ -52,6 +59,30 @@ export default function RevisaoNova() {
       toast({
         title: "URL copiada",
         description: "A URL da API foi copiada para a área de transferência. Substitua TOKEN pelo token real.",
+      });
+    }
+  };
+
+  const handleOpenGraphExplorer = () => {
+    window.open(
+      `https://developers.facebook.com/tools/explorer/`, 
+      '_blank'
+    );
+  };
+
+  const handleMakeSampleRequest = () => {
+    if (client?.meta_account_id) {
+      const path = encodeURIComponent(`act_${client.meta_account_id}/campaigns`);
+      const fields = encodeURIComponent('status,name,spend,insights{spend}');
+      window.open(
+        `https://developers.facebook.com/tools/explorer/?method=GET&path=${path}&fields=${fields}`,
+        '_blank'
+      );
+    } else {
+      toast({
+        title: "Cliente não selecionado",
+        description: "Selecione um cliente para gerar a URL do Graph Explorer.",
+        variant: "destructive",
       });
     }
   };
@@ -84,6 +115,21 @@ export default function RevisaoNova() {
     );
   };
 
+  const renderDebugInfo = () => {
+    if (!debugInfo) return null;
+    
+    return (
+      <details className="mt-4 p-2 border border-dashed border-blue-300 rounded-md">
+        <summary className="text-xs font-mono cursor-pointer text-blue-500">
+          Informações de diagnóstico
+        </summary>
+        <pre className="mt-2 bg-blue-50 p-2 rounded text-xs font-mono overflow-auto max-h-60">
+          {JSON.stringify(debugInfo, null, 2)}
+        </pre>
+      </details>
+    );
+  };
+
   const renderApiErrorDetails = () => {
     if (!rawApiResponse?.error) return null;
     
@@ -103,6 +149,14 @@ export default function RevisaoNova() {
                 </pre>
               </details>
             )}
+            {rawApiResponse.error.stringified && (
+              <details>
+                <summary className="cursor-pointer mt-1">Erro completo (JSON)</summary>
+                <pre className="mt-1 bg-gray-900 text-gray-100 p-2 rounded text-xs overflow-auto max-h-40">
+                  {rawApiResponse.error.stringified}
+                </pre>
+              </details>
+            )}
           </div>
         </AlertDescription>
       </Alert>
@@ -110,36 +164,28 @@ export default function RevisaoNova() {
   };
 
   const renderApiTestTools = () => {
-    if (!client?.meta_account_id) return null;
-    
     return (
       <Alert className="mt-4 bg-blue-50 border-blue-200">
         <Info className="h-4 w-4 text-blue-500" />
         <AlertTitle>Ferramentas de diagnóstico</AlertTitle>
         <AlertDescription>
           <div className="mt-2 space-y-2">
-            <div>
-              <p className="text-sm mb-1">URL para testar no Graph API Explorer:</p>
-              <div className="flex items-center gap-2">
-                <code className="bg-gray-100 p-1 text-xs rounded flex-1 overflow-x-auto">
-                  https://graph.facebook.com/v20.0/act_{client.meta_account_id}/campaigns?fields=status,name,spend
-                </code>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleCopyApiUrl}
-                  className="shrink-0"
-                >
-                  <Copy size={14} />
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex flex-wrap gap-2 mt-3">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`https://developers.facebook.com/tools/explorer/`, '_blank')}
+                onClick={handleTestToken}
+                className="text-xs"
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                Testar Validação do Token
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenGraphExplorer}
                 className="text-xs"
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
@@ -155,7 +201,38 @@ export default function RevisaoNova() {
                 <ExternalLink className="h-3 w-3 mr-1" />
                 Verificar Contas de Anúncios
               </Button>
+
+              {client?.meta_account_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMakeSampleRequest}
+                  className="text-xs"
+                >
+                  <Search className="h-3 w-3 mr-1" />
+                  Testar Consulta no Explorer
+                </Button>
+              )}
             </div>
+
+            {client?.meta_account_id && (
+              <div>
+                <p className="text-sm mb-1">URL para testar no Graph API Explorer:</p>
+                <div className="flex items-center gap-2">
+                  <code className="bg-gray-100 p-1 text-xs rounded flex-1 overflow-x-auto">
+                    https://graph.facebook.com/v20.0/act_{client.meta_account_id}/campaigns?fields=status,name,spend
+                  </code>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleCopyApiUrl}
+                    className="shrink-0"
+                  >
+                    <Copy size={14} />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </AlertDescription>
       </Alert>
@@ -183,6 +260,7 @@ export default function RevisaoNova() {
           
           {renderApiErrorDetails()}
           {renderApiTestTools()}
+          {renderDebugInfo()}
           {renderRawResponseDebug()}
           
           <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mt-4">
@@ -195,6 +273,7 @@ export default function RevisaoNova() {
               <li>Confirme se o ID da conta Meta Ads está correto para este cliente</li>
               <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
               <li>Tente novamente em alguns minutos caso seja um problema temporário</li>
+              <li>Use as ferramentas de diagnóstico acima para testar o token e a API diretamente</li>
             </ul>
           </div>
         </div>
@@ -223,6 +302,7 @@ export default function RevisaoNova() {
           
           {renderApiErrorDetails()}
           {renderApiTestTools()}
+          {renderDebugInfo()}
           {renderRawResponseDebug()}
           
           <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mt-4">
@@ -235,6 +315,7 @@ export default function RevisaoNova() {
               <li>Confirme se o ID da conta Meta Ads está correto para este cliente</li>
               <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
               <li>Tente novamente em alguns minutos caso seja um problema temporário</li>
+              <li>Use as ferramentas de diagnóstico acima para testar o token e a API diretamente</li>
             </ul>
           </div>
         </div>
@@ -336,8 +417,19 @@ export default function RevisaoNova() {
           <AlertDescription>{analysis.message}</AlertDescription>
         </Alert>
 
-        {renderDataSource()}
-        {renderRawResponseDebug()}
+        <Tabs defaultValue="details" className="mt-6">
+          <TabsList>
+            <TabsTrigger value="details">Detalhes</TabsTrigger>
+            <TabsTrigger value="debug">Diagnóstico</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details">
+            {renderDataSource()}
+          </TabsContent>
+          <TabsContent value="debug">
+            {renderDebugInfo()}
+            {renderRawResponseDebug()}
+          </TabsContent>
+        </Tabs>
       </div>
     );
   };
