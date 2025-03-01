@@ -2,6 +2,7 @@
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
 import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
+import { normalizeCampaigns, calculateTotalSpend } from "./hooks/processors/campaignProcessor";
 
 interface CampaignsTableProps {
   campaigns: SimpleMetaCampaign[];
@@ -28,62 +29,10 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   );
 
   // Garantir que cada campanha tenha um valor de gasto válido
-  const normalizedCampaigns = campaigns.map(campaign => {
-    // Certifique-se de que campaign.spend seja um número válido
-    let spendValue: number;
-    let spendSource = "desconhecido";
-    
-    // Verificar primeiro nos insights, que é o formato mais comum na resposta da API do Graph
-    if (campaign.insights?.data && campaign.insights.data.length > 0 && campaign.insights.data[0].spend !== undefined) {
-      spendValue = parseFloat(String(campaign.insights.data[0].spend));
-      spendSource = "insights.data[0].spend";
-    }
-    // Se não tiver nos insights, verificar no formato direto
-    else if (typeof campaign.spend === 'number') {
-      spendValue = campaign.spend;
-      spendSource = "spend (number)";
-    } 
-    else if (typeof campaign.spend === 'string') {
-      spendValue = parseFloat(campaign.spend);
-      spendSource = "spend (string)";
-    } 
-    else if (typeof campaign.spend === 'object' && campaign.spend !== null) {
-      // Formato de objeto como { value: "123.45" }
-      const spendObj = campaign.spend as any;
-      if (spendObj.value !== undefined) {
-        spendValue = parseFloat(String(spendObj.value));
-        spendSource = "spend.value";
-      } else {
-        // Tentar outras propriedades comuns
-        spendValue = 0;
-        spendSource = "objeto sem valor reconhecido";
-      }
-    } 
-    else {
-      // Sem dados de gasto, usar zero
-      spendValue = 0;
-      spendSource = "valor não encontrado";
-    }
-    
-    // Verificar se o valor obtido é válido
-    spendValue = isNaN(spendValue) ? 0 : spendValue;
-    
-    console.log(`[CampaignsTable] Campanha ${campaign.name} (${campaign.id}): 
-      Fonte do gasto: ${spendSource}, 
-      Gasto original: ${JSON.stringify(campaign.spend)}, 
-      Gasto insights: ${campaign.insights?.data?.[0]?.spend},
-      Gasto normalizado: ${spendValue}`);
-    
-    return {
-      ...campaign,
-      spend: spendValue
-    };
-  });
+  const normalizedCampaigns = normalizeCampaigns(campaigns);
 
   // Calcular o total gasto
-  const totalSpent = normalizedCampaigns.reduce((sum, campaign) => {
-    return sum + campaign.spend;
-  }, 0);
+  const totalSpent = calculateTotalSpend(normalizedCampaigns);
 
   // Registrar valores para depuração
   console.log("[CampaignsTable] Campanhas normalizadas:", 
