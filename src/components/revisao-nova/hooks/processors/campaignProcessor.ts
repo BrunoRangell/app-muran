@@ -1,16 +1,33 @@
+
 import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
 
+/**
+ * Processa as campanhas combinando com os insights para obter os gastos corretos
+ * @param campaigns Campanhas obtidas da API do Meta Ads
+ * @param insights Insights obtidos da API do Meta Ads (endpoint separado)
+ * @returns Campanhas com os dados de gasto incorporados
+ */
 export const processCampaigns = (campaigns: any[], insights: any[]): SimpleMetaCampaign[] => {
   if (!campaigns || !insights) return [];
 
-  return campaigns.map(campaign => {
-    const campaignInsights = insights.filter(insight => 
-      insight.campaign_id === campaign.id
-    );
+  // Agrupar insights por ID de campanha para facilitar a busca
+  const insightsByCampaignId = insights.reduce((acc: Record<string, any[]>, insight) => {
+    const campaignId = insight.campaign_id;
+    if (!acc[campaignId]) {
+      acc[campaignId] = [];
+    }
+    acc[campaignId].push(insight);
+    return acc;
+  }, {});
 
+  return campaigns.map(campaign => {
+    // Buscar todos os insights desta campanha
+    const campaignInsights = insightsByCampaignId[campaign.id] || [];
+    
+    // Calcular o gasto total somando todos os insights
     const totalSpend = campaignInsights.reduce((sum, insight) => {
-      const spendValue = parseFloat(insight.spend) || 0;
-      console.log(`[campaignProcessor] Spend para ${campaign.name}: ${spendValue}`);
+      const spendValue = parseFloat(insight.spend || "0") || 0;
+      console.log(`[campaignProcessor] Gasto para ${campaign.name}: ${spendValue}`);
       return sum + spendValue;
     }, 0);
 
@@ -35,7 +52,8 @@ export const normalizeCampaigns = (campaigns: SimpleMetaCampaign[]): SimpleMetaC
   console.log(`[campaignProcessor] Normalizando ${campaigns.length} campanhas`);
   
   return campaigns.map(campaign => {
-    const spendValue = parseFloat(campaign.spend || "0");
+    const spendValue = typeof campaign.spend === 'number' ? campaign.spend : 
+                       parseFloat(campaign.spend as string || "0") || 0;
     return {
       ...campaign,
       spend: spendValue

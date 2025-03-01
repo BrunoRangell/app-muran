@@ -53,6 +53,7 @@ export const useMetaAdsAnalysis = () => {
             start: startDate,
             end: endDate
           },
+          fetchSeparateInsights: true, // Sinaliza para a função edge buscar insights separadamente
           debug: true
         };
         
