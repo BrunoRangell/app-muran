@@ -61,6 +61,7 @@ export function AnalysisContent({
     );
   }
 
+  // Verificação mais rigorosa para null ou undefined
   if (!analysis) {
     return (
       <div className="text-center p-12 border rounded-lg bg-gray-50">
@@ -71,10 +72,11 @@ export function AnalysisContent({
     );
   }
 
-  if (analysis && !analysis.success) {
+  // Verificação explícita para objeto analysis com success=false
+  if (analysis && analysis.success === false) {
     return (
       <ErrorContent 
-        error={analysis.message}
+        error={analysis.message || "Erro desconhecido na análise"}
         rawApiResponse={rawApiResponse}
         debugInfo={debugInfo}
         isLoading={isLoading}
@@ -89,7 +91,10 @@ export function AnalysisContent({
 
   return (
     <div className="space-y-6">
-      <AnalysisResult analysis={analysis} />
+      {/* Verificação extra para garantir que o analysis tem todos os dados necessários */}
+      {analysis && analysis.meta && (
+        <AnalysisResult analysis={analysis} />
+      )}
 
       <Tabs defaultValue="details" className="mt-6">
         <TabsList>
@@ -97,7 +102,7 @@ export function AnalysisContent({
           <TabsTrigger value="debug">Diagnóstico</TabsTrigger>
         </TabsList>
         <TabsContent value="details">
-          <DataSource analysis={analysis} />
+          {analysis && <DataSource analysis={analysis} />}
         </TabsContent>
         <TabsContent value="debug">
           <DebugInfo debugInfo={debugInfo} rawApiResponse={rawApiResponse} />

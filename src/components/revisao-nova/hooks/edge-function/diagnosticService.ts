@@ -9,7 +9,8 @@ export const analyzeEdgeError = (error: any) => {
   let errorType = "UNKNOWN";
   let suggestion = "";
   
-  const errorMessage = error?.message || String(error);
+  // Garantir que temos uma string de erro para analisar
+  const errorMessage = error?.message || String(error || "");
   
   if (errorMessage.includes("Failed to send") || errorMessage.includes("fetch")) {
     errorType = "NETWORK_ERROR";
@@ -20,13 +21,14 @@ export const analyzeEdgeError = (error: any) => {
   } else if (errorMessage.includes("CORS") || errorMessage.includes("cross-origin")) {
     errorType = "CORS_ERROR";
     suggestion = "Problema de CORS. Verifique se a função Edge tem as configurações corretas de CORS.";
-  } else if (errorMessage.includes("Corpo da requisição vazio")) {
+  } else if (errorMessage.includes("Corpo da requisição vazio") || errorMessage.includes("empty") || errorMessage.includes("body")) {
     errorType = "EMPTY_BODY_ERROR";
     suggestion = "O corpo da requisição está vazio. Verifique a serialização do payload e o content-type.";
   }
   
   return {
     errorType,
+    originalError: errorMessage,
     suggestion,
     possibleFixes: [
       "Verificar se a função 'daily-budget-reviews' está publicada no Supabase",
@@ -41,12 +43,55 @@ export const analyzeEdgeError = (error: any) => {
  * Fornece informações detalhadas sobre um payload para debugging
  */
 export const inspectPayload = (payload: any) => {
-  return {
-    payloadType: typeof payload,
-    isNull: payload === null,
-    isUndefined: payload === undefined,
-    isEmpty: Object.keys(payload || {}).length === 0,
-    stringifiedLength: JSON.stringify(payload || {}).length,
-    rawPayload: payload
-  };
+  try {
+    return {
+      payloadType: typeof payload,
+      isNull: payload === null,
+      isUndefined: payload === undefined,
+      isEmpty: payload ? Object.keys(payload || {}).length === 0 : true,
+      stringifiedLength: payload ? JSON.stringify(payload || {}).length : 0,
+      hasCyclicReferences: detectCyclicReferences(payload),
+      rawPayload: payload
+    };
+  } catch (err) {
+    return {
+      payloadType: typeof payload,
+      isNull: payload === null,
+      isUndefined: payload === undefined,
+      error: `Erro ao inspecionar payload: ${err?.message || String(err)}`,
+      rawValue: String(payload)
+    };
+  }
+};
+
+/**
+ * Detecta referências cíclicas em objetos que podem causar problemas de serialização
+ */
+const detectCyclicReferences = (obj: any, seen = new WeakSet()): boolean => {
+  if (!obj || typeof obj !== 'object') return false;
+  
+  if (seen.has(obj)) return true;
+  seen.add(obj);
+  
+  // Verificar arrays
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      if (item && typeof item === 'object' && detectCyclicReferences(item, seen)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  // Verificar objetos
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const value = obj[key];
+      if (value && typeof value === 'object' && detectCyclicReferences(value, seen)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
 };

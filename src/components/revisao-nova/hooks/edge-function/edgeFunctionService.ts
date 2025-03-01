@@ -12,16 +12,34 @@ export const invokeEdgeFunction = async (payload: any) => {
   try {
     console.log("[edgeFunctionService] Tentando invocar função Edge...");
     
-    // Simplificar: não usar transformações complicadas
-    // Apenas verificar se o payload é válido e copiar direto
-    if (!payload || typeof payload !== 'object') {
-      throw new Error("Payload inválido para função Edge");
+    // Validação básica de payload
+    if (!payload) {
+      console.error("[edgeFunctionService] Payload inválido (nulo ou indefinido)");
+      throw new Error("Payload inválido para função Edge (nulo ou indefinido)");
     }
     
-    // Copiar payload diretamente sem processamento adicional
-    const safePayload = { ...payload };
+    if (typeof payload !== 'object') {
+      console.error("[edgeFunctionService] Payload deve ser um objeto:", typeof payload);
+      throw new Error(`Payload inválido para função Edge (tipo: ${typeof payload})`);
+    }
     
-    // Log simplificado (sem dados sensíveis)
+    // Fazer cópia profunda para evitar problemas com referências
+    let safePayload;
+    try {
+      // Abordagem que evita problemas com referências cíclicas
+      safePayload = JSON.parse(JSON.stringify(payload));
+    } catch (err) {
+      console.error("[edgeFunctionService] Erro ao serializar payload:", err);
+      throw new Error(`Não foi possível serializar o payload: ${err.message}`);
+    }
+    
+    // Verificação final de payload vazio
+    if (!safePayload || Object.keys(safePayload).length === 0) {
+      console.error("[edgeFunctionService] Payload vazio após processamento");
+      throw new Error("Payload vazio após processamento");
+    }
+    
+    // Log sanitizado (sem dados sensíveis)
     const sanitizedPayload = { ...safePayload };
     if (sanitizedPayload.accessToken) {
       sanitizedPayload.accessToken = "***TOKEN OCULTADO***";
@@ -38,8 +56,7 @@ export const invokeEdgeFunction = async (payload: any) => {
       setTimeout(() => reject(new Error("Timeout ao esperar resposta da função Edge (15s)")), 15000);
     });
     
-    // IMPORTANTE: Não realizar nenhuma transformação adicional no payload
-    // Deixar o Supabase lidar com a serialização
+    // Usar Supabase para invocar a função Edge
     const functionPromise = supabase.functions.invoke(
       "daily-budget-reviews", 
       { 
@@ -79,6 +96,7 @@ export const testEdgeConnectivity = async (testPayload: any) => {
   try {
     console.log("[testEdgeConnectivity] Testando conectividade via fetch direto...");
     
+    // Obter sessão para autenticação
     const session = await supabase.auth.getSession();
     const accessToken = session.data.session?.access_token;
     
@@ -86,18 +104,42 @@ export const testEdgeConnectivity = async (testPayload: any) => {
       throw new Error("Sessão não encontrada. Por favor, faça login novamente");
     }
     
-    // Usando abordagem com fetch direto para evitar problemas no cliente Supabase
+    // Validação do payload de teste
+    if (!testPayload || typeof testPayload !== 'object') {
+      throw new Error("Payload de teste inválido");
+    }
+    
+    // Serialização segura
+    let safePayload;
+    try {
+      safePayload = JSON.parse(JSON.stringify(testPayload));
+    } catch (err) {
+      throw new Error(`Erro ao serializar payload de teste: ${err.message}`);
+    }
+    
+    // Usando fetch direto para evitar problemas no cliente Supabase
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-budget-reviews`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`
       },
-      body: JSON.stringify(testPayload)
+      body: JSON.stringify(safePayload)
     });
     
-    const data = await response.json();
-    const error = !response.ok ? { message: `HTTP error ${response.status}` } : null;
+    let data;
+    let errorText;
+    
+    try {
+      data = await response.json();
+    } catch (err) {
+      errorText = await response.text();
+      console.error("[testEdgeConnectivity] Erro ao parsear resposta JSON:", errorText);
+    }
+    
+    const error = !response.ok ? { 
+      message: `HTTP error ${response.status}: ${errorText || "Sem detalhes"}` 
+    } : null;
     
     return {
       success: !error,
