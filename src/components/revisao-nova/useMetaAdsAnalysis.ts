@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
