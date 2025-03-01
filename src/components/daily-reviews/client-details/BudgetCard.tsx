@@ -9,6 +9,15 @@ export interface BudgetCardProps {
 }
 
 export const BudgetCard = ({ latestReview, client, idealDailyBudget }: BudgetCardProps) => {
+  // Função para garantir que os valores sejam tratados como números
+  const getNumericValue = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const numValue = Number(value);
+    return isNaN(numValue) ? 0 : numValue;
+  };
+
+  const currentDailyBudget = getNumericValue(latestReview?.meta_daily_budget_current);
+  
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -20,7 +29,7 @@ export const BudgetCard = ({ latestReview, client, idealDailyBudget }: BudgetCar
             <div className="text-sm text-gray-500">Atual</div>
             <div className="text-xl font-bold">
               {latestReview && latestReview.meta_daily_budget_current !== null 
-                ? formatCurrency(latestReview.meta_daily_budget_current) 
+                ? formatCurrency(currentDailyBudget) 
                 : "N/A"}
             </div>
           </div>

@@ -11,6 +11,7 @@ export const useClientReviewDetails = (clientId: string) => {
 
   // Função para recarregar os dados
   const refetchData = useCallback(() => {
+    console.log("Recarregando dados para cliente:", clientId);
     queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
     queryClient.invalidateQueries({ queryKey: ["latest-review", clientId] });
     queryClient.invalidateQueries({ queryKey: ["review-history", clientId] });
@@ -20,6 +21,7 @@ export const useClientReviewDetails = (clientId: string) => {
   const { data: client, isLoading: isLoadingClient, error: clientError } = useQuery({
     queryKey: ["client-detail", clientId],
     queryFn: async () => {
+      console.log("Buscando dados do cliente:", clientId);
       const { data, error } = await supabase
         .from("clients")
         .select("*")
@@ -30,6 +32,8 @@ export const useClientReviewDetails = (clientId: string) => {
         console.error("Erro ao buscar cliente:", error);
         throw error;
       }
+      
+      console.log("Dados do cliente recuperados:", data);
       return data;
     },
   });
@@ -38,6 +42,7 @@ export const useClientReviewDetails = (clientId: string) => {
   const { data: latestReview, isLoading: isLoadingReview, error: reviewError } = useQuery({
     queryKey: ["latest-review", clientId],
     queryFn: async () => {
+      console.log("Buscando revisão mais recente para cliente:", clientId);
       const { data, error } = await supabase
         .from("daily_budget_reviews")
         .select("*")
@@ -50,6 +55,8 @@ export const useClientReviewDetails = (clientId: string) => {
         console.error("Erro ao buscar revisão mais recente:", error);
         throw error;
       }
+      
+      console.log("Revisão mais recente recuperada:", data);
       return data;
     },
     enabled: !!client,
@@ -59,6 +66,7 @@ export const useClientReviewDetails = (clientId: string) => {
   const { data: reviewHistory, isLoading: isLoadingHistory, error: historyError } = useQuery({
     queryKey: ["review-history", clientId],
     queryFn: async () => {
+      console.log("Buscando histórico de revisões para cliente:", clientId);
       const { data, error } = await supabase
         .from("daily_budget_reviews")
         .select("*")
@@ -70,6 +78,8 @@ export const useClientReviewDetails = (clientId: string) => {
         console.error("Erro ao buscar histórico de revisões:", error);
         throw error;
       }
+      
+      console.log("Histórico de revisões recuperado:", data);
       return data;
     },
     enabled: !!client,
@@ -78,13 +88,29 @@ export const useClientReviewDetails = (clientId: string) => {
   // Calcular orçamento diário ideal quando o cliente for carregado
   useEffect(() => {
     if (client?.meta_ads_budget) {
-      const daysInMonth = getDaysInMonth(new Date());
-      const idealDaily = client.meta_ads_budget / daysInMonth;
+      // Certifique-se de que meta_ads_budget seja tratado como número
+      const monthlyBudget = Number(client.meta_ads_budget);
+      console.log("Orçamento mensal do cliente:", monthlyBudget);
+      
+      const currentDate = new Date();
+      const daysInMonth = getDaysInMonth(currentDate);
+      console.log("Dias no mês atual:", daysInMonth);
+      
+      // Calcular orçamento diário ideal
+      const idealDaily = monthlyBudget / daysInMonth;
+      console.log("Orçamento diário ideal calculado:", idealDaily);
       setIdealDailyBudget(idealDaily);
 
       if (latestReview?.meta_daily_budget_current) {
-        const percentDifference = ((latestReview.meta_daily_budget_current - idealDaily) / idealDaily) * 100;
+        // Certifique-se de que meta_daily_budget_current seja tratado como número
+        const currentDailyBudget = Number(latestReview.meta_daily_budget_current);
+        console.log("Orçamento diário atual:", currentDailyBudget);
         
+        // Calcular diferença percentual
+        const percentDifference = ((currentDailyBudget - idealDaily) / idealDaily) * 100;
+        console.log("Diferença percentual:", percentDifference);
+        
+        // Gerar recomendação baseada na diferença
         if (percentDifference < -10) {
           setRecommendation(`Aumentar o orçamento diário em ${Math.abs(Math.round(percentDifference))}%`);
         } else if (percentDifference > 10) {
