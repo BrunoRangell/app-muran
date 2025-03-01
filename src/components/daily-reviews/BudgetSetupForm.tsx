@@ -86,16 +86,20 @@ export const BudgetSetupForm = () => {
   }, [clients]);
 
   const handleChange = (clientId: string, value: string) => {
+    // Certifique-se de que aceitamos apenas números e pontos
+    const sanitizedValue = value.replace(/[^0-9.]/g, "");
+    
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        meta: value,
+        meta: sanitizedValue,
       },
     }));
   };
 
   const handleSave = () => {
+    console.log("Tentando salvar orçamentos:", budgets);
     saveBudgetsMutation.mutate();
   };
 
@@ -158,6 +162,7 @@ export const BudgetSetupForm = () => {
                             value={budgets[client.id]?.meta || ""}
                             onChange={(e) => handleChange(client.id, e.target.value)}
                             className="max-w-[150px]"
+                            type="text"
                           />
                         </div>
                       </TableCell>
@@ -172,6 +177,7 @@ export const BudgetSetupForm = () => {
             <Button
               onClick={handleSave}
               disabled={saveBudgetsMutation.isPending || isLoading}
+              className="bg-[#ff6e00] hover:bg-[#e06200]"
             >
               {saveBudgetsMutation.isPending ? (
                 <>
