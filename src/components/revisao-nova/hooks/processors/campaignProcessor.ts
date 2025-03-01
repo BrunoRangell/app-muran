@@ -1,43 +1,25 @@
 import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
-import { DateTime } from "luxon";
 
 /**
- * Extrai o spend considerando o período do mês atual
+ * Processa as campanhas e combina com os insights
  */
-export const extractCampaignSpend = (campaign: SimpleMetaCampaign): number => {
-  if (!campaign) return 0;
+export const processCampaigns = (campaigns: any[], insights: any[]): SimpleMetaCampaign[] => {
+  if (!campaigns || !insights) return [];
 
-  // Verificar se os insights são do mês atual
-  const today = DateTime.now().setZone("America/Sao_Paulo");
-  const monthStart = today.startOf("month").toISODate();
-  const monthEnd = today.endOf("month").toISODate();
+  return campaigns.map(campaign => {
+    const campaignInsights = insights.filter(insight => 
+      insight.campaign_id === campaign.id
+    );
 
-  const validInsights = campaign.insights?.data?.filter(insight => 
-    insight.date_start === monthStart && 
-    insight.date_stop === monthEnd
-  );
+    const totalSpend = campaignInsights.reduce((sum, insight) => {
+      return sum + (parseFloat(insight.spend) || 0);
+    }, 0);
 
-  // Priorizar o spend do mês atual
-  if (validInsights?.length > 0) {
-    const spend = parseFloat(validInsights[0].spend || "0");
-    console.log(`[campaignProcessor] Spend válido encontrado para ${campaign.name}:`, spend);
-    return spend;
-  }
-
-  // Fallback para spend direto (se aplicável)
-  if (typeof campaign.spend === 'number') {
-    console.log(`[campaignProcessor] Usando spend direto para ${campaign.name}:`, campaign.spend);
-    return campaign.spend;
-  }
-
-  if (typeof campaign.spend === 'string') {
-    const spend = parseFloat(campaign.spend);
-    console.log(`[campaignProcessor] Convertendo spend de string para número para ${campaign.name}:`, spend);
-    return isNaN(spend) ? 0 : spend;
-  }
-
-  console.log(`[campaignProcessor] Nenhum spend válido encontrado para ${campaign.name}, retornando 0`);
-  return 0;
+    return {
+      ...campaign,
+      spend: totalSpend
+    };
+  });
 };
 
 /**
@@ -53,9 +35,7 @@ export const normalizeCampaigns = (campaigns: SimpleMetaCampaign[]): SimpleMetaC
   console.log(`[campaignProcessor] Normalizando ${campaigns.length} campanhas`);
   
   return campaigns.map(campaign => {
-    const spendValue = extractCampaignSpend(campaign);
-    
-    // Retorna o objeto original com o spend normalizado como número
+    const spendValue = parseFloat(campaign.spend || "0");
     return {
       ...campaign,
       spend: spendValue
