@@ -26,7 +26,15 @@ export const processCampaigns = (campaigns: any[], insights: any[]): SimpleMetaC
     
     // Calcular o gasto total somando todos os insights
     const totalSpend = campaignInsights.reduce((sum, insight) => {
-      const spendValue = parseFloat(insight.spend || "0") || 0;
+      // Tentar converter para número de forma mais robusta
+      let spendValue = 0;
+      
+      if (typeof insight.spend === 'number') {
+        spendValue = insight.spend;
+      } else if (typeof insight.spend === 'string') {
+        spendValue = parseFloat(insight.spend.replace(/[^\d.-]/g, '')) || 0;
+      }
+      
       console.log(`[campaignProcessor] Gasto para ${campaign.name}: ${spendValue}`);
       return sum + spendValue;
     }, 0);
@@ -52,8 +60,23 @@ export const normalizeCampaigns = (campaigns: SimpleMetaCampaign[]): SimpleMetaC
   console.log(`[campaignProcessor] Normalizando ${campaigns.length} campanhas`);
   
   return campaigns.map(campaign => {
-    const spendValue = typeof campaign.spend === 'number' ? campaign.spend : 
-                       parseFloat(campaign.spend as string || "0") || 0;
+    let spendValue = 0;
+    
+    if (typeof campaign.spend === 'number') {
+      spendValue = isNaN(campaign.spend) ? 0 : campaign.spend;
+    } else if (typeof campaign.spend === 'string') {
+      // Limpar possíveis formatações de moeda antes de converter
+      const cleanValue = campaign.spend.replace(/[^\d.-]/g, '');
+      spendValue = parseFloat(cleanValue) || 0;
+    } else if (campaign.spend !== null && campaign.spend !== undefined) {
+      // Tentar converter outros tipos
+      const strValue = String(campaign.spend);
+      spendValue = parseFloat(strValue) || 0;
+    }
+    
+    // Logar para depuração
+    console.log(`[campaignProcessor] Campanha ${campaign.name || campaign.id}: valor original=${campaign.spend}, tipo=${typeof campaign.spend}, normalizado=${spendValue}`);
+    
     return {
       ...campaign,
       spend: spendValue
@@ -69,7 +92,14 @@ export const calculateTotalSpend = (campaigns: SimpleMetaCampaign[]): number => 
   
   const total = campaigns.reduce((sum, campaign) => {
     // Garantir que estamos somando apenas valores numéricos
-    const spend = typeof campaign.spend === 'number' ? campaign.spend : 0;
+    let spend = 0;
+    
+    if (typeof campaign.spend === 'number') {
+      spend = isNaN(campaign.spend) ? 0 : campaign.spend;
+    } else if (typeof campaign.spend === 'string') {
+      spend = parseFloat(campaign.spend) || 0;
+    }
+    
     return sum + spend;
   }, 0);
   

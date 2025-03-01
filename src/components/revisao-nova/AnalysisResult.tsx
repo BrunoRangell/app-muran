@@ -49,6 +49,16 @@ export function AnalysisResult({ analysis }: AnalysisResultProps) {
     ? analysis.meta.dailyBudget 
     : parseFloat(String(analysis.meta.dailyBudget || "0"));
   
+  // Registrar valores para depuração
+  console.log("[AnalysisResult] Valores exibidos:", {
+    totalSpent: totalSpent,
+    formattedTotalSpent: formatCurrency(totalSpent),
+    dailyBudget: dailyBudget,
+    formattedDailyBudget: formatCurrency(dailyBudget),
+    rawTotalSpent: analysis.meta.totalSpent,
+    rawDailyBudget: analysis.meta.dailyBudget
+  });
+  
   return (
     <div className="space-y-6">
       <Alert variant="default" className="bg-blue-50 border-blue-200">

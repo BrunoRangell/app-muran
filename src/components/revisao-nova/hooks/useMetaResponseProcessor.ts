@@ -34,6 +34,31 @@ export const useMetaResponseProcessor = () => {
         throw new Error(`Erro na API do Meta Ads: ${JSON.stringify(result.error)}`);
       }
       
+      // Verificar existência de dados antes de processá-los
+      if (!result.meta) {
+        console.warn("[useMetaResponseProcessor] Resposta sem dados 'meta'", result);
+        result.meta = {
+          totalSpent: 0,
+          dailyBudget: 0,
+          campaigns: [],
+          dateRange: {
+            start: new Date().toISOString().split('T')[0],
+            end: new Date().toISOString().split('T')[0]
+          }
+        };
+      }
+      
+      // Garantir que valores numéricos sejam números e não strings
+      if (result.meta) {
+        result.meta.totalSpent = typeof result.meta.totalSpent === 'string' 
+          ? parseFloat(result.meta.totalSpent) || 0 
+          : (result.meta.totalSpent || 0);
+          
+        result.meta.dailyBudget = typeof result.meta.dailyBudget === 'string' 
+          ? parseFloat(result.meta.dailyBudget) || 0 
+          : (result.meta.dailyBudget || 0);
+      }
+      
       // Normalizar as campanhas para garantir formato de gastos adequado
       if (result.meta && result.meta.campaigns) {
         result.meta.campaigns = normalizeCampaigns(result.meta.campaigns);
@@ -41,6 +66,8 @@ export const useMetaResponseProcessor = () => {
       
       // Validar e sanitizar o resultado
       const validatedResult = validateAnalysisResult(result);
+      
+      console.log("[useMetaResponseProcessor] Dados processados:", validatedResult);
       
       // Atualizar o estado com o resultado validado
       setAnalysis(validatedResult);

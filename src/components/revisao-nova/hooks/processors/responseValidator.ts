@@ -26,9 +26,23 @@ export const validateAnalysisResult = (result: any): SimpleAnalysisResult => {
     result.meta.campaigns = [];
   }
   
+  // Logar os valores antes da sanitização para debug
+  console.log("[responseValidator] Valores originais:", {
+    totalSpent: result.meta.totalSpent,
+    dailyBudget: result.meta.dailyBudget,
+    totalSpentType: typeof result.meta.totalSpent,
+    dailyBudgetType: typeof result.meta.dailyBudget
+  });
+  
   // Sanitizar campos numéricos
   result.meta.totalSpent = sanitizeNumericValue(result.meta.totalSpent);
   result.meta.dailyBudget = sanitizeNumericValue(result.meta.dailyBudget);
+  
+  // Logar os valores após sanitização para debug
+  console.log("[responseValidator] Valores sanitizados:", {
+    totalSpent: result.meta.totalSpent,
+    dailyBudget: result.meta.dailyBudget
+  });
   
   // Verificar se temos dados de intervalo de datas
   if (!result.meta.dateRange) {
@@ -67,7 +81,9 @@ export const sanitizeNumericValue = (value: any): number => {
   if (typeof value === 'number') return isNaN(value) ? 0 : value;
   
   if (typeof value === 'string') {
-    const parsed = parseFloat(value);
+    // Remover possíveis formatações de moeda antes de converter
+    const cleanedValue = value.replace(/[^\d.-]/g, '');
+    const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? 0 : parsed;
   }
   
@@ -76,6 +92,12 @@ export const sanitizeNumericValue = (value: any): number => {
     if (value.value !== undefined) return sanitizeNumericValue(value.value);
     if (value.amount !== undefined) return sanitizeNumericValue(value.amount);
     if (value.total !== undefined) return sanitizeNumericValue(value.total);
+    
+    // Se for um objeto com valor numérico, tentar converter para string primeiro
+    const strValue = String(value);
+    if (strValue !== '[object Object]') {
+      return sanitizeNumericValue(strValue);
+    }
   }
   
   return 0;
