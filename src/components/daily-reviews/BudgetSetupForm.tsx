@@ -35,15 +35,25 @@ export const BudgetSetupForm = () => {
   // Mutation para salvar orçamentos
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
+      // Convertemos os valores de string para number e criamos um array de objetos com o formato correto
       const updates = Object.entries(budgets).map(([clientId, values]) => ({
         id: clientId,
         meta_ads_budget: values.meta ? parseFloat(values.meta) : 0,
       }));
 
-      const { error } = await supabase.from("clients").upsert(updates);
+      console.log("Enviando atualizações:", updates);
 
-      if (error) throw error;
-      return updates;
+      // Usamos upsert para atualizar vários registros de uma vez
+      const { data, error } = await supabase
+        .from("clients")
+        .upsert(updates, { onConflict: 'id' });
+
+      if (error) {
+        console.error("Erro na atualização:", error);
+        throw error;
+      }
+      
+      return data;
     },
     onSuccess: () => {
       toast({
@@ -51,9 +61,9 @@ export const BudgetSetupForm = () => {
         description: "Os orçamentos mensais foram atualizados com sucesso.",
       });
       queryClient.invalidateQueries({ queryKey: ["clients-budget-setup"] });
-      setBudgets({});
     },
     onError: (error) => {
+      console.error("Detalhes do erro:", error);
       toast({
         title: "Erro ao salvar orçamentos",
         description: String(error),
