@@ -23,7 +23,7 @@ export const BudgetSetupForm = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, company_name, meta_ads_budget, status")
+        .select("id, company_name, meta_ads_budget, meta_account_id, status")
         .eq("status", "active")
         .order("company_name");
 
@@ -154,13 +154,17 @@ export const BudgetSetupForm = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[350px]">Cliente</TableHead>
-                    <TableHead>Orçamento Meta Ads</TableHead>
+                    <TableHead>ID da Conta</TableHead>
+                    <TableHead>Orçamento Meta Ads Mensal</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredClients?.map((client) => (
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">{client.company_name}</TableCell>
+                      <TableCell>
+                        {client.meta_account_id || "-"}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Label htmlFor={`meta-${client.id}`} className="sr-only">

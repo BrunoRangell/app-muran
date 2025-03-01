@@ -8,6 +8,7 @@ import { ArrowLeft, Calendar, Loader, TrendingUp, TrendingDown } from "lucide-re
 import { formatCurrency } from "@/utils/formatters";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { getDaysInMonth } from 'date-fns';
 
 interface ClientReviewDetailsProps {
   clientId: string;
@@ -53,6 +54,38 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     ? reviews?.find((r) => r.review_date === selectedDate)
     : latestReview;
 
+  // Calcular o orçamento diário ideal para o mês atual
+  const calculateIdealDailyBudget = (monthlyBudget: number, reviewDate: string) => {
+    if (!monthlyBudget) return 0;
+    
+    const date = new Date(reviewDate);
+    const daysInMonth = getDaysInMonth(date);
+    const dayOfMonth = date.getDate();
+    const remainingDays = daysInMonth - dayOfMonth + 1; // +1 para incluir o dia atual
+    
+    // Se estivermos no último dia do mês, usar todo o orçamento restante
+    if (remainingDays <= 1) {
+      return monthlyBudget;
+    }
+    
+    return monthlyBudget / daysInMonth;
+  };
+
+  // Calcular a recomendação com base na comparação entre o orçamento diário atual e o ideal
+  const generateRecommendation = (currentDaily: number, idealDaily: number) => {
+    if (!currentDaily || !idealDaily) return "Não disponível";
+    
+    const percentDifference = ((currentDaily - idealDaily) / idealDaily) * 100;
+    
+    if (percentDifference < -10) {
+      return `Aumentar o orçamento diário em ${Math.abs(Math.round(percentDifference))}%`;
+    } else if (percentDifference > 10) {
+      return `Diminuir o orçamento diário em ${Math.round(percentDifference)}%`;
+    } else {
+      return "Manter o orçamento diário atual";
+    }
+  };
+
   if (isLoadingClient || isLoadingReviews) {
     return (
       <div className="flex flex-col items-center justify-center p-8 space-y-4">
@@ -76,6 +109,18 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
       </div>
     );
   }
+
+  // Calcular o orçamento diário ideal baseado no orçamento mensal do cliente
+  const idealDailyBudget = calculateIdealDailyBudget(
+    client.meta_ads_budget || 0,
+    review.review_date
+  );
+
+  // Gerar recomendação com base na comparação entre orçamento atual e ideal
+  const recommendation = generateRecommendation(
+    review.meta_daily_budget_current || 0,
+    idealDailyBudget
+  );
 
   return (
     <div className="flex flex-col space-y-6">
@@ -145,7 +190,7 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-2 bg-gray-50 rounded">
                   <p className="text-xs text-gray-500">Orçamento mensal</p>
-                  <p className="font-semibold">{formatCurrency(review?.meta_budget_available || 0)}</p>
+                  <p className="font-semibold">{formatCurrency(client.meta_ads_budget || 0)}</p>
                 </div>
                 <div className="p-2 bg-gray-50 rounded">
                   <p className="text-xs text-gray-500">Gasto até agora</p>
@@ -157,7 +202,7 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
                 </div>
                 <div className="p-2 bg-gray-50 rounded">
                   <p className="text-xs text-gray-500">Orçamento diário ideal</p>
-                  <p className="font-semibold">{formatCurrency(review?.meta_daily_budget_ideal || 0)}</p>
+                  <p className="font-semibold">{formatCurrency(idealDailyBudget)}</p>
                 </div>
               </div>
             </div>
@@ -167,14 +212,14 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-1">Recomendação</h3>
               <div className="p-3 rounded border flex items-center">
-                {review?.meta_recommendation?.includes("Aumentar") ? (
+                {recommendation.includes("Aumentar") ? (
                   <TrendingUp className="mr-2 text-green-500" size={20} />
-                ) : review?.meta_recommendation?.includes("Diminuir") ? (
+                ) : recommendation.includes("Diminuir") ? (
                   <TrendingDown className="mr-2 text-red-500" size={20} />
                 ) : (
                   <span className="w-5 h-5 mr-2 rounded-full bg-gray-200"></span>
                 )}
-                <span className="font-medium">{review?.meta_recommendation || "Não disponível"}</span>
+                <span className="font-medium">{recommendation}</span>
               </div>
             </div>
 
@@ -184,11 +229,11 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
                   <span>
                     {formatCurrency(review?.meta_total_spent || 0)} de{" "}
-                    {formatCurrency(review?.meta_budget_available || 0)}
+                    {formatCurrency(client.meta_ads_budget || 0)}
                   </span>
                   <span>
-                    {review?.meta_budget_available
-                      ? Math.round((review.meta_total_spent / review.meta_budget_available) * 100)
+                    {client.meta_ads_budget
+                      ? Math.round((review.meta_total_spent / client.meta_ads_budget) * 100)
                       : 0}
                     %
                   </span>
@@ -198,9 +243,9 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
                     className="bg-blue-600 h-2.5 rounded-full"
                     style={{
                       width: `${
-                        review?.meta_budget_available
+                        client.meta_ads_budget
                           ? Math.min(
-                              (review.meta_total_spent / review.meta_budget_available) * 100,
+                              (review.meta_total_spent / client.meta_ads_budget) * 100,
                               100
                             )
                           : 0
