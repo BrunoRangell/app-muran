@@ -107,18 +107,23 @@ export const BudgetManager = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <Input
-                            type="text"
-                            value={budgets[client.id]?.displayBudget || ""}
-                            onChange={(e) => handleBudgetChange(client.id, e.target.value)}
-                            placeholder="0,00"
-                            className="text-right"
-                          />
-                          {budgets[client.id]?.displayBudget && (
-                            <div className="text-xs text-gray-500 mt-1 text-right">
-                              {formatDisplayValue(budgets[client.id]?.displayBudget)}
-                            </div>
-                          )}
+                          <div className="relative">
+                            <Input
+                              type="text"
+                              value={budgets[client.id]?.displayBudget || ""}
+                              onChange={(e) => handleBudgetChange(client.id, e.target.value)}
+                              placeholder="0,00"
+                              className="text-right pr-3"
+                            />
+                            {budgets[client.id]?.displayBudget && (
+                              <div className="absolute inset-y-0 left-0 px-3 flex items-center pointer-events-none text-gray-500">
+                                R$
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-xs text-muran-primary mt-1 text-right">
+                            {budgets[client.id]?.displayBudget ? formatDisplayValue(budgets[client.id]?.displayBudget) : ""}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
