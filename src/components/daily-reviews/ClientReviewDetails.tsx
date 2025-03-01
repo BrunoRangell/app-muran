@@ -82,7 +82,10 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <ClientSummaryCard client={client} />
+        <ClientSummaryCard 
+          client={client} 
+          latestReview={latestReview}
+        />
         
         <BudgetCard 
           latestReview={latestReview}

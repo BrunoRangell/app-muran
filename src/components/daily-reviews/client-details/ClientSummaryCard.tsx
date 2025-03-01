@@ -2,7 +2,7 @@
 import { formatCurrency } from "@/utils/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface ClientSummaryCardProps {
+export interface ClientSummaryCardProps {
   client: any;
   latestReview: any;
 }

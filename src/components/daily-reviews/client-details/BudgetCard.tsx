@@ -2,12 +2,13 @@
 import { formatCurrency } from "@/utils/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface BudgetCardProps {
+export interface BudgetCardProps {
   latestReview: any;
+  client: any;
   idealDailyBudget: number | null;
 }
 
-export const BudgetCard = ({ latestReview, idealDailyBudget }: BudgetCardProps) => {
+export const BudgetCard = ({ latestReview, client, idealDailyBudget }: BudgetCardProps) => {
   return (
     <Card>
       <CardHeader className="pb-2">
