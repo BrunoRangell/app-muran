@@ -51,6 +51,7 @@ const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"))
 const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"));
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
+const DailyReviews = lazyWithTimeout(() => import("@/pages/DailyReviews"));
 
 function App() {
   return (
@@ -95,6 +96,14 @@ function App() {
           element={
             <PrivateRoute requireAdmin>
               <Costs />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/revisoes-diarias"
+          element={
+            <PrivateRoute requireAdmin>
+              <DailyReviews />
             </PrivateRoute>
           }
         />

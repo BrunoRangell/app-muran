@@ -7,7 +7,8 @@ import {
   ListTodo,
   Receipt,
   CreditCard,
-  BarChart
+  BarChart,
+  Calendar
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -38,6 +39,7 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
+  { icon: Calendar, label: "Revisões Diárias", path: "/revisoes-diarias" },
 ];
 
 const regularMenuItems: MenuItem[] = [
