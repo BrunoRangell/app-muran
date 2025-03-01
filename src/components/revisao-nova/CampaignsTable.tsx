@@ -65,7 +65,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                 <StatusBadge status={campaign.status} />
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(campaign.spend)}
+                {formatCurrency(Number(campaign.spend))}
               </TableCell>
             </TableRow>
           ))}
