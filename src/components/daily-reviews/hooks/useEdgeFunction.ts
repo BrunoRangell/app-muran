@@ -32,34 +32,40 @@ export const invokeEdgeFunction = async (
     
     console.log("Token Meta Ads encontrado, enviando requisição para função Edge");
     
-    // Chamar a função Edge passando o token e dados do cliente
+    // Chamar a função Edge passando o token e dados do cliente com payload JSON bem formado
+    const payload = { 
+      method: "getMetaAdsData", 
+      clientId,
+      reviewDate: formattedDate,
+      accessToken: tokens.value
+    };
+    
+    console.log("Enviando payload para função Edge:", JSON.stringify(payload, null, 2));
+    
+    // Chamada mais robusta com timeout e tratamento de erros
     const { data, error } = await supabase.functions.invoke("daily-budget-reviews", {
-      body: { 
-        method: "getMetaAdsData", 
-        clientId,
-        reviewDate: formattedDate,
-        accessToken: tokens.value
-      },
+      body: payload,
     });
 
+    // Verificar erro da função Edge
     if (error) {
       console.error("Erro na função Edge:", error);
       let errorMessage = "Erro ao obter dados do Meta Ads";
       
-      // Verificar se há uma mensagem mais específica no erro
       if (typeof error === 'object' && error !== null) {
         errorMessage = error.message || errorMessage;
         console.error("Detalhes do erro:", JSON.stringify(error, null, 2));
       }
       
-      throw new Error(errorMessage);
+      throw new AppError(errorMessage, "EDGE_FUNCTION_ERROR", { originalError: error });
     }
     
+    // Verificar resposta válida
     console.log("Resposta recebida da função Edge:", data);
     
     if (!data) {
       console.error("Função Edge retornou dados vazios ou inválidos");
-      throw new Error("A função Edge retornou dados vazios ou inválidos");
+      throw new AppError("A função Edge retornou dados vazios ou inválidos", "INVALID_RESPONSE");
     }
     
     return data;

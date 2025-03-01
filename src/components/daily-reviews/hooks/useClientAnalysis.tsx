@@ -38,6 +38,12 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
           console.log("Chamando função Edge para obter dados reais do Meta Ads");
           const result = await invokeEdgeFunction(clientId, formattedDate);
           console.log("Análise com dados reais concluída com sucesso:", result);
+          
+          // Validar resultado
+          if (!result || typeof result !== 'object') {
+            throw new Error("Resposta inválida da API do Meta Ads");
+          }
+          
           return result;
         } catch (edgeError: any) {
           console.error("Erro detalhado ao chamar função Edge:", edgeError);
