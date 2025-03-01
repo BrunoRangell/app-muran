@@ -18,7 +18,7 @@ export const invokeEdgeFunction = async (
       .from("api_tokens")
       .select("value")
       .eq("name", "meta_access_token")
-      .single();
+      .maybeSingle();
     
     if (tokensError) {
       console.error("Erro ao buscar token Meta Ads:", tokensError);
