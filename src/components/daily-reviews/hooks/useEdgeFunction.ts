@@ -56,7 +56,7 @@ export const invokeEdgeFunction = async (
     
     return data;
   } catch (error: any) {
-    console.error("Falha ao obter dados reais do Meta Ads:", error);
+    console.error("Falha ao obter dados do Meta Ads:", error);
     throw error;
   }
 };

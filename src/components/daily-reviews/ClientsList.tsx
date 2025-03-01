@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader, AlertTriangle } from "lucide-react";
+import { ArrowRight, Loader, AlertTriangle, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 
 type Client = {
@@ -105,6 +105,12 @@ export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClien
             {client.meta_account_id && (
               <p className="text-sm text-gray-500">
                 ID da Conta: {client.meta_account_id}
+              </p>
+            )}
+            {!client.meta_account_id && (
+              <p className="text-sm text-amber-500 flex items-center gap-1">
+                <AlertCircle size={16} />
+                Conta Meta Ads não configurada
               </p>
             )}
           </CardContent>

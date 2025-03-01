@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { validateClient } from "./useClientValidation";
-import { simulateBudgetData, simulateClientAnalysis } from "./useDevSimulation";
 import { invokeEdgeFunction } from "./useEdgeFunction";
 import { AnalysisResult } from "./types";
 import { AppError, handleApiError } from "@/lib/errors";
@@ -34,54 +33,30 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
         const todayDate = new Date();
         const formattedDate = todayDate.toISOString().split('T')[0];
         
-        // Verificar se estamos em ambiente de desenvolvimento com simulação ativada
-        const useMockData = import.meta.env.VITE_USE_MOCK_DATA === "true";
-        
-        if (useMockData) {
-          console.log("Usando dados simulados devido à configuração de ambiente");
-          return await simulateClientAnalysis(clientId, clientData);
-        }
-        
-        // Sempre tentamos buscar dados reais da API do Meta
-        try {
-          console.log("Chamando função Edge para obter dados reais do Meta Ads");
-          const result = await invokeEdgeFunction(clientId, formattedDate);
-          console.log("Análise com dados reais concluída com sucesso:", result);
-          return result;
-        } catch (error: any) {
-          console.error("Erro ao buscar dados reais do Meta Ads:", error);
-          
-          // Verificar se o erro é relacionado ao token
-          if (error.message?.includes("Token Meta Ads não configurado")) {
-            toast({
-              title: "Token do Meta Ads não configurado",
-              description: "Configure o token do Meta Ads na página de configurações antes de analisar.",
-              variant: "destructive",
-            });
-            throw error;
-          }
-          
-          // Se for outro erro da API, mostrar mensagem específica
-          toast({
-            title: "Erro na API do Meta Ads",
-            description: error.message || "Não foi possível obter dados reais do Meta Ads.",
-            variant: "destructive",
-          });
-          
-          // Em caso de erro na API real, podemos cair para simulação se for ambiente de desenvolvimento
-          if (import.meta.env.DEV) {
-            console.log("Caindo para simulação devido ao erro na API real (ambiente de desenvolvimento)");
-            toast({
-              title: "Usando dados simulados",
-              description: "Devido a um erro na API do Meta, estamos usando dados simulados.",
-            });
-            return await simulateClientAnalysis(clientId, clientData);
-          }
-          
-          throw error;
-        }
+        // Buscar apenas dados reais - sem simulação
+        console.log("Chamando função Edge para obter dados reais do Meta Ads");
+        const result = await invokeEdgeFunction(clientId, formattedDate);
+        console.log("Análise com dados reais concluída com sucesso:", result);
+        return result;
       } catch (error) {
         console.error("Erro ao chamar função de análise:", error);
+        
+        // Caso haja erro com o token, vamos exibir mensagem específica
+        if (error instanceof Error && error.message?.includes("Token Meta Ads não configurado")) {
+          toast({
+            title: "Token do Meta Ads não configurado",
+            description: "Configure o token do Meta Ads na página de configurações antes de analisar.",
+            variant: "destructive",
+          });
+        } else {
+          // Para outros erros da API, mostrar mensagem genérica
+          toast({
+            title: "Erro na API do Meta Ads",
+            description: error instanceof Error ? error.message : "Não foi possível obter dados do Meta Ads.",
+            variant: "destructive",
+          });
+        }
+        
         throw error;
       }
     },
@@ -97,7 +72,7 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
     },
     onError: (error: any) => {
       console.error("Erro detalhado na análise:", error);
-      // Já exibimos mensagem específica no catch acima, não precisamos duplicar
+      // Mensagens específicas já são exibidas no try/catch acima
     },
   });
 
