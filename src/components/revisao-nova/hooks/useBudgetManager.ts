@@ -122,20 +122,17 @@ export const useBudgetManager = () => {
     }
   });
 
-  // Manipulador para alteração de orçamento
+  // Manipulador para alteração de orçamento - CORRIGIDO PARA ACEITAR QUALQUER QUANTIDADE DE DÍGITOS
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Remove apenas caracteres não numéricos, mantendo vírgulas e pontos
-    // Não faz nenhum tipo de limitação na quantidade de dígitos
+    // Permite apenas números, vírgulas e pontos (sem limite de dígitos)
     const numericValue = value.replace(/[^\d,.]/g, "");
     
     // Formatar para exibição
     let displayValue = "";
     try {
       if (numericValue) {
-        // Prepara o valor para a formatação, convertendo notação brasileira para numérica
-        // Substitui pontos (separadores de milhar) e ajusta vírgula decimal para ponto
-        const preparedValue = numericValue.replace(/\./g, "").replace(",", ".");
-        displayValue = formatCurrency(preparedValue, false);
+        // Formata o valor para exibição
+        displayValue = formatCurrency(numericValue.replace(/\./g, "").replace(",", "."), false);
       }
     } catch (error) {
       console.error("Erro ao formatar valor:", error);
