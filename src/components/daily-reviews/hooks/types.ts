@@ -35,24 +35,14 @@ export interface SimpleMetaCampaign {
 export interface SimpleAnalysisResult {
   success: boolean;
   message: string;
-  meta: {
-    totalSpent: number;
-    dailyBudget: number;
-    dateRange: {
-      start: string;
-      end: string;
-    };
-    campaigns: SimpleMetaCampaign[];
-  };
+  meta: SimpleMetaData;
 }
 
 export interface SimpleMetaData {
-  accountId?: string;
-  accountName?: string;
   totalSpent: number;
+  dailyBudget: number;
+  dateRange: MetaDateRange;
   campaigns: SimpleMetaCampaign[];
-  dateRange?: MetaDateRange;
-  dailyBudget?: number;
 }
 
 export interface MetaCampaign {
