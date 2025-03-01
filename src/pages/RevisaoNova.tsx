@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCcw, ExternalLink, Loader } from "lucide-react";
@@ -22,24 +21,24 @@ export default function RevisaoNova() {
     testEdgeFunction
   } = useMetaAdsAnalysis();
 
-  const handleClientSelect = (clientId: string) => {
+  function handleClientSelect(clientId: string) {
     setSelectedClientId(clientId);
-  };
+  }
 
-  const handleAnalyze = () => {
+  function handleAnalyze() {
     if (selectedClientId) {
       fetchAnalysis(selectedClientId);
     }
-  };
+  }
 
-  const handleOpenGraphExplorer = () => {
+  function handleOpenGraphExplorer() {
     window.open(
       `https://developers.facebook.com/tools/explorer/`, 
       '_blank'
     );
-  };
+  }
 
-  const handleMakeSampleRequest = () => {
+  function handleMakeSampleRequest() {
     if (client?.meta_account_id) {
       const path = encodeURIComponent(`act_${client.meta_account_id}/campaigns`);
       const fields = encodeURIComponent('status,name,spend,insights{spend}');
@@ -48,7 +47,7 @@ export default function RevisaoNova() {
         '_blank'
       );
     }
-  };
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

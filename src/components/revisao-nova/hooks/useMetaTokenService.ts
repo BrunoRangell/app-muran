@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * Hook para gerenciar e testar o token do Meta Ads
+ * Hook para gerenciar e testar tokens do Meta Ads
  */
 export const useMetaTokenService = () => {
   const [isLoading, setIsLoading] = useState(false);

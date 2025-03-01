@@ -4,7 +4,7 @@ import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * Hook para processar respostas da API Meta Ads
+ * Hook para processar e validar respostas da API Meta Ads
  */
 export const useMetaResponseProcessor = () => {
   const [analysis, setAnalysis] = useState<SimpleAnalysisResult | null>(null);
@@ -13,7 +13,7 @@ export const useMetaResponseProcessor = () => {
   const { toast } = useToast();
 
   /**
-   * Processa resposta bem-sucedida da API
+   * Processa respostas bem-sucedidas da API
    */
   const handleSuccessfulResponse = (result: any, token: string) => {
     // Guardar a resposta bruta para depuração com informações extra
@@ -127,7 +127,7 @@ export const useMetaResponseProcessor = () => {
   };
 
   /**
-   * Extrai e formata detalhes de erro para diagnóstico
+   * Processa detalhes de erro para apresentação
    */
   const processErrorDetails = (err: any) => {
     console.error("[useMetaResponseProcessor] Erro na análise:", err);
@@ -176,6 +176,7 @@ export const useMetaResponseProcessor = () => {
     debugInfo,
     setDebugInfo,
     handleSuccessfulResponse,
-    processErrorDetails
+    processErrorDetails,
+    setAnalysis
   };
 };

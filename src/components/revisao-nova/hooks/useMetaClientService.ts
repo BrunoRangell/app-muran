@@ -2,15 +2,17 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+interface Client {
+  id: string;
+  company_name: string;
+  meta_account_id: string;
+}
+
 /**
  * Hook para serviços relacionados ao cliente e conta Meta Ads
  */
 export const useMetaClientService = () => {
-  const [client, setClient] = useState<{
-    id: string;
-    company_name: string;
-    meta_account_id: string;
-  } | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
 
   /**
    * Busca os dados do cliente, incluindo ID de conta Meta Ads
@@ -40,10 +42,10 @@ export const useMetaClientService = () => {
         throw new Error("Cliente não possui ID do Meta Ads configurado");
       }
       
-      setClient(clientData);
+      setClient(clientData as Client);
       console.log("[useMetaClientService] Cliente encontrado:", clientData);
       
-      return clientData;
+      return clientData as Client;
     } catch (error) {
       setClient(null);
       throw error;
