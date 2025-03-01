@@ -1,63 +1,69 @@
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { validateClient } from "./useClientValidation";
-import { simulateClientAnalysis } from "./useDevSimulation";
-import { callEdgeFunction } from "./useEdgeFunction";
+import { simulateBudgetData } from "./useDevSimulation";
+import { invokeEdgeFunction } from "./useEdgeFunction";
+import { AnalysisResult } from "./types";
 
-export const useClientAnalysis = (onSuccess: (data: any) => void) => {
+export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  
-  // Mutation para analisar cliente específico
+
+  // Mutation para analisar o cliente
   const analyzeMutation = useMutation({
     mutationFn: async (clientId: string) => {
       console.log("Iniciando análise para o cliente:", clientId);
       
       try {
-        // 1. Validar o cliente
-        const client = await validateClient(clientId);
+        // Validação do cliente
+        const clientData = await validateClient(clientId);
         
-        console.log("Chamando função para análise do cliente:", client);
+        // Verificar se estamos em ambiente de desenvolvimento
+        const isDev = import.meta.env.DEV;
         
-        // 2. Verificar se estamos em ambiente de desenvolvimento para simular resposta
-        if (import.meta.env.DEV) {
-          console.log("Ambiente de desenvolvimento detectado - simulando resposta da função Edge");
-          return await simulateClientAnalysis(clientId, client);
+        let result: AnalysisResult;
+
+        if (isDev && import.meta.env.VITE_USE_MOCK_DATA === "true") {
+          // Em desenvolvimento, usamos dados simulados
+          console.log("Usando dados simulados para desenvolvimento");
+          const todayDate = new Date();
+          const formattedDate = todayDate.toISOString().split('T')[0];
+          
+          result = await simulateBudgetData(clientId, clientData, formattedDate);
+        } else {
+          // Em produção, chamamos a função edge
+          console.log("Chamando função edge para análise de orçamento");
+          const todayDate = new Date();
+          const year = todayDate.getFullYear();
+          const month = todayDate.getMonth() + 1; // +1 porque getMonth retorna 0-11
+          const day = todayDate.getDate();
+          const formattedDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+          
+          result = await invokeEdgeFunction(clientId, formattedDate);
         }
         
-        // 3. Em produção, chama a função Edge real
-        return await callEdgeFunction(clientId);
-        
-      } catch (error: any) {
+        console.log("Análise concluída com sucesso:", result);
+        return result;
+      } catch (error) {
         console.error("Erro ao chamar função de análise:", error);
-        toast({
-          title: "Erro na análise",
-          description: String(error?.message || error),
-          variant: "destructive",
-        });
+        console.error("Erro detalhado na análise:", error);
         throw error;
       }
     },
     onSuccess: (data) => {
-      console.log("Análise concluída com sucesso:", data);
-      toast({
-        title: "Análise concluída",
-        description: `A análise para ${data.client?.company_name || 'o cliente'} foi atualizada com sucesso.`,
-      });
-      
-      // Atualizar dados
-      queryClient.invalidateQueries({ queryKey: ["clients-active"] });
-      queryClient.invalidateQueries({ queryKey: ["recent-reviews"] });
-      
-      // Chamar callback de sucesso
-      onSuccess(data);
+      console.log("Análise realizada com sucesso:", data);
+      if (onSuccess) {
+        onSuccess(data);
+      }
     },
     onError: (error: any) => {
       console.error("Erro detalhado na análise:", error);
+      
+      // Usando o toast hook dentro do contexto de componente
       toast({
         title: "Erro na análise",
-        description: String(error?.message || error),
+        description: "Não foi possível analisar os orçamentos. Por favor, tente novamente.",
         variant: "destructive",
       });
     },
