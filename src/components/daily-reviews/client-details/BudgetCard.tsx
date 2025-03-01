@@ -19,13 +19,15 @@ export const BudgetCard = ({ latestReview, client, idealDailyBudget }: BudgetCar
           <div>
             <div className="text-sm text-gray-500">Atual</div>
             <div className="text-xl font-bold">
-              {latestReview ? formatCurrency(latestReview.meta_daily_budget_current || 0) : "N/A"}
+              {latestReview && latestReview.meta_daily_budget_current !== null 
+                ? formatCurrency(latestReview.meta_daily_budget_current) 
+                : "N/A"}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-500">Ideal</div>
             <div className="text-xl font-bold text-gray-600">
-              {idealDailyBudget ? formatCurrency(idealDailyBudget) : "N/A"}
+              {idealDailyBudget !== null ? formatCurrency(idealDailyBudget) : "N/A"}
             </div>
           </div>
         </div>

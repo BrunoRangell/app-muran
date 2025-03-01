@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { parseCurrencyToNumber } from "@/utils/formatters";
 
 type ClientBudget = {
   id: string;
@@ -77,18 +78,31 @@ export const useBudgetSetup = () => {
       // Preparar os dados para atualização
       const updates = clientsToUpdate.map(([clientId, values]) => {
         // Tratar o valor do orçamento corretamente
-        const rawValue = values.meta ? values.meta.replace(/[^\d,.-]/g, '').replace(',', '.') : "0";
-        const metaBudget = parseFloat(rawValue) || 0;
+        let metaBudget = 0;
+        
+        if (values.meta) {
+          // Remover símbolos de moeda, pontos e converter vírgulas para pontos
+          const cleanValue = values.meta.replace(/[^\d,.-]/g, '').replace(',', '.');
+          metaBudget = parseFloat(cleanValue);
+          
+          // Verificar se o valor precisa ser multiplicado por 100 (se for em centavos)
+          // Isso garante que 6000 seja salvo como 6000 e não como 60.00 ou 6
+          if (cleanValue.indexOf(',') === -1 && cleanValue.indexOf('.') === -1) {
+            // Se não tiver vírgula nem ponto, é valor inteiro em reais
+            metaBudget = parseInt(cleanValue);
+          }
+        }
         
         console.log(`Preparando atualização para cliente ${clientId}:`, {
-          metaBudget,
+          valorOriginal: values.meta,
+          metaBudget: metaBudget,
           accountId: values.accountId
         });
         
         // Retornar objeto formatado para update
         return {
           id: clientId,
-          meta_ads_budget: metaBudget,
+          meta_ads_budget: metaBudget || 0,
           meta_account_id: values.accountId || null
         };
       });
@@ -134,7 +148,7 @@ export const useBudgetSetup = () => {
   });
 
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Certifique-se de que aceitamos apenas números e pontos
+    // Permite números, vírgulas e pontos para valores monetários
     const sanitizedValue = value.replace(/[^0-9,.]/g, "");
     
     setBudgets((prev) => ({

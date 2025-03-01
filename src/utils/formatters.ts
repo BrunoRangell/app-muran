@@ -1,3 +1,4 @@
+
 export const formatCurrency = (value: string | number) => {
   // Se o valor for undefined ou null, retorna R$ 0,00
   if (value == null) return 'R$ 0,00';
@@ -5,7 +6,7 @@ export const formatCurrency = (value: string | number) => {
   let numericValue: number;
 
   if (typeof value === 'string') {
-    // Remove tudo que não for número ou ponto decimal
+    // Remove tudo que não for número ou ponto/vírgula decimal
     const cleanValue = value.replace(/[^\d.,]/g, '').replace(',', '.');
     numericValue = parseFloat(cleanValue);
   } else {
@@ -22,6 +23,8 @@ export const formatCurrency = (value: string | number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(numericValue);
   } catch (error) {
     console.error('Erro ao formatar valor:', { valor: numericValue, erro: error });
