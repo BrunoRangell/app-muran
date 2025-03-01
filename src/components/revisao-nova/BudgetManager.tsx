@@ -88,6 +88,7 @@ export const BudgetManager = () => {
                         </TableCell>
                         <TableCell>
                           <Input
+                            type="text"
                             value={budgets[client.id]?.displayBudget || ""}
                             onChange={(e) => handleBudgetChange(client.id, e.target.value)}
                             placeholder="0,00"
