@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ClientHeader } from "@/components/daily-reviews/client-details/ClientHeader";
@@ -10,8 +9,8 @@ import { ReviewHistoryTable } from "@/components/daily-reviews/client-details/Re
 import { LoadingState } from "@/components/daily-reviews/client-details/LoadingState";
 import { ClientNotFound } from "@/components/daily-reviews/client-details/ClientNotFound";
 import { useClientReviewDetails } from "@/components/daily-reviews/client-details/useClientReviewDetails";
-import { useClientAnalysis } from "./hooks/useClientAnalysis";
-import { useToast } from "@/hooks/use-toast";
+import { useClientReviewAnalysis } from "./hooks/useClientReviewAnalysis";
+import { ClientDetailsContent } from "./client-details/ClientDetailsContent";
 
 interface ClientReviewDetailsProps {
   clientId: string;
@@ -19,9 +18,6 @@ interface ClientReviewDetailsProps {
 }
 
 export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsProps) => {
-  const { toast } = useToast();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  
   const {
     client,
     latestReview,
@@ -35,24 +31,11 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     refetchData
   } = useClientReviewDetails(clientId);
 
-  // Importamos o hook useClientAnalysis para analisar o cliente
-  const { analyzeMutation } = useClientAnalysis((data) => {
-    toast({
-      title: "Análise concluída",
-      description: `Análise do cliente ${client?.company_name} atualizada com sucesso.`,
-    });
-    
-    // Após análise bem-sucedida, atualizamos os dados
-    refetchData();
-    setIsRefreshing(false);
-  });
-
-  const handleRefreshAnalysis = () => {
-    if (!client) return;
-    
-    setIsRefreshing(true);
-    analyzeMutation.mutate(clientId);
-  };
+  const { 
+    isRefreshing, 
+    isAnalyzing, 
+    handleRefreshAnalysis 
+  } = useClientReviewAnalysis(clientId, refetchData);
 
   if (isLoading) {
     return <LoadingState />;
@@ -79,26 +62,16 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
       <ClientHeader 
         client={client} 
         onRefreshAnalysis={handleRefreshAnalysis}
-        isRefreshing={isRefreshing || analyzeMutation.isPending}
+        isRefreshing={isRefreshing || isAnalyzing}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <ClientSummaryCard 
-          client={client} 
-          latestReview={latestReview}
-        />
-        
-        <BudgetCard 
-          latestReview={latestReview}
-          client={client} 
-          idealDailyBudget={idealDailyBudget}
-        />
-        
-        <RecommendationCard 
-          recommendation={recommendation} 
-          suggestedBudgetChange={suggestedBudgetChange}
-        />
-      </div>
+      <ClientDetailsContent
+        client={client}
+        latestReview={latestReview}
+        idealDailyBudget={idealDailyBudget}
+        recommendation={recommendation}
+        suggestedBudgetChange={suggestedBudgetChange}
+      />
 
       <ReviewHistoryTable 
         isLoading={isLoadingHistory} 
