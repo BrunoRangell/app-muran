@@ -90,8 +90,13 @@ export const useClientReviewDetails = (clientId: string) => {
   useEffect(() => {
     if (client?.meta_ads_budget && latestReview) {
       try {
-        // Certifique-se de que meta_ads_budget seja tratado como número
+        // Data atual para o cálculo
+        const currentDate = new Date();
+        console.log("Data atual utilizada para cálculo:", currentDate.toLocaleDateString('pt-BR'));
+        
+        // Obter valores do orçamento e gastos
         const monthlyBudget = Number(client.meta_ads_budget);
+        // Usar exatamente o valor gasto no mês atual
         const totalSpent = Number(latestReview.meta_total_spent) || 0;
         const currentDailyBudget = Number(latestReview.meta_daily_budget_current) || 0;
         
@@ -99,13 +104,11 @@ export const useClientReviewDetails = (clientId: string) => {
         console.log("Total gasto até agora:", totalSpent);
         console.log("Orçamento diário atual:", currentDailyBudget);
         
-        // Sempre usar a data atual para o cálculo
-        const currentDate = new Date();
+        // Calculando dias restantes no mês
         const daysInMonth = getDaysInMonth(currentDate);
         const currentDay = currentDate.getDate();
         const remainingDays = daysInMonth - currentDay + 1; // +1 para incluir o dia atual
         
-        console.log("Data atual utilizada para cálculo:", currentDate.toLocaleDateString('pt-BR'));
         console.log("Dias no mês:", daysInMonth);
         console.log("Dia atual:", currentDay);
         console.log("Dias restantes:", remainingDays);

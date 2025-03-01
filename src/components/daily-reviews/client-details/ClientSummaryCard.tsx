@@ -29,7 +29,7 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
     return percentage > 100 ? 100 : percentage; // Limitar a 100%
   };
 
-  // Obter o gasto total real
+  // Obter o gasto total real do mês atual
   const getTotalSpent = () => {
     if (!latestReview?.meta_total_spent) return 0;
     const spent = Number(latestReview.meta_total_spent);
