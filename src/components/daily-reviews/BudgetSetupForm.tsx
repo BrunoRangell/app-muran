@@ -13,7 +13,7 @@ import { formatCurrency } from "@/utils/formatters";
 
 export const BudgetSetupForm = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [budgets, setBudgets] = useState<Record<string, { meta: string; google: string }>>({});
+  const [budgets, setBudgets] = useState<Record<string, { meta: string }>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -23,7 +23,7 @@ export const BudgetSetupForm = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, company_name, meta_ads_budget, google_ads_budget, status")
+        .select("id, company_name, meta_ads_budget, status")
         .eq("status", "active")
         .order("company_name");
 
@@ -38,7 +38,6 @@ export const BudgetSetupForm = () => {
       const updates = Object.entries(budgets).map(([clientId, values]) => ({
         id: clientId,
         meta_ads_budget: values.meta ? parseFloat(values.meta) : 0,
-        google_ads_budget: values.google ? parseFloat(values.google) : 0,
       }));
 
       const { error } = await supabase.from("clients").upsert(updates);
@@ -66,23 +65,22 @@ export const BudgetSetupForm = () => {
   // Inicializar orçamentos a partir dos dados obtidos
   useEffect(() => {
     if (clients) {
-      const initialBudgets: Record<string, { meta: string; google: string }> = {};
+      const initialBudgets: Record<string, { meta: string }> = {};
       clients.forEach((client) => {
         initialBudgets[client.id] = {
           meta: client.meta_ads_budget?.toString() || "",
-          google: client.google_ads_budget?.toString() || "",
         };
       });
       setBudgets(initialBudgets);
     }
   }, [clients]);
 
-  const handleChange = (clientId: string, platform: "meta" | "google", value: string) => {
+  const handleChange = (clientId: string, value: string) => {
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        [platform]: value,
+        meta: value,
       },
     }));
   };
@@ -101,7 +99,7 @@ export const BudgetSetupForm = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="text-muran-primary" />
-          Configurar Orçamentos Mensais
+          Configurar Orçamentos Meta Ads
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -132,7 +130,6 @@ export const BudgetSetupForm = () => {
                   <TableRow>
                     <TableHead className="w-[350px]">Cliente</TableHead>
                     <TableHead>Orçamento Meta Ads</TableHead>
-                    <TableHead>Orçamento Google Ads</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -149,22 +146,7 @@ export const BudgetSetupForm = () => {
                             id={`meta-${client.id}`}
                             placeholder="0.00"
                             value={budgets[client.id]?.meta || ""}
-                            onChange={(e) => handleChange(client.id, "meta", e.target.value)}
-                            className="max-w-[150px]"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Label htmlFor={`google-${client.id}`} className="sr-only">
-                            Orçamento Google Ads
-                          </Label>
-                          <span className="text-gray-500">R$</span>
-                          <Input
-                            id={`google-${client.id}`}
-                            placeholder="0.00"
-                            value={budgets[client.id]?.google || ""}
-                            onChange={(e) => handleChange(client.id, "google", e.target.value)}
+                            onChange={(e) => handleChange(client.id, e.target.value)}
                             className="max-w-[150px]"
                           />
                         </div>

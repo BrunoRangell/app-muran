@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, BarChart3, Calendar, Loader, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, Calendar, Loader, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -120,7 +120,7 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="max-w-3xl mx-auto w-full">
         {/* Meta Ads Card */}
         <Card>
           <CardHeader className="pb-2">
@@ -132,6 +132,11 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
             </CardTitle>
             <CardDescription>
               {review?.meta_account_name || "Conta não configurada"}
+              {review?.meta_error && (
+                <div className="mt-1 text-red-500 text-xs">
+                  Erro: {review.meta_error}
+                </div>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -164,8 +169,10 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
               <div className="p-3 rounded border flex items-center">
                 {review?.meta_recommendation?.includes("Aumentar") ? (
                   <TrendingUp className="mr-2 text-green-500" size={20} />
-                ) : (
+                ) : review?.meta_recommendation?.includes("Diminuir") ? (
                   <TrendingDown className="mr-2 text-red-500" size={20} />
+                ) : (
+                  <span className="w-5 h-5 mr-2 rounded-full bg-gray-200"></span>
                 )}
                 <span className="font-medium">{review?.meta_recommendation || "Não disponível"}</span>
               </div>
@@ -201,99 +208,6 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
                     }}
                   ></div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Google Ads Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center text-lg text-yellow-600">
-              <div className="flex-shrink-0 w-8 h-8 mr-2 rounded-full bg-yellow-100 flex items-center justify-center">
-                <span className="text-yellow-600 font-bold">G</span>
-              </div>
-              Google Ads
-            </CardTitle>
-            <CardDescription>
-              {review?.google_account_name || "Conta não configurada"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Métricas</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Orçamento mensal</p>
-                  <p className="font-semibold">{formatCurrency(review?.google_budget_available || 0)}</p>
-                </div>
-                <div className="p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Gasto até agora</p>
-                  <p className="font-semibold">{formatCurrency(review?.google_total_spent || 0)}</p>
-                </div>
-                <div className="p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Orçamento diário atual</p>
-                  <p className="font-semibold">{formatCurrency(review?.google_daily_budget_current || 0)}</p>
-                </div>
-                <div className="p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Orçamento diário ideal</p>
-                  <p className="font-semibold">{formatCurrency(review?.google_daily_budget_ideal || 0)}</p>
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Recomendação</h3>
-              <div className="p-3 rounded border flex items-center">
-                {review?.google_recommendation?.includes("Aumentar") ? (
-                  <TrendingUp className="mr-2 text-green-500" size={20} />
-                ) : (
-                  <TrendingDown className="mr-2 text-red-500" size={20} />
-                )}
-                <span className="font-medium">{review?.google_recommendation || "Não disponível"}</span>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Progresso de gastos</h3>
-              <div className="w-full">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>
-                    {formatCurrency(review?.google_total_spent || 0)} de{" "}
-                    {formatCurrency(review?.google_budget_available || 0)}
-                  </span>
-                  <span>
-                    {review?.google_budget_available
-                      ? Math.round((review.google_total_spent / review.google_budget_available) * 100)
-                      : 0}
-                    %
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div
-                    className="bg-yellow-500 h-2.5 rounded-full"
-                    style={{
-                      width: `${
-                        review?.google_budget_available
-                          ? Math.min(
-                              (review.google_total_spent / review.google_budget_available) * 100,
-                              100
-                            )
-                          : 0
-                      }%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Média últimos 5 dias</h3>
-              <div className="p-3 rounded border bg-gray-50 flex items-center">
-                <BarChart3 className="mr-2 text-muran-primary" size={20} />
-                <span>{formatCurrency(review?.google_avg_last_five_days || 0)}</span>
               </div>
             </div>
           </CardContent>

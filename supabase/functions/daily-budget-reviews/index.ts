@@ -1,214 +1,278 @@
 
-import { serve } from "https://deno.land/std@0.178.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-import { DateTime } from "https://esm.sh/luxon@3.3.0";
+import { serve } from "https://deno.land/std@0.131.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { DateTime } from 'https://esm.sh/luxon@3.4.3';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface Token {
-  name: string;
-  value: string;
-}
-
-serve(async (req: Request) => {
+serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: corsHeaders,
-    });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Criar cliente Supabase com a chave de serviço
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Extrair informações da requisição
-    const { method, tokens, clientId } = await req.json();
-
-    // Função para salvar tokens na tabela api_tokens
-    if (method === "saveTokens" && tokens) {
-      console.log("Iniciando salvamento de tokens...");
-      
-      for (const token of tokens) {
-        const { error } = await supabase
-          .from("api_tokens")
-          .upsert(
-            { name: token.name, value: token.value },
-            { onConflict: "name" }
-          );
-        
-        if (error) {
-          console.error(`Erro ao salvar token ${token.name}:`, error);
-          throw new Error(`Erro ao salvar token ${token.name}: ${error.message}`);
-        }
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
       }
-      
-      console.log("Tokens salvos com sucesso!");
+    );
+
+    const adminClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
+    );
+
+    const { method, clientId, tokens } = await req.json();
+
+    console.log(`[INFO] Processando requisição: ${method}`);
+
+    if (method === 'saveTokens') {
+      // Salvar tokens na tabela api_tokens
+      const { error } = await supabaseClient.from('api_tokens').upsert(
+        tokens.map(({ name, value }: { name: string; value: string }) => ({
+          name,
+          value,
+        }))
+      );
+
+      if (error) throw error;
+
       return new Response(
-        JSON.stringify({ success: true, message: "Tokens salvos com sucesso" }),
+        JSON.stringify({ success: true }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
         }
       );
     }
 
-    // Função para analisar um cliente específico
-    if (method === "analyzeClient" && clientId) {
-      console.log(`Iniciando análise para cliente ID: ${clientId}`);
-      
-      // Buscar o cliente
-      const { data: client, error: clientError } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("id", clientId)
-        .single();
-      
-      if (clientError) {
-        throw new Error(`Cliente não encontrado: ${clientError.message}`);
-      }
+    if (method === 'analyzeClient') {
+      console.log(`[INFO] Analisando cliente ID: ${clientId}`);
       
       // Buscar os tokens necessários
-      const { data: apiTokens, error: tokensError } = await supabase
-        .from("api_tokens")
-        .select("name, value");
+      const { data: tokenData, error: tokenError } = await supabaseClient
+        .from('api_tokens')
+        .select('name, value');
+
+      if (tokenError) throw tokenError;
       
-      if (tokensError) {
-        throw new Error(`Erro ao buscar tokens: ${tokensError.message}`);
-      }
-      
-      const tokenMap = apiTokens.reduce((acc, token) => {
+      // Mapear tokens para um objeto
+      const tokens = tokenData.reduce((acc: Record<string, string>, token) => {
         acc[token.name] = token.value;
         return acc;
-      }, {} as Record<string, string>);
-      
-      // Verificar se temos todos os tokens necessários
-      const requiredTokens = [
-        "meta_access_token",
-        "clickup_token",
-        "space_id",
-        "google_developer_token",
-        "google_oauth2_token",
-        "manager_customer_id"
-      ];
-      
-      const missingTokens = requiredTokens.filter(token => !tokenMap[token]);
-      if (missingTokens.length > 0) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: `Tokens ausentes: ${missingTokens.join(", ")}`,
-            missingTokens,
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
-          }
-        );
+      }, {});
+
+      // Verificar se os tokens necessários estão presentes
+      if (!tokens.meta_access_token) {
+        throw new Error('Token do Meta Ads não configurado');
       }
-      
-      // Simular o processo de análise
-      // Em uma implementação real, aqui você faria as chamadas para Meta Ads e Google Ads
-      // seguindo a lógica que você compartilhou no código do bot
-      
-      // Por enquanto, vamos criar uma entrada de revisão de orçamento simulada
-      const today = DateTime.now().setZone("America/Sao_Paulo");
-      const daysLeft = today.daysInMonth - today.day + 1;
-      
-      // Orçamentos obtidos do cliente
-      const metaBudget = client.meta_ads_budget || 0;
-      const googleBudget = client.google_ads_budget || 0;
-      
-      // Valores simulados
-      // Em uma implementação real, estes viriam das APIs
-      const metaSpent = metaBudget * 0.6; // Simulamos ter gasto 60% do orçamento
-      const googleSpent = googleBudget * 0.55; // Simulamos ter gasto 55% do orçamento
-      
-      const metaCurrentDaily = metaBudget * 0.03; // Simulamos 3% do orçamento como atual
-      const googleCurrentDaily = googleBudget * 0.028; // Simulamos 2.8% do orçamento como atual
-      
-      // Cálculos
-      const metaRemaining = metaBudget - metaSpent;
-      const googleRemaining = googleBudget - googleSpent;
-      
-      const metaIdealDaily = metaRemaining / daysLeft;
-      const googleIdealDaily = googleRemaining / daysLeft;
-      
-      const metaRecommendation = metaIdealDaily > metaCurrentDaily
-        ? `Aumentar em R$${(metaIdealDaily - metaCurrentDaily).toFixed(2)}`
-        : `Diminuir em R$${(metaCurrentDaily - metaIdealDaily).toFixed(2)}`;
-      
-      const googleRecommendation = googleIdealDaily > googleCurrentDaily
-        ? `Aumentar em R$${(googleIdealDaily - googleCurrentDaily).toFixed(2)}`
-        : `Diminuir em R$${(googleCurrentDaily - googleIdealDaily).toFixed(2)}`;
-      
-      // Inserir os dados da revisão no banco
-      const { data: review, error: reviewError } = await supabase
-        .from("daily_budget_reviews")
+
+      // Buscar informações do cliente
+      const { data: client, error: clientError } = await supabaseClient
+        .from('clients')
+        .select('id, company_name, meta_ads_budget')
+        .eq('id', clientId)
+        .single();
+
+      if (clientError) throw clientError;
+
+      console.log(`[INFO] Cliente: ${client.company_name} (Orçamento: ${client.meta_ads_budget})`);
+
+      // Se não há orçamento configurado, retornar erro
+      if (!client.meta_ads_budget) {
+        throw new Error('Orçamento de Meta Ads não configurado para este cliente');
+      }
+
+      let metaReview: any = {
+        client_id: clientId,
+        review_date: DateTime.now().toISODate(),
+        meta_budget_available: client.meta_ads_budget,
+      };
+
+      try {
+        // Buscar contas do Meta Ads
+        const response = await fetch(
+          `https://graph.facebook.com/v20.0/me/adaccounts?fields=name,account_id&access_token=${tokens.meta_access_token}`
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Erro na API do Meta Ads: ${JSON.stringify(errorData.error)}`);
+        }
+
+        const metaData = await response.json();
+        const accounts = metaData.data;
+
+        console.log(`[INFO] Contas Meta encontradas: ${accounts.length}`);
+
+        // Buscar apenas conta que inclua o nome do cliente
+        const normalizedClientName = normalizeText(client.company_name);
+        const matchedAccounts = accounts.filter((account: any) => 
+          normalizeText(account.name).includes(normalizedClientName)
+        );
+
+        if (matchedAccounts.length === 0) {
+          throw new Error(`Nenhuma conta de Meta Ads encontrada para o cliente ${client.company_name}`);
+        }
+
+        // Usar a primeira conta que corresponde ao nome do cliente
+        const account = matchedAccounts[0];
+        metaReview.meta_account_id = account.account_id;
+        metaReview.meta_account_name = account.name;
+
+        console.log(`[INFO] Conta Meta selecionada: ${account.name} (${account.account_id})`);
+
+        // Buscar insights (gastos) do mês atual
+        const today = DateTime.now();
+        const timeRange = {
+          since: today.startOf('month').toISODate(),
+          until: today.toISODate()
+        };
+
+        const insightsResponse = await fetch(
+          `https://graph.facebook.com/v20.0/act_${account.account_id}/insights?fields=spend&time_range=${JSON.stringify(timeRange)}&access_token=${tokens.meta_access_token}`
+        );
+        
+        if (!insightsResponse.ok) {
+          const errorData = await insightsResponse.json();
+          throw new Error(`Erro ao buscar insights: ${JSON.stringify(errorData.error)}`);
+        }
+
+        const insightsData = await insightsResponse.json();
+        const insights = insightsData.data;
+
+        // Calcular gastos totais
+        const totalSpent = insights.reduce((sum: number, insight: any) => 
+          sum + parseFloat(insight.spend || 0), 0);
+        
+        metaReview.meta_total_spent = totalSpent;
+
+        console.log(`[INFO] Total gasto no Meta Ads: ${totalSpent}`);
+
+        // Buscar campanhas para calcular orçamento diário atual
+        const campaignsResponse = await fetch(
+          `https://graph.facebook.com/v20.0/act_${account.account_id}/campaigns?fields=name,daily_budget,status&access_token=${tokens.meta_access_token}`
+        );
+        
+        if (!campaignsResponse.ok) {
+          const errorData = await campaignsResponse.json();
+          throw new Error(`Erro ao buscar campanhas: ${JSON.stringify(errorData.error)}`);
+        }
+
+        const campaignsData = await campaignsResponse.json();
+        const campaigns = campaignsData.data;
+
+        console.log(`[INFO] Campanhas encontradas: ${campaigns.length}`);
+
+        // Calcular orçamento diário atual (soma dos orçamentos das campanhas ativas)
+        const dailyBudgetCurrent = campaigns.reduce((sum: number, campaign: any) => {
+          if (campaign.status === 'ACTIVE' && campaign.daily_budget) {
+            return sum + (parseFloat(campaign.daily_budget) / 100); // Meta retorna em centavos
+          }
+          return sum;
+        }, 0);
+
+        metaReview.meta_daily_budget_current = dailyBudgetCurrent;
+
+        console.log(`[INFO] Orçamento diário atual: ${dailyBudgetCurrent}`);
+
+        // Calcular orçamento diário ideal
+        const daysInMonth = today.daysInMonth;
+        const daysLeft = daysInMonth - today.day + 1;
+        const budgetLeft = client.meta_ads_budget - totalSpent;
+        const dailyBudgetIdeal = daysLeft > 0 ? budgetLeft / daysLeft : 0;
+
+        metaReview.meta_daily_budget_ideal = dailyBudgetIdeal;
+
+        // Gerar recomendação
+        const budgetDifference = dailyBudgetIdeal - dailyBudgetCurrent;
+        
+        if (Math.abs(budgetDifference) < 1) {
+          metaReview.meta_recommendation = "Manter o orçamento atual";
+        } else if (budgetDifference > 0) {
+          metaReview.meta_recommendation = `Aumentar orçamento diário em R$ ${budgetDifference.toFixed(2)}`;
+        } else {
+          metaReview.meta_recommendation = `Diminuir orçamento diário em R$ ${Math.abs(budgetDifference).toFixed(2)}`;
+        }
+
+        console.log(`[INFO] Recomendação: ${metaReview.meta_recommendation}`);
+
+      } catch (error) {
+        console.error(`[ERROR] Erro ao processar Meta Ads: ${error.message}`);
+        metaReview.meta_error = error.message;
+      }
+
+      // Salvar a revisão no banco de dados
+      const { data: reviewData, error: reviewError } = await supabaseClient
+        .from('daily_budget_reviews')
         .upsert({
           client_id: clientId,
-          review_date: today.toISODate(),
-          meta_budget_available: metaBudget,
-          meta_total_spent: metaSpent,
-          meta_daily_budget_current: metaCurrentDaily,
-          meta_daily_budget_ideal: metaIdealDaily,
-          meta_recommendation: metaRecommendation,
-          google_budget_available: googleBudget,
-          google_total_spent: googleSpent,
-          google_daily_budget_current: googleCurrentDaily,
-          google_daily_budget_ideal: googleIdealDaily,
-          google_avg_last_five_days: googleCurrentDaily * 0.95, // Simulado
-          google_recommendation: googleRecommendation,
-          meta_account_id: client.meta_account_id || "não configurado",
-          google_account_id: client.google_account_id || "não configurado",
-          meta_account_name: "Conta Meta " + client.company_name,
-          google_account_name: "Conta Google " + client.company_name
-        }, {
-          onConflict: "client_id,review_date"
+          review_date: metaReview.review_date,
+          meta_account_id: metaReview.meta_account_id,
+          meta_account_name: metaReview.meta_account_name,
+          meta_budget_available: metaReview.meta_budget_available,
+          meta_total_spent: metaReview.meta_total_spent,
+          meta_daily_budget_current: metaReview.meta_daily_budget_current,
+          meta_daily_budget_ideal: metaReview.meta_daily_budget_ideal,
+          meta_recommendation: metaReview.meta_recommendation,
+          meta_error: metaReview.meta_error,
         })
-        .select()
-        .single();
-      
-      if (reviewError) {
-        throw new Error(`Erro ao salvar revisão: ${reviewError.message}`);
-      }
-      
+        .select();
+
+      if (reviewError) throw reviewError;
+
       return new Response(
-        JSON.stringify({
-          success: true,
+        JSON.stringify({ 
+          success: true, 
           client,
-          review: review || null,
-          message: "Análise concluída com sucesso",
+          review: reviewData[0]
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
         }
       );
     }
 
-    // Método não reconhecido
     return new Response(
-      JSON.stringify({ error: "Método não reconhecido" }),
+      JSON.stringify({ error: 'Método não suportado' }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       }
     );
+
   } catch (error) {
-    console.error("Erro na função:", error);
+    console.error(`[ERROR] ${error.message}`);
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
       }
     );
   }
 });
+
+// Função utilitária para normalizar texto (remover acentos, etc.)
+function normalizeText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .toLowerCase();
+}
