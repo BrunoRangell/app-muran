@@ -1,160 +1,103 @@
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
-import { SimpleAnalysisResult, SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
-import { Info, AlertCircle, Check } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { BarChart4, DollarSign } from "lucide-react";
+import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { CampaignsTable } from "./CampaignsTable";
 
 interface AnalysisResultProps {
   analysis: SimpleAnalysisResult;
+  monthlyBudget: number | null;
 }
 
-export function AnalysisResult({ analysis }: AnalysisResultProps) {
-  // Verificação de segurança para garantir que temos dados para exibir
-  if (!analysis?.meta) {
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro nos dados</AlertTitle>
-        <AlertDescription>
-          Não foi possível processar os dados da análise.
-        </AlertDescription>
-      </Alert>
-    );
-  }
+export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps) {
+  if (!analysis?.meta) return null;
 
-  // Verificar e registrar para depuração os dados das campanhas
-  const hasCampaignsData = analysis.meta.campaigns && analysis.meta.campaigns.length > 0;
+  const totalSpent = analysis.meta.totalSpent || 0;
+  const budgetValue = monthlyBudget || 0;
   
-  if (hasCampaignsData) {
-    console.log("[AnalysisResult] Dados de campanhas recebidos:", 
-      analysis.meta.campaigns.map((c: SimpleMetaCampaign) => ({
-        name: c.name,
-        id: c.id,
-        status: c.status,
-        spend: c.spend,
-        spendType: typeof c.spend
-      }))
-    );
-  }
+  // Calcular porcentagem do orçamento gasto
+  const spentPercentage = budgetValue > 0 
+    ? Math.min(Math.round((totalSpent / budgetValue) * 100), 100) 
+    : 0;
   
-  // Garantir que os valores numéricos são válidos
-  const totalSpent = typeof analysis.meta.totalSpent === 'number' 
-    ? analysis.meta.totalSpent 
-    : parseFloat(String(analysis.meta.totalSpent || "0"));
-  
-  const dailyBudget = typeof analysis.meta.dailyBudget === 'number' 
-    ? analysis.meta.dailyBudget 
-    : parseFloat(String(analysis.meta.dailyBudget || "0"));
-  
-  // Registrar valores para depuração
-  console.log("[AnalysisResult] Valores exibidos:", {
-    totalSpent: totalSpent,
-    formattedTotalSpent: formatCurrency(totalSpent),
-    dailyBudget: dailyBudget,
-    formattedDailyBudget: formatCurrency(dailyBudget),
-    rawTotalSpent: analysis.meta.totalSpent,
-    rawDailyBudget: analysis.meta.dailyBudget
-  });
-  
+  // Calcular orçamento disponível
+  const availableBudget = Math.max(budgetValue - totalSpent, 0);
+
   return (
     <div className="space-y-6">
-      <Alert variant="default" className="bg-blue-50 border-blue-200">
-        <AlertCircle className="h-4 w-4 text-blue-500" />
-        <AlertTitle>Dados reais do Meta Ads</AlertTitle>
-        <AlertDescription>
-          Os dados exibidos abaixo foram obtidos diretamente da API do Meta Ads e refletem os valores
-          reais para o período de {analysis.meta.dateRange.start} a {analysis.meta.dateRange.end}.
-        </AlertDescription>
-      </Alert>
-      
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <Card className="border-l-4 border-l-[#ff6e00]">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Card de Gastos Acumulados */}
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-md flex items-center">
-              Gastos Acumulados (Mês Atual)
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-4 w-4 ml-2 text-gray-400" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs">Valor real obtido diretamente da API do Meta Ads</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart4 className="h-5 w-5 text-muran-primary" />
+              Gastos Acumulados
             </CardTitle>
+            <CardDescription>
+              Valor total gasto em Meta Ads no período
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl font-bold text-muran-primary">
               {formatCurrency(totalSpent)}
             </div>
-            <div className="text-sm text-gray-500 mt-1">
-              Período: {analysis.meta.dateRange.start} a {analysis.meta.dateRange.end}
-            </div>
+            
+            {budgetValue > 0 && (
+              <>
+                <p className="text-sm text-gray-500 mt-1">
+                  {spentPercentage}% do orçamento mensal utilizado
+                </p>
+                <div className="mt-2 w-full bg-gray-100 rounded-full h-2.5">
+                  <div 
+                    className="bg-muran-primary h-2.5 rounded-full" 
+                    style={{ width: `${spentPercentage}%` }}
+                  ></div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
         
-        <Card className="border-l-4 border-l-[#321e32]">
+        {/* Novo Card de Orçamento Mensal Disponível */}
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-md flex items-center">
-              Orçamento Diário Atual
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-4 w-4 ml-2 text-gray-400" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs">Valor configurado na conta do Meta Ads</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-muran-primary" />
+              Orçamento Mensal Disponível
             </CardTitle>
+            <CardDescription>
+              Valor restante do orçamento mensal
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
-              {formatCurrency(dailyBudget)}
+            <div className="text-2xl font-bold text-muran-primary">
+              {formatCurrency(availableBudget)}
             </div>
-            <div className="text-sm text-gray-500 mt-1">
-              Configurado na conta do Meta Ads
-            </div>
+            
+            {budgetValue > 0 && (
+              <>
+                <p className="text-sm text-gray-500 mt-1">
+                  de {formatCurrency(budgetValue)} do orçamento total
+                </p>
+                <div className="mt-2 w-full bg-gray-100 rounded-full h-2.5">
+                  <div 
+                    className="bg-green-500 h-2.5 rounded-full" 
+                    style={{ width: `${100 - spentPercentage}%` }}
+                  ></div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {hasCampaignsData && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-md flex items-center">
-              Campanhas Ativas
-              <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
-                {analysis.meta.campaigns.length} campanhas
-              </span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-4 w-4 ml-2 text-gray-400" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs">Dados reais obtidos da API do Meta Ads</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CampaignsTable campaigns={analysis.meta.campaigns} />
-          </CardContent>
-        </Card>
+      {analysis.meta.campaigns && analysis.meta.campaigns.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold mb-4">Campanhas</h3>
+          <CampaignsTable campaigns={analysis.meta.campaigns} />
+        </div>
       )}
-
-      <Alert variant={analysis.success ? "default" : "destructive"} className="mt-4">
-        {analysis.success ? <Check className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-        <AlertTitle>{analysis.success ? "Análise concluída" : "Erro na análise"}</AlertTitle>
-        <AlertDescription>{analysis.message}</AlertDescription>
-      </Alert>
     </div>
   );
 }
