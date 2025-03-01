@@ -60,13 +60,6 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     
     const date = new Date(reviewDate);
     const daysInMonth = getDaysInMonth(date);
-    const dayOfMonth = date.getDate();
-    const remainingDays = daysInMonth - dayOfMonth + 1; // +1 para incluir o dia atual
-    
-    // Se estivermos no último dia do mês, usar todo o orçamento restante
-    if (remainingDays <= 1) {
-      return monthlyBudget;
-    }
     
     return monthlyBudget / daysInMonth;
   };
@@ -121,6 +114,11 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     review.meta_daily_budget_current || 0,
     idealDailyBudget
   );
+
+  // Calcular o progresso de gastos (o quanto já foi gasto do orçamento mensal)
+  const spentPercentage = client.meta_ads_budget 
+    ? Math.min((review.meta_total_spent / client.meta_ads_budget) * 100, 100)
+    : 0;
 
   return (
     <div className="flex flex-col space-y-6">
@@ -177,11 +175,6 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
             </CardTitle>
             <CardDescription>
               {review?.meta_account_name || "Conta não configurada"}
-              {review?.meta_error && (
-                <div className="mt-1 text-red-500 text-xs">
-                  Erro: {review.meta_error}
-                </div>
-              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -232,25 +225,13 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
                     {formatCurrency(client.meta_ads_budget || 0)}
                   </span>
                   <span>
-                    {client.meta_ads_budget
-                      ? Math.round((review.meta_total_spent / client.meta_ads_budget) * 100)
-                      : 0}
-                    %
+                    {Math.round(spentPercentage)}%
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                   <div
                     className="bg-blue-600 h-2.5 rounded-full"
-                    style={{
-                      width: `${
-                        client.meta_ads_budget
-                          ? Math.min(
-                              (review.meta_total_spent / client.meta_ads_budget) * 100,
-                              100
-                            )
-                          : 0
-                      }%`,
-                    }}
+                    style={{ width: `${spentPercentage}%` }}
                   ></div>
                 </div>
               </div>

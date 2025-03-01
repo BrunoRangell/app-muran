@@ -53,7 +53,7 @@ export const BudgetSetupForm = () => {
       console.log("Enviando atualizações:", updates);
 
       // Usamos upsert para atualizar vários registros de uma vez
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("clients")
         .upsert(updates, { onConflict: 'id' });
 

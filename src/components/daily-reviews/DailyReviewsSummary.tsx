@@ -4,6 +4,29 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, AlertCircle, BarChart3 } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
+import { getDaysInMonth } from 'date-fns';
+
+// Função para calcular o orçamento diário ideal
+const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
+  if (!monthlyBudget) return 0;
+  const daysInMonth = getDaysInMonth(date);
+  return monthlyBudget / daysInMonth;
+};
+
+// Função para gerar recomendação
+const generateRecommendation = (currentDaily: number, idealDaily: number) => {
+  if (!currentDaily || !idealDaily) return null;
+  
+  const percentDifference = ((currentDaily - idealDaily) / idealDaily) * 100;
+  
+  if (percentDifference < -10) {
+    return `Aumentar o orçamento diário em ${Math.abs(Math.round(percentDifference))}%`;
+  } else if (percentDifference > 10) {
+    return `Diminuir o orçamento diário em ${Math.round(percentDifference)}%`;
+  } else {
+    return "Manter o orçamento diário atual";
+  }
+};
 
 export const DailyReviewsSummary = () => {
   const { data, isLoading } = useQuery({
@@ -11,16 +34,37 @@ export const DailyReviewsSummary = () => {
     queryFn: async () => {
       const today = new Date().toISOString().split("T")[0];
       
-      const { data, error } = await supabase
+      // Buscamos as revisões de hoje
+      const { data: reviews, error: reviewsError } = await supabase
         .from("daily_budget_reviews")
         .select(`
           *,
-          clients(company_name)
+          clients(company_name, meta_ads_budget)
         `)
         .eq("review_date", today);
 
-      if (error) throw error;
-      return data;
+      if (reviewsError) throw reviewsError;
+      
+      // Enriquecemos os dados com cálculos dinâmicos
+      const enrichedReviews = reviews.map(review => {
+        const idealDaily = calculateIdealDailyBudget(
+          review.clients?.meta_ads_budget || 0,
+          new Date(review.review_date)
+        );
+        
+        const recommendation = generateRecommendation(
+          review.meta_daily_budget_current || 0,
+          idealDaily
+        );
+        
+        return {
+          ...review,
+          idealDailyBudget: idealDaily,
+          recommendation
+        };
+      });
+      
+      return enrichedReviews;
     },
   });
 
@@ -60,20 +104,16 @@ export const DailyReviewsSummary = () => {
   }
 
   // Agrupar recomendações
-  const metaRecommendations = data.filter(r => r.meta_recommendation);
-  const googleRecommendations = data.filter(r => r.google_recommendation);
-  
-  const metaIncreases = metaRecommendations.filter(r => r.meta_recommendation.includes("Aumentar"));
-  const metaDecreases = metaRecommendations.filter(r => r.meta_recommendation.includes("Diminuir"));
-  
-  const googleIncreases = googleRecommendations.filter(r => r.google_recommendation.includes("Aumentar"));
-  const googleDecreases = googleRecommendations.filter(r => r.google_recommendation.includes("Diminuir"));
+  const increases = data.filter(r => r.recommendation?.includes("Aumentar")).length;
+  const decreases = data.filter(r => r.recommendation?.includes("Diminuir")).length;
+  const maintains = data.filter(r => r.recommendation?.includes("Manter")).length;
 
   // Calcular totais
-  const totalMetaBudget = data.reduce((sum, item) => sum + (item.meta_budget_available || 0), 0);
-  const totalGoogleBudget = data.reduce((sum, item) => sum + (item.google_budget_available || 0), 0);
-  const totalMetaSpent = data.reduce((sum, item) => sum + (item.meta_total_spent || 0), 0);
-  const totalGoogleSpent = data.reduce((sum, item) => sum + (item.google_total_spent || 0), 0);
+  const totalMonthlyBudget = data.reduce((sum, item) => sum + (item.clients?.meta_ads_budget || 0), 0);
+  const totalSpent = data.reduce((sum, item) => sum + (item.meta_total_spent || 0), 0);
+  const spentPercentage = totalMonthlyBudget > 0 
+    ? Math.min((totalSpent / totalMonthlyBudget) * 100, 100)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -89,59 +129,19 @@ export const DailyReviewsSummary = () => {
             <CardDescription>Orçamento e gasto</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalMetaSpent)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalSpent)}</div>
             <p className="text-sm text-gray-500">
-              de {formatCurrency(totalMetaBudget)} disponível
+              de {formatCurrency(totalMonthlyBudget)} disponível
             </p>
             <div className="mt-2 text-sm flex items-center gap-1">
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-blue-500 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      (totalMetaSpent / totalMetaBudget) * 100,
-                      100
-                    )}%`,
-                  }}
+                  style={{ width: `${spentPercentage}%` }}
                 ></div>
               </div>
               <span>
-                {totalMetaBudget > 0
-                  ? Math.round((totalMetaSpent / totalMetaBudget) * 100)
-                  : 0}
-                %
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Google Ads</CardTitle>
-            <CardDescription>Orçamento e gasto</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalGoogleSpent)}</div>
-            <p className="text-sm text-gray-500">
-              de {formatCurrency(totalGoogleBudget)} disponível
-            </p>
-            <div className="mt-2 text-sm flex items-center gap-1">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-yellow-500 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      (totalGoogleSpent / totalGoogleBudget) * 100,
-                      100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-              <span>
-                {totalGoogleBudget > 0
-                  ? Math.round((totalGoogleSpent / totalGoogleBudget) * 100)
-                  : 0}
-                %
+                {Math.round(spentPercentage)}%
               </span>
             </div>
           </CardContent>
@@ -157,11 +157,9 @@ export const DailyReviewsSummary = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              <div className="text-sm">
-                <span className="font-medium">Meta Ads:</span> {metaIncreases.length} clientes
-              </div>
-              <div className="text-sm">
-                <span className="font-medium">Google Ads:</span> {googleIncreases.length} clientes
+              <div className="text-2xl font-bold">{increases}</div>
+              <div className="text-sm text-gray-500">
+                clientes precisam de orçamento maior
               </div>
             </div>
           </CardContent>
@@ -177,13 +175,24 @@ export const DailyReviewsSummary = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              <div className="text-sm">
-                <span className="font-medium">Meta Ads:</span> {metaDecreases.length} clientes
-              </div>
-              <div className="text-sm">
-                <span className="font-medium">Google Ads:</span> {googleDecreases.length} clientes
+              <div className="text-2xl font-bold">{decreases}</div>
+              <div className="text-sm text-gray-500">
+                clientes com orçamento elevado
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Analisados</CardTitle>
+            <CardDescription>Clientes revisados hoje</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.length}</div>
+            <p className="text-sm text-gray-500">
+              {maintains} com orçamento adequado
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -192,35 +201,28 @@ export const DailyReviewsSummary = () => {
       <div className="rounded-lg border overflow-hidden">
         <div className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 grid grid-cols-12">
           <div className="col-span-4">Cliente</div>
-          <div className="col-span-4">Meta Ads</div>
-          <div className="col-span-4">Google Ads</div>
+          <div className="col-span-2">Orçamento Mensal</div>
+          <div className="col-span-2">Orçamento Diário</div>
+          <div className="col-span-2">Ideal Diário</div>
+          <div className="col-span-2">Recomendação</div>
         </div>
         {data.map((review) => (
           <div key={review.id} className="border-t hover:bg-gray-50 transition-colors">
             <div className="px-4 py-3 text-sm grid grid-cols-12 items-center">
               <div className="col-span-4 font-medium">{review.clients?.company_name}</div>
-              <div className="col-span-4 flex items-center gap-1">
-                {review.meta_recommendation?.includes("Aumentar") ? (
+              <div className="col-span-2">{formatCurrency(review.clients?.meta_ads_budget || 0)}</div>
+              <div className="col-span-2">{formatCurrency(review.meta_daily_budget_current || 0)}</div>
+              <div className="col-span-2">{formatCurrency(review.idealDailyBudget || 0)}</div>
+              <div className="col-span-2 flex items-center gap-1">
+                {review.recommendation?.includes("Aumentar") ? (
                   <TrendingUp className="text-green-500" size={16} />
-                ) : review.meta_recommendation?.includes("Diminuir") ? (
+                ) : review.recommendation?.includes("Diminuir") ? (
                   <TrendingDown className="text-red-500" size={16} />
                 ) : (
                   <span>-</span>
                 )}
                 <span className="truncate">
-                  {review.meta_recommendation || "Não disponível"}
-                </span>
-              </div>
-              <div className="col-span-4 flex items-center gap-1">
-                {review.google_recommendation?.includes("Aumentar") ? (
-                  <TrendingUp className="text-green-500" size={16} />
-                ) : review.google_recommendation?.includes("Diminuir") ? (
-                  <TrendingDown className="text-red-500" size={16} />
-                ) : (
-                  <span>-</span>
-                )}
-                <span className="truncate">
-                  {review.google_recommendation || "Não disponível"}
+                  {review.recommendation?.split(' ')[0] || "Não disponível"}
                 </span>
               </div>
             </div>

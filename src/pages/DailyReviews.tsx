@@ -18,7 +18,6 @@ type Client = {
   id: string;
   company_name: string;
   meta_ads_budget: number;
-  google_ads_budget: number;
 };
 
 const DailyReviews = () => {
@@ -97,6 +96,18 @@ const DailyReviews = () => {
     }
   }, [selectedClient, activeTab]);
 
+  // Função para gerar recomendação dinâmica na listagem
+  const getRecommendationIcon = (recommendationText: string | null) => {
+    if (!recommendationText) return null;
+    
+    if (recommendationText.includes("Aumentar")) {
+      return <TrendingUp className="text-green-500" size={16} />;
+    } else if (recommendationText.includes("Diminuir")) {
+      return <TrendingDown className="text-red-500" size={16} />;
+    }
+    return null;
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -171,9 +182,9 @@ const DailyReviews = () => {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">{client.company_name}</CardTitle>
                     <CardDescription>
-                      {(client.meta_ads_budget > 0 || client.google_ads_budget > 0)
-                        ? "Orçamentos configurados"
-                        : "Orçamentos não configurados"}
+                      {client.meta_ads_budget > 0
+                        ? "Orçamento configurado"
+                        : "Orçamento não configurado"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pb-2">
@@ -182,21 +193,12 @@ const DailyReviews = () => {
                         Meta Ads: {formatCurrency(client.meta_ads_budget)}
                       </p>
                     )}
-                    {client.google_ads_budget > 0 && (
-                      <p className="text-sm">
-                        Google Ads: {formatCurrency(client.google_ads_budget)}
-                      </p>
-                    )}
                   </CardContent>
                   <CardFooter>
                     <Button
                       onClick={() => handleAnalyzeClient(client.id)}
                       className="w-full"
-                      variant={
-                        client.meta_ads_budget > 0 || client.google_ads_budget > 0
-                          ? "default"
-                          : "outline"
-                      }
+                      variant={client.meta_ads_budget > 0 ? "default" : "outline"}
                       disabled={analyzeMutation.isPending}
                     >
                       {analyzeMutation.isPending && analyzeMutation.variables === client.id ? (
@@ -206,7 +208,7 @@ const DailyReviews = () => {
                         </>
                       ) : (
                         <>
-                          {client.meta_ads_budget > 0 || client.google_ads_budget > 0
+                          {client.meta_ads_budget > 0
                             ? "Analisar orçamentos"
                             : "Configurar orçamentos"}
                           <ArrowRight className="ml-2" size={16} />
@@ -245,11 +247,10 @@ const DailyReviews = () => {
               </Card>
             ) : (
               <div className="rounded-lg border overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 grid grid-cols-12">
+                <div className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 grid grid-cols-8">
                   <div className="col-span-4">Cliente</div>
                   <div className="col-span-2">Data</div>
-                  <div className="col-span-3">Meta Ads</div>
-                  <div className="col-span-3">Google Ads</div>
+                  <div className="col-span-2">Orçamento Diário</div>
                 </div>
                 {reviews?.map((review) => (
                   <div
@@ -260,34 +261,13 @@ const DailyReviews = () => {
                       setActiveTab("client-details");
                     }}
                   >
-                    <div className="px-4 py-3 text-sm grid grid-cols-12 items-center">
+                    <div className="px-4 py-3 text-sm grid grid-cols-8 items-center">
                       <div className="col-span-4 font-medium">{review.clients?.company_name}</div>
                       <div className="col-span-2 text-gray-500">
                         {new Date(review.review_date).toLocaleDateString("pt-BR")}
                       </div>
-                      <div className="col-span-3 flex items-center gap-1">
-                        {review.meta_recommendation?.includes("Aumentar") ? (
-                          <TrendingUp className="text-green-500" size={16} />
-                        ) : review.meta_recommendation?.includes("Diminuir") ? (
-                          <TrendingDown className="text-red-500" size={16} />
-                        ) : (
-                          <span>-</span>
-                        )}
-                        <span className="truncate">
-                          {review.meta_recommendation || "Não disponível"}
-                        </span>
-                      </div>
-                      <div className="col-span-3 flex items-center gap-1">
-                        {review.google_recommendation?.includes("Aumentar") ? (
-                          <TrendingUp className="text-green-500" size={16} />
-                        ) : review.google_recommendation?.includes("Diminuir") ? (
-                          <TrendingDown className="text-red-500" size={16} />
-                        ) : (
-                          <span>-</span>
-                        )}
-                        <span className="truncate">
-                          {review.google_recommendation || "Não disponível"}
-                        </span>
+                      <div className="col-span-2 flex items-center gap-1">
+                        {formatCurrency(review.meta_daily_budget_current || 0)}
                       </div>
                     </div>
                   </div>

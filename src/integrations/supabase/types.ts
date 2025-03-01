@@ -194,21 +194,10 @@ export type Database = {
         Row: {
           client_id: string | null
           created_at: string | null
-          google_account_id: string | null
-          google_account_name: string | null
-          google_avg_last_five_days: number | null
-          google_budget_available: number | null
-          google_daily_budget_current: number | null
-          google_daily_budget_ideal: number | null
-          google_recommendation: string | null
-          google_total_spent: number | null
           id: number
           meta_account_id: string | null
           meta_account_name: string | null
-          meta_budget_available: number | null
           meta_daily_budget_current: number | null
-          meta_daily_budget_ideal: number | null
-          meta_recommendation: string | null
           meta_total_spent: number | null
           review_date: string
           updated_at: string | null
@@ -216,21 +205,10 @@ export type Database = {
         Insert: {
           client_id?: string | null
           created_at?: string | null
-          google_account_id?: string | null
-          google_account_name?: string | null
-          google_avg_last_five_days?: number | null
-          google_budget_available?: number | null
-          google_daily_budget_current?: number | null
-          google_daily_budget_ideal?: number | null
-          google_recommendation?: string | null
-          google_total_spent?: number | null
           id?: number
           meta_account_id?: string | null
           meta_account_name?: string | null
-          meta_budget_available?: number | null
           meta_daily_budget_current?: number | null
-          meta_daily_budget_ideal?: number | null
-          meta_recommendation?: string | null
           meta_total_spent?: number | null
           review_date?: string
           updated_at?: string | null
@@ -238,21 +216,10 @@ export type Database = {
         Update: {
           client_id?: string | null
           created_at?: string | null
-          google_account_id?: string | null
-          google_account_name?: string | null
-          google_avg_last_five_days?: number | null
-          google_budget_available?: number | null
-          google_daily_budget_current?: number | null
-          google_daily_budget_ideal?: number | null
-          google_recommendation?: string | null
-          google_total_spent?: number | null
           id?: number
           meta_account_id?: string | null
           meta_account_name?: string | null
-          meta_budget_available?: number | null
           meta_daily_budget_current?: number | null
-          meta_daily_budget_ideal?: number | null
-          meta_recommendation?: string | null
           meta_total_spent?: number | null
           review_date?: string
           updated_at?: string | null
