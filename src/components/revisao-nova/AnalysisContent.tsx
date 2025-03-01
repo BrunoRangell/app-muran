@@ -117,12 +117,18 @@ export function AnalysisContent({
 
   // Verificação adicional para garantir que meta existe no analysis antes de renderizar AnalysisResult
   const canShowAnalysisResult = Boolean(analysis && analysis.meta);
+  
+  // Obter o orçamento mensal do cliente, se disponível
+  const monthlyBudget = client?.meta_ads_budget || null;
 
   return (
     <div className="space-y-6">
       {/* Verificação extra para garantir que o analysis tem todos os dados necessários */}
       {canShowAnalysisResult && (
-        <AnalysisResult analysis={analysis} />
+        <AnalysisResult 
+          analysis={analysis} 
+          monthlyBudget={monthlyBudget}
+        />
       )}
 
       <Tabs defaultValue="details" className="mt-6">
