@@ -122,7 +122,7 @@ export const useMetaAdsAnalysis = () => {
         }
         
         // Converter explicitamente para string com try/catch para capturar erros de serialização
-        let payloadString;
+        let payloadString = "";
         try {
           payloadString = JSON.stringify(payload);
           
