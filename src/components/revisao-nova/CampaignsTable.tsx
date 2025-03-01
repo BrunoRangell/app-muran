@@ -1,5 +1,5 @@
 
-import { Campaign } from "@/components/daily-reviews/hooks/types";
+import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
 import { formatCurrency } from "@/utils/formatters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,7 @@ import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CampaignsTableProps {
-  campaigns: Campaign[];
+  campaigns: SimpleMetaCampaign[];
 }
 
 export function CampaignsTable({ campaigns }: CampaignsTableProps) {
