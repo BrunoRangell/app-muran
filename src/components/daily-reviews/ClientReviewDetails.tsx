@@ -1,13 +1,17 @@
 
-import { ErrorState } from "@/components/clients/components/ErrorState";
-import { ClientHeader } from "./client-details/ClientHeader";
-import { LoadingState } from "./client-details/LoadingState";
-import { ClientNotFound } from "./client-details/ClientNotFound";
-import { ClientSummaryCard } from "./client-details/ClientSummaryCard";
-import { BudgetCard } from "./client-details/BudgetCard";
-import { RecommendationCard } from "./client-details/RecommendationCard";
-import { ReviewHistoryTable } from "./client-details/ReviewHistoryTable";
-import { useClientReviewDetails } from "./client-details/useClientReviewDetails";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { ClientHeader } from "@/components/daily-reviews/client-details/ClientHeader";
+import { ClientSummaryCard } from "@/components/daily-reviews/client-details/ClientSummaryCard";
+import { BudgetCard } from "@/components/daily-reviews/client-details/BudgetCard";
+import { RecommendationCard } from "@/components/daily-reviews/client-details/RecommendationCard";
+import { ReviewHistoryTable } from "@/components/daily-reviews/client-details/ReviewHistoryTable";
+import { LoadingState } from "@/components/daily-reviews/client-details/LoadingState";
+import { ClientNotFound } from "@/components/daily-reviews/client-details/ClientNotFound";
+import { useClientReviewDetails } from "@/components/daily-reviews/client-details/useClientReviewDetails";
+import { useClientAnalysis } from "./hooks/useClientAnalysis";
+import { useToast } from "@/hooks/use-toast";
 
 interface ClientReviewDetailsProps {
   clientId: string;
@@ -15,6 +19,9 @@ interface ClientReviewDetailsProps {
 }
 
 export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsProps) => {
+  const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const {
     client,
     latestReview,
@@ -23,44 +30,73 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     idealDailyBudget,
     isLoading,
     isLoadingHistory,
-    hasError
+    hasError,
+    refetchData
   } = useClientReviewDetails(clientId);
 
-  if (hasError) {
-    return (
-      <div className="space-y-6">
-        <ClientHeader onBack={onBack} />
-        <ErrorState />
-      </div>
-    );
+  // Importamos o hook useClientAnalysis para analisar o cliente
+  const { analyzeMutation } = useClientAnalysis((data) => {
+    toast({
+      title: "Análise concluída",
+      description: `Análise do cliente ${client?.company_name} atualizada com sucesso.`,
+    });
+    
+    // Após análise bem-sucedida, atualizamos os dados
+    refetchData();
+    setIsRefreshing(false);
+  });
+
+  const handleRefreshAnalysis = () => {
+    if (!client) return;
+    
+    setIsRefreshing(true);
+    analyzeMutation.mutate(clientId);
+  };
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (hasError || !client) {
+    return <ClientNotFound onBack={onBack} />;
   }
 
   return (
-    <div className="space-y-6">
-      <ClientHeader onBack={onBack} />
+    <div className="space-y-4">
+      <div className="flex items-center mb-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mr-2" 
+          onClick={onBack}
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Voltar
+        </Button>
+      </div>
 
-      {isLoading ? (
-        <LoadingState />
-      ) : !client ? (
-        <ClientNotFound />
-      ) : (
-        <>
-          <ClientSummaryCard client={client} latestReview={latestReview} />
+      <ClientHeader 
+        client={client} 
+        onRefreshAnalysis={handleRefreshAnalysis}
+        isRefreshing={isRefreshing || analyzeMutation.isPending}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <BudgetCard 
-              latestReview={latestReview} 
-              idealDailyBudget={idealDailyBudget} 
-            />
-            <RecommendationCard recommendation={recommendation} />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <ClientSummaryCard client={client} />
+        
+        <BudgetCard 
+          latestReview={latestReview}
+          client={client} 
+          idealDailyBudget={idealDailyBudget}
+        />
+        
+        <RecommendationCard recommendation={recommendation} />
+      </div>
 
-          <ReviewHistoryTable 
-            isLoading={isLoadingHistory} 
-            reviewHistory={reviewHistory} 
-          />
-        </>
-      )}
+      <ReviewHistoryTable 
+        isLoading={isLoadingHistory} 
+        reviewHistory={reviewHistory} 
+      />
     </div>
   );
 };

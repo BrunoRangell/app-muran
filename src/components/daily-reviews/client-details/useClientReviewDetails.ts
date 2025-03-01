@@ -1,12 +1,20 @@
 
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { getDaysInMonth } from 'date-fns';
 
 export const useClientReviewDetails = (clientId: string) => {
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [idealDailyBudget, setIdealDailyBudget] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  // Função para recarregar os dados
+  const refetchData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
+    queryClient.invalidateQueries({ queryKey: ["latest-review", clientId] });
+    queryClient.invalidateQueries({ queryKey: ["review-history", clientId] });
+  }, [queryClient, clientId]);
 
   // Buscar dados do cliente
   const { data: client, isLoading: isLoadingClient, error: clientError } = useQuery({
@@ -99,6 +107,7 @@ export const useClientReviewDetails = (clientId: string) => {
     idealDailyBudget,
     isLoading,
     isLoadingHistory,
-    hasError
+    hasError,
+    refetchData
   };
 };

@@ -447,6 +447,25 @@ export type Database = {
         }
         Returns: string
       }
+      insert_daily_budget_review: {
+        Args: {
+          p_client_id: string
+          p_review_date: string
+          p_meta_daily_budget_current: number
+          p_meta_total_spent: number
+          p_meta_account_id: string
+          p_meta_account_name: string
+        }
+        Returns: number
+      }
+      update_daily_budget_review: {
+        Args: {
+          p_id: number
+          p_meta_daily_budget_current: number
+          p_meta_total_spent: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       cost_category:
