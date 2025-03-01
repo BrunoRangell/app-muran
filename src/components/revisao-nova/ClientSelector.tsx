@@ -1,81 +1,145 @@
 
-import { useState, useEffect } from "react";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/lib/supabase";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-interface Client {
-  id: string;
-  company_name: string;
-  meta_account_id: string | null;
-}
 
 interface ClientSelectorProps {
   onClientSelect: (clientId: string) => void;
 }
 
-export const ClientSelector = ({ onClientSelect }: ClientSelectorProps) => {
-  const [selectedClient, setSelectedClient] = useState<string>("");
+export function ClientSelector({ onClientSelect }: ClientSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedClientName, setSelectedClientName] = useState("");
+  const [clients, setClients] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingClientId, setLoadingClientId] = useState<string | null>(null);
 
-  const { data: clients, isLoading, error } = useQuery({
-    queryKey: ["metaAdsClients"],
-    queryFn: async () => {
+  const fetchClients = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
       const { data, error } = await supabase
         .from("clients")
         .select("id, company_name, meta_account_id")
-        .eq("status", "active")
-        .order("company_name", { ascending: true });
-
-      if (error) throw new Error(error.message);
+        .eq("is_active", true)
+        .order("company_name");
       
-      // Filtrar apenas clientes que têm ID do Meta Ads configurado
-      return (data as Client[]).filter(client => !!client.meta_account_id);
+      if (error) throw error;
+      
+      // Filtrar apenas clientes com ID do Meta Ads configurado
+      const clientsWithMeta = data.filter(client => client.meta_account_id);
+      setClients(clientsWithMeta);
+    } catch (error) {
+      console.error("Erro ao buscar clientes:", error);
+    } finally {
+      setIsLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
-    if (selectedClient) {
-      onClientSelect(selectedClient);
-    }
-  }, [selectedClient, onClientSelect]);
+    fetchClients();
+  }, [fetchClients]);
 
-  if (error) {
-    return (
-      <Alert variant="destructive" className="mb-4">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Erro ao carregar clientes</AlertTitle>
-        <AlertDescription>{(error as Error).message}</AlertDescription>
-      </Alert>
-    );
-  }
+  const handleSelect = useCallback((clientId: string, clientName: string) => {
+    setSelectedClientId(clientId);
+    setSelectedClientName(clientName);
+    setOpen(false);
+  }, []);
+
+  const handleAnalyzeClick = useCallback(() => {
+    if (!selectedClientId) return;
+    
+    setLoadingClientId(selectedClientId);
+    onClientSelect(selectedClientId);
+    
+    // Limpar o estado de loading após um tempo para evitar estados de UI presos
+    setTimeout(() => {
+      setLoadingClientId(null);
+    }, 5000);
+  }, [selectedClientId, onClientSelect]);
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor="client">Cliente</Label>
-      <Select 
-        value={selectedClient} 
-        onValueChange={setSelectedClient}
-        disabled={isLoading}
-      >
-        <SelectTrigger id="client" className="w-full">
-          <SelectValue placeholder="Selecione um cliente" />
-        </SelectTrigger>
-        <SelectContent>
-          {clients?.length === 0 && (
-            <SelectItem value="empty" disabled>
-              Nenhum cliente com Meta Ads configurado
-            </SelectItem>
-          )}
-          {clients?.map((client) => (
-            <SelectItem key={client.id} value={client.id}>
-              {client.company_name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Card>
+      <CardContent className="pt-4">
+        <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 items-start">
+          <div className="flex-1 w-full">
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-full justify-between"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <span className="flex items-center">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Carregando clientes...
+                    </span>
+                  ) : selectedClientName ? (
+                    selectedClientName
+                  ) : (
+                    "Selecione um cliente..."
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar cliente..." />
+                  <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandList>
+                      {clients.map((client) => (
+                        <CommandItem
+                          key={client.id}
+                          value={client.company_name}
+                          onSelect={() => handleSelect(client.id, client.company_name)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedClientId === client.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {client.company_name}
+                          {client.meta_account_id && (
+                            <span className="ml-2 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                              Meta ID: {client.meta_account_id}
+                            </span>
+                          )}
+                        </CommandItem>
+                      ))}
+                    </CommandList>
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+          
+          <Button 
+            onClick={handleAnalyzeClick}
+            disabled={!selectedClientId || loadingClientId === selectedClientId}
+            className="bg-[#ff6e00] hover:bg-[#e56500] md:w-auto w-full"
+          >
+            {loadingClientId === selectedClientId ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              "Analisar"
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
-};
+}

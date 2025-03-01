@@ -1,12 +1,10 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClientSelector } from "@/components/revisao-nova/ClientSelector";
 import { ClientInfo } from "@/components/revisao-nova/ClientInfo";
 import { AnalysisContent } from "@/components/revisao-nova/AnalysisContent";
-import { ErrorContent } from "@/components/revisao-nova/ErrorContent";
-import { ApiTestTools } from "@/components/revisao-nova/ApiTestTools";
-import { useMetaAdsAnalysis } from "@/components/revisao-nova/useMetaAdsAnalysis";
+import { useMetaAdsAnalysis } from "@/components/revisao-nova/hooks/useMetaAdsAnalysis";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 
 export default function RevisaoNova() {
@@ -24,20 +22,20 @@ export default function RevisaoNova() {
     testEdgeFunction
   } = useMetaAdsAnalysis();
 
-  const handleClientSelect = (clientId: string) => {
+  const handleClientSelect = useCallback((clientId: string) => {
     fetchAnalysis(clientId);
-  };
+  }, [fetchAnalysis]);
 
   // Funções para gerenciar funcionalidades adicionais
-  const handleOpenGraphExplorer = () => {
+  const handleOpenGraphExplorer = useCallback(() => {
     window.open("https://developers.facebook.com/tools/explorer/", "_blank");
-  };
+  }, []);
 
-  const handleMakeSampleRequest = () => {
+  const handleMakeSampleRequest = useCallback(() => {
     if (client?.meta_account_id) {
       window.open(`https://developers.facebook.com/tools/explorer/?method=GET&path=act_${client.meta_account_id}/campaigns`, "_blank");
     }
-  };
+  }, [client]);
 
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -54,17 +52,16 @@ export default function RevisaoNova() {
         <TabsContent value="analysis" className="space-y-6">
           <ClientSelector onClientSelect={handleClientSelect} />
           
-          <ClientInfo client={client} />
-          
-          {isLoading && <div className="animate-pulse mt-4 h-8 w-full max-w-md rounded bg-gray-200" />}
+          {client && <ClientInfo client={client} />}
           
           {error && (
-            <ErrorContent 
-              error={error} 
+            <AnalysisContent 
+              isLoading={isLoading}
+              error={error}
+              analysis={null}
+              client={client}
               rawApiResponse={rawApiResponse}
               debugInfo={debugInfo}
-              isLoading={isLoading}
-              client={client}
               testMetaToken={testMetaToken}
               testEdgeFunction={testEdgeFunction}
               handleOpenGraphExplorer={handleOpenGraphExplorer}
@@ -72,10 +69,10 @@ export default function RevisaoNova() {
             />
           )}
           
-          {analysis && (
+          {!error && analysis && (
             <AnalysisContent 
               isLoading={isLoading}
-              error={error}
+              error={null}
               analysis={analysis}
               client={client}
               rawApiResponse={rawApiResponse}
@@ -85,6 +82,14 @@ export default function RevisaoNova() {
               handleOpenGraphExplorer={handleOpenGraphExplorer}
               handleMakeSampleRequest={handleMakeSampleRequest}
             />
+          )}
+          
+          {!error && !analysis && !isLoading && (
+            <div className="text-center p-12 border rounded-lg bg-gray-50">
+              <p className="text-lg text-gray-600">
+                Selecione um cliente acima e clique em "Analisar" para ver os dados reais do Meta Ads.
+              </p>
+            </div>
           )}
         </TabsContent>
         

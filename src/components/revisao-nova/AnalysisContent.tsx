@@ -6,6 +6,7 @@ import { AnalysisResult } from "./AnalysisResult";
 import { DataSource } from "./DataSource";
 import { DebugInfo } from "./DebugInfo";
 import { ErrorContent } from "./ErrorContent";
+import { useEffect, useState } from "react";
 
 interface AnalysisContentProps {
   isLoading: boolean;
@@ -32,7 +33,32 @@ export function AnalysisContent({
   handleOpenGraphExplorer,
   handleMakeSampleRequest
 }: AnalysisContentProps) {
-  if (isLoading) {
+  // Estado local para evitar atualizações muito frequentes
+  const [isActuallyLoading, setIsActuallyLoading] = useState(false);
+  
+  // Usar useEffect para debounce do estado de loading
+  useEffect(() => {
+    let timer: any;
+    
+    if (isLoading) {
+      // Defina um pequeno delay para mostrar o estado de carregamento
+      timer = setTimeout(() => {
+        setIsActuallyLoading(true);
+      }, 100);
+    } else {
+      // Adicione um pequeno delay para desativar o loading
+      timer = setTimeout(() => {
+        setIsActuallyLoading(false);
+      }, 300);
+    }
+    
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isLoading]);
+
+  // Renderização do estado de carregamento
+  if (isActuallyLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12">
         <Loader className="h-12 w-12 animate-spin text-[#ff6e00] mb-4" />

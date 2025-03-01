@@ -1,55 +1,66 @@
-import { useState } from "react";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useMetaTokenService } from "./useMetaTokenService";
-import { useEdgeFunctionService } from "./useEdgeFunctionService";
-import { useMetaClientService } from "./useMetaClientService";
-import { useMetaResponseProcessor } from "./useMetaResponseProcessor";
-import { DateTime } from "luxon";
+import { useMetaTokenService } from "./hooks/useMetaTokenService";
+import { useEdgeFunctionService } from "./hooks/useEdgeFunctionService";
+import { useMetaClientService } from "./hooks/useMetaClientService";
+import { useMetaResponseProcessor } from "./hooks/useMetaResponseProcessor";
 
 export const useMetaAdsAnalysis = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isFetchingRef = useRef(false); // Ref para controlar chamadas simultâneas
   const { toast } = useToast();
 
   const { fetchMetaToken, testMetaToken } = useMetaTokenService();
   const { invokeEdgeFunction, testEdgeFunction } = useEdgeFunctionService();
-  const { client, fetchClientData } = useMetaClientService();
+  const { client, fetchClientData, prepareDateRangeForCurrentMonth } = useMetaClientService();
   const { 
     analysis, 
     rawApiResponse, 
     debugInfo, 
     setDebugInfo,
     handleSuccessfulResponse, 
-    processErrorDetails 
+    processErrorDetails,
+    setAnalysis
   } = useMetaResponseProcessor();
 
-  const prepareCurrentMonthRange = () => {
-    const today = DateTime.now().setZone("America/Sao_Paulo");
-    return {
-      startDate: today.startOf("month").toISODate(),
-      endDate: today.endOf("month").toISODate(),
-      today: today.toISODate()
+  // Resetar o estado quando o componente é desmontado
+  useEffect(() => {
+    return () => {
+      setIsLoading(false);
+      setError(null);
+      setAnalysis(null);
+      isFetchingRef.current = false;
     };
-  };
+  }, []);
 
-  const fetchAnalysis = async (clientId: string) => {
+  const fetchAnalysis = useCallback(async (clientId: string) => {
+    // Evitar múltiplas chamadas simultâneas
+    if (isFetchingRef.current) {
+      console.log("[useMetaAdsAnalysis] Chamada ignorada, já existe uma em andamento");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
+    isFetchingRef.current = true;
 
     try {
       console.log("[useMetaAdsAnalysis] Iniciando análise para cliente:", clientId);
       
       const clientData = await fetchClientData(clientId);
-      const token = await fetchMetaToken();
       
+      const token = await fetchMetaToken();
       if (!token) {
         throw new Error("Token do Meta Ads não encontrado ou não configurado");
       }
       
-      const { startDate, endDate, today } = prepareCurrentMonthRange();
-      console.log("[DEBUG] Período do mês atual:", { startDate, endDate });
-
-      try {        
+      const { startDate, endDate, today } = prepareDateRangeForCurrentMonth();
+      
+      try {
+        console.log("[useMetaAdsAnalysis] Tentando invocar função Edge...");
+        
         const payload = {
           method: "getMetaAdsData",
           clientId,
@@ -57,18 +68,23 @@ export const useMetaAdsAnalysis = () => {
           accessToken: token,
           clientName: clientData.company_name,
           metaAccountId: clientData.meta_account_id,
-          endpoint: "insights",
-          fields: "spend,campaign_id",
-          dateRange: { start: startDate, end: endDate },
-          time_range: JSON.stringify({ since: startDate, until: endDate }),
+          dateRange: {
+            start: startDate,
+            end: endDate
+          },
+          fetchSeparateInsights: true, // Sinaliza para a função edge buscar insights separadamente
           debug: true
         };
         
         const { result, error: edgeError } = await invokeEdgeFunction(payload);
-        console.log("[DEBUG] Resposta Bruta da API:", JSON.stringify(result, null, 2));
         
-        if (edgeError) throw edgeError;
-        if (!result?.data) throw new Error("Dados da API ausentes ou mal formatados");
+        if (edgeError) {
+          throw edgeError;
+        }
+        
+        if (!result) {
+          throw new Error("A função retornou dados vazios ou inválidos");
+        }
         
         handleSuccessfulResponse(result, token);
       } catch (edgeError: any) {
@@ -97,7 +113,9 @@ export const useMetaAdsAnalysis = () => {
       }
       
     } catch (err) {
+      // Obter os detalhes do erro
       const errorData = processErrorDetails(err);
+      // Usar apenas a mensagem de erro para o estado e o toast
       setError(errorData.message);
       
       toast({
@@ -107,8 +125,9 @@ export const useMetaAdsAnalysis = () => {
       });
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, [fetchClientData, fetchMetaToken, invokeEdgeFunction, prepareDateRangeForCurrentMonth, handleSuccessfulResponse, processErrorDetails, setDebugInfo, toast]);
 
   return {
     client,
