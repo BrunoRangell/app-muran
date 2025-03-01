@@ -89,7 +89,7 @@ export const useMetaAdsAnalysis = () => {
       
       console.log("[useMetaAdsAnalysis] Período de análise:", formattedStartDate, "a", formattedEndDate);
       
-      // 4. Tentar primeiro o método direto se o Edge Function falhar
+      // 4. Chamar a função Edge com melhorias no tratamento do payload
       try {
         console.log("[useMetaAdsAnalysis] Tentando invocar função Edge...");
         
@@ -108,16 +108,40 @@ export const useMetaAdsAnalysis = () => {
           debug: true // Solicitar informações extras de debug
         };
         
-        console.log("[useMetaAdsAnalysis] Enviando payload para Edge Function:", JSON.stringify({
+        // Substituir o token para o log para evitar expor dados sensíveis
+        const payloadForLog = {
           ...payload,
           accessToken: "***TOKEN OCULTADO***"
-        }));
+        };
+        
+        console.log("[useMetaAdsAnalysis] Enviando payload para Edge Function:", JSON.stringify(payloadForLog));
+        
+        // IMPORTANTE: Garantir que o payload seja um objeto válido para serialização
+        if (!payload || typeof payload !== 'object') {
+          throw new Error("Payload inválido para a requisição da função Edge");
+        }
+        
+        // Converter explicitamente para string com try/catch para capturar erros de serialização
+        let payloadString;
+        try {
+          payloadString = JSON.stringify(payload);
+          
+          // Verificação adicional após a serialização
+          if (!payloadString || payloadString === '{}' || payloadString === 'null') {
+            throw new Error("Serialização do payload resultou em dados vazios");
+          }
+          
+          console.log("[useMetaAdsAnalysis] Tamanho do payload serializado:", payloadString.length, "bytes");
+        } catch (serializationError) {
+          console.error("[useMetaAdsAnalysis] Erro ao serializar payload:", serializationError);
+          throw new Error(`Erro ao preparar dados para envio: ${serializationError.message}`);
+        }
         
         // Adicionar timeout para evitar problemas de conexão pendente
         const functionPromise = supabase.functions.invoke(
-          "daily-budget-reviews",
+          "daily-budget-reviews", 
           { 
-            body: JSON.stringify(payload),
+            body: payloadString,  // Usar string já serializada
             headers: {
               "Content-Type": "application/json"
             }
@@ -135,13 +159,16 @@ export const useMetaAdsAnalysis = () => {
           timeoutPromise
         ]) as any;
         
+        // Log do resultado completo para debug
         console.log("[useMetaAdsAnalysis] Resposta da função Edge:", result);
         
         if (functionError) {
+          console.error("[useMetaAdsAnalysis] Erro na função Edge:", functionError);
           throw new Error(`Erro na função Edge: ${functionError.message || "Erro desconhecido"}`);
         }
         
         if (!result) {
+          console.error("[useMetaAdsAnalysis] Resultado vazio da função Edge");
           throw new Error("A função retornou dados vazios ou inválidos");
         }
         
@@ -170,6 +197,22 @@ export const useMetaAdsAnalysis = () => {
           toast({
             title: "Erro na função Edge",
             description: "Não foi possível conectar com a função Edge. Use as ferramentas de diagnóstico para identificar o problema.",
+            variant: "destructive",
+          });
+        } else if (edgeError.message?.includes("Corpo da requisição vazio")) {
+          // Erro específico de corpo vazio
+          setError(`Erro no formato da requisição: ${edgeError.message}. O corpo da requisição não está sendo recebido pela função Edge.`);
+          
+          setDebugInfo({
+            edgeError: edgeError.message,
+            requestType: "JSON stringified payload",
+            payloadSize: typeof payload === 'object' ? JSON.stringify(payload).length : 'N/A',
+            suggestion: "Verifique se o payload está sendo corretamente serializado e enviado com content-type: application/json"
+          });
+          
+          toast({
+            title: "Erro no formato da requisição",
+            description: "O corpo da requisição está vazio. Verifique a ferramenta de diagnóstico para mais detalhes.",
             variant: "destructive",
           });
         } else {
@@ -408,22 +451,35 @@ export const useMetaAdsAnalysis = () => {
       console.log("[testEdgeFunction] Tentando conectar à função Edge...");
       
       // Teste simples com payload mínimo
+      const testPayload = JSON.stringify({ method: "ping" });
+      
+      // Verificar se o payload foi corretamente serializado
+      if (!testPayload || testPayload === '{}' || testPayload === 'null') {
+        throw new Error("Erro ao serializar payload de teste");
+      }
+      
+      console.log("[testEdgeFunction] Enviando payload de teste:", testPayload);
+      
       const { data, error } = await supabase.functions.invoke(
         "daily-budget-reviews",
         { 
-          body: { method: "ping" },
+          body: testPayload,
           headers: {
             "Content-Type": "application/json"
           }
         }
       );
       
+      console.log("[testEdgeFunction] Resposta do teste:", data, error);
+      
       setDebugInfo({
         edgeFunctionTest: {
           success: !error,
           data,
           error,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          payloadSent: { method: "ping" },
+          payloadSize: testPayload.length
         }
       });
       
@@ -450,6 +506,9 @@ export const useMetaAdsAnalysis = () => {
         } else if (errorMsg.includes("CORS") || errorMsg.includes("cross-origin")) {
           errorType = "CORS_ERROR";
           suggestion = "Problema de CORS. Verifique se a função Edge tem as configurações corretas de CORS.";
+        } else if (errorMsg.includes("Corpo da requisição vazio")) {
+          errorType = "EMPTY_BODY_ERROR";
+          suggestion = "O corpo da requisição está vazio. Verifique a serialização do payload e o content-type.";
         }
         
         setDebugInfo(prev => ({
@@ -459,7 +518,8 @@ export const useMetaAdsAnalysis = () => {
           possibleFixes: [
             "Verificar se a função 'daily-budget-reviews' está publicada no Supabase",
             "Verificar se há regras de CORS configuradas na função",
-            "Tentar republicar a função Edge"
+            "Tentar republicar a função Edge",
+            "Verificar se o payload está sendo serializado corretamente"
           ]
         }));
         

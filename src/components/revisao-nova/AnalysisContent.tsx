@@ -41,6 +41,10 @@ export function AnalysisContent({
     );
   }
 
+  // Verificação específica para erro de corpo vazio para fornecer uma mensagem mais clara
+  const isEmptyRequestBodyError = error?.includes('Corpo da requisição vazio') || 
+    rawApiResponse?.error?.message?.includes('Corpo da requisição vazio');
+
   if (error) {
     return (
       <ErrorContent 
