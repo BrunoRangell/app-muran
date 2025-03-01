@@ -1,241 +1,242 @@
 
-// Supabase Edge Function
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { corsHeaders } from '../_shared/cors.ts';
+// Importar módulos necessários
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders, handleCorsPreflightRequest, createCorsResponse, createErrorResponse } from "../_shared/cors.ts";
 
-console.log("Iniciando Edge Function para daily-budget-reviews");
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
+// Função principal que processa todas as requisições
 serve(async (req) => {
-  console.log("Requisição recebida:", req.method, req.url);
-
-  // Handle CORS preflight requests
+  // Log para diagnóstico
+  console.log(`Função Edge "daily-budget-reviews" recebeu requisição ${req.method}`);
+  
+  // Tratar requisições OPTIONS (CORS preflight)
   if (req.method === 'OPTIONS') {
-    console.log("Respondendo a requisição OPTIONS para CORS");
-    return new Response(null, { headers: corsHeaders });
+    console.log("Respondendo a requisição CORS preflight");
+    return handleCorsPreflightRequest();
   }
-
+  
   try {
-    // Verificar se o corpo da requisição é válido
-    let requestBody;
+    // Verificar se a requisição tem um corpo válido
+    let requestData;
     try {
-      requestBody = await req.json();
-      console.log("Corpo da requisição:", JSON.stringify(requestBody, null, 2));
-    } catch (e) {
-      console.error("Erro ao processar o corpo da requisição:", e);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: "Erro ao processar JSON da requisição" 
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      requestData = await req.json();
+      console.log("Payload recebido:", JSON.stringify(requestData, null, 2));
+    } catch (parseError) {
+      console.error("Erro ao analisar o corpo da requisição:", parseError);
+      return createErrorResponse("Corpo da requisição inválido. Esperava um JSON válido.", 400);
     }
-
-    // Lidar com requisição de ping (para testar conectividade)
-    if (requestBody?.method === 'ping') {
-      console.log("Requisição de ping recebida, respondendo com pong");
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "pong", 
-          timestamp: new Date().toISOString() 
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
+    
     // Verificar se o método foi especificado
-    if (!requestBody?.method) {
+    if (!requestData.method) {
       console.error("Método não especificado na requisição");
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: "Método não especificado" 
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      return createErrorResponse("Parâmetro 'method' é obrigatório", 400);
     }
-
-    // Método principal para obter dados do Meta Ads
-    if (requestBody.method === 'getMetaAdsData') {
-      // Extrair dados da requisição
-      const {
-        clientId,
-        reviewDate,
-        accessToken,
-        metaAccountId,
-        clientName
-      } = requestBody;
-
-      console.log("Processando solicitação getMetaAdsData para cliente:", clientName);
-
-      // Validar parâmetros obrigatórios
-      if (!clientId || !reviewDate || !accessToken || !metaAccountId) {
-        const missingParams = [];
-        if (!clientId) missingParams.push('clientId');
-        if (!reviewDate) missingParams.push('reviewDate');
-        if (!accessToken) missingParams.push('accessToken');
-        if (!metaAccountId) missingParams.push('metaAccountId');
-
-        console.error(`Parâmetros obrigatórios ausentes: ${missingParams.join(', ')}`);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            message: `Parâmetros obrigatórios ausentes: ${missingParams.join(', ')}` 
-          }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
+    
+    // Tratar ping para verificar se a função está ativa
+    if (requestData.method === "ping") {
+      console.log("Teste de ping recebido, respondendo com sucesso");
+      return createCorsResponse({
+        success: true,
+        message: "Função Edge está respondendo corretamente",
+        timestamp: new Date().toISOString(),
+        version: "1.1.0" // Versionar a função Edge para diagnóstico
+      });
+    }
+    
+    // Tratar solicitação de dados do Meta Ads
+    if (requestData.method === "getMetaAdsData") {
+      // Verificar campos obrigatórios
+      const requiredFields = ["clientId", "accessToken"];
+      for (const field of requiredFields) {
+        if (!requestData[field]) {
+          console.error(`Campo obrigatório ausente: ${field}`);
+          return createErrorResponse(`Campo obrigatório ausente: ${field}`, 400);
+        }
       }
-
-      // Configurações para datas (uso do dia atual e período do mês)
-      const today = new Date();
-      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-      const formattedStartDate = startDate.toISOString().split('T')[0];
-      const formattedEndDate = endDate.toISOString().split('T')[0];
-
-      console.log(`Período de análise: ${formattedStartDate} a ${formattedEndDate}`);
-
+      
+      console.log(`Processando solicitação de dados do Meta Ads para cliente: ${requestData.clientId}`);
+      
+      // Validar token de acesso rápido
+      if (!requestData.accessToken || requestData.accessToken.length < 20) {
+        console.error("Token de acesso Meta Ads inválido ou muito curto");
+        return createErrorResponse("Token de acesso Meta Ads inválido", 400);
+      }
+      
+      // Validar se a conta Meta está configurada
+      if (!requestData.metaAccountId) {
+        console.error("ID da conta Meta Ads não fornecido");
+        return createErrorResponse("ID da conta Meta Ads não configurado para este cliente", 400);
+      }
+      
       try {
-        // Simular chamada à API Meta Ads (implementar integração real posteriormente)
-        console.log(`Simulando chamada Meta Ads para conta ${metaAccountId}`);
-
-        // Gerar dados mock realistas baseados nos parâmetros
-        const mockSpend = Math.round(Math.random() * 3000 * 100) / 100;
-        const mockDailyBudget = Math.round((mockSpend / 20) * 100) / 100;
+        // Preparar datas para a consulta
+        const today = new Date();
         
-        // Gerar 2-5 campanhas de exemplo
-        const campaignCount = Math.floor(Math.random() * 4) + 2;
-        const campaignStatusOptions = ["ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"];
+        // Caso tenha sido fornecido um intervalo de datas, usá-lo
+        let startDate, endDate;
         
-        const mockCampaigns = [];
-        let totalMockSpend = 0;
-        
-        for (let i = 0; i < campaignCount; i++) {
-          const campaignSpend = Math.round((mockSpend / campaignCount) * 100) / 100;
-          totalMockSpend += campaignSpend;
+        if (requestData.dateRange && requestData.dateRange.start && requestData.dateRange.end) {
+          startDate = new Date(requestData.dateRange.start);
+          endDate = new Date(requestData.dateRange.end);
+          console.log(`Usando intervalo de datas fornecido: ${startDate.toISOString()} a ${endDate.toISOString()}`);
+        } else {
+          // Caso contrário, usar o mês atual
+          const currentMonth = today.getMonth();
+          const currentYear = today.getFullYear();
           
-          mockCampaigns.push({
-            id: (1000000000 + Math.floor(Math.random() * 9000000000)).toString(),
-            name: `Campanha ${i+1} - ${clientName}`,
-            status: campaignStatusOptions[Math.floor(Math.random() * campaignStatusOptions.length)],
+          // Primeiro dia do mês atual
+          startDate = new Date(currentYear, currentMonth, 1);
+          // Último dia do mês atual
+          endDate = new Date(currentYear, currentMonth + 1, 0);
+          console.log(`Usando mês atual: ${startDate.toISOString()} a ${endDate.toISOString()}`);
+        }
+        
+        // Formatar datas para YYYY-MM-DD
+        const formattedStartDate = startDate.toISOString().split('T')[0];
+        const formattedEndDate = endDate.toISOString().split('T')[0];
+        
+        console.log(`Consultando Meta Ads para conta ID: ${requestData.metaAccountId}`);
+        
+        // Construir URL para a API do Meta Ads
+        const metaUrl = `https://graph.facebook.com/v20.0/act_${requestData.metaAccountId}/campaigns`;
+        
+        // Campos a serem solicitados à API do Meta Ads
+        const fields = 'name,status,daily_budget,lifetime_budget,effective_status,spend,insights{spend}';
+        
+        // Parâmetros adicionais
+        const params = new URLSearchParams({
+          access_token: requestData.accessToken,
+          fields,
+          time_range: JSON.stringify({
+            since: formattedStartDate,
+            until: formattedEndDate
+          }),
+          limit: '1000' // Limite alto para garantir que todas as campanhas sejam retornadas
+        });
+        
+        console.log(`Enviando requisição para API Meta Ads: ${metaUrl}`);
+        
+        // Chamada à API do Meta Ads
+        const metaResponse = await fetch(`${metaUrl}?${params.toString()}`);
+        
+        // Verificar resposta da API
+        if (!metaResponse.ok) {
+          const errorText = await metaResponse.text();
+          console.error(`Erro na API do Meta Ads: ${metaResponse.status} - ${errorText}`);
+          
+          let errorMessage = `A API do Meta Ads retornou um erro ${metaResponse.status}`;
+          let errorDetails = errorText;
+          
+          try {
+            // Tentar analisar o erro como JSON
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.error) {
+              if (errorJson.error.code === 190) {
+                errorMessage = "Token de acesso do Meta Ads expirado ou inválido";
+              } else if (errorJson.error.code === 100) {
+                errorMessage = "ID da conta Meta Ads inválido ou sem permissão";
+              } else {
+                errorMessage = errorJson.error.message || errorMessage;
+              }
+              errorDetails = errorJson.error;
+            }
+          } catch (e) {
+            // Se não for JSON, usar o texto bruto
+            console.log("Resposta de erro não é um JSON válido");
+          }
+          
+          return createErrorResponse(errorMessage, 400, errorDetails);
+        }
+        
+        // Processar resposta da API
+        const metaData = await metaResponse.json();
+        console.log(`Dados recebidos da API Meta Ads: ${metaData.data?.length || 0} campanhas`);
+        
+        // Verificar se há dados
+        if (!metaData.data || metaData.data.length === 0) {
+          console.log("Nenhuma campanha encontrada para a conta");
+          return createCorsResponse({
+            success: true,
+            message: "Nenhuma campanha encontrada para a conta Meta Ads",
+            meta: {
+              totalSpent: 0,
+              dailyBudget: 0,
+              dateRange: {
+                start: formattedStartDate,
+                end: formattedEndDate
+              },
+              campaigns: []
+            }
+          });
+        }
+        
+        // Processar campanhas e calcular gastos
+        let totalSpent = 0;
+        let totalBudget = 0;
+        const campaigns = [];
+        
+        for (const campaign of metaData.data) {
+          let campaignSpend = 0;
+          
+          // Extrair gasto da campanha
+          if (campaign.spend) {
+            campaignSpend = parseFloat(campaign.spend);
+          } else if (campaign.insights && campaign.insights.data && campaign.insights.data.length > 0) {
+            campaignSpend = parseFloat(campaign.insights.data[0].spend || "0");
+          }
+          
+          totalSpent += campaignSpend;
+          
+          // Extrair orçamento diário da campanha
+          if (campaign.daily_budget) {
+            totalBudget += parseFloat(campaign.daily_budget) / 100; // Meta Ads retorna em centavos
+          }
+          
+          // Adicionar campanha processada à lista
+          campaigns.push({
+            id: campaign.id,
+            name: campaign.name,
+            status: campaign.status,
             spend: campaignSpend
           });
         }
         
-        // Para garantir que o total seja exato
-        if (mockCampaigns.length > 0) {
-          // Ajustar o valor da última campanha para fazer o total bater
-          const diff = mockSpend - totalMockSpend;
-          mockCampaigns[mockCampaigns.length - 1].spend = 
-            Math.round((mockCampaigns[mockCampaigns.length - 1].spend + diff) * 100) / 100;
-        }
-
-        // Registrar a revisão no banco de dados
-        const { data: insertedReview, error: dbError } = await supabase.rpc(
-          'insert_daily_budget_review',
-          {
-            p_client_id: clientId,
-            p_review_date: reviewDate,
-            p_meta_daily_budget_current: mockDailyBudget,
-            p_meta_total_spent: mockSpend,
-            p_meta_account_id: metaAccountId,
-            p_meta_account_name: clientName
-          }
-        );
-
-        if (dbError) {
-          console.error("Erro ao salvar revisão no banco de dados:", dbError);
-          // Continuar mesmo com erro no banco para não impedir a visualização
-        } else {
-          console.log("Revisão salva com sucesso, ID:", insertedReview);
-        }
-
-        // Responder com os dados simulados
-        const responseData = {
+        // Preparar resultado da análise
+        const result = {
           success: true,
-          message: "Dados obtidos com sucesso da API Meta Ads",
-          meta_total_spent: mockSpend,
-          meta_daily_budget_current: mockDailyBudget,
-          client_id: clientId,
+          message: "Dados do Meta Ads obtidos com sucesso",
+          meta_total_spent: totalSpent,
+          meta_daily_budget_current: totalBudget,
+          client: {
+            id: requestData.clientId,
+            company_name: requestData.clientName || "Cliente",
+            meta_account_id: requestData.metaAccountId
+          },
           meta: {
-            totalSpent: mockSpend,
-            dailyBudget: mockDailyBudget,
+            totalSpent: totalSpent,
+            dailyBudget: totalBudget,
             dateRange: {
               start: formattedStartDate,
               end: formattedEndDate
             },
-            campaigns: mockCampaigns
+            campaigns: campaigns
           }
         };
-
-        console.log("Enviando resposta:", JSON.stringify(responseData, null, 2));
-        return new Response(
-          JSON.stringify(responseData),
-          { 
-            status: 200, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      } catch (error) {
-        console.error("Erro ao processar dados Meta Ads:", error);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            message: `Erro na API Meta Ads: ${error.message || 'Erro desconhecido'}`,
-            error: error.message || 'Erro desconhecido'
-          }),
-          { 
-            status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
+        
+        console.log("Análise concluída com sucesso");
+        return createCorsResponse(result);
+        
+      } catch (apiError) {
+        console.error("Erro ao acessar a API do Meta Ads:", apiError);
+        return createErrorResponse("Erro ao acessar a API do Meta Ads: " + (apiError.message || "Erro desconhecido"), 500);
       }
     }
-
-    // Se chegou aqui, o método não é suportado
-    console.error(`Método desconhecido: ${requestBody.method}`);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        message: `Método não suportado: ${requestBody.method}` 
-      }),
-      { 
-        status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-
+    
+    // Método desconhecido
+    console.error(`Método desconhecido: ${requestData.method}`);
+    return createErrorResponse(`Método não suportado: ${requestData.method}`, 400);
+    
   } catch (error) {
-    console.error("Erro não tratado na Edge Function:", error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        message: `Erro interno no servidor: ${error.message || 'Erro desconhecido'}`,
-        error: error.message || 'Erro desconhecido'
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    console.error("Erro não tratado na função Edge:", error);
+    return createErrorResponse("Erro interno na função Edge: " + (error.message || "Erro desconhecido"), 500);
   }
 });

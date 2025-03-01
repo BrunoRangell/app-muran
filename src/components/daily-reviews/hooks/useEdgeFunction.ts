@@ -57,6 +57,11 @@ export const invokeEdgeFunction = async (
       throw new Error("Cliente não encontrado.");
     }
     
+    if (!clientData.meta_account_id) {
+      console.error("Cliente sem ID de conta Meta Ads configurado:", clientId);
+      throw new Error("Cliente não possui ID de conta Meta Ads configurado. Configure o ID na página de clientes.");
+    }
+    
     // Chamando primeiro uma função de ping para testar a conectividade com a Edge Function
     try {
       console.log("Testando conectividade com a função Edge antes da requisição principal");
@@ -88,12 +93,15 @@ export const invokeEdgeFunction = async (
       metaAccountId: clientData.meta_account_id
     };
     
-    console.log("Enviando payload para função Edge:", JSON.stringify(requestPayload, null, 2));
+    console.log("Enviando payload para função Edge:", JSON.stringify({
+      ...requestPayload,
+      accessToken: "***TOKEN OCULTADO***"
+    }, null, 2));
     
     try {
       // Tentar usar um timeout para evitar que a requisição fique pendente indefinidamente
       const timeoutPromise = new Promise<{ data: any, error: any }>((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout ao conectar à função Edge (15s)")), 15000);
+        setTimeout(() => reject(new Error("Timeout ao conectar à função Edge (20s)")), 20000);
       });
       
       const functionPromise = supabase.functions.invoke("daily-budget-reviews", {
@@ -126,12 +134,12 @@ export const invokeEdgeFunction = async (
       // Garantir que os valores numéricos estão sendo tratados corretamente
       if (data.meta_total_spent !== undefined) {
         // Certifique-se de que o valor é um número
-        data.meta_total_spent = parseFloat(data.meta_total_spent);
+        data.meta_total_spent = parseFloat(String(data.meta_total_spent));
       }
       
       if (data.meta_daily_budget_current !== undefined) {
         // Certifique-se de que o valor é um número
-        data.meta_daily_budget_current = parseFloat(data.meta_daily_budget_current);
+        data.meta_daily_budget_current = parseFloat(String(data.meta_daily_budget_current));
       }
       
       // Adicionar dados do cliente para manter consistência
