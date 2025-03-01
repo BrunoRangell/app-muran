@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader } from "lucide-react";
+import { ArrowRight, Loader, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 
 type Client = {
@@ -21,7 +21,7 @@ type ClientsListProps = {
 
 export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClientId }: ClientsListProps) => {
   // Buscar clientes ativos
-  const { data: clients, isLoading: isLoadingClients } = useQuery({
+  const { data: clients, isLoading: isLoadingClients, error } = useQuery({
     queryKey: ["clients-active"],
     queryFn: async () => {
       const { data: clients, error } = await supabase
@@ -56,6 +56,23 @@ export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClien
             </Card>
           ))}
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 text-center">
+        <CardHeader>
+          <CardTitle className="flex justify-center items-center text-red-500">
+            <AlertTriangle className="mr-2" />
+            Erro ao carregar clientes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Não foi possível carregar a lista de clientes. Tente novamente mais tarde.</p>
+          <p className="text-sm text-gray-500 mt-2">{error.message}</p>
+        </CardContent>
+      </Card>
     );
   }
 
