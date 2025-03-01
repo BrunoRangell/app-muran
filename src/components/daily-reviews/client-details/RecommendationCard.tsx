@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface RecommendationCardProps {
   recommendation: string | null;
+  suggestedBudgetChange?: number | null;
 }
 
-export const RecommendationCard = ({ recommendation }: RecommendationCardProps) => {
+export const RecommendationCard = ({ recommendation, suggestedBudgetChange }: RecommendationCardProps) => {
   const getRecommendationIcon = () => {
     if (!recommendation) return null;
     
@@ -19,7 +20,7 @@ export const RecommendationCard = ({ recommendation }: RecommendationCardProps) 
   };
 
   return (
-    <Card className="border-l-4 border-l-muran-primary">
+    <Card className="border-l-4 border-l-[#ff6e00]">
       <CardHeader className="pb-2">
         <CardTitle className="text-md flex items-center gap-2">
           Recomendação

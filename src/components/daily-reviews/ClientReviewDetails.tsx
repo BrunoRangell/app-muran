@@ -28,6 +28,7 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     reviewHistory,
     recommendation,
     idealDailyBudget,
+    suggestedBudgetChange,
     isLoading,
     isLoadingHistory,
     hasError,
@@ -93,7 +94,10 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
           idealDailyBudget={idealDailyBudget}
         />
         
-        <RecommendationCard recommendation={recommendation} />
+        <RecommendationCard 
+          recommendation={recommendation} 
+          suggestedBudgetChange={suggestedBudgetChange}
+        />
       </div>
 
       <ReviewHistoryTable 

@@ -23,8 +23,15 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
     const budget = Number(client.meta_ads_budget);
     const spent = Number(latestReview.meta_total_spent);
     
-    if (budget <= 0) return 0;
+    if (budget <= 0 || isNaN(budget) || isNaN(spent)) return 0;
     return Math.round((spent / budget) * 100);
+  };
+
+  // Obter o gasto total real
+  const getTotalSpent = () => {
+    if (!latestReview?.meta_total_spent) return 0;
+    const spent = Number(latestReview.meta_total_spent);
+    return isNaN(spent) ? 0 : spent;
   };
 
   return (
@@ -52,7 +59,7 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="text-sm text-gray-500 mb-1">Total Gasto</div>
             <div className="text-2xl font-bold">
-              {latestReview ? formatCurrency(Number(latestReview.meta_total_spent) || 0) : "N/A"}
+              {formatCurrency(getTotalSpent())}
             </div>
             {client?.meta_ads_budget && latestReview?.meta_total_spent && (
               <div className="text-xs text-gray-500 mt-1">
