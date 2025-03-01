@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Save, Loader } from "lucide-react";
 import { useBudgetManager } from "./hooks/useBudgetManager";
+import { formatCurrency } from "@/utils/formatters";
 
 export const BudgetManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,6 +36,25 @@ export const BudgetManager = () => {
   const filteredClients = clients?.filter(client => 
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Função para formatar o valor apenas para exibição na tela
+  const formatDisplayValue = (value: string) => {
+    if (!value) return "";
+    
+    // Remover caracteres não numéricos, mantendo apenas dígitos, vírgulas e pontos
+    const cleanedValue = value.replace(/[^\d,.]/g, "");
+    
+    // Substituir vírgula por ponto para cálculo
+    const numberValue = cleanedValue.replace(",", ".");
+    
+    // Tentar converter para número
+    const numValue = parseFloat(numberValue);
+    
+    if (isNaN(numValue)) return value;
+    
+    // Formatar o número para exibição com R$, vírgula decimal e pontos para milhares
+    return formatCurrency(numValue, true);
+  };
 
   return (
     <Card className="w-full">
@@ -94,6 +114,11 @@ export const BudgetManager = () => {
                             placeholder="0,00"
                             className="text-right"
                           />
+                          {budgets[client.id]?.displayBudget && (
+                            <div className="text-xs text-gray-500 mt-1 text-right">
+                              {formatDisplayValue(budgets[client.id]?.displayBudget)}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
