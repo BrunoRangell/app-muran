@@ -37,11 +37,14 @@ export function ErrorContent({
                             error?.includes('Edge Function') ||
                             error?.includes('conectar');
 
-  const isJsonParseError = error?.includes('Unexpected end of JSON input') ||
-                          error?.includes('JSON input') ||
-                          error?.includes('Corpo da requisição vazio') ||
-                          rawApiResponse?.error?.message?.includes('Unexpected end of JSON input') ||
-                          rawApiResponse?.error?.message?.includes('Corpo da requisição vazio');
+  const isEmptyRequestBodyError = error?.includes('Corpo da requisição vazio') ||
+                                 rawApiResponse?.error?.message?.includes('Corpo da requisição vazio') ||
+                                 error?.includes('Unexpected end of JSON input') ||
+                                 rawApiResponse?.error?.message?.includes('Unexpected end of JSON input');
+
+  const isJsonParseError = error?.includes('JSON input') ||
+                          rawApiResponse?.error?.message?.includes('JSON input') ||
+                          (error?.includes('SyntaxError') && error?.includes('JSON'));
 
   const isNetworkError = error?.includes('Failed to fetch') ||
                         error?.includes('Network error') ||
@@ -75,17 +78,19 @@ export function ErrorContent({
           <span>Sugestões para solução:</span>
         </div>
         <ul className="list-disc pl-6 space-y-1 text-amber-700">
-          {isJsonParseError && error?.includes('Corpo da requisição vazio') && (
+          {isEmptyRequestBodyError && (
             <>
-              <li>A função Edge não está recebendo corretamente os dados enviados</li>
+              <li>A função Edge não está recebendo corretamente os dados enviados pelo cliente</li>
               <li>Verifique se o payload está sendo serializado corretamente com JSON.stringify()</li>
-              <li>Teste a função Edge usando o botão "Testar Função Edge" acima</li>
-              <li>Reinicie a aplicação ou limpe o cache do navegador</li>
-              <li>Verifique os logs da função Edge no console do Supabase</li>
+              <li>Confirme que está enviando o corpo da requisição com content-type: application/json</li>
+              <li>Verifique se o conteúdo do body não é undefined ou null antes de enviar</li>
+              <li>Tente usar o botão "Testar Função Edge" acima para verificar a conexão com a função</li>
+              <li>Verifique os logs da função Edge no console do Supabase para mais detalhes</li>
+              <li>Reinicie a aplicação ou limpe o cache do navegador e tente novamente</li>
             </>
           )}
           
-          {isJsonParseError && !error?.includes('Corpo da requisição vazio') && (
+          {isJsonParseError && !isEmptyRequestBodyError && (
             <>
               <li>O formato da resposta JSON está corrompido ou incompleto</li>
               <li>Verifique se a função Edge está recebendo corretamente os parâmetros</li>
@@ -120,7 +125,7 @@ export function ErrorContent({
             </>
           )}
           
-          {!isMetaApiError && !isEdgeFunctionError && !isJsonParseError && !isNetworkError && (
+          {!isMetaApiError && !isEdgeFunctionError && !isJsonParseError && !isNetworkError && !isEmptyRequestBodyError && (
             <>
               <li>Confirme se o ID da conta Meta Ads está correto para este cliente</li>
               <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
