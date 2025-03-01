@@ -6,9 +6,10 @@ import { formatCurrency } from "@/utils/formatters";
 interface RecommendationCardProps {
   recommendation: string | null;
   suggestedBudgetChange?: number | null;
+  currentBudget?: number | null;
 }
 
-export const RecommendationCard = ({ recommendation, suggestedBudgetChange }: RecommendationCardProps) => {
+export const RecommendationCard = ({ recommendation, suggestedBudgetChange, currentBudget }: RecommendationCardProps) => {
   const getRecommendationIcon = () => {
     if (!recommendation) return null;
     

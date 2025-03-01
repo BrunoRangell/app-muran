@@ -68,14 +68,12 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
       <ClientDetailsContent
         client={client}
         latestReview={latestReview}
-        idealDailyBudget={idealDailyBudget}
+        reviewHistory={reviewHistory}
         recommendation={recommendation}
+        idealDailyBudget={idealDailyBudget}
         suggestedBudgetChange={suggestedBudgetChange}
-      />
-
-      <ReviewHistoryTable 
-        isLoading={isLoadingHistory} 
-        reviewHistory={reviewHistory} 
+        isLoadingHistory={isLoadingHistory}
+        onRefresh={refetchData}
       />
     </div>
   );
