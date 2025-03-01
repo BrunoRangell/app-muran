@@ -124,15 +124,17 @@ export const useBudgetManager = () => {
 
   // Manipulador para alteração de orçamento
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Remove qualquer caractere não numérico, exceto vírgula e ponto
+    // Manter apenas dígitos, vírgulas e pontos - remove formatação como R$ e espaços
     const numericValue = value.replace(/[^\d,.]/g, "");
     
-    // Converte para número para formatação de exibição
+    // Formatar para exibição
     let displayValue = "";
     try {
       if (numericValue) {
-        // Formatar para exibição
-        displayValue = formatCurrency(numericValue.replace(/\./g, "").replace(",", "."), false);
+        // Prepara o valor para a formatação, convertendo notação brasileira para numérica
+        // Substitui pontos (separadores de milhar) e ajusta vírgula decimal para ponto
+        const preparedValue = numericValue.replace(/\./g, "").replace(",", ".");
+        displayValue = formatCurrency(preparedValue, false);
       }
     } catch (error) {
       console.error("Erro ao formatar valor:", error);
