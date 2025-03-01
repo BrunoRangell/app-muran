@@ -1,60 +1,78 @@
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
-import { Badge } from "@/components/ui/badge";
+import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
 
 interface CampaignsTableProps {
   campaigns: SimpleMetaCampaign[];
 }
 
 export function CampaignsTable({ campaigns }: CampaignsTableProps) {
-  const getStatusColor = (status: string) => {
-    const statusLower = status.toLowerCase();
-    if (statusLower === 'active') return "bg-green-100 text-green-800 border-green-300";
-    if (statusLower === 'paused') return "bg-yellow-100 text-yellow-800 border-yellow-300";
-    if (statusLower === 'deleted' || statusLower === 'archived' || statusLower === 'disabled') 
-      return "bg-red-100 text-red-800 border-red-300";
-    return "bg-gray-100 text-gray-800 border-gray-300";
-  };
+  // Certifique-se de que cada campanha tem um valor de gasto numérico válido
+  const normalizedCampaigns = campaigns.map(campaign => ({
+    ...campaign,
+    spend: typeof campaign.spend === 'number' 
+      ? campaign.spend 
+      : parseFloat(String(campaign.spend || "0"))
+  }));
+
+  // Calcule o total gasto com segurança
+  const totalSpent = normalizedCampaigns.reduce((sum, campaign) => {
+    const spendValue = isNaN(campaign.spend) ? 0 : campaign.spend;
+    return sum + spendValue;
+  }, 0);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="rounded-md border">
       <Table>
+        <TableCaption>
+          Total gasto em campanhas: {formatCurrency(totalSpent)}
+        </TableCaption>
         <TableHeader>
-          <TableRow className="bg-gray-50 h-10">
-            <TableHead className="font-medium text-gray-700">Nome da Campanha</TableHead>
-            <TableHead className="font-medium text-gray-700">Status</TableHead>
-            <TableHead className="font-medium text-gray-700 text-right">Gasto</TableHead>
+          <TableRow>
+            <TableHead className="w-[50%]">Nome da Campanha</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Gasto</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {campaigns.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={3} className="text-center py-4 text-gray-500">
-                Nenhuma campanha encontrada
+          {normalizedCampaigns.map((campaign) => (
+            <TableRow key={campaign.id}>
+              <TableCell className="font-medium">{campaign.name}</TableCell>
+              <TableCell>
+                <StatusBadge status={campaign.status} />
               </TableCell>
+              <TableCell className="text-right">{formatCurrency(campaign.spend)}</TableCell>
             </TableRow>
-          ) : (
-            campaigns.map((campaign) => (
-              <TableRow key={campaign.id} className="border-b">
-                <TableCell className="py-3 font-medium">{campaign.name}</TableCell>
-                <TableCell>
-                  <Badge 
-                    variant="outline" 
-                    className={`${getStatusColor(campaign.status)} border px-2 py-1 text-xs font-medium`}
-                  >
-                    {campaign.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-medium">
-                  {formatCurrency(campaign.spend)}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
+          ))}
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+interface StatusBadgeProps {
+  status: string;
+}
+
+function StatusBadge({ status }: StatusBadgeProps) {
+  let bgColor = "bg-gray-100 text-gray-800";
+  let statusText = status;
+  
+  if (status === "ACTIVE") {
+    bgColor = "bg-green-100 text-green-800";
+    statusText = "Ativa";
+  } else if (status === "PAUSED") {
+    bgColor = "bg-yellow-100 text-yellow-800";
+    statusText = "Pausada";
+  } else if (status === "ARCHIVED" || status === "DELETED") {
+    bgColor = "bg-red-100 text-red-800";
+    statusText = status === "ARCHIVED" ? "Arquivada" : "Excluída";
+  }
+  
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${bgColor}`}>
+      {statusText}
+    </span>
   );
 }

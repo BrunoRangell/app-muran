@@ -12,7 +12,30 @@ interface AnalysisResultProps {
 }
 
 export function AnalysisResult({ analysis }: AnalysisResultProps) {
-  const hasCampaignsData = analysis?.meta?.campaigns && analysis.meta.campaigns.length > 0;
+  // Verificação de segurança para garantir que temos dados para exibir
+  if (!analysis?.meta) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Erro nos dados</AlertTitle>
+        <AlertDescription>
+          Não foi possível processar os dados da análise.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const hasCampaignsData = analysis.meta.campaigns && analysis.meta.campaigns.length > 0;
+  
+  // Certifique-se de que totalSpent é um número
+  const totalSpent = typeof analysis.meta.totalSpent === 'number' 
+    ? analysis.meta.totalSpent 
+    : parseFloat(String(analysis.meta.totalSpent || "0"));
+  
+  // Certifique-se de que dailyBudget é um número
+  const dailyBudget = typeof analysis.meta.dailyBudget === 'number' 
+    ? analysis.meta.dailyBudget 
+    : parseFloat(String(analysis.meta.dailyBudget || "0"));
   
   return (
     <div className="space-y-6">
@@ -26,11 +49,11 @@ export function AnalysisResult({ analysis }: AnalysisResultProps) {
       </Alert>
       
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <TooltipProvider>
-          <Card className="border-l-4 border-l-[#ff6e00]">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-md flex items-center">
-                Gastos Acumulados (Mês Atual)
+        <Card className="border-l-4 border-l-[#ff6e00]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-md flex items-center">
+              Gastos Acumulados (Mês Atual)
+              <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
                     <Info className="h-4 w-4 ml-2 text-gray-400" />
@@ -39,24 +62,24 @@ export function AnalysisResult({ analysis }: AnalysisResultProps) {
                     <p className="max-w-xs">Valor real obtido diretamente da API do Meta Ads</p>
                   </TooltipContent>
                 </Tooltip>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {formatCurrency(analysis.meta.totalSpent)}
-              </div>
-              <div className="text-sm text-gray-500 mt-1">
-                Período: {analysis.meta.dateRange.start} a {analysis.meta.dateRange.end}
-              </div>
-            </CardContent>
-          </Card>
-        </TooltipProvider>
+              </TooltipProvider>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {formatCurrency(totalSpent)}
+            </div>
+            <div className="text-sm text-gray-500 mt-1">
+              Período: {analysis.meta.dateRange.start} a {analysis.meta.dateRange.end}
+            </div>
+          </CardContent>
+        </Card>
         
-        <TooltipProvider>
-          <Card className="border-l-4 border-l-[#321e32]">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-md flex items-center">
-                Orçamento Diário Atual
+        <Card className="border-l-4 border-l-[#321e32]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-md flex items-center">
+              Orçamento Diário Atual
+              <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
                     <Info className="h-4 w-4 ml-2 text-gray-400" />
@@ -65,18 +88,18 @@ export function AnalysisResult({ analysis }: AnalysisResultProps) {
                     <p className="max-w-xs">Valor configurado na conta do Meta Ads</p>
                   </TooltipContent>
                 </Tooltip>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                {formatCurrency(analysis.meta.dailyBudget)}
-              </div>
-              <div className="text-sm text-gray-500 mt-1">
-                Configurado na conta do Meta Ads
-              </div>
-            </CardContent>
-          </Card>
-        </TooltipProvider>
+              </TooltipProvider>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {formatCurrency(dailyBudget)}
+            </div>
+            <div className="text-sm text-gray-500 mt-1">
+              Configurado na conta do Meta Ads
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {hasCampaignsData && (
@@ -87,14 +110,16 @@ export function AnalysisResult({ analysis }: AnalysisResultProps) {
               <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
                 {analysis.meta.campaigns.length} campanhas
               </span>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 ml-2 text-gray-400" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs">Dados reais obtidos da API do Meta Ads</p>
-                </TooltipContent>
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 ml-2 text-gray-400" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">Dados reais obtidos da API do Meta Ads</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </CardTitle>
           </CardHeader>
           <CardContent>

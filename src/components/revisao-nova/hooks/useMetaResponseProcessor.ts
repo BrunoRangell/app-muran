@@ -66,56 +66,60 @@ export const useMetaResponseProcessor = () => {
     console.log("- Período:", result.meta.dateRange);
     console.log("- Número de campanhas:", result.meta.campaigns.length);
     
-    // Verificar cada campanha individualmente
+    // Verificar cada campanha individualmente e garantir que o valor de spend é numérico
     if (result.meta.campaigns && result.meta.campaigns.length > 0) {
-      console.log("[useMetaResponseProcessor] Detalhes das campanhas:");
-      result.meta.campaigns.forEach((campaign: any, index: number) => {
-        console.log(`Campanha ${index + 1}: ${campaign.name}`);
-        console.log(`- ID: ${campaign.id}`);
-        console.log(`- Status: ${campaign.status}`);
-        console.log(`- Gasto: ${campaign.spend}`);
+      result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
+        // Garantir que o gasto da campanha (spend) é um número
+        const spend = typeof campaign.spend === 'number' 
+          ? campaign.spend 
+          : parseFloat(String(campaign.spend || "0"));
+          
+        console.log(`Campanha: ${campaign.name}, ID: ${campaign.id}, Status: ${campaign.status}, Gasto: ${spend}`);
+        
+        return {
+          ...campaign,
+          spend: isNaN(spend) ? 0 : spend
+        };
       });
       
-      // Validação do total das campanhas vs total reportado
+      // Calcular o total das campanhas para logs de depuração
       const totalFromCampaigns = result.meta.campaigns.reduce(
-        (total: number, campaign: any) => total + parseFloat(String(campaign.spend || "0")), 
+        (total: number, campaign: any) => {
+          const campaignSpend = typeof campaign.spend === 'number' 
+            ? campaign.spend 
+            : parseFloat(String(campaign.spend || "0"));
+          return total + (isNaN(campaignSpend) ? 0 : campaignSpend);
+        }, 
         0
       );
       
       console.log(`[useMetaResponseProcessor] Total calculado manualmente das campanhas: ${totalFromCampaigns}`);
       console.log(`[useMetaResponseProcessor] Total reportado pela API: ${result.meta.totalSpent}`);
       
-      if (Math.abs(totalFromCampaigns - result.meta.totalSpent) > 0.01) {
-        console.warn("[useMetaResponseProcessor] AVISO: Discrepância entre o total reportado e a soma das campanhas!");
+      // Se o total reportado for 0 ou muito pequeno, mas temos gastos nas campanhas,
+      // use o total calculado das campanhas como o total geral
+      if (Math.abs(result.meta.totalSpent) < 0.01 && totalFromCampaigns > 0) {
+        console.log("[useMetaResponseProcessor] Atualizando total reportado para o total das campanhas");
+        result.meta.totalSpent = totalFromCampaigns;
       }
     }
     
-    // Garantir que todos os valores numéricos sejam números
+    // Garantir que todos os valores numéricos sejam números válidos
     if (result.meta) {
-      if (typeof result.meta.totalSpent !== 'number') {
-        const converted = parseFloat(String(result.meta.totalSpent || "0"));
-        result.meta.totalSpent = isNaN(converted) ? 0 : converted;
-        console.log("[useMetaResponseProcessor] Convertido totalSpent para número:", result.meta.totalSpent);
-      }
+      const totalSpent = typeof result.meta.totalSpent === 'number' 
+        ? result.meta.totalSpent 
+        : parseFloat(String(result.meta.totalSpent || "0"));
+        
+      const dailyBudget = typeof result.meta.dailyBudget === 'number' 
+        ? result.meta.dailyBudget 
+        : parseFloat(String(result.meta.dailyBudget || "0"));
+        
+      result.meta.totalSpent = isNaN(totalSpent) ? 0 : totalSpent;
+      result.meta.dailyBudget = isNaN(dailyBudget) ? 0 : dailyBudget;
       
-      if (typeof result.meta.dailyBudget !== 'number') {
-        const converted = parseFloat(String(result.meta.dailyBudget || "0"));
-        result.meta.dailyBudget = isNaN(converted) ? 0 : converted;
-        console.log("[useMetaResponseProcessor] Convertido dailyBudget para número:", result.meta.dailyBudget);
-      }
-      
-      if (result.meta.campaigns) {
-        result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
-          const spendValue = typeof campaign.spend === 'number' 
-            ? campaign.spend 
-            : parseFloat(String(campaign.spend || "0"));
-          
-          return {
-            ...campaign,
-            spend: isNaN(spendValue) ? 0 : spendValue
-          };
-        });
-      }
+      console.log("[useMetaResponseProcessor] Valores finais após processamento:");
+      console.log("- Total gasto:", result.meta.totalSpent);
+      console.log("- Orçamento diário:", result.meta.dailyBudget);
     }
     
     setAnalysis(result as SimpleAnalysisResult);
