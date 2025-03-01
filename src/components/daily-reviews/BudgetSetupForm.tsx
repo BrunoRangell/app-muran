@@ -1,231 +1,201 @@
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SearchIcon, Save, Loader } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
-
-type Client = {
-  id: string;
-  company_name: string;
-  meta_ads_budget: number;
-  google_ads_budget: number;
-};
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Save, Search, DollarSign, Loader } from "lucide-react";
+import { formatCurrency } from "@/utils/formatters";
 
 export const BudgetSetupForm = () => {
-  const [search, setSearch] = useState("");
-  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
-  const [budgetValues, setBudgetValues] = useState<Record<string, { meta: string; google: string }>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [budgets, setBudgets] = useState<Record<string, { meta: string; google: string }>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Buscar clientes
+
+  // Buscar todos os clientes
   const { data: clients, isLoading } = useQuery({
-    queryKey: ["clients-for-budget-setup"],
+    queryKey: ["clients-budget-setup"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("id, company_name, meta_ads_budget, google_ads_budget")
+        .select("id, company_name, meta_ads_budget, google_ads_budget, status")
         .eq("status", "active")
         .order("company_name");
 
       if (error) throw error;
-      return data as Client[];
+      return data;
     },
   });
 
-  // Mutation para atualizar orçamentos
-  const updateMutation = useMutation({
-    mutationFn: async ({ 
-      clientId, 
-      metaBudget, 
-      googleBudget 
-    }: { 
-      clientId: string; 
-      metaBudget: number; 
-      googleBudget: number 
-    }) => {
-      const { error } = await supabase
-        .from("clients")
-        .update({
-          meta_ads_budget: metaBudget,
-          google_ads_budget: googleBudget,
-        })
-        .eq("id", clientId);
+  // Mutation para salvar orçamentos
+  const saveBudgetsMutation = useMutation({
+    mutationFn: async () => {
+      const updates = Object.entries(budgets).map(([clientId, values]) => ({
+        id: clientId,
+        meta_ads_budget: values.meta ? parseFloat(values.meta) : 0,
+        google_ads_budget: values.google ? parseFloat(values.google) : 0,
+      }));
+
+      const { error } = await supabase.from("clients").upsert(updates);
 
       if (error) throw error;
-      return { clientId, metaBudget, googleBudget };
+      return updates;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       toast({
-        title: "Orçamentos atualizados",
-        description: "Os valores de orçamento foram salvos com sucesso.",
+        title: "Orçamentos salvos",
+        description: "Os orçamentos mensais foram atualizados com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["clients-for-budget-setup"] });
-      queryClient.invalidateQueries({ queryKey: ["clients-active"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-budget-setup"] });
+      setBudgets({});
     },
     onError: (error) => {
       toast({
-        title: "Erro ao salvar",
+        title: "Erro ao salvar orçamentos",
         description: String(error),
         variant: "destructive",
       });
     },
   });
 
-  // Inicializar valores de orçamento
-  useEffect(() => {
+  // Inicializar orçamentos a partir dos dados obtidos
+  useState(() => {
     if (clients) {
-      const values: Record<string, { meta: string; google: string }> = {};
+      const initialBudgets: Record<string, { meta: string; google: string }> = {};
       clients.forEach((client) => {
-        values[client.id] = {
-          meta: client.meta_ads_budget ? formatCurrency(client.meta_ads_budget) : "",
-          google: client.google_ads_budget ? formatCurrency(client.google_ads_budget) : "",
+        initialBudgets[client.id] = {
+          meta: client.meta_ads_budget?.toString() || "",
+          google: client.google_ads_budget?.toString() || "",
         };
       });
-      setBudgetValues(values);
+      setBudgets(initialBudgets);
     }
   }, [clients]);
 
-  // Filtrar clientes com base na busca
-  useEffect(() => {
-    if (clients) {
-      const filtered = clients.filter((client) =>
-        client.company_name.toLowerCase().includes(search.toLowerCase())
-      );
-      setFilteredClients(filtered);
-    }
-  }, [search, clients]);
-
-  const handleInputChange = (clientId: string, platform: "meta" | "google", value: string) => {
-    // Formatação do valor para moeda
-    let formattedValue = value;
-    
-    // Remover caracteres não numéricos, exceto vírgula e ponto
-    const numericValue = value.replace(/[^\d.,]/g, "");
-    
-    if (numericValue) {
-      // Converter para número e formatar
-      try {
-        const number = parseCurrencyToNumber(numericValue);
-        formattedValue = formatCurrency(number);
-      } catch (e) {
-        formattedValue = value;
-      }
-    } else {
-      formattedValue = "";
-    }
-
-    setBudgetValues((prev) => ({
+  const handleChange = (clientId: string, platform: "meta" | "google", value: string) => {
+    setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        [platform]: formattedValue,
+        [platform]: value,
       },
     }));
   };
 
-  const handleSave = (clientId: string) => {
-    const values = budgetValues[clientId];
-    const metaBudget = parseCurrencyToNumber(values.meta);
-    const googleBudget = parseCurrencyToNumber(values.google);
-
-    updateMutation.mutate({ clientId, metaBudget, googleBudget });
+  const handleSave = () => {
+    saveBudgetsMutation.mutate();
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="animate-pulse h-10 bg-gray-200 rounded w-full"></div>
-        {Array(5)
-          .fill(0)
-          .map((_, index) => (
-            <Card key={index} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-6 bg-gray-200 rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="h-10 bg-gray-100 rounded"></div>
-                  <div className="h-10 bg-gray-100 rounded"></div>
-                </div>
-                <div className="h-10 bg-gray-200 rounded w-1/4 mt-4 ml-auto"></div>
-              </CardContent>
-            </Card>
-          ))}
-      </div>
-    );
-  }
+  const filteredClients = clients?.filter(
+    (client) =>
+      client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="space-y-4">
-      <div className="relative">
-        <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-        <Input
-          className="pl-10"
-          placeholder="Buscar cliente..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+    <Card className="max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <DollarSign className="text-muran-primary" />
+          Configurar Orçamentos Mensais
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex items-center relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <Input
+              placeholder="Buscar cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
-      {filteredClients.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <p className="text-gray-500">Nenhum cliente encontrado</p>
-          </CardContent>
-        </Card>
-      ) : (
-        filteredClients.map((client) => (
-          <Card key={client.id}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">{client.company_name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <CardDescription>Orçamento mensal Meta Ads</CardDescription>
-                  <Input
-                    placeholder="R$ 0,00"
-                    value={budgetValues[client.id]?.meta || ""}
-                    onChange={(e) => handleInputChange(client.id, "meta", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <CardDescription>Orçamento mensal Google Ads</CardDescription>
-                  <Input
-                    placeholder="R$ 0,00"
-                    value={budgetValues[client.id]?.google || ""}
-                    onChange={(e) => handleInputChange(client.id, "google", e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end mt-4">
-                <Button
-                  onClick={() => handleSave(client.id)}
-                  disabled={updateMutation.isPending && updateMutation.variables?.clientId === client.id}
-                >
-                  {updateMutation.isPending && updateMutation.variables?.clientId === client.id ? (
-                    <>
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Salvar
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))
-      )}
-    </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center p-8">
+              <Loader className="animate-spin mr-2" />
+              <span>Carregando clientes...</span>
+            </div>
+          ) : filteredClients?.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              Nenhum cliente encontrado com o termo "{searchTerm}"
+            </div>
+          ) : (
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[350px]">Cliente</TableHead>
+                    <TableHead>Orçamento Meta Ads</TableHead>
+                    <TableHead>Orçamento Google Ads</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredClients?.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell className="font-medium">{client.company_name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor={`meta-${client.id}`} className="sr-only">
+                            Orçamento Meta Ads
+                          </Label>
+                          <span className="text-gray-500">R$</span>
+                          <Input
+                            id={`meta-${client.id}`}
+                            placeholder="0.00"
+                            value={budgets[client.id]?.meta || ""}
+                            onChange={(e) => handleChange(client.id, "meta", e.target.value)}
+                            className="max-w-[150px]"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor={`google-${client.id}`} className="sr-only">
+                            Orçamento Google Ads
+                          </Label>
+                          <span className="text-gray-500">R$</span>
+                          <Input
+                            id={`google-${client.id}`}
+                            placeholder="0.00"
+                            value={budgets[client.id]?.google || ""}
+                            onChange={(e) => handleChange(client.id, "google", e.target.value)}
+                            className="max-w-[150px]"
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={handleSave}
+              disabled={saveBudgetsMutation.isPending || isLoading}
+            >
+              {saveBudgetsMutation.isPending ? (
+                <>
+                  <Loader className="animate-spin mr-2 h-4 w-4" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar Orçamentos
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

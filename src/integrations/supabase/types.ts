@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      api_tokens: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: number
+          name: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           code: string
@@ -57,8 +84,12 @@ export type Database = {
           contract_value: number
           created_at: string
           first_payment_date: string
+          google_account_id: string | null
+          google_ads_budget: number | null
           id: string
           last_payment_date: string | null
+          meta_account_id: string | null
+          meta_ads_budget: number | null
           payment_type: string
           status: string
         }
@@ -71,8 +102,12 @@ export type Database = {
           contract_value?: number
           created_at?: string
           first_payment_date: string
+          google_account_id?: string | null
+          google_ads_budget?: number | null
           id?: string
           last_payment_date?: string | null
+          meta_account_id?: string | null
+          meta_ads_budget?: number | null
           payment_type: string
           status: string
         }
@@ -85,8 +120,12 @@ export type Database = {
           contract_value?: number
           created_at?: string
           first_payment_date?: string
+          google_account_id?: string | null
+          google_ads_budget?: number | null
           id?: string
           last_payment_date?: string | null
+          meta_account_id?: string | null
+          meta_ads_budget?: number | null
           payment_type?: string
           status?: string
         }
@@ -147,6 +186,83 @@ export type Database = {
             columns: ["cost_id"]
             isOneToOne: false
             referencedRelation: "costs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_budget_reviews: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          google_account_id: string | null
+          google_account_name: string | null
+          google_avg_last_five_days: number | null
+          google_budget_available: number | null
+          google_daily_budget_current: number | null
+          google_daily_budget_ideal: number | null
+          google_recommendation: string | null
+          google_total_spent: number | null
+          id: number
+          meta_account_id: string | null
+          meta_account_name: string | null
+          meta_budget_available: number | null
+          meta_daily_budget_current: number | null
+          meta_daily_budget_ideal: number | null
+          meta_recommendation: string | null
+          meta_total_spent: number | null
+          review_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_avg_last_five_days?: number | null
+          google_budget_available?: number | null
+          google_daily_budget_current?: number | null
+          google_daily_budget_ideal?: number | null
+          google_recommendation?: string | null
+          google_total_spent?: number | null
+          id?: number
+          meta_account_id?: string | null
+          meta_account_name?: string | null
+          meta_budget_available?: number | null
+          meta_daily_budget_current?: number | null
+          meta_daily_budget_ideal?: number | null
+          meta_recommendation?: string | null
+          meta_total_spent?: number | null
+          review_date?: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_avg_last_five_days?: number | null
+          google_budget_available?: number | null
+          google_daily_budget_current?: number | null
+          google_daily_budget_ideal?: number | null
+          google_recommendation?: string | null
+          google_total_spent?: number | null
+          id?: number
+          meta_account_id?: string | null
+          meta_account_name?: string | null
+          meta_budget_available?: number | null
+          meta_daily_budget_current?: number | null
+          meta_daily_budget_ideal?: number | null
+          meta_recommendation?: string | null
+          meta_total_spent?: number | null
+          review_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_budget_reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]

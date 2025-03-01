@@ -31,14 +31,18 @@ export const TokensSetupForm = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+  });
+
+  // Atualizar o estado quando os tokens forem carregados
+  useState(() => {
+    if (existingTokens) {
       const tokenData: Record<string, string> = {};
-      data.forEach((token) => {
+      existingTokens.forEach((token) => {
         tokenData[token.name] = token.value;
       });
       setTokens(tokenData);
-    },
-  });
+    }
+  }, [existingTokens]);
 
   // Mutation para salvar tokens
   const saveTokensMutation = useMutation({

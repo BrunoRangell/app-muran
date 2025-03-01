@@ -1,12 +1,13 @@
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, RefreshCw, TrendingUp, TrendingDown, Loader, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, BarChart3, Calendar, Loader, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 
 interface ClientReviewDetailsProps {
   clientId: string;
@@ -14,12 +15,11 @@ interface ClientReviewDetailsProps {
 }
 
 export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsProps) => {
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const { toast } = useToast();
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Buscar cliente
-  const { data: client } = useQuery({
-    queryKey: ["client-detail", clientId],
+  const { data: client, isLoading: isLoadingClient } = useQuery({
+    queryKey: ["client", clientId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
@@ -32,297 +32,273 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     },
   });
 
-  // Buscar revisão mais recente para o cliente
-  const { data: review, isLoading, refetch } = useQuery({
-    queryKey: ["client-review", clientId],
+  // Buscar revisões
+  const { data: reviews, isLoading: isLoadingReviews } = useQuery({
+    queryKey: ["client-reviews", clientId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("daily_budget_reviews")
         .select("*")
         .eq("client_id", clientId)
-        .order("review_date", { ascending: false })
-        .limit(1)
-        .single();
+        .order("review_date", { ascending: false });
 
-      if (error) {
-        // Caso não tenha revisão, não tratar como erro
-        if (error.code === "PGRST116") {
-          return null;
-        }
-        throw error;
-      }
-      
+      if (error) throw error;
       return data;
     },
   });
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      const response = await supabase.functions.invoke("daily-budget-reviews", {
-        body: { method: "analyzeClient", clientId },
-      });
+  // Selecionar a revisão mais recente por padrão
+  const latestReview = reviews && reviews.length > 0 ? reviews[0] : null;
+  const review = selectedDate
+    ? reviews?.find((r) => r.review_date === selectedDate)
+    : latestReview;
 
-      if (response.error) throw new Error(response.error.message);
-      
-      refetch();
-      toast({
-        title: "Análise atualizada",
-        description: "Os dados do cliente foram analisados novamente com sucesso.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro na atualização",
-        description: String(error),
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  if (isLoadingClient || isLoadingReviews) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 space-y-4">
+        <Loader className="h-8 w-8 animate-spin text-muran-primary" />
+        <p className="text-muran-dark">Carregando dados da revisão...</p>
+      </div>
+    );
+  }
 
-  const hasMetaData = review?.meta_budget_available > 0;
-  const hasGoogleData = review?.google_budget_available > 0;
+  if (!client || !latestReview) {
+    return (
+      <div className="flex flex-col space-y-4">
+        <Button variant="outline" onClick={onBack} className="w-fit">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para a lista
+        </Button>
+        <Card className="p-6 text-center">
+          <p className="text-gray-500">Nenhuma revisão encontrada para este cliente.</p>
+          <p className="text-gray-500 mt-2">Configure os orçamentos e execute uma análise.</p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col space-y-6">
       <div className="flex justify-between items-center">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={onBack} className="w-fit">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
+          Voltar para a lista
         </Button>
-        <Button onClick={handleRefresh} disabled={isRefreshing}>
-          {isRefreshing ? (
-            <>
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-              Atualizando...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Atualizar análise
-            </>
-          )}
-        </Button>
+
+        {reviews && reviews.length > 0 && (
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-500">Revisão de:</span>
+            <select
+              className="border rounded px-2 py-1 text-sm"
+              value={selectedDate || latestReview.review_date}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            >
+              {reviews.map((r) => (
+                <option key={r.review_date} value={r.review_date}>
+                  {new Date(r.review_date).toLocaleDateString("pt-BR")}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold">{client?.company_name}</h2>
-        <p className="text-gray-500">
-          {hasMetaData || hasGoogleData
-            ? `Última análise em ${
-                review?.review_date
-                  ? new Date(review.review_date).toLocaleDateString("pt-BR")
-                  : "-"
-              }`
-            : "Nenhuma análise disponível"}
-        </p>
-      </div>
-
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
-          <Card className="h-64">
-            <CardHeader>
-              <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-              <div className="h-4 bg-gray-100 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-100 rounded w-full"></div>
-              <div className="h-4 bg-gray-100 rounded w-2/3"></div>
-            </CardContent>
-          </Card>
-          <Card className="h-64">
-            <CardHeader>
-              <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-              <div className="h-4 bg-gray-100 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-100 rounded w-full"></div>
-              <div className="h-4 bg-gray-100 rounded w-2/3"></div>
-            </CardContent>
-          </Card>
+      <div className="flex items-center space-x-4">
+        <Avatar className="h-16 w-16 border-2 border-muran-primary">
+          <AvatarFallback className="bg-muran-primary text-white text-xl">
+            {client.company_name.substring(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <h1 className="text-2xl font-bold">{client.company_name}</h1>
+          <div className="flex items-center text-gray-500">
+            <Calendar className="h-4 w-4 mr-1" />
+            <span>
+              Revisão em {new Date(review?.review_date).toLocaleDateString("pt-BR")}
+            </span>
+          </div>
         </div>
-      ) : (
-        <>
-          {!hasMetaData && !hasGoogleData ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="text-amber-500" />
-                  Orçamentos não configurados
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="mb-4">
-                  Este cliente não possui orçamentos de Meta Ads ou Google Ads configurados. 
-                  Configure os orçamentos na aba "Configuração".
-                </p>
-                <Button onClick={() => window.location.href = "/revisoes-diarias?tab=setup"}>
-                  Ir para Configuração
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {hasMetaData && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-blue-600">Meta Ads</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-end">
-                        <div className="text-sm text-gray-500">Orçamento mensal</div>
-                        <div className="text-xl font-bold">
-                          {formatCurrency(review?.meta_budget_available || 0)}
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-end mt-1">
-                        <div className="text-sm text-gray-500">Gasto até agora</div>
-                        <div className="text-lg">
-                          {formatCurrency(review?.meta_total_spent || 0)}
-                        </div>
-                      </div>
-                      <div className="mt-1 text-sm flex items-center gap-1">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full"
-                            style={{
-                              width: `${Math.min(
-                                ((review?.meta_total_spent || 0) / (review?.meta_budget_available || 1)) * 100,
-                                100
-                              )}%`,
-                            }}
-                          ></div>
-                        </div>
-                        <span>
-                          {Math.round(
-                            ((review?.meta_total_spent || 0) / (review?.meta_budget_available || 1)) * 100
-                          )}%
-                        </span>
-                      </div>
-                    </div>
+      </div>
 
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between items-end">
-                        <div className="text-sm text-gray-500">Orçamento diário atual</div>
-                        <div className="text-lg">
-                          {formatCurrency(review?.meta_daily_budget_current || 0)}
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-end mt-1">
-                        <div className="text-sm text-gray-500">Orçamento diário ideal</div>
-                        <div className="text-lg font-semibold">
-                          {formatCurrency(review?.meta_daily_budget_ideal || 0)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-4">
-                      <div className="text-sm text-gray-500 mb-1">Recomendação</div>
-                      <div 
-                        className={`
-                          text-lg font-bold flex items-center gap-2 
-                          ${review?.meta_recommendation?.includes("Aumentar") ? "text-green-600" : "text-red-600"}
-                        `}
-                      >
-                        {review?.meta_recommendation?.includes("Aumentar") ? (
-                          <TrendingUp />
-                        ) : (
-                          <TrendingDown />
-                        )}
-                        {review?.meta_recommendation || "Sem recomendação"}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {hasGoogleData && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-yellow-600">Google Ads</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex justify-between items-end">
-                        <div className="text-sm text-gray-500">Orçamento mensal</div>
-                        <div className="text-xl font-bold">
-                          {formatCurrency(review?.google_budget_available || 0)}
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-end mt-1">
-                        <div className="text-sm text-gray-500">Gasto até agora</div>
-                        <div className="text-lg">
-                          {formatCurrency(review?.google_total_spent || 0)}
-                        </div>
-                      </div>
-                      <div className="mt-1 text-sm flex items-center gap-1">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-yellow-500 h-2 rounded-full"
-                            style={{
-                              width: `${Math.min(
-                                ((review?.google_total_spent || 0) / (review?.google_budget_available || 1)) * 100,
-                                100
-                              )}%`,
-                            }}
-                          ></div>
-                        </div>
-                        <span>
-                          {Math.round(
-                            ((review?.google_total_spent || 0) / (review?.google_budget_available || 1)) * 100
-                          )}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between items-end">
-                        <div className="text-sm text-gray-500">Orçamento diário atual</div>
-                        <div className="text-lg">
-                          {formatCurrency(review?.google_daily_budget_current || 0)}
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-end mt-1">
-                        <div className="text-sm text-gray-500">Orçamento diário ideal</div>
-                        <div className="text-lg font-semibold">
-                          {formatCurrency(review?.google_daily_budget_ideal || 0)}
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-end mt-1">
-                        <div className="text-sm text-gray-500">Média últimos 5 dias</div>
-                        <div className="text-lg">
-                          {formatCurrency(review?.google_avg_last_five_days || 0)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-4">
-                      <div className="text-sm text-gray-500 mb-1">Recomendação</div>
-                      <div 
-                        className={`
-                          text-lg font-bold flex items-center gap-2 
-                          ${review?.google_recommendation?.includes("Aumentar") ? "text-green-600" : "text-red-600"}
-                        `}
-                      >
-                        {review?.google_recommendation?.includes("Aumentar") ? (
-                          <TrendingUp />
-                        ) : (
-                          <TrendingDown />
-                        )}
-                        {review?.google_recommendation || "Sem recomendação"}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Meta Ads Card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-lg text-blue-600">
+              <div className="flex-shrink-0 w-8 h-8 mr-2 rounded-full bg-blue-100 flex items-center justify-center">
+                <span className="text-blue-600 font-bold">M</span>
+              </div>
+              Meta Ads
+            </CardTitle>
+            <CardDescription>
+              {review?.meta_account_name || "Conta não configurada"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Métricas</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Orçamento mensal</p>
+                  <p className="font-semibold">{formatCurrency(review?.meta_budget_available || 0)}</p>
+                </div>
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Gasto até agora</p>
+                  <p className="font-semibold">{formatCurrency(review?.meta_total_spent || 0)}</p>
+                </div>
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Orçamento diário atual</p>
+                  <p className="font-semibold">{formatCurrency(review?.meta_daily_budget_current || 0)}</p>
+                </div>
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Orçamento diário ideal</p>
+                  <p className="font-semibold">{formatCurrency(review?.meta_daily_budget_ideal || 0)}</p>
+                </div>
+              </div>
             </div>
-          )}
-        </>
-      )}
+
+            <Separator />
+
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Recomendação</h3>
+              <div className="p-3 rounded border flex items-center">
+                {review?.meta_recommendation?.includes("Aumentar") ? (
+                  <TrendingUp className="mr-2 text-green-500" size={20} />
+                ) : (
+                  <TrendingDown className="mr-2 text-red-500" size={20} />
+                )}
+                <span className="font-medium">{review?.meta_recommendation || "Não disponível"}</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Progresso de gastos</h3>
+              <div className="w-full">
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>
+                    {formatCurrency(review?.meta_total_spent || 0)} de{" "}
+                    {formatCurrency(review?.meta_budget_available || 0)}
+                  </span>
+                  <span>
+                    {review?.meta_budget_available
+                      ? Math.round((review.meta_total_spent / review.meta_budget_available) * 100)
+                      : 0}
+                    %
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full"
+                    style={{
+                      width: `${
+                        review?.meta_budget_available
+                          ? Math.min(
+                              (review.meta_total_spent / review.meta_budget_available) * 100,
+                              100
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Google Ads Card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center text-lg text-yellow-600">
+              <div className="flex-shrink-0 w-8 h-8 mr-2 rounded-full bg-yellow-100 flex items-center justify-center">
+                <span className="text-yellow-600 font-bold">G</span>
+              </div>
+              Google Ads
+            </CardTitle>
+            <CardDescription>
+              {review?.google_account_name || "Conta não configurada"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Métricas</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Orçamento mensal</p>
+                  <p className="font-semibold">{formatCurrency(review?.google_budget_available || 0)}</p>
+                </div>
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Gasto até agora</p>
+                  <p className="font-semibold">{formatCurrency(review?.google_total_spent || 0)}</p>
+                </div>
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Orçamento diário atual</p>
+                  <p className="font-semibold">{formatCurrency(review?.google_daily_budget_current || 0)}</p>
+                </div>
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Orçamento diário ideal</p>
+                  <p className="font-semibold">{formatCurrency(review?.google_daily_budget_ideal || 0)}</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Recomendação</h3>
+              <div className="p-3 rounded border flex items-center">
+                {review?.google_recommendation?.includes("Aumentar") ? (
+                  <TrendingUp className="mr-2 text-green-500" size={20} />
+                ) : (
+                  <TrendingDown className="mr-2 text-red-500" size={20} />
+                )}
+                <span className="font-medium">{review?.google_recommendation || "Não disponível"}</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Progresso de gastos</h3>
+              <div className="w-full">
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>
+                    {formatCurrency(review?.google_total_spent || 0)} de{" "}
+                    {formatCurrency(review?.google_budget_available || 0)}
+                  </span>
+                  <span>
+                    {review?.google_budget_available
+                      ? Math.round((review.google_total_spent / review.google_budget_available) * 100)
+                      : 0}
+                    %
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-yellow-500 h-2.5 rounded-full"
+                    style={{
+                      width: `${
+                        review?.google_budget_available
+                          ? Math.min(
+                              (review.google_total_spent / review.google_budget_available) * 100,
+                              100
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Média últimos 5 dias</h3>
+              <div className="p-3 rounded border bg-gray-50 flex items-center">
+                <BarChart3 className="mr-2 text-muran-primary" size={20} />
+                <span>{formatCurrency(review?.google_avg_last_five_days || 0)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
