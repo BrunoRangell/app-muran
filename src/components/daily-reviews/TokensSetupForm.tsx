@@ -19,7 +19,7 @@ export const TokensSetupForm = () => {
   const { toast } = useToast();
 
   // Buscar tokens existentes
-  const { data: existingTokens, isLoading } = useQuery({
+  const { data: existingTokens, isLoading, refetch } = useQuery({
     queryKey: ["api-tokens"],
     queryFn: async () => {
       const { data, error } = await supabase.from("api_tokens").select("name, value");
@@ -42,20 +42,43 @@ export const TokensSetupForm = () => {
   // Mutation para salvar tokens
   const saveTokensMutation = useMutation({
     mutationFn: async () => {
-      const response = await supabase.functions.invoke("daily-budget-reviews", {
-        body: {
-          method: "saveTokens",
-          tokens: Object.entries(tokens).map(([name, value]) => ({ name, value })),
-        },
-      });
+      // Primeiro verificamos se o token já existe
+      const { data: existingToken } = await supabase
+        .from("api_tokens")
+        .select("*")
+        .eq("name", "meta_access_token")
+        .maybeSingle();
+
+      let response;
+      
+      if (existingToken) {
+        // Se o token já existe, atualizamos
+        response = await supabase
+          .from("api_tokens")
+          .update({ value: tokens.meta_access_token })
+          .eq("name", "meta_access_token");
+      } else {
+        // Se não existe, criamos um novo
+        response = await supabase
+          .from("api_tokens")
+          .insert([{ 
+            name: "meta_access_token", 
+            value: tokens.meta_access_token,
+            description: "Token de acesso para a API do Meta Ads"
+          }]);
+      }
 
       if (response.error) throw new Error(response.error.message);
-      return response.data;
+      
+      // Após salvar, recarregamos os tokens
+      await refetch();
+      
+      return { success: true };
     },
     onSuccess: () => {
       toast({
         title: "Token salvo",
-        description: "As configurações de API foram atualizadas com sucesso.",
+        description: "O token do Meta Ads foi configurado com sucesso.",
       });
       setOpen(false);
     },
@@ -77,6 +100,21 @@ export const TokensSetupForm = () => {
 
   const handleSave = () => {
     saveTokensMutation.mutate();
+  };
+
+  const handleSaveToken = async () => {
+    // Configure o token fornecido pelo usuário
+    const metaToken = "EAAFcZAOf159MBO8Wd0qZBmTbEj4pXSuDeUV8egjwaZBxQZCB73V634CdZBYN92k4pUidagEzJujlLIrZCrn9UpN28SvzapBHoixmT8ErWcMZAx3eaLxwlfAHhC2ZBw5gZBTeR8IBMQDxq71GBJqV6wJ6UphDmz0MMM5GumqnaXWmFCBZAjF4qc8FZBseV9u";
+    
+    setTokens(prev => ({
+      ...prev,
+      meta_access_token: metaToken
+    }));
+    
+    // Simulamos um click no botão salvar
+    setTimeout(() => {
+      saveTokensMutation.mutate();
+    }, 100);
   };
 
   const hasEmptyRequiredTokens = () => {
@@ -105,7 +143,7 @@ export const TokensSetupForm = () => {
             <AlertTitle>Token ausente</AlertTitle>
             <AlertDescription>
               O token do Meta Ads é necessário para o funcionamento da integração.
-              Por favor, preencha o campo.
+              Por favor, preencha o campo ou use o botão de configuração rápida.
             </AlertDescription>
           </Alert>
         )}
@@ -133,23 +171,33 @@ export const TokensSetupForm = () => {
               </p>
             </div>
 
-            <Button
-              className="w-full mt-6"
-              onClick={handleSave}
-              disabled={saveTokensMutation.isPending}
-            >
-              {saveTokensMutation.isPending ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Salvar configuração
-                </>
-              )}
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Button
+                className="w-full"
+                onClick={handleSaveToken}
+                variant="secondary"
+              >
+                Configurar Token Rapidamente
+              </Button>
+              
+              <Button
+                className="w-full"
+                onClick={handleSave}
+                disabled={saveTokensMutation.isPending}
+              >
+                {saveTokensMutation.isPending ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Salvar configuração
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         )}
       </SheetContent>
