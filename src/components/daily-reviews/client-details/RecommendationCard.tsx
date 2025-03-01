@@ -1,6 +1,7 @@
 
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp, MinusCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/utils/formatters";
 
 interface RecommendationCardProps {
   recommendation: string | null;
@@ -15,8 +16,21 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange }: Re
       return <TrendingUp className="text-green-500" size={18} />;
     } else if (recommendation.includes("Diminuir")) {
       return <TrendingDown className="text-red-500" size={18} />;
+    } else if (recommendation.includes("Manter")) {
+      return <MinusCircle className="text-gray-500" size={18} />;
     }
     return null;
+  };
+
+  const getRecommendationColorClass = () => {
+    if (!recommendation) return "";
+    
+    if (recommendation.includes("Aumentar")) {
+      return "text-green-600";
+    } else if (recommendation.includes("Diminuir")) {
+      return "text-red-600";
+    }
+    return "";
   };
 
   return (
@@ -28,7 +42,7 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange }: Re
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-lg font-medium">
+        <div className={`text-lg font-medium ${getRecommendationColorClass()}`}>
           {recommendation || "Não há recomendação disponível"}
         </div>
         <div className="text-sm text-gray-500 mt-1">

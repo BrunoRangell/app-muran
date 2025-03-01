@@ -89,51 +89,54 @@ export const useClientReviewDetails = (clientId: string) => {
   // Calcular orçamento diário ideal com base na data atual
   useEffect(() => {
     if (client?.meta_ads_budget && latestReview) {
-      // Certifique-se de que meta_ads_budget seja tratado como número
-      const monthlyBudget = Number(client.meta_ads_budget);
-      const totalSpent = Number(latestReview.meta_total_spent) || 0;
-      const currentDailyBudget = Number(latestReview.meta_daily_budget_current) || 0;
-      
-      console.log("Orçamento mensal do cliente:", monthlyBudget);
-      console.log("Total gasto até agora:", totalSpent);
-      console.log("Orçamento diário atual:", currentDailyBudget);
-      
-      // Sempre usar a data atual para o cálculo
-      const currentDate = new Date();
-      const daysInMonth = getDaysInMonth(currentDate);
-      const currentDay = currentDate.getDate();
-      const remainingDays = daysInMonth - currentDay + 1; // +1 para incluir o dia atual
-      
-      console.log("Data atual utilizada para cálculo:", currentDate.toLocaleDateString('pt-BR'));
-      console.log("Dias no mês:", daysInMonth);
-      console.log("Dia atual:", currentDay);
-      console.log("Dias restantes:", remainingDays);
-      
-      // Calcular orçamento restante
-      const remainingBudget = monthlyBudget - totalSpent;
-      console.log("Orçamento restante:", remainingBudget);
-      
-      // Calcular orçamento diário ideal baseado no orçamento restante e dias restantes
-      const idealDaily = remainingBudget / remainingDays;
-      console.log("Orçamento diário ideal calculado:", idealDaily);
-      setIdealDailyBudget(idealDaily);
-      
-      // Calcular diferença entre orçamento atual e ideal
-      const budgetDifference = currentDailyBudget - idealDaily;
-      setSuggestedBudgetChange(budgetDifference);
-      console.log("Diferença de orçamento:", budgetDifference);
-      
-      // Gerar recomendação baseada na diferença
-      // Usar 5% como threshold para sugerir mudanças
-      const thresholdPercentage = 0.05;
-      const thresholdValue = idealDaily * thresholdPercentage;
-      
-      if (budgetDifference > thresholdValue) {
-        setRecommendation(`Diminuir R$${budgetDifference.toFixed(2)}`);
-      } else if (budgetDifference < -thresholdValue) {
-        setRecommendation(`Aumentar R$${Math.abs(budgetDifference).toFixed(2)}`);
-      } else {
-        setRecommendation("Manter o orçamento diário atual");
+      try {
+        // Certifique-se de que meta_ads_budget seja tratado como número
+        const monthlyBudget = Number(client.meta_ads_budget);
+        const totalSpent = Number(latestReview.meta_total_spent) || 0;
+        const currentDailyBudget = Number(latestReview.meta_daily_budget_current) || 0;
+        
+        console.log("Orçamento mensal do cliente:", monthlyBudget);
+        console.log("Total gasto até agora:", totalSpent);
+        console.log("Orçamento diário atual:", currentDailyBudget);
+        
+        // Sempre usar a data atual para o cálculo
+        const currentDate = new Date();
+        const daysInMonth = getDaysInMonth(currentDate);
+        const currentDay = currentDate.getDate();
+        const remainingDays = daysInMonth - currentDay + 1; // +1 para incluir o dia atual
+        
+        console.log("Data atual utilizada para cálculo:", currentDate.toLocaleDateString('pt-BR'));
+        console.log("Dias no mês:", daysInMonth);
+        console.log("Dia atual:", currentDay);
+        console.log("Dias restantes:", remainingDays);
+        
+        // Calcular orçamento restante
+        const remainingBudget = monthlyBudget - totalSpent;
+        console.log("Orçamento restante:", remainingBudget);
+        
+        // Calcular orçamento diário ideal baseado no orçamento restante e dias restantes
+        const idealDaily = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+        console.log("Orçamento diário ideal calculado:", idealDaily);
+        setIdealDailyBudget(idealDaily);
+        
+        // Calcular diferença entre orçamento atual e ideal para recomendação
+        const budgetDifference = currentDailyBudget - idealDaily;
+        setSuggestedBudgetChange(budgetDifference);
+        console.log("Diferença de orçamento:", budgetDifference);
+        
+        // Gerar recomendação baseada na diferença
+        // Usar um threshold pequeno (R$5.00) para decidir se a mudança vale a pena
+        const thresholdValue = 5.00;
+        
+        if (budgetDifference > thresholdValue) {
+          setRecommendation(`Diminuir R$${budgetDifference.toFixed(2)}`);
+        } else if (budgetDifference < -thresholdValue) {
+          setRecommendation(`Aumentar R$${Math.abs(budgetDifference).toFixed(2)}`);
+        } else {
+          setRecommendation("Manter o orçamento diário atual");
+        }
+      } catch (error) {
+        console.error("Erro ao calcular orçamento ideal:", error);
       }
     }
   }, [client, latestReview]);

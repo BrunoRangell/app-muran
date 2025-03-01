@@ -24,7 +24,9 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
     const spent = Number(latestReview.meta_total_spent);
     
     if (budget <= 0 || isNaN(budget) || isNaN(spent)) return 0;
-    return Math.round((spent / budget) * 100);
+    
+    const percentage = Math.round((spent / budget) * 100);
+    return percentage > 100 ? 100 : percentage; // Limitar a 100%
   };
 
   // Obter o gasto total real

@@ -33,7 +33,7 @@ export const BudgetCard = ({ latestReview, client, idealDailyBudget }: BudgetCar
           </div>
           <div>
             <div className="text-sm text-gray-500">Ideal</div>
-            <div className="text-xl font-bold text-gray-600">
+            <div className="text-xl font-bold text-[#ff6e00]">
               {idealDailyBudget !== null ? formatCurrency(idealDailyBudget) : "N/A"}
             </div>
           </div>
