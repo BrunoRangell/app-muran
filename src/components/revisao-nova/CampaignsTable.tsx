@@ -21,7 +21,7 @@ export const CampaignsTable = ({ campaigns }: CampaignsTableProps) => {
     ...campaign,
     spend: typeof campaign.spend === 'number' 
       ? campaign.spend 
-      : parseFloat(campaign.spend?.toString() || '0')
+      : parseFloat(String(campaign.spend || '0'))
   }));
   
   // Ordenar campanhas pelo valor gasto (do maior para o menor)
@@ -31,7 +31,7 @@ export const CampaignsTable = ({ campaigns }: CampaignsTableProps) => {
   const totalSpend = processedCampaigns.reduce((total, campaign) => {
     const spend = typeof campaign.spend === 'number' 
       ? campaign.spend 
-      : parseFloat(campaign.spend?.toString() || '0');
+      : parseFloat(String(campaign.spend || '0'));
     return total + (isNaN(spend) ? 0 : spend);
   }, 0);
   
@@ -58,7 +58,7 @@ export const CampaignsTable = ({ campaigns }: CampaignsTableProps) => {
           {sortedCampaigns.map((campaign) => {
             const spendValue = typeof campaign.spend === 'number' 
               ? campaign.spend 
-              : parseFloat(campaign.spend?.toString() || '0');
+              : parseFloat(String(campaign.spend || '0'));
             
             const percentage = totalSpend > 0 
               ? (spendValue / totalSpend) * 100 

@@ -1,13 +1,18 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 const getSupabaseAdmin = () => {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY env variables')
+    throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY env variables');
   }
 
   return createClient(supabaseUrl, supabaseAnonKey, {
@@ -15,20 +20,20 @@ const getSupabaseAdmin = () => {
       autoRefreshToken: false,
       persistSession: false
     }
-  })
+  });
 }
 
 serve(async (req) => {
   // This is needed if you're planning to invoke your function from a browser.
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const payload = await req.json()
-    const { method } = payload
+    const payload = await req.json();
+    const { method } = payload;
 
-    console.log("Payload received:", payload)
+    console.log("Payload received:", payload);
 
     let data;
     if (method === "getMetaAdsData") {
@@ -37,20 +42,20 @@ serve(async (req) => {
       throw new Error("Method not supported");
     }
 
-    console.log("Response data:", data)
+    console.log("Response data:", data);
 
     return new Response(
       JSON.stringify(data),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    )
+    );
   } catch (error) {
-    console.error("Function error:", error)
+    console.error("Function error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-    })
+    });
   }
-})
+});
 
 // Função para obter dados atualizados do Meta Ads
 const getMetaAdsData = async (payload: any) => {
