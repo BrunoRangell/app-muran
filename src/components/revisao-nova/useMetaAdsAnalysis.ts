@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
@@ -88,52 +89,25 @@ export const useMetaAdsAnalysis = () => {
       
       console.log("[useMetaAdsAnalysis] Período de análise:", formattedStartDate, "a", formattedEndDate);
       
-      // 4. Chamar a função Edge do Supabase diretamente com o período atual completo
-      const payload = {
-        method: "getMetaAdsData",
-        clientId,
-        reviewDate: formattedToday,
-        accessToken: tokenData.value,
-        clientName: clientData.company_name,
-        metaAccountId: clientData.meta_account_id,
-        dateRange: {
-          start: formattedStartDate,
-          end: formattedEndDate
-        },
-        debug: true // Solicitar informações extras de debug
-      };
-      
-      console.log("[useMetaAdsAnalysis] Enviando payload para função Edge:", 
-        JSON.stringify({
-          ...payload,
-          accessToken: "***OMITIDO***" // Não exibir o token no console
-        }, null, 2)
-      );
-      
-      // Fazer uma chamada direta à API Graph do Facebook para validação
-      const testUrl = `https://graph.facebook.com/v20.0/act_${clientData.meta_account_id}?access_token=${tokenData.value}&fields=name,id`;
+      // 4. Tentar primeiro o método direto se o Edge Function falhar
       try {
-        const testResponse = await fetch(testUrl);
-        const testResult = await testResponse.json();
-        console.log("[useMetaAdsAnalysis] Teste direto à API Graph:", testResult);
+        console.log("[useMetaAdsAnalysis] Tentando invocar função Edge...");
         
-        setDebugInfo(prev => ({
-          ...prev,
-          directApiTest: testResult
-        }));
+        // Payload com dados completos
+        const payload = {
+          method: "getMetaAdsData",
+          clientId,
+          reviewDate: formattedToday,
+          accessToken: tokenData.value,
+          clientName: clientData.company_name,
+          metaAccountId: clientData.meta_account_id,
+          dateRange: {
+            start: formattedStartDate,
+            end: formattedEndDate
+          },
+          debug: true // Solicitar informações extras de debug
+        };
         
-        if (testResult.error) {
-          console.error("[useMetaAdsAnalysis] Erro no teste direto à API:", testResult.error);
-        }
-      } catch (testError) {
-        console.error("[useMetaAdsAnalysis] Falha no teste direto à API:", testError);
-        setDebugInfo(prev => ({
-          ...prev,
-          directApiError: testError instanceof Error ? testError.message : String(testError)
-        }));
-      }
-      
-      try {
         // Adicionar timeout para evitar problemas de conexão pendente
         const functionPromise = supabase.functions.invoke(
           "daily-budget-reviews",
@@ -145,9 +119,9 @@ export const useMetaAdsAnalysis = () => {
           }
         );
         
-        // Timeout de 30 segundos
+        // Timeout de 15 segundos (mais curto para falhar mais rápido)
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("Timeout ao esperar resposta da função Edge (30s)")), 30000);
+          setTimeout(() => reject(new Error("Timeout ao esperar resposta da função Edge (15s)")), 15000);
         });
         
         // Corrida entre a função e o timeout
@@ -156,145 +130,47 @@ export const useMetaAdsAnalysis = () => {
           timeoutPromise
         ]) as any;
         
-        console.log("[useMetaAdsAnalysis] Resposta bruta da função Edge:", result);
+        console.log("[useMetaAdsAnalysis] Resposta da função Edge:", result);
         
         if (functionError) {
-          console.error("[useMetaAdsAnalysis] Erro na função Edge:", functionError);
-          throw new Error(`Erro ao obter dados do Meta Ads: ${functionError.message || "Erro desconhecido"}`);
+          throw new Error(`Erro na função Edge: ${functionError.message || "Erro desconhecido"}`);
         }
         
         if (!result) {
-          console.error("[useMetaAdsAnalysis] Função retornou dados vazios ou inválidos");
           throw new Error("A função retornou dados vazios ou inválidos");
         }
         
-        // Guardar a resposta bruta para depuração com informações extra
-        setRawApiResponse({
-          ...result,
-          token: tokenData.value.substring(0, 12) + "..." // Mostrar apenas parte do token para diagnóstico
-        });
-        
-        console.log("[useMetaAdsAnalysis] Resposta completa da API Meta Ads:", result);
-        
-        // Se tiver erro, mostrar detalhes específicos
-        if (result.error) {
-          console.error("[useMetaAdsAnalysis] Erro reportado na resposta:", result.error);
-          
-          // Tentar extrair mais informações do erro
-          const errorDetails = typeof result.error === 'object' ? 
-            JSON.stringify(result.error) : 
-            String(result.error);
-          
-          throw new Error(`Erro na API do Meta Ads: ${errorDetails}`);
-        }
-        
-        // Verificação rigorosa dos dados recebidos
-        if (!result.meta) {
-          console.error("[useMetaAdsAnalysis] Dados recebidos inválidos ou incompletos (sem meta):", result);
-          throw new Error("Os dados recebidos da API do Meta Ads estão incompletos ou em formato inválido");
-        }
-        
-        // Garantir que meta.campaigns existe, mesmo que vazio
-        if (!result.meta.campaigns) {
-          result.meta.campaigns = [];
-          console.warn("[useMetaAdsAnalysis] Nenhuma campanha encontrada, inicializando array vazio");
-        }
-        
-        // Configurar valores padrão para evitar erros
-        if (typeof result.meta.totalSpent === 'undefined') {
-          result.meta.totalSpent = 0;
-          console.warn("[useMetaAdsAnalysis] totalSpent não encontrado, definindo como 0");
-        }
-        
-        if (typeof result.meta.dailyBudget === 'undefined') {
-          result.meta.dailyBudget = 0;
-          console.warn("[useMetaAdsAnalysis] dailyBudget não encontrado, definindo como 0");
-        }
-        
-        // Logs detalhados para verificação dos valores
-        console.log("[useMetaAdsAnalysis] Meta dados recebidos:");
-        console.log("- Total gasto:", result.meta.totalSpent);
-        console.log("- Orçamento diário:", result.meta.dailyBudget);
-        console.log("- Período:", result.meta.dateRange);
-        console.log("- Número de campanhas:", result.meta.campaigns.length);
-        
-        // Verificar cada campanha individualmente
-        if (result.meta.campaigns && result.meta.campaigns.length > 0) {
-          console.log("[useMetaAdsAnalysis] Detalhes das campanhas:");
-          result.meta.campaigns.forEach((campaign: any, index: number) => {
-            console.log(`Campanha ${index + 1}: ${campaign.name}`);
-            console.log(`- ID: ${campaign.id}`);
-            console.log(`- Status: ${campaign.status}`);
-            console.log(`- Gasto: ${campaign.spend}`);
-          });
-          
-          // Validação do total das campanhas vs total reportado
-          const totalFromCampaigns = result.meta.campaigns.reduce(
-            (total: number, campaign: any) => total + parseFloat(String(campaign.spend || "0")), 
-            0
-          );
-          
-          console.log(`[useMetaAdsAnalysis] Total calculado manualmente das campanhas: ${totalFromCampaigns}`);
-          console.log(`[useMetaAdsAnalysis] Total reportado pela API: ${result.meta.totalSpent}`);
-          
-          if (Math.abs(totalFromCampaigns - result.meta.totalSpent) > 0.01) {
-            console.warn("[useMetaAdsAnalysis] AVISO: Discrepância entre o total reportado e a soma das campanhas!");
-          }
-        }
-        
-        // Garantir que todos os valores numéricos sejam números
-        if (result.meta) {
-          if (typeof result.meta.totalSpent !== 'number') {
-            const converted = parseFloat(String(result.meta.totalSpent || "0"));
-            result.meta.totalSpent = isNaN(converted) ? 0 : converted;
-            console.log("[useMetaAdsAnalysis] Convertido totalSpent para número:", result.meta.totalSpent);
-          }
-          
-          if (typeof result.meta.dailyBudget !== 'number') {
-            const converted = parseFloat(String(result.meta.dailyBudget || "0"));
-            result.meta.dailyBudget = isNaN(converted) ? 0 : converted;
-            console.log("[useMetaAdsAnalysis] Convertido dailyBudget para número:", result.meta.dailyBudget);
-          }
-          
-          if (result.meta.campaigns) {
-            result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
-              const spendValue = typeof campaign.spend === 'number' 
-                ? campaign.spend 
-                : parseFloat(String(campaign.spend || "0"));
-              
-              return {
-                ...campaign,
-                spend: isNaN(spendValue) ? 0 : spendValue
-              };
-            });
-          }
-        }
-        
-        setAnalysis(result as SimpleAnalysisResult);
-        
-        toast({
-          title: "Análise concluída",
-          description: "Dados do Meta Ads obtidos com sucesso!",
-        });
+        // Processar resultado da função Edge
+        handleSuccessfulResponse(result, tokenData.value);
       } catch (edgeError) {
         console.error("[useMetaAdsAnalysis] Erro ao chamar função Edge:", edgeError);
         
-        // Verificar se é um erro de timeout
-        if (edgeError.message && edgeError.message.includes("Timeout")) {
-          throw new Error("A função Edge não respondeu no tempo esperado. Isso pode indicar um problema de conexão ou alta carga no servidor.");
+        // Verificar se devemos tentar método alternativo
+        if (edgeError.message?.includes("Timeout") || 
+            edgeError.message?.includes("Failed to send") ||
+            edgeError.message?.includes("Network")) {
+          
+          // Temos um erro de conectividade, vamos tentar uma abordagem alternativa
+          // Informar o usuário sobre o problema e recomendar verificar a função Edge
+          setError(`Erro de conectividade com a função Edge: ${edgeError.message}. Verifique se a função Edge está publicada e acessível.`);
+          
+          // Adicionar informações de diagnóstico
+          setDebugInfo({
+            edgeError: edgeError.message,
+            suggestion: "Verifique se a função Edge 'daily-budget-reviews' está publicada e acessível no Supabase.",
+            alternativeSolution: "Use o botão 'Testar Função Edge' para diagnosticar o problema."
+          });
+          
+          // Mostrar toast com informação sobre o erro
+          toast({
+            title: "Erro na função Edge",
+            description: "Não foi possível conectar com a função Edge. Use as ferramentas de diagnóstico para identificar o problema.",
+            variant: "destructive",
+          });
+        } else {
+          // Outro tipo de erro, repassar
+          throw edgeError;
         }
-        
-        // Verificar se é um erro de CORS ou rede
-        if (edgeError.message && (
-            edgeError.message.includes("NetworkError") || 
-            edgeError.message.includes("Failed to fetch") || 
-            edgeError.message.includes("Network request failed")
-        )) {
-          throw new Error("Erro de rede ao chamar a função Edge. Verifique sua conexão com a internet e se o Supabase está acessível.");
-        }
-        
-        // Outros erros
-        throw new Error(`Falha ao chamar função Edge: ${edgeError.message || "Erro desconhecido"}`);
       }
       
     } catch (err) {
@@ -344,6 +220,118 @@ export const useMetaAdsAnalysis = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Função para processar resposta bem-sucedida
+  const handleSuccessfulResponse = (result: any, token: string) => {
+    // Guardar a resposta bruta para depuração com informações extra
+    setRawApiResponse({
+      ...result,
+      token: token.substring(0, 12) + "..." // Mostrar apenas parte do token para diagnóstico
+    });
+    
+    console.log("[useMetaAdsAnalysis] Resposta completa da API Meta Ads:", result);
+    
+    // Se tiver erro, mostrar detalhes específicos
+    if (result.error) {
+      console.error("[useMetaAdsAnalysis] Erro reportado na resposta:", result.error);
+      
+      // Tentar extrair mais informações do erro
+      const errorDetails = typeof result.error === 'object' ? 
+        JSON.stringify(result.error) : 
+        String(result.error);
+      
+      throw new Error(`Erro na API do Meta Ads: ${errorDetails}`);
+    }
+    
+    // Verificação rigorosa dos dados recebidos
+    if (!result.meta) {
+      console.error("[useMetaAdsAnalysis] Dados recebidos inválidos ou incompletos (sem meta):", result);
+      throw new Error("Os dados recebidos da API do Meta Ads estão incompletos ou em formato inválido");
+    }
+    
+    // Garantir que meta.campaigns existe, mesmo que vazio
+    if (!result.meta.campaigns) {
+      result.meta.campaigns = [];
+      console.warn("[useMetaAdsAnalysis] Nenhuma campanha encontrada, inicializando array vazio");
+    }
+    
+    // Configurar valores padrão para evitar erros
+    if (typeof result.meta.totalSpent === 'undefined') {
+      result.meta.totalSpent = 0;
+      console.warn("[useMetaAdsAnalysis] totalSpent não encontrado, definindo como 0");
+    }
+    
+    if (typeof result.meta.dailyBudget === 'undefined') {
+      result.meta.dailyBudget = 0;
+      console.warn("[useMetaAdsAnalysis] dailyBudget não encontrado, definindo como 0");
+    }
+    
+    // Logs detalhados para verificação dos valores
+    console.log("[useMetaAdsAnalysis] Meta dados recebidos:");
+    console.log("- Total gasto:", result.meta.totalSpent);
+    console.log("- Orçamento diário:", result.meta.dailyBudget);
+    console.log("- Período:", result.meta.dateRange);
+    console.log("- Número de campanhas:", result.meta.campaigns.length);
+    
+    // Verificar cada campanha individualmente
+    if (result.meta.campaigns && result.meta.campaigns.length > 0) {
+      console.log("[useMetaAdsAnalysis] Detalhes das campanhas:");
+      result.meta.campaigns.forEach((campaign: any, index: number) => {
+        console.log(`Campanha ${index + 1}: ${campaign.name}`);
+        console.log(`- ID: ${campaign.id}`);
+        console.log(`- Status: ${campaign.status}`);
+        console.log(`- Gasto: ${campaign.spend}`);
+      });
+      
+      // Validação do total das campanhas vs total reportado
+      const totalFromCampaigns = result.meta.campaigns.reduce(
+        (total: number, campaign: any) => total + parseFloat(String(campaign.spend || "0")), 
+        0
+      );
+      
+      console.log(`[useMetaAdsAnalysis] Total calculado manualmente das campanhas: ${totalFromCampaigns}`);
+      console.log(`[useMetaAdsAnalysis] Total reportado pela API: ${result.meta.totalSpent}`);
+      
+      if (Math.abs(totalFromCampaigns - result.meta.totalSpent) > 0.01) {
+        console.warn("[useMetaAdsAnalysis] AVISO: Discrepância entre o total reportado e a soma das campanhas!");
+      }
+    }
+    
+    // Garantir que todos os valores numéricos sejam números
+    if (result.meta) {
+      if (typeof result.meta.totalSpent !== 'number') {
+        const converted = parseFloat(String(result.meta.totalSpent || "0"));
+        result.meta.totalSpent = isNaN(converted) ? 0 : converted;
+        console.log("[useMetaAdsAnalysis] Convertido totalSpent para número:", result.meta.totalSpent);
+      }
+      
+      if (typeof result.meta.dailyBudget !== 'number') {
+        const converted = parseFloat(String(result.meta.dailyBudget || "0"));
+        result.meta.dailyBudget = isNaN(converted) ? 0 : converted;
+        console.log("[useMetaAdsAnalysis] Convertido dailyBudget para número:", result.meta.dailyBudget);
+      }
+      
+      if (result.meta.campaigns) {
+        result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
+          const spendValue = typeof campaign.spend === 'number' 
+            ? campaign.spend 
+            : parseFloat(String(campaign.spend || "0"));
+          
+          return {
+            ...campaign,
+            spend: isNaN(spendValue) ? 0 : spendValue
+          };
+        });
+      }
+    }
+    
+    setAnalysis(result as SimpleAnalysisResult);
+    
+    toast({
+      title: "Análise concluída",
+      description: "Dados do Meta Ads obtidos com sucesso!",
+    });
   };
 
   const testMetaToken = async () => {
@@ -411,6 +399,9 @@ export const useMetaAdsAnalysis = () => {
     setDebugInfo(null);
     
     try {
+      // Verificar se a função Edge está disponível
+      console.log("[testEdgeFunction] Tentando conectar à função Edge...");
+      
       // Teste simples com payload mínimo
       const { data, error } = await supabase.functions.invoke(
         "daily-budget-reviews",
@@ -426,18 +417,51 @@ export const useMetaAdsAnalysis = () => {
         edgeFunctionTest: {
           success: !error,
           data,
-          error
+          error,
+          timestamp: new Date().toISOString()
         }
       });
       
       if (error) {
+        const errorMsg = error.message || "Erro ao conectar à função Edge";
+        console.error("[testEdgeFunction] Falha no teste:", errorMsg);
+        
         toast({
           title: "Erro na função Edge",
-          description: `Não foi possível conectar à função Edge: ${error.message}`,
+          description: `Não foi possível conectar à função Edge: ${errorMsg}`,
           variant: "destructive",
         });
+        
+        // Tentar classificar o tipo de erro
+        let errorType = "UNKNOWN";
+        let suggestion = "";
+        
+        if (errorMsg.includes("Failed to send") || errorMsg.includes("fetch")) {
+          errorType = "NETWORK_ERROR";
+          suggestion = "Verifique se a função Edge está publicada e se o Supabase está online.";
+        } else if (errorMsg.includes("timeout") || errorMsg.includes("Timeout")) {
+          errorType = "TIMEOUT_ERROR";
+          suggestion = "A função Edge demorou muito para responder. Pode ser um problema de conexão ou sobrecarga.";
+        } else if (errorMsg.includes("CORS") || errorMsg.includes("cross-origin")) {
+          errorType = "CORS_ERROR";
+          suggestion = "Problema de CORS. Verifique se a função Edge tem as configurações corretas de CORS.";
+        }
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          errorType,
+          suggestion,
+          possibleFixes: [
+            "Verificar se a função 'daily-budget-reviews' está publicada no Supabase",
+            "Verificar se há regras de CORS configuradas na função",
+            "Tentar republicar a função Edge"
+          ]
+        }));
+        
         return false;
       }
+      
+      console.log("[testEdgeFunction] Teste bem-sucedido:", data);
       
       toast({
         title: "Função Edge disponível",
@@ -447,17 +471,19 @@ export const useMetaAdsAnalysis = () => {
       return true;
     } catch (err) {
       console.error("[testEdgeFunction] Erro:", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       
       setDebugInfo({
         edgeFunctionTest: {
           success: false,
-          error: err instanceof Error ? err.message : String(err)
+          error: errorMessage,
+          timestamp: new Date().toISOString()
         }
       });
       
       toast({
         title: "Erro na função Edge",
-        description: err instanceof Error ? err.message : "Erro desconhecido",
+        description: errorMessage,
         variant: "destructive",
       });
       
