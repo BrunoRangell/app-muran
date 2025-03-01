@@ -9,8 +9,8 @@ interface ApiTestToolsProps {
   client?: {
     meta_account_id?: string;
   } | null;
-  testMetaToken: () => Promise<void>;
-  testEdgeFunction: () => Promise<void>;
+  testMetaToken: () => Promise<boolean | void>;
+  testEdgeFunction: () => Promise<boolean | void>;
   handleOpenGraphExplorer: () => void;
   handleMakeSampleRequest: () => void;
 }

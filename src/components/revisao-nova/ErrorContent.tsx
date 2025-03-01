@@ -11,8 +11,8 @@ interface ErrorContentProps {
   debugInfo: any;
   isLoading: boolean;
   client: any;
-  testMetaToken: () => Promise<void>;
-  testEdgeFunction: () => Promise<void>;
+  testMetaToken: () => Promise<boolean | void>;
+  testEdgeFunction: () => Promise<boolean | void>;
   handleOpenGraphExplorer: () => void;
   handleMakeSampleRequest: () => void;
 }
