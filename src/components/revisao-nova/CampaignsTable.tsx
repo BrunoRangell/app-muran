@@ -16,18 +16,31 @@ interface CampaignsTableProps {
 }
 
 export const CampaignsTable = ({ campaigns }: CampaignsTableProps) => {
+  // Validar e garantir que todos os dados são números antes de ordenar
+  const processedCampaigns = campaigns.map(campaign => ({
+    ...campaign,
+    spend: typeof campaign.spend === 'number' 
+      ? campaign.spend 
+      : parseFloat(campaign.spend?.toString() || '0')
+  }));
+  
   // Ordenar campanhas pelo valor gasto (do maior para o menor)
-  const sortedCampaigns = [...campaigns].sort((a, b) => b.spend - a.spend);
+  const sortedCampaigns = [...processedCampaigns].sort((a, b) => b.spend - a.spend);
   
   // Calcular o total
-  const totalSpend = campaigns.reduce((total, campaign) => total + campaign.spend, 0);
+  const totalSpend = processedCampaigns.reduce((total, campaign) => {
+    const spend = typeof campaign.spend === 'number' 
+      ? campaign.spend 
+      : parseFloat(campaign.spend?.toString() || '0');
+    return total + (isNaN(spend) ? 0 : spend);
+  }, 0);
   
   // Log detalhado para conferência dos valores
-  console.log("Renderizando tabela de campanhas");
-  console.log(`Total de campanhas: ${campaigns.length}`);
-  console.log(`Total gasto: ${totalSpend}`);
+  console.log("[CampaignsTable] Renderizando tabela com dados reais");
+  console.log(`[CampaignsTable] Total de campanhas: ${campaigns.length}`);
+  console.log(`[CampaignsTable] Total gasto: ${totalSpend}`);
   campaigns.forEach((campaign, index) => {
-    console.log(`Campanha ${index + 1}: ${campaign.name}, Gasto: ${campaign.spend}, Status: ${campaign.status}`);
+    console.log(`[CampaignsTable] Campanha ${index + 1}: ${campaign.name}, Gasto: ${campaign.spend}, Status: ${campaign.status}`);
   });
   
   return (
@@ -42,20 +55,30 @@ export const CampaignsTable = ({ campaigns }: CampaignsTableProps) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedCampaigns.map((campaign) => (
-            <TableRow key={campaign.id}>
-              <TableCell className="font-medium">{campaign.name}</TableCell>
-              <TableCell>
-                <StatusBadge status={campaign.status} />
-              </TableCell>
-              <TableCell className="text-right">{formatCurrency(campaign.spend)}</TableCell>
-              <TableCell className="text-right">
-                {totalSpend > 0 
-                  ? `${((campaign.spend / totalSpend) * 100).toFixed(1)}%` 
-                  : '0%'}
-              </TableCell>
-            </TableRow>
-          ))}
+          {sortedCampaigns.map((campaign) => {
+            const spendValue = typeof campaign.spend === 'number' 
+              ? campaign.spend 
+              : parseFloat(campaign.spend?.toString() || '0');
+            
+            const percentage = totalSpend > 0 
+              ? (spendValue / totalSpend) * 100 
+              : 0;
+            
+            return (
+              <TableRow key={campaign.id}>
+                <TableCell className="font-medium">{campaign.name}</TableCell>
+                <TableCell>
+                  <StatusBadge status={campaign.status} />
+                </TableCell>
+                <TableCell className="text-right">{formatCurrency(spendValue)}</TableCell>
+                <TableCell className="text-right">
+                  {totalSpend > 0 
+                    ? `${percentage.toFixed(1)}%` 
+                    : '0%'}
+                </TableCell>
+              </TableRow>
+            );
+          })}
           <TableRow className="bg-gray-50 font-medium">
             <TableCell colSpan={2}>Total</TableCell>
             <TableCell className="text-right">{formatCurrency(totalSpend)}</TableCell>

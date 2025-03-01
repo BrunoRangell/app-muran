@@ -15,15 +15,17 @@ export const useMetaAdsAnalysis = () => {
   const [analysis, setAnalysis] = useState<SimpleAnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rawApiResponse, setRawApiResponse] = useState<any>(null);
   const { toast } = useToast();
 
   const fetchAnalysis = async (clientId: string) => {
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
+    setRawApiResponse(null);
 
     try {
-      console.log("Buscando análise para o cliente:", clientId);
+      console.log("[useMetaAdsAnalysis] Iniciando análise para cliente:", clientId);
       
       // 1. Verificar se o cliente existe e buscar seus dados
       const { data: clientData, error: clientError } = await supabase
@@ -33,19 +35,22 @@ export const useMetaAdsAnalysis = () => {
         .single();
       
       if (clientError) {
+        console.error("[useMetaAdsAnalysis] Erro ao buscar cliente:", clientError);
         throw new Error(`Erro ao buscar cliente: ${clientError.message}`);
       }
       
       if (!clientData) {
+        console.error("[useMetaAdsAnalysis] Cliente não encontrado:", clientId);
         throw new Error("Cliente não encontrado");
       }
       
       if (!clientData.meta_account_id) {
+        console.error("[useMetaAdsAnalysis] Cliente sem ID Meta Ads:", clientData);
         throw new Error("Cliente não possui ID do Meta Ads configurado");
       }
       
       setClient(clientData as Client);
-      console.log("Cliente encontrado:", clientData);
+      console.log("[useMetaAdsAnalysis] Cliente encontrado:", clientData);
       
       // 2. Verificar se há token configurado
       const { data: tokenData, error: tokenError } = await supabase
@@ -55,14 +60,16 @@ export const useMetaAdsAnalysis = () => {
         .single();
       
       if (tokenError) {
+        console.error("[useMetaAdsAnalysis] Erro ao buscar token do Meta Ads:", tokenError);
         throw new Error(`Erro ao buscar token do Meta Ads: ${tokenError.message}`);
       }
       
       if (!tokenData?.value) {
+        console.error("[useMetaAdsAnalysis] Token Meta Ads não encontrado");
         throw new Error("Token do Meta Ads não configurado");
       }
       
-      console.log("Token Meta Ads encontrado");
+      console.log("[useMetaAdsAnalysis] Token Meta Ads encontrado");
       
       // 3. Preparar datas para o período atual
       const today = new Date();
@@ -78,7 +85,7 @@ export const useMetaAdsAnalysis = () => {
       const formattedEndDate = endDate.toISOString().split('T')[0];
       const formattedToday = today.toISOString().split('T')[0];
       
-      console.log("Período de análise:", formattedStartDate, "a", formattedEndDate);
+      console.log("[useMetaAdsAnalysis] Período de análise:", formattedStartDate, "a", formattedEndDate);
       
       // 4. Chamar a função Edge do Supabase diretamente com o período atual completo
       const payload = {
@@ -94,7 +101,12 @@ export const useMetaAdsAnalysis = () => {
         }
       };
       
-      console.log("Enviando payload para função Edge:", JSON.stringify(payload, null, 2));
+      console.log("[useMetaAdsAnalysis] Enviando payload para função Edge:", 
+        JSON.stringify({
+          ...payload,
+          accessToken: "***OMITIDO***" // Não exibir o token no console
+        }, null, 2)
+      );
       
       const { data: result, error: functionError } = await supabase.functions.invoke(
         "daily-budget-reviews",
@@ -102,32 +114,36 @@ export const useMetaAdsAnalysis = () => {
       );
       
       if (functionError) {
-        console.error("Erro na função Edge:", functionError);
+        console.error("[useMetaAdsAnalysis] Erro na função Edge:", functionError);
         throw new Error(`Erro ao obter dados do Meta Ads: ${functionError.message || "Erro desconhecido"}`);
       }
       
       if (!result) {
+        console.error("[useMetaAdsAnalysis] Função retornou dados vazios ou inválidos");
         throw new Error("A função retornou dados vazios ou inválidos");
       }
       
-      console.log("Resposta recebida da API Meta Ads:", result);
+      // Guardar a resposta bruta para depuração
+      setRawApiResponse(result);
+      
+      console.log("[useMetaAdsAnalysis] Resposta completa da API Meta Ads:", result);
       
       // Verificação rigorosa dos dados recebidos
       if (!result.meta || typeof result.meta.totalSpent === 'undefined' || !result.meta.campaigns) {
-        console.error("Dados recebidos inválidos ou incompletos:", result);
+        console.error("[useMetaAdsAnalysis] Dados recebidos inválidos ou incompletos:", result);
         throw new Error("Os dados recebidos da API do Meta Ads estão incompletos ou em formato inválido");
       }
       
       // Logs detalhados para verificação dos valores
-      console.log("Meta dados recebidos:");
+      console.log("[useMetaAdsAnalysis] Meta dados recebidos:");
       console.log("- Total gasto:", result.meta.totalSpent);
       console.log("- Orçamento diário:", result.meta.dailyBudget);
       console.log("- Período:", result.meta.dateRange);
       console.log("- Número de campanhas:", result.meta.campaigns.length);
       
-      // Verificando cada campanha individualmente
+      // Verificar cada campanha individualmente
       if (result.meta.campaigns && result.meta.campaigns.length > 0) {
-        console.log("Detalhes das campanhas:");
+        console.log("[useMetaAdsAnalysis] Detalhes das campanhas:");
         result.meta.campaigns.forEach((campaign: any, index: number) => {
           console.log(`Campanha ${index + 1}: ${campaign.name}`);
           console.log(`- ID: ${campaign.id}`);
@@ -141,11 +157,11 @@ export const useMetaAdsAnalysis = () => {
           0
         );
         
-        console.log(`Total calculado manualmente das campanhas: ${totalFromCampaigns}`);
-        console.log(`Total reportado pela API: ${result.meta.totalSpent}`);
+        console.log(`[useMetaAdsAnalysis] Total calculado manualmente das campanhas: ${totalFromCampaigns}`);
+        console.log(`[useMetaAdsAnalysis] Total reportado pela API: ${result.meta.totalSpent}`);
         
         if (Math.abs(totalFromCampaigns - result.meta.totalSpent) > 0.01) {
-          console.warn("AVISO: Discrepância entre o total reportado e a soma das campanhas!");
+          console.warn("[useMetaAdsAnalysis] AVISO: Discrepância entre o total reportado e a soma das campanhas!");
         }
       }
       
@@ -154,13 +170,13 @@ export const useMetaAdsAnalysis = () => {
         if (typeof result.meta.totalSpent !== 'number') {
           const converted = parseFloat(result.meta.totalSpent);
           result.meta.totalSpent = isNaN(converted) ? 0 : converted;
-          console.log("Convertido totalSpent para número:", result.meta.totalSpent);
+          console.log("[useMetaAdsAnalysis] Convertido totalSpent para número:", result.meta.totalSpent);
         }
         
         if (typeof result.meta.dailyBudget !== 'number') {
           const converted = parseFloat(result.meta.dailyBudget);
           result.meta.dailyBudget = isNaN(converted) ? 0 : converted;
-          console.log("Convertido dailyBudget para número:", result.meta.dailyBudget);
+          console.log("[useMetaAdsAnalysis] Convertido dailyBudget para número:", result.meta.dailyBudget);
         }
         
         if (result.meta.campaigns) {
@@ -185,7 +201,7 @@ export const useMetaAdsAnalysis = () => {
       });
       
     } catch (err) {
-      console.error("Erro na análise:", err);
+      console.error("[useMetaAdsAnalysis] Erro na análise:", err);
       const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
       setError(errorMessage);
       
@@ -204,6 +220,7 @@ export const useMetaAdsAnalysis = () => {
     analysis,
     isLoading,
     error,
-    fetchAnalysis
+    fetchAnalysis,
+    rawApiResponse
   };
 };

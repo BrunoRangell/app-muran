@@ -29,15 +29,16 @@ export interface AnalysisResult {
 }
 
 export interface SimpleMetaCampaign {
-  name: string;
   id: string;
-  spend: number;
+  name: string;
   status: string;
+  spend: number;
 }
 
 export interface SimpleMetaData {
   totalSpent: number;
   dailyBudget: number;
+  accountId: string;
   dateRange: {
     start: string;
     end: string;
@@ -47,12 +48,12 @@ export interface SimpleMetaData {
 
 export interface SimpleAnalysisResult {
   success: boolean;
-  client: {
+  reviewId?: number;
+  client?: {
     id: string;
     company_name: string;
     meta_account_id: string;
   };
   meta: SimpleMetaData;
   message: string;
-  error?: string;
 }
