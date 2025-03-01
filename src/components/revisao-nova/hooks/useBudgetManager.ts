@@ -53,7 +53,7 @@ export const useBudgetManager = () => {
         initialBudgets[client.id] = {
           budget: budgetValue,
           accountId: client.meta_account_id || "",
-          displayBudget: budgetValue // Sem formatação
+          displayBudget: budgetValue // Sem formatação inicial
         };
       });
       
@@ -123,14 +123,14 @@ export const useBudgetManager = () => {
     }
   });
 
-  // Manipulador de orçamento sem formatação automática
+  // Manipulador de orçamento 
   const handleBudgetChange = (clientId: string, value: string) => {
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
         budget: value,
-        displayBudget: value // Sem formatação, mostra exatamente o que o usuário digitou
+        displayBudget: value // Armazenamos o valor exatamente como digitado
       }
     }));
   };
