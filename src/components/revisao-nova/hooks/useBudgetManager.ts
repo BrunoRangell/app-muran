@@ -16,7 +16,7 @@ interface Client {
 interface BudgetValues {
   budget: string;
   accountId: string;
-  displayBudget: string; // Novo campo para exibição formatada
+  displayBudget: string;
 }
 
 export const useBudgetManager = () => {
@@ -122,31 +122,39 @@ export const useBudgetManager = () => {
     }
   });
 
-  // Manipulador para alteração de orçamento - CORRIGIDO PARA ACEITAR QUALQUER QUANTIDADE DE DÍGITOS
+  // Nova implementação do manipulador para permitir qualquer quantidade de dígitos
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Permite apenas números, vírgulas e pontos (sem limite de dígitos)
-    const numericValue = value.replace(/[^\d,.]/g, "");
+    console.log("Valor recebido:", value);
     
-    // Formatar para exibição
-    let displayValue = "";
-    try {
-      if (numericValue) {
-        // Formata o valor para exibição
-        displayValue = formatCurrency(numericValue.replace(/\./g, "").replace(",", "."), false);
+    // Remover tudo que não for número, vírgula ou ponto
+    const cleanedValue = value.replace(/[^\d,.]/g, "");
+    console.log("Valor limpo:", cleanedValue);
+    
+    setBudgets((prev) => {
+      // Converter para formatação brasileira para exibição
+      let displayValue = "";
+      
+      if (cleanedValue) {
+        try {
+          // Preparar para formatação
+          const numericValue = cleanedValue.replace(/\./g, "").replace(",", ".");
+          displayValue = formatCurrency(numericValue, false);
+          console.log("Valor formatado:", displayValue);
+        } catch (error) {
+          console.error("Erro ao formatar:", error);
+          displayValue = cleanedValue;
+        }
       }
-    } catch (error) {
-      console.error("Erro ao formatar valor:", error);
-      displayValue = numericValue;
-    }
-    
-    setBudgets((prev) => ({
-      ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        budget: numericValue,
-        displayBudget: displayValue
-      },
-    }));
+      
+      return {
+        ...prev,
+        [clientId]: {
+          ...prev[clientId],
+          budget: cleanedValue,
+          displayBudget: displayValue
+        }
+      };
+    });
   };
 
   // Manipulador para alteração de ID da conta
