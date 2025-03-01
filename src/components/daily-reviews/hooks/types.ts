@@ -17,6 +17,11 @@ export interface SimpleMetaCampaign {
   name: string;
   status: string;
   spend: number;
+  insights?: {
+    data?: Array<{
+      spend?: number | string;
+    }>;
+  };
 }
 
 export interface SimpleAnalysisResult {

@@ -61,7 +61,8 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
       }
     } else if (campaign.insights && campaign.insights.data && campaign.insights.data.length > 0) {
       // Tentar buscar dados de gasto dos insights
-      spendValue = parseFloat(String(campaign.insights.data[0].spend || 0));
+      const insightSpend = campaign.insights.data[0].spend;
+      spendValue = insightSpend !== undefined ? parseFloat(String(insightSpend)) : 0;
     } else {
       // Sem dados de gasto, usar zero
       spendValue = 0;
