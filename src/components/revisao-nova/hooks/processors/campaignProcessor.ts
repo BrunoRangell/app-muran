@@ -1,8 +1,5 @@
 import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
 
-/**
- * Processa as campanhas e combina com os insights
- */
 export const processCampaigns = (campaigns: any[], insights: any[]): SimpleMetaCampaign[] => {
   if (!campaigns || !insights) return [];
 
@@ -12,9 +9,12 @@ export const processCampaigns = (campaigns: any[], insights: any[]): SimpleMetaC
     );
 
     const totalSpend = campaignInsights.reduce((sum, insight) => {
-      return sum + (parseFloat(insight.spend) || 0);
+      const spendValue = parseFloat(insight.spend) || 0;
+      console.log(`[campaignProcessor] Spend para ${campaign.name}: ${spendValue}`);
+      return sum + spendValue;
     }, 0);
 
+    console.log(`[campaignProcessor] Total da campanha ${campaign.name}: ${totalSpend}`);
     return {
       ...campaign,
       spend: totalSpend
