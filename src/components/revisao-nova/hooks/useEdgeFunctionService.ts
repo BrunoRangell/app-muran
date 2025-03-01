@@ -20,13 +20,32 @@ export const useEdgeFunctionService = () => {
       throw new Error("Payload inválido para a requisição da função Edge");
     }
 
-    // Criar uma cópia limpa do objeto (deep copy mais seguro)
-    const cleanPayload = JSON.parse(JSON.stringify(payload));
+    // Problema: vários níveis de transformação podem estar causando perda do payload
+    // Vamos simplificar e criar um objeto novo diretamente
+    const cleanPayload = {};
+    
+    // Copiar manualmente as propriedades para garantir um objeto limpo
+    for (const key in payload) {
+      if (Object.prototype.hasOwnProperty.call(payload, key)) {
+        // Se for um objeto aninhado, clonar também
+        if (payload[key] && typeof payload[key] === 'object' && !Array.isArray(payload[key])) {
+          cleanPayload[key] = { ...payload[key] };
+        } else if (Array.isArray(payload[key])) {
+          cleanPayload[key] = [...payload[key]];
+        } else {
+          cleanPayload[key] = payload[key];
+        }
+      }
+    }
     
     // Verificar se payload está vazio após processamento
     if (Object.keys(cleanPayload).length === 0) {
       console.warn("[useEdgeFunctionService] AVISO: Payload está vazio após processamento!");
     }
+    
+    // Verificação adicional para debug
+    console.log("[useEdgeFunctionService] Payload processado:", cleanPayload);
+    console.log("[useEdgeFunctionService] Tipo do payload:", typeof cleanPayload);
     
     return cleanPayload;
   };
@@ -46,38 +65,41 @@ export const useEdgeFunctionService = () => {
   };
 
   /**
-   * Chama a função Edge com timeout
+   * Chama a função Edge sem transformação adicional
    */
   const invokeEdgeFunction = async (payload: any) => {
     try {
       console.log("[useEdgeFunctionService] Tentando invocar função Edge...");
       
-      // Preparar payload de forma segura
-      const safePayload = preparePayload(payload);
+      // Simplificar: não usar transformações complicadas
+      // Apenas verificar se o payload é válido e copiar direto
+      if (!payload || typeof payload !== 'object') {
+        throw new Error("Payload inválido para função Edge");
+      }
       
-      // Preparar cópia para log (sem dados sensíveis)
-      const payloadForLog = preparePayloadForLog(payload);
-      console.log("[useEdgeFunctionService] Enviando payload para Edge Function:", 
-                  JSON.stringify(payloadForLog, null, 2));
+      // Copiar payload diretamente sem processamento adicional
+      const safePayload = { ...payload };
+      
+      // Log simplificado
+      console.log("[useEdgeFunctionService] Enviando payload:", 
+                  JSON.stringify(preparePayloadForLog(safePayload)));
       
       console.log("[useEdgeFunctionService] Tamanho do payload:", 
                   JSON.stringify(safePayload).length, "bytes");
       
       // Adicionar timeout para evitar problemas de conexão pendente
-      const functionPromise = supabase.functions.invoke(
-        "daily-budget-reviews", 
-        { 
-          body: safePayload,
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
-      );
-      
-      // Timeout de 15 segundos
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error("Timeout ao esperar resposta da função Edge (15s)")), 15000);
       });
+      
+      // IMPORTANTE: Não realizar nenhuma transformação adicional no payload
+      // Deixar o Supabase lidar com a serialização
+      const functionPromise = supabase.functions.invoke(
+        "daily-budget-reviews", 
+        { 
+          body: safePayload
+        }
+      );
       
       // Corrida entre a função e o timeout
       const { data: result, error: functionError } = await Promise.race([
@@ -122,20 +144,20 @@ export const useEdgeFunctionService = () => {
       
       console.log("[testEdgeFunction] Enviando payload de teste:", JSON.stringify(testPayload));
       
-      // Usar o método seguro de preparação de payload
-      const safePayload = preparePayload(testPayload);
+      // Usar abordagem simplificada para o teste
+      const rawResponse = await fetch(`${supabase.functions.url}/daily-budget-reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+        },
+        body: JSON.stringify(testPayload)
+      });
       
-      const { data, error } = await supabase.functions.invoke(
-        "daily-budget-reviews",
-        { 
-          body: safePayload,
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
-      );
+      const data = await rawResponse.json();
+      const error = !rawResponse.ok ? { message: `HTTP error ${rawResponse.status}` } : null;
       
-      console.log("[testEdgeFunction] Resposta do teste:", data, error);
+      console.log("[testEdgeFunction] Resposta do teste (fetch direto):", data, error);
       
       setDebugInfo({
         edgeFunctionTest: {
@@ -143,13 +165,16 @@ export const useEdgeFunctionService = () => {
           data,
           error,
           timestamp: new Date().toISOString(),
-          payloadSent: safePayload,
-          payloadSize: JSON.stringify(safePayload).length
+          payloadSent: testPayload,
+          payloadSize: JSON.stringify(testPayload).length,
+          responseStatus: rawResponse.status,
+          responseStatusText: rawResponse.statusText,
+          approach: "fetch direct"
         }
       });
       
-      if (error) {
-        const errorMsg = error.message || "Erro ao conectar à função Edge";
+      if (error || !data || data.error) {
+        const errorMsg = error?.message || data?.error?.message || "Erro ao conectar à função Edge";
         console.error("[testEdgeFunction] Falha no teste:", errorMsg);
         
         toast({
@@ -181,11 +206,12 @@ export const useEdgeFunctionService = () => {
           errorType,
           suggestion,
           payloadInspection: {
-            payloadType: typeof safePayload,
-            isNull: safePayload === null,
-            isUndefined: safePayload === undefined,
-            isEmpty: Object.keys(safePayload || {}).length === 0,
-            stringifiedLength: JSON.stringify(safePayload || {}).length
+            payloadType: typeof testPayload,
+            isNull: testPayload === null,
+            isUndefined: testPayload === undefined,
+            isEmpty: Object.keys(testPayload || {}).length === 0,
+            stringifiedLength: JSON.stringify(testPayload || {}).length,
+            rawPayload: testPayload
           },
           possibleFixes: [
             "Verificar se a função 'daily-budget-reviews' está publicada no Supabase",
@@ -214,7 +240,8 @@ export const useEdgeFunctionService = () => {
         edgeFunctionTest: {
           success: false,
           error: errorMessage,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          approach: "fetch direct"
         }
       });
       
