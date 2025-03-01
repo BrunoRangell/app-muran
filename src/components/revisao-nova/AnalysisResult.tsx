@@ -1,9 +1,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
-import { BarChart4, DollarSign } from "lucide-react";
+import { BarChart4, DollarSign, Calculator, Calendar } from "lucide-react";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { CampaignsTable } from "./CampaignsTable";
+import { getDaysInMonth, format } from "date-fns";
 
 interface AnalysisResultProps {
   analysis: SimpleAnalysisResult;
@@ -23,10 +24,19 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
   
   // Calcular orçamento disponível
   const availableBudget = Math.max(budgetValue - totalSpent, 0);
+  
+  // Cálculo dos dias restantes no mês
+  const today = new Date();
+  const currentDay = today.getDate();
+  const daysInCurrentMonth = getDaysInMonth(today);
+  const remainingDays = daysInCurrentMonth - currentDay + 1; // +1 para incluir o dia atual
+  
+  // Cálculo do valor diário sugerido
+  const suggestedDailyBudget = remainingDays > 0 ? availableBudget / remainingDays : 0;
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card de Gastos Acumulados */}
         <Card>
           <CardHeader className="pb-2">
@@ -59,7 +69,7 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
           </CardContent>
         </Card>
         
-        {/* Novo Card de Orçamento Mensal Disponível */}
+        {/* Card de Orçamento Mensal Disponível */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -88,6 +98,52 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
                 </div>
               </>
             )}
+          </CardContent>
+        </Card>
+        
+        {/* NOVO CARD: Valor Diário Sugerido */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-muran-primary" />
+              Valor Diário Sugerido
+            </CardTitle>
+            <CardDescription>
+              Valor recomendado para atingir o orçamento mensal
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-muran-primary">
+              {formatCurrency(suggestedDailyBudget)}
+            </div>
+            
+            {budgetValue > 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                baseado no orçamento disponível e dias restantes
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        
+        {/* NOVO CARD: Dias Restantes no Mês */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-muran-primary" />
+              Dias Restantes
+            </CardTitle>
+            <CardDescription>
+              Dias até o fim do mês atual
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-muran-primary">
+              {remainingDays}
+            </div>
+            
+            <p className="text-sm text-gray-500 mt-1">
+              Hoje é dia {format(today, 'dd/MM/yyyy')}
+            </p>
           </CardContent>
         </Card>
       </div>
