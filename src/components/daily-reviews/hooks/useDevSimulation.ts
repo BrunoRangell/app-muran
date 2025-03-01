@@ -1,19 +1,17 @@
 
 import { supabase } from "@/lib/supabase";
-import { useToast } from "@/hooks/use-toast";
+import { AnalysisResult } from "./types";
 
 /**
- * Simula dados de análise para ambiente de desenvolvimento
+ * Simula dados de análise de orçamento para ambiente de desenvolvimento
  */
-export const simulateClientAnalysis = async (clientId: string, client: any) => {
-  const { toast } = useToast();
-  
+export const simulateBudgetData = async (
+  clientId: string, 
+  client: any, 
+  formattedDate: string
+): Promise<AnalysisResult> => {
   // Simular um atraso para dar feedback visual
   await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Criar uma revisão simulada no banco de dados
-  const todayDate = new Date();
-  const formattedDate = todayDate.toISOString().split('T')[0];
   
   // Verificar se já existe uma revisão para hoje
   const { data: existingReview, error: checkError } = await supabase
@@ -35,6 +33,7 @@ export const simulateClientAnalysis = async (clientId: string, client: any) => {
   const totalSpent = monthlyBudget * spentPercentage;
   
   // Calcular orçamento diário atual usando o objeto Date
+  const todayDate = new Date(formattedDate);
   const daysInMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
   const currentDay = todayDate.getDate();
   const remainingDays = daysInMonth - currentDay + 1;
@@ -126,4 +125,11 @@ export const simulateClientAnalysis = async (clientId: string, client: any) => {
     client: client,
     reviewId: reviewId
   };
+};
+
+// Exportar a simulateClientAnalysis para compatibilidade com código existente
+export const simulateClientAnalysis = async (clientId: string, client: any) => {
+  const todayDate = new Date();
+  const formattedDate = todayDate.toISOString().split('T')[0];
+  return await simulateBudgetData(clientId, client, formattedDate);
 };

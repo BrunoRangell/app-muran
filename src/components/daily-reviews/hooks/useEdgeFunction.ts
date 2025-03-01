@@ -1,12 +1,22 @@
 
 import { supabase } from "@/lib/supabase";
+import { AnalysisResult } from "./types";
 
 /**
- * Chama a função Edge para análise de cliente
+ * Invoca a função Edge para análise de orçamento
  */
-export const callEdgeFunction = async (clientId: string) => {
+export const invokeEdgeFunction = async (
+  clientId: string,
+  formattedDate: string
+): Promise<AnalysisResult> => {
+  console.log(`Invocando função Edge para análise de cliente ID: ${clientId}, data: ${formattedDate}`);
+  
   const response = await supabase.functions.invoke("daily-budget-reviews", {
-    body: { method: "analyzeClient", clientId },
+    body: { 
+      method: "analyzeClient", 
+      clientId,
+      reviewDate: formattedDate 
+    },
   });
 
   console.log("Resposta da função Edge:", response);
@@ -17,4 +27,13 @@ export const callEdgeFunction = async (clientId: string) => {
   }
   
   return response.data;
+};
+
+/**
+ * Chama a função Edge para análise de cliente (nome alternativo para compatibilidade)
+ */
+export const callEdgeFunction = async (clientId: string) => {
+  const todayDate = new Date();
+  const formattedDate = todayDate.toISOString().split('T')[0];
+  return await invokeEdgeFunction(clientId, formattedDate);
 };
