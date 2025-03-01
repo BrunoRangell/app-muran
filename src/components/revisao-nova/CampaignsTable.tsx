@@ -23,8 +23,9 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     
     // Verificar se o spend é um objeto (como retornado pela API do Meta)
     if (typeof campaign.spend === 'object' && campaign.spend !== null) {
-      // Se for um objeto, tente extrair o valor numérico
-      spendValue = parseFloat(String(campaign.spend.value || campaign.spend.amount || 0));
+      // Se for um objeto, tente extrair o valor numérico com verificação de segurança
+      const spendObj = campaign.spend as any; // Use any temporariamente para acessar propriedades
+      spendValue = parseFloat(String(spendObj.value || spendObj.amount || 0));
     } else if (campaign.spend === null || campaign.spend === undefined) {
       // Se for null ou undefined, definir como 0
       spendValue = 0;
