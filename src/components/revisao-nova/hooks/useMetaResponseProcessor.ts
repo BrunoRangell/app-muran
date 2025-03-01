@@ -66,35 +66,119 @@ export const useMetaResponseProcessor = () => {
     console.log("- Período:", result.meta.dateRange);
     console.log("- Número de campanhas:", result.meta.campaigns.length);
     
+    // Verificar dados brutos das campanhas
+    console.log("[useMetaResponseProcessor] Dados brutos das campanhas:", 
+      result.meta.campaigns.map((c: any) => ({
+        id: c.id,
+        name: c.name, 
+        status: c.status, 
+        spend: c.spend, 
+        insights: c.insights
+      }))
+    );
+    
     // Verificar cada campanha individualmente e processar os dados de gasto corretamente
     if (result.meta.campaigns && result.meta.campaigns.length > 0) {
       result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
-        // Processar o gasto da campanha (spend) nos vários formatos possíveis
+        // Procurar gasto nos locais possíveis na estrutura de dados da resposta da API
         let spendValue = 0;
+        let spendSource = "não encontrado";
         
+        // Verificar na estrutura de insights (formato comum de resposta da API)
         if (campaign.insights && campaign.insights.data && campaign.insights.data.length > 0) {
-          // Se tivermos dados de insights, usar o valor de spend deles
-          spendValue = parseFloat(String(campaign.insights.data[0].spend || 0));
-        } else if (typeof campaign.spend === 'object' && campaign.spend !== null) {
-          // Se o spend for um objeto (formato da API do Facebook)
-          spendValue = parseFloat(String(campaign.spend.value || campaign.spend.amount || 0));
-        } else {
-          // Caso simples de spend como string ou número
-          spendValue = parseFloat(String(campaign.spend || 0));
+          const insightSpend = campaign.insights.data[0].spend;
+          if (insightSpend !== undefined && insightSpend !== null) {
+            spendValue = parseFloat(String(insightSpend));
+            spendSource = "insights.data[0].spend";
+          }
         }
         
-        console.log(`Campanha: ${campaign.name}, ID: ${campaign.id}, Status: ${campaign.status}, Gasto original: ${JSON.stringify(campaign.spend)}, Gasto normalizado: ${spendValue}`);
+        // Se não encontrou nos insights, verificar no campo spend diretamente
+        if (spendValue === 0 && campaign.spend !== undefined && campaign.spend !== null) {
+          if (typeof campaign.spend === 'number') {
+            spendValue = campaign.spend;
+            spendSource = "spend (número)";
+          } else if (typeof campaign.spend === 'string') {
+            spendValue = parseFloat(campaign.spend);
+            spendSource = "spend (string)";
+          } else if (typeof campaign.spend === 'object') {
+            // Navegar pelo objeto spend para encontrar o valor
+            const spendObj = campaign.spend;
+            
+            if (spendObj.value !== undefined) {
+              spendValue = parseFloat(String(spendObj.value));
+              spendSource = "spend.value";
+            } else if (spendObj.amount !== undefined) {
+              spendValue = parseFloat(String(spendObj.amount));
+              spendSource = "spend.amount";
+            } else if (spendObj.total !== undefined) {
+              spendValue = parseFloat(String(spendObj.total));
+              spendSource = "spend.total";
+            }
+          }
+        }
+        
+        // Verificar se há um objeto cost alternativo
+        if (spendValue === 0 && campaign.cost) {
+          if (typeof campaign.cost === 'number') {
+            spendValue = campaign.cost;
+            spendSource = "cost";
+          } else if (typeof campaign.cost === 'object' && campaign.cost !== null) {
+            if (campaign.cost.value !== undefined) {
+              spendValue = parseFloat(String(campaign.cost.value));
+              spendSource = "cost.value";
+            }
+          }
+        }
+        
+        // Verificar o campo de resultados diretamente na campanha
+        if (spendValue === 0 && campaign.results) {
+          const spend = campaign.results.spend || campaign.results.cost;
+          if (spend) {
+            spendValue = parseFloat(String(spend));
+            spendSource = "results.spend";
+          }
+        }
+        
+        // Tentar outras alternativas comuns de retorno da API
+        if (spendValue === 0) {
+          const additionalSources = [
+            campaign.lifetime_spend,
+            campaign.daily_spend,
+            campaign.budget_remaining,
+            campaign.adset_spend
+          ];
+          
+          for (const [index, source] of additionalSources.entries()) {
+            if (source !== undefined && source !== null) {
+              spendValue = parseFloat(String(source));
+              spendSource = ["lifetime_spend", "daily_spend", "budget_remaining", "adset_spend"][index];
+              break;
+            }
+          }
+        }
+        
+        // Garantir que o valor é um número válido
+        spendValue = isNaN(spendValue) ? 0 : spendValue;
+        
+        console.log(`[useMetaResponseProcessor] Campanha: ${campaign.name}, 
+          ID: ${campaign.id}, 
+          Status: ${campaign.status}, 
+          Gasto encontrado em: ${spendSource}, 
+          Valor: ${spendValue}, 
+          Valor original: ${JSON.stringify(campaign.spend)}`
+        );
         
         return {
           ...campaign,
-          spend: isNaN(spendValue) ? 0 : spendValue
+          spend: spendValue
         };
       });
       
       // Calcular o total das campanhas para validação
       const totalFromCampaigns = result.meta.campaigns.reduce(
         (total: number, campaign: any) => {
-          return total + campaign.spend;
+          return total + (typeof campaign.spend === 'number' ? campaign.spend : 0);
         }, 
         0
       );
@@ -104,8 +188,8 @@ export const useMetaResponseProcessor = () => {
       
       // Se o total reportado for 0 ou muito pequeno, mas temos gastos nas campanhas,
       // use o total calculado das campanhas como o total geral
-      if (Math.abs(result.meta.totalSpent) < 0.01 && totalFromCampaigns > 0) {
-        console.log("[useMetaResponseProcessor] Atualizando total reportado para o total das campanhas");
+      if ((result.meta.totalSpent === 0 || result.meta.totalSpent === null || result.meta.totalSpent === undefined) && totalFromCampaigns > 0) {
+        console.log("[useMetaResponseProcessor] Atualizando total reportado para o total calculado das campanhas");
         result.meta.totalSpent = totalFromCampaigns;
       }
     }
