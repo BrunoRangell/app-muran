@@ -1,4 +1,3 @@
-
 import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
 
 /**
@@ -6,47 +5,49 @@ import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
  * Prioriza o formato de resposta da API do Graph v20.0
  */
 export const extractCampaignSpend = (campaign: SimpleMetaCampaign): number => {
-  // Registrar valores brutos para depuração
+  if (!campaign || typeof campaign !== 'object') {
+    console.log(`[campaignProcessor] Campanha inválida ou mal formatada`);
+    return 0;
+  }
+
   console.log(`[campaignProcessor] Processando campanha ${campaign.name} (${campaign.id})`);
   console.log(`- Valor original de spend:`, campaign.spend);
   console.log(`- Insights disponíveis:`, campaign.insights?.data?.[0]?.spend);
 
   // Verificar primeiro nos insights, que é o formato mais comum na resposta da API do Graph
-  if (campaign.insights?.data && campaign.insights.data.length > 0 && campaign.insights.data[0].spend !== undefined) {
-    const value = parseFloat(String(campaign.insights.data[0].spend));
-    console.log(`- Usando valor de insights.data[0].spend: ${value}`);
-    return isNaN(value) ? 0 : value;
+  if (campaign.insights && Array.isArray(campaign.insights.data)) {
+    const firstInsight = campaign.insights.data[0];
+    if (firstInsight && typeof firstInsight.spend !== 'undefined') {
+      const value = parseSpendValue(firstInsight.spend);
+      console.log(`- Usando valor de insights.data[0].spend: ${value}`);
+      return value;
+    }
   }
   
   // Se não tiver nos insights, verificar no formato direto
-  if (typeof campaign.spend === 'number') {
-    console.log(`- Usando valor numérico direto: ${campaign.spend}`);
-    return campaign.spend;
-  } 
-  
-  if (typeof campaign.spend === 'string') {
-    const value = parseFloat(campaign.spend);
-    console.log(`- Convertendo string para número: ${value}`);
-    return isNaN(value) ? 0 : value;
-  } 
+  if (typeof campaign.spend !== 'undefined') {
+    const value = parseSpendValue(campaign.spend);
+    console.log(`- Usando valor direto de spend: ${value}`);
+    return value;
+  }
   
   // Formatos de objeto como { value: "123.45" }
   if (typeof campaign.spend === 'object' && campaign.spend !== null) {
     const spendObj = campaign.spend as any;
     
     if (spendObj.value !== undefined) {
-      const value = parseFloat(String(spendObj.value));
+      const value = parseSpendValue(spendObj.value);
       console.log(`- Extraindo valor de objeto spend.value: ${value}`);
-      return isNaN(value) ? 0 : value;
+      return value;
     }
     
     // Tentar outras propriedades comuns
     const possibleProps = ['amount', 'cost', 'total'];
     for (const prop of possibleProps) {
       if (spendObj[prop] !== undefined) {
-        const value = parseFloat(String(spendObj[prop]));
+        const value = parseSpendValue(spendObj[prop]);
         console.log(`- Extraindo valor de objeto spend.${prop}: ${value}`);
-        return isNaN(value) ? 0 : value;
+        return value;
       }
     }
   }
@@ -94,3 +95,20 @@ export const calculateTotalSpend = (campaigns: SimpleMetaCampaign[]): number => 
   return total;
 };
 
+/**
+ * Função auxiliar para converter valores monetários em números
+ */
+const parseSpendValue = (value: any): number => {
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    // Remove caracteres não numéricos (ex: "R$ 39,52" -> "39.52")
+    const numericValue = value.replace(/[^0-9.,]/g, '').replace(',', '.');
+    const parsedValue = parseFloat(numericValue);
+    return isNaN(parsedValue) ? 0 : parsedValue;
+  }
+
+  return 0;
+};
