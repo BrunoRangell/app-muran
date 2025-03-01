@@ -59,7 +59,7 @@ export const useMetaAdsAnalysis = () => {
           accessToken: token,
           clientName: clientData.company_name,
           metaAccountId: clientData.meta_account_id,
-          fields: "status,name,spend,insights{spend}", 
+          fields: "status,name,spend,insights{spend,date_start,date_stop}", // Adicionado date_start e date_stop
           dateRange: { start: startDate, end: endDate },
           time_range: JSON.stringify({ since: startDate, until: endDate }), // Formato correto
           debug: true
