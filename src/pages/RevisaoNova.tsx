@@ -19,12 +19,24 @@ export default function RevisaoNova() {
     error,
     fetchAnalysis,
     debugInfo,
+    rawApiResponse,
     testMetaToken,
     testEdgeFunction
   } = useMetaAdsAnalysis();
 
   const handleClientSelect = (clientId: string) => {
     fetchAnalysis(clientId);
+  };
+
+  // Funções para gerenciar funcionalidades adicionais
+  const handleOpenGraphExplorer = () => {
+    window.open("https://developers.facebook.com/tools/explorer/", "_blank");
+  };
+
+  const handleMakeSampleRequest = () => {
+    if (client?.meta_account_id) {
+      window.open(`https://developers.facebook.com/tools/explorer/?method=GET&path=act_${client.meta_account_id}/campaigns`, "_blank");
+    }
   };
 
   return (
@@ -46,15 +58,32 @@ export default function RevisaoNova() {
           
           {isLoading && <div className="animate-pulse mt-4 h-8 w-full max-w-md rounded bg-gray-200" />}
           
-          {error && <ErrorContent error={error} />}
+          {error && (
+            <ErrorContent 
+              error={error} 
+              rawApiResponse={rawApiResponse}
+              debugInfo={debugInfo}
+              isLoading={isLoading}
+              client={client}
+              testMetaToken={testMetaToken}
+              testEdgeFunction={testEdgeFunction}
+              handleOpenGraphExplorer={handleOpenGraphExplorer}
+              handleMakeSampleRequest={handleMakeSampleRequest}
+            />
+          )}
           
-          {analysis && <AnalysisContent analysis={analysis} />}
-          
-          {debugInfo && (
-            <ApiTestTools 
-              debugInfo={debugInfo} 
-              onTestToken={testMetaToken} 
-              onTestEdgeFunction={testEdgeFunction} 
+          {analysis && (
+            <AnalysisContent 
+              isLoading={isLoading}
+              error={error}
+              analysis={analysis}
+              client={client}
+              rawApiResponse={rawApiResponse}
+              debugInfo={debugInfo}
+              testMetaToken={testMetaToken}
+              testEdgeFunction={testEdgeFunction}
+              handleOpenGraphExplorer={handleOpenGraphExplorer}
+              handleMakeSampleRequest={handleMakeSampleRequest}
             />
           )}
         </TabsContent>

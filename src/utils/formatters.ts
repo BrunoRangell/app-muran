@@ -1,7 +1,7 @@
 
-export const formatCurrency = (value: string | number) => {
+export const formatCurrency = (value: string | number, includeSymbol: boolean = true) => {
   // Se o valor for undefined ou null, retorna R$ 0,00
-  if (value == null) return 'R$ 0,00';
+  if (value == null) return includeSymbol ? 'R$ 0,00' : '0,00';
 
   let numericValue: number;
 
@@ -16,19 +16,21 @@ export const formatCurrency = (value: string | number) => {
   // Se o valor não for um número válido, retorna R$ 0,00
   if (isNaN(numericValue)) {
     console.error('Valor inválido para formatação:', { value, tipo: typeof value });
-    return 'R$ 0,00';
+    return includeSymbol ? 'R$ 0,00' : '0,00';
   }
 
   try {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
+    const formatted = new Intl.NumberFormat("pt-BR", {
+      style: includeSymbol ? "currency" : "decimal",
       currency: "BRL",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(numericValue);
+    
+    return formatted;
   } catch (error) {
     console.error('Erro ao formatar valor:', { valor: numericValue, erro: error });
-    return 'R$ 0,00';
+    return includeSymbol ? 'R$ 0,00' : '0,00';
   }
 };
 

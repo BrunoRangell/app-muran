@@ -6,6 +6,7 @@ import { Activity, Check, Copy, ExternalLink, Info, Loader, Search } from "lucid
 
 interface ApiTestToolsProps {
   isLoading: boolean;
+  debugInfo: any;
   client?: {
     meta_account_id?: string;
   } | null;
@@ -17,6 +18,7 @@ interface ApiTestToolsProps {
 
 export function ApiTestTools({ 
   isLoading, 
+  debugInfo,
   client, 
   testMetaToken, 
   testEdgeFunction,
