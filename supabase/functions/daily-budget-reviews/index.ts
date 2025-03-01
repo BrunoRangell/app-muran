@@ -11,7 +11,103 @@ interface MetaAdsRequest {
   method: string;
   clientId: string;
   reviewDate: string;
-  accessToken: string;
+  accesstoken: string;
+}
+
+async function fetchCampaignsMeta(accountId: string, accesstoken: string) {
+  let allCampaigns = [];
+  let url = `https://graph.facebook.com/v20.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time&access_token=${accesstoken}`;
+  try {
+    while (url) {
+      console.log(`Buscando campanhas, URL: ${url}`);
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar campanhas: ${await response.text()}`);
+      }
+      const data = await response.json();
+      allCampaigns = allCampaigns.concat(data.data);
+      url = data.paging?.next || null;
+    }
+    console.log(`Total de campanhas recuperadas: ${allCampaigns.length}`);
+    return allCampaigns;
+  } catch (error) {
+    console.error("Erro ao buscar campanhas:", error.message);
+    throw error;
+  }
+}
+
+async function fetchAdSets(campaignId: string, accesstoken: string) {
+  let allAdSets = [];
+  let url = `https://graph.facebook.com/v20.0/${campaignId}/adsets?fields=daily_budget,status,name,end_time&access_token=${accesstoken}`;
+  try {
+    while (url) {
+      console.log(`Buscando ad sets para campanha ${campaignId}, URL: ${url}`);
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar ad sets: ${await response.text()}`);
+      }
+      const data = await response.json();
+      allAdSets = allAdSets.concat(data.data);
+      url = data.paging?.next || null;
+    }
+    console.log(`Total de ad sets recuperados para campanha ${campaignId}: ${allAdSets.length}`);
+    return allAdSets;
+  } catch (error) {
+    console.error("Erro ao buscar ad sets:", error.message);
+    throw error;
+  }
+}
+
+async function fetchInsightsMeta(accountId: string, since: string, until: string, accesstoken: string) {
+  const url = `https://graph.facebook.com/v20.0/act_${accountId}/insights?fields=spend&time_range={"since":"${since}","until":"${until}"}&access_token=${accesstoken}`;
+  try {
+    console.log(`Buscando insights, URL: ${url}`);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Erro ao buscar insights: ${await response.text()}`);
+    }
+    const data = await response.json();
+    const spends = data.data.map(insight => parseInt(insight.spend || "0"));
+    const totalSpent = spends.reduce((sum, spend) => sum + spend, 0);
+    console.log(`Total gasto recuperado: ${totalSpent} centavos`);
+    return totalSpent / 100; // Convert from centavos to main unit
+  } catch (error) {
+    console.error("Erro ao buscar insights:", error.message);
+    throw error;
+  }
+}
+
+async function calculateTotalBudgetMeta(accountId: string, reviewDate: string, accesstoken: string) {
+  try {
+    const reviewDateObj = new Date(reviewDate);
+    const campaigns = await fetchCampaignsMeta(accountId, accesstoken);
+    const budgetPromises = campaigns.map(async campaign => {
+      if (campaign.status === 'ACTIVE') {
+        const adSets = await fetchAdSets(campaign.id, accesstoken);
+        let totalBudget = 0;
+        let hasActiveAdSet = false;
+        for (const adSet of adSets) {
+          const end_time = adSet.end_time ? new Date(adSet.end_time) : null;
+          if (adSet.status === 'ACTIVE' && (!end_time || end_time > reviewDateObj)) {
+            hasActiveAdSet = true;
+            totalBudget += parseInt(adSet.daily_budget || "0");
+          }
+        }
+        if (hasActiveAdSet) {
+          totalBudget += parseInt(campaign.daily_budget || "0");
+        }
+        return totalBudget;
+      }
+      return 0;
+    });
+    const budgets = await Promise.all(budgetPromises);
+    const totalBudget = budgets.reduce((sum, budget) => sum + budget, 0);
+    console.log(`Orçamento total calculado: ${totalBudget} centavos`);
+    return totalBudget / 100; // Convert from centavos to main unit
+  } catch (error) {
+    console.error("Erro ao calcular orçamento total:", error.message);
+    throw error;
+  }
 }
 
 serve(async (req) => {
@@ -24,15 +120,15 @@ serve(async (req) => {
 
   try {
     // Extrair dados da requisição
-    const { method, clientId, reviewDate, accessToken } = (await req.json()) as MetaAdsRequest;
+    const { method, clientId, reviewDate, accesstoken } = (await req.json()) as MetaAdsRequest;
 
     console.log(`Requisição recebida: método=${method}, clientId=${clientId}, data=${reviewDate}`);
 
-    if (!method || !clientId || !reviewDate || !accessToken) {
+    if (!method || !clientId || !reviewDate || !accesstoken) {
       console.error("Parâmetros obrigatórios ausentes na requisição");
       return new Response(
         JSON.stringify({
-          error: "Parâmetros obrigatórios ausentes: method, clientId, reviewDate, accessToken",
+          error: "Parâmetros obrigatórios ausentes: method, clientId, reviewDate, accesstoken",
         }),
         {
           status: 400,
@@ -112,28 +208,39 @@ serve(async (req) => {
       console.log("Buscando dados do Meta Ads para a conta", client.meta_account_id);
 
       try {
-        // TODO: Implementar integração real com a API do Meta Ads
-        // Por enquanto, vamos simular uma resposta para demonstrar o fluxo
-
-        console.log("Simulando resposta da API do Meta Ads (função Edge)");
-
-        // Simular total gasto no mês atual (30-70% do orçamento mensal)
-        const monthlyBudget = Number(client.meta_ads_budget);
-        const spentPercentage = Math.random() * 0.4 + 0.3; // Entre 30% e 70% do orçamento
-        const totalSpent = monthlyBudget * spentPercentage;
-
-        // Calcular orçamento diário ideal
-        const todayDate = new Date(reviewDate);
-        const daysInMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
-        const currentDay = todayDate.getDate();
+        // Parse reviewDate
+        const reviewDateObj = new Date(reviewDate);
+        const startOfMonth = new Date(reviewDateObj.getUTCFullYear(), reviewDateObj.getUTCMonth(), 1);
+        const startOfMonthIso = startOfMonth.toISOString().split('T')[0];
+        const daysInMonth = new Date(reviewDateObj.getUTCFullYear(), reviewDateObj.getUTCMonth() + 1, 0).getDate();
+        const endOfMonth = new Date(reviewDateObj.getUTCFullYear(), reviewDateObj.getUTCMonth(), daysInMonth);
+        const currentDay = reviewDateObj.getUTCDate();
         const remainingDays = daysInMonth - currentDay + 1;
 
+        // Fetch total spend from Meta Ads
+        const totalSpent = await fetchInsightsMeta(client.meta_account_id, startOfMonthIso, reviewDate, accesstoken);
+
+        // Calculate total current daily budget from Meta Ads
+        const currentDailyBudget = await calculateTotalBudgetMeta(client.meta_account_id, reviewDate, accesstoken);
+
+        // Get allocated monthly budget from client
+        const monthlyBudget = Number(client.meta_ads_budget);
+
+        // Calculate remaining budget
         const remainingBudget = monthlyBudget - totalSpent;
+
+        // Calculate ideal daily budget
         const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
 
-        // Simular orçamento diário atual com uma pequena variação do ideal
-        const variationFactor = 0.8 + Math.random() * 0.4; // Entre 0.8 e 1.2
-        const currentDailyBudget = idealDailyBudget * variationFactor;
+        // Prepare review data
+        const reviewData = {
+          client_id: clientId,
+          review_date: reviewDate,
+          meta_daily_budget_current: currentDailyBudget,
+          meta_total_spent: totalSpent,
+          meta_account_id: client.meta_account_id,
+          meta_account_name: client.company_name,
+        };
 
         // Registrar a revisão no banco de dados
         console.log("Registrando revisão no banco de dados");
@@ -157,15 +264,6 @@ serve(async (req) => {
 
         const existingReviews = await existingReviewResponse.json();
         let reviewId;
-
-        const reviewData = {
-          client_id: clientId,
-          review_date: reviewDate,
-          meta_daily_budget_current: currentDailyBudget,
-          meta_total_spent: totalSpent,
-          meta_account_id: client.meta_account_id,
-          meta_account_name: client.company_name,
-        };
 
         if (existingReviews && existingReviews.length > 0) {
           // Atualizar revisão existente
@@ -234,13 +332,12 @@ serve(async (req) => {
             message: "Análise realizada com sucesso via API do Meta Ads",
             client: client,
             reviewId: reviewId,
-            // Incluir dados adicionais para debug/informação
             meta: {
-              totalSpent,
-              currentDailyBudget,
-              idealDailyBudget,
-              remainingBudget,
-              remainingDays,
+              totalSpent: totalSpent,
+              currentDailyBudget: currentDailyBudget,
+              idealDailyBudget: idealDailyBudget,
+              remainingBudget: remainingBudget,
+              remainingDays: remainingDays,
             },
           }),
           {
@@ -249,7 +346,7 @@ serve(async (req) => {
           }
         );
       } catch (error) {
-        console.error("Erro ao processar dados do Meta Ads:", error);
+        console.error("Erro ao processar dados do Meta Ads:", error.message, error.stack);
         return new Response(
           JSON.stringify({
             error: `Erro ao processar dados do Meta Ads: ${error.message || "Erro desconhecido"}`,
@@ -271,7 +368,7 @@ serve(async (req) => {
       );
     }
   } catch (error) {
-    console.error("Erro na função Edge:", error);
+    console.error("Erro na função Edge:", error.message, error.stack);
     return new Response(
       JSON.stringify({
         error: `Erro interno na função Edge: ${error.message || "Erro desconhecido"}`,
