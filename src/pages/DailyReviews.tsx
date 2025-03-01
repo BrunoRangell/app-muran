@@ -17,8 +17,14 @@ const DailyReviews = () => {
   const [activeTab, setActiveTab] = useState("clients-list");
   
   const { analyzeMutation } = useClientAnalysis((data) => {
-    setSelectedClient(data.client?.id);
-    setActiveTab("client-details");
+    // Se há dados do cliente no retorno, selecione-o
+    if (data.client?.id) {
+      setSelectedClient(data.client.id);
+      setActiveTab("client-details");
+    } else if (selectedClient) {
+      // Caso contrário, mantém o cliente atual selecionado
+      setActiveTab("client-details");
+    }
   });
 
   const handleAnalyzeClient = (clientId: string) => {
