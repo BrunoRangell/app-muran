@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -142,7 +143,10 @@ export const useMetaAdsAnalysis = () => {
   const processResponse = (response: ApiResponse): SimpleAnalysisResult => {
     let totalSpent = 0;
     let campaigns: SimpleMetaCampaign[] = [];
-    let dateRange: MetaDateRange = {};
+    let dateRange: MetaDateRange = {
+      start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString(),
+      end: new Date().toLocaleDateString()
+    };
   
     if (response.campaigns && Array.isArray(response.campaigns)) {
       response.campaigns.forEach((campaign: any) => {
@@ -158,15 +162,6 @@ export const useMetaAdsAnalysis = () => {
           });
         }
       });
-  
-      // Determinar o período com base nas campanhas
-      if (response.campaigns.length > 0) {
-        const firstCampaign = response.campaigns[0];
-        dateRange = {
-          start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString(),
-          end: new Date().toLocaleDateString(),
-        };
-      }
     }
   
     // Calcular o orçamento diário atual com base nas campanhas e conjuntos de anúncios
@@ -193,6 +188,8 @@ export const useMetaAdsAnalysis = () => {
     }
     
     return {
+      success: true,
+      message: "Análise concluída com sucesso",
       meta: {
         totalSpent: totalSpent,
         campaigns: campaigns,

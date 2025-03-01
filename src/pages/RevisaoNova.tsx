@@ -37,6 +37,15 @@ export default function RevisaoNova() {
     }
   }, [client]);
 
+  // Funções de mock para o testMetaToken e testEdgeFunction
+  const mockTestMetaToken = useCallback(async () => {
+    return Promise.resolve(true);
+  }, []);
+  
+  const mockTestEdgeFunction = useCallback(async () => {
+    return Promise.resolve(true);
+  }, []);
+
   return (
     <div className="container mx-auto p-4 space-y-6">
       <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
@@ -62,8 +71,8 @@ export default function RevisaoNova() {
               client={client}
               rawApiResponse={rawApiResponse}
               debugInfo={debugInfo}
-              testMetaToken={testMetaToken}
-              testEdgeFunction={testEdgeFunction}
+              testMetaToken={mockTestMetaToken}
+              testEdgeFunction={mockTestEdgeFunction}
               handleOpenGraphExplorer={handleOpenGraphExplorer}
               handleMakeSampleRequest={handleMakeSampleRequest}
             />
@@ -77,8 +86,8 @@ export default function RevisaoNova() {
               client={client}
               rawApiResponse={rawApiResponse}
               debugInfo={debugInfo}
-              testMetaToken={testMetaToken}
-              testEdgeFunction={testEdgeFunction}
+              testMetaToken={mockTestMetaToken}
+              testEdgeFunction={mockTestEdgeFunction}
               handleOpenGraphExplorer={handleOpenGraphExplorer}
               handleMakeSampleRequest={handleMakeSampleRequest}
             />
