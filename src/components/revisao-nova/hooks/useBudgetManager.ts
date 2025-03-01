@@ -122,34 +122,30 @@ export const useBudgetManager = () => {
     }
   });
 
-  // Nova implementação do manipulador para permitir qualquer quantidade de dígitos
+  // Implementação completamente refeita do manipulador de valores
   const handleBudgetChange = (clientId: string, value: string) => {
-    console.log("Valor recebido:", value);
-    
-    // Remover tudo que não for número, vírgula ou ponto
-    const cleanedValue = value.replace(/[^\d,.]/g, "");
-    console.log("Valor limpo:", cleanedValue);
-    
-    setBudgets((prev) => {
-      // Converter para formatação brasileira para exibição
-      let displayValue = "";
+    // Armazenar o valor original sem formatação no estado
+    setBudgets((prevBudgets) => {
+      // Remover tudo que não for número, vírgula ou ponto
+      let cleanedValue = value.replace(/[^\d,.]/g, "");
       
+      // Formatar para exibição como moeda brasileira
+      let displayValue = "";
       if (cleanedValue) {
         try {
-          // Preparar para formatação
-          const numericValue = cleanedValue.replace(/\./g, "").replace(",", ".");
-          displayValue = formatCurrency(numericValue, false);
-          console.log("Valor formatado:", displayValue);
+          // Converter para formato numérico para formatação
+          const numericFormat = cleanedValue.replace(/\./g, "").replace(",", ".");
+          displayValue = formatCurrency(numericFormat, false);
         } catch (error) {
-          console.error("Erro ao formatar:", error);
+          console.error("Erro na formatação:", error);
           displayValue = cleanedValue;
         }
       }
       
       return {
-        ...prev,
+        ...prevBudgets,
         [clientId]: {
-          ...prev[clientId],
+          ...prevBudgets[clientId],
           budget: cleanedValue,
           displayBudget: displayValue
         }

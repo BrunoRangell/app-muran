@@ -36,11 +36,6 @@ export const BudgetManager = () => {
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Novo handler para input que lida diretamente com o valor sem limitações
-  const handleBudgetInputChange = (clientId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    handleBudgetChange(clientId, e.target.value);
-  };
-
   return (
     <Card className="w-full">
       <CardHeader>
@@ -95,7 +90,7 @@ export const BudgetManager = () => {
                           <Input
                             type="text"
                             value={budgets[client.id]?.displayBudget || ""}
-                            onChange={(e) => handleBudgetInputChange(client.id, e)}
+                            onChange={(e) => handleBudgetChange(client.id, e.target.value)}
                             placeholder="0,00"
                             className="text-right"
                           />
