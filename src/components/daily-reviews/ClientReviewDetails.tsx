@@ -4,9 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, BarChart3, Loader, Calendar } from "lucide-react";
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, BarChart3, Loader, Calendar, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { getDaysInMonth } from 'date-fns';
+import { ErrorState } from "@/components/clients/components/ErrorState";
 
 interface ClientReviewDetailsProps {
   clientId: string;
@@ -18,7 +19,7 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
   const [idealDailyBudget, setIdealDailyBudget] = useState<number | null>(null);
 
   // Buscar dados do cliente
-  const { data: client, isLoading: isLoadingClient } = useQuery({
+  const { data: client, isLoading: isLoadingClient, error: clientError } = useQuery({
     queryKey: ["client-detail", clientId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -27,13 +28,16 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
         .eq("id", clientId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar cliente:", error);
+        throw error;
+      }
       return data;
     },
   });
 
   // Buscar a revisão mais recente
-  const { data: latestReview, isLoading: isLoadingReview } = useQuery({
+  const { data: latestReview, isLoading: isLoadingReview, error: reviewError } = useQuery({
     queryKey: ["latest-review", clientId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -44,14 +48,17 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
         .limit(1)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar revisão mais recente:", error);
+        throw error;
+      }
       return data;
     },
     enabled: !!client,
   });
 
   // Histórico de revisões
-  const { data: reviewHistory, isLoading: isLoadingHistory } = useQuery({
+  const { data: reviewHistory, isLoading: isLoadingHistory, error: historyError } = useQuery({
     queryKey: ["review-history", clientId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -61,7 +68,10 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
         .order("review_date", { ascending: false })
         .limit(10);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar histórico de revisões:", error);
+        throw error;
+      }
       return data;
     },
     enabled: !!client,
@@ -101,6 +111,21 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
   };
 
   const isLoading = isLoadingClient || isLoadingReview;
+  const hasError = clientError || reviewError || historyError;
+
+  if (hasError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Button variant="outline" onClick={onBack} className="flex gap-1">
+            <ArrowLeft size={16} />
+            Voltar
+          </Button>
+        </div>
+        <ErrorState />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -119,7 +144,10 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
       ) : !client ? (
         <Card>
           <CardContent className="pt-6">
-            <p className="text-center text-gray-500">Cliente não encontrado.</p>
+            <div className="flex flex-col items-center justify-center py-6">
+              <AlertCircle className="h-12 w-12 text-red-500 mb-2" />
+              <p className="text-center text-gray-500">Cliente não encontrado.</p>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -201,7 +229,23 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
             </CardContent>
           </Card>
 
-          {reviewHistory && reviewHistory.length > 0 && (
+          {isLoadingHistory ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="text-muran-primary" size={18} />
+                  Histórico de Revisões
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse space-y-2">
+                  {Array(5).fill(0).map((_, i) => (
+                    <div key={i} className="h-12 bg-gray-100 rounded-md"></div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : reviewHistory && reviewHistory.length > 0 ? (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -235,6 +279,21 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="text-muran-primary" size={18} />
+                  Histórico de Revisões
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center justify-center py-6 text-gray-500">
+                  <AlertCircle className="h-12 w-12 text-gray-300 mb-2" />
+                  <p>Nenhuma revisão encontrada para este cliente</p>
                 </div>
               </CardContent>
             </Card>

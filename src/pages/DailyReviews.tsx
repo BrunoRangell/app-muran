@@ -13,6 +13,7 @@ import { DailyReviewsSummary } from "@/components/daily-reviews/DailyReviewsSumm
 import { ClientReviewDetails } from "@/components/daily-reviews/ClientReviewDetails";
 import { BudgetSetupForm } from "@/components/daily-reviews/BudgetSetupForm";
 import { TokensSetupForm } from "@/components/daily-reviews/TokensSetupForm";
+import { ErrorState } from "@/components/clients/components/ErrorState";
 
 type Client = {
   id: string;
@@ -72,16 +73,93 @@ const DailyReviews = () => {
       }
       
       if (!client.meta_account_id) {
+        toast({
+          title: "Configuração incompleta",
+          description: "O cliente não possui um ID de conta Meta configurado. Por favor, configure-o primeiro.",
+          variant: "destructive",
+        });
         throw new Error("O cliente não possui um ID de conta Meta configurado");
       }
       
       if (!client.meta_ads_budget || client.meta_ads_budget <= 0) {
+        toast({
+          title: "Configuração incompleta",
+          description: "O cliente não possui um orçamento Meta Ads configurado. Por favor, configure-o primeiro.",
+          variant: "destructive",
+        });
         throw new Error("O cliente não possui um orçamento Meta Ads configurado");
       }
       
       console.log("Chamando função Edge para análise do cliente:", client);
       
       try {
+        // Verificar se estamos em ambiente de desenvolvimento para simular resposta
+        if (import.meta.env.DEV) {
+          console.log("Ambiente de desenvolvimento detectado - simulando resposta da função Edge");
+          
+          // Simular um atraso para dar feedback visual
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Criar uma revisão simulada no banco de dados
+          const today = new Date().toISOString().split('T')[0];
+          
+          const { data: existingReview, error: checkError } = await supabase
+            .from("daily_budget_reviews")
+            .select("id")
+            .eq("client_id", clientId)
+            .eq("review_date", today)
+            .maybeSingle();
+            
+          if (checkError) {
+            console.error("Erro ao verificar revisão existente:", checkError);
+          }
+          
+          // Se já existe uma revisão para hoje, atualizamos, senão inserimos uma nova
+          let reviewId;
+          
+          if (existingReview) {
+            console.log("Atualizando revisão existente para hoje");
+            const { data, error } = await supabase
+              .from("daily_budget_reviews")
+              .update({
+                meta_daily_budget_current: client.meta_ads_budget / 30, // Simplificação para o exemplo
+                meta_daily_budget_recommended: client.meta_ads_budget / 30,
+                meta_total_spent: client.meta_ads_budget * 0.7, // Simula 70% do orçamento gasto
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", existingReview.id)
+              .select();
+              
+            if (error) throw error;
+            reviewId = existingReview.id;
+          } else {
+            console.log("Criando nova revisão");
+            const { data, error } = await supabase
+              .from("daily_budget_reviews")
+              .insert({
+                client_id: clientId,
+                review_date: today,
+                meta_daily_budget_current: client.meta_ads_budget / 30,
+                meta_daily_budget_recommended: client.meta_ads_budget / 30,
+                meta_total_spent: client.meta_ads_budget * 0.7,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select();
+              
+            if (error) throw error;
+            reviewId = data?.[0]?.id;
+          }
+          
+          return {
+            status: "success",
+            message: "Análise simulada concluída com sucesso",
+            client: client,
+            reviewId: reviewId
+          };
+        }
+        
+        // Em produção, chama a função Edge real
         const response = await supabase.functions.invoke("daily-budget-reviews", {
           body: { method: "analyzeClient", clientId },
         });
@@ -94,8 +172,13 @@ const DailyReviews = () => {
         }
         
         return response.data;
-      } catch (error) {
+      } catch (error: any) {
         console.error("Erro ao chamar função Edge:", error);
+        toast({
+          title: "Erro na análise",
+          description: String(error?.message || error),
+          variant: "destructive",
+        });
         throw error;
       }
     },
@@ -103,14 +186,14 @@ const DailyReviews = () => {
       console.log("Análise concluída com sucesso:", data);
       toast({
         title: "Análise concluída",
-        description: `A análise para ${data.client.company_name} foi atualizada com sucesso.`,
+        description: `A análise para ${data.client?.company_name || 'o cliente'} foi atualizada com sucesso.`,
       });
       
       // Atualizar dados
       refetchClients();
       refetchReviews();
       
-      setSelectedClient(data.client.id);
+      setSelectedClient(data.client?.id);
       setActiveTab("client-details");
     },
     onError: (error: any) => {
