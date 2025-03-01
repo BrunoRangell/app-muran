@@ -35,7 +35,7 @@ export const invokeEdgeFunction = async (
     // Verificar se o cliente existe e buscar os dados necessários
     const { data: clientData, error: clientError } = await supabase
       .from("clients")
-      .select("company_name, meta_account_id")  // Usar company_name em vez de name
+      .select("company_name, meta_account_id")
       .eq("id", clientId)
       .maybeSingle();
     
@@ -63,7 +63,7 @@ export const invokeEdgeFunction = async (
       clientId,
       reviewDate: formattedDate,
       accessToken: tokens.value,
-      clientName: clientData.company_name,  // Usar company_name
+      clientName: clientData.company_name,
       metaAccountId: clientData.meta_account_id
     };
     
@@ -93,6 +93,19 @@ export const invokeEdgeFunction = async (
     if (!data) {
       console.error("Função Edge retornou dados vazios ou inválidos");
       throw new AppError("A função Edge retornou dados vazios ou inválidos", "INVALID_RESPONSE");
+    }
+    
+    // Garantir que os valores numéricos estão sendo tratados corretamente
+    if (data.meta_total_spent !== undefined) {
+      // Certifique-se de que o valor é um número
+      data.meta_total_spent = parseFloat(data.meta_total_spent);
+      console.log("Valor de meta_total_spent ajustado para:", data.meta_total_spent);
+    }
+    
+    if (data.meta_daily_budget_current !== undefined) {
+      // Certifique-se de que o valor é um número
+      data.meta_daily_budget_current = parseFloat(data.meta_daily_budget_current);
+      console.log("Valor de meta_daily_budget_current ajustado para:", data.meta_daily_budget_current);
     }
     
     return data;

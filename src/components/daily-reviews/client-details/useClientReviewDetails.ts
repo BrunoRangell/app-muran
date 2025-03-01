@@ -58,6 +58,23 @@ export const useClientReviewDetails = (clientId: string) => {
       }
       
       console.log("Revisão mais recente recuperada:", data);
+      
+      // Garantir que os valores numéricos sejam convertidos corretamente
+      if (data) {
+        if (data.meta_total_spent !== null && data.meta_total_spent !== undefined) {
+          data.meta_total_spent = Number(data.meta_total_spent);
+        }
+        
+        if (data.meta_daily_budget_current !== null && data.meta_daily_budget_current !== undefined) {
+          data.meta_daily_budget_current = Number(data.meta_daily_budget_current);
+        }
+        
+        console.log("Valores convertidos:", {
+          meta_total_spent: data.meta_total_spent,
+          meta_daily_budget_current: data.meta_daily_budget_current
+        });
+      }
+      
       return data;
     },
     enabled: !!client,
@@ -81,6 +98,16 @@ export const useClientReviewDetails = (clientId: string) => {
       }
       
       console.log("Histórico de revisões recuperado:", data);
+      
+      // Garantir que os valores numéricos sejam convertidos corretamente
+      if (data && data.length > 0) {
+        return data.map(review => ({
+          ...review,
+          meta_total_spent: review.meta_total_spent !== null ? Number(review.meta_total_spent) : null,
+          meta_daily_budget_current: review.meta_daily_budget_current !== null ? Number(review.meta_daily_budget_current) : null
+        }));
+      }
+      
       return data;
     },
     enabled: !!client,

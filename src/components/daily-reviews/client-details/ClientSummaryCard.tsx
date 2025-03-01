@@ -23,9 +23,12 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
     const budget = Number(client.meta_ads_budget);
     const spent = Number(latestReview.meta_total_spent);
     
+    console.log("Cálculo de porcentagem - Orçamento:", budget, "Gasto:", spent);
+    
     if (budget <= 0 || isNaN(budget) || isNaN(spent)) return 0;
     
     const percentage = Math.round((spent / budget) * 100);
+    console.log("Porcentagem calculada:", percentage);
     return percentage > 100 ? 100 : percentage; // Limitar a 100%
   };
 
@@ -33,8 +36,15 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
   const getTotalSpent = () => {
     if (!latestReview?.meta_total_spent) return 0;
     const spent = Number(latestReview.meta_total_spent);
+    console.log("Valor total gasto (antes do formatCurrency):", spent);
     return isNaN(spent) ? 0 : spent;
   };
+
+  // Valores para debug
+  console.log("Dados do cliente:", client);
+  console.log("Dados da revisão mais recente:", latestReview);
+  console.log("Orçamento mensal:", client?.meta_ads_budget);
+  console.log("Gasto total na revisão:", latestReview?.meta_total_spent);
 
   return (
     <Card>
