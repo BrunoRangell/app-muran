@@ -48,7 +48,6 @@ export const useBudgetManager = () => {
       const initialBudgets: Record<string, BudgetValues> = {};
       
       clients.forEach((client) => {
-        // Formatação correta do valor: usar formatCurrency para formatar adequadamente
         initialBudgets[client.id] = {
           budget: client.meta_ads_budget ? client.meta_ads_budget.toString() : "",
           accountId: client.meta_account_id || ""
@@ -123,14 +122,14 @@ export const useBudgetManager = () => {
 
   // Manipulador para alteração de orçamento
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Permitir apenas números, vírgulas e pontos
-    let formattedValue = value.replace(/[^\d,.-]/g, "");
+    // Remover formatação para armazenar apenas o valor numérico
+    const numericValue = value.replace(/[^\d,.-]/g, "");
     
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        budget: formattedValue
+        budget: numericValue
       },
     }));
   };

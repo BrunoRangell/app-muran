@@ -41,13 +41,25 @@ export const BudgetManager = () => {
   const formatBudgetDisplay = (value: string): string => {
     if (!value) return "";
     
-    // Se o valor contiver apenas números (sem vírgula ou ponto)
-    if (/^\d+$/.test(value)) {
-      return formatCurrency(parseInt(value), false);
+    // Tenta formatar o valor como moeda
+    try {
+      // Se o valor contiver apenas números (sem vírgula ou ponto)
+      if (/^\d+$/.test(value)) {
+        return formatCurrency(parseInt(value), false);
+      }
+      
+      // Se tiver vírgula ou ponto, tenta formatar com base no valor numérico
+      const numericValue = parseFloat(value.replace(/\./g, "").replace(",", "."));
+      if (!isNaN(numericValue)) {
+        return formatCurrency(numericValue, false);
+      }
+      
+      // Caso não consiga converter para número, retorna o valor original
+      return value;
+    } catch (error) {
+      console.error("Erro ao formatar valor:", error);
+      return value;
     }
-    
-    // Se já tiver formatação com vírgula
-    return value;
   };
 
   return (
