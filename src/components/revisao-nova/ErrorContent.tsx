@@ -63,6 +63,7 @@ export function ErrorContent({
       
       <ApiTestTools 
         isLoading={isLoading}
+        debugInfo={debugInfo}
         client={client}
         testMetaToken={testMetaToken}
         testEdgeFunction={testEdgeFunction}
