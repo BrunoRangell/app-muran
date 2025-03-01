@@ -94,13 +94,13 @@ export const useMetaAdsAnalysis = () => {
       
     } catch (err) {
       // Obter os detalhes do erro
-      const errorDetails = processErrorDetails(err);
+      const errorData = processErrorDetails(err);
       // Usar apenas a mensagem de erro para o estado e o toast
-      setError(errorDetails.message);
+      setError(errorData.message);
       
       toast({
         title: "Erro na análise",
-        description: errorDetails.message,
+        description: errorData.message,
         variant: "destructive",
       });
     } finally {
