@@ -206,7 +206,8 @@ export const useMetaAdsAnalysis = () => {
           setDebugInfo({
             edgeError: edgeError.message,
             requestType: "JSON stringified payload",
-            payloadSize: typeof payload === 'object' ? JSON.stringify(payload).length : 'N/A',
+            payloadSize: payloadString ? payloadString.length : 'N/A',
+            payloadSample: payloadString ? payloadString.substring(0, 100) + '...' : 'N/A',
             suggestion: "Verifique se o payload está sendo corretamente serializado e enviado com content-type: application/json"
           });
           
@@ -451,19 +452,22 @@ export const useMetaAdsAnalysis = () => {
       console.log("[testEdgeFunction] Tentando conectar à função Edge...");
       
       // Teste simples com payload mínimo
-      const testPayload = JSON.stringify({ method: "ping" });
+      const testPayload = { method: "ping" };
+      
+      // Serializar o payload para JSON
+      const testPayloadString = JSON.stringify(testPayload);
       
       // Verificar se o payload foi corretamente serializado
-      if (!testPayload || testPayload === '{}' || testPayload === 'null') {
+      if (!testPayloadString || testPayloadString === '{}' || testPayloadString === 'null') {
         throw new Error("Erro ao serializar payload de teste");
       }
       
-      console.log("[testEdgeFunction] Enviando payload de teste:", testPayload);
+      console.log("[testEdgeFunction] Enviando payload de teste:", testPayloadString);
       
       const { data, error } = await supabase.functions.invoke(
         "daily-budget-reviews",
         { 
-          body: testPayload,
+          body: testPayloadString,
           headers: {
             "Content-Type": "application/json"
           }
@@ -478,8 +482,8 @@ export const useMetaAdsAnalysis = () => {
           data,
           error,
           timestamp: new Date().toISOString(),
-          payloadSent: { method: "ping" },
-          payloadSize: testPayload.length
+          payloadSent: testPayload,
+          payloadSize: testPayloadString.length
         }
       });
       
