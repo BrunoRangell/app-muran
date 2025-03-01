@@ -78,8 +78,8 @@ export const invokeEdgeFunction = async (
       // Continuamos mesmo com falha no ping, tentando a requisição principal
     }
     
-    // Chamar a função Edge passando o token e dados do cliente com payload JSON bem formado
-    const payload = { 
+    // Preparar payload completo com todos os dados necessários
+    const requestPayload = { 
       method: "getMetaAdsData", 
       clientId,
       reviewDate: formattedDate,
@@ -88,7 +88,7 @@ export const invokeEdgeFunction = async (
       metaAccountId: clientData.meta_account_id
     };
     
-    console.log("Enviando payload para função Edge:", JSON.stringify(payload, null, 2));
+    console.log("Enviando payload para função Edge:", JSON.stringify(requestPayload, null, 2));
     
     try {
       // Tentar usar um timeout para evitar que a requisição fique pendente indefinidamente
@@ -97,7 +97,7 @@ export const invokeEdgeFunction = async (
       });
       
       const functionPromise = supabase.functions.invoke("daily-budget-reviews", {
-        body: payload,
+        body: requestPayload,
         headers: {
           "Content-Type": "application/json"
         }
@@ -120,42 +120,7 @@ export const invokeEdgeFunction = async (
       // Se a função Edge falhar, usamos dados de mock para teste
       if (!data) {
         console.warn("Usando dados de mock para testes devido a erro na função Edge");
-        
-        const mockData: AnalysisResult = {
-          success: true,
-          message: "Dados mock gerados para teste",
-          meta_total_spent: 1500.50,
-          meta_daily_budget_current: 100.00,
-          client: {
-            id: clientId,
-            company_name: clientData.company_name,
-            meta_account_id: clientData.meta_account_id || "não configurado"
-          },
-          meta: {
-            totalSpent: 1500.50,
-            dailyBudget: 100.00,
-            dateRange: {
-              start: "2025-03-01",
-              end: "2025-03-31"
-            },
-            campaigns: [
-              {
-                id: "123456789",
-                name: "Campanha de Teste 1",
-                status: "ACTIVE",
-                spend: 750.25
-              },
-              {
-                id: "987654321",
-                name: "Campanha de Teste 2",
-                status: "PAUSED",
-                spend: 750.25
-              }
-            ]
-          }
-        };
-        
-        return mockData;
+        return getMockAnalysisData(clientId, clientData);
       }
       
       // Garantir que os valores numéricos estão sendo tratados corretamente
@@ -180,51 +145,56 @@ export const invokeEdgeFunction = async (
     } catch (edgeError: any) {
       console.error("Erro ao chamar função Edge:", edgeError);
       
-      // Aqui podemos adicionar lógica para usar dados de mock
+      // Usar dados de mock para continuar os testes
       console.warn("Usando dados de mock para testes devido a erro na função Edge");
-      
-      const mockData: AnalysisResult = {
-        success: true,
-        message: "Dados mock gerados para teste (após erro na API)",
-        meta_total_spent: 1250.75,
-        meta_daily_budget_current: 75.00,
-        client: {
-          id: clientId,
-          company_name: clientData.company_name,
-          meta_account_id: clientData.meta_account_id || "não configurado"
-        },
-        meta: {
-          totalSpent: 1250.75,
-          dailyBudget: 75.00,
-          dateRange: {
-            start: "2025-03-01",
-            end: "2025-03-31"
-          },
-          campaigns: [
-            {
-              id: "123456789",
-              name: "Campanha de Teste 1",
-              status: "ACTIVE",
-              spend: 750.75
-            },
-            {
-              id: "987654321",
-              name: "Campanha de Teste 2",
-              status: "PAUSED",
-              spend: 500.00
-            }
-          ]
-        }
-      };
-      
-      return mockData;
+      return getMockAnalysisData(clientId, clientData);
     }
   } catch (error: any) {
     console.error("Falha ao obter dados do Meta Ads:", error);
-    
     throw error;
   }
 };
+
+/**
+ * Função auxiliar para gerar dados de mock consistentes para testes
+ */
+function getMockAnalysisData(clientId: string, clientData: any): AnalysisResult {
+  const mockData: AnalysisResult = {
+    success: true,
+    message: "Dados mock gerados para teste (função Edge indisponível)",
+    meta_total_spent: 1250.75,
+    meta_daily_budget_current: 75.00,
+    client: {
+      id: clientId,
+      company_name: clientData.company_name,
+      meta_account_id: clientData.meta_account_id || "não configurado"
+    },
+    meta: {
+      totalSpent: 1250.75,
+      dailyBudget: 75.00,
+      dateRange: {
+        start: "2025-03-01",
+        end: "2025-03-31"
+      },
+      campaigns: [
+        {
+          id: "123456789",
+          name: "Campanha de Teste 1",
+          status: "ACTIVE",
+          spend: 750.75
+        },
+        {
+          id: "987654321",
+          name: "Campanha de Teste 2",
+          status: "PAUSED",
+          spend: 500.00
+        }
+      ]
+    }
+  };
+  
+  return mockData;
+}
 
 /**
  * Chama a função Edge para análise de cliente (nome alternativo para compatibilidade)
