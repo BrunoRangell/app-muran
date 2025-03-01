@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
 
 interface Client {
   id: string;
@@ -13,7 +14,7 @@ interface Client {
 }
 
 interface BudgetValues {
-  rawValue: string;  // Valor numérico sem formatação para salvar no banco
+  formattedValue: string;  // Valor formatado para exibição (R$ 1.000,00)
   accountId: string;
 }
 
@@ -47,10 +48,13 @@ export const useBudgetManager = () => {
       const initialBudgets: Record<string, BudgetValues> = {};
       
       clients.forEach((client) => {
-        const budgetValue = client.meta_ads_budget ? client.meta_ads_budget.toString() : "";
+        // Formatar o valor do orçamento para exibição (R$ 1.000,00)
+        const formattedValue = client.meta_ads_budget 
+          ? formatCurrency(client.meta_ads_budget) 
+          : "";
         
         initialBudgets[client.id] = {
-          rawValue: budgetValue,
+          formattedValue,
           accountId: client.meta_account_id || ""
         };
       });
@@ -65,26 +69,12 @@ export const useBudgetManager = () => {
       console.log("Salvando orçamentos:", budgets);
       
       const updates = Object.entries(budgets).map(([clientId, values]) => {
-        // Converter valor do orçamento para número
-        let budget = 0;
-        
-        if (values.rawValue) {
-          // Limpar a string de qualquer formatação e converter vírgula para ponto
-          const cleanValue = values.rawValue
-            .replace(/[^\d,.]/g, '')  // Remove tudo que não for número, ponto ou vírgula
-            .replace(/\./g, '')       // Remove pontos
-            .replace(',', '.');       // Substitui vírgula por ponto
-          
-          budget = parseFloat(cleanValue);
-          
-          if (isNaN(budget)) {
-            budget = 0;
-          }
-        }
+        // Converter valor formatado para número
+        const budgetAmount = parseCurrencyToNumber(values.formattedValue);
         
         return {
           id: clientId,
-          meta_ads_budget: budget,
+          meta_ads_budget: budgetAmount,
           meta_account_id: values.accountId || null
         };
       });
@@ -125,15 +115,45 @@ export const useBudgetManager = () => {
     }
   });
 
-  // Manipulador para alteração de orçamento - aceita qualquer entrada do usuário
+  // Manipulador para alteração de orçamento
   const handleBudgetChange = (clientId: string, value: string) => {
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        rawValue: value
+        formattedValue: value
       }
     }));
+  };
+
+  // Manipulador para formatação de valor ao perder o foco
+  const handleBudgetBlur = (clientId: string) => {
+    setBudgets((prev) => {
+      const currentValue = prev[clientId]?.formattedValue || "";
+      
+      // Se o campo estiver vazio, não formatar
+      if (!currentValue.trim()) {
+        return {
+          ...prev,
+          [clientId]: {
+            ...prev[clientId],
+            formattedValue: ""
+          }
+        };
+      }
+      
+      // Converter para número e depois formatar como moeda
+      const numericValue = parseCurrencyToNumber(currentValue);
+      const formattedValue = formatCurrency(numericValue);
+      
+      return {
+        ...prev,
+        [clientId]: {
+          ...prev[clientId],
+          formattedValue
+        }
+      };
+    });
   };
 
   // Manipulador para alteração de ID da conta
@@ -149,6 +169,21 @@ export const useBudgetManager = () => {
 
   // Manipulador para salvar alterações
   const handleSave = () => {
+    // Formatar todos os valores antes de salvar
+    setBudgets((prev) => {
+      const formatted = { ...prev };
+      
+      Object.keys(formatted).forEach((clientId) => {
+        const currentValue = formatted[clientId].formattedValue;
+        if (currentValue.trim()) {
+          const numericValue = parseCurrencyToNumber(currentValue);
+          formatted[clientId].formattedValue = formatCurrency(numericValue);
+        }
+      });
+      
+      return formatted;
+    });
+    
     saveBudgetsMutation.mutate();
   };
 
@@ -157,6 +192,7 @@ export const useBudgetManager = () => {
     isLoading,
     budgets,
     handleBudgetChange,
+    handleBudgetBlur,
     handleAccountIdChange,
     handleSave,
     isSaving: saveBudgetsMutation.isPending

@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Save, Loader } from "lucide-react";
 import { useBudgetManager } from "./hooks/useBudgetManager";
-import { formatCurrency } from "@/utils/formatters";
 
 export const BudgetManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,6 +26,7 @@ export const BudgetManager = () => {
     isLoading, 
     budgets, 
     handleBudgetChange, 
+    handleBudgetBlur,
     handleAccountIdChange, 
     handleSave, 
     isSaving 
@@ -36,25 +36,6 @@ export const BudgetManager = () => {
   const filteredClients = clients?.filter(client => 
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Função para formatar o valor para exibição
-  const formatBudgetDisplay = (value: string): string => {
-    if (!value) return "";
-
-    // Primeiro limpamos o valor de qualquer formatação prévia
-    const cleanValue = value.replace(/[^\d,.]/g, '');
-    
-    if (!cleanValue) return "";
-
-    // Converter para um formato numérico (substituindo vírgula por ponto)
-    const numericValue = cleanValue.replace(/\./g, '').replace(',', '.');
-    const number = parseFloat(numericValue);
-    
-    if (isNaN(number)) return value;
-    
-    // Formatar como moeda
-    return formatCurrency(number, true);
-  };
 
   return (
     <Card className="w-full">
@@ -109,18 +90,11 @@ export const BudgetManager = () => {
                         <TableCell>
                           <Input
                             type="text"
-                            value={formatBudgetDisplay(budgets[client.id]?.rawValue || "")}
-                            onChange={(e) => {
-                              handleBudgetChange(client.id, e.target.value);
-                            }}
+                            value={budgets[client.id]?.formattedValue || ""}
+                            onChange={(e) => handleBudgetChange(client.id, e.target.value)}
+                            onBlur={() => handleBudgetBlur(client.id)}
                             placeholder="R$ 0,00"
-                            className="text-left"
-                            onFocus={(e) => {
-                              // Ao ganhar foco, colocar o cursor no final
-                              const val = e.target.value;
-                              e.target.value = '';
-                              e.target.value = val;
-                            }}
+                            className="text-right"
                           />
                         </TableCell>
                       </TableRow>
