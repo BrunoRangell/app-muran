@@ -1,10 +1,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useMetaTokenService } from "./hooks/useMetaTokenService";
-import { useEdgeFunctionService } from "./hooks/useEdgeFunctionService";
-import { useMetaClientService } from "./hooks/useMetaClientService";
-import { useMetaResponseProcessor } from "./hooks/useMetaResponseProcessor";
+import { useMetaTokenService } from "./useMetaTokenService";
+import { useEdgeFunctionService } from "./useEdgeFunctionService";
+import { useMetaClientService } from "./useMetaClientService";
+import { useMetaResponseProcessor } from "./useMetaResponseProcessor";
 
 export const useMetaAdsAnalysis = () => {
   const [isLoading, setIsLoading] = useState(false);
