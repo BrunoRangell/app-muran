@@ -33,7 +33,7 @@ serve(async (req) => {
     const payload = await req.json();
     const { method } = payload;
 
-    console.log("Payload received:", payload);
+    console.log("Payload received:", JSON.stringify(payload, null, 2));
 
     let data;
     if (method === "getMetaAdsData") {
@@ -42,15 +42,37 @@ serve(async (req) => {
       throw new Error("Method not supported");
     }
 
-    console.log("Response data:", data);
+    console.log("Response data:", JSON.stringify(data, null, 2));
 
     return new Response(
       JSON.stringify(data),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Function error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("Function error:", error.message);
+    console.error("Error stack:", error.stack);
+    
+    // Construir uma resposta de erro mais detalhada
+    const errorResponse = {
+      success: false,
+      message: `Erro: ${error.message}`,
+      error: {
+        name: error.name,
+        details: error.stack
+      },
+      meta: {
+        dailyBudget: 0,
+        totalSpent: 0,
+        accountId: payload?.metaAccountId || "desconhecido",
+        dateRange: payload?.dateRange || {
+          start: new Date().toISOString().split('T')[0],
+          end: new Date().toISOString().split('T')[0]
+        },
+        campaigns: []
+      }
+    };
+    
+    return new Response(JSON.stringify(errorResponse), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -59,171 +81,126 @@ serve(async (req) => {
 
 // Função para obter dados atualizados do Meta Ads
 const getMetaAdsData = async (payload: any) => {
-  const { accessToken, metaAccountId, clientId, clientName, reviewDate, dateRange } = payload;
+  console.log("Iniciando getMetaAdsData com payload:", JSON.stringify(payload, null, 2));
   
-  console.log("Obtendo dados do Meta Ads para o cliente:", clientName);
-  console.log("ID da conta Meta:", metaAccountId);
-  console.log("Período de análise:", dateRange);
+  const { 
+    accessToken, 
+    metaAccountId, 
+    clientId, 
+    clientName,
+    reviewDate,
+    dateRange
+  } = payload;
 
-  if (!accessToken) {
-    throw new Error("Token de acesso do Meta Ads não fornecido");
-  }
-  
-  if (!metaAccountId) {
-    throw new Error("ID da conta Meta Ads não configurado para o cliente");
-  }
+  // Verificar parâmetros obrigatórios
+  if (!accessToken) throw new Error("Token de acesso não fornecido");
+  if (!metaAccountId) throw new Error("ID da conta Meta não fornecido");
+  if (!clientId) throw new Error("ID do cliente não fornecido");
 
   try {
-    // Construir URL para consulta de insights para o período especificado
-    let startDate = dateRange?.start;
-    let endDate = dateRange?.end;
-    
-    // Se não houver intervalo de datas especificado, usar o mês atual
-    if (!startDate || !endDate) {
-      const today = new Date();
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
-      
-      const firstDay = new Date(currentYear, currentMonth, 1);
-      const lastDay = new Date(currentYear, currentMonth + 1, 0);
-      
-      startDate = firstDay.toISOString().split('T')[0];
-      endDate = lastDay.toISOString().split('T')[0];
-    }
-    
-    console.log("Período efetivo de análise:", startDate, "a", endDate);
-    
-    // Base da URL da API Graph
-    const baseUrl = "https://graph.facebook.com/v18.0";
-    
-    // 1. Primeiro obtemos detalhes da conta para o orçamento diário
-    const accountUrl = `${baseUrl}/${metaAccountId}?fields=name,daily_spend_limit&access_token=${accessToken}`;
-    console.log("Consultando detalhes da conta Meta Ads");
+    // Variáveis para armazenar os dados
+    let totalSpent = 0;
+    let dailyBudget = 0;
+    let campaigns = [];
+
+    // Usar as datas fornecidas no payload ou gerar datas do mês atual
+    const currentDate = new Date();
+    const startDate = dateRange?.start || new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
+    const endDate = dateRange?.end || new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    console.log(`Período de análise: ${startDate} a ${endDate}`);
+    console.log(`Usando token de acesso: ${accessToken.substring(0, 5)}...`);
+    console.log(`ID da conta Meta: ${metaAccountId}`);
+
+    // 1. Buscar informações da conta Meta Ads
+    console.log("Obtendo informações da conta Meta Ads...");
+    const accountUrl = `https://graph.facebook.com/v18.0/${metaAccountId}?fields=name,account_status,amount_spent,balance,spend_cap,daily_spend_limit&access_token=${accessToken}`;
     
     const accountResponse = await fetch(accountUrl);
     if (!accountResponse.ok) {
       const errorText = await accountResponse.text();
-      console.error("Erro na resposta da API Meta Ads (detalhes da conta):", errorText);
+      console.error("Erro ao obter detalhes da conta:", errorText);
       throw new Error(`Falha ao obter detalhes da conta: ${accountResponse.statusText}`);
     }
     
     const accountData = await accountResponse.json();
-    console.log("Detalhes da conta recebidos:", JSON.stringify(accountData, null, 2));
+    console.log("Dados da conta obtidos:", JSON.stringify(accountData, null, 2));
     
-    // 2. Obtemos campanhas ativas e seus gastos
-    // Construir URL para insights com nível de detalhes necessário
-    const insightsUrl = `${baseUrl}/${metaAccountId}/insights?fields=spend&level=account&time_range={"since":"${startDate}","until":"${endDate}"}&access_token=${accessToken}`;
-    console.log("Consultando insights da conta");
+    // Capturar o orçamento diário da conta
+    dailyBudget = accountData.daily_spend_limit ? parseFloat(accountData.daily_spend_limit) / 100 : 0;
     
-    const insightsResponse = await fetch(insightsUrl);
-    if (!insightsResponse.ok) {
-      const errorText = await insightsResponse.text();
-      console.error("Erro na resposta da API Meta Ads (insights):", errorText);
-      throw new Error(`Falha ao obter insights: ${insightsResponse.statusText}`);
-    }
-    
-    const insightsData = await insightsResponse.json();
-    console.log("Insights recebidos:", JSON.stringify(insightsData, null, 2));
-    
-    // 3. Obter campanhas ativas
-    const campaignsUrl = `${baseUrl}/${metaAccountId}/campaigns?fields=name,status,insights{spend}&limit=50&access_token=${accessToken}`;
-    console.log("Consultando campanhas");
+    // 2. Buscar campanhas da conta
+    console.log("Obtendo campanhas da conta Meta Ads...");
+    const campaignsUrl = `https://graph.facebook.com/v18.0/${metaAccountId}/campaigns?fields=name,status,daily_budget,lifetime_budget,spend,objective&date_preset=this_month&access_token=${accessToken}`;
     
     const campaignsResponse = await fetch(campaignsUrl);
     if (!campaignsResponse.ok) {
       const errorText = await campaignsResponse.text();
-      console.error("Erro na resposta da API Meta Ads (campanhas):", errorText);
+      console.error("Erro ao obter campanhas:", errorText);
       throw new Error(`Falha ao obter campanhas: ${campaignsResponse.statusText}`);
     }
     
     const campaignsData = await campaignsResponse.json();
-    console.log("Campanhas recebidas:", JSON.stringify(campaignsData, null, 2));
+    console.log("Dados de campanhas obtidos:", JSON.stringify(campaignsData, null, 2));
     
-    // Calcular total gasto com base nos insights
-    let totalSpent = 0;
-    if (insightsData && insightsData.data && insightsData.data.length > 0) {
-      totalSpent = parseFloat(insightsData.data[0].spend || "0");
-    }
-    
-    // Obter orçamento diário da conta
-    let dailyBudget = 0;
-    if (accountData && accountData.daily_spend_limit) {
-      // A API retorna em centavos, então dividimos por 100 para obter reais
-      dailyBudget = parseFloat(accountData.daily_spend_limit) / 100;
+    // Processar campanhas obtidas
+    if (campaignsData.data && Array.isArray(campaignsData.data)) {
+      campaigns = campaignsData.data.map(campaign => ({
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        spend: campaign.spend ? parseFloat(campaign.spend) : 0
+      }));
+      
+      // Calcular o total gasto somando os gastos de todas as campanhas
+      totalSpent = campaigns.reduce((total, campaign) => total + (campaign.spend || 0), 0);
+      
+      console.log(`Total de ${campaigns.length} campanhas obtidas`);
+      console.log(`Total gasto calculado: ${totalSpent}`);
     } else {
-      // Se não encontrarmos um limite diário, usamos um valor padrão (opcional)
-      dailyBudget = 100; // Valor padrão em reais
-      console.log("Aviso: Limite diário não encontrado, usando valor padrão de R$100");
+      console.log("Nenhuma campanha encontrada ou formato inesperado de resposta");
+      campaigns = [];
     }
     
-    // Processar campanhas para ter os gastos
-    const campaigns = [];
-    if (campaignsData && campaignsData.data) {
-      for (const campaign of campaignsData.data) {
-        let campaignSpend = 0;
-        
-        // Tentar obter o gasto da campanha dos insights
-        if (campaign.insights && campaign.insights.data && campaign.insights.data.length > 0) {
-          campaignSpend = parseFloat(campaign.insights.data[0].spend || "0");
-        }
-        
-        campaigns.push({
-          id: campaign.id,
-          name: campaign.name,
-          status: campaign.status,
-          spend: campaignSpend
-        });
-      }
-    }
+    // 3. Salvar os dados na revisão diária
+    console.log("Salvando dados da revisão no banco de dados...");
+    const supabase = getSupabaseAdmin();
     
-    console.log(`Total gasto no período: R$${totalSpent}`);
-    console.log(`Orçamento diário: R$${dailyBudget}`);
-    console.log(`Total de campanhas: ${campaigns.length}`);
-    
-    // Verificar se os dados existem na tabela
-    const supabaseAdmin = getSupabaseAdmin();
-    
-    // Verificar se já existe uma análise para esta data e cliente
-    const { data: existingReview, error: queryError } = await supabaseAdmin
-      .from('daily_budget_reviews')
-      .select('id')
-      .eq('client_id', clientId)
-      .eq('review_date', reviewDate)
+    // Verificar se já existe uma revisão para esta data e cliente
+    const { data: existingReviews, error: queryError } = await supabase
+      .from("daily_budget_reviews")
+      .select("id")
+      .eq("client_id", clientId)
+      .eq("review_date", reviewDate)
       .maybeSingle();
     
     if (queryError) {
-      console.error("Erro ao verificar revisão existente:", queryError);
-      // Continuar mesmo com erro
+      console.error("Erro ao verificar revisões existentes:", queryError.message);
     }
     
     let reviewId;
     
-    if (existingReview) {
-      // Atualizar revisão existente
-      console.log("Atualizando revisão existente:", existingReview.id);
-      
-      const { error: updateError } = await supabaseAdmin.rpc(
-        'update_daily_budget_review',
+    // Se já existe uma revisão, atualizar. Senão, criar nova.
+    if (existingReviews?.id) {
+      const { error: updateError } = await supabase.rpc(
+        "update_daily_budget_review",
         {
-          p_id: existingReview.id,
+          p_id: existingReviews.id,
           p_meta_daily_budget_current: dailyBudget,
           p_meta_total_spent: totalSpent
         }
       );
       
       if (updateError) {
-        console.error("Erro ao atualizar revisão:", updateError);
-        throw new Error(`Falha ao atualizar revisão: ${updateError.message}`);
+        console.error("Erro ao atualizar revisão:", updateError.message);
+        throw new Error(`Erro ao atualizar revisão: ${updateError.message}`);
       }
       
-      reviewId = existingReview.id;
-      
+      reviewId = existingReviews.id;
+      console.log("Revisão atualizada com sucesso, ID:", reviewId);
     } else {
-      // Inserir nova revisão
-      console.log("Inserindo nova revisão para o cliente:", clientId);
-      
-      const { data: insertResult, error: insertError } = await supabaseAdmin.rpc(
-        'insert_daily_budget_review',
+      const { data: insertData, error: insertError } = await supabase.rpc(
+        "insert_daily_budget_review",
         {
           p_client_id: clientId,
           p_review_date: reviewDate,
@@ -235,16 +212,15 @@ const getMetaAdsData = async (payload: any) => {
       );
       
       if (insertError) {
-        console.error("Erro ao inserir revisão:", insertError);
-        throw new Error(`Falha ao inserir revisão: ${insertError.message}`);
+        console.error("Erro ao criar revisão:", insertError.message);
+        throw new Error(`Erro ao criar revisão: ${insertError.message}`);
       }
       
-      reviewId = insertResult;
+      reviewId = insertData;
+      console.log("Revisão salva com sucesso, ID:", reviewId);
     }
     
-    console.log("Análise concluída com sucesso, ID:", reviewId);
-    
-    // Montar resultado com todos os dados obtidos
+    // Retornar os dados obtidos
     return {
       success: true,
       reviewId,
@@ -254,8 +230,8 @@ const getMetaAdsData = async (payload: any) => {
         meta_account_id: metaAccountId
       },
       meta: {
-        dailyBudget,
         totalSpent,
+        dailyBudget,
         accountId: metaAccountId,
         dateRange: {
           start: startDate,
@@ -263,27 +239,26 @@ const getMetaAdsData = async (payload: any) => {
         },
         campaigns
       },
-      message: "Análise de orçamento realizada com sucesso"
+      message: "Análise realizada com sucesso com dados reais do Meta Ads"
     };
-    
   } catch (error) {
-    console.error("Erro ao obter dados do Meta Ads:", error);
+    console.error("Erro na análise:", error.message);
+    console.error("Stack trace:", error.stack);
     
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : "Erro desconhecido ao conectar com a API do Meta Ads";
-    
-    // Retornar erro de forma estruturada
+    // Retornar um objeto com informações detalhadas sobre o erro
     return {
       success: false,
       meta: {
         dailyBudget: 0,
         totalSpent: 0,
-        accountId: metaAccountId,
-        dateRange: dateRange || { start: "", end: "" },
+        accountId: metaAccountId || "",
+        dateRange: {
+          start: dateRange?.start || new Date().toISOString().split('T')[0],
+          end: dateRange?.end || new Date().toISOString().split('T')[0]
+        },
         campaigns: []
       },
-      message: `Erro: ${errorMessage}`
+      message: `Erro: ${error.message}`
     };
   }
 };

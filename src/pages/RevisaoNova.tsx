@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader, Info } from "lucide-react";
+import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader, Info, AlertTriangle } from "lucide-react";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { useMetaAdsAnalysis } from "@/components/revisao-nova/useMetaAdsAnalysis";
 import { ClientSelector } from "@/components/revisao-nova/ClientSelector";
@@ -60,6 +60,30 @@ export default function RevisaoNova() {
     );
   };
 
+  const renderApiErrorDetails = () => {
+    if (!rawApiResponse?.error) return null;
+    
+    return (
+      <Alert variant="destructive" className="mt-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Detalhes técnicos do erro</AlertTitle>
+        <AlertDescription>
+          <div className="font-mono text-xs mt-2">
+            <p>Nome do erro: {rawApiResponse.error.name || 'Desconhecido'}</p>
+            {rawApiResponse.error.details && (
+              <details>
+                <summary className="cursor-pointer mt-1">Stack trace</summary>
+                <pre className="mt-1 bg-gray-900 text-gray-100 p-2 rounded text-xs overflow-auto max-h-40">
+                  {rawApiResponse.error.details}
+                </pre>
+              </details>
+            )}
+          </div>
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -72,11 +96,29 @@ export default function RevisaoNova() {
 
     if (error) {
       return (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro na análise</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <div className="space-y-4">
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro na análise</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          
+          {renderApiErrorDetails()}
+          {renderRawResponseDebug()}
+          
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mt-4">
+            <div className="flex items-center gap-2 text-amber-800 font-medium mb-2">
+              <AlertTriangle size={18} />
+              <span>Sugestões para solução:</span>
+            </div>
+            <ul className="list-disc pl-6 space-y-1 text-amber-700">
+              <li>Verifique se o token de acesso do Meta Ads está correto e não expirou</li>
+              <li>Confirme se o ID da conta Meta Ads está correto para este cliente</li>
+              <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
+              <li>Tente novamente em alguns minutos caso seja um problema temporário</li>
+            </ul>
+          </div>
+        </div>
       );
     }
 
@@ -86,6 +128,35 @@ export default function RevisaoNova() {
           <p className="text-lg text-gray-600">
             Selecione um cliente acima e clique em "Analisar" para ver os dados reais do Meta Ads.
           </p>
+        </div>
+      );
+    }
+
+    // Se temos uma resposta mas não foi bem-sucedida
+    if (analysis && !analysis.success) {
+      return (
+        <div className="space-y-4">
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro na API do Meta Ads</AlertTitle>
+            <AlertDescription>{analysis.message}</AlertDescription>
+          </Alert>
+          
+          {renderApiErrorDetails()}
+          {renderRawResponseDebug()}
+          
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mt-4">
+            <div className="flex items-center gap-2 text-amber-800 font-medium mb-2">
+              <AlertTriangle size={18} />
+              <span>Sugestões para solução:</span>
+            </div>
+            <ul className="list-disc pl-6 space-y-1 text-amber-700">
+              <li>Verifique se o token de acesso do Meta Ads está correto e não expirou</li>
+              <li>Confirme se o ID da conta Meta Ads está correto para este cliente</li>
+              <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
+              <li>Tente novamente em alguns minutos caso seja um problema temporário</li>
+            </ul>
+          </div>
         </div>
       );
     }
