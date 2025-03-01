@@ -27,7 +27,7 @@ export function ClientSelector({ onClientSelect }: ClientSelectorProps) {
       const { data, error } = await supabase
         .from("clients")
         .select("id, company_name, meta_account_id")
-        .eq("is_active", true)
+        .eq("status", "active") // Usando a coluna status ao invés de is_active
         .order("company_name");
       
       if (error) throw error;
