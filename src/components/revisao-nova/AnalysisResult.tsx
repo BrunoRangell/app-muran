@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
-import { BarChart4, DollarSign, Calculator, Calendar, BarChart2 } from "lucide-react";
+import { BarChart4, DollarSign, Calculator, Calendar } from "lucide-react";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { CampaignsTable } from "./CampaignsTable";
 import { getDaysInMonth, format } from "date-fns";
@@ -16,7 +16,6 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
 
   const totalSpent = analysis.meta.totalSpent || 0;
   const budgetValue = monthlyBudget || 0;
-  const currentDailyBudget = analysis.meta.dailyBudget || 0;
   
   // Calcular porcentagem do orçamento gasto
   const spentPercentage = budgetValue > 0 
@@ -37,7 +36,7 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card de Gastos Acumulados */}
         <Card>
           <CardHeader className="pb-2">
@@ -102,28 +101,7 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
           </CardContent>
         </Card>
         
-        {/* NOVO CARD: Orçamento Diário Atual */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BarChart2 className="h-5 w-5 text-muran-primary" />
-              Orçamento Diário Atual
-            </CardTitle>
-            <CardDescription>
-              Total de orçamento diário das campanhas ativas
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-muran-primary">
-              {formatCurrency(currentDailyBudget)}
-            </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Baseado nas campanhas e conjuntos ativos
-            </p>
-          </CardContent>
-        </Card>
-        
-        {/* Card: Valor Diário Sugerido */}
+        {/* NOVO CARD: Valor Diário Sugerido */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -147,7 +125,7 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
           </CardContent>
         </Card>
         
-        {/* Card: Dias Restantes no Mês */}
+        {/* NOVO CARD: Dias Restantes no Mês */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">

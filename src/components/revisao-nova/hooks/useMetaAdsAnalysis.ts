@@ -1,203 +1,133 @@
 
-import { useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { SimpleAnalysisResult, SimpleMetaData, SimpleMetaCampaign, MetaDateRange } from "@/components/daily-reviews/hooks/types";
-import axios from "axios";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Client {
-  id: string;
-  company_name: string;
-  meta_account_id: string | null;
-  google_ads_id: string | null;
-  status: string;
-  meta_token_test: boolean;
-  edge_function_test: boolean;
-}
-
-interface ApiResponse {
-  campaigns: any[];
-}
-
-const accessToken = import.meta.env.VITE_META_ACCESS_TOKEN;
-
-const fetchMetaAdsData = async (accountId: string): Promise<ApiResponse> => {
-  try {
-    const campaignsResponse = await axios.get(`https://graph.facebook.com/v20.0/act_${accountId}/campaigns`, {
-      params: {
-        fields: 'id,name,status,objective,start_time,stop_time,daily_budget',
-        access_token: accessToken,
-      },
-    });
-
-    const campaigns = campaignsResponse.data.data;
-
-    // Para cada campanha, buscar os AdSets
-    const campaignsWithAdsets = await Promise.all(
-      campaigns.map(async (campaign: any) => {
-        const adsetsResponse = await axios.get(`https://graph.facebook.com/v20.0/${campaign.id}/adsets`, {
-          params: {
-            fields: 'id,name,status,daily_budget,start_time,end_time',
-            access_token: accessToken,
-          },
-        });
-        
-        // Adicionar os AdSets na campanha
-        campaign.adsets = adsetsResponse.data.data;
-        return campaign;
-      })
-    );
-
-    // Buscar insights para cada campanha
-    const campaignsWithInsights = await Promise.all(
-      campaignsWithAdsets.map(async (campaign: any) => {
-        const insightsResponse = await axios.get(`https://graph.facebook.com/v20.0/${campaign.id}/insights`, {
-          params: {
-            metric: 'spend',
-            time_range: {
-              since: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
-              until: new Date().toISOString().slice(0, 10),
-            },
-            access_token: accessToken,
-          },
-        });
-        
-        // Adicionar os insights na campanha
-        campaign.insights = insightsResponse.data.data;
-        return campaign;
-      })
-    );
-
-    return { campaigns: campaignsWithInsights };
-  } catch (error: any) {
-    console.error("Erro ao buscar dados do Meta Ads:", error);
-    throw new Error(error.message || "Erro ao buscar dados do Meta Ads");
-  }
-};
+import { useMetaTokenService } from "./useMetaTokenService";
+import { useEdgeFunctionService } from "./useEdgeFunctionService";
+import { useMetaClientService } from "./useMetaClientService";
+import { useMetaResponseProcessor } from "./useMetaResponseProcessor";
 
 export const useMetaAdsAnalysis = () => {
-  const [client, setClient] = useState<Client | null>(null);
-  const [analysis, setAnalysis] = useState<SimpleAnalysisResult | null>(null);
-  const [rawApiResponse, setRawApiResponse] = useState<any>(null);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [testMetaToken, setTestMetaToken] = useState<boolean>(false);
-  const [testEdgeFunction, setTestEdgeFunction] = useState<boolean>(false);
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const isFetchingRef = useRef(false); // Ref para controlar chamadas simultâneas
+  const { toast } = useToast();
 
-  const { data: clients } = useQuery({
-    queryKey: ["clients"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("status", "active");
+  const { fetchMetaToken, testMetaToken } = useMetaTokenService();
+  const { invokeEdgeFunction, testEdgeFunction } = useEdgeFunctionService();
+  const { client, fetchClientData, prepareDateRangeForCurrentMonth } = useMetaClientService();
+  const { 
+    analysis, 
+    rawApiResponse, 
+    debugInfo, 
+    setDebugInfo,
+    handleSuccessfulResponse, 
+    processErrorDetails,
+    setAnalysis
+  } = useMetaResponseProcessor();
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data as Client[];
-    },
-  });
+  // Resetar o estado quando o componente é desmontado
+  useEffect(() => {
+    return () => {
+      setIsLoading(false);
+      setError(null);
+      setAnalysis(null);
+      isFetchingRef.current = false;
+    };
+  }, []);
 
   const fetchAnalysis = useCallback(async (clientId: string) => {
-    setIsLoading(true);
-    setError(null);
-    setAnalysis(null);
-    setRawApiResponse(null);
-    setDebugInfo(null);
-
-    const selectedClient = clients?.find((c) => c.id === clientId);
-    setClient(selectedClient);
-
-    if (!selectedClient?.meta_account_id) {
-      setError("Cliente não possui um ID de conta Meta válido.");
-      setIsLoading(false);
+    // Evitar múltiplas chamadas simultâneas
+    if (isFetchingRef.current) {
+      console.log("[useMetaAdsAnalysis] Chamada ignorada, já existe uma em andamento");
       return;
     }
 
-    try {
-      const response = await fetchMetaAdsData(selectedClient.meta_account_id);
-      setRawApiResponse(response);
+    setIsLoading(true);
+    setError(null);
+    isFetchingRef.current = true;
 
-      const processedData = processResponse(response);
-      setAnalysis(processedData);
-      setTestMetaToken(selectedClient.meta_token_test);
-      setTestEdgeFunction(selectedClient.edge_function_test);
-    } catch (err: any) {
-      setError(err.message || "Erro ao processar análise.");
-      console.error("Erro durante a análise:", err);
+    try {
+      console.log("[useMetaAdsAnalysis] Iniciando análise para cliente:", clientId);
+      
+      const clientData = await fetchClientData(clientId);
+      
+      const token = await fetchMetaToken();
+      if (!token) {
+        throw new Error("Token do Meta Ads não encontrado ou não configurado");
+      }
+      
+      const { startDate, endDate, today } = prepareDateRangeForCurrentMonth();
+      
+      try {
+        console.log("[useMetaAdsAnalysis] Tentando invocar função Edge...");
+        
+        const payload = {
+          method: "getMetaAdsData",
+          clientId,
+          reviewDate: today,
+          accessToken: token,
+          clientName: clientData.company_name,
+          metaAccountId: clientData.meta_account_id,
+          dateRange: {
+            start: startDate,
+            end: endDate
+          },
+          fetchSeparateInsights: true, // Sinaliza para a função edge buscar insights separadamente
+          debug: true
+        };
+        
+        const { result, error: edgeError } = await invokeEdgeFunction(payload);
+        
+        if (edgeError) {
+          throw edgeError;
+        }
+        
+        if (!result) {
+          throw new Error("A função retornou dados vazios ou inválidos");
+        }
+        
+        handleSuccessfulResponse(result, token);
+      } catch (edgeError: any) {
+        console.error("[useMetaAdsAnalysis] Erro ao chamar função Edge:", edgeError);
+        
+        if (edgeError.message?.includes("Timeout") || 
+            edgeError.message?.includes("Failed to send") ||
+            edgeError.message?.includes("Network")) {
+          
+          setError(`Erro de conectividade com a função Edge: ${edgeError.message}. Verifique se a função Edge está publicada e acessível.`);
+          
+          setDebugInfo({
+            edgeError: edgeError.message,
+            suggestion: "Verifique se a função Edge 'daily-budget-reviews' está publicada e acessível no Supabase.",
+            alternativeSolution: "Use o botão 'Testar Função Edge' para diagnosticar o problema."
+          });
+          
+          toast({
+            title: "Erro na função Edge",
+            description: "Não foi possível conectar com a função Edge. Use as ferramentas de diagnóstico para identificar o problema.",
+            variant: "destructive",
+          });
+        } else {
+          throw edgeError;
+        }
+      }
+      
+    } catch (err) {
+      // Obter os detalhes do erro
+      const errorData = processErrorDetails(err);
+      // Usar apenas a mensagem de erro para o estado e o toast
+      setError(errorData.message);
+      
       toast({
-        title: "Erro ao analisar cliente",
-        description: err.message || "Ocorreu um erro ao analisar o cliente.",
+        title: "Erro na análise",
+        description: errorData.message,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [clients, toast]);
-
-  const processResponse = (response: ApiResponse): SimpleAnalysisResult => {
-    let totalSpent = 0;
-    let campaigns: SimpleMetaCampaign[] = [];
-    let dateRange: MetaDateRange = {
-      start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString(),
-      end: new Date().toLocaleDateString()
-    };
-  
-    if (response.campaigns && Array.isArray(response.campaigns)) {
-      response.campaigns.forEach((campaign: any) => {
-        if (campaign.insights && Array.isArray(campaign.insights) && campaign.insights.length > 0) {
-          const insight = campaign.insights[0];
-          totalSpent += Number(insight.spend);
-  
-          campaigns.push({
-            id: campaign.id,
-            name: campaign.name,
-            status: campaign.status,
-            spend: insight.spend,
-          });
-        }
-      });
-    }
-  
-    // Calcular o orçamento diário atual com base nas campanhas e conjuntos de anúncios
-    let dailyBudget = 0;
-    
-    // Para cada campanha ativa
-    if (response.campaigns && Array.isArray(response.campaigns)) {
-      response.campaigns.forEach(campaign => {
-        // Se a campanha estiver ativa e tiver orçamento no nível de campanha
-        if (campaign.status === 'ACTIVE' && campaign.daily_budget) {
-          dailyBudget += Number(campaign.daily_budget) / 100; // Convertendo de centavos para reais
-        }
-        
-        // Se a campanha estiver ativa mas não tiver orçamento definido
-        // Verificamos os conjuntos de anúncios
-        if (campaign.status === 'ACTIVE' && campaign.adsets && Array.isArray(campaign.adsets)) {
-          campaign.adsets.forEach(adset => {
-            if (adset.status === 'ACTIVE' && adset.daily_budget) {
-              dailyBudget += Number(adset.daily_budget) / 100;
-            }
-          });
-        }
-      });
-    }
-    
-    return {
-      success: true,
-      message: "Análise concluída com sucesso",
-      meta: {
-        totalSpent: totalSpent,
-        campaigns: campaigns,
-        dateRange: dateRange,
-        dailyBudget: dailyBudget,
-      },
-    };
-  };
+  }, [fetchClientData, fetchMetaToken, invokeEdgeFunction, prepareDateRangeForCurrentMonth, handleSuccessfulResponse, processErrorDetails, setDebugInfo, toast]);
 
   return {
     client,
@@ -205,8 +135,8 @@ export const useMetaAdsAnalysis = () => {
     isLoading,
     error,
     fetchAnalysis,
-    debugInfo,
     rawApiResponse,
+    debugInfo,
     testMetaToken,
     testEdgeFunction
   };

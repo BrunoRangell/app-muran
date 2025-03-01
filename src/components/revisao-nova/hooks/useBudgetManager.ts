@@ -49,7 +49,7 @@ export const useBudgetManager = () => {
     staleTime: 5 * 60 * 1000, // Cache por 5 minutos para melhorar performance
   });
 
-  // Calcular o total de orçamentos - usando useMemo para melhorar performance
+  // Calcular o total de orçamentos
   const totalBudget = useMemo(() => {
     if (!budgets) return formatCurrency(0);
     

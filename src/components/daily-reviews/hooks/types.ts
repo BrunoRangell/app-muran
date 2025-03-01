@@ -35,16 +35,18 @@ export interface SimpleMetaCampaign {
 export interface SimpleAnalysisResult {
   success: boolean;
   message: string;
-  meta: SimpleMetaData;
+  meta: {
+    totalSpent: number;
+    dailyBudget: number;
+    dateRange: {
+      start: string;
+      end: string;
+    };
+    campaigns: SimpleMetaCampaign[];
+  };
 }
 
-export interface SimpleMetaData {
-  totalSpent: number;
-  dailyBudget: number;
-  dateRange: MetaDateRange;
-  campaigns: SimpleMetaCampaign[];
-}
-
+// Adicionar interfaces para MetaCampaign e MetaDateRange
 export interface MetaCampaign {
   id: string;
   name: string;
