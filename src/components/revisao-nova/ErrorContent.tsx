@@ -28,6 +28,16 @@ export function ErrorContent({
   handleOpenGraphExplorer,
   handleMakeSampleRequest
 }: ErrorContentProps) {
+  // Determinar se é um erro de API do Meta específico
+  const isMetaApiError = rawApiResponse?.error?.message?.includes('Invalid OAuth access token') || 
+                          error?.includes('Token do Meta') ||
+                          error?.includes('token');
+
+  // Determinar se é um erro de conexão com a função Edge
+  const isEdgeFunctionError = error?.includes('função Edge') || 
+                              error?.includes('Edge Function') ||
+                              error?.includes('conectar');
+
   return (
     <div className="space-y-4">
       <Alert variant="destructive" className="mb-4">
@@ -55,13 +65,31 @@ export function ErrorContent({
           <span>Sugestões para solução:</span>
         </div>
         <ul className="list-disc pl-6 space-y-1 text-amber-700">
-          <li>Verifique se o token de acesso do Meta Ads está correto e não expirou</li>
-          <li>Confirme se o ID da conta Meta Ads está correto para este cliente</li>
-          <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
-          <li>Tente novamente em alguns minutos caso seja um problema temporário</li>
-          <li>Use as ferramentas de diagnóstico acima para testar o token e a API diretamente</li>
-          <li>Se o erro for na função Edge, verifique se ela está publicada no Supabase</li>
-          <li>Verifique se o CORS está configurado na função Edge para permitir seu domínio</li>
+          {isMetaApiError && (
+            <>
+              <li>Verifique se o token de acesso do Meta Ads está correto e não expirou</li>
+              <li>Gere um novo token de acesso no Facebook Developer e atualize nas configurações</li>
+              <li>Confirme se o token tem as permissões necessárias para acessar dados de anúncios</li>
+            </>
+          )}
+          
+          {isEdgeFunctionError && (
+            <>
+              <li>Verifique se a função Edge está publicada no Supabase</li>
+              <li>Tente republicar a função Edge no console do Supabase</li>
+              <li>Verifique se o CORS está configurado na função Edge para permitir seu domínio</li>
+              <li>Tente reiniciar a aplicação ou limpar o cache do navegador</li>
+            </>
+          )}
+          
+          {!isMetaApiError && !isEdgeFunctionError && (
+            <>
+              <li>Confirme se o ID da conta Meta Ads está correto para este cliente</li>
+              <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
+              <li>Tente novamente em alguns minutos caso seja um problema temporário</li>
+              <li>Use as ferramentas de diagnóstico acima para testar o token e a API diretamente</li>
+            </>
+          )}
         </ul>
       </div>
     </div>
