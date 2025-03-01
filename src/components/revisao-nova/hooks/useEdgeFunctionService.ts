@@ -32,26 +32,17 @@ export const useEdgeFunctionService = () => {
       
       console.log("[useEdgeFunctionService] Enviando payload para Edge Function:", JSON.stringify(payloadForLog));
       
-      // Converter para string com tratamento de erros
-      let payloadString;
-      try {
-        payloadString = JSON.stringify(payload);
-        
-        if (!payloadString || payloadString === '{}' || payloadString === 'null') {
-          throw new Error("Serialização do payload resultou em dados vazios");
-        }
-        
-        console.log("[useEdgeFunctionService] Tamanho do payload serializado:", payloadString.length, "bytes");
-      } catch (serializationError) {
-        console.error("[useEdgeFunctionService] Erro ao serializar payload:", serializationError);
-        throw new Error(`Erro ao preparar dados para envio: ${serializationError instanceof Error ? serializationError.message : String(serializationError)}`);
-      }
+      // Modificação importante: não converter para string antes de enviar
+      // A função supabase.functions.invoke já faz essa conversão internamente
+      
+      console.log("[useEdgeFunctionService] Tamanho do payload:", 
+                  JSON.stringify(payload).length, "bytes");
       
       // Adicionar timeout para evitar problemas de conexão pendente
       const functionPromise = supabase.functions.invoke(
         "daily-budget-reviews", 
         { 
-          body: payloadString,
+          body: payload, // Enviar o objeto diretamente, sem stringify
           headers: {
             "Content-Type": "application/json"
           }
@@ -101,20 +92,13 @@ export const useEdgeFunctionService = () => {
       // Teste simples com payload mínimo
       const testPayload = { method: "ping" };
       
-      // Serializar o payload para JSON
-      const testPayloadString = JSON.stringify(testPayload);
+      console.log("[testEdgeFunction] Enviando payload de teste:", JSON.stringify(testPayload));
       
-      // Verificar se o payload foi corretamente serializado
-      if (!testPayloadString || testPayloadString === '{}' || testPayloadString === 'null') {
-        throw new Error("Erro ao serializar payload de teste");
-      }
-      
-      console.log("[testEdgeFunction] Enviando payload de teste:", testPayloadString);
-      
+      // Aqui também enviamos o objeto diretamente, sem stringify
       const { data, error } = await supabase.functions.invoke(
         "daily-budget-reviews",
         { 
-          body: testPayloadString,
+          body: testPayload,
           headers: {
             "Content-Type": "application/json"
           }
@@ -130,7 +114,7 @@ export const useEdgeFunctionService = () => {
           error,
           timestamp: new Date().toISOString(),
           payloadSent: testPayload,
-          payloadSize: testPayloadString.length
+          payloadSize: JSON.stringify(testPayload).length
         }
       });
       
