@@ -27,7 +27,11 @@ export const BudgetSetupForm = () => {
         .eq("status", "active")
         .order("company_name");
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar clientes:", error);
+        throw error;
+      }
+      console.log("Clientes carregados:", data);
       return data;
     },
   });
@@ -36,26 +40,32 @@ export const BudgetSetupForm = () => {
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
       // Convertemos os valores de string para number e criamos um array de objetos com o formato correto
-      const updates = Object.entries(budgets).map(([clientId, values]) => ({
-        id: clientId,
-        meta_ads_budget: values.meta ? parseFloat(values.meta) : 0,
-      }));
+      const updates = Object.entries(budgets).map(([clientId, values]) => {
+        const metaBudget = values.meta ? parseFloat(values.meta) : 0;
+        console.log(`Preparando atualização para cliente ${clientId}: meta_ads_budget = ${metaBudget}`);
+        
+        return {
+          id: clientId,
+          meta_ads_budget: metaBudget,
+        };
+      });
 
       console.log("Enviando atualizações:", updates);
 
       // Usamos upsert para atualizar vários registros de uma vez
       const { data, error } = await supabase
         .from("clients")
-        .upsert(updates, { onConflict: 'id' });
+        .upsert(updates, { onConflict: 'id', returning: 'minimal' });
 
       if (error) {
         console.error("Erro na atualização:", error);
         throw error;
       }
       
-      return data;
+      return true;
     },
     onSuccess: () => {
+      console.log("Orçamentos salvos com sucesso!");
       toast({
         title: "Orçamentos salvos",
         description: "Os orçamentos mensais foram atualizados com sucesso.",
@@ -75,6 +85,7 @@ export const BudgetSetupForm = () => {
   // Inicializar orçamentos a partir dos dados obtidos
   useEffect(() => {
     if (clients) {
+      console.log("Inicializando orçamentos a partir dos clientes carregados");
       const initialBudgets: Record<string, { meta: string }> = {};
       clients.forEach((client) => {
         initialBudgets[client.id] = {
