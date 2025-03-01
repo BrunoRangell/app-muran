@@ -57,3 +57,4 @@ export const processErrorDetails = (err: any): {
     details: errorDetails
   };
 };
+
