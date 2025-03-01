@@ -39,11 +39,32 @@ export const BudgetSetupForm = () => {
   // Mutation para salvar orçamentos
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
-      // Convertemos os valores de string para number e criamos um array de objetos com o formato correto
-      const updates = Object.entries(budgets).map(([clientId, values]) => {
-        const metaBudget = values.meta ? parseFloat(values.meta.replace(/[^\d,.-]/g, '').replace(',', '.')) : 0;
-        console.log(`Preparando atualização para cliente ${clientId}: meta_ads_budget = ${metaBudget}, meta_account_id = ${values.accountId}`);
+      console.log("Iniciando salvamento de orçamentos...");
+      
+      // Filtrar apenas os clientes que possuem dados em budgets para atualizar
+      const clientsToUpdate = Object.entries(budgets).filter(([clientId, values]) => {
+        return clientId && (values.meta || values.accountId);
+      });
+      
+      console.log("Clientes a serem atualizados:", clientsToUpdate);
+      
+      if (clientsToUpdate.length === 0) {
+        console.log("Nenhum cliente para atualizar");
+        return true;
+      }
+
+      // Preparar os dados para atualização
+      const updates = clientsToUpdate.map(([clientId, values]) => {
+        // Tratar o valor do orçamento corretamente
+        const rawValue = values.meta ? values.meta.replace(/[^\d,.-]/g, '').replace(',', '.') : "0";
+        const metaBudget = parseFloat(rawValue) || 0;
         
+        console.log(`Preparando atualização para cliente ${clientId}:`, {
+          metaBudget,
+          accountId: values.accountId
+        });
+        
+        // Retornar objeto formatado para update
         return {
           id: clientId,
           meta_ads_budget: metaBudget,
@@ -51,16 +72,24 @@ export const BudgetSetupForm = () => {
         };
       });
 
-      console.log("Enviando atualizações:", updates);
+      console.log("Objetos preparados para atualização:", updates);
 
-      // Usamos upsert para atualizar vários registros de uma vez
-      const { error } = await supabase
-        .from("clients")
-        .upsert(updates, { onConflict: 'id' });
+      // Realizar atualização em lote
+      for (const update of updates) {
+        const { data, error } = await supabase
+          .from("clients")
+          .update({
+            meta_ads_budget: update.meta_ads_budget,
+            meta_account_id: update.meta_account_id
+          })
+          .eq("id", update.id);
 
-      if (error) {
-        console.error("Erro na atualização:", error);
-        throw error;
+        if (error) {
+          console.error(`Erro ao atualizar cliente ${update.id}:`, error);
+          throw error;
+        }
+        
+        console.log(`Cliente ${update.id} atualizado com sucesso`);
       }
       
       return true;

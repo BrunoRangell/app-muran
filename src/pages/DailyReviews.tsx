@@ -90,6 +90,7 @@ const DailyReviews = () => {
   };
 
   const handleConfigureBudgetsClick = (clientId: string) => {
+    console.log("Configurando orçamentos para cliente:", clientId);
     setSelectedClient(clientId);
     setActiveTab("setup");
   };
