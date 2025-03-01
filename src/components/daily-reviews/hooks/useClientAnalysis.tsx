@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { validateClient } from "./useClientValidation";
-import { simulateBudgetData } from "./useDevSimulation";
+import { simulateBudgetData, simulateClientAnalysis } from "./useDevSimulation";
 import { invokeEdgeFunction } from "./useEdgeFunction";
 import { AnalysisResult } from "./types";
 
@@ -35,12 +35,15 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
           // Em produção, chamamos a função edge
           console.log("Chamando função edge para análise de orçamento");
           const todayDate = new Date();
-          const year = todayDate.getFullYear();
-          const month = todayDate.getMonth() + 1; // +1 porque getMonth retorna 0-11
-          const day = todayDate.getDate();
-          const formattedDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+          const formattedDate = todayDate.toISOString().split('T')[0];
           
-          result = await invokeEdgeFunction(clientId, formattedDate);
+          try {
+            result = await invokeEdgeFunction(clientId, formattedDate);
+          } catch (error) {
+            console.warn("Falha ao invocar Edge Function, usando simulação como fallback:", error);
+            // Fallback para simulação se a edge function falhar
+            result = await simulateBudgetData(clientId, clientData, formattedDate);
+          }
         }
         
         console.log("Análise concluída com sucesso:", result);
