@@ -72,6 +72,16 @@ export const invokeEdgeFunction = async (
   } catch (error: any) {
     console.error("Falha ao obter dados do Meta Ads:", error);
     
+    // Verificar se o erro contém alguma mensagem específica do banco de dados
+    if (error.message && error.message.includes("column")) {
+      console.error("Erro de coluna no banco de dados:", error.message);
+      throw new AppError(
+        "Erro na estrutura do banco de dados. Verifique se as colunas na tabela clients estão corretas.",
+        "DATABASE_SCHEMA_ERROR", 
+        { originalError: error }
+      );
+    }
+    
     // Detalhando o erro para facilitar diagnóstico
     if (error instanceof Error) {
       console.error("Tipo de erro:", error.name);

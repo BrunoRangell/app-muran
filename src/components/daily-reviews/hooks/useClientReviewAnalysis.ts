@@ -27,7 +27,14 @@ export const useClientReviewAnalysis = (
     
     try {
       console.log("Iniciando análise para o cliente:", clientId);
-      analyzeMutation.mutate(clientId);
+      analyzeMutation.mutate(clientId, {
+        onError: (error) => {
+          console.error("Erro na análise do cliente:", error);
+          setIsRefreshing(false);
+          
+          // Mensagens de toast já são exibidas no hook useClientAnalysis
+        }
+      });
     } catch (error) {
       console.error("Erro ao iniciar análise:", error);
       setIsRefreshing(false);

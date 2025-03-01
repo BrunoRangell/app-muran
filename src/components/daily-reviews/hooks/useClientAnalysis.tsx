@@ -48,16 +48,25 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
         } catch (edgeError: any) {
           console.error("Erro detalhado ao chamar função Edge:", edgeError);
           
-          // Mensagem personalizada para erro da função Edge
-          const errorMessage = edgeError instanceof Error 
-            ? edgeError.message 
-            : "Erro desconhecido ao acessar a API do Meta Ads";
-          
-          toast({
-            title: "Erro na API do Meta Ads",
-            description: errorMessage,
-            variant: "destructive",
-          });
+          // Tratamento especial para erro de esquema de banco de dados
+          if (edgeError.code === "DATABASE_SCHEMA_ERROR") {
+            toast({
+              title: "Erro na estrutura do banco de dados",
+              description: "Há um problema com as colunas na tabela de clientes. Contate o suporte técnico.",
+              variant: "destructive",
+            });
+          } else {
+            // Mensagem personalizada para erro da função Edge
+            const errorMessage = edgeError instanceof Error 
+              ? edgeError.message 
+              : "Erro desconhecido ao acessar a API do Meta Ads";
+            
+            toast({
+              title: "Erro na API do Meta Ads",
+              description: errorMessage,
+              variant: "destructive",
+            });
+          }
           
           throw edgeError;
         }
