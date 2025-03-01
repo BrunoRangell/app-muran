@@ -24,7 +24,20 @@ export const useClientReviewAnalysis = (
 
   const handleRefreshAnalysis = () => {
     setIsRefreshing(true);
-    analyzeMutation.mutate(clientId);
+    
+    try {
+      console.log("Iniciando análise para o cliente:", clientId);
+      analyzeMutation.mutate(clientId);
+    } catch (error) {
+      console.error("Erro ao iniciar análise:", error);
+      setIsRefreshing(false);
+      
+      toast({
+        title: "Erro ao iniciar análise",
+        description: error instanceof Error ? error.message : "Não foi possível iniciar a análise.",
+        variant: "destructive",
+      });
+    }
   };
 
   return {

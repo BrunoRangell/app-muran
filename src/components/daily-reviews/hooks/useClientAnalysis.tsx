@@ -33,11 +33,28 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
         const todayDate = new Date();
         const formattedDate = todayDate.toISOString().split('T')[0];
         
-        // Buscar apenas dados reais - sem simulação
-        console.log("Chamando função Edge para obter dados reais do Meta Ads");
-        const result = await invokeEdgeFunction(clientId, formattedDate);
-        console.log("Análise com dados reais concluída com sucesso:", result);
-        return result;
+        try {
+          // Buscar apenas dados reais - sem simulação
+          console.log("Chamando função Edge para obter dados reais do Meta Ads");
+          const result = await invokeEdgeFunction(clientId, formattedDate);
+          console.log("Análise com dados reais concluída com sucesso:", result);
+          return result;
+        } catch (edgeError: any) {
+          console.error("Erro detalhado ao chamar função Edge:", edgeError);
+          
+          // Mensagem personalizada para erro da função Edge
+          const errorMessage = edgeError instanceof Error 
+            ? edgeError.message 
+            : "Erro desconhecido ao acessar a API do Meta Ads";
+          
+          toast({
+            title: "Erro na API do Meta Ads",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          
+          throw edgeError;
+        }
       } catch (error) {
         console.error("Erro ao chamar função de análise:", error);
         
@@ -48,11 +65,11 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
             description: "Configure o token do Meta Ads na página de configurações antes de analisar.",
             variant: "destructive",
           });
-        } else {
-          // Para outros erros da API, mostrar mensagem genérica
+        } else if (!(error instanceof Error) || !error.message?.includes("Cliente sem ID")) {
+          // Para outros erros da API (exceto o erro de cliente sem ID que já foi tratado)
           toast({
-            title: "Erro na API do Meta Ads",
-            description: error instanceof Error ? error.message : "Não foi possível obter dados do Meta Ads.",
+            title: "Erro na análise",
+            description: error instanceof Error ? error.message : "Erro desconhecido na análise do cliente.",
             variant: "destructive",
           });
         }

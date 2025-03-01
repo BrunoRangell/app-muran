@@ -42,12 +42,20 @@ export const invokeEdgeFunction = async (
       },
     });
 
-    console.log("Resposta recebida da função Edge:", data);
-    
     if (error) {
-      console.error("Erro detalhado retornado pela função Edge:", error);
-      throw new Error(error.message || "Erro ao obter dados do Meta Ads");
+      console.error("Erro na função Edge:", error);
+      let errorMessage = "Erro ao obter dados do Meta Ads";
+      
+      // Verificar se há uma mensagem mais específica no erro
+      if (typeof error === 'object' && error !== null) {
+        errorMessage = error.message || errorMessage;
+        console.error("Detalhes do erro:", JSON.stringify(error, null, 2));
+      }
+      
+      throw new Error(errorMessage);
     }
+    
+    console.log("Resposta recebida da função Edge:", data);
     
     if (!data) {
       console.error("Função Edge retornou dados vazios ou inválidos");
@@ -57,6 +65,16 @@ export const invokeEdgeFunction = async (
     return data;
   } catch (error: any) {
     console.error("Falha ao obter dados do Meta Ads:", error);
+    
+    // Detalhando o erro para facilitar diagnóstico
+    if (error instanceof Error) {
+      console.error("Tipo de erro:", error.name);
+      console.error("Mensagem de erro:", error.message);
+      console.error("Stack trace:", error.stack);
+    } else {
+      console.error("Erro não padrão:", JSON.stringify(error, null, 2));
+    }
+    
     throw error;
   }
 };
