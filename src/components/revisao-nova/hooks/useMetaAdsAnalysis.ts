@@ -23,12 +23,11 @@ export const useMetaAdsAnalysis = () => {
     processErrorDetails 
   } = useMetaResponseProcessor();
 
-  // Função para calcular o período do mês atual
   const prepareCurrentMonthRange = () => {
     const today = DateTime.now().setZone("America/Sao_Paulo");
     return {
-      startDate: today.startOf("month").toISODate(), // Ex: "2025-03-01"
-      endDate: today.endOf("month").toISODate(),     // Ex: "2025-03-31"
+      startDate: today.startOf("month").toISODate(),
+      endDate: today.endOf("month").toISODate(),
       today: today.toISODate()
     };
   };
@@ -47,7 +46,6 @@ export const useMetaAdsAnalysis = () => {
         throw new Error("Token do Meta Ads não encontrado ou não configurado");
       }
       
-      // Usar período dinâmico do mês atual
       const { startDate, endDate, today } = prepareCurrentMonthRange();
       console.log("[DEBUG] Período do mês atual:", { startDate, endDate });
 
@@ -59,10 +57,10 @@ export const useMetaAdsAnalysis = () => {
           accessToken: token,
           clientName: clientData.company_name,
           metaAccountId: clientData.meta_account_id,
-          endpoint: "insights", // Endpoint dedicado para insights
-          fields: "spend,campaign_id", // Campos essenciais
+          endpoint: "insights",
+          fields: "spend,campaign_id",
           dateRange: { start: startDate, end: endDate },
-          time_range: JSON.stringify({ since: startDate, until: endDate }), // Formato correto
+          time_range: JSON.stringify({ since: startDate, until: endDate }),
           debug: true
         };
         
