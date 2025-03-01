@@ -4,7 +4,8 @@ import {
   Card, 
   CardContent, 
   CardHeader, 
-  CardTitle 
+  CardTitle,
+  CardDescription 
 } from "@/components/ui/card";
 import { 
   Table, 
@@ -12,15 +13,18 @@ import {
   TableCell, 
   TableHead, 
   TableHeader, 
-  TableRow 
+  TableRow,
+  TableFooter
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Save, Loader } from "lucide-react";
+import { Search, Save, Loader, Info } from "lucide-react";
 import { useBudgetManager } from "./hooks/useBudgetManager";
+import { useToast } from "@/hooks/use-toast";
 
 export const BudgetManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
   const { 
     clients, 
     isLoading, 
@@ -29,7 +33,8 @@ export const BudgetManager = () => {
     handleBudgetBlur,
     handleAccountIdChange, 
     handleSave, 
-    isSaving 
+    isSaving,
+    totalBudget 
   } = useBudgetManager();
 
   // Filtrar clientes com base no termo de busca
@@ -37,20 +42,42 @@ export const BudgetManager = () => {
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleHelpClick = () => {
+    toast({
+      title: "Dica de uso",
+      description: "Digite os valores diretamente no campo de orçamento. O valor será formatado automaticamente quando você clicar fora do campo.",
+    });
+  };
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-xl text-muran-dark flex items-center gap-2">
-          Gerenciamento de Orçamentos Meta Ads
-        </CardTitle>
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar cliente..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+    <Card className="w-full shadow-md">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <CardTitle className="text-xl text-muran-dark flex items-center gap-2">
+              Gerenciamento de Orçamentos Meta Ads
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="h-6 w-6 rounded-full" 
+                onClick={handleHelpClick}
+              >
+                <Info className="h-4 w-4 text-muran-primary" />
+              </Button>
+            </CardTitle>
+            <CardDescription className="mt-1">
+              Configure os orçamentos mensais e IDs de contas para cada cliente
+            </CardDescription>
+          </div>
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar cliente..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -60,9 +87,9 @@ export const BudgetManager = () => {
           </div>
         ) : (
           <>
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-hidden">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-gray-50">
                   <TableRow>
                     <TableHead className="w-[40%]">Cliente</TableHead>
                     <TableHead className="w-[30%]">ID Conta Meta Ads</TableHead>
@@ -78,13 +105,14 @@ export const BudgetManager = () => {
                     </TableRow>
                   ) : (
                     filteredClients?.map((client) => (
-                      <TableRow key={client.id}>
+                      <TableRow key={client.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium">{client.company_name}</TableCell>
                         <TableCell>
                           <Input
                             value={budgets[client.id]?.accountId || ""}
                             onChange={(e) => handleAccountIdChange(client.id, e.target.value)}
                             placeholder="ID da conta"
+                            className="bg-white"
                           />
                         </TableCell>
                         <TableCell>
@@ -94,21 +122,32 @@ export const BudgetManager = () => {
                             onChange={(e) => handleBudgetChange(client.id, e.target.value)}
                             onBlur={() => handleBudgetBlur(client.id)}
                             placeholder="R$ 0,00"
-                            className="text-right"
+                            className="text-right bg-white"
                           />
                         </TableCell>
                       </TableRow>
                     ))
                   )}
                 </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-right font-medium">
+                      Total de Orçamentos:
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {totalBudget}
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
               </Table>
             </div>
 
-            <div className="mt-4 flex justify-end">
+            <div className="mt-6 flex justify-end">
               <Button 
                 onClick={handleSave} 
                 disabled={isLoading || isSaving}
-                className="bg-muran-primary hover:bg-muran-primary/90"
+                className="bg-muran-primary hover:bg-muran-primary/90 font-medium"
+                size="lg"
               >
                 {isSaving ? (
                   <>

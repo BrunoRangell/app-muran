@@ -2,13 +2,27 @@
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
 import { SimpleMetaCampaign } from "@/components/daily-reviews/hooks/types";
-import { normalizeCampaigns, calculateTotalSpend } from "./hooks/processors/campaignProcessor";
+import { useMemo } from "react";
 
 interface CampaignsTableProps {
   campaigns: SimpleMetaCampaign[];
 }
 
 export function CampaignsTable({ campaigns }: CampaignsTableProps) {
+  // Filtrar campanhas com custo > 0 e ordenar por valor (maior primeiro)
+  const filteredCampaigns = useMemo(() => {
+    return campaigns
+      ?.filter(campaign => {
+        const spend = Number(campaign.spend) || 0;
+        return spend > 0;
+      })
+      .sort((a, b) => {
+        const spendA = Number(a.spend) || 0;
+        const spendB = Number(b.spend) || 0;
+        return spendB - spendA;
+      }) || [];
+  }, [campaigns]);
+
   if (!campaigns || campaigns.length === 0) {
     return (
       <div className="rounded-md border p-4 text-center">
@@ -17,40 +31,27 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     );
   }
 
-  // Registrar valores brutos para depuração
-  console.log("[CampaignsTable] Valores brutos de campanhas:", 
-    campaigns.map(c => ({
-      name: c.name,
-      id: c.id,
-      spendRaw: c.spend,
-      spendInsights: c.insights?.data?.[0]?.spend,
-      spendType: typeof c.spend
-    }))
-  );
-
-  // Garantir que cada campanha tenha um valor de gasto válido
-  const normalizedCampaigns = normalizeCampaigns(campaigns);
+  if (filteredCampaigns.length === 0) {
+    return (
+      <div className="rounded-md border p-4 text-center">
+        <p className="text-sm text-gray-500">Nenhuma campanha com gasto no período.</p>
+      </div>
+    );
+  }
 
   // Calcular o total gasto
-  const totalSpent = calculateTotalSpend(normalizedCampaigns);
-
-  // Registrar valores para depuração
-  console.log("[CampaignsTable] Campanhas normalizadas:", 
-    normalizedCampaigns.map(c => ({
-      name: c.name,
-      id: c.id,
-      spend: c.spend
-    }))
-  );
-  console.log("[CampaignsTable] Total gasto calculado:", totalSpent);
+  const totalSpent = filteredCampaigns.reduce((sum, campaign) => {
+    const spend = Number(campaign.spend) || 0;
+    return sum + spend;
+  }, 0);
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border shadow-sm">
       <Table>
         <TableCaption>
           Total gasto em campanhas: {formatCurrency(totalSpent)}
         </TableCaption>
-        <TableHeader>
+        <TableHeader className="bg-gray-50">
           <TableRow>
             <TableHead className="w-[50%]">Nome da Campanha</TableHead>
             <TableHead>Status</TableHead>
@@ -58,13 +59,13 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {normalizedCampaigns.map((campaign) => (
-            <TableRow key={campaign.id}>
+          {filteredCampaigns.map((campaign) => (
+            <TableRow key={campaign.id} className="hover:bg-gray-50">
               <TableCell className="font-medium">{campaign.name}</TableCell>
               <TableCell>
                 <StatusBadge status={campaign.status} />
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right font-medium">
                 {formatCurrency(Number(campaign.spend))}
               </TableCell>
             </TableRow>

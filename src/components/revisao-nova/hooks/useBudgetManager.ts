@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ interface Client {
 interface BudgetValues {
   formattedValue: string;  // Valor formatado para exibição (R$ 1.000,00)
   accountId: string;
+  rawValue: number;
 }
 
 export const useBudgetManager = () => {
@@ -23,7 +24,7 @@ export const useBudgetManager = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Buscar clientes ativos
+  // Buscar clientes ativos de forma otimizada
   const { data: clients, isLoading } = useQuery({
     queryKey: ["clients-active-budgets"],
     queryFn: async () => {
@@ -35,12 +36,30 @@ export const useBudgetManager = () => {
 
       if (error) {
         console.error("Erro ao buscar clientes:", error);
+        toast({
+          title: "Erro ao carregar clientes",
+          description: "Não foi possível carregar a lista de clientes.",
+          variant: "destructive",
+        });
         throw error;
       }
 
       return data as Client[];
     },
+    staleTime: 5 * 60 * 1000, // Cache por 5 minutos para melhorar performance
   });
+
+  // Calcular o total de orçamentos
+  const totalBudget = useMemo(() => {
+    if (!budgets) return formatCurrency(0);
+    
+    const total = Object.values(budgets).reduce(
+      (sum, budget) => sum + (budget.rawValue || 0), 
+      0
+    );
+    
+    return formatCurrency(total);
+  }, [budgets]);
 
   // Inicializar orçamentos com dados existentes
   useEffect(() => {
@@ -55,7 +74,8 @@ export const useBudgetManager = () => {
         
         initialBudgets[client.id] = {
           formattedValue,
-          accountId: client.meta_account_id || ""
+          accountId: client.meta_account_id || "",
+          rawValue: client.meta_ads_budget || 0
         };
       });
       
@@ -63,18 +83,13 @@ export const useBudgetManager = () => {
     }
   }, [clients]);
 
-  // Mutation para salvar orçamentos
+  // Mutation para salvar orçamentos com feedback melhorado
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
-      console.log("Salvando orçamentos:", budgets);
-      
       const updates = Object.entries(budgets).map(([clientId, values]) => {
-        // Converter valor formatado para número
-        const budgetAmount = parseCurrencyToNumber(values.formattedValue);
-        
         return {
           id: clientId,
-          meta_ads_budget: budgetAmount,
+          meta_ads_budget: values.rawValue,
           meta_account_id: values.accountId || null
         };
       });
@@ -115,7 +130,7 @@ export const useBudgetManager = () => {
     }
   });
 
-  // Manipulador para alteração de orçamento
+  // Manipulador para alteração de orçamento - sem limitar entrada do usuário
   const handleBudgetChange = (clientId: string, value: string) => {
     setBudgets((prev) => ({
       ...prev,
@@ -137,7 +152,8 @@ export const useBudgetManager = () => {
           ...prev,
           [clientId]: {
             ...prev[clientId],
-            formattedValue: ""
+            formattedValue: "",
+            rawValue: 0
           }
         };
       }
@@ -150,7 +166,8 @@ export const useBudgetManager = () => {
         ...prev,
         [clientId]: {
           ...prev[clientId],
-          formattedValue
+          formattedValue,
+          rawValue: numericValue
         }
       };
     });
@@ -178,6 +195,7 @@ export const useBudgetManager = () => {
         if (currentValue.trim()) {
           const numericValue = parseCurrencyToNumber(currentValue);
           formatted[clientId].formattedValue = formatCurrency(numericValue);
+          formatted[clientId].rawValue = numericValue;
         }
       });
       
@@ -195,6 +213,7 @@ export const useBudgetManager = () => {
     handleBudgetBlur,
     handleAccountIdChange,
     handleSave,
-    isSaving: saveBudgetsMutation.isPending
+    isSaving: saveBudgetsMutation.isPending,
+    totalBudget
   };
 };
