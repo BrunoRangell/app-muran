@@ -32,17 +32,23 @@ export const useEdgeFunctionService = () => {
       
       console.log("[useEdgeFunctionService] Enviando payload para Edge Function:", JSON.stringify(payloadForLog));
       
-      // Modificação importante: não converter para string antes de enviar
-      // A função supabase.functions.invoke já faz essa conversão internamente
+      // MUDANÇA CRUCIAL: Garantir que o payload seja um objeto válido e não nulo
+      // Criar uma cópia explícita para evitar referências que podem ser modificadas
+      const payloadCopy = { ...payload };
       
       console.log("[useEdgeFunctionService] Tamanho do payload:", 
-                  JSON.stringify(payload).length, "bytes");
+                  JSON.stringify(payloadCopy).length, "bytes");
+      
+      // Verificação extra para debug
+      if (Object.keys(payloadCopy).length === 0) {
+        console.warn("[useEdgeFunctionService] AVISO: Payload está vazio após processamento!");
+      }
       
       // Adicionar timeout para evitar problemas de conexão pendente
       const functionPromise = supabase.functions.invoke(
         "daily-budget-reviews", 
         { 
-          body: payload, // Enviar o objeto diretamente, sem stringify
+          body: payloadCopy, // Usar a cópia explícita do objeto
           headers: {
             "Content-Type": "application/json"
           }
@@ -94,11 +100,14 @@ export const useEdgeFunctionService = () => {
       
       console.log("[testEdgeFunction] Enviando payload de teste:", JSON.stringify(testPayload));
       
+      // Uso explícito de um objeto novo para garantir que não há problemas de referência
+      const testPayloadCopy = { ...testPayload };
+      
       // Aqui também enviamos o objeto diretamente, sem stringify
       const { data, error } = await supabase.functions.invoke(
         "daily-budget-reviews",
         { 
-          body: testPayload,
+          body: testPayloadCopy,
           headers: {
             "Content-Type": "application/json"
           }
@@ -113,8 +122,8 @@ export const useEdgeFunctionService = () => {
           data,
           error,
           timestamp: new Date().toISOString(),
-          payloadSent: testPayload,
-          payloadSize: JSON.stringify(testPayload).length
+          payloadSent: testPayloadCopy,
+          payloadSize: JSON.stringify(testPayloadCopy).length
         }
       });
       
