@@ -124,7 +124,8 @@ export const useBudgetManager = () => {
 
   // Manipulador para alteração de orçamento
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Manter apenas dígitos, vírgulas e pontos - remove formatação como R$ e espaços
+    // Remove apenas caracteres não numéricos, mantendo vírgulas e pontos
+    // Não faz nenhum tipo de limitação na quantidade de dígitos
     const numericValue = value.replace(/[^\d,.]/g, "");
     
     // Formatar para exibição
