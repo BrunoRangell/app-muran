@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Save, Search, DollarSign, Loader } from "lucide-react";
+import { Save, Search, DollarSign, Loader, Database } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 
 export const BudgetSetupForm = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [budgets, setBudgets] = useState<Record<string, { meta: string }>>({});
+  const [budgets, setBudgets] = useState<Record<string, { meta: string; accountId: string }>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -41,12 +41,13 @@ export const BudgetSetupForm = () => {
     mutationFn: async () => {
       // Convertemos os valores de string para number e criamos um array de objetos com o formato correto
       const updates = Object.entries(budgets).map(([clientId, values]) => {
-        const metaBudget = values.meta ? parseFloat(values.meta) : 0;
-        console.log(`Preparando atualização para cliente ${clientId}: meta_ads_budget = ${metaBudget}`);
+        const metaBudget = values.meta ? parseFloat(values.meta.replace(/[^\d,.-]/g, '').replace(',', '.')) : 0;
+        console.log(`Preparando atualização para cliente ${clientId}: meta_ads_budget = ${metaBudget}, meta_account_id = ${values.accountId}`);
         
         return {
           id: clientId,
           meta_ads_budget: metaBudget,
+          meta_account_id: values.accountId || null
         };
       });
 
@@ -86,25 +87,36 @@ export const BudgetSetupForm = () => {
   useEffect(() => {
     if (clients) {
       console.log("Inicializando orçamentos a partir dos clientes carregados");
-      const initialBudgets: Record<string, { meta: string }> = {};
+      const initialBudgets: Record<string, { meta: string; accountId: string }> = {};
       clients.forEach((client) => {
         initialBudgets[client.id] = {
-          meta: client.meta_ads_budget?.toString() || "",
+          meta: client.meta_ads_budget ? client.meta_ads_budget.toString() : "",
+          accountId: client.meta_account_id || ""
         };
       });
       setBudgets(initialBudgets);
     }
   }, [clients]);
 
-  const handleChange = (clientId: string, value: string) => {
+  const handleBudgetChange = (clientId: string, value: string) => {
     // Certifique-se de que aceitamos apenas números e pontos
-    const sanitizedValue = value.replace(/[^0-9.]/g, "");
+    const sanitizedValue = value.replace(/[^0-9,.]/g, "");
     
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
         meta: sanitizedValue,
+      },
+    }));
+  };
+
+  const handleAccountIdChange = (clientId: string, value: string) => {
+    setBudgets((prev) => ({
+      ...prev,
+      [clientId]: {
+        ...prev[clientId],
+        accountId: value,
       },
     }));
   };
@@ -153,8 +165,8 @@ export const BudgetSetupForm = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[350px]">Cliente</TableHead>
-                    <TableHead>ID da Conta</TableHead>
+                    <TableHead className="w-[300px]">Cliente</TableHead>
+                    <TableHead className="w-[200px]">ID da Conta Meta</TableHead>
                     <TableHead>Orçamento Meta Ads Mensal</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -163,7 +175,18 @@ export const BudgetSetupForm = () => {
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">{client.company_name}</TableCell>
                       <TableCell>
-                        {client.meta_account_id || "-"}
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor={`account-${client.id}`} className="sr-only">
+                            ID da Conta Meta
+                          </Label>
+                          <Input
+                            id={`account-${client.id}`}
+                            placeholder="ID da conta"
+                            value={budgets[client.id]?.accountId || ""}
+                            onChange={(e) => handleAccountIdChange(client.id, e.target.value)}
+                            className="max-w-[150px]"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
@@ -173,9 +196,9 @@ export const BudgetSetupForm = () => {
                           <span className="text-gray-500">R$</span>
                           <Input
                             id={`meta-${client.id}`}
-                            placeholder="0.00"
+                            placeholder="0,00"
                             value={budgets[client.id]?.meta || ""}
-                            onChange={(e) => handleChange(client.id, e.target.value)}
+                            onChange={(e) => handleBudgetChange(client.id, e.target.value)}
                             className="max-w-[150px]"
                             type="text"
                           />

@@ -89,6 +89,11 @@ const DailyReviews = () => {
     analyzeMutation.mutate(clientId);
   };
 
+  const handleConfigureBudgetsClick = (clientId: string) => {
+    setSelectedClient(clientId);
+    setActiveTab("setup");
+  };
+
   useEffect(() => {
     // Se um cliente for selecionado mas a tab for "clients-list", mude para "client-details"
     if (selectedClient && activeTab === "clients-list") {
@@ -196,7 +201,11 @@ const DailyReviews = () => {
                   </CardContent>
                   <CardFooter>
                     <Button
-                      onClick={() => handleAnalyzeClient(client.id)}
+                      onClick={() => 
+                        client.meta_ads_budget > 0 
+                          ? handleAnalyzeClient(client.id)
+                          : handleConfigureBudgetsClick(client.id)
+                      }
                       className="w-full"
                       variant={client.meta_ads_budget > 0 ? "default" : "outline"}
                       disabled={analyzeMutation.isPending}
