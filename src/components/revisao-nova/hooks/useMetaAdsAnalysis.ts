@@ -4,6 +4,7 @@ import { useMetaTokenService } from "./useMetaTokenService";
 import { useEdgeFunctionService } from "./useEdgeFunctionService";
 import { useMetaClientService } from "./useMetaClientService";
 import { useMetaResponseProcessor } from "./useMetaResponseProcessor";
+import { DateTime } from "luxon";
 
 export const useMetaAdsAnalysis = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,7 +13,7 @@ export const useMetaAdsAnalysis = () => {
 
   const { fetchMetaToken, testMetaToken } = useMetaTokenService();
   const { invokeEdgeFunction, testEdgeFunction } = useEdgeFunctionService();
-  const { client, fetchClientData, prepareDateRangeForCurrentMonth } = useMetaClientService();
+  const { client, fetchClientData } = useMetaClientService();
   const { 
     analysis, 
     rawApiResponse, 
@@ -22,6 +23,16 @@ export const useMetaAdsAnalysis = () => {
     processErrorDetails 
   } = useMetaResponseProcessor();
 
+  // Função para calcular o período do mês atual
+  const prepareCurrentMonthRange = () => {
+    const today = DateTime.now().setZone("America/Sao_Paulo");
+    return {
+      startDate: today.startOf("month").toISODate(), // Ex: "2025-03-01"
+      endDate: today.endOf("month").toISODate(),     // Ex: "2025-03-31"
+      today: today.toISODate()
+    };
+  };
+
   const fetchAnalysis = async (clientId: string) => {
     setIsLoading(true);
     setError(null);
@@ -30,18 +41,17 @@ export const useMetaAdsAnalysis = () => {
       console.log("[useMetaAdsAnalysis] Iniciando análise para cliente:", clientId);
       
       const clientData = await fetchClientData(clientId);
-      
       const token = await fetchMetaToken();
+      
       if (!token) {
         throw new Error("Token do Meta Ads não encontrado ou não configurado");
       }
       
-      const { startDate, endDate, today } = prepareDateRangeForCurrentMonth();
-      console.log("[DEBUG] Date Range:", { startDate, endDate }); // Log para verificar datas
+      // Usar período dinâmico do mês atual
+      const { startDate, endDate, today } = prepareCurrentMonthRange();
+      console.log("[DEBUG] Período do mês atual:", { startDate, endDate });
 
-      try {
-        console.log("[useMetaAdsAnalysis] Tentando invocar função Edge...");
-        
+      try {        
         const payload = {
           method: "getMetaAdsData",
           clientId,
@@ -49,25 +59,17 @@ export const useMetaAdsAnalysis = () => {
           accessToken: token,
           clientName: clientData.company_name,
           metaAccountId: clientData.meta_account_id,
-          fields: "status,name,spend,insights{spend}", // Campos explícitos
-          dateRange: {
-            start: startDate,
-            end: endDate
-          },
-          time_range: `{'since':'${startDate}','until':'${endDate}'}`, // Time range formatado
+          fields: "status,name,spend,insights{spend}", 
+          dateRange: { start: startDate, end: endDate },
+          time_range: JSON.stringify({ since: startDate, until: endDate }), // Formato correto
           debug: true
         };
         
         const { result, error: edgeError } = await invokeEdgeFunction(payload);
-        console.log("[DEBUG] Resposta Bruta da API:", result); // Log para inspecionar dados
+        console.log("[DEBUG] Resposta Bruta da API:", JSON.stringify(result, null, 2));
         
-        if (edgeError) {
-          throw edgeError;
-        }
-        
-        if (!result || !result.data) {
-          throw new Error("A função retornou dados vazios ou inválidos");
-        }
+        if (edgeError) throw edgeError;
+        if (!result?.data) throw new Error("Dados da API ausentes ou mal formatados");
         
         handleSuccessfulResponse(result, token);
       } catch (edgeError: any) {
