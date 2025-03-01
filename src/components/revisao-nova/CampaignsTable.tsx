@@ -64,7 +64,12 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
               <TableCell>
                 <StatusBadge status={campaign.status} />
               </TableCell>
-              <TableCell className="text-right">{formatCurrency(campaign.spend)}</TableCell>
+              <TableCell className="text-right">
+                {/* Garantir que spend seja um número ou string antes de formatar */}
+                {typeof campaign.spend === 'number' || typeof campaign.spend === 'string' 
+                  ? formatCurrency(campaign.spend) 
+                  : formatCurrency(0)}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

@@ -107,11 +107,14 @@ export const useMetaAdsAnalysis = () => {
       }
       
     } catch (err) {
+      // Corrigir o erro de tipagem aqui
       const errorDetails = processErrorDetails(err);
+      // Definir apenas a mensagem de erro como string
       setError(errorDetails.message);
       
       toast({
         title: "Erro na análise",
+        // Usar apenas a mensagem como descrição do toast
         description: errorDetails.message,
         variant: "destructive",
       });
