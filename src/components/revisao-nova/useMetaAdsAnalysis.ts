@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
@@ -271,7 +270,6 @@ export const useMetaAdsAnalysis = () => {
     }
   };
 
-  // Função para processar resposta bem-sucedida
   const handleSuccessfulResponse = (result: any, token: string) => {
     // Guardar a resposta bruta para depuração com informações extra
     setRawApiResponse({
