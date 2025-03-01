@@ -19,43 +19,48 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
         // Validação do cliente
         const clientData = await validateClient(clientId);
         
-        // Verificar se estamos em ambiente de desenvolvimento
-        const isDev = import.meta.env.DEV;
-        
-        let result: AnalysisResult;
-
-        if (isDev && import.meta.env.VITE_USE_MOCK_DATA === "true") {
-          // Em desenvolvimento, usamos dados simulados
-          console.log("Usando dados simulados para desenvolvimento");
-          const todayDate = new Date();
-          const formattedDate = todayDate.toISOString().split('T')[0];
-          
-          result = await simulateBudgetData(clientId, clientData, formattedDate);
-        } else {
-          // Em produção, chamamos a função edge
-          console.log("Chamando função edge para análise de orçamento");
-          const todayDate = new Date();
-          const formattedDate = todayDate.toISOString().split('T')[0];
-          
-          try {
-            result = await invokeEdgeFunction(clientId, formattedDate);
-          } catch (error) {
-            console.warn("Falha ao invocar Edge Function, usando simulação como fallback:", error);
-            // Fallback para simulação se a edge function falhar
-            result = await simulateBudgetData(clientId, clientData, formattedDate);
-          }
+        // Verificar se o cliente tem ID de conta Meta configurado
+        if (!clientData.meta_account_id) {
+          toast({
+            title: "Cliente sem conta Meta",
+            description: "Este cliente não possui ID de conta Meta configurado.",
+            variant: "destructive",
+          });
+          throw new Error("Cliente sem ID de conta Meta configurado");
         }
         
-        console.log("Análise concluída com sucesso:", result);
-        return result;
+        console.log("Buscando dados reais da API do Meta Ads");
+        const todayDate = new Date();
+        const formattedDate = todayDate.toISOString().split('T')[0];
+        
+        // Sempre tentamos buscar dados reais da API do Meta
+        try {
+          const result = await invokeEdgeFunction(clientId, formattedDate);
+          console.log("Análise com dados reais concluída com sucesso:", result);
+          return result;
+        } catch (error: any) {
+          console.error("Erro ao buscar dados reais do Meta Ads:", error);
+          
+          // Mostrar mensagem específica ao usuário
+          toast({
+            title: "Erro na API do Meta Ads",
+            description: error.message || "Não foi possível obter dados reais do Meta Ads.",
+            variant: "destructive",
+          });
+          
+          throw error;
+        }
       } catch (error) {
         console.error("Erro ao chamar função de análise:", error);
-        console.error("Erro detalhado na análise:", error);
         throw error;
       }
     },
     onSuccess: (data) => {
       console.log("Análise realizada com sucesso:", data);
+      toast({
+        title: "Análise concluída",
+        description: "Dados reais do Meta Ads obtidos com sucesso!",
+      });
       if (onSuccess) {
         onSuccess(data);
       }
@@ -63,12 +68,7 @@ export const useClientAnalysis = (onSuccess?: (data: AnalysisResult) => void) =>
     onError: (error: any) => {
       console.error("Erro detalhado na análise:", error);
       
-      // Usando o toast hook dentro do contexto de componente
-      toast({
-        title: "Erro na análise",
-        description: "Não foi possível analisar os orçamentos. Por favor, tente novamente.",
-        variant: "destructive",
-      });
+      // Já exibimos mensagem específica no catch acima, não precisamos duplicar
     },
   });
 
