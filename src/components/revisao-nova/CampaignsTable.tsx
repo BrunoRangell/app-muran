@@ -25,6 +25,9 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     if (typeof campaign.spend === 'object' && campaign.spend !== null) {
       // Se for um objeto, tente extrair o valor numérico
       spendValue = parseFloat(String(campaign.spend.value || campaign.spend.amount || 0));
+    } else if (campaign.spend === null || campaign.spend === undefined) {
+      // Se for null ou undefined, definir como 0
+      spendValue = 0;
     } else {
       // Se não for um objeto, tente converter para número
       spendValue = parseFloat(String(campaign.spend || 0));
