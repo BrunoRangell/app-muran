@@ -25,7 +25,19 @@ export const extractCampaignSpend = (campaign: SimpleMetaCampaign): number => {
   }
 
   // Fallback para spend direto (se aplicável)
-  return parseFloat(campaign.spend || "0");
+  if (typeof campaign.spend === 'number') {
+    console.log(`[campaignProcessor] Usando spend direto para ${campaign.name}:`, campaign.spend);
+    return campaign.spend;
+  }
+
+  if (typeof campaign.spend === 'string') {
+    const spend = parseFloat(campaign.spend);
+    console.log(`[campaignProcessor] Convertendo spend de string para número para ${campaign.name}:`, spend);
+    return isNaN(spend) ? 0 : spend;
+  }
+
+  console.log(`[campaignProcessor] Nenhum spend válido encontrado para ${campaign.name}, retornando 0`);
+  return 0;
 };
 
 /**
