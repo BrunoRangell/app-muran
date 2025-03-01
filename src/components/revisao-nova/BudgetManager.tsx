@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Save, Loader } from "lucide-react";
 import { useBudgetManager } from "./hooks/useBudgetManager";
-import { formatCurrency } from "@/utils/formatters";
 
 export const BudgetManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,31 +35,6 @@ export const BudgetManager = () => {
   const filteredClients = clients?.filter(client => 
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Função para formatar o valor de orçamento para exibição
-  const formatBudgetDisplay = (value: string): string => {
-    if (!value) return "";
-    
-    // Tenta formatar o valor como moeda
-    try {
-      // Se o valor contiver apenas números (sem vírgula ou ponto)
-      if (/^\d+$/.test(value)) {
-        return formatCurrency(parseInt(value), false);
-      }
-      
-      // Se tiver vírgula ou ponto, tenta formatar com base no valor numérico
-      const numericValue = parseFloat(value.replace(/\./g, "").replace(",", "."));
-      if (!isNaN(numericValue)) {
-        return formatCurrency(numericValue, false);
-      }
-      
-      // Caso não consiga converter para número, retorna o valor original
-      return value;
-    } catch (error) {
-      console.error("Erro ao formatar valor:", error);
-      return value;
-    }
-  };
 
   return (
     <Card className="w-full">
@@ -114,7 +88,7 @@ export const BudgetManager = () => {
                         </TableCell>
                         <TableCell>
                           <Input
-                            value={formatBudgetDisplay(budgets[client.id]?.budget || "")}
+                            value={budgets[client.id]?.displayBudget || ""}
                             onChange={(e) => handleBudgetChange(client.id, e.target.value)}
                             placeholder="0,00"
                           />

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
 
 interface Client {
   id: string;
@@ -16,6 +16,7 @@ interface Client {
 interface BudgetValues {
   budget: string;
   accountId: string;
+  displayBudget: string; // Novo campo para exibição formatada
 }
 
 export const useBudgetManager = () => {
@@ -48,9 +49,11 @@ export const useBudgetManager = () => {
       const initialBudgets: Record<string, BudgetValues> = {};
       
       clients.forEach((client) => {
+        const budgetValue = client.meta_ads_budget ? client.meta_ads_budget.toString() : "";
         initialBudgets[client.id] = {
-          budget: client.meta_ads_budget ? client.meta_ads_budget.toString() : "",
-          accountId: client.meta_account_id || ""
+          budget: budgetValue,
+          accountId: client.meta_account_id || "",
+          displayBudget: budgetValue ? formatCurrency(budgetValue, false) : ""
         };
       });
       
@@ -69,8 +72,7 @@ export const useBudgetManager = () => {
         
         if (values.budget) {
           // Remover formatação e converter para número
-          const cleanValue = values.budget.replace(/[^\d,.-]/g, "").replace(",", ".");
-          budget = parseFloat(cleanValue);
+          budget = parseCurrencyToNumber(values.budget);
           
           if (isNaN(budget)) {
             budget = 0;
@@ -122,14 +124,27 @@ export const useBudgetManager = () => {
 
   // Manipulador para alteração de orçamento
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Remover formatação para armazenar apenas o valor numérico
-    const numericValue = value.replace(/[^\d,.-]/g, "");
+    // Remove qualquer caractere não numérico, exceto vírgula e ponto
+    const numericValue = value.replace(/[^\d,.]/g, "");
+    
+    // Converte para número para formatação de exibição
+    let displayValue = "";
+    try {
+      if (numericValue) {
+        // Formatar para exibição
+        displayValue = formatCurrency(numericValue.replace(/\./g, "").replace(",", "."), false);
+      }
+    } catch (error) {
+      console.error("Erro ao formatar valor:", error);
+      displayValue = numericValue;
+    }
     
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        budget: numericValue
+        budget: numericValue,
+        displayBudget: displayValue
       },
     }));
   };
