@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Calendar, ListChecks, ArrowRight, TrendingUp, TrendingDown, Loader } from "lucide-react";
+import { Calendar, ListChecks, ArrowRight, TrendingUp, TrendingDown, Loader, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +18,7 @@ type Client = {
   id: string;
   company_name: string;
   meta_ads_budget: number;
+  meta_account_id: string | null;
 };
 
 const DailyReviews = () => {
@@ -26,7 +27,7 @@ const DailyReviews = () => {
   const { toast } = useToast();
 
   // Buscar clientes ativos
-  const { data: clients, isLoading: isLoadingClients } = useQuery({
+  const { data: clients, isLoading: isLoadingClients, refetch: refetchClients } = useQuery({
     queryKey: ["clients-active"],
     queryFn: async () => {
       const { data: clients, error } = await supabase
@@ -41,7 +42,7 @@ const DailyReviews = () => {
   });
 
   // Buscar revisões recentes
-  const { data: reviews, isLoading: isLoadingReviews } = useQuery({
+  const { data: reviews, isLoading: isLoadingReviews, refetch: refetchReviews } = useQuery({
     queryKey: ["recent-reviews"],
     queryFn: async () => {
       const { data: reviews, error } = await supabase
@@ -61,31 +62,69 @@ const DailyReviews = () => {
   // Mutation para analisar cliente específico
   const analyzeMutation = useMutation({
     mutationFn: async (clientId: string) => {
-      const response = await supabase.functions.invoke("daily-budget-reviews", {
-        body: { method: "analyzeClient", clientId },
-      });
+      console.log("Iniciando análise para o cliente:", clientId);
+      
+      // Verificar se o cliente tem ID da conta e orçamento configurados
+      const client = clients?.find(c => c.id === clientId);
+      
+      if (!client) {
+        throw new Error("Cliente não encontrado");
+      }
+      
+      if (!client.meta_account_id) {
+        throw new Error("O cliente não possui um ID de conta Meta configurado");
+      }
+      
+      if (!client.meta_ads_budget || client.meta_ads_budget <= 0) {
+        throw new Error("O cliente não possui um orçamento Meta Ads configurado");
+      }
+      
+      console.log("Chamando função Edge para análise do cliente:", client);
+      
+      try {
+        const response = await supabase.functions.invoke("daily-budget-reviews", {
+          body: { method: "analyzeClient", clientId },
+        });
 
-      if (response.error) throw new Error(response.error.message);
-      return response.data;
+        console.log("Resposta da função Edge:", response);
+        
+        if (response.error) {
+          console.error("Erro retornado pela função Edge:", response.error);
+          throw new Error(response.error.message || "Erro na análise");
+        }
+        
+        return response.data;
+      } catch (error) {
+        console.error("Erro ao chamar função Edge:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
+      console.log("Análise concluída com sucesso:", data);
       toast({
         title: "Análise concluída",
         description: `A análise para ${data.client.company_name} foi atualizada com sucesso.`,
       });
+      
+      // Atualizar dados
+      refetchClients();
+      refetchReviews();
+      
       setSelectedClient(data.client.id);
       setActiveTab("client-details");
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Erro detalhado na análise:", error);
       toast({
         title: "Erro na análise",
-        description: String(error),
+        description: String(error?.message || error),
         variant: "destructive",
       });
     },
   });
 
   const handleAnalyzeClient = (clientId: string) => {
+    console.log("Solicitando análise para cliente:", clientId);
     analyzeMutation.mutate(clientId);
   };
 
@@ -188,7 +227,7 @@ const DailyReviews = () => {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">{client.company_name}</CardTitle>
                     <CardDescription>
-                      {client.meta_ads_budget > 0
+                      {client.meta_ads_budget > 0 && client.meta_account_id
                         ? "Orçamento configurado"
                         : "Orçamento não configurado"}
                     </CardDescription>
@@ -199,17 +238,22 @@ const DailyReviews = () => {
                         Meta Ads: {formatCurrency(client.meta_ads_budget)}
                       </p>
                     )}
+                    {client.meta_account_id && (
+                      <p className="text-sm text-gray-500">
+                        ID da Conta: {client.meta_account_id}
+                      </p>
+                    )}
                   </CardContent>
                   <CardFooter>
                     <Button
                       onClick={() => 
-                        client.meta_ads_budget > 0 
+                        (client.meta_ads_budget > 0 && client.meta_account_id) 
                           ? handleAnalyzeClient(client.id)
                           : handleConfigureBudgetsClick(client.id)
                       }
                       className="w-full"
-                      variant={client.meta_ads_budget > 0 ? "default" : "outline"}
-                      disabled={analyzeMutation.isPending}
+                      variant={(client.meta_ads_budget > 0 && client.meta_account_id) ? "default" : "outline"}
+                      disabled={analyzeMutation.isPending && analyzeMutation.variables === client.id}
                     >
                       {analyzeMutation.isPending && analyzeMutation.variables === client.id ? (
                         <>
@@ -218,7 +262,7 @@ const DailyReviews = () => {
                         </>
                       ) : (
                         <>
-                          {client.meta_ads_budget > 0
+                          {(client.meta_ads_budget > 0 && client.meta_account_id)
                             ? "Analisar orçamentos"
                             : "Configurar orçamentos"}
                           <ArrowRight className="ml-2" size={16} />
@@ -252,7 +296,13 @@ const DailyReviews = () => {
             ) : reviews?.length === 0 ? (
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <p className="text-gray-500">Nenhuma revisão encontrada</p>
+                  <div className="flex flex-col items-center justify-center py-6 text-gray-500">
+                    <AlertCircle className="h-12 w-12 text-gray-300 mb-2" />
+                    <p className="text-gray-500">Nenhuma revisão encontrada</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Faça uma análise de cliente para ver revisões aqui
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             ) : (

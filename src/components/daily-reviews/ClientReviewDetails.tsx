@@ -1,13 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Calendar, Loader, TrendingUp, TrendingDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, BarChart3, Loader, Calendar } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { getDaysInMonth } from 'date-fns';
 
 interface ClientReviewDetailsProps {
@@ -16,11 +14,12 @@ interface ClientReviewDetailsProps {
 }
 
 export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsProps) => {
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [recommendation, setRecommendation] = useState<string | null>(null);
+  const [idealDailyBudget, setIdealDailyBudget] = useState<number | null>(null);
 
-  // Buscar cliente
+  // Buscar dados do cliente
   const { data: client, isLoading: isLoadingClient } = useQuery({
-    queryKey: ["client", clientId],
+    queryKey: ["client-detail", clientId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
@@ -33,212 +32,215 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     },
   });
 
-  // Buscar revisões
-  const { data: reviews, isLoading: isLoadingReviews } = useQuery({
-    queryKey: ["client-reviews", clientId],
+  // Buscar a revisão mais recente
+  const { data: latestReview, isLoading: isLoadingReview } = useQuery({
+    queryKey: ["latest-review", clientId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("daily_budget_reviews")
         .select("*")
         .eq("client_id", clientId)
-        .order("review_date", { ascending: false });
+        .order("review_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) throw error;
       return data;
     },
+    enabled: !!client,
   });
 
-  // Selecionar a revisão mais recente por padrão
-  const latestReview = reviews && reviews.length > 0 ? reviews[0] : null;
-  const review = selectedDate
-    ? reviews?.find((r) => r.review_date === selectedDate)
-    : latestReview;
+  // Histórico de revisões
+  const { data: reviewHistory, isLoading: isLoadingHistory } = useQuery({
+    queryKey: ["review-history", clientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("daily_budget_reviews")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("review_date", { ascending: false })
+        .limit(10);
 
-  // Calcular o orçamento diário ideal para o mês atual
-  const calculateIdealDailyBudget = (monthlyBudget: number, reviewDate: string) => {
-    if (!monthlyBudget) return 0;
-    
-    const date = new Date(reviewDate);
-    const daysInMonth = getDaysInMonth(date);
-    
-    return monthlyBudget / daysInMonth;
-  };
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!client,
+  });
 
-  // Calcular a recomendação com base na comparação entre o orçamento diário atual e o ideal
-  const generateRecommendation = (currentDaily: number, idealDaily: number) => {
-    if (!currentDaily || !idealDaily) return "Não disponível";
-    
-    const percentDifference = ((currentDaily - idealDaily) / idealDaily) * 100;
-    
-    if (percentDifference < -10) {
-      return `Aumentar o orçamento diário em ${Math.abs(Math.round(percentDifference))}%`;
-    } else if (percentDifference > 10) {
-      return `Diminuir o orçamento diário em ${Math.round(percentDifference)}%`;
-    } else {
-      return "Manter o orçamento diário atual";
+  // Calcular orçamento diário ideal quando o cliente for carregado
+  useEffect(() => {
+    if (client?.meta_ads_budget) {
+      const daysInMonth = getDaysInMonth(new Date());
+      const idealDaily = client.meta_ads_budget / daysInMonth;
+      setIdealDailyBudget(idealDaily);
+
+      if (latestReview?.meta_daily_budget_current) {
+        const percentDifference = ((latestReview.meta_daily_budget_current - idealDaily) / idealDaily) * 100;
+        
+        if (percentDifference < -10) {
+          setRecommendation(`Aumentar o orçamento diário em ${Math.abs(Math.round(percentDifference))}%`);
+        } else if (percentDifference > 10) {
+          setRecommendation(`Diminuir o orçamento diário em ${Math.round(percentDifference)}%`);
+        } else {
+          setRecommendation("Manter o orçamento diário atual");
+        }
+      }
     }
+  }, [client, latestReview]);
+
+  // Gerar icone com base na recomendação
+  const getRecommendationIcon = () => {
+    if (!recommendation) return null;
+    
+    if (recommendation.includes("Aumentar")) {
+      return <TrendingUp className="text-green-500" size={18} />;
+    } else if (recommendation.includes("Diminuir")) {
+      return <TrendingDown className="text-red-500" size={18} />;
+    }
+    return null;
   };
 
-  if (isLoadingClient || isLoadingReviews) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 space-y-4">
-        <Loader className="h-8 w-8 animate-spin text-muran-primary" />
-        <p className="text-muran-dark">Carregando dados da revisão...</p>
-      </div>
-    );
-  }
-
-  if (!client || !latestReview) {
-    return (
-      <div className="flex flex-col space-y-4">
-        <Button variant="outline" onClick={onBack} className="w-fit">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para a lista
-        </Button>
-        <Card className="p-6 text-center">
-          <p className="text-gray-500">Nenhuma revisão encontrada para este cliente.</p>
-          <p className="text-gray-500 mt-2">Configure os orçamentos e execute uma análise.</p>
-        </Card>
-      </div>
-    );
-  }
-
-  // Calcular o orçamento diário ideal baseado no orçamento mensal do cliente
-  const idealDailyBudget = calculateIdealDailyBudget(
-    client.meta_ads_budget || 0,
-    review.review_date
-  );
-
-  // Gerar recomendação com base na comparação entre orçamento atual e ideal
-  const recommendation = generateRecommendation(
-    review.meta_daily_budget_current || 0,
-    idealDailyBudget
-  );
-
-  // Calcular o progresso de gastos (o quanto já foi gasto do orçamento mensal)
-  const spentPercentage = client.meta_ads_budget 
-    ? Math.min((review.meta_total_spent / client.meta_ads_budget) * 100, 100)
-    : 0;
+  const isLoading = isLoadingClient || isLoadingReview;
 
   return (
-    <div className="flex flex-col space-y-6">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <Button variant="outline" onClick={onBack} className="w-fit">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para a lista
+        <Button variant="outline" onClick={onBack} className="flex gap-1">
+          <ArrowLeft size={16} />
+          Voltar
         </Button>
-
-        {reviews && reviews.length > 0 && (
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">Revisão de:</span>
-            <select
-              className="border rounded px-2 py-1 text-sm"
-              value={selectedDate || latestReview.review_date}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            >
-              {reviews.map((r) => (
-                <option key={r.review_date} value={r.review_date}>
-                  {new Date(r.review_date).toLocaleDateString("pt-BR")}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
-      <div className="flex items-center space-x-4">
-        <Avatar className="h-16 w-16 border-2 border-muran-primary">
-          <AvatarFallback className="bg-muran-primary text-white text-xl">
-            {client.company_name.substring(0, 2).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h1 className="text-2xl font-bold">{client.company_name}</h1>
-          <div className="flex items-center text-gray-500">
-            <Calendar className="h-4 w-4 mr-1" />
-            <span>
-              Revisão em {new Date(review?.review_date).toLocaleDateString("pt-BR")}
-            </span>
-          </div>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader className="animate-spin mr-2" />
+          <span>Carregando detalhes do cliente...</span>
         </div>
-      </div>
-
-      <div className="max-w-3xl mx-auto w-full">
-        {/* Meta Ads Card */}
+      ) : !client ? (
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center text-lg text-blue-600">
-              <div className="flex-shrink-0 w-8 h-8 mr-2 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-blue-600 font-bold">M</span>
-              </div>
-              Meta Ads
-            </CardTitle>
-            <CardDescription>
-              {review?.meta_account_name || "Conta não configurada"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Métricas</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Orçamento mensal</p>
-                  <p className="font-semibold">{formatCurrency(client.meta_ads_budget || 0)}</p>
-                </div>
-                <div className="p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Gasto até agora</p>
-                  <p className="font-semibold">{formatCurrency(review?.meta_total_spent || 0)}</p>
-                </div>
-                <div className="p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Orçamento diário atual</p>
-                  <p className="font-semibold">{formatCurrency(review?.meta_daily_budget_current || 0)}</p>
-                </div>
-                <div className="p-2 bg-gray-50 rounded">
-                  <p className="text-xs text-gray-500">Orçamento diário ideal</p>
-                  <p className="font-semibold">{formatCurrency(idealDailyBudget)}</p>
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Recomendação</h3>
-              <div className="p-3 rounded border flex items-center">
-                {recommendation.includes("Aumentar") ? (
-                  <TrendingUp className="mr-2 text-green-500" size={20} />
-                ) : recommendation.includes("Diminuir") ? (
-                  <TrendingDown className="mr-2 text-red-500" size={20} />
-                ) : (
-                  <span className="w-5 h-5 mr-2 rounded-full bg-gray-200"></span>
-                )}
-                <span className="font-medium">{recommendation}</span>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Progresso de gastos</h3>
-              <div className="w-full">
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>
-                    {formatCurrency(review?.meta_total_spent || 0)} de{" "}
-                    {formatCurrency(client.meta_ads_budget || 0)}
-                  </span>
-                  <span>
-                    {Math.round(spentPercentage)}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{ width: `${spentPercentage}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
+          <CardContent className="pt-6">
+            <p className="text-center text-gray-500">Cliente não encontrado.</p>
           </CardContent>
         </Card>
-      </div>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                {client.company_name}
+              </CardTitle>
+              <CardDescription>
+                Detalhes da revisão mais recente - {latestReview ? new Date(latestReview.review_date).toLocaleDateString("pt-BR") : "Não disponível"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-500 mb-1">Orçamento Mensal Meta Ads</div>
+                  <div className="text-2xl font-bold">{formatCurrency(client.meta_ads_budget || 0)}</div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-500 mb-1">ID da Conta Meta</div>
+                  <div className="text-lg font-medium">{client.meta_account_id || "Não configurado"}</div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-500 mb-1">Total Gasto</div>
+                  <div className="text-2xl font-bold">
+                    {latestReview ? formatCurrency(latestReview.meta_total_spent || 0) : "N/A"}
+                  </div>
+                  {client.meta_ads_budget && latestReview?.meta_total_spent && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {Math.round((latestReview.meta_total_spent / client.meta_ads_budget) * 100)}% do orçamento mensal
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-md">Orçamento Diário</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm text-gray-500">Atual</div>
+                        <div className="text-xl font-bold">
+                          {latestReview ? formatCurrency(latestReview.meta_daily_budget_current || 0) : "N/A"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Ideal</div>
+                        <div className="text-xl font-bold text-gray-600">
+                          {idealDailyBudget ? formatCurrency(idealDailyBudget) : "N/A"}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-l-4 border-l-muran-primary">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-md flex items-center gap-2">
+                      Recomendação
+                      {getRecommendationIcon()}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-medium">
+                      {recommendation || "Não há recomendação disponível"}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Baseado no orçamento mensal configurado
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          {reviewHistory && reviewHistory.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="text-muran-primary" size={18} />
+                  Histórico de Revisões
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b">
+                        <th className="pb-2">Data</th>
+                        <th className="pb-2">Orçamento Diário</th>
+                        <th className="pb-2">Total Gasto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reviewHistory.map((review) => (
+                        <tr key={review.id} className="border-b">
+                          <td className="py-2">
+                            {new Date(review.review_date).toLocaleDateString("pt-BR")}
+                          </td>
+                          <td className="py-2">
+                            {formatCurrency(review.meta_daily_budget_current || 0)}
+                          </td>
+                          <td className="py-2">
+                            {formatCurrency(review.meta_total_spent || 0)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 };
