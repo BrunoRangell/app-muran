@@ -108,6 +108,30 @@ export const invokeEdgeFunction = async (
       console.log("Valor de meta_daily_budget_current ajustado para:", data.meta_daily_budget_current);
     }
     
+    // Verificar e mostrar detalhes das campanhas, se disponíveis
+    if (data.meta && data.meta.campaigns) {
+      console.log("Detalhes das campanhas recebidos:");
+      data.meta.campaigns.forEach((campaign: any, index: number) => {
+        console.log(`Campanha ${index+1}: ${campaign.name}, Gasto: ${campaign.spend}, Status: ${campaign.status}`);
+      });
+      
+      // Verificar se o valor total corresponde à soma das campanhas
+      const calculatedTotal = data.meta.campaigns.reduce((sum: number, campaign: any) => 
+        sum + parseFloat(campaign.spend.toString()), 0);
+      
+      console.log(`Soma dos gastos das campanhas individuais: ${calculatedTotal.toFixed(2)}`);
+      console.log(`Valor total reportado: ${data.meta.totalSpent}`);
+      
+      if (Math.abs(calculatedTotal - data.meta.totalSpent) > 0.01) {
+        console.warn("AVISO: Discrepância entre o total reportado e a soma das campanhas!");
+      }
+    }
+    
+    // Verificar detalhes do intervalo de datas
+    if (data.meta && data.meta.dateRange) {
+      console.log(`Período analisado: de ${data.meta.dateRange.start} até ${data.meta.dateRange.end}`);
+    }
+    
     return data;
   } catch (error: any) {
     console.error("Falha ao obter dados do Meta Ads:", error);

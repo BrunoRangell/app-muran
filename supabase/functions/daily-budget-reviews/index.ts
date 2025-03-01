@@ -3,14 +3,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 
-// Configure CORS headers
+// Configurar cabeçalhos CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Tratar requisições CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -18,7 +18,7 @@ serve(async (req) => {
   try {
     console.log("Edge function daily-budget-reviews iniciada");
     
-    // Parse request body
+    // Analisar corpo da requisição
     const payload = await req.json();
     console.log("Payload recebido:", JSON.stringify(payload, null, 2));
     
@@ -67,14 +67,53 @@ serve(async (req) => {
     
     console.log("Cliente encontrado:", client.company_name, "ID Meta:", client.meta_account_id);
     
-    // Dados de exemplo - simulando dados que viriam da API do Meta
-    // Em uma implementação real, aqui você chamaria a API do Meta com o token
-    const mockMetaData = {
-      dailyBudget: 100.00,
-      totalSpent: 75.50,
-    };
+    // Obter o primeiro e último dia do mês atual
+    const reviewDate = new Date(payload.reviewDate);
+    const firstDayOfMonth = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), 1);
+    const lastDayOfMonth = new Date(reviewDate.getFullYear(), reviewDate.getMonth() + 1, 0);
     
-    console.log("Dados obtidos da Meta (simulado):", mockMetaData);
+    const firstDayFormatted = firstDayOfMonth.toISOString().split('T')[0];
+    const lastDayFormatted = lastDayOfMonth.toISOString().split('T')[0];
+    
+    console.log(`Consultando dados entre ${firstDayFormatted} e ${lastDayFormatted}`);
+    
+    // Em uma implementação real, aqui chamaríamos a API do Meta
+    // Por enquanto, simularemos as campanhas e os gastos para debug
+    const mockCampaigns = [
+      { 
+        name: "Campanha Conversão", 
+        id: "23851290383810001", 
+        spend: 9.26,
+        status: "ACTIVE"
+      },
+      { 
+        name: "Campanha Tráfego", 
+        id: "23851290383810002", 
+        spend: 5.15,
+        status: "ACTIVE"
+      },
+      { 
+        name: "Remarketing", 
+        id: "23851290383810003", 
+        spend: 0,
+        status: "PAUSED"
+      }
+    ];
+    
+    // Calcular o total real gasto
+    let totalSpent = 0;
+    mockCampaigns.forEach(campaign => {
+      totalSpent += parseFloat(campaign.spend.toString());
+    });
+    
+    // Arredondar para duas casas decimais
+    totalSpent = parseFloat(totalSpent.toFixed(2));
+    
+    console.log("Campanhas encontradas:", mockCampaigns);
+    console.log("Total gasto calculado:", totalSpent);
+    
+    // Mock do orçamento diário atual - em uma implementação real, isso viria da API
+    const dailyBudget = 100.00;
     
     // Verificar se já existe uma revisão para este cliente e data
     const { data: existingReview, error: reviewError } = await supabaseAdmin
@@ -99,8 +138,8 @@ serve(async (req) => {
         'update_daily_budget_review',
         {
           p_id: existingReview.id,
-          p_meta_daily_budget_current: mockMetaData.dailyBudget,
-          p_meta_total_spent: mockMetaData.totalSpent
+          p_meta_daily_budget_current: dailyBudget,
+          p_meta_total_spent: totalSpent
         }
       );
       
@@ -119,10 +158,10 @@ serve(async (req) => {
         {
           p_client_id: payload.clientId,
           p_review_date: payload.reviewDate,
-          p_meta_daily_budget_current: mockMetaData.dailyBudget,
-          p_meta_total_spent: mockMetaData.totalSpent,
+          p_meta_daily_budget_current: dailyBudget,
+          p_meta_total_spent: totalSpent,
           p_meta_account_id: client.meta_account_id,
-          p_meta_account_name: client.company_name // Usar nome da empresa como nome da conta Meta
+          p_meta_account_name: client.company_name
         }
       );
       
@@ -136,16 +175,21 @@ serve(async (req) => {
     
     console.log("Revisão salva com sucesso, ID:", reviewId);
     
-    // Retornar resultado da análise
+    // Retornar resultado da análise com detalhes completos das campanhas
     return new Response(
       JSON.stringify({
         success: true,
         reviewId: reviewId,
         client: client,
         meta: {
-          dailyBudget: mockMetaData.dailyBudget,
-          totalSpent: mockMetaData.totalSpent,
-          accountId: client.meta_account_id
+          dailyBudget: dailyBudget,
+          totalSpent: totalSpent,
+          accountId: client.meta_account_id,
+          dateRange: {
+            start: firstDayFormatted,
+            end: lastDayFormatted
+          },
+          campaigns: mockCampaigns
         },
         message: "Análise de orçamento realizada com sucesso"
       }),
