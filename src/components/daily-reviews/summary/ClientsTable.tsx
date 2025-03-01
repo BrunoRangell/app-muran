@@ -1,17 +1,7 @@
 
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-
-interface ReviewData {
-  id: string;
-  clients: {
-    company_name: string;
-    meta_ads_budget: number;
-  };
-  meta_daily_budget_current: number;
-  idealDailyBudget: number;
-  recommendation: string | null;
-}
+import { ReviewData } from "./useDailyReviewsSummary";
 
 interface ClientsTableProps {
   data: ReviewData[];

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { calculateIdealDailyBudget, generateRecommendation } from "./utils";
 
-interface ReviewData {
+export interface ReviewData {
   id: string;
   review_date: string;
   meta_daily_budget_current: number | null;
@@ -12,7 +12,7 @@ interface ReviewData {
     company_name: string;
     meta_ads_budget: number;
   };
-  idealDailyBudget?: number;
+  idealDailyBudget?: number;  // Marcado como opcional para compatibilidade
   recommendation?: string | null;
 }
 
@@ -75,5 +75,3 @@ export const useDailyReviewsSummary = () => {
     totalSpent
   };
 };
-
-export type { ReviewData };
