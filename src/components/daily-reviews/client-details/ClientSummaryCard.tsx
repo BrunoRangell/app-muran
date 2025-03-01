@@ -60,7 +60,7 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
 
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="text-sm text-gray-500 mb-1">Total Gasto</div>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-[#ff6e00]">
               {formatCurrency(getTotalSpent())}
             </div>
             {client?.meta_ads_budget && latestReview?.meta_total_spent && (

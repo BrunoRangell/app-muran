@@ -67,15 +67,32 @@ export const useClientAnalysis = (onSuccess: (data: any) => void) => {
             console.error("Erro ao verificar revisão existente:", checkError);
           }
           
-          // Simular cálculos baseados no orçamento mensal
-          const dailyBudget = client.meta_ads_budget / 30; // Simplificação para o exemplo
-          const totalSpent = client.meta_ads_budget * 0.7; // Simula 70% do orçamento gasto
+          // Simular valores baseados no exemplo de código do usuário
+          // - Obter orçamento mensal do cliente
+          // - Calcular um valor gasto que seja realista (entre 1% e 90% do orçamento mensal)
+          const monthlyBudget = Number(client.meta_ads_budget);
+          const spentPercentage = Math.random() * 0.7 + 0.01; // Entre 1% e 70% do orçamento mensal
+          const totalSpent = monthlyBudget * spentPercentage;
+          
+          // Calcular orçamento diário atual
+          // Simular um valor entre 80% e 120% do valor ideal
+          const today = new Date();
+          const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+          const currentDay = today.getDate();
+          const remainingDays = daysInMonth - currentDay + 1;
+          
+          const remainingBudget = monthlyBudget - totalSpent;
+          const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+          
+          // Adicionar uma variação ao orçamento diário atual para simular a necessidade de ajuste
+          const variationFactor = 0.8 + Math.random() * 0.4; // Entre 0.8 e 1.2
+          const currentDailyBudget = idealDailyBudget * variationFactor;
           
           // Dados para inserção/atualização
           const reviewData = {
             client_id: clientId,
             review_date: today,
-            meta_daily_budget_current: dailyBudget,
+            meta_daily_budget_current: currentDailyBudget,
             meta_total_spent: totalSpent,
             meta_account_id: client.meta_account_id,
             meta_account_name: client.company_name,
@@ -91,7 +108,7 @@ export const useClientAnalysis = (onSuccess: (data: any) => void) => {
             // Use RPC call para evitar problemas com RLS
             const { data, error } = await supabase.rpc('update_daily_budget_review', {
               p_id: existingReview.id,
-              p_meta_daily_budget_current: dailyBudget,
+              p_meta_daily_budget_current: currentDailyBudget,
               p_meta_total_spent: totalSpent
             });
             
@@ -119,7 +136,7 @@ export const useClientAnalysis = (onSuccess: (data: any) => void) => {
             const { data, error } = await supabase.rpc('insert_daily_budget_review', {
               p_client_id: clientId,
               p_review_date: today,
-              p_meta_daily_budget_current: dailyBudget,
+              p_meta_daily_budget_current: currentDailyBudget,
               p_meta_total_spent: totalSpent,
               p_meta_account_id: client.meta_account_id,
               p_meta_account_name: client.company_name
