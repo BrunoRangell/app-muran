@@ -66,29 +66,35 @@ export const useMetaResponseProcessor = () => {
     console.log("- Período:", result.meta.dateRange);
     console.log("- Número de campanhas:", result.meta.campaigns.length);
     
-    // Verificar cada campanha individualmente e garantir que o valor de spend é numérico
+    // Verificar cada campanha individualmente e processar os dados de gasto corretamente
     if (result.meta.campaigns && result.meta.campaigns.length > 0) {
       result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
-        // Garantir que o gasto da campanha (spend) é um número
-        const spend = typeof campaign.spend === 'number' 
-          ? campaign.spend 
-          : parseFloat(String(campaign.spend || "0"));
-          
-        console.log(`Campanha: ${campaign.name}, ID: ${campaign.id}, Status: ${campaign.status}, Gasto: ${spend}`);
+        // Processar o gasto da campanha (spend) nos vários formatos possíveis
+        let spendValue = 0;
+        
+        if (campaign.insights && campaign.insights.data && campaign.insights.data.length > 0) {
+          // Se tivermos dados de insights, usar o valor de spend deles
+          spendValue = parseFloat(String(campaign.insights.data[0].spend || 0));
+        } else if (typeof campaign.spend === 'object' && campaign.spend !== null) {
+          // Se o spend for um objeto (formato da API do Facebook)
+          spendValue = parseFloat(String(campaign.spend.value || campaign.spend.amount || 0));
+        } else {
+          // Caso simples de spend como string ou número
+          spendValue = parseFloat(String(campaign.spend || 0));
+        }
+        
+        console.log(`Campanha: ${campaign.name}, ID: ${campaign.id}, Status: ${campaign.status}, Gasto original: ${JSON.stringify(campaign.spend)}, Gasto normalizado: ${spendValue}`);
         
         return {
           ...campaign,
-          spend: isNaN(spend) ? 0 : spend
+          spend: isNaN(spendValue) ? 0 : spendValue
         };
       });
       
-      // Calcular o total das campanhas para logs de depuração
+      // Calcular o total das campanhas para validação
       const totalFromCampaigns = result.meta.campaigns.reduce(
         (total: number, campaign: any) => {
-          const campaignSpend = typeof campaign.spend === 'number' 
-            ? campaign.spend 
-            : parseFloat(String(campaign.spend || "0"));
-          return total + (isNaN(campaignSpend) ? 0 : campaignSpend);
+          return total + campaign.spend;
         }, 
         0
       );

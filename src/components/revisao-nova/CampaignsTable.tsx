@@ -8,19 +8,49 @@ interface CampaignsTableProps {
 }
 
 export function CampaignsTable({ campaigns }: CampaignsTableProps) {
-  // Certifique-se de que cada campanha tem um valor de gasto numérico válido
-  const normalizedCampaigns = campaigns.map(campaign => ({
-    ...campaign,
-    spend: typeof campaign.spend === 'number' 
-      ? campaign.spend 
-      : parseFloat(String(campaign.spend || "0"))
-  }));
+  if (!campaigns || campaigns.length === 0) {
+    return (
+      <div className="rounded-md border p-4 text-center">
+        <p className="text-sm text-gray-500">Nenhuma campanha encontrada.</p>
+      </div>
+    );
+  }
 
-  // Calcule o total gasto com segurança
+  // Garantir que cada campanha tenha um valor de gasto válido
+  const normalizedCampaigns = campaigns.map(campaign => {
+    // Certifique-se de que campaign.spend seja um número válido
+    let spendValue: number;
+    
+    // Verificar se o spend é um objeto (como retornado pela API do Meta)
+    if (typeof campaign.spend === 'object' && campaign.spend !== null) {
+      // Se for um objeto, tente extrair o valor numérico
+      spendValue = parseFloat(String(campaign.spend.value || campaign.spend.amount || 0));
+    } else {
+      // Se não for um objeto, tente converter para número
+      spendValue = parseFloat(String(campaign.spend || 0));
+    }
+    
+    return {
+      ...campaign,
+      spend: isNaN(spendValue) ? 0 : spendValue
+    };
+  });
+
+  // Calcular o total gasto com segurança
   const totalSpent = normalizedCampaigns.reduce((sum, campaign) => {
-    const spendValue = isNaN(campaign.spend) ? 0 : campaign.spend;
-    return sum + spendValue;
+    return sum + campaign.spend;
   }, 0);
+
+  // Registrar valores para depuração
+  console.log("[CampaignsTable] Campanhas normalizadas:", 
+    normalizedCampaigns.map(c => ({
+      name: c.name,
+      id: c.id,
+      spend: c.spend,
+      originalSpend: typeof campaigns.find(oc => oc.id === c.id)?.spend
+    }))
+  );
+  console.log("[CampaignsTable] Total gasto calculado:", totalSpent);
 
   return (
     <div className="rounded-md border">

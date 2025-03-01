@@ -25,14 +25,26 @@ export function AnalysisResult({ analysis }: AnalysisResultProps) {
     );
   }
 
+  // Verificar e registrar para depuração os dados das campanhas
   const hasCampaignsData = analysis.meta.campaigns && analysis.meta.campaigns.length > 0;
   
-  // Certifique-se de que totalSpent é um número
+  if (hasCampaignsData) {
+    console.log("[AnalysisResult] Dados de campanhas recebidos:", 
+      analysis.meta.campaigns.map((c: SimpleMetaCampaign) => ({
+        name: c.name,
+        id: c.id,
+        status: c.status,
+        spend: c.spend,
+        spendType: typeof c.spend
+      }))
+    );
+  }
+  
+  // Garantir que os valores numéricos são válidos
   const totalSpent = typeof analysis.meta.totalSpent === 'number' 
     ? analysis.meta.totalSpent 
     : parseFloat(String(analysis.meta.totalSpent || "0"));
   
-  // Certifique-se de que dailyBudget é um número
   const dailyBudget = typeof analysis.meta.dailyBudget === 'number' 
     ? analysis.meta.dailyBudget 
     : parseFloat(String(analysis.meta.dailyBudget || "0"));
