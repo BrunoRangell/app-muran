@@ -110,19 +110,15 @@ export const BudgetManager = () => {
                           <div className="relative">
                             <Input
                               type="text"
-                              value={budgets[client.id]?.displayBudget || ""}
-                              onChange={(e) => handleBudgetChange(client.id, e.target.value)}
-                              placeholder="0,00"
-                              className="text-right pr-3"
+                              value={formatDisplayValue(budgets[client.id]?.displayBudget || "")}
+                              onChange={(e) => {
+                                // Extrair apenas o valor numérico do texto formatado
+                                const rawValue = e.target.value.replace(/[^\d,.]/g, "");
+                                handleBudgetChange(client.id, rawValue);
+                              }}
+                              placeholder="R$ 0,00"
+                              className="text-left pl-3"
                             />
-                            {budgets[client.id]?.displayBudget && (
-                              <div className="absolute inset-y-0 left-0 px-3 flex items-center pointer-events-none text-gray-500">
-                                R$
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-xs text-muran-primary mt-1 text-right">
-                            {budgets[client.id]?.displayBudget ? formatDisplayValue(budgets[client.id]?.displayBudget) : ""}
                           </div>
                         </TableCell>
                       </TableRow>
