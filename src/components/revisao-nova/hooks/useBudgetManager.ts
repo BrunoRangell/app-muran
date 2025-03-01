@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
+import { parseCurrencyToNumber } from "@/utils/formatters";
 
 interface Client {
   id: string;
@@ -53,7 +53,7 @@ export const useBudgetManager = () => {
         initialBudgets[client.id] = {
           budget: budgetValue,
           accountId: client.meta_account_id || "",
-          displayBudget: budgetValue ? formatCurrency(budgetValue, false) : ""
+          displayBudget: budgetValue // Sem formatação
         };
       });
       
@@ -71,8 +71,9 @@ export const useBudgetManager = () => {
         let budget = 0;
         
         if (values.budget) {
-          // Remover formatação e converter para número
-          budget = parseCurrencyToNumber(values.budget);
+          // Substituir vírgula por ponto para conversão numérica
+          const normalizedValue = values.budget.replace(",", ".");
+          budget = parseFloat(normalizedValue);
           
           if (isNaN(budget)) {
             budget = 0;
@@ -122,35 +123,16 @@ export const useBudgetManager = () => {
     }
   });
 
-  // Implementação completamente refeita do manipulador de valores
+  // Manipulador de orçamento sem formatação automática
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Armazenar o valor original sem formatação no estado
-    setBudgets((prevBudgets) => {
-      // Remover tudo que não for número, vírgula ou ponto
-      let cleanedValue = value.replace(/[^\d,.]/g, "");
-      
-      // Formatar para exibição como moeda brasileira
-      let displayValue = "";
-      if (cleanedValue) {
-        try {
-          // Converter para formato numérico para formatação
-          const numericFormat = cleanedValue.replace(/\./g, "").replace(",", ".");
-          displayValue = formatCurrency(numericFormat, false);
-        } catch (error) {
-          console.error("Erro na formatação:", error);
-          displayValue = cleanedValue;
-        }
+    setBudgets((prev) => ({
+      ...prev,
+      [clientId]: {
+        ...prev[clientId],
+        budget: value,
+        displayBudget: value // Sem formatação, mostra exatamente o que o usuário digitou
       }
-      
-      return {
-        ...prevBudgets,
-        [clientId]: {
-          ...prevBudgets[clientId],
-          budget: cleanedValue,
-          displayBudget: displayValue
-        }
-      };
-    });
+    }));
   };
 
   // Manipulador para alteração de ID da conta
