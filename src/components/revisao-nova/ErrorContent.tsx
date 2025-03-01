@@ -28,15 +28,23 @@ export function ErrorContent({
   handleOpenGraphExplorer,
   handleMakeSampleRequest
 }: ErrorContentProps) {
-  // Determinar se é um erro de API do Meta específico
+  // Determinar tipos específicos de erro para sugestões melhores
   const isMetaApiError = rawApiResponse?.error?.message?.includes('Invalid OAuth access token') || 
-                          error?.includes('Token do Meta') ||
-                          error?.includes('token');
+                        error?.includes('Token do Meta') ||
+                        error?.includes('token');
 
-  // Determinar se é um erro de conexão com a função Edge
   const isEdgeFunctionError = error?.includes('função Edge') || 
-                              error?.includes('Edge Function') ||
-                              error?.includes('conectar');
+                            error?.includes('Edge Function') ||
+                            error?.includes('conectar');
+
+  const isJsonParseError = error?.includes('Unexpected end of JSON') ||
+                          error?.includes('JSON input') ||
+                          rawApiResponse?.error?.message?.includes('Unexpected end of JSON');
+
+  const isNetworkError = error?.includes('Failed to fetch') ||
+                        error?.includes('Network error') ||
+                        error?.includes('CORS') ||
+                        error?.includes('timeout');
 
   return (
     <div className="space-y-4">
@@ -65,6 +73,15 @@ export function ErrorContent({
           <span>Sugestões para solução:</span>
         </div>
         <ul className="list-disc pl-6 space-y-1 text-amber-700">
+          {isJsonParseError && (
+            <>
+              <li>O formato da resposta JSON está corrompido ou incompleto</li>
+              <li>Verifique se a função Edge está recebendo corretamente os parâmetros</li>
+              <li>Confira se o payload enviado para a função está completo e bem formado</li>
+              <li>Use as ferramentas de diagnóstico para verificar o estado da função Edge</li>
+            </>
+          )}
+          
           {isMetaApiError && (
             <>
               <li>Verifique se o token de acesso do Meta Ads está correto e não expirou</li>
@@ -82,7 +99,16 @@ export function ErrorContent({
             </>
           )}
           
-          {!isMetaApiError && !isEdgeFunctionError && (
+          {isNetworkError && (
+            <>
+              <li>Pode haver um problema de rede ou CORS impedindo a comunicação</li>
+              <li>Verifique se você está conectado à internet</li>
+              <li>Tente acessar de uma rede diferente ou desabilite extensões de bloqueio</li>
+              <li>Verifique se a função Edge está online e acessível</li>
+            </>
+          )}
+          
+          {!isMetaApiError && !isEdgeFunctionError && !isJsonParseError && !isNetworkError && (
             <>
               <li>Confirme se o ID da conta Meta Ads está correto para este cliente</li>
               <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
