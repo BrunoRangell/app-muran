@@ -1,20 +1,24 @@
 
-// Arquivo: supabase/functions/daily-budget-reviews/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Follow this setup guide to integrate the Deno language server with your editor:
+// https://deno.land/manual/getting_started/setup_your_environment
+// This enables autocomplete, go to definition, etc.
 
-// Configuração de CORS para permitir chamadas do frontend
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+
+// Definir cabeçalhos CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS'
 };
 
+console.log("Edge Function daily-budget-reviews - Inicializada");
+
 serve(async (req) => {
-  console.log("Função Edge iniciada:", new Date().toISOString());
-  
-  // Tratamento padrão para requisições OPTIONS (CORS preflight)
+  // Tratamento de requisições OPTIONS para CORS
   if (req.method === 'OPTIONS') {
-    console.log("Requisição OPTIONS recebida (CORS preflight)");
+    console.log("Recebida requisição OPTIONS (CORS preflight)");
     return new Response(null, {
       status: 204,
       headers: corsHeaders
@@ -22,105 +26,162 @@ serve(async (req) => {
   }
 
   try {
-    // Extrair dados da requisição
-    const requestData = await req.json();
-    console.log("Dados recebidos:", JSON.stringify(requestData));
+    console.log(`Recebida requisição ${req.method} para função daily-budget-reviews`);
     
-    // Verificar se é apenas um ping para testar a conectividade
-    if (requestData.method === "ping") {
-      console.log("Requisição de ping recebida");
+    // Extrair os dados da requisição
+    let payload;
+    try {
+      payload = await req.json();
+      console.log("Payload recebido:", JSON.stringify(payload));
+    } catch (error) {
+      console.error("Erro ao processar JSON da requisição:", error);
       return new Response(
         JSON.stringify({ 
-          message: "Função Edge está operacional", 
-          timestamp: new Date().toISOString(),
-          success: true 
+          success: false, 
+          message: "Erro ao processar JSON da requisição" 
         }),
         { 
-          status: 200, 
-          headers: { 
-            ...corsHeaders,
-            "Content-Type": "application/json" 
-          } 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
-
-    // Se não for um ping, processar como uma requisição normal para obter dados do Meta Ads
-    if (requestData.method === "getMetaAdsData") {
-      console.log("Requisição para obter dados do Meta Ads");
+    
+    // Verificar se é uma requisição de ping para teste
+    if (payload.method === 'ping') {
+      console.log("Requisição de ping recebida, respondendo com sucesso");
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Função Edge está online",
+          timestamp: new Date().toISOString(),
+          version: "1.0.0"
+        }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Verificar se temos um método definido
+    if (!payload.method) {
+      console.error("Método não especificado no payload");
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: "Método não especificado na requisição" 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Tratar método getMetaAdsData
+    if (payload.method === 'getMetaAdsData') {
+      console.log("Processando requisição getMetaAdsData");
       
-      // Extrair os dados necessários da requisição
-      const { accessToken, metaAccountId, dateRange } = requestData;
-      
-      if (!accessToken) {
-        throw new Error("Token de acesso não fornecido");
+      // Verificar parâmetros obrigatórios
+      if (!payload.accessToken) {
+        console.error("Token de acesso não fornecido");
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: "Token de acesso do Meta Ads não fornecido" 
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
       
-      if (!metaAccountId) {
-        throw new Error("ID da conta do Meta Ads não fornecido");
+      if (!payload.metaAccountId) {
+        console.error("ID da conta Meta não fornecido");
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: "ID da conta Meta Ads não fornecido" 
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
       
-      console.log("Período de análise:", dateRange);
+      // Para fins de teste, vamos simplesmente retornar dados simulados
+      // Em ambiente de produção, faríamos a chamada real para a API do Meta Ads
+      console.log("Gerando dados simulados para resposta");
       
-      // Implementar a chamada à API do Meta Ads aqui
-      // Por enquanto, retornamos um mock para teste
-      const mockData = {
+      // Construir resposta com dados simulados
+      const simulatedResponse = {
+        success: true,
+        message: "Dados obtidos com sucesso (simulados)",
+        meta_total_spent: 1250.75,
+        meta_daily_budget_current: 75.00,
         meta: {
-          totalSpent: 1250.35,
-          dailyBudget: 100.00,
-          dateRange: dateRange || { 
-            start: new Date().toISOString().split('T')[0], 
-            end: new Date().toISOString().split('T')[0] 
+          totalSpent: 1250.75,
+          dailyBudget: 75.00,
+          dateRange: {
+            start: "2025-03-01",
+            end: "2025-03-31"
           },
           campaigns: [
             {
               id: "123456789",
-              name: "Campanha de Teste 1",
+              name: "Campanha Principal",
               status: "ACTIVE",
-              spend: 450.20
+              spend: 750.75
             },
             {
               id: "987654321",
-              name: "Campanha de Teste 2",
+              name: "Campanha Secundária",
               status: "PAUSED",
-              spend: 800.15
+              spend: 500.00
             }
           ]
-        },
-        success: true,
-        message: "Dados obtidos com sucesso (simulação)"
+        }
       };
       
+      console.log("Enviando resposta com dados simulados");
       return new Response(
-        JSON.stringify(mockData),
+        JSON.stringify(simulatedResponse),
         { 
-          status: 200, 
-          headers: { 
-            ...corsHeaders,
-            "Content-Type": "application/json" 
-          } 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
-
-    // Método desconhecido
-    throw new Error(`Método não reconhecido: ${requestData.method}`);
-
-  } catch (error) {
-    console.error("Erro na função Edge:", error);
     
+    // Se chegamos aqui, o método solicitado não é suportado
+    console.error(`Método '${payload.method}' não suportado`);
     return new Response(
-      JSON.stringify({
-        error: error.message || "Erro interno na função Edge",
-        success: false,
-        timestamp: new Date().toISOString()
+      JSON.stringify({ 
+        success: false, 
+        message: `Método '${payload.method}' não suportado` 
       }),
       { 
-        status: 400, 
-        headers: { 
-          ...corsHeaders,
-          "Content-Type": "application/json" 
-        } 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+    
+  } catch (error) {
+    // Tratar erros gerais
+    console.error("Erro na execução da função Edge:", error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        message: `Erro interno: ${error.message}`,
+        error: error.toString(),
+        stack: error.stack
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

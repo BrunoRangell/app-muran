@@ -57,6 +57,27 @@ export const invokeEdgeFunction = async (
       throw new Error("Cliente não encontrado.");
     }
     
+    // Chamando primeiro uma função de ping para testar a conectividade com a Edge Function
+    try {
+      console.log("Testando conectividade com a função Edge antes da requisição principal");
+      const pingResult = await supabase.functions.invoke("daily-budget-reviews", {
+        body: { method: "ping" },
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (pingResult.error) {
+        console.error("Erro no teste de ping da função Edge:", pingResult.error);
+        throw new Error("Erro na comunicação com a função Edge: " + pingResult.error.message);
+      }
+      
+      console.log("Teste de ping bem-sucedido:", pingResult.data);
+    } catch (pingError) {
+      console.error("Falha no teste de ping:", pingError);
+      // Continuamos mesmo com falha no ping, tentando a requisição principal
+    }
+    
     // Chamar a função Edge passando o token e dados do cliente com payload JSON bem formado
     const payload = { 
       method: "getMetaAdsData", 
