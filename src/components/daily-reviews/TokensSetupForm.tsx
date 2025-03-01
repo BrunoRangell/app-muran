@@ -42,23 +42,34 @@ export const TokensSetupForm = () => {
   // Mutation para salvar tokens
   const saveTokensMutation = useMutation({
     mutationFn: async () => {
+      console.log("Iniciando salvamento do token:", tokens.meta_access_token);
+      
       // Primeiro verificamos se o token já existe
-      const { data: existingToken } = await supabase
+      const { data: existingToken, error: queryError } = await supabase
         .from("api_tokens")
         .select("*")
         .eq("name", "meta_access_token")
         .maybeSingle();
-
+      
+      if (queryError) {
+        console.error("Erro ao consultar token existente:", queryError);
+        throw new Error("Erro ao verificar token existente: " + queryError.message);
+      }
+      
+      console.log("Token existente:", existingToken);
+      
       let response;
       
       if (existingToken) {
         // Se o token já existe, atualizamos
+        console.log("Atualizando token existente");
         response = await supabase
           .from("api_tokens")
           .update({ value: tokens.meta_access_token })
           .eq("name", "meta_access_token");
       } else {
         // Se não existe, criamos um novo
+        console.log("Criando novo token");
         response = await supabase
           .from("api_tokens")
           .insert([{ 
@@ -68,7 +79,12 @@ export const TokensSetupForm = () => {
           }]);
       }
 
-      if (response.error) throw new Error(response.error.message);
+      if (response.error) {
+        console.error("Erro na operação de salvamento:", response.error);
+        throw new Error(response.error.message);
+      }
+      
+      console.log("Token salvo com sucesso:", response);
       
       // Após salvar, recarregamos os tokens
       await refetch();
@@ -83,6 +99,7 @@ export const TokensSetupForm = () => {
       setOpen(false);
     },
     onError: (error) => {
+      console.error("Erro detalhado ao salvar token:", error);
       toast({
         title: "Erro ao salvar token",
         description: String(error),
@@ -99,6 +116,16 @@ export const TokensSetupForm = () => {
   };
 
   const handleSave = () => {
+    if (!tokens.meta_access_token || tokens.meta_access_token.trim() === "") {
+      toast({
+        title: "Token não fornecido",
+        description: "Por favor, insira o token do Meta Ads antes de salvar.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log("Salvando token via botão normal:", tokens.meta_access_token);
     saveTokensMutation.mutate();
   };
 
@@ -106,15 +133,58 @@ export const TokensSetupForm = () => {
     // Configure o token fornecido pelo usuário
     const metaToken = "EAAFcZAOf159MBO8Wd0qZBmTbEj4pXSuDeUV8egjwaZBxQZCB73V634CdZBYN92k4pUidagEzJujlLIrZCrn9UpN28SvzapBHoixmT8ErWcMZAx3eaLxwlfAHhC2ZBw5gZBTeR8IBMQDxq71GBJqV6wJ6UphDmz0MMM5GumqnaXWmFCBZAjF4qc8FZBseV9u";
     
-    setTokens(prev => ({
-      ...prev,
-      meta_access_token: metaToken
-    }));
+    console.log("Configurando token rápido:", metaToken);
     
-    // Simulamos um click no botão salvar
-    setTimeout(() => {
-      saveTokensMutation.mutate();
-    }, 100);
+    // Atualizar o estado com o token
+    setTokens({
+      meta_access_token: metaToken
+    });
+    
+    // Salvar diretamente - não usar setTimeout
+    try {
+      // Inserir diretamente no banco
+      const { data: existingToken } = await supabase
+        .from("api_tokens")
+        .select("*")
+        .eq("name", "meta_access_token")
+        .maybeSingle();
+      
+      let response;
+      
+      if (existingToken) {
+        response = await supabase
+          .from("api_tokens")
+          .update({ value: metaToken })
+          .eq("name", "meta_access_token");
+      } else {
+        response = await supabase
+          .from("api_tokens")
+          .insert([{ 
+            name: "meta_access_token", 
+            value: metaToken,
+            description: "Token de acesso para a API do Meta Ads"
+          }]);
+      }
+      
+      if (response.error) throw response.error;
+      
+      // Recarregar tokens
+      await refetch();
+      
+      toast({
+        title: "Token configurado",
+        description: "O token do Meta Ads foi configurado com sucesso.",
+      });
+      
+      setOpen(false);
+    } catch (error) {
+      console.error("Erro ao configurar token rapidamente:", error);
+      toast({
+        title: "Erro ao configurar token",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
   };
 
   const hasEmptyRequiredTokens = () => {
