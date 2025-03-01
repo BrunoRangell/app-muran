@@ -98,7 +98,8 @@ export const useMetaAdsAnalysis = () => {
         dateRange: {
           start: formattedStartDate,
           end: formattedEndDate
-        }
+        },
+        debug: true // Solicitar informações extras de debug
       };
       
       console.log("[useMetaAdsAnalysis] Enviando payload para função Edge:", 
@@ -123,15 +124,40 @@ export const useMetaAdsAnalysis = () => {
         throw new Error("A função retornou dados vazios ou inválidos");
       }
       
-      // Guardar a resposta bruta para depuração
-      setRawApiResponse(result);
+      // Guardar a resposta bruta para depuração com informações extra
+      setRawApiResponse({
+        ...result,
+        token: tokenData.value.substring(0, 12) + "..." // Mostrar apenas parte do token para diagnóstico
+      });
       
       console.log("[useMetaAdsAnalysis] Resposta completa da API Meta Ads:", result);
       
       // Verificação rigorosa dos dados recebidos
-      if (!result.meta || typeof result.meta.totalSpent === 'undefined' || !result.meta.campaigns) {
-        console.error("[useMetaAdsAnalysis] Dados recebidos inválidos ou incompletos:", result);
+      if (!result.meta) {
+        console.error("[useMetaAdsAnalysis] Dados recebidos inválidos ou incompletos (sem meta):", result);
         throw new Error("Os dados recebidos da API do Meta Ads estão incompletos ou em formato inválido");
+      }
+      
+      // Tratamento especial para errors no meta
+      if (result.error) {
+        console.error("[useMetaAdsAnalysis] Erro reportado no objeto result:", result.error);
+      }
+      
+      // Garantir que meta.campaigns existe, mesmo que vazio
+      if (!result.meta.campaigns) {
+        result.meta.campaigns = [];
+        console.warn("[useMetaAdsAnalysis] Nenhuma campanha encontrada, inicializando array vazio");
+      }
+      
+      // Configurar valores padrão para evitar erros
+      if (typeof result.meta.totalSpent === 'undefined') {
+        result.meta.totalSpent = 0;
+        console.warn("[useMetaAdsAnalysis] totalSpent não encontrado, definindo como 0");
+      }
+      
+      if (typeof result.meta.dailyBudget === 'undefined') {
+        result.meta.dailyBudget = 0;
+        console.warn("[useMetaAdsAnalysis] dailyBudget não encontrado, definindo como 0");
       }
       
       // Logs detalhados para verificação dos valores
@@ -153,7 +179,7 @@ export const useMetaAdsAnalysis = () => {
         
         // Validação do total das campanhas vs total reportado
         const totalFromCampaigns = result.meta.campaigns.reduce(
-          (total: number, campaign: any) => total + parseFloat(campaign.spend.toString() || "0"), 
+          (total: number, campaign: any) => total + parseFloat(String(campaign.spend || "0")), 
           0
         );
         
@@ -168,13 +194,13 @@ export const useMetaAdsAnalysis = () => {
       // Garantir que todos os valores numéricos sejam números
       if (result.meta) {
         if (typeof result.meta.totalSpent !== 'number') {
-          const converted = parseFloat(result.meta.totalSpent);
+          const converted = parseFloat(String(result.meta.totalSpent || "0"));
           result.meta.totalSpent = isNaN(converted) ? 0 : converted;
           console.log("[useMetaAdsAnalysis] Convertido totalSpent para número:", result.meta.totalSpent);
         }
         
         if (typeof result.meta.dailyBudget !== 'number') {
-          const converted = parseFloat(result.meta.dailyBudget);
+          const converted = parseFloat(String(result.meta.dailyBudget || "0"));
           result.meta.dailyBudget = isNaN(converted) ? 0 : converted;
           console.log("[useMetaAdsAnalysis] Convertido dailyBudget para número:", result.meta.dailyBudget);
         }
@@ -183,7 +209,7 @@ export const useMetaAdsAnalysis = () => {
           result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
             const spendValue = typeof campaign.spend === 'number' 
               ? campaign.spend 
-              : parseFloat(campaign.spend || "0");
+              : parseFloat(String(campaign.spend || "0"));
             
             return {
               ...campaign,
@@ -204,6 +230,26 @@ export const useMetaAdsAnalysis = () => {
       console.error("[useMetaAdsAnalysis] Erro na análise:", err);
       const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
       setError(errorMessage);
+      
+      // Tentativa de extrair mais informações do erro para depuração
+      let errorDetails: any = {};
+      if (err instanceof Error) {
+        errorDetails = {
+          name: err.name,
+          message: err.message,
+          details: err.stack
+        };
+      } else {
+        errorDetails = {
+          raw: String(err)
+        };
+      }
+      
+      // Incluir detalhes do erro na resposta bruta
+      setRawApiResponse(prev => ({
+        ...prev,
+        error: errorDetails
+      }));
       
       toast({
         title: "Erro na análise",

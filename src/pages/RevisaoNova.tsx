@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader, Info, AlertTriangle } from "lucide-react";
+import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader, Info, AlertTriangle, Copy } from "lucide-react";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { useMetaAdsAnalysis } from "@/components/revisao-nova/useMetaAdsAnalysis";
 import { ClientSelector } from "@/components/revisao-nova/ClientSelector";
@@ -10,9 +10,12 @@ import { formatCurrency } from "@/utils/formatters";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CampaignsTable } from "@/components/revisao-nova/CampaignsTable";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
+import { TokensSetupForm } from "@/components/daily-reviews/TokensSetupForm";
 
 export default function RevisaoNova() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const { toast } = useToast();
   const { 
     analysis, 
     client, 
@@ -29,6 +32,27 @@ export default function RevisaoNova() {
   const handleAnalyze = () => {
     if (selectedClientId) {
       fetchAnalysis(selectedClientId);
+    }
+  };
+
+  const handleCopyToken = () => {
+    if (rawApiResponse?.token) {
+      navigator.clipboard.writeText(rawApiResponse.token);
+      toast({
+        title: "Token copiado",
+        description: "O token foi copiado para a área de transferência.",
+      });
+    }
+  };
+
+  const handleCopyApiUrl = () => {
+    if (client?.meta_account_id) {
+      const url = `https://graph.facebook.com/v20.0/act_${client.meta_account_id}/campaigns?fields=status,name,spend,insights{spend}&access_token=TOKEN`;
+      navigator.clipboard.writeText(url);
+      toast({
+        title: "URL copiada",
+        description: "A URL da API foi copiada para a área de transferência. Substitua TOKEN pelo token real.",
+      });
     }
   };
 
@@ -70,6 +94,7 @@ export default function RevisaoNova() {
         <AlertDescription>
           <div className="font-mono text-xs mt-2">
             <p>Nome do erro: {rawApiResponse.error.name || 'Desconhecido'}</p>
+            <p>Mensagem: {rawApiResponse.error.message || 'Nenhuma mensagem disponível'}</p>
             {rawApiResponse.error.details && (
               <details>
                 <summary className="cursor-pointer mt-1">Stack trace</summary>
@@ -78,6 +103,59 @@ export default function RevisaoNova() {
                 </pre>
               </details>
             )}
+          </div>
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
+  const renderApiTestTools = () => {
+    if (!client?.meta_account_id) return null;
+    
+    return (
+      <Alert className="mt-4 bg-blue-50 border-blue-200">
+        <Info className="h-4 w-4 text-blue-500" />
+        <AlertTitle>Ferramentas de diagnóstico</AlertTitle>
+        <AlertDescription>
+          <div className="mt-2 space-y-2">
+            <div>
+              <p className="text-sm mb-1">URL para testar no Graph API Explorer:</p>
+              <div className="flex items-center gap-2">
+                <code className="bg-gray-100 p-1 text-xs rounded flex-1 overflow-x-auto">
+                  https://graph.facebook.com/v20.0/act_{client.meta_account_id}/campaigns?fields=status,name,spend
+                </code>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleCopyApiUrl}
+                  className="shrink-0"
+                >
+                  <Copy size={14} />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`https://developers.facebook.com/tools/explorer/`, '_blank')}
+                className="text-xs"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Abrir Graph API Explorer
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`https://business.facebook.com/settings/ad-accounts`, '_blank')}
+                className="text-xs"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                Verificar Contas de Anúncios
+              </Button>
+            </div>
           </div>
         </AlertDescription>
       </Alert>
@@ -104,6 +182,7 @@ export default function RevisaoNova() {
           </Alert>
           
           {renderApiErrorDetails()}
+          {renderApiTestTools()}
           {renderRawResponseDebug()}
           
           <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mt-4">
@@ -143,6 +222,7 @@ export default function RevisaoNova() {
           </Alert>
           
           {renderApiErrorDetails()}
+          {renderApiTestTools()}
           {renderRawResponseDebug()}
           
           <div className="bg-amber-50 border border-amber-200 p-4 rounded-md mt-4">
@@ -266,14 +346,17 @@ export default function RevisaoNova() {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-[#321e32]">Revisão de Campanhas Meta Ads</h1>
-        <a 
-          href="https://business.facebook.com/adsmanager/" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-sm text-gray-600 hover:text-[#ff6e00] flex items-center"
-        >
-          Abrir Meta Ads <ExternalLink className="ml-1 h-3 w-3" />
-        </a>
+        <div className="flex items-center gap-3">
+          <TokensSetupForm />
+          <a 
+            href="https://business.facebook.com/adsmanager/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm text-gray-600 hover:text-[#ff6e00] flex items-center"
+          >
+            Abrir Meta Ads <ExternalLink className="ml-1 h-3 w-3" />
+          </a>
+        </div>
       </div>
       
       <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
@@ -303,8 +386,20 @@ export default function RevisaoNova() {
         {client && (
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="font-semibold text-lg">{client.company_name}</div>
-            <div className="text-sm text-gray-600">
-              ID Meta Ads: {client.meta_account_id || "Não configurado"}
+            <div className="text-sm text-gray-600 flex items-center">
+              ID Meta Ads: 
+              <code className="mx-1 bg-gray-100 px-1 rounded">{client.meta_account_id || "Não configurado"}</code>
+              {client.meta_account_id && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => window.open(`https://business.facebook.com/adsmanager/manage/campaigns?act=${client.meta_account_id}`, '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Ver no Meta Ads
+                </Button>
+              )}
             </div>
           </div>
         )}
