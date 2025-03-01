@@ -1,6 +1,8 @@
 
 import { formatCurrency } from "@/utils/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export interface ClientSummaryCardProps {
   client: any;
@@ -8,16 +10,10 @@ export interface ClientSummaryCardProps {
 }
 
 export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardProps) => {
-  // Formatar a data da revisão no formato brasileiro
-  const formatReviewDate = (dateString?: string) => {
-    if (!dateString) return "Não disponível";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("pt-BR");
-    } catch (error) {
-      console.error("Erro ao formatar data:", error);
-      return dateString;
-    }
+  // Formatar a data atual no formato brasileiro
+  const formatCurrentDate = () => {
+    const today = new Date();
+    return format(today, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   };
 
   // Calcular a porcentagem do orçamento mensal gasto
@@ -38,7 +34,7 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
           {client?.company_name || "Cliente"}
         </CardTitle>
         <CardDescription>
-          Detalhes da revisão mais recente - {latestReview ? formatReviewDate(latestReview.review_date) : "Não disponível"}
+          Detalhes da revisão de hoje - {formatCurrentDate()}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

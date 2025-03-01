@@ -85,15 +85,17 @@ export const useClientReviewDetails = (clientId: string) => {
     enabled: !!client,
   });
 
-  // Calcular orçamento diário ideal quando o cliente for carregado
+  // Calcular orçamento diário ideal com base na data atual
   useEffect(() => {
     if (client?.meta_ads_budget) {
       // Certifique-se de que meta_ads_budget seja tratado como número
       const monthlyBudget = Number(client.meta_ads_budget);
       console.log("Orçamento mensal do cliente:", monthlyBudget);
       
+      // Sempre usar a data atual para o cálculo
       const currentDate = new Date();
       const daysInMonth = getDaysInMonth(currentDate);
+      console.log("Data atual utilizada para cálculo:", currentDate.toLocaleDateString('pt-BR'));
       console.log("Dias no mês atual:", daysInMonth);
       
       // Calcular orçamento diário ideal
