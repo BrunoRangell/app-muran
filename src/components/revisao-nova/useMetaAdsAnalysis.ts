@@ -108,11 +108,16 @@ export const useMetaAdsAnalysis = () => {
           debug: true // Solicitar informações extras de debug
         };
         
+        console.log("[useMetaAdsAnalysis] Enviando payload para Edge Function:", JSON.stringify({
+          ...payload,
+          accessToken: "***TOKEN OCULTADO***"
+        }));
+        
         // Adicionar timeout para evitar problemas de conexão pendente
         const functionPromise = supabase.functions.invoke(
           "daily-budget-reviews",
           { 
-            body: payload,
+            body: JSON.stringify(payload),
             headers: {
               "Content-Type": "application/json"
             }

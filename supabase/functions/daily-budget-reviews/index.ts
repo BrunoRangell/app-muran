@@ -1,208 +1,201 @@
 
+// supabase/functions/daily-budget-reviews/index.ts
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
-// Configuração de CORS para permitir solicitações de qualquer origem
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+console.log("Função Edge 'daily-budget-reviews' carregada - v1.0.4");
 
-// Função para responder com erro em formato padronizado
-function respondWithError(message: string, details?: any, status = 200) {
-  console.error(`Erro: ${message}`, details);
-  return new Response(
-    JSON.stringify({
-      success: false,
-      message,
-      error: details || { message }
-    }),
-    {
-      status,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
-}
-
-// Função para responder com sucesso
-function respondWithSuccess(data: any) {
-  return new Response(
-    JSON.stringify({
-      success: true,
-      ...data
-    }),
-    {
+serve(async (req) => {
+  // Lidar com requisições OPTIONS para CORS
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
       status: 200,
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/json'
-      }
-    }
-  );
-}
-
-// Função principal que lida com as requisições
-serve(async (req) => {
-  // Tratar requisições preflight CORS
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+      },
+    });
   }
 
   try {
-    // Extrair o corpo da requisição com tratamento seguro
+    console.log(`Requisição ${req.method} recebida`);
+    
+    // Validação inicial do corpo da requisição
     let reqBody;
+    let requestText;
+    
     try {
-      const bodyText = await req.text();
+      requestText = await req.text();
+      console.log("Corpo da requisição recebido:", requestText.length > 0 ? "Não vazio" : "VAZIO");
       
-      // Verificar se o corpo não está vazio
-      if (!bodyText || bodyText.trim() === '') {
-        return respondWithError('Corpo da requisição vazio');
+      if (!requestText || requestText.trim() === "") {
+        throw new Error("Corpo da requisição vazio");
       }
       
-      // Tentar fazer o parse do JSON
-      try {
-        reqBody = JSON.parse(bodyText);
-      } catch (parseError) {
-        console.error('Erro ao analisar JSON:', parseError);
-        console.log('Texto recebido:', bodyText);
-        return respondWithError(
-          'Formato de JSON inválido no corpo da requisição', 
-          { 
-            parseError: parseError.message,
-            receivedBody: bodyText.substring(0, 200) + (bodyText.length > 200 ? '...' : '')
-          }
-        );
-      }
-    } catch (bodyError) {
-      return respondWithError('Erro ao ler corpo da requisição', bodyError);
+      reqBody = JSON.parse(requestText);
+      console.log("Método solicitado:", reqBody.method || "Não especificado");
+    } catch (err) {
+      console.error("Erro ao processar corpo da requisição:", err.message);
+      console.error("Texto recebido:", requestText);
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: err.message || "Erro ao processar requisição",
+          error: { message: err.message, raw: requestText },
+        }),
+        {
+          status: 200, // Retornar 200 mesmo com erro para evitar problemas de CORS
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
-    // Verificar método solicitado
-    const method = reqBody?.method;
-    
-    // Método de ping para verificar se a função está online
-    if (method === 'ping') {
-      return respondWithSuccess({
-        message: 'Função Edge está online',
-        timestamp: new Date().toISOString()
-      });
+    // Responder a um ping simples para testes de conectividade
+    if (reqBody.method === "ping") {
+      console.log("Ping recebido, respondendo...");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Pong! A função Edge está funcionando corretamente.",
+          timestamp: new Date().toISOString(),
+        }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
-    
-    // Método para obter dados do Meta Ads
-    if (method === 'getMetaAdsData') {
-      // Validar parâmetros obrigatórios
-      if (!reqBody.accessToken) {
-        return respondWithError('Token de acesso do Meta Ads não fornecido');
+
+    // Processamento principal - análise de dados Meta Ads
+    if (reqBody.method === "getMetaAdsData") {
+      console.log("Solicitação de análise de dados Meta Ads recebida");
+      
+      // Validação dos parâmetros obrigatórios
+      const { metaAccountId, accessToken, dateRange } = reqBody;
+      
+      if (!metaAccountId) {
+        throw new Error("ID da conta Meta Ads não fornecido");
       }
       
-      if (!reqBody.metaAccountId) {
-        return respondWithError('ID da conta do Meta Ads não fornecido');
+      if (!accessToken) {
+        throw new Error("Token de acesso não fornecido");
       }
       
-      // Configurar datas e parâmetros
-      const metaAccountId = reqBody.metaAccountId;
-      const accessToken = reqBody.accessToken;
-      const clientName = reqBody.clientName || 'Cliente';
-      const dateRange = reqBody.dateRange || {
-        start: new Date().toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
-      };
+      if (!dateRange || !dateRange.start || !dateRange.end) {
+        throw new Error("Período de análise não fornecido corretamente");
+      }
       
-      console.log(`Buscando dados do Meta Ads para conta: ${metaAccountId}`);
-      console.log(`Período: ${dateRange.start} a ${dateRange.end}`);
+      console.log(`Analisando conta ${metaAccountId} no período de ${dateRange.start} a ${dateRange.end}`);
       
       try {
-        // Consultar a API do Meta Ads para obter dados de campanhas
-        const campaignsUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/campaigns`;
-        const campaignsParams = new URLSearchParams({
-          access_token: accessToken,
-          fields: 'name,status,objective,spend,daily_budget,lifetime_budget,budget_remaining,insights.time_range({"since":"${dateRange.start}","until":"${dateRange.end}"}){spend}'
-        });
+        // Construir URL da API Meta
+        const fields = "status,name,spend,insights{spend}";
+        const apiUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/campaigns?fields=${fields}&access_token=${accessToken}`;
         
-        console.log(`Fazendo requisição para: ${campaignsUrl}`);
+        console.log("Chamando API Meta...");
         
-        const campaignsResponse = await fetch(`${campaignsUrl}?${campaignsParams.toString()}`);
-        const campaignsData = await campaignsResponse.json();
+        // Chamar a API Meta
+        const metaResponse = await fetch(apiUrl);
+        const metaData = await metaResponse.json();
         
-        console.log("Resposta da API Meta (preview):", JSON.stringify(campaignsData).substring(0, 200));
+        console.log("Resposta da API Meta recebida:", metaData.data ? `${metaData.data.length} campanhas` : "Sem dados");
         
-        // Verificar erro na resposta da API
-        if (campaignsData.error) {
-          return respondWithError(
-            `Erro na API do Meta Ads: ${campaignsData.error.message}`, 
-            campaignsData.error
-          );
+        // Verificar se há erro na resposta da Meta
+        if (metaData.error) {
+          console.error("Erro na API Meta:", metaData.error);
+          throw new Error(`Erro na API Meta: ${metaData.error.message || JSON.stringify(metaData.error)}`);
         }
         
-        // Processar dados para o formato esperado pelo frontend
-        const campaigns = campaignsData.data || [];
-        
-        // Calcular gastos totais
+        // Processar campanhas e calcular gastos
+        const campaigns = metaData.data || [];
         let totalSpent = 0;
-        let dailyBudgetTotal = 0;
         
-        campaigns.forEach((campaign: any) => {
-          // Calcular gasto da campanha
-          const spend = parseFloat(campaign.spend || '0');
-          if (!isNaN(spend)) {
-            totalSpent += spend;
-          }
+        const processedCampaigns = campaigns.map((campaign: any) => {
+          const spend = parseFloat(campaign.spend || "0");
+          totalSpent += spend;
           
-          // Calcular orçamento diário
-          const dailyBudget = parseFloat(campaign.daily_budget || '0') / 100; // Meta devolve em centavos
-          if (!isNaN(dailyBudget) && campaign.status === 'ACTIVE') {
-            dailyBudgetTotal += dailyBudget;
-          }
+          return {
+            id: campaign.id,
+            name: campaign.name,
+            status: campaign.status,
+            spend: spend
+          };
         });
         
-        // Formatar resposta
-        const response = {
-          meta: {
-            totalSpent,
-            dailyBudget: dailyBudgetTotal,
-            dateRange,
-            campaigns: campaigns.map((campaign: any) => ({
-              id: campaign.id,
-              name: campaign.name,
-              status: campaign.status,
-              spend: parseFloat(campaign.spend || '0')
-            }))
-          },
-          client: {
-            id: reqBody.clientId,
-            company_name: clientName,
-            meta_account_id: metaAccountId
-          },
+        // Calcular orçamento diário (valor aproximado baseado no total gasto)
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+        const daysDiff = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const estimatedDailyBudget = parseFloat((totalSpent / daysDiff).toFixed(2));
+        
+        console.log(`Total gasto: ${totalSpent}, Orçamento diário estimado: ${estimatedDailyBudget}`);
+        
+        // Montar resposta
+        const result = {
           success: true,
-          message: "Dados obtidos com sucesso"
+          message: "Dados obtidos com sucesso",
+          meta: {
+            totalSpent: totalSpent,
+            dailyBudget: estimatedDailyBudget,
+            dateRange: dateRange,
+            campaigns: processedCampaigns
+          }
         };
         
-        return respondWithSuccess(response);
+        console.log("Retornando resultados processados");
         
-      } catch (apiError) {
-        console.error("Erro ao acessar API do Meta:", apiError);
-        return respondWithError(
-          'Falha ao acessar a API do Meta Ads', 
-          {
-            message: apiError.message,
-            stack: apiError.stack
-          }
-        );
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        });
+      } catch (metaError) {
+        console.error("Erro ao processar dados da Meta:", metaError.message);
+        
+        throw new Error(`Erro na API do Meta Ads: ${metaError.message}`);
       }
     }
     
-    // Método não reconhecido
-    return respondWithError(`Método não suportado: ${method}`);
-    
-  } catch (error) {
-    console.error("Erro interno na função Edge:", error);
-    return respondWithError(
-      'Erro interno do servidor', 
+    // Se chegou aqui, o método solicitado não é suportado
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: `Método '${reqBody.method}' não suportado`,
+      }),
       {
-        message: error.message,
-        stack: error.stack
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    console.error("Erro não tratado na função Edge:", err);
+    
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: err.message || "Erro interno no servidor",
+        error: {
+          message: err.message,
+          stack: err.stack,
+        }
+      }),
+      {
+        status: 200, // Retornar 200 mesmo com erro para evitar problemas de CORS
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
       }
     );
   }

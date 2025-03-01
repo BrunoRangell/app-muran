@@ -37,9 +37,11 @@ export function ErrorContent({
                             error?.includes('Edge Function') ||
                             error?.includes('conectar');
 
-  const isJsonParseError = error?.includes('Unexpected end of JSON') ||
+  const isJsonParseError = error?.includes('Unexpected end of JSON input') ||
                           error?.includes('JSON input') ||
-                          rawApiResponse?.error?.message?.includes('Unexpected end of JSON');
+                          error?.includes('Corpo da requisição vazio') ||
+                          rawApiResponse?.error?.message?.includes('Unexpected end of JSON input') ||
+                          rawApiResponse?.error?.message?.includes('Corpo da requisição vazio');
 
   const isNetworkError = error?.includes('Failed to fetch') ||
                         error?.includes('Network error') ||
@@ -73,7 +75,17 @@ export function ErrorContent({
           <span>Sugestões para solução:</span>
         </div>
         <ul className="list-disc pl-6 space-y-1 text-amber-700">
-          {isJsonParseError && (
+          {isJsonParseError && error?.includes('Corpo da requisição vazio') && (
+            <>
+              <li>A função Edge não está recebendo corretamente os dados enviados</li>
+              <li>Verifique se o payload está sendo serializado corretamente com JSON.stringify()</li>
+              <li>Teste a função Edge usando o botão "Testar Função Edge" acima</li>
+              <li>Reinicie a aplicação ou limpe o cache do navegador</li>
+              <li>Verifique os logs da função Edge no console do Supabase</li>
+            </>
+          )}
+          
+          {isJsonParseError && !error?.includes('Corpo da requisição vazio') && (
             <>
               <li>O formato da resposta JSON está corrompido ou incompleto</li>
               <li>Verifique se a função Edge está recebendo corretamente os parâmetros</li>
