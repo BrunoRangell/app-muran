@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { parseCurrencyToNumber } from "@/utils/formatters";
 
 interface Client {
   id: string;
@@ -14,9 +13,8 @@ interface Client {
 }
 
 interface BudgetValues {
-  budget: string;
+  rawValue: string;  // Valor numérico sem formatação para salvar no banco
   accountId: string;
-  displayBudget: string;
 }
 
 export const useBudgetManager = () => {
@@ -50,10 +48,10 @@ export const useBudgetManager = () => {
       
       clients.forEach((client) => {
         const budgetValue = client.meta_ads_budget ? client.meta_ads_budget.toString() : "";
+        
         initialBudgets[client.id] = {
-          budget: budgetValue,
-          accountId: client.meta_account_id || "",
-          displayBudget: budgetValue // Sem formatação inicial
+          rawValue: budgetValue,
+          accountId: client.meta_account_id || ""
         };
       });
       
@@ -70,10 +68,14 @@ export const useBudgetManager = () => {
         // Converter valor do orçamento para número
         let budget = 0;
         
-        if (values.budget) {
-          // Substituir vírgula por ponto para conversão numérica
-          const normalizedValue = values.budget.replace(",", ".");
-          budget = parseFloat(normalizedValue);
+        if (values.rawValue) {
+          // Limpar a string de qualquer formatação e converter vírgula para ponto
+          const cleanValue = values.rawValue
+            .replace(/[^\d,.]/g, '')  // Remove tudo que não for número, ponto ou vírgula
+            .replace(/\./g, '')       // Remove pontos
+            .replace(',', '.');       // Substitui vírgula por ponto
+          
+          budget = parseFloat(cleanValue);
           
           if (isNaN(budget)) {
             budget = 0;
@@ -123,14 +125,13 @@ export const useBudgetManager = () => {
     }
   });
 
-  // Manipulador de orçamento 
+  // Manipulador para alteração de orçamento - aceita qualquer entrada do usuário
   const handleBudgetChange = (clientId: string, value: string) => {
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        budget: value,
-        displayBudget: value // Armazenamos o valor exatamente como digitado
+        rawValue: value
       }
     }));
   };

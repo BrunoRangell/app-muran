@@ -37,23 +37,23 @@ export const BudgetManager = () => {
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Função para formatar o valor apenas para exibição na tela
-  const formatDisplayValue = (value: string) => {
+  // Função para formatar o valor para exibição
+  const formatBudgetDisplay = (value: string): string => {
     if (!value) return "";
+
+    // Primeiro limpamos o valor de qualquer formatação prévia
+    const cleanValue = value.replace(/[^\d,.]/g, '');
     
-    // Remover caracteres não numéricos, mantendo apenas dígitos, vírgulas e pontos
-    const cleanedValue = value.replace(/[^\d,.]/g, "");
+    if (!cleanValue) return "";
+
+    // Converter para um formato numérico (substituindo vírgula por ponto)
+    const numericValue = cleanValue.replace(/\./g, '').replace(',', '.');
+    const number = parseFloat(numericValue);
     
-    // Substituir vírgula por ponto para cálculo
-    const numberValue = cleanedValue.replace(",", ".");
+    if (isNaN(number)) return value;
     
-    // Tentar converter para número
-    const numValue = parseFloat(numberValue);
-    
-    if (isNaN(numValue)) return value;
-    
-    // Formatar o número para exibição com R$, vírgula decimal e pontos para milhares
-    return formatCurrency(numValue, true);
+    // Formatar como moeda
+    return formatCurrency(number, true);
   };
 
   return (
@@ -107,19 +107,21 @@ export const BudgetManager = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <div className="relative">
-                            <Input
-                              type="text"
-                              value={formatDisplayValue(budgets[client.id]?.displayBudget || "")}
-                              onChange={(e) => {
-                                // Extrair apenas o valor numérico do texto formatado
-                                const rawValue = e.target.value.replace(/[^\d,.]/g, "");
-                                handleBudgetChange(client.id, rawValue);
-                              }}
-                              placeholder="R$ 0,00"
-                              className="text-left pl-3"
-                            />
-                          </div>
+                          <Input
+                            type="text"
+                            value={formatBudgetDisplay(budgets[client.id]?.rawValue || "")}
+                            onChange={(e) => {
+                              handleBudgetChange(client.id, e.target.value);
+                            }}
+                            placeholder="R$ 0,00"
+                            className="text-left"
+                            onFocus={(e) => {
+                              // Ao ganhar foco, colocar o cursor no final
+                              const val = e.target.value;
+                              e.target.value = '';
+                              e.target.value = val;
+                            }}
+                          />
                         </TableCell>
                       </TableRow>
                     ))
