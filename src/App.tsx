@@ -109,7 +109,7 @@ function App() {
           }
         />
         <Route
-          path="/revisao-nova"
+          path="/revisao-meta"
           element={
             <PrivateRoute requireAdmin>
               <RevisaoNova />
