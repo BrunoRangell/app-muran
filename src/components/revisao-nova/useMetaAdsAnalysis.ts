@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
@@ -134,136 +133,169 @@ export const useMetaAdsAnalysis = () => {
         }));
       }
       
-      const { data: result, error: functionError } = await supabase.functions.invoke(
-        "daily-budget-reviews",
-        { 
-          body: payload,
-          headers: {
-            "Content-Type": "application/json"
+      try {
+        // Adicionar timeout para evitar problemas de conexão pendente
+        const functionPromise = supabase.functions.invoke(
+          "daily-budget-reviews",
+          { 
+            body: payload,
+            headers: {
+              "Content-Type": "application/json"
+            }
           }
-        }
-      );
-      
-      console.log("[useMetaAdsAnalysis] Resposta bruta da função Edge:", result);
-      
-      if (functionError) {
-        console.error("[useMetaAdsAnalysis] Erro na função Edge:", functionError);
-        throw new Error(`Erro ao obter dados do Meta Ads: ${functionError.message || "Erro desconhecido"}`);
-      }
-      
-      if (!result) {
-        console.error("[useMetaAdsAnalysis] Função retornou dados vazios ou inválidos");
-        throw new Error("A função retornou dados vazios ou inválidos");
-      }
-      
-      // Guardar a resposta bruta para depuração com informações extra
-      setRawApiResponse({
-        ...result,
-        token: tokenData.value.substring(0, 12) + "..." // Mostrar apenas parte do token para diagnóstico
-      });
-      
-      console.log("[useMetaAdsAnalysis] Resposta completa da API Meta Ads:", result);
-      
-      // Se tiver erro, mostrar detalhes específicos
-      if (result.error) {
-        console.error("[useMetaAdsAnalysis] Erro reportado na resposta:", result.error);
-        
-        // Tentar extrair mais informações do erro
-        const errorDetails = typeof result.error === 'object' ? 
-          JSON.stringify(result.error) : 
-          String(result.error);
-        
-        throw new Error(`Erro na API do Meta Ads: ${errorDetails}`);
-      }
-      
-      // Verificação rigorosa dos dados recebidos
-      if (!result.meta) {
-        console.error("[useMetaAdsAnalysis] Dados recebidos inválidos ou incompletos (sem meta):", result);
-        throw new Error("Os dados recebidos da API do Meta Ads estão incompletos ou em formato inválido");
-      }
-      
-      // Garantir que meta.campaigns existe, mesmo que vazio
-      if (!result.meta.campaigns) {
-        result.meta.campaigns = [];
-        console.warn("[useMetaAdsAnalysis] Nenhuma campanha encontrada, inicializando array vazio");
-      }
-      
-      // Configurar valores padrão para evitar erros
-      if (typeof result.meta.totalSpent === 'undefined') {
-        result.meta.totalSpent = 0;
-        console.warn("[useMetaAdsAnalysis] totalSpent não encontrado, definindo como 0");
-      }
-      
-      if (typeof result.meta.dailyBudget === 'undefined') {
-        result.meta.dailyBudget = 0;
-        console.warn("[useMetaAdsAnalysis] dailyBudget não encontrado, definindo como 0");
-      }
-      
-      // Logs detalhados para verificação dos valores
-      console.log("[useMetaAdsAnalysis] Meta dados recebidos:");
-      console.log("- Total gasto:", result.meta.totalSpent);
-      console.log("- Orçamento diário:", result.meta.dailyBudget);
-      console.log("- Período:", result.meta.dateRange);
-      console.log("- Número de campanhas:", result.meta.campaigns.length);
-      
-      // Verificar cada campanha individualmente
-      if (result.meta.campaigns && result.meta.campaigns.length > 0) {
-        console.log("[useMetaAdsAnalysis] Detalhes das campanhas:");
-        result.meta.campaigns.forEach((campaign: any, index: number) => {
-          console.log(`Campanha ${index + 1}: ${campaign.name}`);
-          console.log(`- ID: ${campaign.id}`);
-          console.log(`- Status: ${campaign.status}`);
-          console.log(`- Gasto: ${campaign.spend}`);
-        });
-        
-        // Validação do total das campanhas vs total reportado
-        const totalFromCampaigns = result.meta.campaigns.reduce(
-          (total: number, campaign: any) => total + parseFloat(String(campaign.spend || "0")), 
-          0
         );
         
-        console.log(`[useMetaAdsAnalysis] Total calculado manualmente das campanhas: ${totalFromCampaigns}`);
-        console.log(`[useMetaAdsAnalysis] Total reportado pela API: ${result.meta.totalSpent}`);
+        // Timeout de 30 segundos
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Timeout ao esperar resposta da função Edge (30s)")), 30000);
+        });
         
-        if (Math.abs(totalFromCampaigns - result.meta.totalSpent) > 0.01) {
-          console.warn("[useMetaAdsAnalysis] AVISO: Discrepância entre o total reportado e a soma das campanhas!");
-        }
-      }
-      
-      // Garantir que todos os valores numéricos sejam números
-      if (result.meta) {
-        if (typeof result.meta.totalSpent !== 'number') {
-          const converted = parseFloat(String(result.meta.totalSpent || "0"));
-          result.meta.totalSpent = isNaN(converted) ? 0 : converted;
-          console.log("[useMetaAdsAnalysis] Convertido totalSpent para número:", result.meta.totalSpent);
-        }
+        // Corrida entre a função e o timeout
+        const { data: result, error: functionError } = await Promise.race([
+          functionPromise,
+          timeoutPromise
+        ]) as any;
         
-        if (typeof result.meta.dailyBudget !== 'number') {
-          const converted = parseFloat(String(result.meta.dailyBudget || "0"));
-          result.meta.dailyBudget = isNaN(converted) ? 0 : converted;
-          console.log("[useMetaAdsAnalysis] Convertido dailyBudget para número:", result.meta.dailyBudget);
+        console.log("[useMetaAdsAnalysis] Resposta bruta da função Edge:", result);
+        
+        if (functionError) {
+          console.error("[useMetaAdsAnalysis] Erro na função Edge:", functionError);
+          throw new Error(`Erro ao obter dados do Meta Ads: ${functionError.message || "Erro desconhecido"}`);
         }
         
-        if (result.meta.campaigns) {
-          result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
-            const spendValue = typeof campaign.spend === 'number' 
-              ? campaign.spend 
-              : parseFloat(String(campaign.spend || "0"));
-            
-            return {
-              ...campaign,
-              spend: isNaN(spendValue) ? 0 : spendValue
-            };
+        if (!result) {
+          console.error("[useMetaAdsAnalysis] Função retornou dados vazios ou inválidos");
+          throw new Error("A função retornou dados vazios ou inválidos");
+        }
+        
+        // Guardar a resposta bruta para depuração com informações extra
+        setRawApiResponse({
+          ...result,
+          token: tokenData.value.substring(0, 12) + "..." // Mostrar apenas parte do token para diagnóstico
+        });
+        
+        console.log("[useMetaAdsAnalysis] Resposta completa da API Meta Ads:", result);
+        
+        // Se tiver erro, mostrar detalhes específicos
+        if (result.error) {
+          console.error("[useMetaAdsAnalysis] Erro reportado na resposta:", result.error);
+          
+          // Tentar extrair mais informações do erro
+          const errorDetails = typeof result.error === 'object' ? 
+            JSON.stringify(result.error) : 
+            String(result.error);
+          
+          throw new Error(`Erro na API do Meta Ads: ${errorDetails}`);
+        }
+        
+        // Verificação rigorosa dos dados recebidos
+        if (!result.meta) {
+          console.error("[useMetaAdsAnalysis] Dados recebidos inválidos ou incompletos (sem meta):", result);
+          throw new Error("Os dados recebidos da API do Meta Ads estão incompletos ou em formato inválido");
+        }
+        
+        // Garantir que meta.campaigns existe, mesmo que vazio
+        if (!result.meta.campaigns) {
+          result.meta.campaigns = [];
+          console.warn("[useMetaAdsAnalysis] Nenhuma campanha encontrada, inicializando array vazio");
+        }
+        
+        // Configurar valores padrão para evitar erros
+        if (typeof result.meta.totalSpent === 'undefined') {
+          result.meta.totalSpent = 0;
+          console.warn("[useMetaAdsAnalysis] totalSpent não encontrado, definindo como 0");
+        }
+        
+        if (typeof result.meta.dailyBudget === 'undefined') {
+          result.meta.dailyBudget = 0;
+          console.warn("[useMetaAdsAnalysis] dailyBudget não encontrado, definindo como 0");
+        }
+        
+        // Logs detalhados para verificação dos valores
+        console.log("[useMetaAdsAnalysis] Meta dados recebidos:");
+        console.log("- Total gasto:", result.meta.totalSpent);
+        console.log("- Orçamento diário:", result.meta.dailyBudget);
+        console.log("- Período:", result.meta.dateRange);
+        console.log("- Número de campanhas:", result.meta.campaigns.length);
+        
+        // Verificar cada campanha individualmente
+        if (result.meta.campaigns && result.meta.campaigns.length > 0) {
+          console.log("[useMetaAdsAnalysis] Detalhes das campanhas:");
+          result.meta.campaigns.forEach((campaign: any, index: number) => {
+            console.log(`Campanha ${index + 1}: ${campaign.name}`);
+            console.log(`- ID: ${campaign.id}`);
+            console.log(`- Status: ${campaign.status}`);
+            console.log(`- Gasto: ${campaign.spend}`);
           });
+          
+          // Validação do total das campanhas vs total reportado
+          const totalFromCampaigns = result.meta.campaigns.reduce(
+            (total: number, campaign: any) => total + parseFloat(String(campaign.spend || "0")), 
+            0
+          );
+          
+          console.log(`[useMetaAdsAnalysis] Total calculado manualmente das campanhas: ${totalFromCampaigns}`);
+          console.log(`[useMetaAdsAnalysis] Total reportado pela API: ${result.meta.totalSpent}`);
+          
+          if (Math.abs(totalFromCampaigns - result.meta.totalSpent) > 0.01) {
+            console.warn("[useMetaAdsAnalysis] AVISO: Discrepância entre o total reportado e a soma das campanhas!");
+          }
         }
+        
+        // Garantir que todos os valores numéricos sejam números
+        if (result.meta) {
+          if (typeof result.meta.totalSpent !== 'number') {
+            const converted = parseFloat(String(result.meta.totalSpent || "0"));
+            result.meta.totalSpent = isNaN(converted) ? 0 : converted;
+            console.log("[useMetaAdsAnalysis] Convertido totalSpent para número:", result.meta.totalSpent);
+          }
+          
+          if (typeof result.meta.dailyBudget !== 'number') {
+            const converted = parseFloat(String(result.meta.dailyBudget || "0"));
+            result.meta.dailyBudget = isNaN(converted) ? 0 : converted;
+            console.log("[useMetaAdsAnalysis] Convertido dailyBudget para número:", result.meta.dailyBudget);
+          }
+          
+          if (result.meta.campaigns) {
+            result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
+              const spendValue = typeof campaign.spend === 'number' 
+                ? campaign.spend 
+                : parseFloat(String(campaign.spend || "0"));
+              
+              return {
+                ...campaign,
+                spend: isNaN(spendValue) ? 0 : spendValue
+              };
+            });
+          }
+        }
+        
+        setAnalysis(result as SimpleAnalysisResult);
+        
+        toast({
+          title: "Análise concluída",
+          description: "Dados do Meta Ads obtidos com sucesso!",
+        });
+      } catch (edgeError) {
+        console.error("[useMetaAdsAnalysis] Erro ao chamar função Edge:", edgeError);
+        
+        // Verificar se é um erro de timeout
+        if (edgeError.message && edgeError.message.includes("Timeout")) {
+          throw new Error("A função Edge não respondeu no tempo esperado. Isso pode indicar um problema de conexão ou alta carga no servidor.");
+        }
+        
+        // Verificar se é um erro de CORS ou rede
+        if (edgeError.message && (
+            edgeError.message.includes("NetworkError") || 
+            edgeError.message.includes("Failed to fetch") || 
+            edgeError.message.includes("Network request failed")
+        )) {
+          throw new Error("Erro de rede ao chamar a função Edge. Verifique sua conexão com a internet e se o Supabase está acessível.");
+        }
+        
+        // Outros erros
+        throw new Error(`Falha ao chamar função Edge: ${edgeError.message || "Erro desconhecido"}`);
       }
-      
-      setAnalysis(result as SimpleAnalysisResult);
-      
-      toast({
-        title: "Análise concluída",
-        description: "Dados do Meta Ads obtidos com sucesso!",
-      });
       
     } catch (err) {
       console.error("[useMetaAdsAnalysis] Erro na análise:", err);
@@ -374,6 +406,67 @@ export const useMetaAdsAnalysis = () => {
     }
   };
 
+  const testEdgeFunction = async () => {
+    setIsLoading(true);
+    setDebugInfo(null);
+    
+    try {
+      // Teste simples com payload mínimo
+      const { data, error } = await supabase.functions.invoke(
+        "daily-budget-reviews",
+        { 
+          body: { method: "ping" },
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      );
+      
+      setDebugInfo({
+        edgeFunctionTest: {
+          success: !error,
+          data,
+          error
+        }
+      });
+      
+      if (error) {
+        toast({
+          title: "Erro na função Edge",
+          description: `Não foi possível conectar à função Edge: ${error.message}`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      toast({
+        title: "Função Edge disponível",
+        description: "Conexão com a função Edge estabelecida com sucesso.",
+      });
+      
+      return true;
+    } catch (err) {
+      console.error("[testEdgeFunction] Erro:", err);
+      
+      setDebugInfo({
+        edgeFunctionTest: {
+          success: false,
+          error: err instanceof Error ? err.message : String(err)
+        }
+      });
+      
+      toast({
+        title: "Erro na função Edge",
+        description: err instanceof Error ? err.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     client,
     analysis,
@@ -382,6 +475,7 @@ export const useMetaAdsAnalysis = () => {
     fetchAnalysis,
     rawApiResponse,
     debugInfo,
-    testMetaToken
+    testMetaToken,
+    testEdgeFunction
   };
 };

@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader, Info, AlertTriangle, Copy, Search } from "lucide-react";
+import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader, Info, AlertTriangle, Copy, Search, Activity } from "lucide-react";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { useMetaAdsAnalysis } from "@/components/revisao-nova/useMetaAdsAnalysis";
 import { ClientSelector } from "@/components/revisao-nova/ClientSelector";
@@ -25,7 +24,8 @@ export default function RevisaoNova() {
     fetchAnalysis,
     rawApiResponse,
     debugInfo,
-    testMetaToken
+    testMetaToken,
+    testEdgeFunction
   } = useMetaAdsAnalysis();
 
   const handleClientSelect = (clientId: string) => {
@@ -40,6 +40,10 @@ export default function RevisaoNova() {
 
   const handleTestToken = async () => {
     await testMetaToken();
+  };
+
+  const handleTestEdgeFunction = async () => {
+    await testEdgeFunction();
   };
 
   const handleCopyToken = () => {
@@ -181,6 +185,17 @@ export default function RevisaoNova() {
                 {isLoading ? <Loader className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
                 Testar Validação do Token
               </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestEdgeFunction}
+                className="text-xs"
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader className="h-3 w-3 mr-1 animate-spin" /> : <Activity className="h-3 w-3 mr-1" />}
+                Testar Função Edge
+              </Button>
               
               <Button
                 variant="outline"
@@ -274,6 +289,8 @@ export default function RevisaoNova() {
               <li>Verifique se a conta Meta Ads tem permissões para acessar as campanhas</li>
               <li>Tente novamente em alguns minutos caso seja um problema temporário</li>
               <li>Use as ferramentas de diagnóstico acima para testar o token e a API diretamente</li>
+              <li>Se o erro for na função Edge, verifique se ela está publicada no Supabase</li>
+              <li>Verifique se o CORS está configurado na função Edge para permitir seu domínio</li>
             </ul>
           </div>
         </div>
@@ -290,7 +307,6 @@ export default function RevisaoNova() {
       );
     }
 
-    // Se temos uma resposta mas não foi bem-sucedida
     if (analysis && !analysis.success) {
       return (
         <div className="space-y-4">
