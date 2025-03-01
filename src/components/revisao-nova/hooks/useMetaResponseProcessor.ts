@@ -51,17 +51,17 @@ export const useMetaResponseProcessor = () => {
       });
     } catch (error) {
       // Caso haja erros no processamento, capturar e reportar
-      const { message, details } = processErrorDetails(error);
+      const errorDetails = processErrorDetails(error);
       
-      console.error("[useMetaResponseProcessor] Erro ao processar resposta:", message);
+      console.error("[useMetaResponseProcessor] Erro ao processar resposta:", errorDetails.message);
       setDebugInfo(prev => ({
         ...prev,
-        processingError: details
+        processingError: errorDetails.details
       }));
       
       toast({
         title: "Erro ao processar dados",
-        description: message,
+        description: errorDetails.message,
         variant: "destructive",
       });
       

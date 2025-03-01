@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMetaTokenService } from "./hooks/useMetaTokenService";
@@ -106,12 +107,12 @@ export const useMetaAdsAnalysis = () => {
       }
       
     } catch (err) {
-      const errorMessage = processErrorDetails(err);
-      setError(errorMessage);
+      const errorDetails = processErrorDetails(err);
+      setError(errorDetails.message);
       
       toast({
         title: "Erro na análise",
-        description: errorMessage,
+        description: errorDetails.message,
         variant: "destructive",
       });
     } finally {
