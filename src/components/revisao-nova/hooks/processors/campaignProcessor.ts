@@ -57,7 +57,7 @@ export const extractCampaignSpend = (campaign: SimpleMetaCampaign): number => {
 
 /**
  * Normaliza uma lista de campanhas do Meta Ads, garantindo que todos os valores de gasto
- * sejam números válidos
+ * sejam números válidos e preservando os dados originais
  */
 export const normalizeCampaigns = (campaigns: SimpleMetaCampaign[]): SimpleMetaCampaign[] => {
   if (!campaigns || !Array.isArray(campaigns) || campaigns.length === 0) {
@@ -70,6 +70,7 @@ export const normalizeCampaigns = (campaigns: SimpleMetaCampaign[]): SimpleMetaC
   return campaigns.map(campaign => {
     const spendValue = extractCampaignSpend(campaign);
     
+    // Retorna o objeto original com o spend normalizado como número
     return {
       ...campaign,
       spend: spendValue
@@ -92,3 +93,4 @@ export const calculateTotalSpend = (campaigns: SimpleMetaCampaign[]): number => 
   console.log(`[campaignProcessor] Total calculado das campanhas: ${total}`);
   return total;
 };
+

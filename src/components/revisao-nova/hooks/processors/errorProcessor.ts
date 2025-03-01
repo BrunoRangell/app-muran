@@ -9,7 +9,7 @@ export const processErrorDetails = (err: any): {
   console.error("[errorProcessor] Erro na análise:", err);
   
   // Extrair mensagem de erro
-  const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
+  const errorMessage = err instanceof Error ? err.message : String(err) || "Erro desconhecido";
   
   // Extrair mais informações do erro para depuração
   let errorDetails: any = {};
