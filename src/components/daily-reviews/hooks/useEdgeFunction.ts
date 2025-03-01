@@ -32,12 +32,39 @@ export const invokeEdgeFunction = async (
     
     console.log("Token Meta Ads encontrado, enviando requisição para função Edge");
     
+    // Verificar se o cliente existe e buscar os dados necessários
+    const { data: clientData, error: clientError } = await supabase
+      .from("clients")
+      .select("company_name, meta_account_id")  // Usar company_name em vez de name
+      .eq("id", clientId)
+      .maybeSingle();
+    
+    if (clientError) {
+      console.error("Erro ao buscar dados do cliente:", clientError);
+      // Verificar se o erro está relacionado à estrutura da tabela
+      if (clientError.message && clientError.message.includes("column")) {
+        throw new AppError(
+          "Erro na estrutura do banco de dados. Verifique as colunas na tabela clients.",
+          "DATABASE_SCHEMA_ERROR", 
+          { originalError: clientError }
+        );
+      }
+      throw new Error("Erro ao buscar dados do cliente: " + clientError.message);
+    }
+    
+    if (!clientData) {
+      console.error("Cliente não encontrado:", clientId);
+      throw new Error("Cliente não encontrado.");
+    }
+    
     // Chamar a função Edge passando o token e dados do cliente com payload JSON bem formado
     const payload = { 
       method: "getMetaAdsData", 
       clientId,
       reviewDate: formattedDate,
-      accessToken: tokens.value
+      accessToken: tokens.value,
+      clientName: clientData.company_name,  // Usar company_name
+      metaAccountId: clientData.meta_account_id
     };
     
     console.log("Enviando payload para função Edge:", JSON.stringify(payload, null, 2));
