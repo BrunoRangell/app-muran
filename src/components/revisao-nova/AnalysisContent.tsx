@@ -89,10 +89,13 @@ export function AnalysisContent({
     );
   }
 
+  // Verificação adicional para garantir que meta existe no analysis antes de renderizar AnalysisResult
+  const canShowAnalysisResult = Boolean(analysis && analysis.meta);
+
   return (
     <div className="space-y-6">
       {/* Verificação extra para garantir que o analysis tem todos os dados necessários */}
-      {analysis && analysis.meta && (
+      {canShowAnalysisResult && (
         <AnalysisResult analysis={analysis} />
       )}
 

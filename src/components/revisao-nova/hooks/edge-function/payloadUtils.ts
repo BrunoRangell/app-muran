@@ -36,7 +36,7 @@ export const preparePayload = (payload: any) => {
     
     return cleanPayload;
   } catch (err) {
-    if (err.message.includes("circular") || err.message.includes("cyclic")) {
+    if (err.message?.includes("circular") || err.message?.includes("cyclic")) {
       console.error("[payloadUtils] ERRO: Detectada estrutura cíclica no payload!");
       
       // Tentar extrair propriedades de primeiro nível manualmente
