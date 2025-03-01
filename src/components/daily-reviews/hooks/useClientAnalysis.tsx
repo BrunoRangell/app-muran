@@ -53,14 +53,15 @@ export const useClientAnalysis = (onSuccess: (data: any) => void) => {
           await new Promise(resolve => setTimeout(resolve, 1500));
           
           // Criar uma revisão simulada no banco de dados
-          const today = new Date().toISOString().split('T')[0];
+          const todayDate = new Date();
+          const formattedDate = todayDate.toISOString().split('T')[0];
           
           // Verificar se já existe uma revisão para hoje
           const { data: existingReview, error: checkError } = await supabase
             .from("daily_budget_reviews")
             .select("id")
             .eq("client_id", clientId)
-            .eq("review_date", today)
+            .eq("review_date", formattedDate)
             .maybeSingle();
             
           if (checkError) {
@@ -74,11 +75,9 @@ export const useClientAnalysis = (onSuccess: (data: any) => void) => {
           const spentPercentage = Math.random() * 0.7 + 0.01; // Entre 1% e 70% do orçamento mensal
           const totalSpent = monthlyBudget * spentPercentage;
           
-          // Calcular orçamento diário atual
-          // Simular um valor entre 80% e 120% do valor ideal
-          const today = new Date();
-          const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-          const currentDay = today.getDate();
+          // Calcular orçamento diário atual usando o objeto Date
+          const daysInMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0).getDate();
+          const currentDay = todayDate.getDate();
           const remainingDays = daysInMonth - currentDay + 1;
           
           const remainingBudget = monthlyBudget - totalSpent;
@@ -91,7 +90,7 @@ export const useClientAnalysis = (onSuccess: (data: any) => void) => {
           // Dados para inserção/atualização
           const reviewData = {
             client_id: clientId,
-            review_date: today,
+            review_date: formattedDate,
             meta_daily_budget_current: currentDailyBudget,
             meta_total_spent: totalSpent,
             meta_account_id: client.meta_account_id,
@@ -135,7 +134,7 @@ export const useClientAnalysis = (onSuccess: (data: any) => void) => {
             // Use RPC call para evitar problemas com RLS
             const { data, error } = await supabase.rpc('insert_daily_budget_review', {
               p_client_id: clientId,
-              p_review_date: today,
+              p_review_date: formattedDate,
               p_meta_daily_budget_current: currentDailyBudget,
               p_meta_total_spent: totalSpent,
               p_meta_account_id: client.meta_account_id,
