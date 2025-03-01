@@ -6,6 +6,7 @@ interface Client {
   id: string;
   company_name: string;
   meta_account_id: string;
+  meta_ads_budget: number;
 }
 
 /**
@@ -23,7 +24,7 @@ export const useMetaClientService = () => {
       
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
-        .select("id, company_name, meta_account_id")
+        .select("id, company_name, meta_account_id, meta_ads_budget")
         .eq("id", clientId)
         .single();
       
