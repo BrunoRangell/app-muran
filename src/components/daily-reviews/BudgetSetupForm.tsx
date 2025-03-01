@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,7 +64,7 @@ export const BudgetSetupForm = () => {
   });
 
   // Inicializar orçamentos a partir dos dados obtidos
-  useState(() => {
+  useEffect(() => {
     if (clients) {
       const initialBudgets: Record<string, { meta: string; google: string }> = {};
       clients.forEach((client) => {
