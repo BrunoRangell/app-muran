@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCcw, AlertCircle, Check, ExternalLink, Loader } from "lucide-react";
-import { SimpleMetaData, SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
+import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { useMetaAdsAnalysis } from "@/components/revisao-nova/useMetaAdsAnalysis";
 import { ClientSelector } from "@/components/revisao-nova/ClientSelector";
 import { formatCurrency } from "@/utils/formatters";
@@ -35,7 +35,7 @@ export default function RevisaoNova() {
       return (
         <div className="flex flex-col items-center justify-center p-12">
           <Loader className="h-12 w-12 animate-spin text-[#ff6e00] mb-4" />
-          <p className="text-lg">Conectando à API do Meta Ads e buscando dados...</p>
+          <p className="text-lg">Conectando à API do Meta Ads e buscando dados reais...</p>
         </div>
       );
     }
@@ -54,7 +54,7 @@ export default function RevisaoNova() {
       return (
         <div className="text-center p-12 border rounded-lg bg-gray-50">
           <p className="text-lg text-gray-600">
-            Selecione um cliente acima e clique em "Analisar" para ver os dados do Meta Ads.
+            Selecione um cliente acima e clique em "Analisar" para ver os dados reais do Meta Ads.
           </p>
         </div>
       );
@@ -62,6 +62,15 @@ export default function RevisaoNova() {
 
     return (
       <div className="space-y-6">
+        <Alert variant="default" className="bg-blue-50 border-blue-200">
+          <AlertCircle className="h-4 w-4 text-blue-500" />
+          <AlertTitle>Dados reais do Meta Ads</AlertTitle>
+          <AlertDescription>
+            Os dados exibidos abaixo foram obtidos diretamente da API do Meta Ads e refletem os valores
+            reais para o período de {analysis.meta.dateRange.start} a {analysis.meta.dateRange.end}.
+          </AlertDescription>
+        </Alert>
+        
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <Card className="border-l-4 border-l-[#ff6e00]">
             <CardHeader className="pb-2">
@@ -120,7 +129,7 @@ export default function RevisaoNova() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-[#321e32]">Revisão Nova</h1>
+        <h1 className="text-3xl font-bold text-[#321e32]">Revisão de Campanhas Meta Ads</h1>
         <a 
           href="https://business.facebook.com/adsmanager/" 
           target="_blank" 
@@ -149,7 +158,7 @@ export default function RevisaoNova() {
             ) : (
               <>
                 <RefreshCcw className="mr-2 h-4 w-4" />
-                Analisar
+                Buscar Dados Reais
               </>
             )}
           </Button>

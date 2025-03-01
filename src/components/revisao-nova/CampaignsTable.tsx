@@ -22,6 +22,14 @@ export const CampaignsTable = ({ campaigns }: CampaignsTableProps) => {
   // Calcular o total
   const totalSpend = campaigns.reduce((total, campaign) => total + campaign.spend, 0);
   
+  // Log detalhado para conferência dos valores
+  console.log("Renderizando tabela de campanhas");
+  console.log(`Total de campanhas: ${campaigns.length}`);
+  console.log(`Total gasto: ${totalSpend}`);
+  campaigns.forEach((campaign, index) => {
+    console.log(`Campanha ${index + 1}: ${campaign.name}, Gasto: ${campaign.spend}, Status: ${campaign.status}`);
+  });
+  
   return (
     <div className="overflow-x-auto">
       <Table>

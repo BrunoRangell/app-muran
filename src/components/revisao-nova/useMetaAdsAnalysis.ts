@@ -80,7 +80,7 @@ export const useMetaAdsAnalysis = () => {
       
       console.log("Período de análise:", formattedStartDate, "a", formattedEndDate);
       
-      // 4. Chamar a função Edge do Supabase
+      // 4. Chamar a função Edge do Supabase diretamente com o período atual completo
       const payload = {
         method: "getMetaAdsData",
         clientId,
@@ -112,38 +112,68 @@ export const useMetaAdsAnalysis = () => {
       
       console.log("Resposta recebida da API Meta Ads:", result);
       
-      // Verificando estrutura da resposta para garantir debug
-      if (result.meta && result.meta.campaigns) {
-        console.log("Campanhas recebidas:");
+      // Verificação rigorosa dos dados recebidos
+      if (!result.meta || typeof result.meta.totalSpent === 'undefined' || !result.meta.campaigns) {
+        console.error("Dados recebidos inválidos ou incompletos:", result);
+        throw new Error("Os dados recebidos da API do Meta Ads estão incompletos ou em formato inválido");
+      }
+      
+      // Logs detalhados para verificação dos valores
+      console.log("Meta dados recebidos:");
+      console.log("- Total gasto:", result.meta.totalSpent);
+      console.log("- Orçamento diário:", result.meta.dailyBudget);
+      console.log("- Período:", result.meta.dateRange);
+      console.log("- Número de campanhas:", result.meta.campaigns.length);
+      
+      // Verificando cada campanha individualmente
+      if (result.meta.campaigns && result.meta.campaigns.length > 0) {
+        console.log("Detalhes das campanhas:");
+        result.meta.campaigns.forEach((campaign: any, index: number) => {
+          console.log(`Campanha ${index + 1}: ${campaign.name}`);
+          console.log(`- ID: ${campaign.id}`);
+          console.log(`- Status: ${campaign.status}`);
+          console.log(`- Gasto: ${campaign.spend}`);
+        });
+        
+        // Validação do total das campanhas vs total reportado
         const totalFromCampaigns = result.meta.campaigns.reduce(
           (total: number, campaign: any) => total + parseFloat(campaign.spend.toString() || "0"), 
           0
         );
-        console.log(`Total das campanhas individuais: ${totalFromCampaigns}`);
-        console.log(`Total geral reportado: ${result.meta.totalSpent}`);
+        
+        console.log(`Total calculado manualmente das campanhas: ${totalFromCampaigns}`);
+        console.log(`Total reportado pela API: ${result.meta.totalSpent}`);
         
         if (Math.abs(totalFromCampaigns - result.meta.totalSpent) > 0.01) {
           console.warn("AVISO: Discrepância entre o total reportado e a soma das campanhas!");
         }
       }
       
-      // Verificar valores numéricos
+      // Garantir que todos os valores numéricos sejam números
       if (result.meta) {
         if (typeof result.meta.totalSpent !== 'number') {
-          result.meta.totalSpent = parseFloat(result.meta.totalSpent);
+          const converted = parseFloat(result.meta.totalSpent);
+          result.meta.totalSpent = isNaN(converted) ? 0 : converted;
           console.log("Convertido totalSpent para número:", result.meta.totalSpent);
         }
         
         if (typeof result.meta.dailyBudget !== 'number') {
-          result.meta.dailyBudget = parseFloat(result.meta.dailyBudget);
+          const converted = parseFloat(result.meta.dailyBudget);
+          result.meta.dailyBudget = isNaN(converted) ? 0 : converted;
           console.log("Convertido dailyBudget para número:", result.meta.dailyBudget);
         }
         
         if (result.meta.campaigns) {
-          result.meta.campaigns = result.meta.campaigns.map((campaign: any) => ({
-            ...campaign,
-            spend: typeof campaign.spend === 'number' ? campaign.spend : parseFloat(campaign.spend || "0")
-          }));
+          result.meta.campaigns = result.meta.campaigns.map((campaign: any) => {
+            const spendValue = typeof campaign.spend === 'number' 
+              ? campaign.spend 
+              : parseFloat(campaign.spend || "0");
+            
+            return {
+              ...campaign,
+              spend: isNaN(spendValue) ? 0 : spendValue
+            };
+          });
         }
       }
       
