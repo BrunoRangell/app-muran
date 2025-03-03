@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { MetaCampaignsTable } from "./MetaCampaignsTable";
+import { MetaAdsBudgetCard } from "./MetaAdsBudgetCard";
 
 export interface ClientDetailsContentProps {
   client: any;
@@ -59,7 +60,7 @@ export const ClientDetailsContent = ({
 
       <ClientSummaryCard client={client} latestReview={latestReview} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <BudgetCard
           monthlyBudget={client?.meta_ads_budget || 0}
           dailyBudget={latestReview?.meta_daily_budget_current || 0}
@@ -70,6 +71,10 @@ export const ClientDetailsContent = ({
           recommendation={recommendation}
           suggestedBudgetChange={suggestedBudgetChange}
           currentBudget={latestReview?.meta_daily_budget_current || 0}
+        />
+        <MetaAdsBudgetCard 
+          clientId={client?.id} 
+          metaAccountId={client?.meta_account_id}
         />
       </div>
 

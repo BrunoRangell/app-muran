@@ -3,3 +3,6 @@ project_id = "socrnutfpqtcjmetskta"
 
 [functions.daily-budget-reviews]
 verify_jwt = true
+
+[functions.meta-budget-calculator]
+verify_jwt = true
