@@ -128,6 +128,7 @@ export function AnalysisContent({
         <AnalysisResult 
           analysis={analysis} 
           monthlyBudget={monthlyBudget}
+          client={client}
         />
       )}
 

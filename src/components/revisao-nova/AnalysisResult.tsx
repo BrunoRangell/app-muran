@@ -5,13 +5,15 @@ import { BarChart4, DollarSign, Calculator, Calendar } from "lucide-react";
 import { SimpleAnalysisResult } from "@/components/daily-reviews/hooks/types";
 import { CampaignsTable } from "./CampaignsTable";
 import { getDaysInMonth, format } from "date-fns";
+import { MetaAdsBudgetCard } from "@/components/daily-reviews/client-details/MetaAdsBudgetCard";
 
 interface AnalysisResultProps {
   analysis: SimpleAnalysisResult;
   monthlyBudget: number | null;
+  client: any; // Adicionamos client como prop para usar em MetaAdsBudgetCard
 }
 
-export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps) {
+export function AnalysisResult({ analysis, monthlyBudget, client }: AnalysisResultProps) {
   if (!analysis?.meta) return null;
 
   const totalSpent = analysis.meta.totalSpent || 0;
@@ -101,7 +103,7 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
           </CardContent>
         </Card>
         
-        {/* NOVO CARD: Valor Diário Sugerido */}
+        {/* Card de Valor Diário Sugerido */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -125,7 +127,7 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
           </CardContent>
         </Card>
         
-        {/* NOVO CARD: Dias Restantes no Mês */}
+        {/* Card de Dias Restantes no Mês */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -147,6 +149,16 @@ export function AnalysisResult({ analysis, monthlyBudget }: AnalysisResultProps)
           </CardContent>
         </Card>
       </div>
+
+      {/* Adicionar o MetaAdsBudgetCard aqui */}
+      {client?.meta_account_id && (
+        <div className="mt-4">
+          <MetaAdsBudgetCard 
+            clientId={client.id} 
+            metaAccountId={client.meta_account_id}
+          />
+        </div>
+      )}
 
       {analysis.meta.campaigns && analysis.meta.campaigns.length > 0 && (
         <div className="mt-8">
