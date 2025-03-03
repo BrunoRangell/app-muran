@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Client } from "@/components/clients/types";
@@ -137,12 +136,44 @@ export const useClients = (filters?: {
     }
   });
 
+  // Função adicional para buscar apenas clientes ativos
+  const useActiveClients = () => {
+    return useQuery({
+      queryKey: ["clients-active"],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("clients")
+          .select("*")
+          .eq('status', 'active')
+          .order("company_name");
+
+        if (error) {
+          console.error("Erro ao buscar clientes ativos:", error);
+          throw error;
+        }
+
+        return data as Client[];
+      },
+      meta: {
+        onError: (error: Error) => {
+          console.error("Erro na query de clientes ativos:", error);
+          toast({
+            title: "Erro ao carregar clientes",
+            description: "Ocorreu um erro ao carregar a lista de clientes ativos.",
+            variant: "destructive",
+          });
+        }
+      }
+    });
+  };
+
   return {
     clients,
     isLoading,
     error,
     createClient,
     updateClient,
-    deleteClient
+    deleteClient,
+    useActiveClients
   };
 };

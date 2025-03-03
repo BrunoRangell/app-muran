@@ -7,7 +7,9 @@ import {
   ListTodo,
   Receipt,
   CreditCard,
-  BarChart
+  BarChart,
+  Calendar,
+  BarChart3
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -23,7 +25,7 @@ interface SidebarProps {
 const financialSubMenu: MenuItem[] = [
   { icon: DollarSign, label: "Relatório Financeiro", path: "/clientes/relatorio" },
   { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: Receipt, label: "Recebimentos", path: "/clientes/recebimentos" },
+  { icon: Receipt, label: "Recebimentos", path: "/recebimentos-nova" },
   { icon: CreditCard, label: "Registro de Custos", path: "/clientes/custos" }
 ];
 
@@ -38,6 +40,8 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
+  { icon: Calendar, label: "Revisões Diárias", path: "/revisoes-diarias" },
+  { icon: BarChart3, label: "Revisão Meta Ads", path: "/revisao-meta" },
 ];
 
 const regularMenuItems: MenuItem[] = [

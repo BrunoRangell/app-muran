@@ -1,0 +1,89 @@
+
+import { formatCurrency } from "@/utils/formatters";
+import { AlertCircle, Calendar, Loader } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+interface ReviewHistoryTableProps {
+  isLoading: boolean;
+  reviewHistory: any[] | null;
+}
+
+export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTableProps) => {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="text-muran-primary" size={18} />
+            Histórico de Revisões
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-2">
+            {Array(5).fill(0).map((_, i) => (
+              <div key={i} className="h-12 bg-gray-100 rounded-md"></div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!reviewHistory || reviewHistory.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="text-muran-primary" size={18} />
+            Histórico de Revisões
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-6 text-gray-500">
+            <AlertCircle className="h-12 w-12 text-gray-300 mb-2" />
+            <p>Nenhuma revisão encontrada para este cliente</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Calendar className="text-muran-primary" size={18} />
+          Histórico de Revisões
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left border-b">
+                <th className="pb-2">Data</th>
+                <th className="pb-2">Orçamento Diário</th>
+                <th className="pb-2">Total Gasto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reviewHistory.map((review) => (
+                <tr key={review.id} className="border-b">
+                  <td className="py-2">
+                    {new Date(review.review_date).toLocaleDateString("pt-BR")}
+                  </td>
+                  <td className="py-2">
+                    {formatCurrency(review.meta_daily_budget_current || 0)}
+                  </td>
+                  <td className="py-2">
+                    {formatCurrency(review.meta_total_spent || 0)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
