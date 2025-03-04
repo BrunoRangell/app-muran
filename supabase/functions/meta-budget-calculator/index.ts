@@ -49,8 +49,9 @@ serve(async (req) => {
     // Iniciando cálculo do orçamento diário total
     console.log(`Calculando orçamento diário para a conta ${accountId}`);
     
-    // Buscar campanhas com mais campos para melhor diagnóstico
-    const campaignsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time,id,effective_status,budget_remaining,lifetime_budget,special_ad_categories&access_token=${accessToken}`;
+    // Buscar todas as campanhas, sem filtrar por status inicialmente para garantir que todas sejam analisadas
+    // Aumentamos o limite para 1000 para buscar mais campanhas de uma vez
+    const campaignsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time,id,effective_status,budget_remaining,lifetime_budget,special_ad_categories&access_token=${accessToken}&limit=1000`;
     const campaignsResponse = await fetch(campaignsUrl);
     
     if (!campaignsResponse.ok) {
@@ -62,8 +63,24 @@ serve(async (req) => {
       );
     }
 
-    const campaignsData = await campaignsResponse.json();
-    const campaigns = campaignsData.data || [];
+    // Processar a resposta da API
+    let campaigns = [];
+    let campaignsData = await campaignsResponse.json();
+    campaigns = [...campaignsData.data || []];
+    
+    // Implementar paginação para garantir que todas as campanhas sejam buscadas
+    let nextPageUrl = campaignsData.paging?.next;
+    while (nextPageUrl) {
+      console.log(`Buscando próxima página de campanhas: ${nextPageUrl}`);
+      const nextPageResponse = await fetch(nextPageUrl);
+      if (!nextPageResponse.ok) {
+        console.error("Erro ao buscar próxima página de campanhas:", await nextPageResponse.json());
+        break;
+      }
+      const nextPageData = await nextPageResponse.json();
+      campaigns = [...campaigns, ...(nextPageData.data || [])];
+      nextPageUrl = nextPageData.paging?.next;
+    }
     
     console.log(`Encontradas ${campaigns.length} campanhas totais na conta`);
 
@@ -74,9 +91,14 @@ serve(async (req) => {
     let totalDailyBudget = 0;
     const campaignDetails = [];
     const skippedCampaigns = [];
+    const statusCounts: Record<string, number> = {};
 
     // Processar cada campanha
     for (const campaign of campaigns) {
+      // Contabilizar os diferentes status para diagnóstico
+      const statusKey = `${campaign.status}:${campaign.effective_status}`;
+      statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
+      
       // Log detalhado para diagnóstico
       console.log(`\nAvaliando campanha: ID=${campaign.id}, Nome="${campaign.name}", Status=${campaign.status}, EffectiveStatus=${campaign.effective_status}`);
       
@@ -127,8 +149,9 @@ serve(async (req) => {
         // Não vamos pular, mas registramos para diagnóstico
       }
 
-      // Buscar conjuntos de anúncios para a campanha
-      const adsetsUrl = `https://graph.facebook.com/v20.0/${campaign.id}/adsets?fields=daily_budget,status,name,end_time,id,effective_status,lifetime_budget&access_token=${accessToken}`;
+      // Buscar conjuntos de anúncios para a campanha, aumentando o limite para 1000
+      let adsets = [];
+      const adsetsUrl = `https://graph.facebook.com/v20.0/${campaign.id}/adsets?fields=daily_budget,status,name,end_time,id,effective_status,lifetime_budget&access_token=${accessToken}&limit=1000`;
       const adsetsResponse = await fetch(adsetsUrl);
       
       if (!adsetsResponse.ok) {
@@ -136,8 +159,22 @@ serve(async (req) => {
         continue;
       }
 
-      const adsetsData = await adsetsResponse.json();
-      const adsets = adsetsData.data || [];
+      let adsetsData = await adsetsResponse.json();
+      adsets = [...adsetsData.data || []];
+      
+      // Implementar paginação para conjuntos de anúncios também
+      let nextAdsetPageUrl = adsetsData.paging?.next;
+      while (nextAdsetPageUrl) {
+        console.log(`Buscando próxima página de conjuntos de anúncios para campanha ${campaign.id}`);
+        const nextAdsetPageResponse = await fetch(nextAdsetPageUrl);
+        if (!nextAdsetPageResponse.ok) {
+          console.error("Erro ao buscar próxima página de conjuntos de anúncios:", await nextAdsetPageResponse.json());
+          break;
+        }
+        const nextAdsetPageData = await nextAdsetPageResponse.json();
+        adsets = [...adsets, ...(nextAdsetPageData.data || [])];
+        nextAdsetPageUrl = nextAdsetPageData.paging?.next;
+      }
       
       console.log(`Campanha ${campaign.id} (${campaign.name}) tem ${adsets.length} conjuntos de anúncios totais`);
       
@@ -246,7 +283,7 @@ serve(async (req) => {
       return b.budget - a.budget;
     });
 
-    // Retornar o resultado com detalhes e diagnóstico
+    // Retornar o resultado com detalhes e diagnóstico aprimorado
     return new Response(
       JSON.stringify({ 
         totalDailyBudget,
@@ -254,7 +291,8 @@ serve(async (req) => {
         diagnostics: {
           totalCampaigns: campaigns.length,
           includedItems: campaignDetails.length,
-          skippedCampaigns
+          skippedCampaigns,
+          statusCounts
         }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }

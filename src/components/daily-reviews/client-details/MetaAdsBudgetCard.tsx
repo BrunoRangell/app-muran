@@ -1,13 +1,14 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, AlertCircle, Loader, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { DollarSign, AlertCircle, Loader, ChevronDown, ChevronUp, Info, PieChart } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 interface MetaAdsBudgetCardProps {
   clientId: string;
@@ -34,6 +35,7 @@ interface Diagnostics {
     reason: string;
     details: any;
   }[];
+  statusCounts?: Record<string, number>;
 }
 
 export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCardProps) => {
@@ -44,6 +46,7 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const [isStatusInfoOpen, setIsStatusInfoOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -127,6 +130,35 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
     calculateTotalDailyBudget();
   }, [metaAccountId, toast]);
 
+  // Agrupar e contar campanhas por razão de exclusão
+  const getSkippedCampaignsByReason = () => {
+    if (!diagnostics?.skippedCampaigns) return {};
+    
+    const reasonCounts: Record<string, number> = {};
+    
+    diagnostics.skippedCampaigns.forEach(campaign => {
+      // Simplificar razões semelhantes para melhor agrupamento
+      let simplifiedReason = campaign.reason;
+      
+      // Simplificar razões status-related
+      if (simplifiedReason.includes("Status não ativo")) {
+        simplifiedReason = "Status não ativo";
+      } else if (simplifiedReason.includes("Effective status não ativo")) {
+        simplifiedReason = "Status efetivo não ativo";
+      } else if (simplifiedReason.includes("Data de término")) {
+        simplifiedReason = "Data de término já passou";
+      } else if (simplifiedReason.includes("Sem orçamento diário definido")) {
+        simplifiedReason = "Sem orçamento diário definido";
+      }
+      
+      reasonCounts[simplifiedReason] = (reasonCounts[simplifiedReason] || 0) + 1;
+    });
+    
+    return reasonCounts;
+  };
+
+  const skippedReasons = getSkippedCampaignsByReason();
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -156,26 +188,121 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
             </div>
             
             {diagnostics && (
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span>Total de {diagnostics.totalCampaigns} campanhas</span>
-                <span>•</span>
-                <span>{diagnostics.includedItems} itens no cálculo</span>
-                <span>•</span>
-                <span>{diagnostics.skippedCampaigns.length} campanhas ignoradas</span>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <span>{diagnostics.totalCampaigns} campanhas totais</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                          <Info className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p>Total de campanhas na conta Meta Ads, incluindo todas as campanhas ativas e inativas.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
-                        <Info className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-sm">
-                      <p>O orçamento diário inclui apenas campanhas e conjuntos de anúncios ativos com orçamento diário definido.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <span>•</span>
+                
+                <div className="flex items-center gap-1">
+                  <span>{diagnostics.includedItems} itens no cálculo</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                          <Info className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p>Número de campanhas e conjuntos de anúncios ativos que contribuem para o orçamento diário.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                <span>•</span>
+                
+                <div className="flex items-center gap-1">
+                  <span>{diagnostics.skippedCampaigns.length} campanhas ignoradas</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-5 w-5 p-0"
+                          onClick={() => setIsStatusInfoOpen(!isStatusInfoOpen)}
+                        >
+                          <PieChart className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p>Campanhas que não contribuem para o orçamento diário. Clique para ver estatísticas por status.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
+            )}
+            
+            {/* Painel colapsável para detalhes de status */}
+            {diagnostics?.statusCounts && (
+              <Collapsible 
+                open={isStatusInfoOpen} 
+                onOpenChange={setIsStatusInfoOpen}
+                className="border rounded-md mt-4 bg-gray-50"
+              >
+                <div className="flex items-center justify-between p-3 border-b">
+                  <p className="text-sm font-medium">Estatísticas de status das campanhas</p>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="p-1 h-auto">
+                      {isStatusInfoOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                
+                <CollapsibleContent>
+                  <div className="p-4 text-sm">
+                    <div className="mb-3">
+                      <p className="font-medium mb-2">Motivos de exclusão:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(skippedReasons).map(([reason, count]) => (
+                          <Badge key={reason} variant="outline" className="bg-gray-100">
+                            {reason}: {count}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <p className="font-medium mb-2">Status das campanhas:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(diagnostics.statusCounts).map(([status, count]) => {
+                          const [statusValue, effectiveStatus] = status.split(':');
+                          const isActive = statusValue === 'ACTIVE' && effectiveStatus === 'ACTIVE';
+                          
+                          return (
+                            <Badge 
+                              key={status} 
+                              variant="outline" 
+                              className={`${isActive ? 'bg-green-100' : 'bg-gray-100'}`}
+                            >
+                              {statusValue}/{effectiveStatus}: {count}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             )}
             
             <Collapsible 
@@ -284,6 +411,14 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
                           <div className="flex-1">
                             <p className="font-medium text-amber-900">{item.name}</p>
                             <p className="text-xs text-amber-700 mt-0.5">{item.reason}</p>
+                            {item.details && (
+                              <div className="text-xs text-amber-600 mt-1">
+                                {item.details.status && <span>Status: {item.details.status}</span>}
+                                {item.details.effectiveStatus && <span> • Efetivo: {item.details.effectiveStatus}</span>}
+                                {item.details.dailyBudget !== undefined && <span> • Orçamento: {formatCurrency(item.details.dailyBudget)}</span>}
+                                {item.details.activeAdsets !== undefined && <span> • AdSets ativos: {item.details.activeAdsets}</span>}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
