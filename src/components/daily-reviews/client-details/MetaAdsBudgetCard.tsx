@@ -1,12 +1,13 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, AlertCircle, Loader, ChevronDown, ChevronUp } from "lucide-react";
+import { DollarSign, AlertCircle, Loader, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MetaAdsBudgetCardProps {
   clientId: string;
@@ -18,8 +19,21 @@ interface Campaign {
   name: string;
   budget: number;
   status: string;
+  effectiveStatus?: string;
   type: 'campaign' | 'adset';
   parentName?: string;
+  parentId?: string;
+}
+
+interface Diagnostics {
+  totalCampaigns: number;
+  includedItems: number;
+  skippedCampaigns: {
+    id: string;
+    name: string;
+    reason: string;
+    details: any;
+  }[];
 }
 
 export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCardProps) => {
@@ -27,7 +41,9 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,6 +106,11 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
         if (result.campaignDetails && Array.isArray(result.campaignDetails)) {
           setCampaigns(result.campaignDetails);
         }
+
+        // Armazenar informações de diagnóstico
+        if (result.diagnostics) {
+          setDiagnostics(result.diagnostics);
+        }
       } catch (err: any) {
         console.error("Erro ao calcular orçamento diário Meta Ads:", err);
         setError(err.message || "Erro ao calcular orçamento diário Meta Ads");
@@ -134,6 +155,29 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
               {formatCurrency(dailyBudget || 0)}
             </div>
             
+            {diagnostics && (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span>Total de {diagnostics.totalCampaigns} campanhas</span>
+                <span>•</span>
+                <span>{diagnostics.includedItems} itens no cálculo</span>
+                <span>•</span>
+                <span>{diagnostics.skippedCampaigns.length} campanhas ignoradas</span>
+                
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                        <Info className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      <p>O orçamento diário inclui apenas campanhas e conjuntos de anúncios ativos com orçamento diário definido.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
+            
             <Collapsible 
               open={isOpen} 
               onOpenChange={setIsOpen}
@@ -177,13 +221,22 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
                             )}
                           </div>
                           <div className="flex items-center gap-1 whitespace-nowrap">
-                            <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                              item.status === 'ACTIVE' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {item.status === 'ACTIVE' ? 'Ativo' : item.status}
-                            </span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                                    item.status === 'ACTIVE' && item.effectiveStatus === 'ACTIVE'
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {item.status === 'ACTIVE' && item.effectiveStatus === 'ACTIVE' ? 'Ativo' : item.status}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">
+                                  <p>Status: {item.status}<br />Status Efetivo: {item.effectiveStatus}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             <span className="font-medium">{formatCurrency(item.budget)}</span>
                           </div>
                         </div>
@@ -198,6 +251,48 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
               </CollapsibleContent>
             </Collapsible>
             
+            {diagnostics && diagnostics.skippedCampaigns.length > 0 && (
+              <Collapsible 
+                open={isDiagnosticsOpen} 
+                onOpenChange={setIsDiagnosticsOpen}
+                className="border rounded-md mt-4 border-amber-200"
+              >
+                <div className="flex items-center justify-between p-3 border-b border-amber-200 bg-amber-50">
+                  <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-amber-600" />
+                    <p className="text-sm font-medium text-amber-900">Campanhas não incluídas ({diagnostics.skippedCampaigns.length})</p>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="p-1 h-auto text-amber-700">
+                      {isDiagnosticsOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                
+                <CollapsibleContent>
+                  <div className="p-3 space-y-1 text-sm max-h-80 overflow-y-auto bg-amber-50/30">
+                    {diagnostics.skippedCampaigns.map((item, index) => (
+                      <div 
+                        key={`skipped-${item.id}-${index}`} 
+                        className={`py-1.5 px-2 rounded ${index % 2 === 0 ? 'bg-amber-50/60' : ''}`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium text-amber-900">{item.name}</p>
+                            <p className="text-xs text-amber-700 mt-0.5">{item.reason}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+            
             <p className="text-sm text-gray-500">
               Total dos orçamentos diários de campanhas e conjuntos de anúncios ativos
             </p>
@@ -207,4 +302,3 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
     </Card>
   );
 };
-
