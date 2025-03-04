@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { format, addHours, isFuture, parseISO } from "https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.mjs";
 
 // Configuração de cabeçalhos CORS
 const corsHeaders = {
@@ -84,9 +83,10 @@ serve(async (req) => {
 
       // Verificar data de término
       if (campaign.end_time) {
-        const endTime = parseISO(campaign.end_time);
-        if (!isFuture(endTime)) {
-          console.log(`Campanha ${campaign.id} (${campaign.name}) já terminou em ${format(endTime, 'dd/MM/yyyy')}`);
+        const endTime = new Date(campaign.end_time);
+        const isFuture = endTime > now;
+        if (!isFuture) {
+          console.log(`Campanha ${campaign.id} (${campaign.name}) já terminou em ${endTime.toLocaleDateString('pt-BR')}`);
           continue;
         }
       }
@@ -110,8 +110,8 @@ serve(async (req) => {
         
         // Verificar data de término
         if (adset.end_time) {
-          const endTime = parseISO(adset.end_time);
-          return isFuture(endTime);
+          const endTime = new Date(adset.end_time);
+          return endTime > now;
         }
         
         return true;
