@@ -1,177 +1,155 @@
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { format, utcToZonedTime } from 'https://cdn.skypack.dev/date-fns-tz';
-import { isFuture, parseISO } from 'https://cdn.skypack.dev/date-fns';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { format, addHours, isFuture, parseISO } from "https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.mjs";
 
-// Configuração de CORS
+// Configuração de cabeçalhos CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
 
-// Handler principal
-serve(async (req) => {
-  // Tratamento de requisições preflight OPTIONS para CORS
+// Handler para requisições CORS preflight
+function handleCors(req: Request) {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 204, 
-      headers: corsHeaders 
+    return new Response(null, {
+      status: 204,
+      headers: new Headers(corsHeaders),
     });
+  }
+  return null;
+}
+
+serve(async (req) => {
+  // Processar requisição CORS preflight se for OPTIONS
+  const corsResponse = handleCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
 
   try {
+    // Extrair corpo da requisição
     const { accountId, accessToken } = await req.json();
-    
-    console.log(`Processando cálculo de orçamento para conta: ${accountId}`);
-    
-    if (!accountId || !accessToken) {
+
+    // Validar parâmetros de entrada
+    if (!accountId) {
       return new Response(
-        JSON.stringify({ 
-          error: 'Parâmetros obrigatórios ausentes: accountId e accessToken' 
-        }),
-        { status: 400, headers: corsHeaders }
+        JSON.stringify({ error: "ID da conta Meta Ads não fornecido" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    const result = await calculateTotalDailyBudget(accountId, accessToken);
-    
-    return new Response(
-      JSON.stringify(result),
-      { status: 200, headers: corsHeaders }
-    );
-  } catch (error) {
-    console.error(`Erro ao processar requisição: ${error.message}`);
-    
-    return new Response(
-      JSON.stringify({ 
-        error: `Erro ao calcular orçamento diário: ${error.message}` 
-      }),
-      { status: 500, headers: corsHeaders }
-    );
-  }
-});
+    if (!accessToken) {
+      return new Response(
+        JSON.stringify({ error: "Token de acesso não fornecido" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
-// Função para calcular o orçamento diário total
-async function calculateTotalDailyBudget(accountId: string, accessToken: string) {
-  try {
-    console.log('Iniciando cálculo de orçamento diário total...');
+    // Iniciando cálculo do orçamento diário total
+    console.log(`Calculando orçamento diário para a conta ${accountId}`);
     
     // Buscar campanhas ativas
-    const campaignsResponse = await fetch(
-      `https://graph.facebook.com/v20.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time,id&access_token=${accessToken}`
-    );
+    const campaignsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time,id&access_token=${accessToken}`;
+    const campaignsResponse = await fetch(campaignsUrl);
     
     if (!campaignsResponse.ok) {
       const errorData = await campaignsResponse.json();
-      throw new Error(`Erro na API do Meta: ${JSON.stringify(errorData.error || errorData)}`);
+      console.error("Erro ao buscar campanhas:", errorData);
+      return new Response(
+        JSON.stringify({ error: `Erro na API do Meta: ${JSON.stringify(errorData)}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
     }
-    
+
     const campaignsData = await campaignsResponse.json();
-    console.log(`Total de campanhas encontradas: ${campaignsData.data?.length || 0}`);
+    const campaigns = campaignsData.data || [];
     
-    if (!campaignsData.data || !Array.isArray(campaignsData.data)) {
-      throw new Error('Formato de resposta inválido da API de campanhas');
-    }
-    
-    // Filtrar campanhas ativas
-    const activeCampaigns = campaignsData.data.filter(campaign => {
+    console.log(`Encontradas ${campaigns.length} campanhas`);
+
+    // Calcular o fuso horário de São Paulo (UTC-3)
+    const now = new Date();
+    console.log(`Data atual: ${now.toISOString()}`);
+
+    let totalDailyBudget = 0;
+
+    // Processar cada campanha
+    for (const campaign of campaigns) {
       // Verificar se a campanha está ativa
-      if (campaign.status !== 'ACTIVE') {
-        return false;
+      if (campaign.status !== "ACTIVE") {
+        console.log(`Campanha ${campaign.id} (${campaign.name}) não está ativa. Status: ${campaign.status}`);
+        continue;
       }
-      
-      // Verificar data de término, se existir
+
+      // Verificar data de término
       if (campaign.end_time) {
-        const endDate = parseISO(campaign.end_time);
-        // Converter para timezone local (Brasil)
-        const brazilTimeZone = 'America/Sao_Paulo';
-        const localEndDate = utcToZonedTime(endDate, brazilTimeZone);
-        
-        // Verificar se a data de término já passou
-        if (!isFuture(localEndDate)) {
-          return false;
+        const endTime = parseISO(campaign.end_time);
+        if (!isFuture(endTime)) {
+          console.log(`Campanha ${campaign.id} (${campaign.name}) já terminou em ${format(endTime, 'dd/MM/yyyy')}`);
+          continue;
         }
       }
-      
-      return true;
-    });
-    
-    console.log(`Campanhas ativas encontradas: ${activeCampaigns.length}`);
-    
-    let totalBudget = 0;
-    
-    // Processar cada campanha ativa
-    for (const campaign of activeCampaigns) {
-      // Buscar conjuntos de anúncios da campanha
-      const adsetsResponse = await fetch(
-        `https://graph.facebook.com/v20.0/${campaign.id}/adsets?fields=daily_budget,status,name,end_time,id&access_token=${accessToken}`
-      );
+
+      // Buscar conjuntos de anúncios para a campanha
+      const adsetsUrl = `https://graph.facebook.com/v20.0/${campaign.id}/adsets?fields=daily_budget,status,name,end_time,id&access_token=${accessToken}`;
+      const adsetsResponse = await fetch(adsetsUrl);
       
       if (!adsetsResponse.ok) {
-        console.warn(`Erro ao buscar conjuntos de anúncios para campanha ${campaign.id}`);
+        console.error(`Erro ao buscar conjuntos de anúncios para campanha ${campaign.id}:`, await adsetsResponse.json());
         continue;
       }
-      
+
       const adsetsData = await adsetsResponse.json();
+      const adsets = adsetsData.data || [];
       
-      if (!adsetsData.data || !Array.isArray(adsetsData.data)) {
-        console.warn(`Formato de resposta inválido para conjuntos de anúncios da campanha ${campaign.id}`);
-        continue;
-      }
-      
-      // Filtrar conjuntos de anúncios ativos
-      const activeAdsets = adsetsData.data.filter(adset => {
-        // Verificar se o conjunto está ativo
-        if (adset.status !== 'ACTIVE') {
-          return false;
-        }
+      // Filtrar apenas conjuntos de anúncios ativos
+      const activeAdsets = adsets.filter(adset => {
+        // Verificar status
+        if (adset.status !== "ACTIVE") return false;
         
-        // Verificar data de término, se existir
+        // Verificar data de término
         if (adset.end_time) {
-          const endDate = parseISO(adset.end_time);
-          // Converter para timezone local (Brasil)
-          const brazilTimeZone = 'America/Sao_Paulo';
-          const localEndDate = utcToZonedTime(endDate, brazilTimeZone);
-          
-          // Verificar se a data de término já passou
-          if (!isFuture(localEndDate)) {
-            return false;
-          }
+          const endTime = parseISO(adset.end_time);
+          return isFuture(endTime);
         }
         
         return true;
       });
-      
-      // Verificar se a campanha tem orçamento diário definido
-      if (campaign.daily_budget && Number(campaign.daily_budget) > 0) {
-        // Verificar se há pelo menos um conjunto de anúncios ativo
-        if (activeAdsets.length > 0) {
-          // Somar o orçamento da campanha
-          totalBudget += Number(campaign.daily_budget) / 100; // Convertendo de centavos para reais
-          console.log(`Adicionado orçamento da campanha ${campaign.name}: ${campaign.daily_budget / 100}`);
-        }
-      } else {
-        // Se a campanha não tiver orçamento definido, somar orçamentos dos conjuntos de anúncios ativos
+
+      console.log(`Campanha ${campaign.id} (${campaign.name}) tem ${activeAdsets.length} conjuntos de anúncios ativos`);
+
+      // Se a campanha tem orçamento diário e pelo menos um conjunto de anúncios ativo
+      if (campaign.daily_budget && activeAdsets.length > 0) {
+        const campaignBudget = parseInt(campaign.daily_budget) / 100; // Converte de centavos para reais
+        totalDailyBudget += campaignBudget;
+        console.log(`Adicionando orçamento da campanha ${campaign.id} (${campaign.name}): R$ ${campaignBudget}`);
+      } 
+      // Se a campanha não tem orçamento diário, soma o orçamento dos conjuntos de anúncios ativos
+      else if (!campaign.daily_budget && activeAdsets.length > 0) {
         for (const adset of activeAdsets) {
-          if (adset.daily_budget && Number(adset.daily_budget) > 0) {
-            totalBudget += Number(adset.daily_budget) / 100; // Convertendo de centavos para reais
-            console.log(`Adicionado orçamento do conjunto de anúncios ${adset.name}: ${adset.daily_budget / 100}`);
+          if (adset.daily_budget) {
+            const adsetBudget = parseInt(adset.daily_budget) / 100; // Converte de centavos para reais
+            totalDailyBudget += adsetBudget;
+            console.log(`Adicionando orçamento do conjunto de anúncios ${adset.id} (${adset.name}): R$ ${adsetBudget}`);
           }
         }
       }
     }
-    
-    console.log(`Orçamento diário total calculado: ${totalBudget}`);
-    
-    return {
-      totalDailyBudget: totalBudget,
-      calculatedAt: new Date().toISOString(),
-      activeCampaignsCount: activeCampaigns.length
-    };
+
+    console.log(`Orçamento diário total calculado: R$ ${totalDailyBudget}`);
+
+    // Retornar o resultado
+    return new Response(
+      JSON.stringify({ totalDailyBudget }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+    );
+
   } catch (error) {
-    console.error(`Erro ao calcular orçamento: ${error.message}`);
-    throw error;
+    console.error("Erro ao processar requisição:", error);
+    return new Response(
+      JSON.stringify({ error: `Erro ao processar requisição: ${error.message}` }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
   }
-}
+});
