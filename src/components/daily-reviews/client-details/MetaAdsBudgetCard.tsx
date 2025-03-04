@@ -1,20 +1,33 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, AlertCircle, Loader } from "lucide-react";
+import { DollarSign, AlertCircle, Loader, ChevronDown, ChevronUp } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface MetaAdsBudgetCardProps {
   clientId: string;
   metaAccountId: string | null;
 }
 
+interface Campaign {
+  id: string;
+  name: string;
+  budget: number;
+  status: string;
+  type: 'campaign' | 'adset';
+  parentName?: string;
+}
+
 export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCardProps) => {
   const [dailyBudget, setDailyBudget] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -70,8 +83,13 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
           throw new Error(result.error);
         }
 
-        // Atualizar o estado com o valor calculado
+        // Atualizar o estado com o valor calculado e detalhes das campanhas
         setDailyBudget(result.totalDailyBudget || 0);
+        
+        // Verificar se há detalhes de campanhas na resposta
+        if (result.campaignDetails && Array.isArray(result.campaignDetails)) {
+          setCampaigns(result.campaignDetails);
+        }
       } catch (err: any) {
         console.error("Erro ao calcular orçamento diário Meta Ads:", err);
         setError(err.message || "Erro ao calcular orçamento diário Meta Ads");
@@ -115,6 +133,71 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
             <div className="text-2xl font-bold text-muran-primary">
               {formatCurrency(dailyBudget || 0)}
             </div>
+            
+            <Collapsible 
+              open={isOpen} 
+              onOpenChange={setIsOpen}
+              className="border rounded-md mt-4"
+            >
+              <div className="flex items-center justify-between p-3 border-b">
+                <p className="text-sm font-medium">Detalhamento de orçamentos</p>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="p-1 h-auto">
+                    {isOpen ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              
+              <CollapsibleContent>
+                <div className="p-3 space-y-1 text-sm max-h-80 overflow-y-auto">
+                  {campaigns.length > 0 ? (
+                    campaigns.map((item, index) => (
+                      <div 
+                        key={`${item.id}-${index}`} 
+                        className={`py-1.5 px-2 rounded ${index % 2 === 0 ? 'bg-gray-50' : ''}`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center">
+                              {item.type === 'adset' && (
+                                <div className="w-4 ml-4 mr-1 border-l-2 border-b-2 h-3 border-gray-300" />
+                              )}
+                              <p className={`truncate ${item.type === 'adset' ? 'text-xs text-gray-600' : 'font-medium'}`}>
+                                {item.name}
+                              </p>
+                            </div>
+                            {item.type === 'adset' && item.parentName && (
+                              <p className="text-xs text-gray-500 ml-9">
+                                Campanha: {item.parentName}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 whitespace-nowrap">
+                            <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                              item.status === 'ACTIVE' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {item.status === 'ACTIVE' ? 'Ativo' : item.status}
+                            </span>
+                            <span className="font-medium">{formatCurrency(item.budget)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-center py-3">
+                      Nenhum detalhe de campanha disponível
+                    </p>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+            
             <p className="text-sm text-gray-500">
               Total dos orçamentos diários de campanhas e conjuntos de anúncios ativos
             </p>
@@ -124,3 +207,4 @@ export const MetaAdsBudgetCard = ({ clientId, metaAccountId }: MetaAdsBudgetCard
     </Card>
   );
 };
+

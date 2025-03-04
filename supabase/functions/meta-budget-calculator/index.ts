@@ -67,11 +67,12 @@ serve(async (req) => {
     
     console.log(`Encontradas ${campaigns.length} campanhas`);
 
-    // Calcular o fuso horário de São Paulo (UTC-3)
+    // Data atual
     const now = new Date();
     console.log(`Data atual: ${now.toISOString()}`);
 
     let totalDailyBudget = 0;
+    const campaignDetails = [];
 
     // Processar cada campanha
     for (const campaign of campaigns) {
@@ -124,6 +125,15 @@ serve(async (req) => {
         const campaignBudget = parseInt(campaign.daily_budget) / 100; // Converte de centavos para reais
         totalDailyBudget += campaignBudget;
         console.log(`Adicionando orçamento da campanha ${campaign.id} (${campaign.name}): R$ ${campaignBudget}`);
+        
+        // Adicionar aos detalhes
+        campaignDetails.push({
+          id: campaign.id,
+          name: campaign.name,
+          budget: campaignBudget,
+          status: campaign.status,
+          type: 'campaign'
+        });
       } 
       // Se a campanha não tem orçamento diário, soma o orçamento dos conjuntos de anúncios ativos
       else if (!campaign.daily_budget && activeAdsets.length > 0) {
@@ -132,16 +142,30 @@ serve(async (req) => {
             const adsetBudget = parseInt(adset.daily_budget) / 100; // Converte de centavos para reais
             totalDailyBudget += adsetBudget;
             console.log(`Adicionando orçamento do conjunto de anúncios ${adset.id} (${adset.name}): R$ ${adsetBudget}`);
+            
+            // Adicionar aos detalhes
+            campaignDetails.push({
+              id: adset.id,
+              name: adset.name,
+              budget: adsetBudget,
+              status: adset.status,
+              type: 'adset',
+              parentName: campaign.name
+            });
           }
         }
       }
     }
 
     console.log(`Orçamento diário total calculado: R$ ${totalDailyBudget}`);
+    console.log(`Total de itens detalhados: ${campaignDetails.length}`);
 
-    // Retornar o resultado
+    // Retornar o resultado com detalhes
     return new Response(
-      JSON.stringify({ totalDailyBudget }),
+      JSON.stringify({ 
+        totalDailyBudget,
+        campaignDetails
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
 
