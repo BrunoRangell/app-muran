@@ -77,7 +77,7 @@ export const RecentReviews = ({ onSelectClient }: RecentReviewsProps) => {
               <div className="px-4 py-3 text-sm grid grid-cols-8 items-center">
                 <div className="col-span-4 font-medium">{review.clients?.company_name}</div>
                 <div className="col-span-2 text-gray-500">
-                  {formatDateInBrasiliaTz(review.review_date, 'dd/MM/yyyy', { locale: ptBR })}
+                  {formatDateInBrasiliaTz(review.review_date, 'dd/MM/yyyy')}
                 </div>
                 <div className="col-span-2 flex items-center gap-1">
                   {formatCurrency(review.meta_daily_budget_current || 0)}

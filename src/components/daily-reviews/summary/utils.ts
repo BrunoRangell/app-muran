@@ -38,7 +38,7 @@ export const getCurrentDateInBrasiliaTz = () => {
 };
 
 // Função para formatar uma data no fuso horário de Brasília
-export const formatDateInBrasiliaTz = (date: Date | string, format: string) => {
+export const formatDateInBrasiliaTz = (date: Date | string, format: string, options?: any) => {
   const brasiliaTz = 'America/Sao_Paulo';
   return formatInTimeZone(new Date(date), brasiliaTz, format);
 };

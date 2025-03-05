@@ -30,8 +30,7 @@ export const DailyReviewsSummary = () => {
   // Formatar a data atual com o fuso horário de Brasília
   const currentDateFormatted = formatDateInBrasiliaTz(
     new Date(),
-    "dd 'de' MMMM 'de' yyyy",
-    { locale: ptBR }
+    "dd 'de' MMMM 'de' yyyy"
   );
 
   return (

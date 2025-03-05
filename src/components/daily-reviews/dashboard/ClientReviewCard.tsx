@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
@@ -45,7 +44,6 @@ export const ClientReviewCard = ({
     return "text-gray-600";
   };
 
-  // Verificar se há diferença significativa (R$ 5,00 ou mais)
   const hasSignificantDifference = () => {
     if (!hasReview || !client.lastReview?.meta_daily_budget_current || !client.lastReview?.idealDailyBudget) {
       return false;
@@ -55,7 +53,6 @@ export const ClientReviewCard = ({
     return diff >= 5;
   };
 
-  // Calcular a diferença entre o orçamento atual e o sugerido
   const getBudgetDifference = () => {
     if (!hasReview || !client.lastReview?.meta_daily_budget_current || !client.lastReview?.idealDailyBudget) {
       return 0;
@@ -64,15 +61,13 @@ export const ClientReviewCard = ({
     return client.lastReview.idealDailyBudget - client.lastReview.meta_daily_budget_current;
   };
 
-  // Formatar a data da revisão usando fuso horário de Brasília
   const getFormattedReviewDate = () => {
     if (!hasReview || !client.lastReview?.review_date) return "Sem revisão";
     
     try {
       return formatDateInBrasiliaTz(
         new Date(client.lastReview.review_date), 
-        "dd/MM/yyyy HH:mm", 
-        { locale: ptBR }
+        "dd/MM/yyyy HH:mm"
       );
     } catch (error) {
       console.error("Erro ao formatar data:", error);
@@ -80,7 +75,6 @@ export const ClientReviewCard = ({
     }
   };
 
-  // Formatação da mensagem de ajuste recomendado
   const getAdjustmentMessage = () => {
     const diff = getBudgetDifference();
     if (diff > 0) {
