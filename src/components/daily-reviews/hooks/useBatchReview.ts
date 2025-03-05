@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { callEdgeFunction, getMetaAccessToken } from "./useEdgeFunction";
+import { getCurrentDateInBrasiliaTz, calculateIdealDailyBudget, generateRecommendation } from "../summary/utils";
 
 // Interface para cliente com dados de revisão
 export interface ClientWithReview {
@@ -65,24 +65,14 @@ export const useBatchReview = () => {
           // Processar a revisão mais recente para adicionar orçamento diário ideal e recomendação
           if (reviews && reviews.length > 0) {
             const review = reviews[0];
-            const today = new Date();
-            const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-            const idealDailyBudget = client.meta_ads_budget / daysInMonth;
+            const today = getCurrentDateInBrasiliaTz();
+            const idealDailyBudget = calculateIdealDailyBudget(client.meta_ads_budget, today);
             
             // Gerar recomendação baseada na comparação entre orçamento atual e ideal
-            let recommendation = null;
-            if (review.meta_daily_budget_current) {
-              const diff = review.meta_daily_budget_current - idealDailyBudget;
-              const percentDiff = (diff / idealDailyBudget) * 100;
-              
-              if (percentDiff > 10) {
-                recommendation = `Diminuir ${Math.round(percentDiff)}%`;
-              } else if (percentDiff < -10) {
-                recommendation = `Aumentar ${Math.round(Math.abs(percentDiff))}%`;
-              } else {
-                recommendation = "Manter";
-              }
-            }
+            const recommendation = generateRecommendation(
+              review.meta_daily_budget_current,
+              idealDailyBudget
+            );
             
             return { 
               ...client, 
@@ -107,6 +97,7 @@ export const useBatchReview = () => {
         })[0];
 
       if (mostRecentReview?.lastReview) {
+        // Criar um objeto Date a partir da string de data
         setLastReviewTime(new Date(mostRecentReview.lastReview.review_date));
       }
 
@@ -155,7 +146,8 @@ export const useBatchReview = () => {
         
         console.log("Dados recebidos da API:", data);
         
-        const currentDate = new Date().toISOString().split('T')[0];
+        // Obter a data atual no fuso horário de Brasília
+        const currentDate = getCurrentDateInBrasiliaTz().toISOString().split('T')[0];
         
         // Salvar os resultados no banco de dados como uma nova revisão diária
         const { data: reviewData, error: reviewError } = await supabase.rpc(

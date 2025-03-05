@@ -1,7 +1,7 @@
 
 import { formatCurrency } from "@/utils/formatters";
 import { getDaysInMonth } from 'date-fns';
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 
 // Função para calcular o orçamento diário ideal
 export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
@@ -9,7 +9,7 @@ export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => 
   
   // Convertemos a data para o fuso horário de Brasília
   const brasiliaTz = 'America/Sao_Paulo';
-  const dateInBrasilia = new Date(formatInTimeZone(date, brasiliaTz, 'yyyy-MM-dd'));
+  const dateInBrasilia = toZonedTime(date, brasiliaTz);
   
   const daysInMonth = getDaysInMonth(dateInBrasilia);
   return monthlyBudget / daysInMonth;
@@ -33,8 +33,8 @@ export const generateRecommendation = (currentDaily: number, idealDaily: number)
 // Função para obter a data atual no fuso horário de Brasília
 export const getCurrentDateInBrasiliaTz = () => {
   const brasiliaTz = 'America/Sao_Paulo';
-  // Criamos um novo objeto Date para garantir que estamos trabalhando com a data atual
-  return new Date(formatInTimeZone(new Date(), brasiliaTz, 'yyyy-MM-dd HH:mm:ss'));
+  // Convertemos explicitamente para o fuso horário de Brasília
+  return toZonedTime(new Date(), brasiliaTz);
 };
 
 // Função para formatar uma data no fuso horário de Brasília
@@ -51,8 +51,8 @@ export const formatDateInBrasiliaTz = (date: Date | string, format: string, opti
       if (date.includes('T') || date.includes('Z')) {
         dateObj = new Date(date);
       } else {
-        // Se é apenas uma data (YYYY-MM-DD), adicionamos um horário padrão no fuso de Brasília
-        dateObj = new Date(`${date}T12:00:00`);
+        // Se é apenas uma data (YYYY-MM-DD), adicionamos um horário padrão
+        dateObj = new Date(`${date}T12:00:00Z`);
       }
     } else {
       dateObj = date;
@@ -64,8 +64,11 @@ export const formatDateInBrasiliaTz = (date: Date | string, format: string, opti
       return '';
     }
     
-    // Formatar a data no fuso horário de Brasília
-    return formatInTimeZone(dateObj, brasiliaTz, format);
+    // Primeiro convertemos a data para o fuso horário de Brasília
+    const zonedDate = toZonedTime(dateObj, brasiliaTz);
+    
+    // Depois formatamos usando a data já convertida para o fuso horário correto
+    return formatInTimeZone(zonedDate, brasiliaTz, format);
   } catch (error) {
     console.error('Erro ao formatar data:', error, date);
     return '';

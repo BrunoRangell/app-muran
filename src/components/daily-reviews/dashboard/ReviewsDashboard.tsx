@@ -1,11 +1,10 @@
-
 import { Button } from "@/components/ui/button";
 import { RefreshCw, BarChart } from "lucide-react";
 import { ClientReviewCard } from "./ClientReviewCard";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { format } from "date-fns";
+import { formatDateInBrasiliaTz } from "../summary/utils";
 import { ptBR } from "date-fns/locale";
 
 interface ReviewsDashboardProps {
@@ -35,7 +34,12 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
   const getFormattedLastReviewTime = () => {
     if (!lastReviewTime) return "Nenhuma revisão realizada";
     
-    return format(lastReviewTime, "'Última revisão em' dd 'de' MMMM 'às' HH:mm", { locale: ptBR });
+    // Usar formatDateInBrasiliaTz para garantir o fuso horário correto
+    return formatDateInBrasiliaTz(
+      lastReviewTime, 
+      "'Última revisão em' dd 'de' MMMM 'às' HH:mm", 
+      { locale: ptBR }
+    );
   };
 
   return (

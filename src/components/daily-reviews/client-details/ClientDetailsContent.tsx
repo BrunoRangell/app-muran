@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
 import { 
@@ -36,10 +35,10 @@ export const ClientDetailsContent = ({
   const getLastReviewDate = () => {
     if (!latestReview || !latestReview.review_date) return "Sem revisão recente";
     
-    return `Última revisão em ${formatDateInBrasiliaTz(
+    return formatDateInBrasiliaTz(
       latestReview.review_date,
       "dd 'de' MMMM 'às' HH:mm"
-    )}`;
+    );
   };
 
   const getRecommendationIcon = () => {
