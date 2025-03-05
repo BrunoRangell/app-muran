@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { getDaysInMonth, format } from 'date-fns';
+import { getDaysInMonth } from 'date-fns';
+import { formatInTimeZone } from "date-fns-tz";
 
 export const useClientReviewDetails = (clientId: string) => {
   const [recommendation, setRecommendation] = useState<string | null>(null);
@@ -117,9 +118,11 @@ export const useClientReviewDetails = (clientId: string) => {
   useEffect(() => {
     if (client?.meta_ads_budget && latestReview) {
       try {
-        // Data atual para o cálculo
+        // Data atual para o cálculo (usando fuso horário de Brasília)
         const currentDate = new Date();
-        console.log("Data atual utilizada para cálculo:", currentDate.toLocaleDateString('pt-BR'));
+        const saoPauloDate = new Date(formatInTimeZone(currentDate, 'America/Sao_Paulo', 'yyyy-MM-dd HH:mm:ss'));
+        
+        console.log("Data atual utilizada para cálculo (São Paulo):", saoPauloDate.toLocaleDateString('pt-BR'));
         
         // Obter valores do orçamento e gastos
         const monthlyBudget = Number(client.meta_ads_budget);
@@ -132,12 +135,12 @@ export const useClientReviewDetails = (clientId: string) => {
         console.log("Orçamento diário atual:", currentDailyBudget);
         
         // Calculando dias restantes no mês
-        const daysInMonth = getDaysInMonth(currentDate);
-        const currentDay = currentDate.getDate();
+        const daysInMonth = getDaysInMonth(saoPauloDate);
+        const currentDay = saoPauloDate.getDate();
         const remainingDays = daysInMonth - currentDay + 1; // +1 para incluir o dia atual
         
         console.log("Dias no mês:", daysInMonth);
-        console.log("Dia atual:", currentDay);
+        console.log("Dia atual (São Paulo):", currentDay);
         console.log("Dias restantes:", remainingDays);
         
         // Calcular orçamento restante

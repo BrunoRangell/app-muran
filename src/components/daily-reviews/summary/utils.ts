@@ -1,11 +1,17 @@
 
 import { formatCurrency } from "@/utils/formatters";
 import { getDaysInMonth } from 'date-fns';
+import { formatInTimeZone } from "date-fns-tz";
 
 // Função para calcular o orçamento diário ideal
 export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
   if (!monthlyBudget) return 0;
-  const daysInMonth = getDaysInMonth(date);
+  
+  // Convertemos a data para o fuso horário de Brasília
+  const brasiliaTz = 'America/Sao_Paulo';
+  const dateInBrasilia = new Date(formatInTimeZone(date, brasiliaTz, 'yyyy-MM-dd'));
+  
+  const daysInMonth = getDaysInMonth(dateInBrasilia);
   return monthlyBudget / daysInMonth;
 };
 

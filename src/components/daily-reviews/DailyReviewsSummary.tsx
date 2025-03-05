@@ -5,6 +5,8 @@ import { ClientsTable } from "./summary/ClientsTable";
 import { LoadingState } from "./summary/LoadingState";
 import { EmptyState } from "./summary/EmptyState";
 import { useDailyReviewsSummary } from "./summary/useDailyReviewsSummary";
+import { formatInTimeZone } from "date-fns-tz";
+import { ptBR } from "date-fns/locale";
 
 export const DailyReviewsSummary = () => {
   const { 
@@ -25,11 +27,19 @@ export const DailyReviewsSummary = () => {
     return <EmptyState />;
   }
 
+  // Formatar a data atual com o fuso horário de Brasília
+  const currentDateFormatted = formatInTimeZone(
+    new Date(),
+    'America/Sao_Paulo',
+    "dd 'de' MMMM 'de' yyyy",
+    { locale: ptBR }
+  );
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold flex items-center gap-2">
         <BarChart3 className="text-muran-primary" size={20} />
-        Resumo de revisões de hoje - {new Date().toLocaleDateString("pt-BR")}
+        Resumo de revisões de hoje - {currentDateFormatted}
       </h2>
       
       <SummaryCards

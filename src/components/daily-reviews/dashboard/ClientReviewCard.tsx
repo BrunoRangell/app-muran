@@ -6,6 +6,7 @@ import { ArrowRight, TrendingDown, TrendingUp, MinusCircle } from "lucide-react"
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ClientWithReview } from "../hooks/useBatchReview";
+import { formatInTimeZone } from "date-fns-tz";
 
 interface ClientReviewCardProps {
   client: ClientWithReview;
@@ -64,12 +65,32 @@ export const ClientReviewCard = ({
     return client.lastReview.idealDailyBudget - client.lastReview.meta_daily_budget_current;
   };
 
-  // Formatar a data da revisão
+  // Formatar a data da revisão usando fuso horário de Brasília
   const getFormattedReviewDate = () => {
     if (!hasReview || !client.lastReview?.review_date) return "Sem revisão";
     
-    const reviewDate = new Date(client.lastReview.review_date);
-    return format(reviewDate, "dd/MM/yyyy", { locale: ptBR });
+    try {
+      return formatInTimeZone(
+        new Date(client.lastReview.review_date), 
+        'America/Sao_Paulo', 
+        "dd/MM/yyyy HH:mm", 
+        { locale: ptBR }
+      );
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return format(new Date(client.lastReview.review_date), "dd/MM/yyyy", { locale: ptBR });
+    }
+  };
+
+  // Formatação da mensagem de ajuste recomendado
+  const getAdjustmentMessage = () => {
+    const diff = getBudgetDifference();
+    if (diff > 0) {
+      return `Ajuste recomendado: Aumentar ${formatCurrency(Math.abs(diff))}`;
+    } else if (diff < 0) {
+      return `Ajuste recomendado: Diminuir ${formatCurrency(Math.abs(diff))}`;
+    }
+    return "";
   };
 
   return (
@@ -121,7 +142,7 @@ export const ClientReviewCard = ({
           {hasSignificantDifference() && (
             <div className="col-span-2 mt-1">
               <div className={`${getBudgetDifference() > 0 ? 'text-green-600' : 'text-red-600'} text-sm font-medium`}>
-                Ajuste recomendado: {formatCurrency(getBudgetDifference())}
+                {getAdjustmentMessage()}
               </div>
             </div>
           )}
