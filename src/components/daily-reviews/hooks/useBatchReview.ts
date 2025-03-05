@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { useEdgeFunction } from "./useEdgeFunction";
+import { callEdgeFunction, getMetaAccessToken } from "./useEdgeFunction";
 
 // Interface para cliente com dados de revisão
 export interface ClientWithReview {
@@ -24,7 +24,6 @@ export interface ClientWithReview {
 export const useBatchReview = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { getMetaAccessToken } = useEdgeFunction();
   
   // Estado para controlar quais clientes estão sendo processados
   const [processingClients, setProcessingClients] = useState<string[]>([]);
@@ -190,10 +189,8 @@ export const useBatchReview = () => {
         setProcessingClients(prev => prev.filter(id => id !== clientId));
       }
     },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     }
   });
 
@@ -237,52 +234,48 @@ export const useBatchReview = () => {
         setReviewInProgress(false);
       }
     },
-    meta: {
-      onSuccess: (data) => {
-        const { results, errors } = data;
-        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-        
-        if (errors.length === 0) {
-          toast({
-            title: "Revisão completa",
-            description: `${results.length} clientes foram analisados com sucesso.`,
-          });
-        } else {
-          toast({
-            title: "Revisão parcialmente completa",
-            description: `${results.length} clientes analisados, ${errors.length} com erros.`,
-            variant: "destructive",
-          });
-        }
-      },
-      onError: (error) => {
+    onSuccess: (data) => {
+      const { results, errors } = data;
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      
+      if (errors.length === 0) {
         toast({
-          title: "Erro na revisão",
-          description: error instanceof Error ? error.message : "Erro inesperado durante a revisão em massa",
+          title: "Revisão completa",
+          description: `${results.length} clientes foram analisados com sucesso.`,
+        });
+      } else {
+        toast({
+          title: "Revisão parcialmente completa",
+          description: `${results.length} clientes analisados, ${errors.length} com erros.`,
           variant: "destructive",
         });
       }
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro na revisão",
+        description: error instanceof Error ? error.message : "Erro inesperado durante a revisão em massa",
+        variant: "destructive",
+      });
     }
   });
 
   // Função para revisar apenas um cliente específico
   const reviewSingleClient = (clientId: string) => {
     analyzeClientMutation.mutate(clientId, {
-      meta: {
-        onSuccess: () => {
-          toast({
-            title: "Revisão concluída",
-            description: "Cliente analisado com sucesso.",
-          });
-          queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-        },
-        onError: (error) => {
-          toast({
-            title: "Erro na revisão",
-            description: error instanceof Error ? error.message : "Erro ao analisar cliente",
-            variant: "destructive",
-          });
-        }
+      onSuccess: () => {
+        toast({
+          title: "Revisão concluída",
+          description: "Cliente analisado com sucesso.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      },
+      onError: (error) => {
+        toast({
+          title: "Erro na revisão",
+          description: error instanceof Error ? error.message : "Erro ao analisar cliente",
+          variant: "destructive",
+        });
       }
     });
   };
