@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { getDaysInMonth } from 'date-fns';
-import { formatInTimeZone } from "date-fns-tz";
+import { formatDateInBrasiliaTz, getCurrentDateInBrasiliaTz } from "../summary/utils";
 
 export const useClientReviewDetails = (clientId: string) => {
   const [recommendation, setRecommendation] = useState<string | null>(null);
@@ -119,8 +119,7 @@ export const useClientReviewDetails = (clientId: string) => {
     if (client?.meta_ads_budget && latestReview) {
       try {
         // Data atual para o cálculo (usando fuso horário de Brasília)
-        const currentDate = new Date();
-        const saoPauloDate = new Date(formatInTimeZone(currentDate, 'America/Sao_Paulo', 'yyyy-MM-dd HH:mm:ss'));
+        const saoPauloDate = getCurrentDateInBrasiliaTz();
         
         console.log("Data atual utilizada para cálculo (São Paulo):", saoPauloDate.toLocaleDateString('pt-BR'));
         

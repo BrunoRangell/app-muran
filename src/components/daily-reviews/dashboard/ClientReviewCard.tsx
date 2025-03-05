@@ -3,10 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
 import { ArrowRight, TrendingDown, TrendingUp, MinusCircle } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { ClientWithReview } from "../hooks/useBatchReview";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatDateInBrasiliaTz } from "../summary/utils";
+import { ptBR } from "date-fns/locale";
 
 interface ClientReviewCardProps {
   client: ClientWithReview;
@@ -70,15 +69,14 @@ export const ClientReviewCard = ({
     if (!hasReview || !client.lastReview?.review_date) return "Sem revisão";
     
     try {
-      return formatInTimeZone(
+      return formatDateInBrasiliaTz(
         new Date(client.lastReview.review_date), 
-        'America/Sao_Paulo', 
         "dd/MM/yyyy HH:mm", 
         { locale: ptBR }
       );
     } catch (error) {
       console.error("Erro ao formatar data:", error);
-      return format(new Date(client.lastReview.review_date), "dd/MM/yyyy", { locale: ptBR });
+      return "Data inválida";
     }
   };
 

@@ -1,8 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { calculateIdealDailyBudget, generateRecommendation } from "./utils";
-import { formatInTimeZone } from "date-fns-tz";
+import { calculateIdealDailyBudget, generateRecommendation, formatDateInBrasiliaTz } from "./utils";
 
 export interface ReviewData {
   id: string;
@@ -22,7 +21,7 @@ export const useDailyReviewsSummary = () => {
     queryKey: ["daily-reviews-summary"],
     queryFn: async () => {
       // Obter a data atual no fuso horário de Brasília
-      const today = formatInTimeZone(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd');
+      const today = formatDateInBrasiliaTz(new Date(), 'yyyy-MM-dd');
       
       // Buscamos as revisões de hoje
       const { data: reviews, error: reviewsError } = await supabase

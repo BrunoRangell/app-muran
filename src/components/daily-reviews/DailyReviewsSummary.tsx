@@ -5,7 +5,7 @@ import { ClientsTable } from "./summary/ClientsTable";
 import { LoadingState } from "./summary/LoadingState";
 import { EmptyState } from "./summary/EmptyState";
 import { useDailyReviewsSummary } from "./summary/useDailyReviewsSummary";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatDateInBrasiliaTz } from "./summary/utils";
 import { ptBR } from "date-fns/locale";
 
 export const DailyReviewsSummary = () => {
@@ -28,9 +28,8 @@ export const DailyReviewsSummary = () => {
   }
 
   // Formatar a data atual com o fuso horário de Brasília
-  const currentDateFormatted = formatInTimeZone(
+  const currentDateFormatted = formatDateInBrasiliaTz(
     new Date(),
-    'America/Sao_Paulo',
     "dd 'de' MMMM 'de' yyyy",
     { locale: ptBR }
   );
