@@ -39,6 +39,35 @@ export const getCurrentDateInBrasiliaTz = () => {
 
 // Função para formatar uma data no fuso horário de Brasília
 export const formatDateInBrasiliaTz = (date: Date | string, format: string, options?: any) => {
-  const brasiliaTz = 'America/Sao_Paulo';
-  return formatInTimeZone(new Date(date), brasiliaTz, format);
+  if (!date) return '';
+  
+  try {
+    const brasiliaTz = 'America/Sao_Paulo';
+    
+    // Garante que estamos trabalhando com um objeto Date
+    let dateObj: Date;
+    if (typeof date === 'string') {
+      // Se a data já inclui informação de fuso horário (tem 'T' ou 'Z')
+      if (date.includes('T') || date.includes('Z')) {
+        dateObj = new Date(date);
+      } else {
+        // Se é apenas uma data (YYYY-MM-DD), adicionamos um horário padrão no fuso de Brasília
+        dateObj = new Date(`${date}T12:00:00`);
+      }
+    } else {
+      dateObj = date;
+    }
+    
+    // Verifica se a data é válida
+    if (isNaN(dateObj.getTime())) {
+      console.error('Data inválida:', date);
+      return '';
+    }
+    
+    // Formatar a data no fuso horário de Brasília
+    return formatInTimeZone(dateObj, brasiliaTz, format);
+  } catch (error) {
+    console.error('Erro ao formatar data:', error, date);
+    return '';
+  }
 };

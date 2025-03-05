@@ -2,6 +2,7 @@
 import { formatCurrency } from "@/utils/formatters";
 import { AlertCircle, Calendar, Loader } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateInBrasiliaTz } from "../summary/utils";
 
 interface ReviewHistoryTableProps {
   isLoading: boolean;
@@ -70,7 +71,7 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
               {reviewHistory.map((review) => (
                 <tr key={review.id} className="border-b">
                   <td className="py-2">
-                    {new Date(review.review_date).toLocaleDateString("pt-BR")}
+                    {formatDateInBrasiliaTz(review.review_date, "dd/MM/yyyy HH:mm")}
                   </td>
                   <td className="py-2">
                     {formatCurrency(review.meta_daily_budget_current || 0)}
