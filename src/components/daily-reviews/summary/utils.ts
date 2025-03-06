@@ -1,4 +1,3 @@
-
 import { formatCurrency } from "@/utils/formatters";
 import { getDaysInMonth } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
@@ -50,14 +49,16 @@ export const formatDateInBrasiliaTz = (
     let dateObj: Date;
 
     if (typeof date === 'string') {
+      // Se a data já inclui informação de fuso horário (tem 'T' ou 'Z')
       if (date.includes('T') || date.includes('Z')) {
-        // Para datas com timezone, vamos criar uma nova data e usar toZonedTime
+        // Cria um objeto Date e converte para o fuso de Brasília
         dateObj = toZonedTime(new Date(date), brasiliaTz);
       } else {
-        // Para datas simples YYYY-MM-DD
-        dateObj = toZonedTime(new Date(`${date}T00:00:00`), brasiliaTz);
+        // Se é apenas uma data (YYYY-MM-DD), assume meia-noite em Brasília
+        dateObj = toZonedTime(new Date(`${date}T00:00:00-03:00`), brasiliaTz);
       }
     } else {
+      // Se já é um objeto Date, converte para o fuso de Brasília
       dateObj = toZonedTime(date, brasiliaTz);
     }
 
@@ -66,6 +67,7 @@ export const formatDateInBrasiliaTz = (
       return '';
     }
 
+    // Formata a data no fuso de Brasília
     return formatInTimeZone(dateObj, brasiliaTz, format, options);
   } catch (error) {
     console.error('Erro ao formatar data:', error, date);
