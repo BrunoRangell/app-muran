@@ -49,16 +49,18 @@ export const formatDateInBrasiliaTz = (
     let dateObj: Date;
 
     if (typeof date === 'string') {
-      // Se a data já inclui informação de fuso horário (tem 'T' ou 'Z')
       if (date.includes('T') || date.includes('Z')) {
-        // Cria um objeto Date e converte para o fuso de Brasília
+        // Converte datas com timezone explícito
         dateObj = toZonedTime(new Date(date), brasiliaTz);
       } else {
-        // Se é apenas uma data (YYYY-MM-DD), assume meia-noite em Brasília
-        dateObj = toZonedTime(new Date(`${date}T00:00:00-03:00`), brasiliaTz);
+        // TRATAMENTO CORRETO PARA DATAS DO BANCO (YYYY-MM-DD):
+        // 1. Assume que a data está em Brasília (meia-noite)
+        // 2. Converte para UTC+00:00 (para evitar deslocamento)
+        const dateInBrasilia = new Date(`${date}T00:00:00-03:00`);
+        // 3. Converte para o fuso de Brasília novamente (ajuste final)
+        dateObj = toZonedTime(dateInBrasilia, brasiliaTz);
       }
     } else {
-      // Se já é um objeto Date, converte para o fuso de Brasília
       dateObj = toZonedTime(date, brasiliaTz);
     }
 
@@ -67,7 +69,6 @@ export const formatDateInBrasiliaTz = (
       return '';
     }
 
-    // Formata a data no fuso de Brasília
     return formatInTimeZone(dateObj, brasiliaTz, format, options);
   } catch (error) {
     console.error('Erro ao formatar data:', error, date);
