@@ -1,10 +1,11 @@
+
 import { Button } from "@/components/ui/button";
-import { RefreshCw, BarChart } from "lucide-react";
+import { RefreshCw, BarChart, Calendar, Clock } from "lucide-react";
 import { ClientReviewCard } from "./ClientReviewCard";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { formatDateInBrasiliaTz } from "../summary/utils";
+import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../summary/utils";
 import { ptBR } from "date-fns/locale";
 
 interface ReviewsDashboardProps {
@@ -30,6 +31,16 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
+  // Obter data e hora atual formatada
+  const currentDateTime = formatDateInBrasiliaTz(
+    new Date(),
+    "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
+    { locale: ptBR }
+  );
+  
+  // Obter dias restantes no mês
+  const remainingDays = getRemainingDaysInMonth();
+
   // Formatar data e hora da última revisão
   const getFormattedLastReviewTime = () => {
     if (!lastReviewTime) return "Nenhuma revisão realizada";
@@ -50,7 +61,7 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
             <BarChart className="text-muran-primary" size={20} />
             Dashboard de Revisão Diária
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 mb-1">
             {getFormattedLastReviewTime()}
           </p>
         </div>
@@ -67,6 +78,17 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
               ? "Analisando..." 
               : "Fazer revisão diária"}
           </Button>
+        </div>
+      </div>
+
+      <div className="bg-muran-secondary rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <div className="flex items-center gap-2 text-muran-dark">
+          <Calendar size={18} className="text-muran-primary" />
+          <span className="font-medium">{currentDateTime}</span>
+        </div>
+        <div className="flex items-center gap-2 text-muran-dark">
+          <Clock size={18} className="text-muran-primary" />
+          <span className="font-medium">{remainingDays} {remainingDays === 1 ? 'dia restante' : 'dias restantes'} no mês</span>
         </div>
       </div>
 

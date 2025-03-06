@@ -1,5 +1,6 @@
+
 import { formatCurrency } from "@/utils/formatters";
-import { getDaysInMonth } from 'date-fns';
+import { getDaysInMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 import { ptBR } from 'date-fns/locale'; // Adicionei o locale ptBR para formatação em português
 
@@ -33,6 +34,16 @@ export const generateRecommendation = (currentDaily: number, idealDaily: number)
 export const getCurrentDateInBrasiliaTz = () => {
   const brasiliaTz = 'America/Sao_Paulo';
   return toZonedTime(new Date(), brasiliaTz);
+};
+
+// Função para calcular dias restantes no mês
+export const getRemainingDaysInMonth = () => {
+  const brasiliaTz = 'America/Sao_Paulo';
+  const today = toZonedTime(new Date(), brasiliaTz);
+  const lastDayOfMonth = toZonedTime(endOfMonth(today), brasiliaTz);
+  
+  // Inclui o dia atual na contagem (+1)
+  return differenceInDays(lastDayOfMonth, today) + 1;
 };
 
 // Função para formatar uma data no fuso horário de Brasília
