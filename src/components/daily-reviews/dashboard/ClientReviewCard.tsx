@@ -1,8 +1,9 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
 import { ArrowRight, TrendingDown, TrendingUp, MinusCircle } from "lucide-react";
-import { ClientWithReview } from "../hooks/useBatchReview";
+import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { ptBR } from "date-fns/locale";
 
