@@ -9,7 +9,6 @@ interface ReviewHistoryTableProps {
 }
 
 export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTableProps) => {
-  // Log inicial para verificar se o componente está sendo renderizado
   console.log('Componente ReviewHistoryTable renderizado. isLoading:', isLoading, 'reviewHistory:', reviewHistory);
 
   if (isLoading) {
@@ -74,7 +73,6 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
             </thead>
             <tbody>
               {reviewHistory.map((review) => {
-                // Logs detalhados para depuração
                 console.log('Antes do log da data da revisão para review.id:', review.id);
                 console.log('Tipo de review.review_date:', typeof review.review_date);
                 console.log('Data da revisão antes de formatar:', review.review_date);
