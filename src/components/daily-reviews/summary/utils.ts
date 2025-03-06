@@ -1,7 +1,7 @@
 
 import { formatCurrency } from "@/utils/formatters";
 import { getDaysInMonth } from 'date-fns';
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { formatInTimeZone, toZonedTime, zonedTimeToUtc } from "date-fns-tz";
 
 // Função para calcular o orçamento diário ideal
 export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
@@ -38,37 +38,35 @@ export const getCurrentDateInBrasiliaTz = () => {
 };
 
 // Função para formatar uma data no fuso horário de Brasília
-export const formatDateInBrasiliaTz = (date: Date | string, format: string, options?: any) => {
+export const formatDateInBrasiliaTz = (
+  date: Date | string,
+  format: string,
+  options?: any
+) => {
   if (!date) return '';
-  
+
   try {
     const brasiliaTz = 'America/Sao_Paulo';
-    
-    // Garante que estamos trabalhando com um objeto Date
     let dateObj: Date;
+
     if (typeof date === 'string') {
-      // Se a data já inclui informação de fuso horário (tem 'T' ou 'Z')
       if (date.includes('T') || date.includes('Z')) {
-        dateObj = new Date(date);
+        // Parse datas com timezone explicitamente
+        dateObj = zonedTimeToUtc(date, brasiliaTz);
       } else {
-        // Se é apenas uma data (YYYY-MM-DD), adicionamos um horário padrão
-        dateObj = new Date(`${date}T12:00:00Z`);
+        // Assume datas YYYY-MM-DD como meia-noite em Brasília
+        dateObj = zonedTimeToUtc(`${date}T00:00:00`, brasiliaTz);
       }
     } else {
       dateObj = date;
     }
-    
-    // Verifica se a data é válida
+
     if (isNaN(dateObj.getTime())) {
       console.error('Data inválida:', date);
       return '';
     }
-    
-    // Primeiro convertemos a data para o fuso horário de Brasília
-    const zonedDate = toZonedTime(dateObj, brasiliaTz);
-    
-    // Depois formatamos usando a data já convertida para o fuso horário correto
-    return formatInTimeZone(zonedDate, brasiliaTz, format);
+
+    return formatInTimeZone(dateObj, brasiliaTz, format, options);
   } catch (error) {
     console.error('Erro ao formatar data:', error, date);
     return '';
