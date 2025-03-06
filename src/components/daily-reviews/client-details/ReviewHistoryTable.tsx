@@ -68,19 +68,23 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
               </tr>
             </thead>
             <tbody>
-              {reviewHistory.map((review) => (
-                <tr key={review.id} className="border-b">
-                  <td className="py-2">
-                    {formatDateInBrasiliaTz(review.review_date, "dd/MM/yyyy HH:mm")}
-                  </td>
-                  <td className="py-2">
-                    {formatCurrency(review.meta_daily_budget_current || 0)}
-                  </td>
-                  <td className="py-2">
-                    {formatCurrency(review.meta_total_spent || 0)}
-                  </td>
-                </tr>
-              ))}
+              {reviewHistory.map((review) => {
+                // Log para depuração da data
+                console.log('Data da revisão antes de formatar:', review.review_date);
+                return (
+                  <tr key={review.id} className="border-b">
+                    <td className="py-2">
+                      {formatDateInBrasiliaTz(review.review_date, "dd/MM/yyyy HH:mm")}
+                    </td>
+                    <td className="py-2">
+                      {formatCurrency(review.meta_daily_budget_current || 0)}
+                    </td>
+                    <td className="py-2">
+                      {formatCurrency(review.meta_total_spent || 0)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
