@@ -1,7 +1,7 @@
-
 import { formatCurrency } from "@/utils/formatters";
 import { getDaysInMonth } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { ptBR } from 'date-fns/locale'; // Adicionei o locale ptBR para formatação em português
 
 // Função para calcular o orçamento diário ideal
 export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
@@ -47,49 +47,42 @@ export const formatDateInBrasiliaTz = (
     const brasiliaTz = 'America/Sao_Paulo';
     let dateObj: Date;
 
-    console.log('Data recebida para formatação:', date, typeof date); // Log para depuração
+    console.log('Data recebida:', date); // Log para depuração
 
     if (typeof date === 'string') {
-      // Para datas do tipo YYYY-MM-DD sem informação de horário,
-      // assumimos que é uma data local de Brasília, e definimos como meia-noite
-      if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // Data simples do tipo '2025-03-06', sem horário
-        console.log('Convertendo data simples para horário de Brasília:', date);
-        // Criamos a data especificando que é meia-noite em Brasília (-03:00)
-        dateObj = new Date(`${date}T00:00:00-03:00`);
-      } else if (date.includes('T') || date.includes('Z') || date.includes('+')) {
-        // Data com informação de fuso horário - convertemos para Brasília
-        console.log('Convertendo data com timezone para Brasília:', date);
-        dateObj = toZonedTime(new Date(date), brasiliaTz);
+      if (date.includes('T') || date.includes('Z') || date.includes('+')) {
+        // Para datas com horário e offset explícito (ex.: '2025-03-06 11:49:04+00')
+        dateObj = new Date(date); // Cria o Date com o offset original
+        dateObj = toZonedTime(dateObj, brasiliaTz); // Converte para Brasília
       } else {
-        // Outros formatos de string de data - tentamos converter assumindo local
-        console.log('Tentando converter outro formato de data:', date);
-        const parsedDate = new Date(date);
-        // Se a data for válida, usamos ela; caso contrário, tentamos uma abordagem diferente
-        if (!isNaN(parsedDate.getTime())) {
-          dateObj = toZonedTime(parsedDate, brasiliaTz);
-        } else {
-          // Último recurso: tratar como 'YYYY-MM-DD' e definir como meia-noite em Brasília
-          console.warn('Formato de data não reconhecido, tentando último recurso:', date);
-          dateObj = new Date(`${date}T00:00:00-03:00`);
-        }
+        // Para datas simples (ex.: '2025-03-06'), assume que é uma data LOCAL em Brasília
+        // Define como meia-noite em Brasília (GMT-03:00)
+        dateObj = new Date(`${date}T00:00:00-03:00`);
       }
     } else {
-      // Para objetos Date, convertemos diretamente para o fuso de Brasília
-      console.log('Convertendo objeto Date para Brasília:', date);
+      // Para objetos Date, assume que já está no fuso correto ou converte para Brasília
       dateObj = toZonedTime(date, brasiliaTz);
     }
 
     if (isNaN(dateObj.getTime())) {
-      console.error('Data inválida após processamento:', date, dateObj);
+      console.error('Data inválida:', date);
       return '';
     }
 
-    const formattedDate = formatInTimeZone(dateObj, brasiliaTz, format, options);
-    console.log('Data formatada final:', formattedDate, 'Original:', date);
+    // Formata a data no fuso de Brasília com locale em português
+    const formattedDate = formatInTimeZone(dateObj, brasiliaTz, format, {
+      locale: ptBR, // Locale fixo para português do Brasil
+      ...options,   // Permite sobrescrever opções, se necessário
+    });
+
+    console.log('Data formatada:', formattedDate); // Log para depuração
     return formattedDate;
   } catch (error) {
-    console.error('Erro ao formatar data:', error, 'Data original:', date);
+    console.error('Erro ao formatar data:', error, date);
     return '';
   }
 };
+
+// Exemplo de uso (para referência, pode remover depois):
+// console.log(formatDateInBrasiliaTz('2025-03-06', "dd 'de' MMMM 'às' HH:mm")); // "06 de março às 00:00"
+// console.log(formatDateInBrasiliaTz('2025-03-06 11:49:04+00', "dd 'de' MMMM 'às' HH:mm")); // "06 de março às 08:49"
