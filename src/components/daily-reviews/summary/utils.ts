@@ -6,7 +6,6 @@ import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
   if (!monthlyBudget) return 0;
 
-  // Convertemos a data para o fuso horário de Brasília
   const brasiliaTz = 'America/Sao_Paulo';
   const dateInBrasilia = toZonedTime(date, brasiliaTz);
 
@@ -47,14 +46,17 @@ export const formatDateInBrasiliaTz = (
     const brasiliaTz = 'America/Sao_Paulo';
     let dateObj: Date;
 
+    console.log('Data recebida:', date); // Log para depuração
+
     if (typeof date === 'string') {
       if (date.includes('T') || date.includes('Z') || date.includes('+')) {
-        // Para datas com horário e offset explícito (ex.: '2025-03-06 11:49:04+00')
+        // Para datas com horário e offset (ex.: '2025-03-06 11:49:04+00')
         dateObj = toZonedTime(new Date(date), brasiliaTz);
       } else {
-        // Para datas simples do banco (ex.: '2025-03-06'), assume que é meia-noite em Brasília
-        const dateInBrasilia = new Date(`${date}T00:00:00-03:00`); // Meia-noite em Brasília
-        dateObj = toZonedTime(dateInBrasilia, brasiliaTz);
+        // Para datas simples (ex.: '2025-03-06'), assume que é uma data LOCAL em Brasília
+        // Construímos como meia-noite em Brasília e ajustamos para UTC corretamente
+        const dateInBrasilia = new Date(`${date}T00:00:00-03:00`);
+        dateObj = dateInBrasilia; // Não precisamos de toZonedTime aqui, já está correto
       }
     } else {
       // Para objetos Date, converte diretamente para Brasília
@@ -66,7 +68,9 @@ export const formatDateInBrasiliaTz = (
       return '';
     }
 
-    return formatInTimeZone(dateObj, brasiliaTz, format, options);
+    const formattedDate = formatInTimeZone(dateObj, brasiliaTz, format, options);
+    console.log('Data formatada:', formattedDate); // Log para depuração
+    return formattedDate;
   } catch (error) {
     console.error('Erro ao formatar data:', error, date);
     return '';
