@@ -214,6 +214,8 @@ serve(async (req) => {
         const result = {
           success: true,
           message: "Dados obtidos com sucesso",
+          meta_total_spent: totalSpent, // Importante: Incluir este campo para o cliente usar
+          meta_daily_budget_current: estimatedDailyBudget, // Importante: Incluir este campo para o cliente usar
           meta: {
             totalSpent: totalSpent,
             dailyBudget: estimatedDailyBudget,

@@ -1,85 +1,112 @@
 
 import { supabase } from "@/lib/supabase";
-import { ClientWithReview } from "../types/reviewTypes";
-import { getCurrentDateInBrasiliaTz, calculateIdealDailyBudget, generateRecommendation } from "../../summary/utils";
+import { getMetaAccessToken } from "../useEdgeFunction";
+import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
+import { ClientWithReview, ClientAnalysisResult } from "../types/reviewTypes";
 
 /**
- * Busca clientes ativos com suas revisões mais recentes
+ * Analisa um cliente específico e salva a revisão no banco de dados
  */
-export const fetchClientsWithReviews = async (): Promise<{
-  clientsData: ClientWithReview[];
-  lastReviewTime: Date | null;
-}> => {
-  // Buscar clientes ativos que tenham ID de conta Meta configurado
-  const { data: clients, error: clientsError } = await supabase
-    .from("clients")
-    .select("id, company_name, meta_account_id, meta_ads_budget")
-    .eq("status", "active")
-    .not("meta_account_id", "is", null)
-    .order("company_name");
-
-  if (clientsError) {
-    console.error("Erro ao buscar clientes:", clientsError);
-    throw clientsError;
+export const analyzeClient = async (clientId: string, clientsWithReviews?: ClientWithReview[]): Promise<ClientAnalysisResult> => {
+  const client = clientsWithReviews?.find(c => c.id === clientId);
+  
+  if (!client || !client.meta_account_id) {
+    throw new Error("Cliente não encontrado ou sem ID de conta Meta");
   }
-
-  // Para cada cliente, buscar a revisão mais recente
-  const clientsWithReviewsData = await Promise.all(
-    clients.map(async (client) => {
-      const { data: reviews, error: reviewsError } = await supabase
-        .from("daily_budget_reviews")
-        .select("*")
-        .eq("client_id", client.id)
-        .order("review_date", { ascending: false })
-        .limit(1);
-
-      if (reviewsError) {
-        console.error(`Erro ao buscar revisões para cliente ${client.id}:`, reviewsError);
-        return { ...client, lastReview: null };
-      }
-
-      // Processar a revisão mais recente para adicionar orçamento diário ideal e recomendação
-      if (reviews && reviews.length > 0) {
-        const review = reviews[0];
-        const today = getCurrentDateInBrasiliaTz();
-        const idealDailyBudget = calculateIdealDailyBudget(client.meta_ads_budget, today);
-        
-        // Gerar recomendação baseada na comparação entre orçamento atual e ideal
-        const recommendation = generateRecommendation(
-          review.meta_daily_budget_current,
-          idealDailyBudget
-        );
-        
-        return { 
-          ...client, 
-          lastReview: {
-            ...review,
-            idealDailyBudget,
-            recommendation
-          }
-        };
-      }
-
-      return { ...client, lastReview: null };
-    })
+  
+  console.log(`Analisando cliente: ${client.company_name} (${client.meta_account_id})`);
+  
+  // Obter token de acesso
+  const accessToken = await getMetaAccessToken();
+  
+  if (!accessToken) {
+    throw new Error("Token de acesso Meta não disponível");
+  }
+  
+  // Chamar função de borda para calcular orçamento
+  const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
+    body: {
+      accountId: client.meta_account_id,
+      accessToken
+    }
+  });
+  
+  if (error) {
+    console.error("Erro na função de borda:", error);
+    throw new Error(`Erro ao analisar cliente: ${error.message}`);
+  }
+  
+  if (!data) {
+    throw new Error("Resposta vazia da API");
+  }
+  
+  console.log("Dados recebidos da API:", data);
+  
+  // Obter a data atual no fuso horário de Brasília
+  const currentDate = getCurrentDateInBrasiliaTz().toISOString().split('T')[0];
+  
+  // Salvar os resultados no banco de dados como uma nova revisão diária
+  const { data: reviewData, error: reviewError } = await supabase.rpc(
+    "insert_daily_budget_review",
+    {
+      p_client_id: client.id,
+      p_review_date: currentDate,
+      p_meta_daily_budget_current: data.totalDailyBudget,
+      p_meta_total_spent: data.totalSpent || 0,
+      p_meta_account_id: client.meta_account_id,
+      p_meta_account_name: `Conta ${client.meta_account_id}`
+    }
   );
-
-  // Encontrar a data da revisão mais recente
-  let lastReviewTime: Date | null = null;
-  const mostRecentReview = clientsWithReviewsData
-    .filter(client => client.lastReview)
-    .sort((a, b) => {
-      if (!a.lastReview || !b.lastReview) return 0;
-      return new Date(b.lastReview.review_date).getTime() - new Date(a.lastReview.review_date).getTime();
-    })[0];
-
-  if (mostRecentReview?.lastReview) {
-    // Criar um objeto Date a partir da string de data
-    lastReviewTime = new Date(mostRecentReview.lastReview.review_date);
+  
+  if (reviewError) {
+    console.error("Erro ao salvar revisão:", reviewError);
+    throw new Error(`Erro ao salvar revisão: ${reviewError.message}`);
   }
-
+  
+  console.log("Revisão salva com sucesso:", reviewData);
+  
   return {
-    clientsData: clientsWithReviewsData as ClientWithReview[],
-    lastReviewTime
+    clientId,
+    reviewId: reviewData,
+    analysis: data
   };
+};
+
+/**
+ * Analisa todos os clientes elegíveis em sequência
+ */
+export const analyzeAllClients = async (
+  clientsWithReviews: ClientWithReview[] | undefined,
+  onClientProcessingStart: (clientId: string) => void,
+  onClientProcessingEnd: (clientId: string) => void
+) => {
+  const results: ClientAnalysisResult[] = [];
+  const errors: { clientId: string; clientName: string; error: string }[] = [];
+  
+  // Filtrar apenas clientes com ID de conta Meta configurado
+  const eligibleClients = clientsWithReviews?.filter(client => 
+    client.meta_account_id && client.meta_account_id.trim() !== ""
+  ) || [];
+  
+  console.log(`Iniciando revisão em massa para ${eligibleClients.length} clientes`);
+  
+  // Processar clientes em sequência para evitar sobrecarga
+  for (const client of eligibleClients) {
+    try {
+      onClientProcessingStart(client.id);
+      const result = await analyzeClient(client.id, clientsWithReviews);
+      results.push(result);
+    } catch (error) {
+      console.error(`Erro ao analisar cliente ${client.company_name}:`, error);
+      errors.push({
+        clientId: client.id,
+        clientName: client.company_name,
+        error: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    } finally {
+      onClientProcessingEnd(client.id);
+    }
+  }
+  
+  return { results, errors };
 };
