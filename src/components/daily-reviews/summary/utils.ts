@@ -1,4 +1,3 @@
-
 import { formatCurrency } from "@/utils/formatters";
 import { getDaysInMonth } from 'date-fns';
 import { formatInTimeZone, toZonedTime, zonedTimeToUtc } from "date-fns-tz";
@@ -6,11 +5,11 @@ import { formatInTimeZone, toZonedTime, zonedTimeToUtc } from "date-fns-tz";
 // Função para calcular o orçamento diário ideal
 export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
   if (!monthlyBudget) return 0;
-  
+
   // Convertemos a data para o fuso horário de Brasília
   const brasiliaTz = 'America/Sao_Paulo';
   const dateInBrasilia = toZonedTime(date, brasiliaTz);
-  
+
   const daysInMonth = getDaysInMonth(dateInBrasilia);
   return monthlyBudget / daysInMonth;
 };
@@ -18,9 +17,9 @@ export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => 
 // Função para gerar recomendação
 export const generateRecommendation = (currentDaily: number, idealDaily: number) => {
   if (!currentDaily || !idealDaily) return null;
-  
+
   const percentDifference = ((currentDaily - idealDaily) / idealDaily) * 100;
-  
+
   if (percentDifference < -10) {
     return `Aumentar o orçamento diário em ${Math.abs(Math.round(percentDifference))}%`;
   } else if (percentDifference > 10) {
