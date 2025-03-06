@@ -1,6 +1,7 @@
+
 import { formatCurrency } from "@/utils/formatters";
 import { getDaysInMonth } from 'date-fns';
-import { formatInTimeZone, toZonedTime, zonedTimeToUtc } from "date-fns-tz";
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 
 // Função para calcular o orçamento diário ideal
 export const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
@@ -50,14 +51,14 @@ export const formatDateInBrasiliaTz = (
 
     if (typeof date === 'string') {
       if (date.includes('T') || date.includes('Z')) {
-        // Parse datas com timezone explicitamente
-        dateObj = zonedTimeToUtc(date, brasiliaTz);
+        // Para datas com timezone, vamos criar uma nova data e usar toZonedTime
+        dateObj = toZonedTime(new Date(date), brasiliaTz);
       } else {
-        // Assume datas YYYY-MM-DD como meia-noite em Brasília
-        dateObj = zonedTimeToUtc(`${date}T00:00:00`, brasiliaTz);
+        // Para datas simples YYYY-MM-DD
+        dateObj = toZonedTime(new Date(`${date}T00:00:00`), brasiliaTz);
       }
     } else {
-      dateObj = date;
+      dateObj = toZonedTime(date, brasiliaTz);
     }
 
     if (isNaN(dateObj.getTime())) {
