@@ -32,7 +32,6 @@ export const generateRecommendation = (currentDaily: number, idealDaily: number)
 // Função para obter a data atual no fuso horário de Brasília
 export const getCurrentDateInBrasiliaTz = () => {
   const brasiliaTz = 'America/Sao_Paulo';
-  // Convertemos explicitamente para o fuso horário de Brasília
   return toZonedTime(new Date(), brasiliaTz);
 };
 
@@ -49,18 +48,16 @@ export const formatDateInBrasiliaTz = (
     let dateObj: Date;
 
     if (typeof date === 'string') {
-      if (date.includes('T') || date.includes('Z')) {
-        // Converte datas com timezone explícito
+      if (date.includes('T') || date.includes('Z') || date.includes('+')) {
+        // Para datas com horário e offset explícito (ex.: '2025-03-06 11:49:04+00')
         dateObj = toZonedTime(new Date(date), brasiliaTz);
       } else {
-        // TRATAMENTO CORRETO PARA DATAS DO BANCO (YYYY-MM-DD):
-        // 1. Assume que a data está em Brasília (meia-noite)
-        // 2. Converte para UTC+00:00 (para evitar deslocamento)
-        const dateInBrasilia = new Date(`${date}T00:00:00-03:00`);
-        // 3. Converte para o fuso de Brasília novamente (ajuste final)
+        // Para datas simples do banco (ex.: '2025-03-06'), assume que é meia-noite em Brasília
+        const dateInBrasilia = new Date(`${date}T00:00:00-03:00`); // Meia-noite em Brasília
         dateObj = toZonedTime(dateInBrasilia, brasiliaTz);
       }
     } else {
+      // Para objetos Date, converte diretamente para Brasília
       dateObj = toZonedTime(date, brasiliaTz);
     }
 
