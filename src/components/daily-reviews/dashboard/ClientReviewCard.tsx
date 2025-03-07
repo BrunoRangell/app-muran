@@ -21,7 +21,7 @@ export const ClientReviewCard = ({
   isProcessing 
 }: ClientReviewCardProps) => {
   // Verificar se o cliente tem uma revisão recente
-  const hasReview = !!client.latestReview;
+  const hasReview = !!client.lastReview;
   
   // Calcular o orçamento diário ideal com base no orçamento mensal
   const idealDailyBudget = client.meta_ads_budget
@@ -29,8 +29,8 @@ export const ClientReviewCard = ({
     : 0;
 
   // Gerar recomendação com base nos orçamentos
-  const recommendation = hasReview && client.latestReview.meta_daily_budget_current
-    ? generateRecommendation(client.latestReview.meta_daily_budget_current, idealDailyBudget)
+  const recommendation = hasReview && client.lastReview.meta_daily_budget_current
+    ? generateRecommendation(client.lastReview.meta_daily_budget_current, idealDailyBudget)
     : null;
   
   // Funções auxiliares para UI
@@ -58,28 +58,28 @@ export const ClientReviewCard = ({
   };
 
   const hasSignificantDifference = () => {
-    if (!hasReview || !client.latestReview?.meta_daily_budget_current) {
+    if (!hasReview || !client.lastReview?.meta_daily_budget_current) {
       return false;
     }
     
-    const diff = Math.abs(client.latestReview.meta_daily_budget_current - idealDailyBudget);
+    const diff = Math.abs(client.lastReview.meta_daily_budget_current - idealDailyBudget);
     return diff >= 5;
   };
 
   const getBudgetDifference = () => {
-    if (!hasReview || !client.latestReview?.meta_daily_budget_current) {
+    if (!hasReview || !client.lastReview?.meta_daily_budget_current) {
       return 0;
     }
     
-    return idealDailyBudget - client.latestReview.meta_daily_budget_current;
+    return idealDailyBudget - client.lastReview.meta_daily_budget_current;
   };
 
   const getFormattedReviewDate = () => {
-    if (!hasReview || !client.latestReview?.created_at) return "Sem revisão";
+    if (!hasReview || !client.lastReview?.created_at) return "Sem revisão";
     
     try {
       return formatDateInBrasiliaTz(
-        new Date(client.latestReview.created_at), 
+        new Date(client.lastReview.created_at), 
         "'Última revisão em' dd 'de' MMMM 'às' HH:mm"
       );
     } catch (error) {
@@ -102,7 +102,7 @@ export const ClientReviewCard = ({
     clientId: client.id,
     clientName: client.company_name,
     hasReview,
-    latestReview: client.latestReview,
+    lastReview: client.lastReview,
     idealDailyBudget,
     recommendation
   });
@@ -128,8 +128,8 @@ export const ClientReviewCard = ({
           <div>
             <div className="text-gray-500">Orçamento Diário</div>
             <div>
-              {hasReview && client.latestReview?.meta_daily_budget_current 
-                ? formatCurrency(client.latestReview.meta_daily_budget_current) 
+              {hasReview && client.lastReview?.meta_daily_budget_current 
+                ? formatCurrency(client.lastReview.meta_daily_budget_current) 
                 : "Não disponível"}
             </div>
           </div>
