@@ -75,11 +75,14 @@ export const ClientReviewCard = ({
   };
 
   const getFormattedReviewDate = () => {
-    if (!hasReview || !client.lastReview?.created_at) return "Sem revisão";
+    if (!hasReview) return "Sem revisão";
     
     try {
+      // Usar review_date se created_at não estiver disponível
+      const dateToFormat = client.lastReview.created_at || client.lastReview.review_date;
+      
       return formatDateInBrasiliaTz(
-        new Date(client.lastReview.created_at), 
+        new Date(dateToFormat), 
         "'Última revisão em' dd 'de' MMMM 'às' HH:mm"
       );
     } catch (error) {
@@ -175,6 +178,7 @@ export const ClientReviewCard = ({
           size="sm" 
           onClick={() => onViewDetails(client.id)}
           className="ml-2"
+          style={{ backgroundColor: "#ff6e00", color: "white" }}
         >
           Ver detalhes
           <ArrowRight className="ml-1 h-4 w-4" />
