@@ -2,7 +2,7 @@
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
-import { ClientWithReview, ClientAnalysisResult } from "../types/reviewTypes";
+import { ClientWithReview, ClientAnalysisResult, BatchReviewResult } from "../types/reviewTypes";
 
 /**
  * Busca todos os clientes com suas respectivas revisões mais recentes
@@ -37,7 +37,7 @@ export const fetchClientsWithReviews = async () => {
   
   // Processar os clientes para obter apenas a revisão mais recente de cada um
   const processedClients = clientsData?.map(client => {
-    let latestReview = null;
+    let lastReview = null;
     
     // Ordenar revisões por data (mais recente primeiro)
     if (client.daily_budget_reviews && client.daily_budget_reviews.length > 0) {
@@ -45,10 +45,10 @@ export const fetchClientsWithReviews = async () => {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
-      latestReview = sortedReviews[0];
+      lastReview = sortedReviews[0];
       
       // Atualizar o timestamp da revisão mais recente global
-      const reviewDate = new Date(latestReview.created_at);
+      const reviewDate = new Date(lastReview.created_at);
       if (!lastReviewTime || reviewDate > lastReviewTime) {
         lastReviewTime = reviewDate;
       }
@@ -56,9 +56,11 @@ export const fetchClientsWithReviews = async () => {
     
     return {
       ...client,
-      latestReview
+      lastReview
     };
   });
+  
+  console.log("Clientes processados com revisões:", processedClients?.length);
   
   return { 
     clientsData: processedClients || [],
@@ -107,14 +109,18 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   // Obter a data atual no fuso horário de Brasília
   const currentDate = getCurrentDateInBrasiliaTz().toISOString().split('T')[0];
   
+  // Extrair valores necessários do resultado
+  const metaDailyBudgetCurrent = data.totalDailyBudget || 0;
+  const metaTotalSpent = data.totalSpent || 0;
+  
   // Salvar os resultados no banco de dados como uma nova revisão diária
   const { data: reviewData, error: reviewError } = await supabase.rpc(
     "insert_daily_budget_review",
     {
       p_client_id: client.id,
       p_review_date: currentDate,
-      p_meta_daily_budget_current: data.totalDailyBudget,
-      p_meta_total_spent: data.totalSpent || 0,
+      p_meta_daily_budget_current: metaDailyBudgetCurrent,
+      p_meta_total_spent: metaTotalSpent,
       p_meta_account_id: client.meta_account_id,
       p_meta_account_name: `Conta ${client.meta_account_id}`
     }
@@ -130,7 +136,11 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   return {
     clientId,
     reviewId: reviewData,
-    analysis: data
+    analysis: {
+      totalDailyBudget: metaDailyBudgetCurrent,
+      totalSpent: metaTotalSpent,
+      campaigns: data.campaignDetails || []
+    }
   };
 };
 
@@ -141,7 +151,7 @@ export const analyzeAllClients = async (
   clientsWithReviews: ClientWithReview[] | undefined,
   onClientProcessingStart: (clientId: string) => void,
   onClientProcessingEnd: (clientId: string) => void
-) => {
+): Promise<BatchReviewResult> => {
   const results: ClientAnalysisResult[] = [];
   const errors: { clientId: string; clientName: string; error: string }[] = [];
   

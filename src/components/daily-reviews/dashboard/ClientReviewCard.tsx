@@ -29,7 +29,7 @@ export const ClientReviewCard = ({
     : 0;
 
   // Gerar recomendação com base nos orçamentos
-  const recommendation = hasReview && client.lastReview.meta_daily_budget_current
+  const recommendation = hasReview && client.lastReview?.meta_daily_budget_current
     ? generateRecommendation(client.lastReview.meta_daily_budget_current, idealDailyBudget)
     : null;
   
@@ -107,7 +107,8 @@ export const ClientReviewCard = ({
     hasReview,
     lastReview: client.lastReview,
     idealDailyBudget,
-    recommendation
+    recommendation,
+    metaAdsBudget: client.meta_ads_budget
   });
 
   return (
@@ -131,7 +132,7 @@ export const ClientReviewCard = ({
           <div>
             <div className="text-gray-500">Orçamento Diário</div>
             <div>
-              {hasReview && client.lastReview?.meta_daily_budget_current 
+              {hasReview && client.lastReview?.meta_daily_budget_current !== null 
                 ? formatCurrency(client.lastReview.meta_daily_budget_current) 
                 : "Não disponível"}
             </div>
