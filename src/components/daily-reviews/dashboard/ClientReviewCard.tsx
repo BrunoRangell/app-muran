@@ -5,7 +5,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { ArrowRight, TrendingDown, TrendingUp, MinusCircle, Info } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { formatDateInBrasiliaTz } from "../summary/utils";
-import { calculateIdealDailyBudget, generateRecommendation } from "../summary/utils";
+import { calculateIdealDailyBudget, generateRecommendation, getRemainingDaysInMonth } from "../summary/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -29,23 +29,37 @@ export const ClientReviewCard = ({
   // Verificar se o cliente tem uma revisão recente
   const hasReview = !!client.lastReview;
   
-  // Calcular o orçamento diário ideal com base no orçamento mensal
-  const idealDailyBudget = client.meta_ads_budget
-    ? calculateIdealDailyBudget(client.meta_ads_budget, new Date())
+  // Obter dias restantes no mês atual
+  const remainingDaysValue = getRemainingDaysInMonth();
+  
+  // Calcular valores para exibição
+  const monthlyBudget = client.meta_ads_budget || 0;
+  const totalSpent = hasReview ? (client.lastReview?.meta_total_spent || 0) : 0;
+  const remainingBudget = monthlyBudget - totalSpent;
+  
+  // Calcular o orçamento diário ideal com base no orçamento restante e dias restantes
+  const idealDailyBudget = remainingDaysValue > 0 ? remainingBudget / remainingDaysValue : 0;
+
+  // Verificar se o cliente tem valor de orçamento diário atual
+  const currentDailyBudget = hasReview && client.lastReview?.meta_daily_budget_current !== null
+    ? client.lastReview.meta_daily_budget_current
     : 0;
 
   // Gerar recomendação com base nos orçamentos
-  const recommendation = hasReview && client.lastReview?.meta_daily_budget_current
-    ? generateRecommendation(client.lastReview.meta_daily_budget_current, idealDailyBudget)
-    : null;
+  const budgetDifference = idealDailyBudget - currentDailyBudget;
+  const recommendation = budgetDifference > 5 
+    ? `Aumentar o orçamento diário`
+    : budgetDifference < -5 
+      ? `Diminuir o orçamento diário`
+      : "Manter o orçamento diário atual";
   
   // Funções auxiliares para UI
   const getRecommendationIcon = () => {
-    if (!hasReview || !recommendation) return null;
+    if (!hasReview) return null;
     
-    if (recommendation.includes("Aumentar")) {
+    if (budgetDifference > 5) {
       return <TrendingUp className="text-green-500" size={16} />;
-    } else if (recommendation.includes("Diminuir")) {
+    } else if (budgetDifference < -5) {
       return <TrendingDown className="text-red-500" size={16} />;
     } else {
       return <MinusCircle className="text-gray-500" size={16} />;
@@ -53,31 +67,19 @@ export const ClientReviewCard = ({
   };
 
   const getRecommendationColor = () => {
-    if (!hasReview || !recommendation) return "";
+    if (!hasReview) return "";
     
-    if (recommendation.includes("Aumentar")) {
+    if (budgetDifference > 5) {
       return "text-green-600";
-    } else if (recommendation.includes("Diminuir")) {
+    } else if (budgetDifference < -5) {
       return "text-red-600";
     }
     return "text-gray-600";
   };
 
   const hasSignificantDifference = () => {
-    if (!hasReview || !client.lastReview?.meta_daily_budget_current) {
-      return false;
-    }
-    
-    const diff = Math.abs(client.lastReview.meta_daily_budget_current - idealDailyBudget);
-    return diff >= 5;
-  };
-
-  const getBudgetDifference = () => {
-    if (!hasReview || !client.lastReview?.meta_daily_budget_current) {
-      return 0;
-    }
-    
-    return idealDailyBudget - client.lastReview.meta_daily_budget_current;
+    if (!hasReview) return false;
+    return Math.abs(budgetDifference) >= 5;
   };
 
   const getFormattedReviewDate = () => {
@@ -85,7 +87,7 @@ export const ClientReviewCard = ({
     
     try {
       // Usar review_date se created_at não estiver disponível
-      const dateToFormat = client.lastReview.created_at || client.lastReview.review_date;
+      const dateToFormat = client.lastReview.review_date;
       
       return formatDateInBrasiliaTz(
         new Date(dateToFormat), 
@@ -98,21 +100,15 @@ export const ClientReviewCard = ({
   };
 
   const getAdjustmentMessage = () => {
-    const diff = getBudgetDifference();
-    if (diff > 0) {
-      return `Ajuste recomendado: Aumentar ${formatCurrency(Math.abs(diff))}`;
-    } else if (diff < 0) {
-      return `Ajuste recomendado: Diminuir ${formatCurrency(Math.abs(diff))}`;
+    if (budgetDifference > 5) {
+      return `Ajuste recomendado: Aumentar ${formatCurrency(Math.abs(budgetDifference))}`;
+    } else if (budgetDifference < -5) {
+      return `Ajuste recomendado: Diminuir ${formatCurrency(Math.abs(budgetDifference))}`;
     }
     return "";
   };
 
-  // Calcular valores para exibir detalhes
-  const monthlyBudget = client.meta_ads_budget || 0;
-  const totalSpent = client.lastReview?.meta_total_spent || 0;
-  const remainingBudget = monthlyBudget - totalSpent;
-  
-  // Tooltip de detalhes do cálculo
+  // Renderizar tooltip de detalhes do cálculo
   const renderCalculationDetails = () => (
     <TooltipProvider>
       <Tooltip>
@@ -125,21 +121,27 @@ export const ClientReviewCard = ({
             <p>Orçamento mensal: {formatCurrency(monthlyBudget)}</p>
             <p>Total gasto: {formatCurrency(totalSpent)}</p>
             <p>Orçamento restante: {formatCurrency(remainingBudget)}</p>
-            <p>Fórmula: Orçamento restante ÷ Dias restantes no mês</p>
+            <p>Dias restantes no mês: {remainingDaysValue}</p>
+            <p className="font-medium">Fórmula: Orçamento restante ÷ Dias restantes</p>
+            <p className="font-medium">
+              {formatCurrency(remainingBudget)} ÷ {remainingDaysValue} = {formatCurrency(idealDailyBudget)}
+            </p>
           </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
 
-  console.log("Dados do cliente no card:", {
+  console.log("Dados do cálculo no card:", {
     clientId: client.id,
     clientName: client.company_name,
-    hasReview,
-    lastReview: client.lastReview,
+    monthlyBudget,
+    totalSpent,
+    remainingBudget,
+    remainingDaysValue,
     idealDailyBudget,
-    recommendation,
-    metaAdsBudget: client.meta_ads_budget
+    currentDailyBudget,
+    budgetDifference
   });
 
   return (
@@ -157,7 +159,7 @@ export const ClientReviewCard = ({
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <div className="text-gray-500">Orçamento Mensal</div>
-            <div>{formatCurrency(client.meta_ads_budget || 0)}</div>
+            <div>{formatCurrency(monthlyBudget)}</div>
           </div>
 
           <div>
@@ -191,11 +193,25 @@ export const ClientReviewCard = ({
           
           {hasSignificantDifference() && (
             <div className="col-span-2 mt-1">
-              <div className={`${getBudgetDifference() > 0 ? 'text-green-600' : 'text-red-600'} text-sm font-medium`}>
+              <div className={`${budgetDifference > 0 ? 'text-green-600' : 'text-red-600'} text-sm font-medium`}>
                 {getAdjustmentMessage()}
               </div>
             </div>
           )}
+
+          {/* Detalhes do cálculo para visualização rápida */}
+          <div className="col-span-2 mt-2 p-2 bg-gray-50 rounded text-xs">
+            <div className="font-medium mb-1">Detalhes do cálculo:</div>
+            <div className="flex flex-col space-y-1">
+              <div>Orçamento mensal: {formatCurrency(monthlyBudget)}</div>
+              <div>Total gasto: {formatCurrency(totalSpent)}</div>
+              <div>Orçamento restante: {formatCurrency(remainingBudget)}</div>
+              <div>Dias restantes: {remainingDaysValue}</div>
+              <div className="font-medium pt-1">
+                {formatCurrency(remainingBudget)} ÷ {remainingDaysValue} = {formatCurrency(idealDailyBudget)}
+              </div>
+            </div>
+          </div>
         </div>
       </CardContent>
 
