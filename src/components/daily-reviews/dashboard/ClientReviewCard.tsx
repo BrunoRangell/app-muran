@@ -2,10 +2,16 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
-import { ArrowRight, TrendingDown, TrendingUp, MinusCircle } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp, MinusCircle, Info } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { calculateIdealDailyBudget, generateRecommendation } from "../summary/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ClientReviewCardProps {
   client: ClientWithReview;
@@ -101,6 +107,31 @@ export const ClientReviewCard = ({
     return "";
   };
 
+  // Calcular valores para exibir detalhes
+  const monthlyBudget = client.meta_ads_budget || 0;
+  const totalSpent = client.lastReview?.meta_total_spent || 0;
+  const remainingBudget = monthlyBudget - totalSpent;
+  
+  // Tooltip de detalhes do cálculo
+  const renderCalculationDetails = () => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Info size={14} className="text-gray-400 hover:text-gray-600 cursor-help ml-1" />
+        </TooltipTrigger>
+        <TooltipContent className="max-w-md p-3">
+          <div className="space-y-1 text-xs">
+            <p><b>Cálculo do orçamento diário ideal:</b></p>
+            <p>Orçamento mensal: {formatCurrency(monthlyBudget)}</p>
+            <p>Total gasto: {formatCurrency(totalSpent)}</p>
+            <p>Orçamento restante: {formatCurrency(remainingBudget)}</p>
+            <p>Fórmula: Orçamento restante ÷ Dias restantes no mês</p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   console.log("Dados do cliente no card:", {
     clientId: client.id,
     clientName: client.company_name,
@@ -139,7 +170,10 @@ export const ClientReviewCard = ({
           </div>
 
           <div>
-            <div className="text-gray-500">Orçamento Sugerido</div>
+            <div className="text-gray-500 flex items-center">
+              Orçamento Sugerido
+              {renderCalculationDetails()}
+            </div>
             <div>
               {idealDailyBudget > 0 
                 ? formatCurrency(idealDailyBudget) 

@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
 import { 
@@ -6,10 +7,17 @@ import {
   TrendingDown, 
   TrendingUp, 
   Calendar,
-  MinusCircle
+  MinusCircle,
+  Info
 } from "lucide-react";
 import { ReviewHistoryTable } from "./ReviewHistoryTable";
 import { formatDateInBrasiliaTz } from "../summary/utils";
+import { Tooltip } from "@/components/ui/tooltip";
+import {
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ClientDetailsContentProps {
   client: any;
@@ -20,6 +28,11 @@ interface ClientDetailsContentProps {
   suggestedBudgetChange: number;
   isLoadingHistory: boolean;
   onRefresh: () => void;
+  // Novos parâmetros para mostrar detalhes do cálculo
+  remainingDays?: number;
+  remainingBudget?: number;
+  monthlyBudget?: number;
+  totalSpent?: number;
 }
 
 export const ClientDetailsContent = ({
@@ -30,7 +43,11 @@ export const ClientDetailsContent = ({
   idealDailyBudget,
   suggestedBudgetChange,
   isLoadingHistory,
-  onRefresh
+  onRefresh,
+  remainingDays,
+  remainingBudget,
+  monthlyBudget,
+  totalSpent
 }: ClientDetailsContentProps) => {
   const getLastReviewDate = () => {
     if (!latestReview || !latestReview.review_date) return "Sem revisão recente";
@@ -112,6 +129,15 @@ export const ClientDetailsContent = ({
                   : "Não configurado"}
               </div>
             </div>
+
+            {totalSpent !== undefined && (
+              <div className="mt-3">
+                <div className="text-sm font-medium mb-1">Total Gasto no Mês:</div>
+                <div className="text-xl font-semibold">
+                  {formatCurrency(totalSpent)}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -120,6 +146,28 @@ export const ClientDetailsContent = ({
             <CardTitle className="text-lg flex items-center gap-2">
               <DollarSign className="text-muran-primary" size={18} />
               Orçamento Sugerido
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info size={16} className="text-gray-400 hover:text-gray-600 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md p-4">
+                    <div className="space-y-2">
+                      <p className="font-semibold">Cálculo do orçamento diário ideal:</p>
+                      <div className="text-sm space-y-1">
+                        <p>Orçamento mensal: {formatCurrency(monthlyBudget || 0)}</p>
+                        <p>Total gasto no mês até agora: {formatCurrency(totalSpent || 0)}</p>
+                        <p>Orçamento restante: {formatCurrency(remainingBudget || 0)}</p>
+                        <p>Dias restantes no mês: {remainingDays || 0}</p>
+                        <p className="font-medium">Fórmula: Orçamento restante ÷ Dias restantes</p>
+                        <p className="font-medium">
+                          {formatCurrency(remainingBudget || 0)} ÷ {remainingDays || 0} = {formatCurrency(idealDailyBudget)}
+                        </p>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -142,6 +190,17 @@ export const ClientDetailsContent = ({
                   {suggestedBudgetChange > 0 ? '+' : ''}
                   {formatCurrency(suggestedBudgetChange)}
                 </div>
+              </div>
+            )}
+
+            {remainingDays !== undefined && remainingBudget !== undefined && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-md text-sm">
+                <p className="font-medium mb-1">Detalhes do cálculo:</p>
+                <p>Orçamento restante: {formatCurrency(remainingBudget)}</p>
+                <p>Dias restantes: {remainingDays}</p>
+                <p className="mt-1 font-medium">
+                  {formatCurrency(remainingBudget)} ÷ {remainingDays} = {formatCurrency(idealDailyBudget)}
+                </p>
               </div>
             )}
           </CardContent>

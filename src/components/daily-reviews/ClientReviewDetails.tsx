@@ -24,7 +24,12 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     isLoading,
     isLoadingHistory,
     hasError,
-    refetchData
+    refetchData,
+    // Detalhes do cálculo
+    remainingDays,
+    remainingBudget,
+    monthlyBudget,
+    totalSpent
   } = useClientReviewDetails(clientId);
 
   const { 
@@ -70,6 +75,11 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
         suggestedBudgetChange={suggestedBudgetChange}
         isLoadingHistory={isLoadingHistory}
         onRefresh={refetchData}
+        // Passando detalhes do cálculo
+        remainingDays={remainingDays}
+        remainingBudget={remainingBudget}
+        monthlyBudget={monthlyBudget}
+        totalSpent={totalSpent}
       />
     </div>
   );
