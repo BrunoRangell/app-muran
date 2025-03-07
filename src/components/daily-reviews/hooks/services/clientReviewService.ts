@@ -87,11 +87,26 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
     throw new Error("Token de acesso Meta não disponível");
   }
   
+  // Preparar dados para a função de borda
+  // Obter o primeiro e último dia do mês atual para análise completa do mês
+  const now = getCurrentDateInBrasiliaTz();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  
+  const dateRange = {
+    start: firstDayOfMonth.toISOString().split('T')[0],
+    end: now.toISOString().split('T')[0] // Até a data atual
+  };
+  
+  console.log(`Período de análise: ${dateRange.start} até ${dateRange.end}`);
+  
   // Chamar função de borda para calcular orçamento
   const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
     body: {
       accountId: client.meta_account_id,
-      accessToken
+      accessToken,
+      dateRange: dateRange, // Enviando o período para análise
+      fetchSeparateInsights: true // Solicitar dados detalhados de insights
     }
   });
   
@@ -104,7 +119,7 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
     throw new Error("Resposta vazia da API");
   }
   
-  console.log("Dados recebidos da API:", data);
+  console.log("Dados recebidos da API Meta:", data);
   
   // Obter a data atual no fuso horário de Brasília
   const currentDate = getCurrentDateInBrasiliaTz().toISOString().split('T')[0];
@@ -112,6 +127,8 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   // Extrair valores necessários do resultado
   const metaDailyBudgetCurrent = data.totalDailyBudget || 0;
   const metaTotalSpent = data.totalSpent || 0;
+  
+  console.log(`Valores extraídos: orçamento diário=${metaDailyBudgetCurrent}, total gasto=${metaTotalSpent}`);
   
   // Salvar os resultados no banco de dados como uma nova revisão diária
   const { data: reviewData, error: reviewError } = await supabase.rpc(

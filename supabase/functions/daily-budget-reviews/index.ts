@@ -81,7 +81,16 @@ serve(async (req) => {
       console.log("Solicitação de análise de dados Meta Ads recebida");
       
       // Validação dos parâmetros obrigatórios
-      const { metaAccountId, accessToken, dateRange, fetchSeparateInsights = true } = reqBody;
+      const { metaAccountId, accessToken, clientId } = reqBody;
+      
+      // Definir dateRange para o mês atual (do dia 1 até hoje)
+      const now = new Date();
+      const dateRange = {
+        start: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, // Primeiro dia do mês
+        end: now.toISOString().split('T')[0] // Hoje
+      };
+      
+      console.log(`Período de análise definido: ${dateRange.start} a ${dateRange.end}`);
       
       if (!metaAccountId) {
         throw new Error("ID da conta Meta Ads não fornecido");
@@ -89,10 +98,6 @@ serve(async (req) => {
       
       if (!accessToken) {
         throw new Error("Token de acesso não fornecido");
-      }
-      
-      if (!dateRange || !dateRange.start || !dateRange.end) {
-        throw new Error("Período de análise não fornecido corretamente");
       }
       
       console.log(`Analisando conta ${metaAccountId} no período de ${dateRange.start} a ${dateRange.end}`);
@@ -202,13 +207,15 @@ serve(async (req) => {
           return total + (parseFloat(campaign.spend) || 0);
         }, 0);
         
+        console.log(`Total gasto calculado a partir de todas as campanhas: ${totalSpent}`);
+        
         // Calcular orçamento diário (valor aproximado baseado no total gasto)
         const startDate = new Date(dateRange.start);
         const endDate = new Date(dateRange.end);
         const daysDiff = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
         const estimatedDailyBudget = parseFloat((totalSpent / daysDiff).toFixed(2));
         
-        console.log(`Total gasto: ${totalSpent}, Orçamento diário estimado: ${estimatedDailyBudget}`);
+        console.log(`Total gasto: ${totalSpent}, Orçamento diário estimado: ${estimatedDailyBudget}, Período de ${daysDiff} dias`);
         
         // Montar resposta
         const result = {
@@ -224,7 +231,8 @@ serve(async (req) => {
             // Incluir dados de debug se solicitado
             debug: reqBody.debug ? {
               rawInsightsCount: allInsights.length,
-              rawCampaignsCount: campaigns.length
+              rawCampaignsCount: campaigns.length,
+              daysDiff: daysDiff
             } : undefined
           }
         };
