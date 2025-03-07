@@ -5,6 +5,68 @@ import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
 import { ClientWithReview, ClientAnalysisResult } from "../types/reviewTypes";
 
 /**
+ * Busca todos os clientes com suas respectivas revisões mais recentes
+ */
+export const fetchClientsWithReviews = async () => {
+  // Buscar todos os clientes ativos com ID de conta Meta configurado
+  const { data: clientsData, error } = await supabase
+    .from('clients')
+    .select(`
+      id,
+      company_name,
+      meta_account_id,
+      meta_ads_budget,
+      daily_budget_reviews (
+        id,
+        review_date,
+        meta_daily_budget_current,
+        meta_total_spent,
+        created_at
+      )
+    `)
+    .eq('status', 'active')
+    .order('company_name');
+    
+  if (error) {
+    console.error("Erro ao buscar clientes:", error);
+    throw new Error(`Erro ao buscar clientes: ${error.message}`);
+  }
+  
+  // Determinar a data da revisão mais recente
+  let lastReviewTime: Date | null = null;
+  
+  // Processar os clientes para obter apenas a revisão mais recente de cada um
+  const processedClients = clientsData?.map(client => {
+    let latestReview = null;
+    
+    // Ordenar revisões por data (mais recente primeiro)
+    if (client.daily_budget_reviews && client.daily_budget_reviews.length > 0) {
+      const sortedReviews = [...client.daily_budget_reviews].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      
+      latestReview = sortedReviews[0];
+      
+      // Atualizar o timestamp da revisão mais recente global
+      const reviewDate = new Date(latestReview.created_at);
+      if (!lastReviewTime || reviewDate > lastReviewTime) {
+        lastReviewTime = reviewDate;
+      }
+    }
+    
+    return {
+      ...client,
+      latestReview
+    };
+  });
+  
+  return { 
+    clientsData: processedClients || [],
+    lastReviewTime 
+  };
+};
+
+/**
  * Analisa um cliente específico e salva a revisão no banco de dados
  */
 export const analyzeClient = async (clientId: string, clientsWithReviews?: ClientWithReview[]): Promise<ClientAnalysisResult> => {
