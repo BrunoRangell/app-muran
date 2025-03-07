@@ -5,7 +5,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { ArrowRight, TrendingDown, TrendingUp, MinusCircle } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { formatDateInBrasiliaTz } from "../summary/utils";
-import { ptBR } from "date-fns/locale";
+import { calculateIdealDailyBudget, generateRecommendation } from "../summary/utils";
 
 interface ClientReviewCardProps {
   client: ClientWithReview;
@@ -20,14 +20,26 @@ export const ClientReviewCard = ({
   onReviewClient,
   isProcessing 
 }: ClientReviewCardProps) => {
-  const hasReview = !!client.lastReview;
+  // Verificar se o cliente tem uma revisão recente
+  const hasReview = !!client.latestReview;
   
+  // Calcular o orçamento diário ideal com base no orçamento mensal
+  const idealDailyBudget = client.meta_ads_budget
+    ? calculateIdealDailyBudget(client.meta_ads_budget, new Date())
+    : 0;
+
+  // Gerar recomendação com base nos orçamentos
+  const recommendation = hasReview && client.latestReview.meta_daily_budget_current
+    ? generateRecommendation(client.latestReview.meta_daily_budget_current, idealDailyBudget)
+    : null;
+  
+  // Funções auxiliares para UI
   const getRecommendationIcon = () => {
-    if (!hasReview || !client.lastReview?.recommendation) return null;
+    if (!hasReview || !recommendation) return null;
     
-    if (client.lastReview.recommendation.includes("Aumentar")) {
+    if (recommendation.includes("Aumentar")) {
       return <TrendingUp className="text-green-500" size={16} />;
-    } else if (client.lastReview.recommendation.includes("Diminuir")) {
+    } else if (recommendation.includes("Diminuir")) {
       return <TrendingDown className="text-red-500" size={16} />;
     } else {
       return <MinusCircle className="text-gray-500" size={16} />;
@@ -35,40 +47,40 @@ export const ClientReviewCard = ({
   };
 
   const getRecommendationColor = () => {
-    if (!hasReview || !client.lastReview?.recommendation) return "";
+    if (!hasReview || !recommendation) return "";
     
-    if (client.lastReview.recommendation.includes("Aumentar")) {
+    if (recommendation.includes("Aumentar")) {
       return "text-green-600";
-    } else if (client.lastReview.recommendation.includes("Diminuir")) {
+    } else if (recommendation.includes("Diminuir")) {
       return "text-red-600";
     }
     return "text-gray-600";
   };
 
   const hasSignificantDifference = () => {
-    if (!hasReview || !client.lastReview?.meta_daily_budget_current || !client.lastReview?.idealDailyBudget) {
+    if (!hasReview || !client.latestReview?.meta_daily_budget_current) {
       return false;
     }
     
-    const diff = Math.abs(client.lastReview.meta_daily_budget_current - client.lastReview.idealDailyBudget);
+    const diff = Math.abs(client.latestReview.meta_daily_budget_current - idealDailyBudget);
     return diff >= 5;
   };
 
   const getBudgetDifference = () => {
-    if (!hasReview || !client.lastReview?.meta_daily_budget_current || !client.lastReview?.idealDailyBudget) {
+    if (!hasReview || !client.latestReview?.meta_daily_budget_current) {
       return 0;
     }
     
-    return client.lastReview.idealDailyBudget - client.lastReview.meta_daily_budget_current;
+    return idealDailyBudget - client.latestReview.meta_daily_budget_current;
   };
 
   const getFormattedReviewDate = () => {
-    if (!hasReview || !client.lastReview?.review_date) return "Sem revisão";
+    if (!hasReview || !client.latestReview?.created_at) return "Sem revisão";
     
     try {
       return formatDateInBrasiliaTz(
-        new Date(client.lastReview.review_date), 
-        "dd/MM/yyyy HH:mm"
+        new Date(client.latestReview.created_at), 
+        "'Última revisão em' dd 'de' MMMM 'às' HH:mm"
       );
     } catch (error) {
       console.error("Erro ao formatar data:", error);
@@ -86,6 +98,15 @@ export const ClientReviewCard = ({
     return "";
   };
 
+  console.log("Dados do cliente no card:", {
+    clientId: client.id,
+    clientName: client.company_name,
+    hasReview,
+    latestReview: client.latestReview,
+    idealDailyBudget,
+    recommendation
+  });
+
   return (
     <Card className={`overflow-hidden ${hasSignificantDifference() ? 'border-l-4 border-l-amber-500' : ''}`}>
       <CardContent className="p-4">
@@ -93,7 +114,7 @@ export const ClientReviewCard = ({
           <h3 className="font-medium truncate">{client.company_name}</h3>
           {hasReview && (
             <span className="text-xs text-gray-500">
-              Revisão: {getFormattedReviewDate()}
+              {getFormattedReviewDate()}
             </span>
           )}
         </div>
@@ -107,8 +128,8 @@ export const ClientReviewCard = ({
           <div>
             <div className="text-gray-500">Orçamento Diário</div>
             <div>
-              {hasReview && client.lastReview?.meta_daily_budget_current 
-                ? formatCurrency(client.lastReview.meta_daily_budget_current) 
+              {hasReview && client.latestReview?.meta_daily_budget_current 
+                ? formatCurrency(client.latestReview.meta_daily_budget_current) 
                 : "Não disponível"}
             </div>
           </div>
@@ -116,8 +137,8 @@ export const ClientReviewCard = ({
           <div>
             <div className="text-gray-500">Orçamento Sugerido</div>
             <div>
-              {hasReview && client.lastReview?.idealDailyBudget 
-                ? formatCurrency(client.lastReview.idealDailyBudget) 
+              {idealDailyBudget > 0 
+                ? formatCurrency(idealDailyBudget) 
                 : "Não disponível"}
             </div>
           </div>
@@ -126,9 +147,7 @@ export const ClientReviewCard = ({
             <div className="text-gray-500">Recomendação</div>
             <div className={`flex items-center gap-1 ${getRecommendationColor()} font-medium`}>
               {getRecommendationIcon()}
-              {hasReview && client.lastReview?.recommendation 
-                ? client.lastReview.recommendation 
-                : "Não disponível"}
+              {recommendation || "Não disponível"}
             </div>
           </div>
           

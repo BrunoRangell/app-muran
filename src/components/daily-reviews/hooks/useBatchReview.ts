@@ -21,6 +21,7 @@ export const useBatchReview = () => {
     queryFn: async () => {
       const { clientsData, lastReviewTime: reviewTime } = await fetchClientsWithReviews();
       setLastReviewTime(reviewTime);
+      console.log("Clientes com revisões carregados:", clientsData?.length);
       return clientsData;
     },
     staleTime: 5 * 60 * 1000, // 5 minutos de cache
@@ -114,6 +115,13 @@ export const useBatchReview = () => {
   const reviewAllClients = () => {
     reviewAllClientsMutation.mutate();
   };
+
+  console.log("Estado atual do hook useBatchReview:", {
+    clientsCarregados: clientsWithReviews?.length || 0,
+    isLoading,
+    clientesEmProcessamento: processingClients.length,
+    ultimaRevisao: lastReviewTime
+  });
 
   return {
     clientsWithReviews,

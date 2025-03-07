@@ -1,131 +1,134 @@
 
-import { Button } from "@/components/ui/button";
-import { RefreshCw, BarChart, Calendar, Clock } from "lucide-react";
-import { ClientReviewCard } from "./ClientReviewCard";
+import { useState, useCallback } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
+import { ClientsHeader } from "./ClientsHeader";
+import { ClientReviewCard } from "./ClientReviewCard";
 import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../summary/utils";
-import { ptBR } from "date-fns/locale";
+import { Card } from "@/components/ui/card";
+import { Loader, AlertCircle } from "lucide-react";
 
 interface ReviewsDashboardProps {
   onViewClientDetails: (clientId: string) => void;
 }
 
 export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps) => {
-  const {
-    clientsWithReviews,
-    isLoading,
-    processingClients,
-    reviewInProgress,
-    lastReviewTime,
-    reviewSingleClient,
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  const { 
+    clientsWithReviews, 
+    isLoading, 
+    processingClients, 
+    reviewSingleClient, 
     reviewAllClients,
+    lastReviewTime,
+    refetchClients,
     isBatchAnalyzing
   } = useBatchReview();
 
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Filtrar clientes com base no termo de pesquisa
+  // Formatar data atual
+  const currentDate = formatDateInBrasiliaTz(new Date(), "dd 'de' MMMM 'de' yyyy 'às' HH:mm");
+  
+  // Calcular dias restantes no mês
+  const remainingDays = getRemainingDaysInMonth();
+  
+  // Filtrar clientes com base na pesquisa
   const filteredClients = clientsWithReviews?.filter(client => 
-    client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    client.company_name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  // Obter data e hora atual formatada
-  const currentDateTime = formatDateInBrasiliaTz(
-    new Date(),
-    "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
-    { locale: ptBR }
-  );
-  
-  // Obter dias restantes no mês
-  const remainingDays = getRemainingDaysInMonth();
+  // Agrupar por status de revisão
+  const clientsWithoutMetaId = filteredClients.filter(client => !client.meta_account_id);
+  const clientsWithMetaId = filteredClients.filter(client => client.meta_account_id);
 
-  // Formatar data e hora da última revisão
-  const getFormattedLastReviewTime = () => {
-    if (!lastReviewTime) return "Nenhuma revisão realizada";
-    
-    // Usar formatDateInBrasiliaTz para garantir o fuso horário correto
-    return formatDateInBrasiliaTz(
-      lastReviewTime, 
-      "'Última revisão em' dd 'de' MMMM 'às' HH:mm", 
-      { locale: ptBR }
-    );
-  };
+  // Log para depuração
+  console.log("Estado atual dos clientes:", {
+    total: clientsWithReviews?.length || 0,
+    comMetaId: clientsWithMetaId.length,
+    semMetaId: clientsWithoutMetaId.length,
+    emProcessamento: processingClients.length,
+    ultimaRevisao: lastReviewTime
+  });
+  
+  // Funções de manipulação
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  const handleReviewClient = useCallback((clientId: string) => {
+    console.log("Iniciando revisão para cliente:", clientId);
+    reviewSingleClient(clientId);
+  }, [reviewSingleClient]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <BarChart className="text-muran-primary" size={20} />
-            Dashboard de Revisão Diária
+          <h2 className="text-xl font-semibold text-muran-dark mb-1">
+            Revisão de Orçamentos Meta Ads
           </h2>
-          <p className="text-sm text-gray-500 mb-1">
-            {getFormattedLastReviewTime()}
+          <p className="text-sm text-gray-500">
+            {currentDate} • {remainingDays} dias restantes no mês
           </p>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={reviewAllClients}
-            disabled={reviewInProgress || isBatchAnalyzing}
-            className="whitespace-nowrap"
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${reviewInProgress || isBatchAnalyzing ? 'animate-spin' : ''}`} />
-            {reviewInProgress || isBatchAnalyzing 
-              ? "Analisando..." 
-              : "Fazer revisão diária"}
-          </Button>
+          {lastReviewTime && (
+            <p className="text-xs text-gray-400 mt-1">
+              {formatDateInBrasiliaTz(lastReviewTime, "'Última revisão em' dd 'de' MMMM 'às' HH:mm")}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="bg-muran-secondary rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <div className="flex items-center gap-2 text-muran-dark">
-          <Calendar size={18} className="text-muran-primary" />
-          <span className="font-medium">{currentDateTime}</span>
-        </div>
-        <div className="flex items-center gap-2 text-muran-dark">
-          <Clock size={18} className="text-muran-primary" />
-          <span className="font-medium">{remainingDays} {remainingDays === 1 ? 'dia restante' : 'dias restantes'} no mês</span>
-        </div>
-      </div>
-
-      <div className="w-full max-w-sm mb-4">
-        <Input
-          placeholder="Buscar cliente..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full"
-        />
-      </div>
+      <ClientsHeader 
+        onSearchChange={handleSearchChange}
+        onReviewAllClients={reviewAllClients}
+        onRefreshClients={refetchClients}
+        isLoading={isLoading}
+        isBatchAnalyzing={isBatchAnalyzing}
+        clientsCount={filteredClients.length}
+      />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div 
-              key={i} 
-              className="h-[200px] bg-gray-100 animate-pulse rounded-lg"
-            />
-          ))}
+        <div className="py-8 flex justify-center items-center">
+          <Loader className="animate-spin w-8 h-8 text-muran-primary" />
+          <span className="ml-3 text-gray-500">Carregando clientes...</span>
         </div>
       ) : filteredClients.length === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-gray-500">Nenhum cliente encontrado.</p>
-        </div>
+        <Card className="py-12 text-center">
+          <AlertCircle className="mx-auto mb-4 text-gray-400" size={32} />
+          <p className="text-gray-500">Nenhum cliente encontrado com os filtros atuais.</p>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClients.map((client) => (
-            <ClientReviewCard
-              key={client.id}
-              client={client}
-              onViewDetails={onViewClientDetails}
-              onReviewClient={reviewSingleClient}
-              isProcessing={processingClients.includes(client.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {clientsWithMetaId.map(client => (
+              <ClientReviewCard
+                key={client.id}
+                client={client}
+                onViewDetails={onViewClientDetails}
+                onReviewClient={handleReviewClient}
+                isProcessing={processingClients.includes(client.id)}
+              />
+            ))}
+          </div>
+
+          {clientsWithoutMetaId.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-lg font-medium mb-3 text-gray-600">
+                Clientes sem configuração de Meta Ads ({clientsWithoutMetaId.length})
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-60">
+                {clientsWithoutMetaId.map(client => (
+                  <ClientReviewCard
+                    key={client.id}
+                    client={client}
+                    onViewDetails={onViewClientDetails}
+                    onReviewClient={handleReviewClient}
+                    isProcessing={processingClients.includes(client.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

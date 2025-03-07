@@ -2,7 +2,8 @@
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
-import { ClientWithReview, ClientAnalysisResult } from "../types/reviewTypes";
+import { ClientWithReview, ClientAnalysisResult, BatchReviewResult } from "../types/reviewTypes";
+import { calculateIdealDailyBudget, generateRecommendation } from "../../summary/utils";
 
 /**
  * Analisa um cliente específico e salva a revisão no banco de dados
@@ -45,14 +46,18 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   // Obter a data atual no fuso horário de Brasília
   const currentDate = getCurrentDateInBrasiliaTz().toISOString().split('T')[0];
   
+  // Extrair valores necessários do resultado
+  const metaDailyBudgetCurrent = data.meta_daily_budget_current || data.totalDailyBudget || 0;
+  const metaTotalSpent = data.meta_total_spent || data.totalSpent || 0;
+  
   // Salvar os resultados no banco de dados como uma nova revisão diária
   const { data: reviewData, error: reviewError } = await supabase.rpc(
     "insert_daily_budget_review",
     {
       p_client_id: client.id,
       p_review_date: currentDate,
-      p_meta_daily_budget_current: data.totalDailyBudget,
-      p_meta_total_spent: data.totalSpent || 0,
+      p_meta_daily_budget_current: metaDailyBudgetCurrent,
+      p_meta_total_spent: metaTotalSpent,
       p_meta_account_id: client.meta_account_id,
       p_meta_account_name: `Conta ${client.meta_account_id}`
     }
@@ -79,7 +84,7 @@ export const analyzeAllClients = async (
   clientsWithReviews: ClientWithReview[] | undefined,
   onClientProcessingStart: (clientId: string) => void,
   onClientProcessingEnd: (clientId: string) => void
-) => {
+): Promise<BatchReviewResult> => {
   const results: ClientAnalysisResult[] = [];
   const errors: { clientId: string; clientName: string; error: string }[] = [];
   
