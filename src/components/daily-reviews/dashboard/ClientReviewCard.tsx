@@ -2,16 +2,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
-import { ArrowRight, TrendingDown, TrendingUp, MinusCircle, Info, AlertCircle } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp, Loader, AlertCircle } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { formatDateInBrasiliaTz } from "../summary/utils";
-import { calculateIdealDailyBudget, generateRecommendation, getRemainingDaysInMonth } from "../summary/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../hooks/useEdgeFunction";
@@ -39,7 +32,9 @@ export const ClientReviewCard = ({
   const hasReview = !!client.lastReview;
   
   // Obter dias restantes no mês atual
-  const remainingDaysValue = getRemainingDaysInMonth();
+  const now = getCurrentDateInBrasiliaTz();
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const remainingDaysValue = Math.ceil((lastDayOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   
   // Calcular valores para exibição
   const monthlyBudget = client.meta_ads_budget || 0;
@@ -57,11 +52,6 @@ export const ClientReviewCard = ({
 
   // Gerar recomendação com base nos orçamentos
   const budgetDifference = idealDailyBudget - currentDailyBudget;
-  const recommendation = budgetDifference > 5 
-    ? `Aumentar o orçamento diário`
-    : budgetDifference < -5 
-      ? `Diminuir o orçamento diário`
-      : "Manter o orçamento diário atual";
 
   // Calcular total gasto diretamente do Meta Ads API
   useEffect(() => {
@@ -92,8 +82,6 @@ export const ClientReviewCard = ({
           end: now.toISOString().split('T')[0]
         };
         
-        console.log(`[ClientReviewCard] Calculando total gasto para ${client.company_name} no período: ${dateRange.start} até ${dateRange.end}`);
-        
         // Chamar função de borda para obter insights
         const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
           body: {
@@ -116,8 +104,6 @@ export const ClientReviewCard = ({
         // Extrair o total gasto da resposta
         const metaTotalSpent = data.totalSpent || 0;
         
-        console.log(`[ClientReviewCard] Total gasto calculado para ${client.company_name}: ${metaTotalSpent}`);
-        
         setCalculatedTotalSpent(metaTotalSpent);
       } catch (error) {
         console.error(`[ClientReviewCard] Erro ao calcular total gasto para ${client.company_name}:`, error);
@@ -133,35 +119,6 @@ export const ClientReviewCard = ({
       calculateTotalSpent();
     }
   }, [client, calculatedTotalSpent, isCalculating, calculationAttempted]);
-  
-  // Funções auxiliares para UI
-  const getRecommendationIcon = () => {
-    if (!hasReview) return null;
-    
-    if (budgetDifference > 5) {
-      return <TrendingUp className="text-green-500" size={16} />;
-    } else if (budgetDifference < -5) {
-      return <TrendingDown className="text-red-500" size={16} />;
-    } else {
-      return <MinusCircle className="text-gray-500" size={16} />;
-    }
-  };
-
-  const getRecommendationColor = () => {
-    if (!hasReview) return "";
-    
-    if (budgetDifference > 5) {
-      return "text-green-600";
-    } else if (budgetDifference < -5) {
-      return "text-red-600";
-    }
-    return "text-gray-600";
-  };
-
-  const hasSignificantDifference = () => {
-    if (!hasReview) return false;
-    return Math.abs(budgetDifference) >= 5;
-  };
 
   const getFormattedReviewDate = () => {
     if (!hasReview) return "Sem revisão";
@@ -172,7 +129,7 @@ export const ClientReviewCard = ({
       
       return formatDateInBrasiliaTz(
         new Date(dateToFormat), 
-        "'Última revisão em' dd 'de' MMMM 'às' HH:mm"
+        "'Última revisão em' dd 'de' MMMM"
       );
     } catch (error) {
       console.error("Erro ao formatar data:", error);
@@ -180,60 +137,11 @@ export const ClientReviewCard = ({
     }
   };
 
-  const getAdjustmentMessage = () => {
-    if (budgetDifference > 5) {
-      return `Ajuste recomendado: Aumentar ${formatCurrency(Math.abs(budgetDifference))}`;
-    } else if (budgetDifference < -5) {
-      return `Ajuste recomendado: Diminuir ${formatCurrency(Math.abs(budgetDifference))}`;
-    }
-    return "";
-  };
-
-  // Renderizar tooltip de detalhes do cálculo
-  const renderCalculationDetails = () => (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Info size={14} className="text-gray-400 hover:text-gray-600 cursor-help ml-1" />
-        </TooltipTrigger>
-        <TooltipContent className="max-w-md p-3">
-          <div className="space-y-1 text-xs">
-            <p><b>Cálculo do orçamento diário ideal:</b></p>
-            <p>Orçamento mensal: {formatCurrency(monthlyBudget)}</p>
-            <p>Total gasto: {formatCurrency(totalSpent)}</p>
-            <p>Orçamento restante: {formatCurrency(remainingBudget)}</p>
-            <p>Dias restantes no mês: {remainingDaysValue}</p>
-            <p className="font-medium">Fórmula: Orçamento restante ÷ Dias restantes</p>
-            <p className="font-medium">
-              {formatCurrency(remainingBudget)} ÷ {remainingDaysValue} = {formatCurrency(idealDailyBudget)}
-            </p>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-
-  console.log("Dados do cálculo no card:", {
-    clientId: client.id,
-    clientName: client.company_name,
-    monthlyBudget,
-    totalSpentFromDB,
-    calculatedTotalSpent,
-    totalSpent,
-    remainingBudget,
-    remainingDaysValue,
-    idealDailyBudget,
-    currentDailyBudget,
-    budgetDifference,
-    calculationAttempted,
-    isCalculating
-  });
-
   return (
-    <Card className={`overflow-hidden ${hasSignificantDifference() ? 'border-l-4 border-l-amber-500' : ''}`}>
+    <Card className={`overflow-hidden border ${Math.abs(budgetDifference) >= 5 ? 'border-l-4 border-l-amber-500' : ''}`}>
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-medium truncate">{client.company_name}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-lg truncate text-gray-800">{client.company_name}</h3>
           {hasReview && (
             <span className="text-xs text-gray-500">
               {getFormattedReviewDate()}
@@ -241,89 +149,63 @@ export const ClientReviewCard = ({
           )}
         </div>
         
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>
-            <div className="text-gray-500">Orçamento Mensal</div>
-            <div>{formatCurrency(monthlyBudget)}</div>
+        <div className="grid grid-cols-2 gap-4 mb-3">
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="text-sm text-gray-500 mb-1">Orçamento Mensal</div>
+            <div className="text-base font-semibold">{formatCurrency(monthlyBudget)}</div>
           </div>
 
-          <div>
-            <div className="text-gray-500">Orçamento Diário</div>
-            <div>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="text-sm text-gray-500 mb-1">Custo Total (mês)</div>
+            <div className="text-base font-semibold relative">
+              {isCalculating ? (
+                <span className="text-gray-400">Calculando...</span>
+              ) : calculationError ? (
+                <span className="text-red-500 text-sm">Erro ao calcular</span>
+              ) : (
+                formatCurrency(totalSpent)
+              )}
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="text-sm text-gray-500 mb-1">Orçamento Diário Atual</div>
+            <div className="text-base font-semibold">
               {hasReview && client.lastReview?.meta_daily_budget_current !== null 
                 ? formatCurrency(client.lastReview.meta_daily_budget_current) 
                 : "Não disponível"}
             </div>
           </div>
 
-          <div>
-            <div className="text-gray-500 flex items-center">
-              Orçamento Sugerido
-              {renderCalculationDetails()}
-            </div>
-            <div>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="text-sm text-gray-500 mb-1">Orçamento Diário Sugerido</div>
+            <div className="text-base font-semibold">
               {idealDailyBudget > 0 
                 ? formatCurrency(idealDailyBudget) 
                 : "Não disponível"}
             </div>
           </div>
-
-          <div>
-            <div className="text-gray-500">Recomendação</div>
-            <div className={`flex items-center gap-1 ${getRecommendationColor()} font-medium`}>
-              {getRecommendationIcon()}
-              {recommendation || "Não disponível"}
-            </div>
-          </div>
-          
-          {hasSignificantDifference() && (
-            <div className="col-span-2 mt-1">
-              <div className={`${budgetDifference > 0 ? 'text-green-600' : 'text-red-600'} text-sm font-medium`}>
-                {getAdjustmentMessage()}
-              </div>
-            </div>
-          )}
-
-          {/* Detalhes do cálculo para visualização rápida */}
-          <div className="col-span-2 mt-2 p-2 bg-gray-50 rounded text-xs">
-            <div className="font-medium mb-1">Detalhes do cálculo:</div>
-            <div className="flex flex-col space-y-1">
-              <div>Orçamento mensal: {formatCurrency(monthlyBudget)}</div>
-              <div className="flex items-start gap-1">
-                <span>Total gasto:</span>
-                <div>
-                  <div>{formatCurrency(totalSpent)}
-                  {isCalculating && <span className="text-gray-500 ml-1">(calculando...)</span>}
-                  </div>
-                  
-                  {calculatedTotalSpent !== null && totalSpentFromDB !== calculatedTotalSpent && (
-                    <div className="text-amber-600 flex items-center gap-1">
-                      <AlertCircle size={10} />
-                      <span>DB: {formatCurrency(totalSpentFromDB)}, API: {formatCurrency(calculatedTotalSpent)}</span>
-                    </div>
-                  )}
-                  
-                  {calculationError && (
-                    <div className="text-red-500 text-xs">
-                      Erro: {calculationError}
-                    </div>
-                  )}
-
-                  {!isCalculating && !calculatedTotalSpent && calculationAttempted && (
-                    <div className="text-amber-600 text-xs">
-                      Não foi possível obter dados diretos da API Meta.
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div>Orçamento restante: {formatCurrency(remainingBudget)}</div>
-              <div>Dias restantes: {remainingDaysValue}</div>
-              <div className="font-medium pt-1">
-                {formatCurrency(remainingBudget)} ÷ {remainingDaysValue} = {formatCurrency(idealDailyBudget)}
-              </div>
-            </div>
-          </div>
         </div>
+
+        {Math.abs(budgetDifference) >= 5 && (
+          <div className={`mt-2 p-3 rounded-lg ${budgetDifference > 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className={`flex items-center gap-2 font-medium ${budgetDifference > 0 ? 'text-green-700' : 'text-red-700'}`}>
+              {budgetDifference > 0 ? (
+                <TrendingUp size={18} />
+              ) : (
+                <TrendingDown size={18} />
+              )}
+              Ajuste recomendado: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
+            </div>
+          </div>
+        )}
+
+        {calculationError && (
+          <div className="mt-2 p-2 bg-amber-50 rounded-lg flex items-center gap-2 text-xs text-amber-700">
+            <AlertCircle size={14} />
+            {calculationError}
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="p-3 pt-0 flex justify-between">
@@ -333,7 +215,14 @@ export const ClientReviewCard = ({
           onClick={() => onReviewClient(client.id)}
           disabled={isProcessing}
         >
-          {isProcessing ? "Analisando..." : "Analisar"}
+          {isProcessing ? (
+            <>
+              <Loader className="animate-spin mr-2" size={14} />
+              Analisando...
+            </>
+          ) : (
+            "Analisar"
+          )}
         </Button>
         <Button 
           variant="default" 
