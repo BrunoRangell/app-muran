@@ -22,11 +22,16 @@ function handleCors(req: Request) {
 
 // Função auxiliar para calcular a diferença em dias entre duas datas
 function calculateDaysDiff(startDate: string, endDate: string) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  try {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(1, diffDays); // Garantir que nunca seja zero
+  } catch (error) {
+    console.error(`Erro ao calcular diferença de dias entre ${startDate} e ${endDate}:`, error);
+    return 1; // Valor padrão seguro
+  }
 }
 
 serve(async (req) => {
@@ -377,6 +382,9 @@ serve(async (req) => {
       return b.budget - a.budget;
     });
 
+    // Calcular orçamento diário estimado
+    const estimatedDailyBudget = parseFloat((totalSpent / daysDiff).toFixed(2));
+    
     // Retornar o resultado com detalhes e diagnóstico aprimorado
     return new Response(
       JSON.stringify({ 

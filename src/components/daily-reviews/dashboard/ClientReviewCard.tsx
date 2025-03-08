@@ -68,6 +68,7 @@ export const ClientReviewCard = ({
     const calculateTotalSpent = async () => {
       if (!client.meta_account_id) {
         setCalculationError("Cliente sem ID de conta Meta configurado");
+        setCalculationAttempted(true);
         return;
       }
 

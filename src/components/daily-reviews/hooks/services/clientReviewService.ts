@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
 import { ClientWithReview, ClientAnalysisResult, BatchReviewResult } from "../types/reviewTypes";
+import { AppError } from "@/lib/errors";
 
 /**
  * Busca todos os clientes com suas respectivas revisões mais recentes
@@ -91,7 +92,6 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   // Obter o primeiro e último dia do mês atual para análise completa do mês
   const now = getCurrentDateInBrasiliaTz();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   
   const dateRange = {
     start: firstDayOfMonth.toISOString().split('T')[0],
@@ -112,7 +112,11 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   
   if (error) {
     console.error("Erro na função de borda:", error);
-    throw new Error(`Erro ao analisar cliente: ${error.message}`);
+    throw new AppError(
+      `Erro ao analisar cliente: ${error.message}`, 
+      "EDGE_FUNCTION_ERROR",
+      { originalError: error, metaAccountId: client.meta_account_id }
+    );
   }
   
   if (!data) {
