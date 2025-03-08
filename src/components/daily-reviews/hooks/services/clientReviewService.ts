@@ -126,39 +126,56 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   
   // Extrair valores necessários do resultado
   const metaDailyBudgetCurrent = data.totalDailyBudget || 0;
+  // Garantir que estamos obtendo o valor correto do totalSpent
   const metaTotalSpent = data.totalSpent || 0;
   
   console.log(`Valores extraídos: orçamento diário=${metaDailyBudgetCurrent}, total gasto=${metaTotalSpent}`);
   
-  // Salvar os resultados no banco de dados como uma nova revisão diária
-  const { data: reviewData, error: reviewError } = await supabase.rpc(
-    "insert_daily_budget_review",
-    {
-      p_client_id: client.id,
-      p_review_date: currentDate,
-      p_meta_daily_budget_current: metaDailyBudgetCurrent,
-      p_meta_total_spent: metaTotalSpent,
-      p_meta_account_id: client.meta_account_id,
-      p_meta_account_name: `Conta ${client.meta_account_id}`
-    }
-  );
-  
-  if (reviewError) {
-    console.error("Erro ao salvar revisão:", reviewError);
-    throw new Error(`Erro ao salvar revisão: ${reviewError.message}`);
+  // Verificar se os valores são números válidos antes de salvar
+  if (isNaN(Number(metaDailyBudgetCurrent)) || isNaN(Number(metaTotalSpent))) {
+    console.error("Valores inválidos recebidos da API:", { metaDailyBudgetCurrent, metaTotalSpent });
+    throw new Error("Valores inválidos recebidos da API Meta");
   }
   
-  console.log("Revisão salva com sucesso:", reviewData);
+  // Debug para verificar os tipos e valores
+  console.log("Tipo de metaDailyBudgetCurrent:", typeof metaDailyBudgetCurrent);
+  console.log("Tipo de metaTotalSpent:", typeof metaTotalSpent);
   
-  return {
-    clientId,
-    reviewId: reviewData,
-    analysis: {
-      totalDailyBudget: metaDailyBudgetCurrent,
-      totalSpent: metaTotalSpent,
-      campaigns: data.campaignDetails || []
+  // Salvar os resultados no banco de dados como uma nova revisão diária
+  try {
+    const { data: reviewData, error: reviewError } = await supabase.rpc(
+      "insert_daily_budget_review",
+      {
+        p_client_id: client.id,
+        p_review_date: currentDate,
+        p_meta_daily_budget_current: metaDailyBudgetCurrent,
+        p_meta_total_spent: metaTotalSpent,
+        p_meta_account_id: client.meta_account_id,
+        p_meta_account_name: `Conta ${client.meta_account_id}`
+      }
+    );
+    
+    if (reviewError) {
+      console.error("Erro ao salvar revisão:", reviewError);
+      throw new Error(`Erro ao salvar revisão: ${reviewError.message}`);
     }
-  };
+    
+    console.log("Revisão salva com sucesso:", reviewData);
+    console.log("Valores salvos: orçamento diário =", metaDailyBudgetCurrent, "total gasto =", metaTotalSpent);
+    
+    return {
+      clientId,
+      reviewId: reviewData,
+      analysis: {
+        totalDailyBudget: metaDailyBudgetCurrent,
+        totalSpent: metaTotalSpent,
+        campaigns: data.campaignDetails || []
+      }
+    };
+  } catch (dbError) {
+    console.error("Erro ao executar RPC:", dbError);
+    throw new Error(`Erro ao salvar no banco de dados: ${dbError.message}`);
+  }
 };
 
 /**

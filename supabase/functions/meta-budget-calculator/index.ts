@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // Configuração de cabeçalhos CORS
@@ -29,7 +28,8 @@ serve(async (req) => {
 
   try {
     // Extrair corpo da requisição
-    const { accountId, accessToken } = await req.json();
+    const requestBody = await req.json();
+    const { accountId, accessToken, dateRange } = requestBody;
 
     // Validar parâmetros de entrada
     if (!accountId) {
@@ -46,8 +46,15 @@ serve(async (req) => {
       );
     }
 
+    // Se não foi fornecido dateRange, usar o mês atual
+    const effectiveDateRange = dateRange || {
+      start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0]
+    };
+
     // Iniciando cálculo do orçamento diário total
     console.log(`Calculando orçamento diário para a conta ${accountId}`);
+    console.log(`Período de análise: ${effectiveDateRange.start} a ${effectiveDateRange.end}`);
     
     // Buscar todas as campanhas, sem filtrar por status inicialmente para garantir que todas sejam analisadas
     // Aumentamos o limite para 1000 para buscar mais campanhas de uma vez
@@ -92,6 +99,79 @@ serve(async (req) => {
     const campaignDetails = [];
     const skippedCampaigns = [];
     const statusCounts: Record<string, number> = {};
+
+    // Buscar insights de gastos do período solicitado
+    console.log("Buscando insights de gastos para o período...");
+    
+    // Construir a URL para buscar insights
+    const insightsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/insights?fields=spend&time_range={"since":"${effectiveDateRange.start}","until":"${effectiveDateRange.end}"}&access_token=${accessToken}`;
+    
+    console.log("URL de insights:", insightsUrl);
+    
+    const insightsResponse = await fetch(insightsUrl);
+    if (!insightsResponse.ok) {
+      const insightsError = await insightsResponse.json();
+      console.error("Erro ao buscar insights:", insightsError);
+      return new Response(
+        JSON.stringify({ error: `Erro ao buscar insights: ${JSON.stringify(insightsError)}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+    
+    const insightsData = await insightsResponse.json();
+    console.log("Resposta de insights:", JSON.stringify(insightsData));
+    
+    // Calcular o total gasto com base nos insights
+    let totalSpent = 0;
+    if (insightsData.data && insightsData.data.length > 0) {
+      for (const insight of insightsData.data) {
+        if (insight.spend) {
+          const spendValue = parseFloat(insight.spend);
+          if (!isNaN(spendValue)) {
+            totalSpent += spendValue;
+          }
+        }
+      }
+    }
+    
+    console.log(`Total gasto (baseado em insights): ${totalSpent}`);
+    
+    // Se não houver insights ou o totalSpent for 0, buscar insights por campanha
+    if (totalSpent === 0 && requestBody.fetchSeparateInsights) {
+      console.log("Total gasto é zero, buscando insights por campanha...");
+      
+      // Buscar insights para cada campanha ativa
+      let allCampaignInsights = [];
+      
+      // Construir URL para buscar insights de campanhas
+      const campaignInsightsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/insights?fields=campaign_id,campaign_name,spend&time_range={"since":"${effectiveDateRange.start}","until":"${effectiveDateRange.end}"}&level=campaign&access_token=${accessToken}&limit=500`;
+      
+      console.log("URL de insights de campanhas:", campaignInsightsUrl);
+      
+      const campaignInsightsResponse = await fetch(campaignInsightsUrl);
+      if (!campaignInsightsResponse.ok) {
+        console.error("Erro ao buscar insights de campanhas:", await campaignInsightsResponse.json());
+      } else {
+        const campaignInsightsData = await campaignInsightsResponse.json();
+        
+        if (campaignInsightsData.data && campaignInsightsData.data.length > 0) {
+          allCampaignInsights = [...campaignInsightsData.data];
+          
+          // Processar os insights por campanha
+          for (const insight of allCampaignInsights) {
+            if (insight.spend) {
+              const spendValue = parseFloat(insight.spend);
+              if (!isNaN(spendValue)) {
+                totalSpent += spendValue;
+                console.log(`Campanha ${insight.campaign_name}: Gasto ${spendValue}`);
+              }
+            }
+          }
+        }
+      }
+      
+      console.log(`Total gasto recalculado por campanhas: ${totalSpent}`);
+    }
 
     // Processar cada campanha
     for (const campaign of campaigns) {
@@ -287,12 +367,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         totalDailyBudget,
+        totalSpent,
         campaignDetails,
         diagnostics: {
           totalCampaigns: campaigns.length,
           includedItems: campaignDetails.length,
           skippedCampaigns,
-          statusCounts
+          statusCounts,
+          dateRange: effectiveDateRange,
+          daysPeriod: daysDiff
         }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
