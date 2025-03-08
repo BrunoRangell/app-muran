@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
-import { ArrowRight, TrendingDown, TrendingUp, MinusCircle, Info } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp, MinusCircle, Info, AlertCircle } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { calculateIdealDailyBudget, generateRecommendation, getRemainingDaysInMonth } from "../summary/utils";
@@ -12,6 +12,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { getMetaAccessToken } from "../hooks/useEdgeFunction";
+import { getCurrentDateInBrasiliaTz } from "../summary/utils";
 
 interface ClientReviewCardProps {
   client: ClientWithReview;
@@ -26,6 +30,10 @@ export const ClientReviewCard = ({
   onReviewClient,
   isProcessing 
 }: ClientReviewCardProps) => {
+  const [calculatedTotalSpent, setCalculatedTotalSpent] = useState<number | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [calculationError, setCalculationError] = useState<string | null>(null);
+  
   // Verificar se o cliente tem uma revisão recente
   const hasReview = !!client.lastReview;
   
@@ -34,7 +42,8 @@ export const ClientReviewCard = ({
   
   // Calcular valores para exibição
   const monthlyBudget = client.meta_ads_budget || 0;
-  const totalSpent = hasReview ? (client.lastReview?.meta_total_spent || 0) : 0;
+  const totalSpentFromDB = hasReview ? (client.lastReview?.meta_total_spent || 0) : 0;
+  const totalSpent = calculatedTotalSpent !== null ? calculatedTotalSpent : totalSpentFromDB;
   const remainingBudget = monthlyBudget - totalSpent;
   
   // Calcular o orçamento diário ideal com base no orçamento restante e dias restantes
@@ -52,6 +61,75 @@ export const ClientReviewCard = ({
     : budgetDifference < -5 
       ? `Diminuir o orçamento diário`
       : "Manter o orçamento diário atual";
+
+  // Calcular total gasto diretamente do Meta Ads API
+  useEffect(() => {
+    const calculateTotalSpent = async () => {
+      if (!client.meta_account_id) {
+        setCalculationError("Cliente sem ID de conta Meta configurado");
+        return;
+      }
+
+      try {
+        setIsCalculating(true);
+        setCalculationError(null);
+        
+        // Obter token de acesso
+        const accessToken = await getMetaAccessToken();
+        
+        if (!accessToken) {
+          throw new Error("Token de acesso Meta não disponível");
+        }
+        
+        // Preparar datas para o período (primeiro dia do mês até hoje)
+        const now = getCurrentDateInBrasiliaTz();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        const dateRange = {
+          start: firstDayOfMonth.toISOString().split('T')[0],
+          end: now.toISOString().split('T')[0]
+        };
+        
+        console.log(`[ClientReviewCard] Calculando total gasto para ${client.company_name} no período: ${dateRange.start} até ${dateRange.end}`);
+        
+        // Chamar função de borda para obter insights
+        const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
+          body: {
+            accountId: client.meta_account_id,
+            accessToken,
+            dateRange: dateRange,
+            fetchSeparateInsights: true
+          }
+        });
+        
+        if (error) {
+          console.error(`[ClientReviewCard] Erro ao calcular total gasto para ${client.company_name}:`, error);
+          throw new Error(`Erro ao calcular total gasto: ${error.message}`);
+        }
+        
+        if (!data) {
+          throw new Error("Resposta vazia da API");
+        }
+        
+        // Extrair o total gasto da resposta
+        const metaTotalSpent = data.totalSpent || 0;
+        
+        console.log(`[ClientReviewCard] Total gasto calculado para ${client.company_name}: ${metaTotalSpent}`);
+        
+        setCalculatedTotalSpent(metaTotalSpent);
+      } catch (error) {
+        console.error(`[ClientReviewCard] Erro ao calcular total gasto para ${client.company_name}:`, error);
+        setCalculationError(error instanceof Error ? error.message : "Erro desconhecido");
+      } finally {
+        setIsCalculating(false);
+      }
+    };
+    
+    // Calcular apenas quando o cartão é renderizado
+    if (client.meta_account_id && !calculatedTotalSpent && !isCalculating) {
+      calculateTotalSpent();
+    }
+  }, [client, calculatedTotalSpent, isCalculating]);
   
   // Funções auxiliares para UI
   const getRecommendationIcon = () => {
@@ -136,6 +214,8 @@ export const ClientReviewCard = ({
     clientId: client.id,
     clientName: client.company_name,
     monthlyBudget,
+    totalSpentFromDB,
+    calculatedTotalSpent,
     totalSpent,
     remainingBudget,
     remainingDaysValue,
@@ -204,7 +284,27 @@ export const ClientReviewCard = ({
             <div className="font-medium mb-1">Detalhes do cálculo:</div>
             <div className="flex flex-col space-y-1">
               <div>Orçamento mensal: {formatCurrency(monthlyBudget)}</div>
-              <div>Total gasto: {formatCurrency(totalSpent)}</div>
+              <div className="flex items-start gap-1">
+                <span>Total gasto:</span>
+                <div>
+                  <div>{formatCurrency(totalSpent)}
+                  {isCalculating && <span className="text-gray-500 ml-1">(calculando...)</span>}
+                  </div>
+                  
+                  {calculatedTotalSpent !== null && totalSpentFromDB !== calculatedTotalSpent && (
+                    <div className="text-amber-600 flex items-center gap-1">
+                      <AlertCircle size={10} />
+                      <span>DB: {formatCurrency(totalSpentFromDB)}, API: {formatCurrency(calculatedTotalSpent)}</span>
+                    </div>
+                  )}
+                  
+                  {calculationError && (
+                    <div className="text-red-500 text-xs">
+                      Erro: {calculationError}
+                    </div>
+                  )}
+                </div>
+              </div>
               <div>Orçamento restante: {formatCurrency(remainingBudget)}</div>
               <div>Dias restantes: {remainingDaysValue}</div>
               <div className="font-medium pt-1">
