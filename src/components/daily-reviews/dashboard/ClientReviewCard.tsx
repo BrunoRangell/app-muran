@@ -33,6 +33,7 @@ export const ClientReviewCard = ({
   const [calculatedTotalSpent, setCalculatedTotalSpent] = useState<number | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationError, setCalculationError] = useState<string | null>(null);
+  const [calculationAttempted, setCalculationAttempted] = useState(false);
   
   // Verificar se o cliente tem uma revisão recente
   const hasReview = !!client.lastReview;
@@ -122,14 +123,15 @@ export const ClientReviewCard = ({
         setCalculationError(error instanceof Error ? error.message : "Erro desconhecido");
       } finally {
         setIsCalculating(false);
+        setCalculationAttempted(true);
       }
     };
     
-    // Calcular apenas quando o cartão é renderizado
-    if (client.meta_account_id && !calculatedTotalSpent && !isCalculating) {
+    // Calcular apenas quando o cartão é renderizado e não foi calculado anteriormente
+    if (client.meta_account_id && !calculatedTotalSpent && !isCalculating && !calculationAttempted) {
       calculateTotalSpent();
     }
-  }, [client, calculatedTotalSpent, isCalculating]);
+  }, [client, calculatedTotalSpent, isCalculating, calculationAttempted]);
   
   // Funções auxiliares para UI
   const getRecommendationIcon = () => {
@@ -221,7 +223,9 @@ export const ClientReviewCard = ({
     remainingDaysValue,
     idealDailyBudget,
     currentDailyBudget,
-    budgetDifference
+    budgetDifference,
+    calculationAttempted,
+    isCalculating
   });
 
   return (
@@ -301,6 +305,12 @@ export const ClientReviewCard = ({
                   {calculationError && (
                     <div className="text-red-500 text-xs">
                       Erro: {calculationError}
+                    </div>
+                  )}
+
+                  {!isCalculating && !calculatedTotalSpent && calculationAttempted && (
+                    <div className="text-amber-600 text-xs">
+                      Não foi possível obter dados diretos da API Meta.
                     </div>
                   )}
                 </div>

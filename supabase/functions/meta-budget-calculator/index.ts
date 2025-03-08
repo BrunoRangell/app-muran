@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // Configuração de cabeçalhos CORS
@@ -17,6 +18,15 @@ function handleCors(req: Request) {
     });
   }
   return null;
+}
+
+// Função auxiliar para calcular a diferença em dias entre duas datas
+function calculateDaysDiff(startDate: string, endDate: string) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffTime = Math.abs(end.getTime() - start.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
 }
 
 serve(async (req) => {
@@ -52,9 +62,13 @@ serve(async (req) => {
       end: new Date().toISOString().split('T')[0]
     };
 
+    // Calcular a diferença em dias para o diagnóstico
+    const daysDiff = calculateDaysDiff(effectiveDateRange.start, effectiveDateRange.end);
+
     // Iniciando cálculo do orçamento diário total
     console.log(`Calculando orçamento diário para a conta ${accountId}`);
     console.log(`Período de análise: ${effectiveDateRange.start} a ${effectiveDateRange.end}`);
+    console.log(`Diferença em dias: ${daysDiff}`);
     
     // Buscar todas as campanhas, sem filtrar por status inicialmente para garantir que todas sejam analisadas
     // Aumentamos o limite para 1000 para buscar mais campanhas de uma vez
