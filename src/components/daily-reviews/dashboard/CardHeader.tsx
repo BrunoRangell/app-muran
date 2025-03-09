@@ -5,15 +5,28 @@ import { getCurrentDateInBrasiliaTz } from "../summary/utils";
 interface CardHeaderProps {
   companyName: string;
   remainingDays: number;
+  lastReviewDate?: Date | string | null;
 }
 
-export const CardHeader = ({ companyName, remainingDays }: CardHeaderProps) => {
-  // Usar a data atual para a última revisão
+export const CardHeader = ({ 
+  companyName, 
+  remainingDays,
+  lastReviewDate
+}: CardHeaderProps) => {
+  // Usar a data atual
   const currentDate = getCurrentDateInBrasiliaTz();
   const formattedCurrentDate = formatDateInBrasiliaTz(
     currentDate, 
-    "'Última revisão em' dd 'de' MMMM"
+    "'Data atual:' dd 'de' MMMM"
   );
+
+  // Formatar a data da última revisão, se disponível
+  const formattedLastReviewDate = lastReviewDate 
+    ? formatDateInBrasiliaTz(
+        lastReviewDate, 
+        "'Última revisão em' dd 'de' MMMM"
+      )
+    : "Sem revisão anterior";
 
   return (
     <div className="flex items-center justify-between mb-3">
@@ -21,6 +34,7 @@ export const CardHeader = ({ companyName, remainingDays }: CardHeaderProps) => {
       <div className="text-xs text-gray-500 flex flex-col items-end">
         <span>{formattedCurrentDate}</span>
         <span>{remainingDays} dias restantes no mês</span>
+        <span>{formattedLastReviewDate}</span>
       </div>
     </div>
   );

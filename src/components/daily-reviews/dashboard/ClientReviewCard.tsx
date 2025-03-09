@@ -7,6 +7,7 @@ import { BudgetInfoGrid } from "./BudgetInfoGrid";
 import { BudgetRecommendation } from "./BudgetRecommendation";
 import { CalculationError } from "./CalculationError";
 import { CardActions } from "./CardActions";
+import { getRemainingDaysInMonth } from "../summary/utils";
 
 interface ClientReviewCardProps {
   client: ClientWithReview;
@@ -30,9 +31,11 @@ export const ClientReviewCard = ({
     totalSpent,
     currentDailyBudget,
     idealDailyBudget,
-    budgetDifference,
-    remainingDaysValue
+    budgetDifference
   } = useClientBudgetCalculation(client);
+
+  // Calcular dias restantes diretamente usando a função de utilidade
+  const remainingDaysValue = getRemainingDaysInMonth();
 
   // Flag para mostrar recomendação de orçamento
   const showRecommendation = Math.abs(budgetDifference) >= 5;
@@ -42,7 +45,8 @@ export const ClientReviewCard = ({
       <CardContent className="p-4">
         <CardHeader 
           companyName={client.company_name} 
-          remainingDays={remainingDaysValue} 
+          remainingDays={remainingDaysValue}
+          lastReviewDate={client.lastReview?.review_date}
         />
         
         <BudgetInfoGrid 

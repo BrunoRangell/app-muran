@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "./useEdgeFunction";
-import { getCurrentDateInBrasiliaTz } from "../summary/utils";
+import { getCurrentDateInBrasiliaTz, getRemainingDaysInMonth } from "../summary/utils";
 import { ClientWithReview } from "./types/reviewTypes";
 
 export const useClientBudgetCalculation = (client: ClientWithReview) => {
@@ -14,10 +14,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   // Verificar se o cliente tem uma revisão recente
   const hasReview = !!client.lastReview;
   
-  // Obter dados para cálculos
-  const now = getCurrentDateInBrasiliaTz();
-  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const remainingDaysValue = Math.ceil((lastDayOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  // Obter dias restantes no mês usando a função corrigida
+  const remainingDaysValue = getRemainingDaysInMonth();
   
   // Calcular valores para exibição
   const monthlyBudget = client.meta_ads_budget || 0;

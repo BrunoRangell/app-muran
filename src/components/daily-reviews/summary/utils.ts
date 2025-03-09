@@ -40,10 +40,11 @@ export const getCurrentDateInBrasiliaTz = () => {
 export const getRemainingDaysInMonth = () => {
   const brasiliaTz = 'America/Sao_Paulo';
   const today = toZonedTime(new Date(), brasiliaTz);
-  const lastDayOfMonth = toZonedTime(endOfMonth(today), brasiliaTz);
+  const lastDayOfMonth = endOfMonth(today);
+  const lastDayOfMonthInBrasilia = toZonedTime(lastDayOfMonth, brasiliaTz);
   
-  // Inclui o dia atual na contagem (+1)
-  return differenceInDays(lastDayOfMonth, today) + 1;
+  // Calcula a diferença em dias e adiciona 1 para incluir o dia atual
+  return differenceInDays(lastDayOfMonthInBrasilia, today) + 1;
 };
 
 // Função para formatar uma data no fuso horário de Brasília
