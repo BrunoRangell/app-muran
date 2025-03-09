@@ -4,7 +4,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
 import { ArrowRight, TrendingDown, TrendingUp, Loader, AlertCircle } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
-import { formatDateInBrasiliaTz } from "../summary/utils";
+import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../summary/utils";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../hooks/useEdgeFunction";
@@ -120,33 +120,22 @@ export const ClientReviewCard = ({
     }
   }, [client, calculatedTotalSpent, isCalculating, calculationAttempted]);
 
-  const getFormattedReviewDate = () => {
-    if (!hasReview) return "Sem revisão";
-    
-    try {
-      // Usar review_date se created_at não estiver disponível
-      const dateToFormat = client.lastReview.review_date;
-      
-      return formatDateInBrasiliaTz(
-        new Date(dateToFormat), 
-        "'Última revisão em' dd 'de' MMMM"
-      );
-    } catch (error) {
-      console.error("Erro ao formatar data:", error);
-      return "Data inválida";
-    }
-  };
+  // Usar a data atual para a última revisão, em vez da data que vem do banco de dados
+  const currentDate = getCurrentDateInBrasiliaTz();
+  const formattedCurrentDate = formatDateInBrasiliaTz(
+    currentDate, 
+    "'Última revisão em' dd 'de' MMMM"
+  );
 
   return (
     <Card className={`overflow-hidden border ${Math.abs(budgetDifference) >= 5 ? 'border-l-4 border-l-amber-500' : ''}`}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium text-lg truncate text-gray-800">{client.company_name}</h3>
-          {hasReview && (
-            <span className="text-xs text-gray-500">
-              {getFormattedReviewDate()}
-            </span>
-          )}
+          <div className="text-xs text-gray-500 flex flex-col items-end">
+            <span>{formattedCurrentDate}</span>
+            <span>{remainingDaysValue} dias restantes no mês</span>
+          </div>
         </div>
         
         <div className="grid grid-cols-2 gap-4 mb-3">
@@ -195,7 +184,7 @@ export const ClientReviewCard = ({
               ) : (
                 <TrendingDown size={18} />
               )}
-              Ajuste recomendado: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
+              Recomendação: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
             </div>
           </div>
         )}
