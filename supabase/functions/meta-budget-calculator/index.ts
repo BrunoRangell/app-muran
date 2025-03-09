@@ -306,8 +306,9 @@ serve(async (req) => {
 
       console.log(`Campanha ${campaign.id} (${campaign.name}) tem ${activeAdsets.length} conjuntos de anúncios ativos`);
 
+      // CORREÇÃO: Lógica atualizada para considerar ambos os cenários corretamente
       // Se a campanha tem orçamento diário e pelo menos um conjunto de anúncios ativo
-      if (campaign.daily_budget && activeAdsets.length > 0) {
+      if (campaign.daily_budget && parseInt(campaign.daily_budget) > 0 && activeAdsets.length > 0) {
         const campaignBudget = parseInt(campaign.daily_budget) / 100; // Converte de centavos para reais
         totalDailyBudget += campaignBudget;
         console.log(`Adicionando orçamento da campanha ${campaign.id} (${campaign.name}): R$ ${campaignBudget}`);
@@ -322,12 +323,15 @@ serve(async (req) => {
           type: 'campaign'
         });
       } 
-      // Se a campanha não tem orçamento diário, soma o orçamento dos conjuntos de anúncios ativos
-      else if (!campaign.daily_budget && activeAdsets.length > 0) {
+      // Se a campanha não tem orçamento diário ou tem zero, soma o orçamento dos conjuntos de anúncios ativos
+      else if ((!campaign.daily_budget || parseInt(campaign.daily_budget) === 0) && activeAdsets.length > 0) {
+        let adsetBudgetSum = 0;
+        
+        // Iterar pelos adsets ativos e somar seus orçamentos
         for (const adset of activeAdsets) {
-          if (adset.daily_budget) {
+          if (adset.daily_budget && parseInt(adset.daily_budget) > 0) {
             const adsetBudget = parseInt(adset.daily_budget) / 100; // Converte de centavos para reais
-            totalDailyBudget += adsetBudget;
+            adsetBudgetSum += adsetBudget;
             console.log(`Adicionando orçamento do conjunto de anúncios ${adset.id} (${adset.name}): R$ ${adsetBudget}`);
             
             // Adicionar aos detalhes
@@ -344,6 +348,12 @@ serve(async (req) => {
           } else if (hasLifetimeBudget) {
             console.log(`Conjunto de anúncios ${adset.id} (${adset.name}) sem orçamento diário e pertence a campanha com orçamento por tempo de vida`);
           }
+        }
+        
+        // Adicionar a soma dos orçamentos dos adsets ao total
+        if (adsetBudgetSum > 0) {
+          totalDailyBudget += adsetBudgetSum;
+          console.log(`Campanha ${campaign.id} (${campaign.name}): Total de orçamento dos adsets: R$ ${adsetBudgetSum}`);
         }
       } else {
         // Registrar campanhas sem orçamento e sem adsets ativos para diagnóstico
