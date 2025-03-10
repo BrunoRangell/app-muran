@@ -22,7 +22,8 @@ export const fetchClientsWithReviews = async () => {
         review_date,
         meta_daily_budget_current,
         meta_total_spent,
-        created_at
+        created_at,
+        updated_at
       )
     `)
     .eq('status', 'active')

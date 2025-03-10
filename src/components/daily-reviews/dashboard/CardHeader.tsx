@@ -4,19 +4,26 @@ import { formatDateInBrasiliaTz } from "../summary/utils";
 interface CardHeaderProps {
   companyName: string;
   lastReviewDate?: Date | string | null;
+  lastReviewUpdatedAt?: string | null; // Novo parâmetro para o timestamp updated_at
 }
 
 export const CardHeader = ({ 
   companyName, 
-  lastReviewDate
+  lastReviewDate,
+  lastReviewUpdatedAt
 }: CardHeaderProps) => {
-  // Formatar a data da última revisão, se disponível
-  const formattedLastReviewDate = lastReviewDate 
+  // Usar updated_at para o horário da revisão, se disponível
+  const formattedLastReviewDate = lastReviewUpdatedAt 
     ? formatDateInBrasiliaTz(
-        lastReviewDate, 
+        lastReviewUpdatedAt, 
         "'Última revisão em' dd 'de' MMMM 'às' HH:mm"
       )
-    : "Sem revisão anterior";
+    : lastReviewDate 
+      ? formatDateInBrasiliaTz(
+          lastReviewDate, 
+          "'Última revisão em' dd 'de' MMMM"
+        ) 
+      : "Sem revisão anterior";
 
   return (
     <div className="flex items-center justify-between mb-3">

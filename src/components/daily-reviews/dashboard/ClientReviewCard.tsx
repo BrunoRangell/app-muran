@@ -42,6 +42,7 @@ export const ClientReviewCard = ({
         <CardHeader 
           companyName={client.company_name} 
           lastReviewDate={client.lastReview?.review_date}
+          lastReviewUpdatedAt={client.lastReview?.updated_at}
         />
         
         <BudgetInfoGrid 

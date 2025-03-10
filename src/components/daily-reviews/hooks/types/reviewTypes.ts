@@ -9,7 +9,8 @@ export interface ClientWithReview {
     review_date: string;
     meta_daily_budget_current: number | null;
     meta_total_spent: number;
-    created_at: string; // Adicionando a propriedade criada_at
+    created_at: string;
+    updated_at: string; // Adicionando o campo updated_at
     idealDailyBudget?: number;
     recommendation?: string | null;
   };
