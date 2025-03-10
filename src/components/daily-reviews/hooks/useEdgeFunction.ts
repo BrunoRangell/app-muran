@@ -4,16 +4,10 @@ import { AnalysisResult } from "./types";
 import { AppError } from "@/lib/errors";
 
 /**
- * Invoca a função Edge para análise de orçamento conectando-se à API da Meta Ads
+ * Obtém o token de acesso da Meta ads a partir do banco de dados
  */
-export const invokeEdgeFunction = async (
-  clientId: string,
-  formattedDate: string
-): Promise<AnalysisResult> => {
-  console.log(`Invocando função Edge para análise real da Meta Ads - cliente ID: ${clientId}, data: ${formattedDate}`);
-  
+export const getMetaAccessToken = async (): Promise<string | null> => {
   try {
-    // Verificar se há token configurado
     const { data: tokens, error: tokensError } = await supabase
       .from("api_tokens")
       .select("value")
@@ -30,7 +24,29 @@ export const invokeEdgeFunction = async (
       throw new Error("Token Meta Ads não configurado. Configure o token na página de configurações.");
     }
     
-    console.log("Token Meta Ads encontrado, enviando requisição para função Edge");
+    return tokens.value;
+  } catch (error) {
+    console.error("Erro ao obter token de acesso Meta:", error);
+    return null;
+  }
+};
+
+/**
+ * Invoca a função Edge para análise de orçamento conectando-se à API da Meta Ads
+ */
+export const invokeEdgeFunction = async (
+  clientId: string,
+  formattedDate: string
+): Promise<AnalysisResult> => {
+  console.log(`Invocando função Edge para análise real da Meta Ads - cliente ID: ${clientId}, data: ${formattedDate}`);
+  
+  try {
+    // Verificar se há token configurado
+    const accessToken = await getMetaAccessToken();
+    
+    if (!accessToken) {
+      throw new Error("Token Meta Ads não configurado. Configure o token na página de configurações.");
+    }
     
     // Verificar se o cliente existe e buscar os dados necessários
     const { data: clientData, error: clientError } = await supabase
@@ -88,7 +104,7 @@ export const invokeEdgeFunction = async (
       method: "getMetaAdsData", 
       clientId,
       reviewDate: formattedDate,
-      accessToken: tokens.value,
+      accessToken,
       clientName: clientData.company_name,
       metaAccountId: clientData.meta_account_id
     };

@@ -1,7 +1,7 @@
-
 import { formatCurrency } from "@/utils/formatters";
 import { AlertCircle, Calendar, Loader } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateInBrasiliaTz } from "../summary/utils";
 
 interface ReviewHistoryTableProps {
   isLoading: boolean;
@@ -9,7 +9,10 @@ interface ReviewHistoryTableProps {
 }
 
 export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTableProps) => {
+  console.log('Componente ReviewHistoryTable renderizado. isLoading:', isLoading, 'reviewHistory:', reviewHistory);
+
   if (isLoading) {
+    console.log('Exibindo estado de carregamento');
     return (
       <Card>
         <CardHeader>
@@ -30,6 +33,7 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
   }
 
   if (!reviewHistory || reviewHistory.length === 0) {
+    console.log('Nenhum histórico de revisões encontrado');
     return (
       <Card>
         <CardHeader>
@@ -48,6 +52,7 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
     );
   }
 
+  console.log('Renderizando tabela com histórico de revisões');
   return (
     <Card>
       <CardHeader>
@@ -67,19 +72,26 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
               </tr>
             </thead>
             <tbody>
-              {reviewHistory.map((review) => (
-                <tr key={review.id} className="border-b">
-                  <td className="py-2">
-                    {new Date(review.review_date).toLocaleDateString("pt-BR")}
-                  </td>
-                  <td className="py-2">
-                    {formatCurrency(review.meta_daily_budget_current || 0)}
-                  </td>
-                  <td className="py-2">
-                    {formatCurrency(review.meta_total_spent || 0)}
-                  </td>
-                </tr>
-              ))}
+              {reviewHistory.map((review) => {
+                console.log('Antes do log da data da revisão para review.id:', review.id);
+                console.log('Tipo de review.review_date:', typeof review.review_date);
+                console.log('Data da revisão antes de formatar:', review.review_date);
+                console.log('Depois do log da data da revisão para review.id:', review.id);
+
+                return (
+                  <tr key={review.id} className="border-b">
+                    <td className="py-2">
+                      {formatDateInBrasiliaTz(review.review_date, "dd/MM/yyyy HH:mm")}
+                    </td>
+                    <td className="py-2">
+                      {formatCurrency(review.meta_daily_budget_current || 0)}
+                    </td>
+                    <td className="py-2">
+                      {formatCurrency(review.meta_total_spent || 0)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -1,23 +1,38 @@
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ClientSummaryCard } from "./ClientSummaryCard";
-import { BudgetCard } from "./BudgetCard";
-import { RecommendationCard } from "./RecommendationCard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/utils/formatters";
+import { 
+  BarChart, 
+  DollarSign, 
+  TrendingDown, 
+  TrendingUp, 
+  Calendar,
+  MinusCircle,
+  Info
+} from "lucide-react";
 import { ReviewHistoryTable } from "./ReviewHistoryTable";
-import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
-import { useState } from "react";
-import { MetaCampaignsTable } from "./MetaCampaignsTable";
+import { formatDateInBrasiliaTz } from "../summary/utils";
+import { Tooltip } from "@/components/ui/tooltip";
+import {
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-export interface ClientDetailsContentProps {
+interface ClientDetailsContentProps {
   client: any;
   latestReview: any;
-  reviewHistory: any[];
+  reviewHistory: any[] | null;
   recommendation: string | null;
-  idealDailyBudget: number | null;
-  suggestedBudgetChange: number | null;
+  idealDailyBudget: number;
+  suggestedBudgetChange: number;
   isLoadingHistory: boolean;
   onRefresh: () => void;
+  // Novos parâmetros para mostrar detalhes do cálculo
+  remainingDays?: number;
+  remainingBudget?: number;
+  monthlyBudget?: number;
+  totalSpent?: number;
 }
 
 export const ClientDetailsContent = ({
@@ -28,72 +43,174 @@ export const ClientDetailsContent = ({
   idealDailyBudget,
   suggestedBudgetChange,
   isLoadingHistory,
-  onRefresh
+  onRefresh,
+  remainingDays,
+  remainingBudget,
+  monthlyBudget,
+  totalSpent
 }: ClientDetailsContentProps) => {
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    onRefresh();
-    // Resetar o estado após 2 segundos
-    setTimeout(() => setIsRefreshing(false), 2000);
+  const getLastReviewDate = () => {
+    if (!latestReview || !latestReview.review_date) return "Sem revisão recente";
+    
+    return formatDateInBrasiliaTz(
+      latestReview.review_date,
+      "dd 'de' MMMM 'às' HH:mm"
+    );
   };
 
-  const hasCampaignsData = latestReview?.meta?.campaigns && latestReview.meta.campaigns.length > 0;
-  const hasDateRange = latestReview?.meta?.dateRange;
+  const getRecommendationIcon = () => {
+    if (!recommendation) return null;
+    
+    if (recommendation.includes("Aumentar")) {
+      return <TrendingUp className="text-green-500" size={18} />;
+    } else if (recommendation.includes("Diminuir")) {
+      return <TrendingDown className="text-red-500" size={18} />;
+    } else {
+      return <MinusCircle className="text-gray-500" size={18} />;
+    }
+  };
+
+  const getRecommendationColorClass = () => {
+    if (!recommendation) return "";
+    
+    if (recommendation.includes("Aumentar")) {
+      return "text-green-600";
+    } else if (recommendation.includes("Diminuir")) {
+      return "text-red-600";
+    }
+    return "text-gray-600";
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="text-muran-primary hover:text-muran-primary/90"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Atualizar dados
-        </Button>
-      </div>
-
-      <ClientSummaryCard client={client} latestReview={latestReview} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <BudgetCard
-          monthlyBudget={client?.meta_ads_budget || 0}
-          dailyBudget={latestReview?.meta_daily_budget_current || 0}
-          idealDailyBudget={idealDailyBudget || 0}
-          dateRange={hasDateRange ? latestReview.meta.dateRange : null}
-        />
-        <RecommendationCard
-          recommendation={recommendation}
-          suggestedBudgetChange={suggestedBudgetChange}
-          currentBudget={latestReview?.meta_daily_budget_current || 0}
-        />
-      </div>
-
-      <Tabs defaultValue="history" className="w-full">
-        <TabsList className="grid grid-cols-2">
-          <TabsTrigger value="history">Histórico de Revisões</TabsTrigger>
-          <TabsTrigger value="campaigns" disabled={!hasCampaignsData}>Campanhas</TabsTrigger>
-        </TabsList>
-        <TabsContent value="history" className="pt-4">
-          <ReviewHistoryTable reviewHistory={reviewHistory} isLoading={isLoadingHistory} />
-        </TabsContent>
-        <TabsContent value="campaigns" className="pt-4">
-          {hasCampaignsData ? (
-            <MetaCampaignsTable 
-              campaigns={latestReview.meta.campaigns} 
-              dateRange={latestReview.meta.dateRange}
-            />
-          ) : (
-            <div className="p-6 text-center text-gray-500">
-              Nenhuma informação sobre campanhas disponível
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="text-muran-primary" size={18} />
+              Status da Revisão
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm text-gray-500 mb-2">
+              {getLastReviewDate()}
             </div>
-          )}
-        </TabsContent>
-      </Tabs>
+            
+            <div className="mt-3">
+              <div className="text-sm font-medium mb-1">Recomendação:</div>
+              <div className={`flex items-center gap-1 ${getRecommendationColorClass()} font-medium`}>
+                {getRecommendationIcon()}
+                {recommendation || "Sem recomendação disponível"}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart className="text-muran-primary" size={18} />
+              Orçamento Meta Ads
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div>
+              <div className="text-sm font-medium mb-1">Orçamento Mensal:</div>
+              <div className="text-xl font-semibold">
+                {formatCurrency(client.meta_ads_budget || 0)}
+              </div>
+            </div>
+            
+            <div className="mt-3">
+              <div className="text-sm font-medium mb-1">Orçamento Diário Atual:</div>
+              <div className="text-xl font-semibold">
+                {latestReview?.meta_daily_budget_current 
+                  ? formatCurrency(latestReview.meta_daily_budget_current)
+                  : "Não configurado"}
+              </div>
+            </div>
+
+            {totalSpent !== undefined && (
+              <div className="mt-3">
+                <div className="text-sm font-medium mb-1">Total Gasto no Mês:</div>
+                <div className="text-xl font-semibold">
+                  {formatCurrency(totalSpent)}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="text-muran-primary" size={18} />
+              Orçamento Sugerido
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info size={16} className="text-gray-400 hover:text-gray-600 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md p-4">
+                    <div className="space-y-2">
+                      <p className="font-semibold">Cálculo do orçamento diário ideal:</p>
+                      <div className="text-sm space-y-1">
+                        <p>Orçamento mensal: {formatCurrency(monthlyBudget || 0)}</p>
+                        <p>Total gasto no mês até agora: {formatCurrency(totalSpent || 0)}</p>
+                        <p>Orçamento restante: {formatCurrency(remainingBudget || 0)}</p>
+                        <p>Dias restantes no mês: {remainingDays || 0}</p>
+                        <p className="font-medium">Fórmula: Orçamento restante ÷ Dias restantes</p>
+                        <p className="font-medium">
+                          {formatCurrency(remainingBudget || 0)} ÷ {remainingDays || 0} = {formatCurrency(idealDailyBudget)}
+                        </p>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div>
+              <div className="text-sm font-medium mb-1">Orçamento Diário Ideal:</div>
+              <div className="text-xl font-semibold">
+                {formatCurrency(idealDailyBudget)}
+              </div>
+            </div>
+            
+            {suggestedBudgetChange !== 0 && (
+              <div className="mt-3">
+                <div className="text-sm font-medium mb-1">Ajuste Sugerido:</div>
+                <div className={`flex items-center gap-1 text-lg font-semibold ${suggestedBudgetChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {suggestedBudgetChange > 0 ? (
+                    <TrendingUp size={16} />
+                  ) : (
+                    <TrendingDown size={16} />
+                  )}
+                  {suggestedBudgetChange > 0 ? '+' : ''}
+                  {formatCurrency(suggestedBudgetChange)}
+                </div>
+              </div>
+            )}
+
+            {remainingDays !== undefined && remainingBudget !== undefined && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-md text-sm">
+                <p className="font-medium mb-1">Detalhes do cálculo:</p>
+                <p>Orçamento restante: {formatCurrency(remainingBudget)}</p>
+                <p>Dias restantes: {remainingDays}</p>
+                <p className="mt-1 font-medium">
+                  {formatCurrency(remainingBudget)} ÷ {remainingDays} = {formatCurrency(idealDailyBudget)}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <ReviewHistoryTable 
+        isLoading={isLoadingHistory} 
+        reviewHistory={reviewHistory} 
+      />
     </div>
   );
 };

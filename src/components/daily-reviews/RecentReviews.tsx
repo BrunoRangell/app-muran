@@ -4,6 +4,8 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, ListChecks, Loader } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
+import { formatDateInBrasiliaTz } from "./summary/utils";
+import { ptBR } from "date-fns/locale";
 
 type RecentReviewsProps = {
   onSelectClient: (clientId: string) => void;
@@ -75,7 +77,7 @@ export const RecentReviews = ({ onSelectClient }: RecentReviewsProps) => {
               <div className="px-4 py-3 text-sm grid grid-cols-8 items-center">
                 <div className="col-span-4 font-medium">{review.clients?.company_name}</div>
                 <div className="col-span-2 text-gray-500">
-                  {new Date(review.review_date).toLocaleDateString("pt-BR")}
+                  {formatDateInBrasiliaTz(review.review_date, 'dd/MM/yyyy')}
                 </div>
                 <div className="col-span-2 flex items-center gap-1">
                   {formatCurrency(review.meta_daily_budget_current || 0)}

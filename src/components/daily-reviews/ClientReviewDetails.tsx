@@ -2,15 +2,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ClientHeader } from "@/components/daily-reviews/client-details/ClientHeader";
-import { ClientSummaryCard } from "@/components/daily-reviews/client-details/ClientSummaryCard";
-import { BudgetCard } from "@/components/daily-reviews/client-details/BudgetCard";
-import { RecommendationCard } from "@/components/daily-reviews/client-details/RecommendationCard";
-import { ReviewHistoryTable } from "@/components/daily-reviews/client-details/ReviewHistoryTable";
+import { ClientDetailsContent } from "./client-details/ClientDetailsContent";
 import { LoadingState } from "@/components/daily-reviews/client-details/LoadingState";
 import { ClientNotFound } from "@/components/daily-reviews/client-details/ClientNotFound";
 import { useClientReviewDetails } from "@/components/daily-reviews/client-details/useClientReviewDetails";
 import { useClientReviewAnalysis } from "./hooks/useClientReviewAnalysis";
-import { ClientDetailsContent } from "./client-details/ClientDetailsContent";
 
 interface ClientReviewDetailsProps {
   clientId: string;
@@ -28,7 +24,12 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
     isLoading,
     isLoadingHistory,
     hasError,
-    refetchData
+    refetchData,
+    // Detalhes do cálculo
+    remainingDays,
+    remainingBudget,
+    monthlyBudget,
+    totalSpent
   } = useClientReviewDetails(clientId);
 
   const { 
@@ -74,6 +75,11 @@ export const ClientReviewDetails = ({ clientId, onBack }: ClientReviewDetailsPro
         suggestedBudgetChange={suggestedBudgetChange}
         isLoadingHistory={isLoadingHistory}
         onRefresh={refetchData}
+        // Passando detalhes do cálculo
+        remainingDays={remainingDays}
+        remainingBudget={remainingBudget}
+        monthlyBudget={monthlyBudget}
+        totalSpent={totalSpent}
       />
     </div>
   );

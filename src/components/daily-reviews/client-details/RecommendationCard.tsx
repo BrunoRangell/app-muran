@@ -34,6 +34,20 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange, curr
     return "";
   };
 
+  // Formatação da mensagem de ajuste recomendado
+  const getAdjustmentMessage = () => {
+    if (!suggestedBudgetChange) return null;
+    
+    if (suggestedBudgetChange > 5) {
+      return `Ajuste recomendado: Diminuir ${formatCurrency(Math.abs(suggestedBudgetChange))}`;
+    } else if (suggestedBudgetChange < -5) {
+      return `Ajuste recomendado: Aumentar ${formatCurrency(Math.abs(suggestedBudgetChange))}`;
+    }
+    return null;
+  };
+
+  const adjustmentMessage = getAdjustmentMessage();
+
   return (
     <Card className="border-l-4 border-l-[#ff6e00]">
       <CardHeader className="pb-2">
@@ -46,6 +60,11 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange, curr
         <div className={`text-lg font-medium ${getRecommendationColorClass()}`}>
           {recommendation || "Não há recomendação disponível"}
         </div>
+        {adjustmentMessage && (
+          <div className={`text-sm mt-2 font-medium ${getRecommendationColorClass()}`}>
+            {adjustmentMessage}
+          </div>
+        )}
         <div className="text-sm text-gray-500 mt-1">
           Baseado no orçamento mensal configurado
         </div>

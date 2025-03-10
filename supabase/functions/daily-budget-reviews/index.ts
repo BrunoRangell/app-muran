@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'daily-budget-reviews' carregada - v1.1.0");
+console.log("Função Edge 'daily-budget-reviews' carregada - v1.2.0");
 
 serve(async (req) => {
   // Lidar com requisições OPTIONS para CORS
@@ -81,7 +81,16 @@ serve(async (req) => {
       console.log("Solicitação de análise de dados Meta Ads recebida");
       
       // Validação dos parâmetros obrigatórios
-      const { metaAccountId, accessToken, dateRange, fetchSeparateInsights = true } = reqBody;
+      const { metaAccountId, accessToken, clientId } = reqBody;
+      
+      // Definir dateRange para o mês atual (do dia 1 até hoje)
+      const now = new Date();
+      const dateRange = {
+        start: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, // Primeiro dia do mês
+        end: now.toISOString().split('T')[0] // Hoje
+      };
+      
+      console.log(`Período de análise definido: ${dateRange.start} a ${dateRange.end}`);
       
       if (!metaAccountId) {
         throw new Error("ID da conta Meta Ads não fornecido");
@@ -89,10 +98,6 @@ serve(async (req) => {
       
       if (!accessToken) {
         throw new Error("Token de acesso não fornecido");
-      }
-      
-      if (!dateRange || !dateRange.start || !dateRange.end) {
-        throw new Error("Período de análise não fornecido corretamente");
       }
       
       console.log(`Analisando conta ${metaAccountId} no período de ${dateRange.start} a ${dateRange.end}`);
@@ -124,6 +129,8 @@ serve(async (req) => {
             JSON.stringify({
               success: true,
               message: "Dados obtidos com sucesso (sem campanhas)",
+              meta_total_spent: 0,
+              meta_daily_budget_current: 0,
               meta: {
                 totalSpent: 0,
                 dailyBudget: 0,
@@ -141,66 +148,100 @@ serve(async (req) => {
           );
         }
         
-        // Agora, buscar insights separadamente - implementar paginação
-        let allInsights = [];
-        let insightsUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/insights?fields=campaign_id,spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&level=campaign&access_token=${accessToken}&limit=500`;
+        // Buscar insights para o período especificado
+        console.log("Buscando insights para o período especificado...");
+        const insightsUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/insights?fields=spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&access_token=${accessToken}`;
         
-        console.log("Buscando insights com paginação...");
+        const insightsResponse = await fetch(insightsUrl);
+        const insightsData = await insightsResponse.json();
         
-        // Loop para paginação dos insights
-        while (insightsUrl) {
-          console.log("Chamando próxima página de insights:", insightsUrl.substring(0, 100) + "...");
-          
-          const insightsResponse = await fetch(insightsUrl);
-          const insightsData = await insightsResponse.json();
-          
-          if (insightsData.error) {
-            console.error("Erro na API Meta (insights):", insightsData.error);
-            throw new Error(`Erro na API Meta (insights): ${insightsData.error.message || JSON.stringify(insightsData.error)}`);
-          }
-          
-          // Adicionar os insights desta página ao resultado
-          if (insightsData.data && insightsData.data.length > 0) {
-            allInsights = [...allInsights, ...insightsData.data];
-            console.log(`Adicionados ${insightsData.data.length} insights. Total agora: ${allInsights.length}`);
-          }
-          
-          // Verificar se há mais páginas
-          if (insightsData.paging && insightsData.paging.next) {
-            insightsUrl = insightsData.paging.next;
-          } else {
-            insightsUrl = null;
+        if (insightsData.error) {
+          console.error("Erro na API Meta (insights):", insightsData.error);
+          throw new Error(`Erro na API Meta (insights): ${insightsData.error.message || JSON.stringify(insightsData.error)}`);
+        }
+        
+        // Calcular o total gasto
+        let totalSpent = 0;
+        if (insightsData.data && insightsData.data.length > 0) {
+          for (const insight of insightsData.data) {
+            if (insight.spend) {
+              const spendValue = parseFloat(insight.spend);
+              if (!isNaN(spendValue)) {
+                totalSpent += spendValue;
+              }
+            }
           }
         }
         
-        console.log(`Total de insights obtidos: ${allInsights.length}`);
+        console.log(`Total gasto calculado a partir dos insights: ${totalSpent}`);
         
-        // Processar campanhas e combinar com insights
-        const processedCampaigns = campaigns.map((campaign) => {
-          // Encontrar insights para esta campanha
-          const campaignInsights = allInsights.filter(insight => insight.campaign_id === campaign.id);
+        // Se totalSpent for 0, tentar buscar insights por campanha
+        if (totalSpent === 0) {
+          console.log("Total gasto é zero, buscando insights por campanha...");
           
-          // Calcular total gasto para a campanha
-          let spend = 0;
-          campaignInsights.forEach(insight => {
-            const insightSpend = parseFloat(insight.spend || "0");
-            if (!isNaN(insightSpend)) {
-              spend += insightSpend;
+          // Agora, buscar insights separadamente - implementar paginação
+          let allInsights = [];
+          let insightsByCampaignUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/insights?fields=campaign_id,campaign_name,spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&level=campaign&access_token=${accessToken}&limit=500`;
+          
+          console.log("Buscando insights com paginação...");
+          
+          // Loop para paginação dos insights
+          while (insightsByCampaignUrl) {
+            console.log("Chamando próxima página de insights:", insightsByCampaignUrl.substring(0, 100) + "...");
+            
+            const insightsByCampaignResponse = await fetch(insightsByCampaignUrl);
+            const insightsByCampaignData = await insightsByCampaignResponse.json();
+            
+            if (insightsByCampaignData.error) {
+              console.error("Erro na API Meta (insights por campanha):", insightsByCampaignData.error);
+              throw new Error(`Erro na API Meta (insights por campanha): ${insightsByCampaignData.error.message || JSON.stringify(insightsByCampaignData.error)}`);
             }
+            
+            // Adicionar os insights desta página ao resultado
+            if (insightsByCampaignData.data && insightsByCampaignData.data.length > 0) {
+              allInsights = [...allInsights, ...insightsByCampaignData.data];
+              console.log(`Adicionados ${insightsByCampaignData.data.length} insights. Total agora: ${allInsights.length}`);
+            }
+            
+            // Verificar se há mais páginas
+            if (insightsByCampaignData.paging && insightsByCampaignData.paging.next) {
+              insightsByCampaignUrl = insightsByCampaignData.paging.next;
+            } else {
+              insightsByCampaignUrl = null;
+            }
+          }
+          
+          console.log(`Total de insights obtidos: ${allInsights.length}`);
+          
+          // Processar campanhas e combinar com insights
+          const processedCampaigns = campaigns.map((campaign) => {
+            // Encontrar insights para esta campanha
+            const campaignInsights = allInsights.filter(insight => insight.campaign_id === campaign.id);
+            
+            // Calcular total gasto para a campanha
+            let spend = 0;
+            campaignInsights.forEach(insight => {
+              const insightSpend = parseFloat(insight.spend || "0");
+              if (!isNaN(insightSpend)) {
+                spend += insightSpend;
+              }
+            });
+            
+            return {
+              id: campaign.id,
+              name: campaign.name,
+              status: campaign.status,
+              spend: spend
+            };
           });
           
-          return {
-            id: campaign.id,
-            name: campaign.name,
-            status: campaign.status,
-            spend: spend
-          };
-        });
-        
-        // Calcular o total gasto
-        const totalSpent = processedCampaigns.reduce((total, campaign) => {
-          return total + (parseFloat(campaign.spend) || 0);
-        }, 0);
+          // Recalcular o total gasto
+          totalSpent = processedCampaigns.reduce((total, campaign) => {
+            return total + (parseFloat(campaign.spend) || 0);
+          }, 0);
+          
+          console.log(`Total gasto calculado a partir de todas as campanhas: ${totalSpent}`);
+        }
         
         // Calcular orçamento diário (valor aproximado baseado no total gasto)
         const startDate = new Date(dateRange.start);
@@ -208,21 +249,29 @@ serve(async (req) => {
         const daysDiff = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
         const estimatedDailyBudget = parseFloat((totalSpent / daysDiff).toFixed(2));
         
-        console.log(`Total gasto: ${totalSpent}, Orçamento diário estimado: ${estimatedDailyBudget}`);
+        console.log(`Total gasto: ${totalSpent}, Orçamento diário estimado: ${estimatedDailyBudget}, Período de ${daysDiff} dias`);
         
         // Montar resposta
         const result = {
           success: true,
           message: "Dados obtidos com sucesso",
+          meta_total_spent: totalSpent, // Importante: Incluir este campo para o cliente usar
+          meta_daily_budget_current: estimatedDailyBudget, // Importante: Incluir este campo para o cliente usar
           meta: {
             totalSpent: totalSpent,
             dailyBudget: estimatedDailyBudget,
             dateRange: dateRange,
-            campaigns: processedCampaigns,
+            campaigns: campaigns.map(c => ({
+              id: c.id,
+              name: c.name,
+              status: c.status,
+              spend: 0 // Placeholder, seria preenchido com dados reais se disponíveis
+            })),
             // Incluir dados de debug se solicitado
             debug: reqBody.debug ? {
-              rawInsightsCount: allInsights.length,
-              rawCampaignsCount: campaigns.length
+              rawInsightsCount: insightsData.data?.length || 0,
+              rawCampaignsCount: campaigns.length,
+              daysDiff: daysDiff
             } : undefined
           }
         };

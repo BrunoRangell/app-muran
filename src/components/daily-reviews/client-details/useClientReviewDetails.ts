@@ -2,12 +2,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { getDaysInMonth, format } from 'date-fns';
+import { getDaysInMonth } from 'date-fns';
+import { formatDateInBrasiliaTz, getCurrentDateInBrasiliaTz } from "../summary/utils";
 
 export const useClientReviewDetails = (clientId: string) => {
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [idealDailyBudget, setIdealDailyBudget] = useState<number | null>(null);
   const [suggestedBudgetChange, setSuggestedBudgetChange] = useState<number | null>(null);
+  // Novos estados para armazenar detalhes do cálculo
+  const [remainingDays, setRemainingDays] = useState<number | null>(null);
+  const [remainingBudget, setRemainingBudget] = useState<number | null>(null);
+  
   const queryClient = useQueryClient();
 
   // Função para recarregar os dados
@@ -117,9 +122,10 @@ export const useClientReviewDetails = (clientId: string) => {
   useEffect(() => {
     if (client?.meta_ads_budget && latestReview) {
       try {
-        // Data atual para o cálculo
-        const currentDate = new Date();
-        console.log("Data atual utilizada para cálculo:", currentDate.toLocaleDateString('pt-BR'));
+        // Data atual para o cálculo (usando fuso horário de Brasília)
+        const saoPauloDate = getCurrentDateInBrasiliaTz();
+        
+        console.log("Data atual utilizada para cálculo (São Paulo):", saoPauloDate.toLocaleDateString('pt-BR'));
         
         // Obter valores do orçamento e gastos
         const monthlyBudget = Number(client.meta_ads_budget);
@@ -132,25 +138,27 @@ export const useClientReviewDetails = (clientId: string) => {
         console.log("Orçamento diário atual:", currentDailyBudget);
         
         // Calculando dias restantes no mês
-        const daysInMonth = getDaysInMonth(currentDate);
-        const currentDay = currentDate.getDate();
-        const remainingDays = daysInMonth - currentDay + 1; // +1 para incluir o dia atual
+        const daysInMonth = getDaysInMonth(saoPauloDate);
+        const currentDay = saoPauloDate.getDate();
+        const remainingDaysValue = daysInMonth - currentDay + 1; // +1 para incluir o dia atual
+        setRemainingDays(remainingDaysValue);
         
         console.log("Dias no mês:", daysInMonth);
-        console.log("Dia atual:", currentDay);
-        console.log("Dias restantes:", remainingDays);
+        console.log("Dia atual (São Paulo):", currentDay);
+        console.log("Dias restantes:", remainingDaysValue);
         
         // Calcular orçamento restante
-        const remainingBudget = monthlyBudget - totalSpent;
-        console.log("Orçamento restante:", remainingBudget);
+        const remainingBudgetValue = monthlyBudget - totalSpent;
+        setRemainingBudget(remainingBudgetValue);
+        console.log("Orçamento restante:", remainingBudgetValue);
         
         // Calcular orçamento diário ideal baseado no orçamento restante e dias restantes
-        const idealDaily = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+        const idealDaily = remainingDaysValue > 0 ? remainingBudgetValue / remainingDaysValue : 0;
         console.log("Orçamento diário ideal calculado:", idealDaily);
         setIdealDailyBudget(idealDaily);
         
         // Calcular diferença entre orçamento atual e ideal para recomendação
-        const budgetDifference = currentDailyBudget - idealDaily;
+        const budgetDifference = idealDaily - currentDailyBudget;
         setSuggestedBudgetChange(budgetDifference);
         console.log("Diferença de orçamento:", budgetDifference);
         
@@ -159,9 +167,9 @@ export const useClientReviewDetails = (clientId: string) => {
         const thresholdValue = 5.00;
         
         if (budgetDifference > thresholdValue) {
-          setRecommendation(`Diminuir R$${budgetDifference.toFixed(2)}`);
+          setRecommendation(`Aumentar R$${budgetDifference.toFixed(2)}`);
         } else if (budgetDifference < -thresholdValue) {
-          setRecommendation(`Aumentar R$${Math.abs(budgetDifference).toFixed(2)}`);
+          setRecommendation(`Diminuir R$${Math.abs(budgetDifference).toFixed(2)}`);
         } else {
           setRecommendation("Manter o orçamento diário atual");
         }
@@ -184,6 +192,11 @@ export const useClientReviewDetails = (clientId: string) => {
     isLoading,
     isLoadingHistory,
     hasError,
-    refetchData
+    refetchData,
+    // Detalhes do cálculo
+    remainingDays,
+    remainingBudget,
+    monthlyBudget: client?.meta_ads_budget,
+    totalSpent: latestReview?.meta_total_spent
   };
 };

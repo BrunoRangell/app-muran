@@ -11,10 +11,11 @@ import { DailyReviewsSummary } from "@/components/daily-reviews/DailyReviewsSumm
 import { BudgetSetupForm } from "@/components/daily-reviews/BudgetSetupForm";
 import { TokensSetupForm } from "@/components/daily-reviews/TokensSetupForm";
 import { useClientAnalysis } from "@/components/daily-reviews/hooks/useClientAnalysis";
+import { ReviewsDashboard } from "@/components/daily-reviews/dashboard/ReviewsDashboard";
 
 const DailyReviews = () => {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("clients-list");
+  const [activeTab, setActiveTab] = useState("dashboard");
   
   const { analyzeMutation } = useClientAnalysis((data) => {
     // Se há dados do cliente no retorno, selecione-o
@@ -36,6 +37,11 @@ const DailyReviews = () => {
     console.log("Configurando orçamentos para cliente:", clientId);
     setSelectedClient(clientId);
     setActiveTab("setup");
+  };
+
+  const handleViewClientDetails = (clientId: string) => {
+    setSelectedClient(clientId);
+    setActiveTab("client-details");
   };
 
   // Se um cliente for selecionado e estivermos na tab de lista, mude para detalhes
@@ -66,6 +72,7 @@ const DailyReviews = () => {
               <SelectValue placeholder="Selecione a visualização" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="dashboard">Dashboard</SelectItem>
               <SelectItem value="clients-list">Lista de Clientes</SelectItem>
               {selectedClient && (
                 <SelectItem value="client-details">Detalhes do Cliente</SelectItem>
@@ -78,7 +85,8 @@ const DailyReviews = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 lg:grid-cols-4">
+        <TabsList className="grid grid-cols-2 lg:grid-cols-5">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="clients-list">Lista de Clientes</TabsTrigger>
           <TabsTrigger value="client-details" disabled={!selectedClient}>
             Detalhes do Cliente
@@ -86,6 +94,10 @@ const DailyReviews = () => {
           <TabsTrigger value="summary">Resumo</TabsTrigger>
           <TabsTrigger value="setup">Configuração</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-4 mt-4">
+          <ReviewsDashboard onViewClientDetails={handleViewClientDetails} />
+        </TabsContent>
 
         <TabsContent value="clients-list" className="space-y-4 mt-4">
           <ClientsList 
@@ -100,7 +112,7 @@ const DailyReviews = () => {
           {selectedClient && (
             <ClientReviewDetails 
               clientId={selectedClient} 
-              onBack={() => setActiveTab("clients-list")} 
+              onBack={() => setActiveTab("dashboard")} 
             />
           )}
         </TabsContent>
