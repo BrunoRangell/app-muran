@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { ClientsHeader } from "./ClientsHeader";
 import { ClientReviewCard } from "./ClientReviewCard";
-import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../summary/utils";
+import { formatDateInBrasiliaTz } from "../summary/utils";
 import { Card } from "@/components/ui/card";
 import { Loader, AlertCircle } from "lucide-react";
 
@@ -27,9 +27,6 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
 
   // Formatar data atual
   const currentDate = formatDateInBrasiliaTz(new Date(), "dd 'de' MMMM 'de' yyyy 'às' HH:mm");
-  
-  // Calcular dias restantes no mês
-  const remainingDays = getRemainingDaysInMonth();
   
   // Filtrar clientes com base na pesquisa
   const filteredClients = clientsWithReviews?.filter(client => 
@@ -67,11 +64,11 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
             Revisão de Orçamentos Meta Ads
           </h2>
           <p className="text-sm text-gray-500">
-            {currentDate} • {remainingDays} dias restantes no mês
+            {currentDate}
           </p>
           {lastReviewTime && (
             <p className="text-xs text-gray-400 mt-1">
-              {formatDateInBrasiliaTz(lastReviewTime, "'Última revisão em' dd 'de' MMMM 'às' HH:mm")}
+              {formatDateInBrasiliaTz(lastReviewTime, "'Última revisão em massa em' dd 'de' MMMM 'às' HH:mm")}
             </p>
           )}
         </div>
@@ -80,7 +77,6 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
       <ClientsHeader 
         onSearchChange={handleSearchChange}
         onReviewAllClients={reviewAllClients}
-        onRefreshClients={refetchClients}
         isLoading={isLoading}
         isBatchAnalyzing={isBatchAnalyzing}
         clientsCount={filteredClients.length}

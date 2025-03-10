@@ -2,12 +2,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw, PlayCircle } from "lucide-react";
+import { Search, PlayCircle } from "lucide-react";
 
 interface ClientsHeaderProps {
   onSearchChange: (query: string) => void;
   onReviewAllClients: () => void;
-  onRefreshClients: () => void;
   isLoading: boolean;
   isBatchAnalyzing: boolean;
   clientsCount: number;
@@ -16,7 +15,6 @@ interface ClientsHeaderProps {
 export const ClientsHeader = ({
   onSearchChange,
   onReviewAllClients,
-  onRefreshClients,
   isLoading,
   isBatchAnalyzing,
   clientsCount,
@@ -43,15 +41,6 @@ export const ClientsHeader = ({
       </div>
       
       <div className="flex gap-2 w-full md:w-auto">
-        <Button
-          variant="outline"
-          onClick={onRefreshClients}
-          disabled={isLoading || isBatchAnalyzing}
-        >
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Atualizar
-        </Button>
-        
         <Button
           onClick={onReviewAllClients}
           disabled={isLoading || isBatchAnalyzing || clientsCount === 0}
