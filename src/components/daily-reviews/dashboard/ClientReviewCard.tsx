@@ -17,7 +17,6 @@ interface ClientReviewCardProps {
 
 export const ClientReviewCard = ({ 
   client, 
-  onViewDetails, 
   onReviewClient,
   isProcessing 
 }: ClientReviewCardProps) => {
@@ -66,7 +65,6 @@ export const ClientReviewCard = ({
       <CardFooter className="p-0">
         <CardActions 
           onReviewClient={() => onReviewClient(client.id)}
-          onViewDetails={() => onViewDetails(client.id)}
           isProcessing={isProcessing}
         />
       </CardFooter>
