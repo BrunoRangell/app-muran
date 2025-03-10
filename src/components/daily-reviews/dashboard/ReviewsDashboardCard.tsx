@@ -2,8 +2,8 @@
 import { useState, useCallback } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader, AlertCircle, Search, RefreshCw, LayoutGrid, Table, ArrowUpDown } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader, AlertCircle, Search, RefreshCw, LayoutGrid, Table } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -87,11 +87,11 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
             <h2 className="text-xl font-semibold text-muran-dark mb-1">
-              Dashboard em Cartões
+              Dashboard Meta Ads
             </h2>
             {lastReviewTime && (
               <p className="text-sm text-gray-500">
-                {formatDateInBrasiliaTz(lastReviewTime, "'Última revisão em massa em' dd 'de' MMMM 'às' HH:mm")}
+                {formatDateInBrasiliaTz(lastReviewTime, "'Última revisão em massa em' dd/MM 'às' HH:mm")}
               </p>
             )}
           </div>

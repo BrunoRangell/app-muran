@@ -42,7 +42,7 @@ export const ClientAltCard = ({
         <div className="font-medium text-gray-900">{client.company_name}</div>
         {lastReviewDate && (
           <div className="text-sm text-gray-500">
-            Última revisão: {formatDateInBrasiliaTz(lastReviewDate, "dd MMM yy 'às' HH:mm")}
+            Última revisão: {formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm")}
           </div>
         )}
       </td>

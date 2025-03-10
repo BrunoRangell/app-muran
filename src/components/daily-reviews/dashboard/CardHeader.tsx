@@ -16,12 +16,12 @@ export const CardHeader = ({
   const formattedLastReviewDate = lastReviewUpdatedAt 
     ? formatDateInBrasiliaTz(
         lastReviewUpdatedAt, 
-        "'Última revisão em' dd 'de' MMMM 'às' HH:mm"
+        "'Última revisão em' dd/MM 'às' HH:mm"
       )
     : lastReviewDate 
       ? formatDateInBrasiliaTz(
           lastReviewDate, 
-          "'Última revisão em' dd 'de' MMMM"
+          "'Última revisão em' dd/MM"
         ) 
       : "Sem revisão anterior";
 
