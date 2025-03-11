@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientWithReview, BatchReviewResult } from "./types/reviewTypes";
@@ -40,28 +39,22 @@ export const useBatchReview = () => {
     }
 
     try {
-      // Adicionar ao estado de processamento
       setProcessingClients(prev => [...prev, clientId]);
       
-      // Executar análise
       console.log(`Iniciando análise para cliente ${clientId}`);
       const result = await analyzeClient(clientId, clientsWithReviews);
       
-      // Notificar sucesso
       toast({
         title: "Análise concluída",
         description: "Orçamentos de Meta Ads atualizados com sucesso!",
       });
       
       console.log("Análise concluída com sucesso:", result);
-      
-      // Atualizar dados após análise bem-sucedida
       await refetchClients();
       
     } catch (error) {
       console.error("Erro ao analisar cliente:", error);
       
-      // Notificar erro
       toast({
         title: "Erro na análise",
         description: error instanceof Error ? error.message : "Erro desconhecido na análise do cliente.",
@@ -69,12 +62,11 @@ export const useBatchReview = () => {
       });
       
     } finally {
-      // Remover do estado de processamento
       setProcessingClients(prev => prev.filter(id => id !== clientId));
     }
   }, [processingClients, clientsWithReviews, toast, refetchClients]);
 
-  // Função para revisar todos os clientes
+  // Função para revisar todos os clientes - modificada para sempre atualizar
   const reviewAllClients = useCallback(async () => {
     if (isBatchAnalyzing) {
       console.log("Já existe uma análise em massa em andamento.");
@@ -91,14 +83,11 @@ export const useBatchReview = () => {
       return;
     }
 
-    // Configurar estado de processamento em massa
     setIsBatchAnalyzing(true);
 
     try {
-      // Iniciar análise em massa
       console.log("Iniciando análise em massa...");
       
-      // Callbacks para gerenciar estado de processamento
       const handleClientStart = (clientId: string) => {
         setProcessingClients(prev => [...prev, clientId]);
       };
@@ -107,7 +96,6 @@ export const useBatchReview = () => {
         setProcessingClients(prev => prev.filter(id => id !== clientId));
       };
       
-      // Executar análise em massa
       const result: BatchReviewResult = await analyzeAllClients(
         clientsWithReviews,
         handleClientStart,
@@ -116,7 +104,6 @@ export const useBatchReview = () => {
       
       console.log("Análise em massa concluída:", result);
       
-      // Notificar resultados
       const successCount = result.results.length;
       const errorCount = result.errors.length;
       
@@ -134,7 +121,6 @@ export const useBatchReview = () => {
         });
       }
       
-      // Atualizar dados após análise
       await refetchClients();
       
     } catch (error) {
@@ -147,7 +133,6 @@ export const useBatchReview = () => {
       });
       
     } finally {
-      // Limpar estado de processamento
       setIsBatchAnalyzing(false);
       setProcessingClients([]);
     }

@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
@@ -22,7 +21,6 @@ export const ClientReviewCardCompact = ({
   compact = false,
   inactive = false
 }: ClientReviewCardCompactProps) => {
-  // Usar o hook personalizado para cálculos de orçamento
   const {
     hasReview,
     calculationError,
@@ -42,7 +40,7 @@ export const ClientReviewCardCompact = ({
   const cardClasses = `overflow-hidden transition-all ${
     inactive ? 'opacity-60 hover:opacity-80' : ''
   } ${
-    hasReview && !inactive 
+    hasReview && !inactive && showRecommendation
       ? 'border-l-4 border-l-amber-500' 
       : compact ? 'border' : 'border shadow-sm hover:shadow'
   }`;
