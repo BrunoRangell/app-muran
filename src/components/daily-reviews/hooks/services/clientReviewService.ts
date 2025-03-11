@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
@@ -82,32 +81,28 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   
   console.log(`Analisando cliente: ${client.company_name} (${client.meta_account_id})`);
   
-  // Obter token de acesso
   const accessToken = await getMetaAccessToken();
   
   if (!accessToken) {
     throw new Error("Token de acesso Meta não disponível");
   }
   
-  // Preparar dados para a função de borda
-  // Obter o primeiro e último dia do mês atual para análise completa do mês
   const now = getCurrentDateInBrasiliaTz();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   
   const dateRange = {
     start: firstDayOfMonth.toISOString().split('T')[0],
-    end: now.toISOString().split('T')[0] // Até a data atual
+    end: now.toISOString().split('T')[0]
   };
   
   console.log(`Período de análise: ${dateRange.start} até ${dateRange.end}`);
   
-  // Chamar função de borda para calcular orçamento
   const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
     body: {
       accountId: client.meta_account_id,
       accessToken,
-      dateRange: dateRange, // Enviando o período para análise
-      fetchSeparateInsights: true // Solicitar dados detalhados de insights
+      dateRange: dateRange,
+      fetchSeparateInsights: true
     }
   });
   
@@ -126,46 +121,60 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   
   console.log("Dados recebidos da API Meta:", data);
   
-  // Obter a data atual no fuso horário de Brasília
   const currentDate = getCurrentDateInBrasiliaTz().toISOString().split('T')[0];
-  
-  // Extrair valores necessários do resultado
   const metaDailyBudgetCurrent = data.totalDailyBudget || 0;
-  // Garantir que estamos obtendo o valor correto do totalSpent
   const metaTotalSpent = data.totalSpent || 0;
   
   console.log(`Valores extraídos: orçamento diário=${metaDailyBudgetCurrent}, total gasto=${metaTotalSpent}`);
   
-  // Verificar se os valores são números válidos antes de salvar
   if (isNaN(Number(metaDailyBudgetCurrent)) || isNaN(Number(metaTotalSpent))) {
     console.error("Valores inválidos recebidos da API:", { metaDailyBudgetCurrent, metaTotalSpent });
     throw new Error("Valores inválidos recebidos da API Meta");
   }
   
-  // Debug para verificar os tipos e valores
   console.log("Tipo de metaDailyBudgetCurrent:", typeof metaDailyBudgetCurrent);
   console.log("Tipo de metaTotalSpent:", typeof metaTotalSpent);
   
-  // Salvar os resultados no banco de dados como uma nova revisão diária
   try {
-    const { data: reviewData, error: reviewError } = await supabase.rpc(
-      "insert_daily_budget_review",
-      {
-        p_client_id: client.id,
-        p_review_date: currentDate,
-        p_meta_daily_budget_current: metaDailyBudgetCurrent,
-        p_meta_total_spent: metaTotalSpent,
-        p_meta_account_id: client.meta_account_id,
-        p_meta_account_name: `Conta ${client.meta_account_id}`
-      }
-    );
-    
-    if (reviewError) {
-      console.error("Erro ao salvar revisão:", reviewError);
-      throw new Error(`Erro ao salvar revisão: ${reviewError.message}`);
+    const { data: existingReview } = await supabase
+      .from('daily_budget_reviews')
+      .select('id')
+      .eq('client_id', client.id)
+      .eq('review_date', currentDate)
+      .maybeSingle();
+
+    let reviewData;
+
+    if (existingReview) {
+      console.log("Atualizando revisão existente para hoje:", existingReview.id);
+      const { data: updatedReview, error: updateError } = await supabase
+        .rpc('update_daily_budget_review', {
+          p_id: existingReview.id,
+          p_meta_daily_budget_current: metaDailyBudgetCurrent,
+          p_meta_total_spent: metaTotalSpent
+        });
+
+      if (updateError) throw updateError;
+      reviewData = updatedReview;
+    } else {
+      console.log("Criando nova revisão para hoje");
+      const { data: newReview, error: insertError } = await supabase.rpc(
+        "insert_daily_budget_review",
+        {
+          p_client_id: client.id,
+          p_review_date: currentDate,
+          p_meta_daily_budget_current: metaDailyBudgetCurrent,
+          p_meta_total_spent: metaTotalSpent,
+          p_meta_account_id: client.meta_account_id,
+          p_meta_account_name: `Conta ${client.meta_account_id}`
+        }
+      );
+      
+      if (insertError) throw insertError;
+      reviewData = newReview;
     }
     
-    console.log("Revisão salva com sucesso:", reviewData);
+    console.log("Revisão salva/atualizada com sucesso:", reviewData);
     console.log("Valores salvos: orçamento diário =", metaDailyBudgetCurrent, "total gasto =", metaTotalSpent);
     
     return {
@@ -178,8 +187,8 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
       }
     };
   } catch (dbError) {
-    console.error("Erro ao executar RPC:", dbError);
-    throw new Error(`Erro ao salvar no banco de dados: ${dbError.message}`);
+    console.error("Erro ao executar operação no banco:", dbError);
+    throw new Error(`Erro ao salvar/atualizar no banco de dados: ${dbError.message}`);
   }
 };
 

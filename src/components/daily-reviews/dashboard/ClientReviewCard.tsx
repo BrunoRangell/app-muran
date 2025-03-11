@@ -57,6 +57,7 @@ export const ClientReviewCard = ({
         <BudgetRecommendation 
           budgetDifference={budgetDifference}
           shouldShow={showRecommendation}
+          hasReview={hasReview}
         />
 
         <CalculationError error={calculationError} />

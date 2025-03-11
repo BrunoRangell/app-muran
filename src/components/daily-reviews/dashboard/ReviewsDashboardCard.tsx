@@ -2,17 +2,16 @@
 import { useState, useCallback } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Loader, AlertCircle, Search, RefreshCw, LayoutGrid, Table } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from "@/components/ui/separator";
-import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { ClientReviewCardCompact } from "./ClientReviewCardCompact";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { ClientWithReview } from "../hooks/types/reviewTypes";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -52,24 +51,52 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return 0;
   });
 
-  // Agrupar por status de revisão
-  const clientsWithoutMetaId = sortedClients.filter(client => !client.meta_account_id);
-  const clientsWithMetaId = sortedClients.filter(client => client.meta_account_id);
-  
-  // Clientes que precisam de ajuste (diferença de orçamento significativa)
-  const clientsNeedingAttention = clientsWithMetaId.filter(client => {
-    const lastReview = client.lastReview;
-    if (!lastReview) return false;
+  // Função para verificar se um cliente precisa de ajuste
+  const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
+    if (!client.lastReview || !client.meta_account_id) return false;
     
-    // Calcular diferença percentual entre orçamento ideal e atual
-    if (lastReview.meta_daily_budget_current === null) return false;
-    const currentBudget = lastReview.meta_daily_budget_current;
+    // Calcular orçamento diário ideal
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const dayOfMonth = today.getDate();
+    const daysRemaining = daysInMonth - dayOfMonth + 1;
+    
     const monthlyBudget = client.meta_ads_budget || 0;
-    const totalSpent = lastReview.meta_total_spent || 0;
+    const totalSpent = client.lastReview.meta_total_spent || 0;
+    const remaining = monthlyBudget - totalSpent;
+    const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
     
-    // Lógica simplificada para identificar clientes que precisam de atenção
-    return Math.abs(currentBudget - ((monthlyBudget - totalSpent) / 15)) >= 5;
+    // Comparar com orçamento atual
+    const currentDailyBudget = client.lastReview.meta_daily_budget_current || 0;
+    const difference = idealDailyBudget - currentDailyBudget;
+    
+    // Se a diferença for maior ou igual a 5, precisa de ajuste
+    return Math.abs(difference) >= 5;
+  };
+
+  // Ordenar clientes de acordo com a prioridade (independente da ordenação escolhida)
+  const prioritizedClients = [...sortedClients].sort((a, b) => {
+    // Primeiro critério: clientes sem Meta Ads ficam por último
+    if (!a.meta_account_id && b.meta_account_id) return 1;
+    if (a.meta_account_id && !b.meta_account_id) return -1;
+    
+    // Se ambos não têm Meta Ads, mantém a ordenação original
+    if (!a.meta_account_id && !b.meta_account_id) return 0;
+    
+    // Segundo critério: clientes que precisam de ajuste vêm primeiro
+    const aNeedsAdjustment = clientNeedsAdjustment(a);
+    const bNeedsAdjustment = clientNeedsAdjustment(b);
+    
+    if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
+    if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
+    
+    // Se ambos precisam ou não precisam de ajuste, mantém a ordenação original
+    return 0;
   });
+
+  // Dividir os clientes em grupos para renderização
+  const clientsWithMetaId = prioritizedClients.filter(client => client.meta_account_id);
+  const clientsWithoutMetaId = prioritizedClients.filter(client => !client.meta_account_id);
 
   // Funções de manipulação
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,21 +178,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
               </SelectContent>
             </Select>
           </div>
-        </div>
-        
-        <div className="flex flex-wrap gap-2 mb-6">
-          <Badge variant="outline" className="bg-muran-primary/10 text-muran-primary hover:bg-muran-primary/20">
-            Todos ({filteredClients.length})
-          </Badge>
-          <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-100">
-            Com Meta Ads ({clientsWithMetaId.length})
-          </Badge>
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 hover:bg-amber-100">
-            Precisam Atenção ({clientsNeedingAttention.length})
-          </Badge>
-          <Badge variant="outline" className="bg-gray-100 text-gray-700 hover:bg-gray-200">
-            Sem Meta Ads ({clientsWithoutMetaId.length})
-          </Badge>
         </div>
       </div>
 
