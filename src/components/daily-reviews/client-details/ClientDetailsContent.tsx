@@ -59,7 +59,7 @@ export const ClientDetailsContent = ({
   };
 
   const getRecommendationIcon = () => {
-    if (!recommendation) return null;
+    if (!recommendation) return <MinusCircle className="text-gray-500" size={18} />;
     
     if (recommendation.includes("Aumentar")) {
       return <TrendingUp className="text-green-500" size={18} />;
@@ -71,7 +71,7 @@ export const ClientDetailsContent = ({
   };
 
   const getRecommendationColorClass = () => {
-    if (!recommendation) return "";
+    if (!recommendation) return "text-gray-600";
     
     if (recommendation.includes("Aumentar")) {
       return "text-green-600";
@@ -100,7 +100,7 @@ export const ClientDetailsContent = ({
               <div className="text-sm font-medium mb-1">Recomendação:</div>
               <div className={`flex items-center gap-1 ${getRecommendationColorClass()} font-medium`}>
                 {getRecommendationIcon()}
-                {recommendation || "Sem recomendação disponível"}
+                {recommendation || "Nenhum ajuste necessário"}
               </div>
             </div>
           </CardContent>
@@ -122,7 +122,7 @@ export const ClientDetailsContent = ({
             </div>
             
             <div className="mt-3">
-              <div className="text-sm font-medium mb-1">Orçamento Diário Atual:</div>
+              <div className="text-sm font-medium mb-1">Orç. diário atual:</div>
               <div className="text-xl font-semibold">
                 {latestReview?.meta_daily_budget_current 
                   ? formatCurrency(latestReview.meta_daily_budget_current)
@@ -172,7 +172,7 @@ export const ClientDetailsContent = ({
           </CardHeader>
           <CardContent>
             <div>
-              <div className="text-sm font-medium mb-1">Orçamento Diário Ideal:</div>
+              <div className="text-sm font-medium mb-1">Orç. diário ideal:</div>
               <div className="text-xl font-semibold">
                 {formatCurrency(idealDailyBudget)}
               </div>

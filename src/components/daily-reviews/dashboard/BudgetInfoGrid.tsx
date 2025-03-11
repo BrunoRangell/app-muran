@@ -42,7 +42,7 @@ export const BudgetInfoGrid = ({
       </div>
 
       <div className="bg-gray-50 p-3 rounded-lg">
-        <div className="text-sm text-gray-500 mb-1">Orçamento Diário Atual</div>
+        <div className="text-sm text-gray-500 mb-1">Orç. diário atual</div>
         <div className="text-base font-semibold">
           {hasReview && currentDailyBudget !== null 
             ? formatCurrency(currentDailyBudget) 
@@ -51,7 +51,7 @@ export const BudgetInfoGrid = ({
       </div>
 
       <div className="bg-gray-50 p-3 rounded-lg">
-        <div className="text-sm text-gray-500 mb-1">Orçamento Diário Sugerido</div>
+        <div className="text-sm text-gray-500 mb-1">Orç. diário ideal</div>
         <div className="text-base font-semibold">
           {idealDailyBudget > 0 
             ? formatCurrency(idealDailyBudget) 

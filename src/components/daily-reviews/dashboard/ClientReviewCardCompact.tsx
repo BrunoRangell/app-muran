@@ -5,7 +5,7 @@ import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "../summary/utils";
-import { Loader, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Loader, TrendingUp, TrendingDown, AlertTriangle, MinusCircle } from "lucide-react";
 
 interface ClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -42,7 +42,7 @@ export const ClientReviewCardCompact = ({
   const cardClasses = `overflow-hidden transition-all ${
     inactive ? 'opacity-60 hover:opacity-80' : ''
   } ${
-    showRecommendation && !inactive 
+    hasReview && !inactive 
       ? 'border-l-4 border-l-amber-500' 
       : compact ? 'border' : 'border shadow-sm hover:shadow'
   }`;
@@ -64,7 +64,7 @@ export const ClientReviewCardCompact = ({
         </div>
         
         <div className="flex-1 p-3 border-l">
-          <div className="text-xs text-gray-500">Atual / Ideal</div>
+          <div className="text-xs text-gray-500">Orç. diário atual / ideal</div>
           <div className="flex items-center gap-1">
             <span>{hasReview ? formatCurrency(currentDailyBudget) : "-"}</span>
             <span>/</span>
@@ -72,11 +72,25 @@ export const ClientReviewCardCompact = ({
           </div>
         </div>
         
-        {showRecommendation && !inactive && (
-          <div className={`p-3 flex items-center border-l ${needsIncrease ? 'text-green-600' : 'text-red-600'}`}>
-            {needsIncrease ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+        {hasReview && !inactive && (
+          <div className={`p-3 flex items-center border-l ${
+            showRecommendation 
+              ? needsIncrease 
+                ? 'text-green-600' 
+                : 'text-red-600'
+              : 'text-gray-600'
+          }`}>
+            {showRecommendation 
+              ? needsIncrease 
+                ? <TrendingUp size={18} /> 
+                : <TrendingDown size={18} />
+              : <MinusCircle size={18} />
+            }
             <span className="ml-1 font-medium">
-              {needsIncrease ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}
+              {showRecommendation
+                ? `${needsIncrease ? "+" : "-"}${formatCurrency(Math.abs(budgetDifference))}`
+                : "Sem ajuste"
+              }
             </span>
           </div>
         )}
@@ -140,23 +154,37 @@ export const ClientReviewCardCompact = ({
           </div>
           
           <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Atual</div>
+            <div className="text-xs text-gray-500">Orç. diário atual</div>
             <div className="font-medium">
               {hasReview && currentDailyBudget !== null ? formatCurrency(currentDailyBudget) : "-"}
             </div>
           </div>
           
           <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Ideal</div>
+            <div className="text-xs text-gray-500">Orç. diário ideal</div>
             <div className="font-medium">{formatCurrency(idealDailyBudget)}</div>
           </div>
         </div>
         
-        {showRecommendation && !inactive && (
-          <div className={`p-2 rounded flex items-center ${needsIncrease ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-            {needsIncrease ? <TrendingUp size={16} className="mr-1" /> : <TrendingDown size={16} className="mr-1" />}
+        {hasReview && !inactive && (
+          <div className={`p-2 rounded flex items-center ${
+            showRecommendation 
+              ? needsIncrease 
+                ? 'bg-green-50 text-green-600' 
+                : 'bg-red-50 text-red-600'
+              : 'bg-gray-50 text-gray-600'
+          }`}>
+            {showRecommendation 
+              ? needsIncrease 
+                ? <TrendingUp size={16} className="mr-1" /> 
+                : <TrendingDown size={16} className="mr-1" />
+              : <MinusCircle size={16} className="mr-1" />
+            }
             <span className="text-sm font-medium">
-              {needsIncrease ? "Aumentar" : "Diminuir"} {formatCurrency(Math.abs(budgetDifference))}
+              {showRecommendation
+                ? `${needsIncrease ? "Aumentar" : "Diminuir"} ${formatCurrency(Math.abs(budgetDifference))}`
+                : "Nenhum ajuste necessário"
+              }
             </span>
           </div>
         )}
