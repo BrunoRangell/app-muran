@@ -108,14 +108,7 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/revisao-meta"
-          element={
-            <PrivateRoute requireAdmin>
-              <RevisaoNova />
-            </PrivateRoute>
-          }
-        />
+        <Route path="/revisao-meta" element={<RevisaoNova />} />
         <Route path="/financeiro" element={<ManagerFinancial />} />
         <Route path="/tarefas" element={<Tasks />} />
         <Route path="*" element={<NotFound />} />

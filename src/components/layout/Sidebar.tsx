@@ -46,6 +46,7 @@ const regularMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
+  { icon: BarChart3, label: "Revisão Meta Ads", path: "/revisao-meta" },
 ];
 
 export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
