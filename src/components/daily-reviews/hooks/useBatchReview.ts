@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientWithReview, BatchReviewResult } from "./types/reviewTypes";
@@ -66,7 +67,7 @@ export const useBatchReview = () => {
     }
   }, [processingClients, clientsWithReviews, toast, refetchClients]);
 
-  // Função para revisar todos os clientes - modificada para sempre atualizar
+  // Função para revisar todos os clientes - sempre atualiza as revisões
   const reviewAllClients = useCallback(async () => {
     if (isBatchAnalyzing) {
       console.log("Já existe uma análise em massa em andamento.");

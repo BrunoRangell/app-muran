@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
@@ -128,7 +129,7 @@ export const ClientReviewCardCompact = ({
           
           {inactive && (
             <div className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
-              Sem Meta
+              Sem Meta Ads
             </div>
           )}
           

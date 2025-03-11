@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { ClientReviewCardCompact } from "./ClientReviewCardCompact";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClientWithReview } from "../hooks/types/reviewTypes";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -50,9 +51,52 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return 0;
   });
 
-  // Agrupar por status de revisão
-  const clientsWithoutMetaId = sortedClients.filter(client => !client.meta_account_id);
-  const clientsWithMetaId = sortedClients.filter(client => client.meta_account_id);
+  // Função para verificar se um cliente precisa de ajuste
+  const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
+    if (!client.lastReview || !client.meta_account_id) return false;
+    
+    // Calcular orçamento diário ideal
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const dayOfMonth = today.getDate();
+    const daysRemaining = daysInMonth - dayOfMonth + 1;
+    
+    const monthlyBudget = client.meta_ads_budget || 0;
+    const totalSpent = client.lastReview.meta_total_spent || 0;
+    const remaining = monthlyBudget - totalSpent;
+    const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
+    
+    // Comparar com orçamento atual
+    const currentDailyBudget = client.lastReview.meta_daily_budget_current || 0;
+    const difference = idealDailyBudget - currentDailyBudget;
+    
+    // Se a diferença for maior ou igual a 5, precisa de ajuste
+    return Math.abs(difference) >= 5;
+  };
+
+  // Ordenar clientes de acordo com a prioridade (independente da ordenação escolhida)
+  const prioritizedClients = [...sortedClients].sort((a, b) => {
+    // Primeiro critério: clientes sem Meta Ads ficam por último
+    if (!a.meta_account_id && b.meta_account_id) return 1;
+    if (a.meta_account_id && !b.meta_account_id) return -1;
+    
+    // Se ambos não têm Meta Ads, mantém a ordenação original
+    if (!a.meta_account_id && !b.meta_account_id) return 0;
+    
+    // Segundo critério: clientes que precisam de ajuste vêm primeiro
+    const aNeedsAdjustment = clientNeedsAdjustment(a);
+    const bNeedsAdjustment = clientNeedsAdjustment(b);
+    
+    if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
+    if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
+    
+    // Se ambos precisam ou não precisam de ajuste, mantém a ordenação original
+    return 0;
+  });
+
+  // Dividir os clientes em grupos para renderização
+  const clientsWithMetaId = prioritizedClients.filter(client => client.meta_account_id);
+  const clientsWithoutMetaId = prioritizedClients.filter(client => !client.meta_account_id);
 
   // Funções de manipulação
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
