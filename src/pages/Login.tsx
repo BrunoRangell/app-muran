@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -13,10 +12,12 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("Verifique suas credenciais e tente novamente");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/';
   const { toast } = useToast();
 
-  // Posições memorizadas das partículas
   const [particles] = useState(() => 
     Array.from({ length: 50 }, () => ({
       left: Math.random() * 100,
@@ -28,14 +29,35 @@ const Login = () => {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/');
+      try {
+        const authMessage = sessionStorage.getItem('auth_message');
+        if (authMessage) {
+          toast({
+            title: "Aviso de sessão",
+            description: authMessage,
+            variant: "destructive",
+          });
+          sessionStorage.removeItem('auth_message');
+        }
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Erro ao verificar sessão:", error);
+          return;
+        }
+        
+        if (session) {
+          console.log("Sessão válida encontrada, redirecionando para:", returnTo);
+          navigate(returnTo);
+        }
+      } catch (error) {
+        console.error("Erro ao verificar sessão:", error);
       }
     };
     
     checkSession();
-  }, [navigate]);
+  }, [navigate, returnTo, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +83,15 @@ const Login = () => {
       if (error) {
         console.error('Erro de login:', error);
         setShowError(true);
+        
+        if (error.message.includes('Invalid login')) {
+          setErrorMessage("Credenciais não reconhecidas. Verifique seu e-mail e senha.");
+        } else if (error.message.includes('Email not confirmed')) {
+          setErrorMessage("E-mail não confirmado. Por favor, verifique sua caixa de entrada.");
+        } else {
+          setErrorMessage(error.message || "Erro ao fazer login. Tente novamente.");
+        }
+        
         toast({
           title: "Erro no login",
           description: "Verifique suas credenciais e tente novamente",
@@ -75,7 +106,8 @@ const Login = () => {
           title: "Bem-vindo!",
           description: "Login realizado com sucesso",
         });
-        navigate("/");
+        
+        navigate(returnTo);
       }
     } catch (error) {
       console.error('Erro inesperado:', error);
@@ -91,15 +123,9 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0f0f15] p-4 relative overflow-hidden isolate">
-      {/* Camadas de Fundo Premium */}
       <div className="absolute inset-0 z-[-1]">
-        {/* Gradiente base */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#160B21] via-[#0F0819] to-[#1A0B2E]" />
-
-        {/* Brilho radial central */}
         <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#FF6E00]/15 via-[#FF6E00]/05 to-transparent" />
-
-        {/* Padrão geométrico estático */}
         <svg 
           viewBox="0 0 100 100" 
           className="absolute w-[150%] h-[150%] -left-1/4 -top-1/4 opacity-5"
@@ -126,8 +152,6 @@ const Login = () => {
             transform="rotate(10 50 50)"
           />
         </svg>
-
-        {/* Partículas flutuantes com posições memorizadas */}
         <div className="absolute inset-0 opacity-20 pointer-events-none transition-opacity duration-1000">
           {particles.map((particle, i) => (
             <div
@@ -142,12 +166,8 @@ const Login = () => {
             />
           ))}
         </div>
-
-        {/* Textura de pontos sutil */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTAgMGgxNnYxNkgweiIgZmlsbD0ibm9uZSIvPjxjaXJjbGUgY3g9IjgiIGN5PSI4IiByPSIyIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+PC9zdmc+')] opacity-10" />
       </div>
-
-      {/* Card de Login */}
       <div className="w-full max-w-md bg-[rgba(235,235,240,0.95)] rounded-2xl shadow-2xl backdrop-blur-xl transition-all duration-500 hover:shadow-3xl relative overflow-hidden border border-[rgba(255,255,255,0.1)] group hover:border-[#ff6e00]/20">
         <div className="p-6 md:p-8 space-y-6 relative z-10">
           <div className="text-center space-y-6">
@@ -159,7 +179,6 @@ const Login = () => {
                 className="mx-auto h-16 md:h-24 w-auto drop-shadow-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
               />
             </div>
-            
             <div className="space-y-2">
               <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#ff6e00] to-[#ff914d] tracking-tight">
                 Bem-vindo(a)
@@ -169,16 +188,14 @@ const Login = () => {
               </p>
             </div>
           </div>
-
           {showError && (
             <Alert className="bg-[#ff6e00]/10 border border-[#ff6e00]/20 text-[#0f0f0f] backdrop-blur-sm">
               <Info className="h-5 w-5 text-[#ff6e00]" />
               <AlertDescription className="ml-2 text-sm font-medium">
-                Credenciais não reconhecidas
+                {errorMessage}
               </AlertDescription>
             </Alert>
           )}
-
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-4">
               <div className="group relative">
@@ -207,7 +224,6 @@ const Login = () => {
                 />
               </div>
             </div>
-            
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-[#ff6e00] to-[#ff914d] text-white font-bold tracking-tight transition-all duration-300 hover:shadow-lg hover:shadow-[#ff6e00]/20 active:scale-[0.98] relative overflow-hidden group"
@@ -225,7 +241,6 @@ const Login = () => {
           </form>
         </div>
       </div>
-
       <style>
         {`
           @keyframes particleFloat {
