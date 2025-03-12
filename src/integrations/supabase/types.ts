@@ -302,6 +302,50 @@ export type Database = {
           },
         ]
       }
+      meta_custom_budgets: {
+        Row: {
+          budget_amount: number
+          client_id: string
+          created_at: string
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          budget_amount?: number
+          client_id: string
+          created_at?: string
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          budget_amount?: number
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_custom_budgets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -441,6 +485,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_daily_budget: {
+        Args: {
+          budget_amount: number
+          start_date: string
+          end_date: string
+        }
+        Returns: number
+      }
       extract_transaction_pattern: {
         Args: {
           description: string

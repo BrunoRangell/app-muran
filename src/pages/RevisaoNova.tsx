@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/ReviewsDashboardCard";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
+import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 
 export default function RevisaoNova() {
   const [selectedTab, setSelectedTab] = useState<string>("dashboard");
@@ -17,6 +18,7 @@ export default function RevisaoNova() {
         <TabsList className="mb-4">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
+          <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
@@ -25,6 +27,10 @@ export default function RevisaoNova() {
         
         <TabsContent value="budgets">
           <BudgetManager />
+        </TabsContent>
+        
+        <TabsContent value="custom-budgets">
+          <CustomBudgetManager />
         </TabsContent>
       </Tabs>
     </div>
