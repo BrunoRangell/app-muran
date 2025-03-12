@@ -65,10 +65,10 @@ export const CustomBudgetTable = ({
       return { label: "Inativo", variant: "outline" as const };
     }
     if (isCurrentlyActive(budget)) {
-      return { label: "Ativo", variant: "success" as const };
+      return { label: "Ativo", variant: "default" as const }; // Alterado de "success" para "default"
     }
     if (isFutureBudget(budget)) {
-      return { label: "Agendado", variant: "warning" as const };
+      return { label: "Agendado", variant: "secondary" as const }; // Alterado de "warning" para "secondary"
     }
     return { label: "Encerrado", variant: "secondary" as const };
   };
