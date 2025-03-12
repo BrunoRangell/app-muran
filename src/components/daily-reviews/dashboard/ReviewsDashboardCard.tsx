@@ -12,6 +12,7 @@ import { ClientReviewCardCompact } from "./ClientReviewCardCompact";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
+import { Progress } from "@/components/ui/progress";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -29,8 +30,16 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     reviewSingleClient, 
     reviewAllClients,
     lastReviewTime,
-    isBatchAnalyzing
+    isBatchAnalyzing,
+    // Adicionar informações de progresso
+    batchProgress,
+    totalClientsToAnalyze
   } = useBatchReview();
+  
+  // Calcular porcentagem de progresso
+  const progressPercentage = totalClientsToAnalyze > 0 
+    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
+    : 0;
   
   // Filtrar clientes com base na pesquisa
   const filteredClients = clientsWithReviews?.filter(client => 
@@ -142,6 +151,21 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
             )}
           </Button>
         </div>
+        
+        {/* Barra de progresso */}
+        {isBatchAnalyzing && (
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">Progresso da análise</span>
+              <span className="text-sm text-gray-500">{batchProgress} de {totalClientsToAnalyze} ({progressPercentage}%)</span>
+            </div>
+            <Progress 
+              value={progressPercentage} 
+              className="h-2" 
+              indicatorClassName="bg-muran-primary"
+            />
+          </div>
+        )}
         
         <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
           <div className="relative flex-1 w-full">

@@ -16,10 +16,30 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   // Verificar se o cliente tem uma revisão recente
   const hasReview = !!client.lastReview;
   
+  // Verificar se já está usando orçamento personalizado na revisão
+  const isUsingCustomBudgetInReview = hasReview && client.lastReview?.using_custom_budget;
+  
   useEffect(() => {
     const fetchCustomBudget = async () => {
       try {
         setIsLoadingCustomBudget(true);
+        
+        // Se já temos a informação do orçamento personalizado na revisão, usamos ela
+        if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_id) {
+          const { data, error } = await supabase
+            .from("meta_custom_budgets")
+            .select("*")
+            .eq("id", client.lastReview.custom_budget_id)
+            .maybeSingle();
+            
+          if (error) {
+            console.error("Erro ao buscar orçamento personalizado da revisão:", error);
+            return;
+          }
+          
+          setCustomBudget(data);
+          return;
+        }
         
         // Buscar orçamento personalizado ativo para a data atual
         const today = new Date().toISOString().split('T')[0];
@@ -49,7 +69,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     if (client?.id) {
       fetchCustomBudget();
     }
-  }, [client.id]);
+  }, [client.id, isUsingCustomBudgetInReview, client.lastReview]);
   
   // Obter dias restantes no mês usando a função corrigida
   const remainingDaysValue = getRemainingDaysInMonth();
@@ -57,9 +77,19 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   // Calcular valores para exibição
   const monthlyBudget = client.meta_ads_budget || 0;
   const totalSpentFromDB = hasReview ? (client.lastReview?.meta_total_spent || 0) : 0;
-  // Sempre usar o valor do banco de dados, ignorando o cálculo automático
+  
+  // Usar o valor do banco de dados para o total gasto
   const totalSpent = totalSpentFromDB;
   
+  // Obter o orçamento baseado no tipo (personalizado ou padrão)
+  const getBudgetAmount = () => {
+    if (customBudget) {
+      console.log("Usando orçamento personalizado:", customBudget.budget_amount);
+      return customBudget.budget_amount;
+    }
+    return monthlyBudget;
+  };
+
   // Obter dias restantes e orçamento ideal com base no tipo de orçamento (regular ou personalizado)
   const getRemainingDays = () => {
     if (customBudget) {
@@ -75,11 +105,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   };
   
   const getBudgetRemaining = () => {
-    if (customBudget) {
-      return customBudget.budget_amount - totalSpent;
-    }
-    
-    return monthlyBudget - totalSpent;
+    const budgetAmount = getBudgetAmount();
+    return budgetAmount - totalSpent;
   };
   
   const getDailyBudgetIdeal = () => {
@@ -121,7 +148,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         throw new Error("Token de acesso Meta não disponível");
       }
       
-      // Preparar datas para o período (primeiro dia do mês até hoje)
+      // Preparar datas para o período
       const now = getCurrentDateInBrasiliaTz();
       
       // Se existe orçamento personalizado, usar as datas dele
@@ -176,6 +203,20 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     }
   };
 
+  // Log para diagnóstico
+  useEffect(() => {
+    if (customBudget) {
+      console.log(`Cliente ${client.company_name} está usando orçamento personalizado:`, {
+        valor: customBudget.budget_amount,
+        inicio: customBudget.start_date,
+        fim: customBudget.end_date,
+        diasRestantes: getRemainingDays(),
+        orcamentoRestante: remainingBudget,
+        orcamentoDiarioIdeal: idealDailyBudget
+      });
+    }
+  }, [customBudget, client.company_name, remainingBudget, idealDailyBudget]);
+
   return {
     hasReview,
     isCalculating,
@@ -191,6 +232,9 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     // Informações sobre orçamento personalizado
     customBudget,
     isLoadingCustomBudget,
-    remainingBudget
+    remainingBudget,
+    // Informações adicionais
+    isUsingCustomBudgetInReview,
+    actualBudgetAmount: getBudgetAmount()
   };
 };
