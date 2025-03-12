@@ -10,9 +10,13 @@ export interface ClientWithReview {
     meta_daily_budget_current: number | null;
     meta_total_spent: number;
     created_at: string;
-    updated_at: string; // Adicionando o campo updated_at
+    updated_at: string;
     idealDailyBudget?: number;
     recommendation?: string | null;
+    // Adicionando as propriedades que estão faltando
+    using_custom_budget?: boolean;
+    custom_budget_id?: string | null;
+    custom_budget_amount?: number | null;
   };
 }
 

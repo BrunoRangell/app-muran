@@ -8,6 +8,11 @@ import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./ser
 export const useBatchReview = () => {
   const [processingClients, setProcessingClients] = useState<string[]>([]);
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
+  // Novo estado para rastrear o progresso
+  const [batchProgress, setBatchProgress] = useState(0);
+  // Número total de clientes a serem analisados
+  const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -84,7 +89,23 @@ export const useBatchReview = () => {
       return;
     }
 
+    // Filtrar apenas clientes com ID de conta Meta configurado
+    const eligibleClients = clientsWithReviews.filter(client => 
+      client.meta_account_id && client.meta_account_id.trim() !== ""
+    );
+    
+    if (eligibleClients.length === 0) {
+      toast({
+        title: "Nenhum cliente elegível",
+        description: "Nenhum cliente com conta Meta Ads configurada.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsBatchAnalyzing(true);
+    setBatchProgress(0);
+    setTotalClientsToAnalyze(eligibleClients.length);
 
     try {
       console.log("Iniciando análise em massa...");
@@ -95,6 +116,11 @@ export const useBatchReview = () => {
       
       const handleClientEnd = (clientId: string) => {
         setProcessingClients(prev => prev.filter(id => id !== clientId));
+        // Atualizar progresso quando um cliente for concluído
+        setBatchProgress(prev => {
+          const newProgress = prev + 1;
+          return newProgress;
+        });
       };
       
       const result: BatchReviewResult = await analyzeAllClients(
@@ -136,6 +162,8 @@ export const useBatchReview = () => {
     } finally {
       setIsBatchAnalyzing(false);
       setProcessingClients([]);
+      setBatchProgress(0);
+      setTotalClientsToAnalyze(0);
     }
   }, [isBatchAnalyzing, clientsWithReviews, toast, refetchClients]);
 
@@ -152,6 +180,9 @@ export const useBatchReview = () => {
     isBatchAnalyzing,
     reviewSingleClient,
     reviewAllClients,
-    refetchClients
+    refetchClients,
+    // Retornar informações de progresso
+    batchProgress,
+    totalClientsToAnalyze
   };
 };

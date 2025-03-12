@@ -5,7 +5,22 @@ import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "../summary/utils";
-import { Loader, TrendingUp, TrendingDown, AlertTriangle, MinusCircle } from "lucide-react";
+import { 
+  Loader, 
+  TrendingUp, 
+  TrendingDown, 
+  AlertTriangle, 
+  MinusCircle, 
+  ExternalLink, 
+  BadgeDollarSign 
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Link } from "react-router-dom";
 
 interface ClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -29,7 +44,12 @@ export const ClientReviewCardCompact = ({
     totalSpent,
     currentDailyBudget,
     idealDailyBudget,
-    budgetDifference
+    budgetDifference,
+    // Informações sobre orçamento personalizado
+    customBudget,
+    isUsingCustomBudgetInReview,
+    actualBudgetAmount,
+    remainingDaysValue
   } = useClientBudgetCalculation(client);
 
   // Flag para mostrar recomendação de orçamento
@@ -43,7 +63,9 @@ export const ClientReviewCardCompact = ({
   } ${
     hasReview && !inactive && showRecommendation
       ? 'border-l-4 border-l-amber-500' 
-      : compact ? 'border' : 'border shadow-sm hover:shadow'
+      : customBudget && isUsingCustomBudgetInReview
+        ? 'border-l-4 border-l-muran-primary'
+        : compact ? 'border' : 'border shadow-sm hover:shadow'
   }`;
 
   // Grid Compacto (Tabela)
@@ -51,7 +73,12 @@ export const ClientReviewCardCompact = ({
     return (
       <Card className={`${cardClasses} flex items-center`}>
         <div className="flex-1 p-3">
-          <div className="font-medium text-muran-dark">{client.company_name}</div>
+          <div className="font-medium text-muran-dark flex items-center gap-1">
+            {client.company_name}
+            {customBudget && isUsingCustomBudgetInReview && (
+              <BadgeDollarSign size={16} className="text-muran-primary" />
+            )}
+          </div>
           <div className="text-xs text-gray-500">
             {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
           </div>
@@ -59,7 +86,14 @@ export const ClientReviewCardCompact = ({
         
         <div className="flex-1 p-3 border-l">
           <div className="text-xs text-gray-500">Orçamento</div>
-          <div>{formatCurrency(monthlyBudget)}</div>
+          <div className="flex items-center gap-1">
+            {formatCurrency(actualBudgetAmount)}
+            {customBudget && isUsingCustomBudgetInReview && (
+              <span className="text-xs text-muran-primary font-medium ml-1">
+                (personalizado)
+              </span>
+            )}
+          </div>
         </div>
         
         <div className="flex-1 p-3 border-l">
@@ -94,7 +128,20 @@ export const ClientReviewCardCompact = ({
           </div>
         )}
         
-        <div className="p-3 border-l">
+        <div className="p-3 border-l flex gap-2">
+          {customBudget && isUsingCustomBudgetInReview && (
+            <Link to="/revisao-nova">
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="border-muran-primary text-muran-primary hover:bg-muran-primary/10"
+              >
+                <ExternalLink size={14} className="mr-1" />
+                Orçamentos
+              </Button>
+            </Link>
+          )}
+          
           <Button 
             size="sm" 
             onClick={() => onReviewClient(client.id)}
@@ -121,7 +168,12 @@ export const ClientReviewCardCompact = ({
       <CardContent className="p-4 pt-4">
         <div className="flex justify-between items-start mb-3">
           <div>
-            <h3 className="font-semibold text-muran-dark">{client.company_name}</h3>
+            <h3 className="font-semibold text-muran-dark flex items-center gap-1">
+              {client.company_name}
+              {customBudget && isUsingCustomBudgetInReview && (
+                <BadgeDollarSign size={16} className="text-muran-primary" />
+              )}
+            </h3>
             <p className="text-xs text-gray-500">
               {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
             </p>
@@ -139,12 +191,26 @@ export const ClientReviewCardCompact = ({
               Erro
             </div>
           )}
+          
+          {customBudget && isUsingCustomBudgetInReview && (
+            <div className="bg-muran-primary/10 text-muran-primary text-xs px-2 py-1 rounded flex items-center">
+              <BadgeDollarSign size={12} className="mr-1" />
+              Orçamento personalizado ativo
+            </div>
+          )}
         </div>
         
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-gray-50 p-2 rounded">
             <div className="text-xs text-gray-500">Orçamento</div>
-            <div className="font-medium">{formatCurrency(monthlyBudget)}</div>
+            <div className="font-medium">
+              {formatCurrency(actualBudgetAmount)}
+              {customBudget && isUsingCustomBudgetInReview && (
+                <span className="text-xs text-muran-primary font-medium ml-1">
+                  (personalizado)
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="bg-gray-50 p-2 rounded">
@@ -185,6 +251,21 @@ export const ClientReviewCardCompact = ({
                 : "Nenhum ajuste necessário"
               }
             </span>
+          </div>
+        )}
+        
+        {customBudget && isUsingCustomBudgetInReview && (
+          <div className="mt-3">
+            <Link to="/revisao-nova">
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="w-full border-muran-primary text-muran-primary hover:bg-muran-primary/10"
+              >
+                <ExternalLink size={14} className="mr-1" />
+                Ver orçamentos personalizados
+              </Button>
+            </Link>
           </div>
         )}
       </CardContent>

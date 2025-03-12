@@ -10,9 +10,66 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [calculationAttempted, setCalculationAttempted] = useState(true); // Iniciar como true para evitar cálculo automático
+  const [customBudget, setCustomBudget] = useState<any | null>(null);
+  const [isLoadingCustomBudget, setIsLoadingCustomBudget] = useState(false);
   
   // Verificar se o cliente tem uma revisão recente
   const hasReview = !!client.lastReview;
+  
+  // Verificar se já está usando orçamento personalizado na revisão
+  const isUsingCustomBudgetInReview = hasReview && client.lastReview?.using_custom_budget;
+  
+  useEffect(() => {
+    const fetchCustomBudget = async () => {
+      try {
+        setIsLoadingCustomBudget(true);
+        
+        // Se já temos a informação do orçamento personalizado na revisão, usamos ela
+        if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_id) {
+          const { data, error } = await supabase
+            .from("meta_custom_budgets")
+            .select("*")
+            .eq("id", client.lastReview.custom_budget_id)
+            .maybeSingle();
+            
+          if (error) {
+            console.error("Erro ao buscar orçamento personalizado da revisão:", error);
+            return;
+          }
+          
+          setCustomBudget(data);
+          return;
+        }
+        
+        // Buscar orçamento personalizado ativo para a data atual
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+          .from("meta_custom_budgets")
+          .select("*")
+          .eq("client_id", client.id)
+          .eq("is_active", true)
+          .lte("start_date", today)
+          .gte("end_date", today)
+          .order("created_at", { ascending: false })
+          .maybeSingle();
+          
+        if (error) {
+          console.error("Erro ao buscar orçamento personalizado:", error);
+          return;
+        }
+        
+        setCustomBudget(data);
+      } catch (error) {
+        console.error("Erro ao buscar orçamento personalizado:", error);
+      } finally {
+        setIsLoadingCustomBudget(false);
+      }
+    };
+    
+    if (client?.id) {
+      fetchCustomBudget();
+    }
+  }, [client.id, isUsingCustomBudgetInReview, client.lastReview]);
   
   // Obter dias restantes no mês usando a função corrigida
   const remainingDaysValue = getRemainingDaysInMonth();
@@ -20,12 +77,55 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   // Calcular valores para exibição
   const monthlyBudget = client.meta_ads_budget || 0;
   const totalSpentFromDB = hasReview ? (client.lastReview?.meta_total_spent || 0) : 0;
-  // Sempre usar o valor do banco de dados, ignorando o cálculo automático
+  
+  // Usar o valor do banco de dados para o total gasto
   const totalSpent = totalSpentFromDB;
-  const remainingBudget = monthlyBudget - totalSpent;
+  
+  // Obter o orçamento baseado no tipo (personalizado ou padrão)
+  const getBudgetAmount = () => {
+    if (customBudget) {
+      console.log("Usando orçamento personalizado:", customBudget.budget_amount);
+      return customBudget.budget_amount;
+    }
+    return monthlyBudget;
+  };
+
+  // Obter dias restantes e orçamento ideal com base no tipo de orçamento (regular ou personalizado)
+  const getRemainingDays = () => {
+    if (customBudget) {
+      // Para orçamento personalizado, contar os dias entre hoje e a data de término
+      // CORREÇÃO: Incluir o dia atual na contagem
+      const today = getCurrentDateInBrasiliaTz();
+      const endDate = new Date(customBudget.end_date);
+      
+      // +1 para incluir o dia atual E o dia final
+      const diffTime = endDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Garantir que retorne pelo menos 1 dia (hoje)
+      return Math.max(1, diffDays);
+    }
+    
+    // Para orçamento regular, usar a função padrão
+    return remainingDaysValue;
+  };
+  
+  const getBudgetRemaining = () => {
+    const budgetAmount = getBudgetAmount();
+    return budgetAmount - totalSpent;
+  };
+  
+  const getDailyBudgetIdeal = () => {
+    const remaining = getBudgetRemaining();
+    const days = getRemainingDays();
+    
+    return days > 0 ? remaining / days : 0;
+  };
+  
+  const remainingBudget = getBudgetRemaining();
   
   // Calcular o orçamento diário ideal com base no orçamento restante e dias restantes
-  const idealDailyBudget = remainingDaysValue > 0 ? remainingBudget / remainingDaysValue : 0;
+  const idealDailyBudget = getDailyBudgetIdeal();
 
   // Verificar se o cliente tem valor de orçamento diário atual
   const currentDailyBudget = hasReview && client.lastReview?.meta_daily_budget_current !== null
@@ -54,12 +154,24 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         throw new Error("Token de acesso Meta não disponível");
       }
       
-      // Preparar datas para o período (primeiro dia do mês até hoje)
+      // Preparar datas para o período
       const now = getCurrentDateInBrasiliaTz();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      // Se existe orçamento personalizado, usar as datas dele
+      let startDate;
+      if (customBudget) {
+        startDate = new Date(customBudget.start_date);
+        // Garantir que não buscamos dados anteriores à data de início
+        if (startDate > now) {
+          throw new Error("A data de início do orçamento é no futuro");
+        }
+      } else {
+        // Caso contrário, usar o primeiro dia do mês atual
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
       
       const dateRange = {
-        start: firstDayOfMonth.toISOString().split('T')[0],
+        start: startDate.toISOString().split('T')[0],
         end: now.toISOString().split('T')[0]
       };
       
@@ -97,6 +209,20 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     }
   };
 
+  // Log para diagnóstico
+  useEffect(() => {
+    if (customBudget) {
+      console.log(`Cliente ${client.company_name} está usando orçamento personalizado:`, {
+        valor: customBudget.budget_amount,
+        inicio: customBudget.start_date,
+        fim: customBudget.end_date,
+        diasRestantes: getRemainingDays(),
+        orcamentoRestante: remainingBudget,
+        orcamentoDiarioIdeal: idealDailyBudget
+      });
+    }
+  }, [customBudget, client.company_name, remainingBudget, idealDailyBudget]);
+
   return {
     hasReview,
     isCalculating,
@@ -106,8 +232,15 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
-    remainingDaysValue,
+    remainingDaysValue: getRemainingDays(),
     // Expor a função de cálculo manual para ser chamada pelos botões "analisar"
-    calculateTotalSpent
+    calculateTotalSpent,
+    // Informações sobre orçamento personalizado
+    customBudget,
+    isLoadingCustomBudget,
+    remainingBudget,
+    // Informações adicionais
+    isUsingCustomBudgetInReview,
+    actualBudgetAmount: getBudgetAmount()
   };
 };

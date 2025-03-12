@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
@@ -70,6 +71,30 @@ export const fetchClientsWithReviews = async () => {
 };
 
 /**
+ * Verifica se existe um orçamento personalizado ativo para o cliente na data atual
+ */
+async function getActiveCustomBudget(clientId: string) {
+  const today = new Date().toISOString().split('T')[0];
+  
+  const { data, error } = await supabase
+    .from("meta_custom_budgets")
+    .select("*")
+    .eq("client_id", clientId)
+    .eq("is_active", true)
+    .lte("start_date", today)
+    .gte("end_date", today)
+    .order("created_at", { ascending: false })
+    .maybeSingle();
+    
+  if (error) {
+    console.error("Erro ao buscar orçamento personalizado:", error);
+    return null;
+  }
+  
+  return data;
+}
+
+/**
  * Analisa um cliente específico e salva a revisão no banco de dados
  */
 export const analyzeClient = async (clientId: string, clientsWithReviews?: ClientWithReview[]): Promise<ClientAnalysisResult> => {
@@ -86,12 +111,28 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   if (!accessToken) {
     throw new Error("Token de acesso Meta não disponível");
   }
+
+  // Verificar se existe orçamento personalizado ativo
+  const customBudget = await getActiveCustomBudget(clientId);
+  console.log("Orçamento personalizado encontrado:", customBudget);
   
   const now = getCurrentDateInBrasiliaTz();
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  
+  // Definir o período de análise
+  let startDate;
+  if (customBudget) {
+    startDate = new Date(customBudget.start_date);
+    // Garantir que não buscamos dados anteriores à data de início
+    if (startDate > now) {
+      throw new Error("A data de início do orçamento é no futuro");
+    }
+  } else {
+    // Caso contrário, usar o primeiro dia do mês atual
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
   
   const dateRange = {
-    start: firstDayOfMonth.toISOString().split('T')[0],
+    start: startDate.toISOString().split('T')[0],
     end: now.toISOString().split('T')[0]
   };
   
@@ -136,6 +177,7 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   console.log("Tipo de metaTotalSpent:", typeof metaTotalSpent);
   
   try {
+    // Verificar se já existe uma revisão para hoje
     const { data: existingReview } = await supabase
       .from('daily_budget_reviews')
       .select('id')
@@ -144,31 +186,49 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
       .maybeSingle();
 
     let reviewData;
+    
+    // Adicionar campo para informar se está usando orçamento personalizado
+    const customBudgetInfo = customBudget ? {
+      using_custom_budget: true,
+      custom_budget_id: customBudget.id,
+      custom_budget_amount: customBudget.budget_amount
+    } : {
+      using_custom_budget: false,
+      custom_budget_id: null,
+      custom_budget_amount: null
+    };
 
     if (existingReview) {
       console.log("Atualizando revisão existente para hoje:", existingReview.id);
       const { data: updatedReview, error: updateError } = await supabase
-        .rpc('update_daily_budget_review', {
-          p_id: existingReview.id,
-          p_meta_daily_budget_current: metaDailyBudgetCurrent,
-          p_meta_total_spent: metaTotalSpent
-        });
+        .from('daily_budget_reviews')
+        .update({
+          meta_daily_budget_current: metaDailyBudgetCurrent,
+          meta_total_spent: metaTotalSpent,
+          ...customBudgetInfo,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingReview.id)
+        .select()
+        .single();
 
       if (updateError) throw updateError;
       reviewData = updatedReview;
     } else {
       console.log("Criando nova revisão para hoje");
-      const { data: newReview, error: insertError } = await supabase.rpc(
-        "insert_daily_budget_review",
-        {
-          p_client_id: client.id,
-          p_review_date: currentDate,
-          p_meta_daily_budget_current: metaDailyBudgetCurrent,
-          p_meta_total_spent: metaTotalSpent,
-          p_meta_account_id: client.meta_account_id,
-          p_meta_account_name: `Conta ${client.meta_account_id}`
-        }
-      );
+      const { data: newReview, error: insertError } = await supabase
+        .from('daily_budget_reviews')
+        .insert({
+          client_id: client.id,
+          review_date: currentDate,
+          meta_daily_budget_current: metaDailyBudgetCurrent,
+          meta_total_spent: metaTotalSpent,
+          meta_account_id: client.meta_account_id,
+          meta_account_name: `Conta ${client.meta_account_id}`,
+          ...customBudgetInfo
+        })
+        .select()
+        .single();
       
       if (insertError) throw insertError;
       reviewData = newReview;
@@ -179,7 +239,7 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
     
     return {
       clientId,
-      reviewId: reviewData,
+      reviewId: reviewData.id,
       analysis: {
         totalDailyBudget: metaDailyBudgetCurrent,
         totalSpent: metaTotalSpent,
