@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { Progress } from "@/components/ui/progress";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -22,6 +23,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("name");
+  const queryClient = useQueryClient();
   
   const { 
     clientsWithReviews, 
@@ -31,10 +33,27 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     reviewAllClients,
     lastReviewTime,
     isBatchAnalyzing,
+    refetchClients,
     // Adicionar informações de progresso
     batchProgress,
     totalClientsToAnalyze
   } = useBatchReview();
+  
+  // Configurar listener para os orçamentos personalizados
+  useEffect(() => {
+    // Invalidar a query quando o componente montar e a cada 60 segundos
+    // para garantir que mudanças nos orçamentos personalizados sejam refletidas
+    const intervalId = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    }, 60000); // 60 segundos
+    
+    // Escutar alterações em orçamentos personalizados
+    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [queryClient]);
   
   // Calcular porcentagem de progresso
   const progressPercentage = totalClientsToAnalyze > 0 
@@ -117,6 +136,10 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     reviewSingleClient(clientId);
   }, [reviewSingleClient]);
 
+  const handleRefresh = useCallback(() => {
+    refetchClients();
+  }, [refetchClients]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -132,24 +155,35 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
             )}
           </div>
           
-          <Button 
-            variant="default"
-            onClick={reviewAllClients}
-            disabled={isBatchAnalyzing || isLoading}
-            className="bg-muran-primary hover:bg-muran-primary/90"
-          >
-            {isBatchAnalyzing ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Analisando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Analisar Todos
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={isBatchAnalyzing || isLoading}
+              size="sm"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            
+            <Button 
+              variant="default"
+              onClick={reviewAllClients}
+              disabled={isBatchAnalyzing || isLoading}
+              className="bg-muran-primary hover:bg-muran-primary/90"
+            >
+              {isBatchAnalyzing ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Analisando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Analisar Todos
+                </>
+              )}
+            </Button>
+          </div>
         </div>
         
         {/* Barra de progresso */}
