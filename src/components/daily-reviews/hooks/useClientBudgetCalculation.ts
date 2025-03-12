@@ -94,10 +94,16 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   const getRemainingDays = () => {
     if (customBudget) {
       // Para orçamento personalizado, contar os dias entre hoje e a data de término
+      // CORREÇÃO: Incluir o dia atual na contagem
       const today = getCurrentDateInBrasiliaTz();
       const endDate = new Date(customBudget.end_date);
-      // +1 para incluir o dia atual
-      return Math.floor((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      // +1 para incluir o dia atual E o dia final
+      const diffTime = endDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Garantir que retorne pelo menos 1 dia (hoje)
+      return Math.max(1, diffDays);
     }
     
     // Para orçamento regular, usar a função padrão

@@ -47,7 +47,8 @@ export const ClientReviewCardCompact = ({
     // Informações sobre orçamento personalizado
     customBudget,
     isUsingCustomBudgetInReview,
-    actualBudgetAmount
+    actualBudgetAmount,
+    remainingDaysValue
   } = useClientBudgetCalculation(client);
 
   // Flag para mostrar recomendação de orçamento
@@ -101,6 +102,9 @@ export const ClientReviewCardCompact = ({
                         <Calendar size={12} />
                         {formatCustomBudgetDates()}
                       </p>
+                      {customBudget.description && (
+                        <p className="italic">{customBudget.description}</p>
+                      )}
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -299,6 +303,13 @@ export const ClientReviewCardCompact = ({
                 : "Nenhum ajuste necessário"
               }
             </span>
+          </div>
+        )}
+        
+        {customBudget && (
+          <div className="mt-2 text-xs text-muran-primary flex items-center">
+            <BadgeDollarSign size={12} className="mr-1" />
+            <span>Período: {formatCustomBudgetDates()} ({remainingDaysValue} dias restantes)</span>
           </div>
         )}
       </CardContent>

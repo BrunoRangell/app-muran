@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { Progress } from "@/components/ui/progress";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -24,6 +25,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("name");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const { 
     clientsWithReviews, 
@@ -39,21 +41,51 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     totalClientsToAnalyze
   } = useBatchReview();
   
-  // Configurar listener para os orçamentos personalizados
+  // Configurar listener para os orçamentos personalizados e invalidação da query
   useEffect(() => {
-    // Invalidar a query quando o componente montar e a cada 60 segundos
-    // para garantir que mudanças nos orçamentos personalizados sejam refletidas
-    const intervalId = setInterval(() => {
+    // Criar um canal para ouvir mudanças na tabela meta_custom_budgets
+    const channel = queryClient.getQueryCache().find(["clients-with-custom-budgets"])
+      ? queryClient.getQueryCache().find(["clients-with-custom-budgets"])?.queryKey
+      : ["budget-changes-channel"];
+
+    // Função para invalidar as queries relacionadas
+    const invalidateQueries = () => {
       queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-    }, 60000); // 60 segundos
-    
-    // Escutar alterações em orçamentos personalizados
-    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-    
-    return () => {
-      clearInterval(intervalId);
     };
-  }, [queryClient]);
+
+    // Adicionar listener para mudanças em orçamentos personalizados
+    const unsubscribe = queryClient.getQueryCache().subscribe(event => {
+      if (
+        event.type === 'updated' || 
+        event.type === 'added' || 
+        event.type === 'removed'
+      ) {
+        // Se a mudança envolveu um orçamento personalizado
+        if (
+          event.query.queryKey.includes("clients-with-custom-budgets") ||
+          (Array.isArray(event.query.queryKey[0]) && 
+           event.query.queryKey[0].includes("custom-budget"))
+        ) {
+          console.log("Mudança detectada em orçamentos personalizados, atualizando...");
+          invalidateQueries();
+          // Mostrar toast informando sobre a atualização
+          toast({
+            title: "Orçamentos atualizados",
+            description: "O painel foi atualizado com as alterações nos orçamentos personalizados.",
+            duration: 3000,
+          });
+        }
+      }
+    });
+
+    // Invalidar a query no início para garantir dados atualizados
+    invalidateQueries();
+    
+    // Limpar subscription quando o componente for desmontado
+    return () => {
+      unsubscribe();
+    };
+  }, [queryClient, toast]);
   
   // Calcular porcentagem de progresso
   const progressPercentage = totalClientsToAnalyze > 0 
