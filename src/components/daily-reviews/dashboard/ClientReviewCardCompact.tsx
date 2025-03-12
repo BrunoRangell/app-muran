@@ -11,7 +11,7 @@ import {
   TrendingDown, 
   AlertTriangle, 
   MinusCircle, 
-  Calendar, 
+  ExternalLink, 
   BadgeDollarSign 
 } from "lucide-react";
 import {
@@ -20,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Link } from "react-router-dom";
 
 interface ClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -56,20 +57,6 @@ export const ClientReviewCardCompact = ({
   const needsIncrease = budgetDifference > 0;
   const lastReviewDate = client.lastReview?.updated_at;
 
-  // Formatar datas do orçamento personalizado
-  const formatCustomBudgetDates = () => {
-    if (!customBudget) return "";
-    
-    const startDate = new Date(customBudget.start_date);
-    const endDate = new Date(customBudget.end_date);
-    
-    const formatOptions: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit' };
-    const start = startDate.toLocaleDateString('pt-BR', formatOptions);
-    const end = endDate.toLocaleDateString('pt-BR', formatOptions);
-    
-    return `${start} até ${end}`;
-  };
-
   // Determinar classes de estilo com base no status
   const cardClasses = `overflow-hidden transition-all ${
     inactive ? 'opacity-60 hover:opacity-80' : ''
@@ -89,26 +76,7 @@ export const ClientReviewCardCompact = ({
           <div className="font-medium text-muran-dark flex items-center gap-1">
             {client.company_name}
             {customBudget && isUsingCustomBudgetInReview && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <BadgeDollarSign size={16} className="text-muran-primary" />
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <div className="text-xs space-y-1">
-                      <p className="font-semibold">Orçamento Personalizado</p>
-                      <p>{formatCurrency(customBudget.budget_amount)}</p>
-                      <p className="flex items-center gap-1">
-                        <Calendar size={12} />
-                        {formatCustomBudgetDates()}
-                      </p>
-                      {customBudget.description && (
-                        <p className="italic">{customBudget.description}</p>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <BadgeDollarSign size={16} className="text-muran-primary" />
             )}
           </div>
           <div className="text-xs text-gray-500">
@@ -121,16 +89,9 @@ export const ClientReviewCardCompact = ({
           <div className="flex items-center gap-1">
             {formatCurrency(actualBudgetAmount)}
             {customBudget && isUsingCustomBudgetInReview && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <BadgeDollarSign size={12} className="text-muran-primary cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">Orçamento personalizado</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <span className="text-xs text-muran-primary font-medium ml-1">
+                (personalizado)
+              </span>
             )}
           </div>
         </div>
@@ -167,7 +128,20 @@ export const ClientReviewCardCompact = ({
           </div>
         )}
         
-        <div className="p-3 border-l">
+        <div className="p-3 border-l flex gap-2">
+          {customBudget && isUsingCustomBudgetInReview && (
+            <Link to="/revisao-nova">
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="border-muran-primary text-muran-primary hover:bg-muran-primary/10"
+              >
+                <ExternalLink size={14} className="mr-1" />
+                Orçamentos
+              </Button>
+            </Link>
+          )}
+          
           <Button 
             size="sm" 
             onClick={() => onReviewClient(client.id)}
@@ -197,26 +171,7 @@ export const ClientReviewCardCompact = ({
             <h3 className="font-semibold text-muran-dark flex items-center gap-1">
               {client.company_name}
               {customBudget && isUsingCustomBudgetInReview && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <BadgeDollarSign size={16} className="text-muran-primary" />
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <div className="text-xs space-y-1">
-                        <p className="font-semibold">Orçamento Personalizado</p>
-                        <p>{formatCurrency(customBudget.budget_amount)}</p>
-                        <p className="flex items-center gap-1">
-                          <Calendar size={12} />
-                          {formatCustomBudgetDates()}
-                        </p>
-                        {customBudget.description && (
-                          <p className="italic">{customBudget.description}</p>
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <BadgeDollarSign size={16} className="text-muran-primary" />
               )}
             </h3>
             <p className="text-xs text-gray-500">
@@ -240,7 +195,7 @@ export const ClientReviewCardCompact = ({
           {customBudget && isUsingCustomBudgetInReview && (
             <div className="bg-muran-primary/10 text-muran-primary text-xs px-2 py-1 rounded flex items-center">
               <BadgeDollarSign size={12} className="mr-1" />
-              Personalizado
+              Orçamento personalizado ativo
             </div>
           )}
         </div>
@@ -248,19 +203,12 @@ export const ClientReviewCardCompact = ({
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-gray-50 p-2 rounded">
             <div className="text-xs text-gray-500">Orçamento</div>
-            <div className="font-medium flex items-center gap-1">
+            <div className="font-medium">
               {formatCurrency(actualBudgetAmount)}
               {customBudget && isUsingCustomBudgetInReview && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <BadgeDollarSign size={12} className="text-muran-primary cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">Orçamento personalizado</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <span className="text-xs text-muran-primary font-medium ml-1">
+                  (personalizado)
+                </span>
               )}
             </div>
           </div>
@@ -306,10 +254,18 @@ export const ClientReviewCardCompact = ({
           </div>
         )}
         
-        {customBudget && (
-          <div className="mt-2 text-xs text-muran-primary flex items-center">
-            <BadgeDollarSign size={12} className="mr-1" />
-            <span>Período: {formatCustomBudgetDates()} ({remainingDaysValue} dias restantes)</span>
+        {customBudget && isUsingCustomBudgetInReview && (
+          <div className="mt-3">
+            <Link to="/revisao-nova">
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="w-full border-muran-primary text-muran-primary hover:bg-muran-primary/10"
+              >
+                <ExternalLink size={14} className="mr-1" />
+                Ver orçamentos personalizados
+              </Button>
+            </Link>
           </div>
         )}
       </CardContent>

@@ -14,7 +14,6 @@ import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { Progress } from "@/components/ui/progress";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -41,14 +40,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   } = useBatchReview();
   
   useEffect(() => {
-    const channel = queryClient.getQueryCache().find({ queryKey: ["clients-with-custom-budgets"] })
-      ? { queryKey: ["clients-with-custom-budgets"] }
-      : { queryKey: ["budget-changes-channel"] };
-
-    const invalidateQueries = () => {
-      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-    };
-
     const unsubscribe = queryClient.getQueryCache().subscribe(event => {
       if (
         event.type === 'updated' || 
@@ -56,12 +47,17 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
         event.type === 'removed'
       ) {
         if (
-          event.query.queryKey.includes("clients-with-custom-budgets") ||
-          (Array.isArray(event.query.queryKey[0]) && 
+          (event.query.queryKey && 
+           Array.isArray(event.query.queryKey) &&
+           event.query.queryKey[0] === "clients-with-custom-budgets") ||
+          (Array.isArray(event.query.queryKey) && 
+           event.query.queryKey.length > 0 &&
+           Array.isArray(event.query.queryKey[0]) && 
+           event.query.queryKey[0].includes && 
            event.query.queryKey[0].includes("custom-budget"))
         ) {
           console.log("Mudança detectada em orçamentos personalizados, atualizando...");
-          invalidateQueries();
+          queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
           toast({
             title: "Orçamentos atualizados",
             description: "O painel foi atualizado com as alterações nos orçamentos personalizados.",
@@ -71,7 +67,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
       }
     });
 
-    invalidateQueries();
+    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     
     return () => {
       unsubscribe();

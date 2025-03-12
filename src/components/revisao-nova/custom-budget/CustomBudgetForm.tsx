@@ -114,11 +114,19 @@ export const CustomBudgetForm = ({
   // Preencher o formulário quando um orçamento for selecionado para edição
   useEffect(() => {
     if (selectedBudget) {
+      // Corrigindo o problema da data: converter as strings para objetos Date
+      // sem modificar o fuso horário (utilizando a data local)
+      const correctedStartDate = new Date(selectedBudget.start_date + 'T00:00:00');
+      const correctedEndDate = new Date(selectedBudget.end_date + 'T00:00:00');
+      
+      console.log('Datas originais:', selectedBudget.start_date, selectedBudget.end_date);
+      console.log('Datas corrigidas:', correctedStartDate, correctedEndDate);
+      
       form.reset({
         client_id: selectedBudget.client_id,
         budget_amount: selectedBudget.budget_amount,
-        start_date: new Date(selectedBudget.start_date),
-        end_date: new Date(selectedBudget.end_date),
+        start_date: correctedStartDate,
+        end_date: correctedEndDate,
         description: selectedBudget.description,
       });
       setFormattedBudget(formatCurrency(selectedBudget.budget_amount));
