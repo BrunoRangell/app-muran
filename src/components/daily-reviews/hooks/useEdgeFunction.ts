@@ -115,9 +115,9 @@ export const invokeEdgeFunction = async (
     }, null, 2));
     
     try {
-      // Implementar um timeout mais longo para a requisição principal
+      // Tentar usar um timeout para evitar que a requisição fique pendente indefinidamente
       const timeoutPromise = new Promise<{ data: any, error: any }>((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout ao conectar à função Edge (30s)")), 30000);
+        setTimeout(() => reject(new Error("Timeout ao conectar à função Edge (20s)")), 20000);
       });
       
       const functionPromise = supabase.functions.invoke("daily-budget-reviews", {
@@ -143,7 +143,7 @@ export const invokeEdgeFunction = async (
       
       // Se a função Edge falhar, usamos dados de mock para teste
       if (!data) {
-        console.warn("Resposta vazia da função Edge. Usando dados de mock para testes.");
+        console.warn("Usando dados de mock para testes devido a erro na função Edge");
         return getMockAnalysisData(clientId, clientData);
       }
       

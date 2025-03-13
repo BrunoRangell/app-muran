@@ -23,10 +23,7 @@ export const fetchClientsWithReviews = async () => {
         meta_daily_budget_current,
         meta_total_spent,
         created_at,
-        updated_at,
-        using_custom_budget,
-        custom_budget_id,
-        custom_budget_amount
+        updated_at
       )
     `)
     .eq('status', 'active')
@@ -141,101 +138,44 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   
   console.log(`Período de análise: ${dateRange.start} até ${dateRange.end}`);
   
-  try {
-    // Tentar usar a função meta-budget-calculator primeiro
-    const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
-      body: {
-        accountId: client.meta_account_id,
-        accessToken,
-        dateRange: dateRange,
-        fetchSeparateInsights: true
-      }
-    });
-    
-    if (error) {
-      console.error("Erro na função meta-budget-calculator:", error);
-      console.log("Tentando usar a função daily-budget-reviews como fallback...");
-      
-      // Fallback para a função daily-budget-reviews
-      return await useDailyBudgetReviewsFunction(client, accessToken, dateRange, customBudget);
+  const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
+    body: {
+      accountId: client.meta_account_id,
+      accessToken,
+      dateRange: dateRange,
+      fetchSeparateInsights: true
     }
-    
-    if (!data) {
-      console.error("Resposta vazia da API meta-budget-calculator");
-      console.log("Tentando usar a função daily-budget-reviews como fallback...");
-      
-      // Fallback para a função daily-budget-reviews
-      return await useDailyBudgetReviewsFunction(client, accessToken, dateRange, customBudget);
-    }
-    
-    console.log("Dados recebidos da API Meta (meta-budget-calculator):", data);
-    
-    const currentDate = getCurrentDateInBrasiliaTz().toISOString().split('T')[0];
-    const metaDailyBudgetCurrent = data.totalDailyBudget || 0;
-    const metaTotalSpent = data.totalSpent || 0;
-    
-    console.log(`Valores extraídos: orçamento diário=${metaDailyBudgetCurrent}, total gasto=${metaTotalSpent}`);
-    
-    if (isNaN(Number(metaDailyBudgetCurrent)) || isNaN(Number(metaTotalSpent))) {
-      console.error("Valores inválidos recebidos da API:", { metaDailyBudgetCurrent, metaTotalSpent });
-      throw new Error("Valores inválidos recebidos da API Meta");
-    }
-    
-    return await saveReviewToDatabase(client, currentDate, metaDailyBudgetCurrent, metaTotalSpent, customBudget, data.campaignDetails);
-  } catch (error) {
-    console.error("Erro ao usar meta-budget-calculator:", error);
-    console.log("Tentando usar a função daily-budget-reviews como fallback...");
-    
-    // Fallback para a função daily-budget-reviews
-    return await useDailyBudgetReviewsFunction(client, accessToken, dateRange, customBudget);
+  });
+  
+  if (error) {
+    console.error("Erro na função de borda:", error);
+    throw new AppError(
+      `Erro ao analisar cliente: ${error.message}`, 
+      "EDGE_FUNCTION_ERROR",
+      { originalError: error, metaAccountId: client.meta_account_id }
+    );
   }
-};
-
-/**
- * Função de fallback para usar a função daily-budget-reviews
- */
-async function useDailyBudgetReviewsFunction(client, accessToken, dateRange, customBudget) {
+  
+  if (!data) {
+    throw new Error("Resposta vazia da API");
+  }
+  
+  console.log("Dados recebidos da API Meta:", data);
+  
   const currentDate = getCurrentDateInBrasiliaTz().toISOString().split('T')[0];
+  const metaDailyBudgetCurrent = data.totalDailyBudget || 0;
+  const metaTotalSpent = data.totalSpent || 0;
   
-  console.log("Usando função daily-budget-reviews como fallback");
+  console.log(`Valores extraídos: orçamento diário=${metaDailyBudgetCurrent}, total gasto=${metaTotalSpent}`);
   
-  try {
-    const { data, error } = await supabase.functions.invoke("daily-budget-reviews", {
-      body: { 
-        method: "getMetaAdsData", 
-        metaAccountId: client.meta_account_id,
-        accessToken,
-        clientId: client.id,
-        reviewDate: currentDate
-      }
-    });
-    
-    if (error) {
-      console.error("Erro na função daily-budget-reviews:", error);
-      throw new Error(`Erro ao analisar cliente: ${error.message}`);
-    }
-    
-    if (!data || !data.meta_total_spent || !data.meta_daily_budget_current) {
-      console.error("Dados inválidos da função daily-budget-reviews:", data);
-      throw new Error("Dados inválidos recebidos da função daily-budget-reviews");
-    }
-    
-    const metaDailyBudgetCurrent = Number(data.meta_daily_budget_current);
-    const metaTotalSpent = Number(data.meta_total_spent);
-    
-    console.log(`Valores do fallback: orçamento diário=${metaDailyBudgetCurrent}, total gasto=${metaTotalSpent}`);
-    
-    return await saveReviewToDatabase(client, currentDate, metaDailyBudgetCurrent, metaTotalSpent, customBudget, data.meta?.campaigns);
-  } catch (error) {
-    console.error("Erro no fallback para daily-budget-reviews:", error);
-    throw new Error(`Falha completa na análise do cliente: ${error.message}`);
+  if (isNaN(Number(metaDailyBudgetCurrent)) || isNaN(Number(metaTotalSpent))) {
+    console.error("Valores inválidos recebidos da API:", { metaDailyBudgetCurrent, metaTotalSpent });
+    throw new Error("Valores inválidos recebidos da API Meta");
   }
-}
-
-/**
- * Salva a revisão no banco de dados
- */
-async function saveReviewToDatabase(client, currentDate, metaDailyBudgetCurrent, metaTotalSpent, customBudget, campaigns) {
+  
+  console.log("Tipo de metaDailyBudgetCurrent:", typeof metaDailyBudgetCurrent);
+  console.log("Tipo de metaTotalSpent:", typeof metaTotalSpent);
+  
   try {
     // Verificar se já existe uma revisão para hoje
     const { data: existingReview } = await supabase
@@ -298,19 +238,19 @@ async function saveReviewToDatabase(client, currentDate, metaDailyBudgetCurrent,
     console.log("Valores salvos: orçamento diário =", metaDailyBudgetCurrent, "total gasto =", metaTotalSpent);
     
     return {
-      clientId: client.id,
+      clientId,
       reviewId: reviewData.id,
       analysis: {
         totalDailyBudget: metaDailyBudgetCurrent,
         totalSpent: metaTotalSpent,
-        campaigns: campaigns || []
+        campaigns: data.campaignDetails || []
       }
     };
   } catch (dbError) {
     console.error("Erro ao executar operação no banco:", dbError);
     throw new Error(`Erro ao salvar/atualizar no banco de dados: ${dbError.message}`);
   }
-}
+};
 
 /**
  * Analisa todos os clientes elegíveis em sequência
