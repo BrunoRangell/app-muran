@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'daily-budget-reviews' carregada - v1.2.0");
+console.log("Função Edge 'daily-budget-reviews' carregada - v1.3.0");
 
 serve(async (req) => {
   // Lidar com requisições OPTIONS para CORS
@@ -111,6 +111,15 @@ serve(async (req) => {
         
         // Chamar a API Meta para buscar campanhas
         const campaignsResponse = await fetch(campaignsApiUrl);
+        
+        // Verificar status HTTP antes de processar a resposta
+        if (!campaignsResponse.ok) {
+          console.error("Erro HTTP ao buscar campanhas:", campaignsResponse.status, campaignsResponse.statusText);
+          const errorText = await campaignsResponse.text();
+          console.error("Resposta de erro da API Meta:", errorText);
+          throw new Error(`Erro HTTP ${campaignsResponse.status} ao acessar API da Meta: ${errorText}`);
+        }
+        
         const campaignsData = await campaignsResponse.json();
         
         // Verificar se há erro na resposta da Meta para campanhas
@@ -153,6 +162,15 @@ serve(async (req) => {
         const insightsUrl = `https://graph.facebook.com/v20.0/act_${metaAccountId}/insights?fields=spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&access_token=${accessToken}`;
         
         const insightsResponse = await fetch(insightsUrl);
+        
+        // Verificar status HTTP antes de processar a resposta
+        if (!insightsResponse.ok) {
+          console.error("Erro HTTP ao buscar insights:", insightsResponse.status, insightsResponse.statusText);
+          const errorText = await insightsResponse.text();
+          console.error("Resposta de erro da API Meta (insights):", errorText);
+          throw new Error(`Erro HTTP ${insightsResponse.status} ao acessar API de insights da Meta: ${errorText}`);
+        }
+        
         const insightsData = await insightsResponse.json();
         
         if (insightsData.error) {
@@ -190,6 +208,15 @@ serve(async (req) => {
             console.log("Chamando próxima página de insights:", insightsByCampaignUrl.substring(0, 100) + "...");
             
             const insightsByCampaignResponse = await fetch(insightsByCampaignUrl);
+            
+            // Verificar status HTTP antes de processar a resposta
+            if (!insightsByCampaignResponse.ok) {
+              console.error("Erro HTTP ao buscar insights por campanha:", insightsByCampaignResponse.status, insightsByCampaignResponse.statusText);
+              const errorText = await insightsByCampaignResponse.text();
+              console.error("Resposta de erro da API Meta (insights por campanha):", errorText);
+              throw new Error(`Erro HTTP ${insightsByCampaignResponse.status} ao acessar API de insights por campanha da Meta: ${errorText}`);
+            }
+            
             const insightsByCampaignData = await insightsByCampaignResponse.json();
             
             if (insightsByCampaignData.error) {
@@ -237,7 +264,7 @@ serve(async (req) => {
           
           // Recalcular o total gasto
           totalSpent = processedCampaigns.reduce((total, campaign) => {
-            return total + (parseFloat(campaign.spend) || 0);
+            return total + (parseFloat(String(campaign.spend)) || 0);
           }, 0);
           
           console.log(`Total gasto calculado a partir de todas as campanhas: ${totalSpent}`);
