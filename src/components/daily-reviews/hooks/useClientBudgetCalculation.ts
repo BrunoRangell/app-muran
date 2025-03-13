@@ -17,7 +17,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   const hasReview = !!client.lastReview;
   
   // Verificar se já está usando orçamento personalizado na revisão
-  const isUsingCustomBudgetInReview = hasReview && client.lastReview?.using_custom_budget;
+  const isUsingCustomBudgetInReview = hasReview && client.lastReview?.using_custom_budget === true;
   
   useEffect(() => {
     const fetchCustomBudget = async () => {
@@ -37,6 +37,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
             return;
           }
           
+          console.log(`[useClientBudgetCalculation] Orçamento personalizado encontrado para o cliente ${client.company_name}:`, data);
           setCustomBudget(data);
           return;
         }
@@ -57,6 +58,12 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
           console.error("Erro ao buscar orçamento personalizado:", error);
           return;
         }
+        
+        console.log(`[useClientBudgetCalculation] Verificando orçamentos personalizados para ${client.company_name}:`, {
+          orçamentoEncontrado: data,
+          isUsingCustomBudgetInReview,
+          custom_budget_id: client.lastReview?.custom_budget_id
+        });
         
         setCustomBudget(data);
       } catch (error) {
@@ -83,10 +90,16 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   
   // Obter o orçamento baseado no tipo (personalizado ou padrão)
   const getBudgetAmount = () => {
+    if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_amount) {
+      console.log("Usando orçamento personalizado da revisão:", client.lastReview.custom_budget_amount);
+      return client.lastReview.custom_budget_amount;
+    }
+    
     if (customBudget) {
       console.log("Usando orçamento personalizado:", customBudget.budget_amount);
       return customBudget.budget_amount;
     }
+    
     return monthlyBudget;
   };
 
@@ -211,17 +224,21 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
 
   // Log para diagnóstico
   useEffect(() => {
-    if (customBudget) {
-      console.log(`Cliente ${client.company_name} está usando orçamento personalizado:`, {
-        valor: customBudget.budget_amount,
-        inicio: customBudget.start_date,
-        fim: customBudget.end_date,
+    if (customBudget || isUsingCustomBudgetInReview) {
+      console.log(`Cliente ${client.company_name} - Orçamento Info:`, {
+        isUsingCustomBudgetInReview,
+        customBudget: customBudget ? {
+          valor: customBudget.budget_amount,
+          inicio: customBudget.start_date,
+          fim: customBudget.end_date
+        } : 'Não encontrado',
+        customBudgetFromReview: client.lastReview?.custom_budget_amount,
         diasRestantes: getRemainingDays(),
         orcamentoRestante: remainingBudget,
         orcamentoDiarioIdeal: idealDailyBudget
       });
     }
-  }, [customBudget, client.company_name, remainingBudget, idealDailyBudget]);
+  }, [customBudget, client.company_name, remainingBudget, idealDailyBudget, isUsingCustomBudgetInReview]);
 
   return {
     hasReview,

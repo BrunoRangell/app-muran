@@ -1,12 +1,22 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/ReviewsDashboardCard";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
+import { useSearchParams } from "react-router-dom";
 
 export default function RevisaoNova() {
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const [selectedTab, setSelectedTab] = useState<string>("dashboard");
+  
+  // Atualizar a tab selecionada com base no parâmetro da URL
+  useEffect(() => {
+    if (tabParam && ["dashboard", "budgets", "custom-budgets"].includes(tabParam)) {
+      setSelectedTab(tabParam);
+    }
+  }, [tabParam]);
   
   return (
     <div className="container mx-auto p-4 space-y-6">
