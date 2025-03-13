@@ -43,6 +43,12 @@ export function ClientInfo({ client }: ClientInfoProps) {
           return;
         }
         
+        if (data) {
+          console.log("Orçamento personalizado encontrado:", data);
+        } else {
+          console.log("Nenhum orçamento personalizado ativo encontrado para o cliente.");
+        }
+        
         setCustomBudget(data);
       } catch (error) {
         console.error("Erro ao buscar orçamento personalizado:", error);
@@ -57,11 +63,11 @@ export function ClientInfo({ client }: ClientInfoProps) {
   if (!client) return null;
 
   return (
-    <div className="bg-gray-50 p-4 rounded-lg">
+    <div className={`bg-gray-50 p-4 rounded-lg ${customBudget ? "border-l-4 border-l-[#ff6e00]" : ""}`}>
       <div className="font-semibold text-lg flex items-center gap-1">
         {client.company_name}
         {customBudget && (
-          <BadgeDollarSign size={16} className="text-muran-primary" />
+          <BadgeDollarSign size={16} className="text-[#ff6e00]" />
         )}
       </div>
       
@@ -83,15 +89,15 @@ export function ClientInfo({ client }: ClientInfoProps) {
         </div>
 
         <div className="text-sm flex items-center font-medium">
-          <DollarSign className="h-4 w-4 text-muran-primary mr-1" />
+          <DollarSign className="h-4 w-4 text-[#ff6e00] mr-1" />
           Orçamento Mensal: 
-          <span className="mx-1 px-2 py-0.5 bg-muran-primary/10 text-muran-primary rounded">
+          <span className="mx-1 px-2 py-0.5 bg-[#ff6e00]/10 text-[#ff6e00] rounded">
             {customBudget 
               ? formatCurrency(customBudget.budget_amount) 
               : (client.meta_ads_budget ? formatCurrency(client.meta_ads_budget) : "Não configurado")}
           </span>
           {customBudget && (
-            <Badge className="ml-1 bg-muran-primary/10 border-0 text-muran-primary">
+            <Badge className="ml-1 bg-[#ff6e00]/10 border-0 text-[#ff6e00]">
               Personalizado
             </Badge>
           )}
@@ -106,7 +112,7 @@ export function ClientInfo({ client }: ClientInfoProps) {
               <Button 
                 size="sm" 
                 variant="outline"
-                className="mt-1 border-muran-primary text-muran-primary hover:bg-muran-primary/10"
+                className="mt-1 border-[#ff6e00] text-[#ff6e00] hover:bg-[#ff6e00]/10"
               >
                 <BadgeDollarSign className="h-3.5 w-3.5 mr-1" />
                 Gerenciar orçamentos personalizados

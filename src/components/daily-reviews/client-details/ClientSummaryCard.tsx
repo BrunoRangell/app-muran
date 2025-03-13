@@ -45,7 +45,7 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
   };
 
   // Verificar se está usando orçamento personalizado
-  const isUsingCustomBudget = latestReview?.using_custom_budget;
+  const isUsingCustomBudget = latestReview?.using_custom_budget === true;
   const customBudgetAmount = latestReview?.custom_budget_amount;
 
   // Valores para debug
@@ -53,14 +53,15 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
   console.log("Dados da revisão mais recente:", latestReview);
   console.log("Orçamento mensal:", client?.meta_ads_budget);
   console.log("Gasto total na revisão:", latestReview?.meta_total_spent);
+  console.log("Usando orçamento personalizado:", isUsingCustomBudget);
 
   return (
-    <Card>
+    <Card className={isUsingCustomBudget ? "border-l-4 border-l-[#ff6e00]" : ""}>
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           {client?.company_name || "Cliente"}
           {isUsingCustomBudget && (
-            <BadgeDollarSign size={20} className="text-muran-primary" />
+            <BadgeDollarSign size={20} className="text-[#ff6e00]" />
           )}
         </CardTitle>
         <CardDescription>
@@ -78,12 +79,12 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
             </div>
             {isUsingCustomBudget && (
               <div className="mt-2">
-                <Badge className="bg-muran-primary/10 border-0 text-muran-primary flex items-center gap-1 py-1">
+                <Badge className="bg-[#ff6e00]/10 border-0 text-[#ff6e00] flex items-center gap-1 py-1">
                   <BadgeDollarSign size={12} />
                   Orçamento personalizado ativo
                 </Badge>
-                <Link to="/revisao-nova" className="mt-2 block">
-                  <Button size="sm" variant="outline" className="w-full text-xs border-muran-primary text-muran-primary hover:bg-muran-primary/10">
+                <Link to="/revisao-nova?tab=custom-budgets" className="mt-2 block">
+                  <Button size="sm" variant="outline" className="w-full text-xs border-[#ff6e00] text-[#ff6e00] hover:bg-[#ff6e00]/10">
                     Gerenciar orçamentos personalizados
                   </Button>
                 </Link>

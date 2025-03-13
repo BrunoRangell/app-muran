@@ -40,19 +40,27 @@ export const ClientAltCard = ({
   
   const lastReviewDate = client.lastReview?.updated_at;
 
+  // Adicionar logs para debug
+  console.log(`Cliente ${client.company_name}:`, {
+    isUsingCustomBudgetInReview,
+    hasReview,
+    'using_custom_budget': client.lastReview?.using_custom_budget,
+    customBudget
+  });
+
   return (
     <tr className={`hover:bg-gray-50 ${
       showRecommendation 
         ? 'border-l-4 border-l-amber-500' 
         : customBudget && isUsingCustomBudgetInReview 
-          ? 'border-l-4 border-l-muran-primary' 
+          ? 'border-l-4 border-l-[#ff6e00]' 
           : ''
     }`}>
       <td className="px-6 py-4">
         <div className="font-medium text-gray-900 flex items-center gap-1">
           {client.company_name}
           {customBudget && isUsingCustomBudgetInReview && (
-            <BadgeDollarSign size={16} className="text-muran-primary" />
+            <BadgeDollarSign size={16} className="text-[#ff6e00]" />
           )}
         </div>
         {lastReviewDate && (
@@ -62,7 +70,7 @@ export const ClientAltCard = ({
         )}
         {customBudget && isUsingCustomBudgetInReview && (
           <div className="mt-1">
-            <Badge className="bg-muran-primary/10 text-muran-primary hover:bg-muran-primary/20 border-none">
+            <Badge className="bg-[#ff6e00]/10 text-[#ff6e00] hover:bg-[#ff6e00]/20 border-none">
               Orçamento personalizado ativo
             </Badge>
           </div>
@@ -112,11 +120,11 @@ export const ClientAltCard = ({
       <td className="px-6 py-4">
         <div className="flex gap-2">
           {customBudget && isUsingCustomBudgetInReview && (
-            <Link to="/revisao-nova">
+            <Link to="/revisao-nova?tab=custom-budgets">
               <Button 
                 variant="outline" 
                 size="sm"
-                className="border-muran-primary text-muran-primary hover:bg-muran-primary/10"
+                className="border-[#ff6e00] text-[#ff6e00] hover:bg-[#ff6e00]/10"
               >
                 <ExternalLink size={14} className="mr-1" />
                 Orçamentos
