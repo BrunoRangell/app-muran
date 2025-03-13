@@ -1,11 +1,12 @@
 
 import { Button } from "@/components/ui/button";
-import { Loader, TrendingUp, TrendingDown } from "lucide-react";
+import { Loader, TrendingUp, TrendingDown, BadgeDollarSign, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 
 interface ClientAltCardProps {
   client: ClientWithReview;
@@ -27,7 +28,10 @@ export const ClientAltCard = ({
     totalSpent,
     currentDailyBudget,
     idealDailyBudget,
-    budgetDifference
+    budgetDifference,
+    // Informações sobre orçamento personalizado
+    customBudget,
+    isUsingCustomBudgetInReview
   } = useClientBudgetCalculation(client);
 
   // Flag para mostrar recomendação de orçamento
@@ -37,12 +41,30 @@ export const ClientAltCard = ({
   const lastReviewDate = client.lastReview?.updated_at;
 
   return (
-    <tr className={`hover:bg-gray-50 ${showRecommendation ? 'border-l-4 border-l-amber-500' : ''}`}>
+    <tr className={`hover:bg-gray-50 ${
+      showRecommendation 
+        ? 'border-l-4 border-l-amber-500' 
+        : customBudget && isUsingCustomBudgetInReview 
+          ? 'border-l-4 border-l-muran-primary' 
+          : ''
+    }`}>
       <td className="px-6 py-4">
-        <div className="font-medium text-gray-900">{client.company_name}</div>
+        <div className="font-medium text-gray-900 flex items-center gap-1">
+          {client.company_name}
+          {customBudget && isUsingCustomBudgetInReview && (
+            <BadgeDollarSign size={16} className="text-muran-primary" />
+          )}
+        </div>
         {lastReviewDate && (
           <div className="text-sm text-gray-500">
             Última revisão: {formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm")}
+          </div>
+        )}
+        {customBudget && isUsingCustomBudgetInReview && (
+          <div className="mt-1">
+            <Badge className="bg-muran-primary/10 text-muran-primary hover:bg-muran-primary/20 border-none">
+              Orçamento personalizado ativo
+            </Badge>
           </div>
         )}
       </td>
@@ -88,22 +110,37 @@ export const ClientAltCard = ({
         </div>
       </td>
       <td className="px-6 py-4">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => onReviewClient(client.id)}
-          disabled={isProcessing}
-          className="w-full"
-        >
-          {isProcessing ? (
-            <>
-              <Loader className="animate-spin mr-2" size={14} />
-              Analisando...
-            </>
-          ) : (
-            "Analisar"
+        <div className="flex gap-2">
+          {customBudget && isUsingCustomBudgetInReview && (
+            <Link to="/revisao-nova">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="border-muran-primary text-muran-primary hover:bg-muran-primary/10"
+              >
+                <ExternalLink size={14} className="mr-1" />
+                Orçamentos
+              </Button>
+            </Link>
           )}
-        </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => onReviewClient(client.id)}
+            disabled={isProcessing}
+            className="w-full"
+          >
+            {isProcessing ? (
+              <>
+                <Loader className="animate-spin mr-2" size={14} />
+                Analisando...
+              </>
+            ) : (
+              "Analisar"
+            )}
+          </Button>
+        </div>
       </td>
     </tr>
   );

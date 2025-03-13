@@ -3,6 +3,9 @@ import { formatCurrency } from "@/utils/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { BadgeDollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 export interface ClientSummaryCardProps {
   client: any;
@@ -40,6 +43,10 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
     return isNaN(spent) ? 0 : spent;
   };
 
+  // Verificar se está usando orçamento personalizado
+  const isUsingCustomBudget = latestReview?.using_custom_budget;
+  const customBudgetAmount = latestReview?.custom_budget_amount;
+
   // Valores para debug
   console.log("Dados do cliente:", client);
   console.log("Dados da revisão mais recente:", latestReview);
@@ -51,6 +58,9 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           {client?.company_name || "Cliente"}
+          {isUsingCustomBudget && (
+            <BadgeDollarSign size={20} className="text-muran-primary" />
+          )}
         </CardTitle>
         <CardDescription>
           Detalhes da revisão de hoje - {formatCurrentDate()}
@@ -60,7 +70,24 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="text-sm text-gray-500 mb-1">Orçamento Mensal Meta Ads</div>
-            <div className="text-2xl font-bold">{formatCurrency(Number(client?.meta_ads_budget) || 0)}</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(isUsingCustomBudget && customBudgetAmount 
+                ? Number(customBudgetAmount) 
+                : Number(client?.meta_ads_budget) || 0)}
+            </div>
+            {isUsingCustomBudget && (
+              <div className="mt-2">
+                <Badge className="bg-muran-primary/10 border-0 text-muran-primary flex items-center gap-1 py-1">
+                  <BadgeDollarSign size={12} />
+                  Orçamento personalizado ativo
+                </Badge>
+                <Link to="/revisao-nova" className="mt-2 block">
+                  <Button size="sm" variant="outline" className="w-full text-xs border-muran-primary text-muran-primary hover:bg-muran-primary/10">
+                    Gerenciar orçamentos personalizados
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="bg-gray-50 p-4 rounded-lg">
