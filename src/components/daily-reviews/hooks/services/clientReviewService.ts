@@ -9,6 +9,14 @@ import { AppError } from "@/lib/errors";
  * Busca todos os clientes com suas respectivas revisões mais recentes
  */
 export const fetchClientsWithReviews = async () => {
+  console.log("Iniciando fetchClientsWithReviews");
+  // Verificar autenticação antes de fazer a requisição
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    console.error("Sessão não encontrada");
+    throw new Error("Usuário não autenticado");
+  }
+
   // Buscar todos os clientes ativos com ID de conta Meta configurado
   const { data: clientsData, error } = await supabase
     .from('clients')
@@ -101,6 +109,13 @@ async function getActiveCustomBudget(clientId: string) {
  * Analisa um cliente específico e salva a revisão no banco de dados
  */
 export const analyzeClient = async (clientId: string, clientsWithReviews?: ClientWithReview[]): Promise<ClientAnalysisResult> => {
+  // Verificar autenticação
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    console.error("Sessão não encontrada");
+    throw new Error("Usuário não autenticado");
+  }
+
   const client = clientsWithReviews?.find(c => c.id === clientId);
   
   if (!client || !client.meta_account_id) {
@@ -215,7 +230,10 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
         .select()
         .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Erro ao atualizar revisão:", updateError);
+        throw updateError;
+      }
       reviewData = updatedReview;
     } else {
       console.log("Criando nova revisão para hoje");
@@ -233,7 +251,10 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
         .select()
         .single();
       
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Erro ao inserir revisão:", insertError);
+        throw insertError;
+      }
       reviewData = newReview;
     }
     
@@ -263,6 +284,13 @@ export const analyzeAllClients = async (
   onClientProcessingStart: (clientId: string) => void,
   onClientProcessingEnd: (clientId: string) => void
 ): Promise<BatchReviewResult> => {
+  // Verificar autenticação
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    console.error("Sessão não encontrada");
+    throw new Error("Usuário não autenticado");
+  }
+
   const results: ClientAnalysisResult[] = [];
   const errors: { clientId: string; clientName: string; error: string }[] = [];
   
