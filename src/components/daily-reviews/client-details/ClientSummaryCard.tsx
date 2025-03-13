@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { BadgeDollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 export interface ClientSummaryCardProps {
   client: any;
