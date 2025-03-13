@@ -194,6 +194,8 @@ export type Database = {
         Row: {
           client_id: string | null
           created_at: string | null
+          custom_budget_amount: number | null
+          custom_budget_id: string | null
           id: number
           meta_account_id: string | null
           meta_account_name: string | null
@@ -201,10 +203,13 @@ export type Database = {
           meta_total_spent: number | null
           review_date: string
           updated_at: string | null
+          using_custom_budget: boolean | null
         }
         Insert: {
           client_id?: string | null
           created_at?: string | null
+          custom_budget_amount?: number | null
+          custom_budget_id?: string | null
           id?: number
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -212,10 +217,13 @@ export type Database = {
           meta_total_spent?: number | null
           review_date?: string
           updated_at?: string | null
+          using_custom_budget?: boolean | null
         }
         Update: {
           client_id?: string | null
           created_at?: string | null
+          custom_budget_amount?: number | null
+          custom_budget_id?: string | null
           id?: number
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -223,6 +231,7 @@ export type Database = {
           meta_total_spent?: number | null
           review_date?: string
           updated_at?: string | null
+          using_custom_budget?: boolean | null
         }
         Relationships: [
           {

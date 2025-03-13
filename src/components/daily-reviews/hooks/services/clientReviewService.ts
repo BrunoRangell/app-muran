@@ -23,7 +23,10 @@ export const fetchClientsWithReviews = async () => {
         meta_daily_budget_current,
         meta_total_spent,
         created_at,
-        updated_at
+        updated_at,
+        using_custom_budget,
+        custom_budget_id,
+        custom_budget_amount
       )
     `)
     .eq('status', 'active')

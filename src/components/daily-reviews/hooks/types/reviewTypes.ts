@@ -13,7 +13,7 @@ export interface ClientWithReview {
     updated_at: string;
     idealDailyBudget?: number;
     recommendation?: string | null;
-    // Adicionando as propriedades que estão faltando
+    // Propriedades para orçamentos personalizados
     using_custom_budget?: boolean;
     custom_budget_id?: string | null;
     custom_budget_amount?: number | null;
