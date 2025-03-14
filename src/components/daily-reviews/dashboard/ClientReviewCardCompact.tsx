@@ -60,15 +60,13 @@ export const ClientReviewCardCompact = ({
   // Verificar se tem orçamento personalizado
   const hasCustomBudget = customBudget && isUsingCustomBudgetInReview;
 
-  // Determinar classes de estilo com base no status
+  // Determinar classes de estilo com base no status - Somente destacar cards com recomendação de ajuste
   const cardClasses = `overflow-hidden transition-all ${
     inactive ? 'opacity-60 hover:opacity-80' : ''
   } ${
     hasReview && !inactive && showRecommendation
       ? 'border-l-4 border-l-amber-500' 
-      : hasCustomBudget
-        ? 'border-l-4 border-l-[#ff6e00]'
-        : compact ? 'border' : 'border shadow-sm hover:shadow'
+      : compact ? 'border' : 'border shadow-sm hover:shadow'
   }`;
 
   // Grid Compacto (Tabela)
@@ -273,7 +271,7 @@ export const ClientReviewCardCompact = ({
         )}
         
         {hasCustomBudget && (
-          <div className="mt-3 flex justify-end">
+          <div className="mt-2 flex justify-end">
             <Link to="/revisao-nova?tab=custom-budgets">
               <Button 
                 size="sm" 

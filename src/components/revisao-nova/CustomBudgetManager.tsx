@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card,
   CardContent,
@@ -16,9 +16,14 @@ import {
 import { CustomBudgetTable } from "./custom-budget/CustomBudgetTable";
 import { CustomBudgetForm } from "./custom-budget/CustomBudgetForm";
 import { useCustomBudgets } from "./hooks/useCustomBudgets";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export const CustomBudgetManager = () => {
   const [selectedTab, setSelectedTab] = useState<string>("active");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const {
     filteredClients,
     isLoading,
@@ -35,6 +40,46 @@ export const CustomBudgetManager = () => {
     isCurrentlyActive,
     isFutureBudget
   } = useCustomBudgets();
+
+  // Configurar atualização automática quando houver mudanças
+  useEffect(() => {
+    // Ouvir atualizações em mutações
+    const onMutationSettled = () => {
+      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    };
+
+    // Configurar subscriptions para cada mutação
+    const unsubscribeAdd = addCustomBudgetMutation.subscribe({
+      onSettled: onMutationSettled
+    });
+
+    const unsubscribeUpdate = updateCustomBudgetMutation.subscribe({
+      onSettled: onMutationSettled
+    });
+
+    const unsubscribeDelete = deleteCustomBudgetMutation.subscribe({
+      onSettled: onMutationSettled
+    });
+
+    const unsubscribeToggle = toggleBudgetStatusMutation.subscribe({
+      onSettled: onMutationSettled
+    });
+
+    // Limpar subscriptions
+    return () => {
+      unsubscribeAdd();
+      unsubscribeUpdate();
+      unsubscribeDelete();
+      unsubscribeToggle();
+    };
+  }, [
+    queryClient, 
+    addCustomBudgetMutation, 
+    updateCustomBudgetMutation, 
+    deleteCustomBudgetMutation, 
+    toggleBudgetStatusMutation
+  ]);
 
   return (
     <Card className="w-full shadow-md">
