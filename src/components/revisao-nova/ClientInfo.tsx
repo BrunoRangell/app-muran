@@ -108,7 +108,7 @@ export function ClientInfo({ client }: ClientInfoProps) {
             <div className="text-xs text-gray-600 mb-1">
               Orçamento personalizado ativo no período: {new Date(customBudget.start_date).toLocaleDateString()} até {new Date(customBudget.end_date).toLocaleDateString()}
             </div>
-            <Link to="/revisao-nova?tab=custom-budgets">
+            <Link to="/revisao-meta?tab=custom-budgets">
               <Button 
                 size="sm" 
                 variant="outline"

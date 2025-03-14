@@ -52,8 +52,8 @@ export const ClientReviewCardCompact = ({
     remainingDaysValue
   } = useClientBudgetCalculation(client);
 
-  // Flag para mostrar recomendação de orçamento
-  const showRecommendation = Math.abs(budgetDifference) >= 5;
+  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão existente
+  const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
   const needsIncrease = budgetDifference > 0;
   const lastReviewDate = client.lastReview?.updated_at;
   
@@ -107,7 +107,7 @@ export const ClientReviewCardCompact = ({
         <div className="flex-1 p-3 border-l">
           <div className="text-xs text-gray-500">Orç. diário atual / ideal</div>
           <div className="flex items-center gap-1">
-            <span>{hasReview ? formatCurrency(currentDailyBudget) : "-"}</span>
+            <span>{hasReview && currentDailyBudget ? formatCurrency(currentDailyBudget) : "-"}</span>
             <span>/</span>
             <span>{formatCurrency(idealDailyBudget)}</span>
           </div>
@@ -237,7 +237,7 @@ export const ClientReviewCardCompact = ({
           <div className="bg-gray-50 p-2 rounded">
             <div className="text-xs text-gray-500">Orç. diário atual</div>
             <div className="font-medium">
-              {hasReview && currentDailyBudget !== null ? formatCurrency(currentDailyBudget) : "-"}
+              {hasReview && currentDailyBudget ? formatCurrency(currentDailyBudget) : "-"}
             </div>
           </div>
           
