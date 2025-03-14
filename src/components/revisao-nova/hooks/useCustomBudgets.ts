@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "@/components/daily-reviews/summary/utils";
 
 export interface CustomBudget {
@@ -37,6 +37,12 @@ export const useCustomBudgets = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedBudget, setSelectedBudget] = useState<CustomBudget | null>(null);
+
+  // Função para invalidar queries após mutações
+  const invalidateRelatedQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
+    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+  };
 
   // Buscar clientes ativos com seus orçamentos personalizados
   const { data: clientsWithBudgets, isLoading } = useQuery({
@@ -99,21 +105,19 @@ export const useCustomBudgets = () => {
 
       return data;
     },
-    meta: {
-      onSuccess: () => {
-        toast({
-          title: "Orçamento adicionado",
-          description: "Orçamento personalizado adicionado com sucesso.",
-        });
-        queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Erro ao adicionar orçamento",
-          description: error.message || "Ocorreu um erro ao adicionar o orçamento.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      toast({
+        title: "Orçamento adicionado",
+        description: "Orçamento personalizado adicionado com sucesso.",
+      });
+      invalidateRelatedQueries();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao adicionar orçamento",
+        description: error.message || "Ocorreu um erro ao adicionar o orçamento.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -134,21 +138,19 @@ export const useCustomBudgets = () => {
 
       return data;
     },
-    meta: {
-      onSuccess: () => {
-        toast({
-          title: "Orçamento atualizado",
-          description: "Orçamento personalizado atualizado com sucesso.",
-        });
-        queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Erro ao atualizar orçamento",
-          description: error.message || "Ocorreu um erro ao atualizar o orçamento.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      toast({
+        title: "Orçamento atualizado",
+        description: "Orçamento personalizado atualizado com sucesso.",
+      });
+      invalidateRelatedQueries();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar orçamento",
+        description: error.message || "Ocorreu um erro ao atualizar o orçamento.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -167,21 +169,19 @@ export const useCustomBudgets = () => {
 
       return id;
     },
-    meta: {
-      onSuccess: () => {
-        toast({
-          title: "Orçamento excluído",
-          description: "Orçamento personalizado excluído com sucesso.",
-        });
-        queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Erro ao excluir orçamento",
-          description: error.message || "Ocorreu um erro ao excluir o orçamento.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      toast({
+        title: "Orçamento excluído",
+        description: "Orçamento personalizado excluído com sucesso.",
+      });
+      invalidateRelatedQueries();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao excluir orçamento",
+        description: error.message || "Ocorreu um erro ao excluir o orçamento.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -202,21 +202,19 @@ export const useCustomBudgets = () => {
 
       return data;
     },
-    meta: {
-      onSuccess: () => {
-        toast({
-          title: "Status atualizado",
-          description: "Status do orçamento atualizado com sucesso.",
-        });
-        queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Erro ao atualizar status",
-          description: error.message || "Ocorreu um erro ao atualizar o status.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      toast({
+        title: "Status atualizado",
+        description: "Status do orçamento atualizado com sucesso.",
+      });
+      invalidateRelatedQueries();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message || "Ocorreu um erro ao atualizar o status.",
+        variant: "destructive",
+      });
     }
   });
 

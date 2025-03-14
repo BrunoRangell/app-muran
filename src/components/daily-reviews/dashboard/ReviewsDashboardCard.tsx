@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
@@ -114,6 +115,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return Math.abs(difference) >= 5;
   };
 
+  // Priorizar apenas os clientes que precisam de ajuste
   const prioritizedClients = [...sortedClients].sort((a, b) => {
     if (!a.meta_account_id && b.meta_account_id) return 1;
     if (a.meta_account_id && !b.meta_account_id) return -1;
@@ -123,6 +125,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     const aNeedsAdjustment = clientNeedsAdjustment(a);
     const bNeedsAdjustment = clientNeedsAdjustment(b);
     
+    // Prioridade: Clientes que precisam de ajuste
     if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
     if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
     

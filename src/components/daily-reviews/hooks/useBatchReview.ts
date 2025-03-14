@@ -12,6 +12,8 @@ export const useBatchReview = () => {
   const [batchProgress, setBatchProgress] = useState(0);
   // Número total de clientes a serem analisados
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
+  // Estado local para o timestamp da última revisão em massa
+  const [localLastReviewTime, setLocalLastReviewTime] = useState<Date | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -29,7 +31,8 @@ export const useBatchReview = () => {
   });
 
   const clientsWithReviews = clientsWithReviewsData?.clientsData;
-  const lastReviewTime = clientsWithReviewsData?.lastReviewTime;
+  // Usar o timestamp local se disponível, caso contrário usar o do server
+  const lastReviewTime = localLastReviewTime || clientsWithReviewsData?.lastReviewTime;
   
   // Função para recarregar dados
   const refetchClients = useCallback(async () => {
@@ -106,6 +109,9 @@ export const useBatchReview = () => {
     setIsBatchAnalyzing(true);
     setBatchProgress(0);
     setTotalClientsToAnalyze(eligibleClients.length);
+    
+    // Atualizar o timestamp da revisão em massa para agora
+    setLocalLastReviewTime(new Date());
 
     try {
       console.log("Iniciando análise em massa...");

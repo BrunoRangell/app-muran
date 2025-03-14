@@ -34,27 +34,15 @@ export const ClientAltCard = ({
     isUsingCustomBudgetInReview
   } = useClientBudgetCalculation(client);
 
-  // Flag para mostrar recomendação de orçamento
-  const showRecommendation = Math.abs(budgetDifference) >= 5;
+  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa
+  const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
   const needsIncrease = budgetDifference > 0;
   
   const lastReviewDate = client.lastReview?.updated_at;
 
-  // Adicionar logs para debug
-  console.log(`Cliente ${client.company_name}:`, {
-    isUsingCustomBudgetInReview,
-    hasReview,
-    'using_custom_budget': client.lastReview?.using_custom_budget,
-    customBudget
-  });
-
   return (
     <tr className={`hover:bg-gray-50 ${
-      showRecommendation 
-        ? 'border-l-4 border-l-amber-500' 
-        : customBudget && isUsingCustomBudgetInReview 
-          ? 'border-l-4 border-l-[#ff6e00]' 
-          : ''
+      showRecommendation ? 'border-l-4 border-l-amber-500' : ''
     }`}>
       <td className="px-6 py-4">
         <div className="font-medium text-gray-900 flex items-center gap-1">
@@ -92,7 +80,7 @@ export const ClientAltCard = ({
       </td>
       <td className="px-6 py-4">
         <div className="font-medium">
-          {hasReview && currentDailyBudget !== null 
+          {hasReview && currentDailyBudget 
             ? formatCurrency(currentDailyBudget) 
             : "Não disponível"}
         </div>
@@ -120,7 +108,7 @@ export const ClientAltCard = ({
       <td className="px-6 py-4">
         <div className="flex gap-2">
           {customBudget && isUsingCustomBudgetInReview && (
-            <Link to="/revisao-nova?tab=custom-budgets">
+            <Link to="/revisao-meta?tab=custom-budgets">
               <Button 
                 variant="outline" 
                 size="sm"

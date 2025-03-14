@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "./useEdgeFunction";
@@ -222,6 +221,10 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     }
   };
 
+  // Adicionar propriedade que indica se o cliente precisa de ajuste de orçamento significativo
+  // Usado para ordenação de clientes
+  const needsBudgetAdjustment = hasReview && Math.abs(budgetDifference) >= 5;
+
   // Log para diagnóstico
   useEffect(() => {
     if (customBudget || isUsingCustomBudgetInReview) {
@@ -235,10 +238,11 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         customBudgetFromReview: client.lastReview?.custom_budget_amount,
         diasRestantes: getRemainingDays(),
         orcamentoRestante: remainingBudget,
-        orcamentoDiarioIdeal: idealDailyBudget
+        orcamentoDiarioIdeal: idealDailyBudget,
+        needsBudgetAdjustment
       });
     }
-  }, [customBudget, client.company_name, remainingBudget, idealDailyBudget, isUsingCustomBudgetInReview]);
+  }, [customBudget, client.company_name, remainingBudget, idealDailyBudget, isUsingCustomBudgetInReview, needsBudgetAdjustment]);
 
   return {
     hasReview,
@@ -258,6 +262,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     remainingBudget,
     // Informações adicionais
     isUsingCustomBudgetInReview,
-    actualBudgetAmount: getBudgetAmount()
+    actualBudgetAmount: getBudgetAmount(),
+    // Nova propriedade para ajudar na ordenação
+    needsBudgetAdjustment
   };
 };

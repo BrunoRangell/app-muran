@@ -48,12 +48,9 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
   const isUsingCustomBudget = latestReview?.using_custom_budget === true;
   const customBudgetAmount = latestReview?.custom_budget_amount;
 
-  // Valores para debug
-  console.log("Dados do cliente:", client);
-  console.log("Dados da revisão mais recente:", latestReview);
-  console.log("Orçamento mensal:", client?.meta_ads_budget);
-  console.log("Gasto total na revisão:", latestReview?.meta_total_spent);
-  console.log("Usando orçamento personalizado:", isUsingCustomBudget);
+  // Verificar se há um orçamento diário atual válido
+  const hasDailyBudget = latestReview?.meta_daily_budget_current !== null && 
+                        latestReview?.meta_daily_budget_current !== undefined;
 
   return (
     <Card className={isUsingCustomBudget ? "border-l-4 border-l-[#ff6e00]" : ""}>
@@ -83,7 +80,7 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
                   <BadgeDollarSign size={12} />
                   Orçamento personalizado ativo
                 </Badge>
-                <Link to="/revisao-nova?tab=custom-budgets" className="mt-2 block">
+                <Link to="/revisao-meta?tab=custom-budgets" className="mt-2 block">
                   <Button size="sm" variant="outline" className="w-full text-xs border-[#ff6e00] text-[#ff6e00] hover:bg-[#ff6e00]/10">
                     Gerenciar orçamentos personalizados
                   </Button>
