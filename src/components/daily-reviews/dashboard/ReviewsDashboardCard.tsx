@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
@@ -114,6 +115,11 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return Math.abs(difference) >= 5;
   };
 
+  // Função para verificar se o cliente está usando orçamento personalizado
+  const hasCustomBudget = (client: ClientWithReview): boolean => {
+    return client.lastReview?.using_custom_budget === true;
+  };
+
   const prioritizedClients = [...sortedClients].sort((a, b) => {
     if (!a.meta_account_id && b.meta_account_id) return 1;
     if (a.meta_account_id && !b.meta_account_id) return -1;
@@ -123,8 +129,16 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     const aNeedsAdjustment = clientNeedsAdjustment(a);
     const bNeedsAdjustment = clientNeedsAdjustment(b);
     
+    const aHasCustomBudget = hasCustomBudget(a);
+    const bHasCustomBudget = hasCustomBudget(b);
+    
+    // Prioridade 1: Clientes que precisam de ajuste
     if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
     if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
+    
+    // Prioridade 2: Clientes com orçamento personalizado
+    if (aHasCustomBudget && !bHasCustomBudget) return -1;
+    if (!aHasCustomBudget && bHasCustomBudget) return 1;
     
     return 0;
   });
@@ -282,3 +296,4 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     </div>
   );
 };
+
