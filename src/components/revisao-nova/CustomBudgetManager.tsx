@@ -41,44 +41,27 @@ export const CustomBudgetManager = () => {
     isFutureBudget
   } = useCustomBudgets();
 
-  // Configurar atualização automática quando houver mudanças
+  // Configurar atualizações automáticas quando houver mudanças
   useEffect(() => {
-    // Ouvir atualizações em mutações
-    const onMutationSettled = () => {
+    // Função para atualizar os dados após operações CRUD
+    const invalidateQueriesAfterMutation = () => {
       queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
       queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     };
 
-    // Configurar subscriptions para cada mutação
-    const unsubscribeAdd = addCustomBudgetMutation.subscribe({
-      onSettled: onMutationSettled
-    });
-
-    const unsubscribeUpdate = updateCustomBudgetMutation.subscribe({
-      onSettled: onMutationSettled
-    });
-
-    const unsubscribeDelete = deleteCustomBudgetMutation.subscribe({
-      onSettled: onMutationSettled
-    });
-
-    const unsubscribeToggle = toggleBudgetStatusMutation.subscribe({
-      onSettled: onMutationSettled
-    });
-
-    // Limpar subscriptions
-    return () => {
-      unsubscribeAdd();
-      unsubscribeUpdate();
-      unsubscribeDelete();
-      unsubscribeToggle();
-    };
+    // Configurar observadores para cada estado de mutação
+    if (addCustomBudgetMutation.isSuccess || 
+        updateCustomBudgetMutation.isSuccess || 
+        deleteCustomBudgetMutation.isSuccess || 
+        toggleBudgetStatusMutation.isSuccess) {
+      invalidateQueriesAfterMutation();
+    }
   }, [
-    queryClient, 
-    addCustomBudgetMutation, 
-    updateCustomBudgetMutation, 
-    deleteCustomBudgetMutation, 
-    toggleBudgetStatusMutation
+    queryClient,
+    addCustomBudgetMutation.isSuccess, 
+    updateCustomBudgetMutation.isSuccess, 
+    deleteCustomBudgetMutation.isSuccess, 
+    toggleBudgetStatusMutation.isSuccess
   ]);
 
   return (
