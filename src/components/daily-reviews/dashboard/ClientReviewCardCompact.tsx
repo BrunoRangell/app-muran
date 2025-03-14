@@ -46,7 +46,6 @@ export const ClientReviewCardCompact = ({
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
-    // Informações sobre orçamento personalizado
     customBudget,
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
@@ -57,14 +56,9 @@ export const ClientReviewCardCompact = ({
   const showRecommendation = Math.abs(budgetDifference) >= 5;
   const needsIncrease = budgetDifference > 0;
   const lastReviewDate = client.lastReview?.updated_at;
-
-  // Adicionar logs para debug
-  console.log(`ClientReviewCardCompact - Cliente ${client.company_name}:`, {
-    isUsingCustomBudgetInReview,
-    hasReview,
-    'using_custom_budget': client.lastReview?.using_custom_budget,
-    customBudget
-  });
+  
+  // Verificar se tem orçamento personalizado
+  const hasCustomBudget = customBudget && isUsingCustomBudgetInReview;
 
   // Determinar classes de estilo com base no status
   const cardClasses = `overflow-hidden transition-all ${
@@ -72,7 +66,7 @@ export const ClientReviewCardCompact = ({
   } ${
     hasReview && !inactive && showRecommendation
       ? 'border-l-4 border-l-amber-500' 
-      : customBudget && isUsingCustomBudgetInReview
+      : hasCustomBudget
         ? 'border-l-4 border-l-[#ff6e00]'
         : compact ? 'border' : 'border shadow-sm hover:shadow'
   }`;
@@ -84,30 +78,30 @@ export const ClientReviewCardCompact = ({
         <div className="flex-1 p-3">
           <div className="font-medium text-muran-dark flex items-center gap-1">
             {client.company_name}
-            {customBudget && isUsingCustomBudgetInReview && (
-              <BadgeDollarSign size={16} className="text-[#ff6e00]" />
+            {hasCustomBudget && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <BadgeDollarSign size={16} className="text-[#ff6e00]" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Orçamento personalizado</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
           <div className="text-xs text-gray-500">
             {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
           </div>
-          {customBudget && isUsingCustomBudgetInReview && (
-            <div className="mt-1">
-              <Badge className="bg-[#ff6e00]/10 text-[#ff6e00] hover:bg-[#ff6e00]/20 border-none">
-                Orçamento personalizado ativo
-              </Badge>
-            </div>
-          )}
         </div>
         
         <div className="flex-1 p-3 border-l">
           <div className="text-xs text-gray-500">Orçamento</div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             {formatCurrency(actualBudgetAmount)}
-            {customBudget && isUsingCustomBudgetInReview && (
-              <span className="text-xs text-[#ff6e00] font-medium ml-1">
-                (personalizado)
-              </span>
+            {hasCustomBudget && (
+              <span className="text-xs text-[#ff6e00] ml-1">*</span>
             )}
           </div>
         </div>
@@ -145,17 +139,25 @@ export const ClientReviewCardCompact = ({
         )}
         
         <div className="p-3 border-l flex gap-2">
-          {customBudget && isUsingCustomBudgetInReview && (
-            <Link to="/revisao-nova?tab=custom-budgets">
-              <Button 
-                size="sm" 
-                variant="outline"
-                className="border-[#ff6e00] text-[#ff6e00] hover:bg-[#ff6e00]/10"
-              >
-                <ExternalLink size={14} className="mr-1" />
-                Orçamentos
-              </Button>
-            </Link>
+          {hasCustomBudget && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link to="/revisao-nova?tab=custom-budgets">
+                    <Button 
+                      size="icon" 
+                      variant="ghost"
+                      className="text-[#ff6e00] hover:bg-[#ff6e00]/10 h-8 w-8 p-0"
+                    >
+                      <BadgeDollarSign size={16} />
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Ver orçamentos personalizados</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           
           <Button 
@@ -186,8 +188,17 @@ export const ClientReviewCardCompact = ({
           <div>
             <h3 className="font-semibold text-muran-dark flex items-center gap-1">
               {client.company_name}
-              {customBudget && isUsingCustomBudgetInReview && (
-                <BadgeDollarSign size={16} className="text-[#ff6e00]" />
+              {hasCustomBudget && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <BadgeDollarSign size={16} className="text-[#ff6e00]" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Orçamento personalizado</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </h3>
             <p className="text-xs text-gray-500">
@@ -207,24 +218,15 @@ export const ClientReviewCardCompact = ({
               Erro
             </div>
           )}
-          
-          {customBudget && isUsingCustomBudgetInReview && (
-            <div className="bg-[#ff6e00]/10 text-[#ff6e00] text-xs px-2 py-1 rounded flex items-center">
-              <BadgeDollarSign size={12} className="mr-1" />
-              Orçamento personalizado ativo
-            </div>
-          )}
         </div>
         
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="bg-gray-50 p-2 rounded">
             <div className="text-xs text-gray-500">Orçamento</div>
-            <div className="font-medium">
+            <div className="font-medium flex items-center">
               {formatCurrency(actualBudgetAmount)}
-              {customBudget && isUsingCustomBudgetInReview && (
-                <span className="text-xs text-[#ff6e00] font-medium ml-1">
-                  (personalizado)
-                </span>
+              {hasCustomBudget && (
+                <span className="text-xs text-[#ff6e00] ml-1">*</span>
               )}
             </div>
           </div>
@@ -270,16 +272,16 @@ export const ClientReviewCardCompact = ({
           </div>
         )}
         
-        {customBudget && isUsingCustomBudgetInReview && (
-          <div className="mt-3">
+        {hasCustomBudget && (
+          <div className="mt-3 flex justify-end">
             <Link to="/revisao-nova?tab=custom-budgets">
               <Button 
                 size="sm" 
-                variant="outline"
-                className="w-full border-[#ff6e00] text-[#ff6e00] hover:bg-[#ff6e00]/10"
+                variant="ghost"
+                className="text-[#ff6e00] hover:bg-[#ff6e00]/10 h-8"
               >
-                <ExternalLink size={14} className="mr-1" />
-                Ver orçamentos personalizados
+                <BadgeDollarSign size={14} className="mr-1" />
+                <span className="text-xs">Orçamento Personalizado</span>
               </Button>
             </Link>
           </div>
