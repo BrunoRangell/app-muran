@@ -17,12 +17,10 @@ import { CustomBudgetTable } from "./custom-budget/CustomBudgetTable";
 import { CustomBudgetForm } from "./custom-budget/CustomBudgetForm";
 import { useCustomBudgets } from "./hooks/useCustomBudgets";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 
 export const CustomBudgetManager = () => {
   const [selectedTab, setSelectedTab] = useState<string>("active");
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const {
     filteredClients,
@@ -41,20 +39,16 @@ export const CustomBudgetManager = () => {
     isFutureBudget
   } = useCustomBudgets();
 
-  // Configurar atualizações automáticas quando houver mudanças
+  // Monitorar estado das mutações para atualizar dados quando necessário
   useEffect(() => {
-    // Função para atualizar os dados após operações CRUD
-    const invalidateQueriesAfterMutation = () => {
-      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
-      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-    };
-
-    // Configurar observadores para cada estado de mutação
+    // Verificar se alguma mutação foi bem-sucedida para atualizar os dados
     if (addCustomBudgetMutation.isSuccess || 
         updateCustomBudgetMutation.isSuccess || 
         deleteCustomBudgetMutation.isSuccess || 
         toggleBudgetStatusMutation.isSuccess) {
-      invalidateQueriesAfterMutation();
+      // Invalidar consultas para recarregar os dados atualizados
+      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     }
   }, [
     queryClient,

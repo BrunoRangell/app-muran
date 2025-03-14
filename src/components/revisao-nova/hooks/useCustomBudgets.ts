@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "@/components/daily-reviews/summary/utils";
 
 export interface CustomBudget {
@@ -37,6 +37,12 @@ export const useCustomBudgets = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedBudget, setSelectedBudget] = useState<CustomBudget | null>(null);
+
+  // Função para invalidar queries após mutações
+  const invalidateRelatedQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
+    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+  };
 
   // Buscar clientes ativos com seus orçamentos personalizados
   const { data: clientsWithBudgets, isLoading } = useQuery({
@@ -82,12 +88,6 @@ export const useCustomBudgets = () => {
   const filteredClients = clientsWithBudgets?.filter((client) =>
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Função para invalidar queries após mutações
-  const invalidateRelatedQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
-    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-  };
 
   // Mutation para adicionar novo orçamento personalizado
   const addCustomBudgetMutation = useMutation({

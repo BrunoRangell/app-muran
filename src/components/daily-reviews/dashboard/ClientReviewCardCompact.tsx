@@ -60,7 +60,7 @@ export const ClientReviewCardCompact = ({
   // Verificar se tem orçamento personalizado
   const hasCustomBudget = customBudget && isUsingCustomBudgetInReview;
 
-  // Determinar classes de estilo com base no status - Somente destacar cards com recomendação de ajuste
+  // Determinar classes de estilo com base no status - Apenas destaque para cards que precisam de ajuste
   const cardClasses = `overflow-hidden transition-all ${
     inactive ? 'opacity-60 hover:opacity-80' : ''
   } ${
@@ -141,7 +141,7 @@ export const ClientReviewCardCompact = ({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link to="/revisao-nova?tab=custom-budgets">
+                  <Link to="/revisao-meta?tab=custom-budgets">
                     <Button 
                       size="icon" 
                       variant="ghost"
@@ -272,7 +272,7 @@ export const ClientReviewCardCompact = ({
         
         {hasCustomBudget && (
           <div className="mt-2 flex justify-end">
-            <Link to="/revisao-nova?tab=custom-budgets">
+            <Link to="/revisao-meta?tab=custom-budgets">
               <Button 
                 size="sm" 
                 variant="ghost"

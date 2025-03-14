@@ -52,9 +52,7 @@ export const ClientAltCard = ({
     <tr className={`hover:bg-gray-50 ${
       showRecommendation 
         ? 'border-l-4 border-l-amber-500' 
-        : customBudget && isUsingCustomBudgetInReview 
-          ? 'border-l-4 border-l-[#ff6e00]' 
-          : ''
+        : ''
     }`}>
       <td className="px-6 py-4">
         <div className="font-medium text-gray-900 flex items-center gap-1">
@@ -120,7 +118,7 @@ export const ClientAltCard = ({
       <td className="px-6 py-4">
         <div className="flex gap-2">
           {customBudget && isUsingCustomBudgetInReview && (
-            <Link to="/revisao-nova?tab=custom-budgets">
+            <Link to="/revisao-meta?tab=custom-budgets">
               <Button 
                 variant="outline" 
                 size="sm"

@@ -83,7 +83,7 @@ export const ClientSummaryCard = ({ client, latestReview }: ClientSummaryCardPro
                   <BadgeDollarSign size={12} />
                   Orçamento personalizado ativo
                 </Badge>
-                <Link to="/revisao-nova?tab=custom-budgets" className="mt-2 block">
+                <Link to="/revisao-meta?tab=custom-budgets" className="mt-2 block">
                   <Button size="sm" variant="outline" className="w-full text-xs border-[#ff6e00] text-[#ff6e00] hover:bg-[#ff6e00]/10">
                     Gerenciar orçamentos personalizados
                   </Button>
