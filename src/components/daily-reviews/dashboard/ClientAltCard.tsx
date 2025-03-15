@@ -34,8 +34,11 @@ export const ClientAltCard = ({
     isUsingCustomBudgetInReview
   } = useClientBudgetCalculation(client);
 
-  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa
-  const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
+  // Flag para verificar se há um orçamento diário atual válido
+  const hasDailyBudget = hasReview && currentDailyBudget !== null && currentDailyBudget !== undefined;
+  
+  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa e com orçamento diário atual
+  const showRecommendation = hasDailyBudget && Math.abs(budgetDifference) >= 5;
   const needsIncrease = budgetDifference > 0;
   
   const lastReviewDate = client.lastReview?.updated_at;
@@ -80,7 +83,7 @@ export const ClientAltCard = ({
       </td>
       <td className="px-6 py-4">
         <div className="font-medium">
-          {hasReview && currentDailyBudget 
+          {hasDailyBudget 
             ? formatCurrency(currentDailyBudget) 
             : "Não disponível"}
         </div>
