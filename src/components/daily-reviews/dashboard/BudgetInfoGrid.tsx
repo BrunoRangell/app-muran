@@ -5,7 +5,7 @@ import { Loader } from "lucide-react";
 interface BudgetInfoGridProps {
   monthlyBudget: number;
   totalSpent: number;
-  currentDailyBudget: number | null;
+  currentDailyBudget: number;
   idealDailyBudget: number;
   isCalculating: boolean;
   calculationError: string | null;
@@ -44,7 +44,7 @@ export const BudgetInfoGrid = ({
       <div className="bg-gray-50 p-3 rounded-lg">
         <div className="text-sm text-gray-500 mb-1">Orç. diário atual</div>
         <div className="text-base font-semibold">
-          {hasReview && currentDailyBudget !== null 
+          {hasReview && currentDailyBudget 
             ? formatCurrency(currentDailyBudget) 
             : "Não disponível"}
         </div>

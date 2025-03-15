@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { Card } from "@/components/ui/card";
-import { Loader, AlertCircle, Search, RefreshCw, LayoutGrid, Table, BadgeDollarSign, TrendingUp } from "lucide-react";
+import { Loader, AlertCircle, Search, RefreshCw, LayoutGrid, Table, BadgeDollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -15,7 +15,6 @@ import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { Progress } from "@/components/ui/progress";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
-import { Badge } from "@/components/ui/badge";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -25,7 +24,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("name");
-  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -98,72 +96,44 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return 0;
   });
 
-  // Função auxiliar para verificar se um cliente precisa de ajuste de orçamento
   const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
-    // Verificar se o cliente tem uma revisão e conta Meta
     if (!client.lastReview || !client.meta_account_id) return false;
     
-    // Verificar se o cliente tem um orçamento diário atual válido
-    const hasDailyBudget = 
-      client.lastReview.meta_daily_budget_current !== null && 
-      client.lastReview.meta_daily_budget_current !== undefined;
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const dayOfMonth = today.getDate();
+    const daysRemaining = daysInMonth - dayOfMonth + 1;
     
-    if (!hasDailyBudget) return false;
+    const monthlyBudget = client.meta_ads_budget || 0;
+    const totalSpent = client.lastReview.meta_total_spent || 0;
+    const remaining = monthlyBudget - totalSpent;
+    const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
     
-    // Pegar valores atuais e ideais de orçamento diário
     const currentDailyBudget = client.lastReview.meta_daily_budget_current || 0;
-    const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
+    const difference = idealDailyBudget - currentDailyBudget;
     
-    // Verificar se a diferença é significativa (≥ 5)
-    const needsAdjustment = Math.abs(idealDailyBudget - currentDailyBudget) >= 5;
-    
-    console.log(`Cliente ${client.company_name} precisa de ajuste? ${needsAdjustment}`, {
-      currentDailyBudget,
-      idealDailyBudget,
-      difference: Math.abs(idealDailyBudget - currentDailyBudget),
-      meta_account_id: client.meta_account_id,
-      hasDailyBudget
-    });
-    
-    return needsAdjustment;
+    return Math.abs(difference) >= 5;
   };
 
-  // Aplicar a ordenação priorizada - agora colocando clientes que precisam de ajuste no topo
+  // Priorizar apenas os clientes que precisam de ajuste
   const prioritizedClients = [...sortedClients].sort((a, b) => {
-    // Primeiro verificar se ambos têm meta_account_id (são clientes ativos)
-    const aHasMetaId = !!a.meta_account_id;
-    const bHasMetaId = !!b.meta_account_id;
+    if (!a.meta_account_id && b.meta_account_id) return 1;
+    if (a.meta_account_id && !b.meta_account_id) return -1;
     
-    // Somente clientes com Meta Ads aparecem no topo
-    if (!aHasMetaId && bHasMetaId) return 1;
-    if (aHasMetaId && !bHasMetaId) return -1;
+    if (!a.meta_account_id && !b.meta_account_id) return 0;
     
-    // Se nenhum tem meta_account_id, manter a ordenação original
-    if (!aHasMetaId && !bHasMetaId) return 0;
-    
-    // Agora verificar explicitamente se precisa de ajuste
     const aNeedsAdjustment = clientNeedsAdjustment(a);
     const bNeedsAdjustment = clientNeedsAdjustment(b);
     
-    // Os clientes que precisam de ajuste vêm primeiro - esta é a ordenação prioritária
+    // Prioridade: Clientes que precisam de ajuste
     if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
     if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
     
-    // Se ambos precisam ou não precisam de ajuste, manter a ordenação original
     return 0;
   });
 
-  // Aplicar filtro de ajustes necessários, se ativado
-  const filteredPrioritizedClients = showOnlyAdjustments
-    ? prioritizedClients.filter(client => clientNeedsAdjustment(client))
-    : prioritizedClients;
-
-  // Separar clientes com e sem Meta ID
-  const clientsWithMetaId = filteredPrioritizedClients.filter(client => client.meta_account_id);
-  const clientsWithoutMetaId = filteredPrioritizedClients.filter(client => !client.meta_account_id);
-
-  // Contar quantos clientes precisam de ajustes para mostrar no botão de filtro
-  const adjustmentsCount = prioritizedClients.filter(client => clientNeedsAdjustment(client)).length;
+  const clientsWithMetaId = prioritizedClients.filter(client => client.meta_account_id);
+  const clientsWithoutMetaId = prioritizedClients.filter(client => !client.meta_account_id);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -177,10 +147,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   const handleRefresh = useCallback(() => {
     refetchClients();
   }, [refetchClients]);
-
-  const toggleAdjustmentsFilter = useCallback(() => {
-    setShowOnlyAdjustments(prev => !prev);
-  }, []);
 
   return (
     <div className="space-y-6">
@@ -255,23 +221,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           </div>
           
           <div className="flex gap-2 items-center">
-            <Button
-              variant={showOnlyAdjustments ? "default" : "outline"}
-              onClick={toggleAdjustmentsFilter}
-              className={showOnlyAdjustments ? "bg-muran-primary hover:bg-muran-primary/90" : ""}
-              size="sm"
-            >
-              <TrendingUp size={16} className="mr-2" />
-              Ajustes necessários
-              {adjustmentsCount > 0 && (
-                <Badge variant="outline" className="ml-2 bg-white text-muran-primary">
-                  {adjustmentsCount}
-                </Badge>
-              )}
-            </Button>
-            
-            <Separator orientation="vertical" className="h-8 mx-2" />
-            
             <ToggleGroup type="single" value={viewMode} onValueChange={(val) => val && setViewMode(val)}>
               <ToggleGroupItem value="grid" aria-label="Visualização em grade">
                 <LayoutGrid size={18} />
@@ -302,14 +251,10 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           <Loader className="animate-spin w-8 h-8 text-muran-primary" />
           <span className="ml-3 text-gray-500">Carregando clientes...</span>
         </div>
-      ) : (filteredPrioritizedClients.length === 0) ? (
+      ) : filteredClients.length === 0 ? (
         <Card className="py-12 text-center">
           <AlertCircle className="mx-auto mb-4 text-gray-400" size={32} />
-          <p className="text-gray-500">
-            {showOnlyAdjustments 
-              ? "Nenhum cliente encontrado que necessite de ajustes no orçamento." 
-              : "Nenhum cliente encontrado com os filtros atuais."}
-          </p>
+          <p className="text-gray-500">Nenhum cliente encontrado com os filtros atuais.</p>
         </Card>
       ) : (
         <ScrollArea className="h-[calc(100vh-350px)]">
@@ -340,4 +285,3 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     </div>
   );
 };
-
