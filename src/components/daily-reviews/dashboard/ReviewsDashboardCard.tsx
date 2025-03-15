@@ -96,27 +96,27 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return 0;
   });
 
+  // Função auxiliar para verificar se um cliente precisa de ajuste de orçamento
   const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
+    // Verificar se o cliente tem uma revisão e conta Meta
     if (!client.lastReview || !client.meta_account_id) return false;
     
     // Verificar se o cliente tem um orçamento diário atual válido
-    if (client.lastReview.meta_daily_budget_current === null || 
-        client.lastReview.meta_daily_budget_current === undefined) {
-      return false;
-    }
+    const hasDailyBudget = 
+      client.lastReview.meta_daily_budget_current !== null && 
+      client.lastReview.meta_daily_budget_current !== undefined;
     
+    if (!hasDailyBudget) return false;
+    
+    // Pegar valores atuais e ideais de orçamento diário
     const currentDailyBudget = client.lastReview.meta_daily_budget_current || 0;
-    
-    // Usar idealDailyBudget que já foi calculado na revisão (em vez de meta_daily_budget_ideal que não existe)
     const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
     
-    // Verificar se há uma diferença significativa
-    const hasSignificantDifference = Math.abs(idealDailyBudget - currentDailyBudget) >= 5;
-    
-    return hasSignificantDifference;
+    // Verificar se a diferença é significativa (≥ 5)
+    return Math.abs(idealDailyBudget - currentDailyBudget) >= 5;
   };
 
-  // Corrigir a priorização dos clientes aplicando a função clientNeedsAdjustment corretamente
+  // Priorizar clientes que precisam de ajustes
   const prioritizedClients = [...sortedClients].sort((a, b) => {
     // Primeiro, verificar se tem meta_account_id (clientes ativos)
     if (!a.meta_account_id && b.meta_account_id) return 1;
@@ -125,7 +125,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     // Se nenhum tem meta_account_id, não há como comparar ajustes
     if (!a.meta_account_id && !b.meta_account_id) return 0;
     
-    // Agora verificar explicitamente se precisa de ajuste
+    // Agora verificar explicitamente quais clientes precisam de ajuste
     const aNeedsAdjustment = clientNeedsAdjustment(a);
     const bNeedsAdjustment = clientNeedsAdjustment(b);
     

@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
@@ -50,12 +49,10 @@ export const ClientReviewCardCompact = ({
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
     remainingDaysValue,
-    needsBudgetAdjustment
+    needsBudgetAdjustment,
+    hasDailyBudget
   } = useClientBudgetCalculation(client);
 
-  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão existente
-  // e com um orçamento diário atual válido (não null ou undefined)
-  const hasDailyBudget = hasReview && currentDailyBudget !== null && currentDailyBudget !== undefined;
   // Usar needsBudgetAdjustment do hook para ter consistência com a lógica de ordenação
   const showRecommendation = hasDailyBudget && needsBudgetAdjustment;
   const needsIncrease = budgetDifference > 0;
