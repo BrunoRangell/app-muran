@@ -49,13 +49,15 @@ export const ClientReviewCardCompact = ({
     customBudget,
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
-    remainingDaysValue
+    remainingDaysValue,
+    needsBudgetAdjustment
   } = useClientBudgetCalculation(client);
 
   // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão existente
   // e com um orçamento diário atual válido (não null ou undefined)
   const hasDailyBudget = hasReview && currentDailyBudget !== null && currentDailyBudget !== undefined;
-  const showRecommendation = hasDailyBudget && Math.abs(budgetDifference) >= 5;
+  // Usar needsBudgetAdjustment do hook para ter consistência com a lógica de ordenação
+  const showRecommendation = hasDailyBudget && needsBudgetAdjustment;
   const needsIncrease = budgetDifference > 0;
   const lastReviewDate = client.lastReview?.updated_at;
   

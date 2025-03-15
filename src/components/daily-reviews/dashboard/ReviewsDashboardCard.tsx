@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
@@ -115,24 +116,28 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return hasSignificantDifference;
   };
 
-  // Priorizar apenas os clientes que precisam de ajuste
+  // Corrigir a priorização dos clientes aplicando a função clientNeedsAdjustment corretamente
   const prioritizedClients = [...sortedClients].sort((a, b) => {
+    // Primeiro, verificar se tem meta_account_id (clientes ativos)
     if (!a.meta_account_id && b.meta_account_id) return 1;
     if (a.meta_account_id && !b.meta_account_id) return -1;
     
+    // Se nenhum tem meta_account_id, não há como comparar ajustes
     if (!a.meta_account_id && !b.meta_account_id) return 0;
     
+    // Agora verificar explicitamente se precisa de ajuste
     const aNeedsAdjustment = clientNeedsAdjustment(a);
     const bNeedsAdjustment = clientNeedsAdjustment(b);
     
-    // Prioridade: Clientes que precisam de ajuste
+    // Prioridade para clientes que precisam de ajuste
     if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
     if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
     
-    // Se ambos precisam ou não precisam de ajuste, manter ordenação normal
+    // Se ambos precisam ou não precisam de ajuste, manter a ordenação original
     return 0;
   });
 
+  // Separar clientes com e sem Meta ID
   const clientsWithMetaId = prioritizedClients.filter(client => client.meta_account_id);
   const clientsWithoutMetaId = prioritizedClients.filter(client => !client.meta_account_id);
 
