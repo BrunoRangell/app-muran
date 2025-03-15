@@ -1,26 +1,13 @@
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ClientWithReview } from "../hooks/types/reviewTypes";
-import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "../summary/utils";
-import { 
-  Loader, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle, 
-  MinusCircle, 
-  ExternalLink, 
-  BadgeDollarSign 
-} from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Link } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
+import { ClientWithReview } from "../hooks/types/reviewTypes";
+import { TrendingUp, TrendingDown, Loader, BadgeDollarSign } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
 
 interface ClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -30,15 +17,17 @@ interface ClientReviewCardCompactProps {
   inactive?: boolean;
 }
 
-export const ClientReviewCardCompact = ({ 
-  client, 
+export const ClientReviewCardCompact = ({
+  client,
   onReviewClient,
   isProcessing,
   compact = false,
   inactive = false
 }: ClientReviewCardCompactProps) => {
+  // Informações calculadas pelo hook personalizado
   const {
     hasReview,
+    isCalculating,
     calculationError,
     monthlyBudget,
     totalSpent,
@@ -47,8 +36,6 @@ export const ClientReviewCardCompact = ({
     budgetDifference,
     customBudget,
     isUsingCustomBudgetInReview,
-    actualBudgetAmount,
-    remainingDaysValue,
     needsBudgetAdjustment,
     hasDailyBudget
   } = useClientBudgetCalculation(client);
@@ -65,255 +52,195 @@ export const ClientReviewCardCompact = ({
   // Usar needsBudgetAdjustment do hook para ter consistência com a lógica de ordenação
   const showRecommendation = hasDailyBudget && needsBudgetAdjustment;
   const needsIncrease = budgetDifference > 0;
-  const lastReviewDate = client.lastReview?.updated_at;
   
-  // Verificar se tem orçamento personalizado
-  const hasCustomBudget = customBudget && isUsingCustomBudgetInReview;
+  const lastReviewDate = client.lastReview?.updated_at;
 
-  // Determinar classes de estilo com base no status - Apenas destaque para cards que precisam de ajuste
-  const cardClasses = `overflow-hidden transition-all ${
-    inactive ? 'opacity-60 hover:opacity-80' : ''
-  } ${
-    hasReview && !inactive && showRecommendation
-      ? 'border-l-4 border-l-amber-500' 
-      : compact ? 'border' : 'border shadow-sm hover:shadow'
-  }`;
-
-  // Grid Compacto (Tabela)
   if (compact) {
     return (
-      <Card className={`${cardClasses} flex items-center`}>
-        <div className="flex-1 p-3">
-          <div className="font-medium text-muran-dark flex items-center gap-1">
-            {client.company_name}
-            {hasCustomBudget && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <BadgeDollarSign size={16} className="text-[#ff6e00]" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Orçamento personalizado</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          <div className="text-xs text-gray-500">
-            {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
-          </div>
-        </div>
-        
-        <div className="flex-1 p-3 border-l">
-          <div className="text-xs text-gray-500">Orçamento</div>
-          <div className="flex items-center">
-            {formatCurrency(actualBudgetAmount)}
-            {hasCustomBudget && (
-              <span className="text-xs text-[#ff6e00] ml-1">*</span>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex-1 p-3 border-l">
-          <div className="text-xs text-gray-500">Orç. diário atual / ideal</div>
-          <div className="flex items-center gap-1">
-            <span>{hasDailyBudget ? formatCurrency(currentDailyBudget) : "-"}</span>
-            <span>/</span>
-            <span>{formatCurrency(idealDailyBudget)}</span>
-          </div>
-        </div>
-        
-        {hasReview && !inactive && (
-          <div className={`p-3 flex items-center border-l ${
-            showRecommendation 
-              ? needsIncrease 
-                ? 'text-green-600' 
-                : 'text-red-600'
-              : 'text-gray-600'
-          }`}>
-            {showRecommendation 
-              ? needsIncrease 
-                ? <TrendingUp size={18} /> 
-                : <TrendingDown size={18} />
-              : <MinusCircle size={18} />
-            }
-            <span className="ml-1 font-medium">
-              {showRecommendation
-                ? `${needsIncrease ? "+" : "-"}${formatCurrency(Math.abs(budgetDifference))}`
-                : "Sem ajuste"
-              }
-            </span>
-          </div>
+      <div 
+        className={cn(
+          "border rounded-lg overflow-hidden",
+          showRecommendation && !inactive 
+            ? "border-l-4 border-l-amber-500" 
+            : "border-gray-200",
+          inactive && "opacity-60"
         )}
-        
-        <div className="p-3 border-l flex gap-2">
-          {hasCustomBudget && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link to="/revisao-meta?tab=custom-budgets">
-                    <Button 
-                      size="icon" 
-                      variant="ghost"
-                      className="text-[#ff6e00] hover:bg-[#ff6e00]/10 h-8 w-8 p-0"
-                    >
-                      <BadgeDollarSign size={16} />
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Ver orçamentos personalizados</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      >
+        <div className="p-4">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <h3 className="font-medium text-gray-900 flex items-center gap-1">
+                {client.company_name}
+                {isUsingCustomBudgetInReview && (
+                  <BadgeDollarSign size={16} className="text-muran-primary" />
+                )}
+              </h3>
+              <div className="text-sm text-gray-500">
+                {inactive 
+                  ? "Sem conta Meta configurada" 
+                  : lastReviewDate 
+                    ? `Última revisão: ${formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm")}` 
+                    : "Sem revisão recente"}
+              </div>
+            </div>
+            
+            <div className="text-right">
+              <div className="text-sm font-medium">
+                {formatCurrency(monthlyBudget)}
+              </div>
+              <div className="text-sm text-gray-500">
+                {hasReview ? `${formatCurrency(totalSpent)} gasto` : "Sem dados"}
+              </div>
+            </div>
+          </div>
+          
+          {!inactive && (
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex gap-2 items-center">
+                <span className="text-sm text-gray-500">
+                  Atual: {hasDailyBudget ? formatCurrency(currentDailyBudget) : "N/A"}
+                </span>
+                <span className="text-gray-300">|</span>
+                <span className="text-sm text-gray-500">
+                  Ideal: {idealDailyBudget > 0 ? formatCurrency(idealDailyBudget) : "N/A"}
+                </span>
+              </div>
+            </div>
           )}
           
-          <Button 
-            size="sm" 
-            onClick={() => onReviewClient(client.id)}
+          {!inactive && showRecommendation && (
+            <div className={cn(
+              "text-sm p-2 rounded-md mb-3",
+              needsIncrease ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+            )}>
+              <div className="flex items-center gap-1">
+                {needsIncrease ? (
+                  <TrendingUp size={14} />
+                ) : (
+                  <TrendingDown size={14} />
+                )}
+                <span className="font-medium">
+                  {needsIncrease ? "Aumentar" : "Reduzir"} orçamento diário em {formatCurrency(Math.abs(budgetDifference))}
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
             disabled={isProcessing || inactive}
-            variant={inactive ? "outline" : "default"}
-            className={inactive ? "bg-gray-100" : ""}
+            onClick={() => onReviewClient(client.id)}
           >
             {isProcessing ? (
-              <Loader className="animate-spin" size={14} />
-            ) : inactive ? (
-              <AlertTriangle size={14} />
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Analisando...
+              </>
             ) : (
               "Analisar"
             )}
           </Button>
         </div>
-      </Card>
+      </div>
     );
   }
-  
-  // Grid de Cartões
+
   return (
-    <Card className={cardClasses}>
-      <CardContent className="p-4 pt-4">
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <h3 className="font-semibold text-muran-dark flex items-center gap-1">
-              {client.company_name}
-              {hasCustomBudget && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <BadgeDollarSign size={16} className="text-[#ff6e00]" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Orçamento personalizado</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </h3>
-            <p className="text-xs text-gray-500">
-              {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
-            </p>
+    <Card
+      className={cn(
+        "overflow-hidden",
+        showRecommendation && !inactive 
+          ? "border-l-4 border-l-amber-500" 
+          : "border",
+        inactive && "opacity-60"
+      )}
+    >
+      <CardContent className="p-0">
+        <div className="p-4">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="font-medium text-gray-900 flex items-center gap-1">
+                {client.company_name}
+                {isUsingCustomBudgetInReview && (
+                  <BadgeDollarSign size={16} className="text-muran-primary" />
+                )}
+              </h3>
+              <div className="text-sm text-gray-500">
+                {inactive 
+                  ? "Sem conta Meta configurada" 
+                  : lastReviewDate 
+                    ? `Última revisão: ${formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm")}` 
+                    : "Sem revisão recente"}
+              </div>
+            </div>
+            
+            <div className="text-right">
+              <div className="text-sm font-medium">
+                {formatCurrency(monthlyBudget)}
+              </div>
+              <div className="text-sm text-gray-500">
+                {hasReview ? `${formatCurrency(totalSpent)} gasto` : "Sem dados"}
+              </div>
+            </div>
           </div>
           
-          {inactive && (
-            <div className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
-              Sem Meta Ads
+          {!inactive && (
+            <div className="space-y-2 mb-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 bg-gray-50 rounded">
+                  <span className="text-xs text-gray-500 block">Orçamento diário atual</span>
+                  <span className="font-medium">
+                    {hasDailyBudget ? formatCurrency(currentDailyBudget) : "Não disponível"}
+                  </span>
+                </div>
+                
+                <div className="p-2 bg-gray-50 rounded">
+                  <span className="text-xs text-gray-500 block">Orçamento diário ideal</span>
+                  <span className="font-medium">
+                    {idealDailyBudget > 0 ? formatCurrency(idealDailyBudget) : "Não disponível"}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
           
-          {calculationError && !inactive && (
-            <div className="bg-red-50 text-red-600 text-xs px-2 py-1 rounded flex items-center">
-              <AlertTriangle size={12} className="mr-1" />
-              Erro
+          {!inactive && showRecommendation && (
+            <div className={cn(
+              "text-sm p-3 rounded-md mb-4",
+              needsIncrease ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+            )}>
+              <div className="flex items-center gap-2">
+                {needsIncrease ? (
+                  <TrendingUp size={16} />
+                ) : (
+                  <TrendingDown size={16} />
+                )}
+                <span className="font-medium">
+                  {needsIncrease ? "Aumentar" : "Reduzir"} orçamento diário em {formatCurrency(Math.abs(budgetDifference))}
+                </span>
+              </div>
             </div>
           )}
+          
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={isProcessing || inactive}
+            onClick={() => onReviewClient(client.id)}
+          >
+            {isProcessing ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              "Analisar"
+            )}
+          </Button>
         </div>
-        
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Orçamento</div>
-            <div className="font-medium flex items-center">
-              {formatCurrency(actualBudgetAmount)}
-              {hasCustomBudget && (
-                <span className="text-xs text-[#ff6e00] ml-1">*</span>
-              )}
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Gasto</div>
-            <div className="font-medium">{formatCurrency(totalSpent)}</div>
-          </div>
-          
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Orç. diário atual</div>
-            <div className="font-medium">
-              {hasDailyBudget ? formatCurrency(currentDailyBudget) : "-"}
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Orç. diário ideal</div>
-            <div className="font-medium">{formatCurrency(idealDailyBudget)}</div>
-          </div>
-        </div>
-        
-        {hasReview && !inactive && (
-          <div className={`p-2 rounded flex items-center ${
-            showRecommendation 
-              ? needsIncrease 
-                ? 'bg-green-50 text-green-600' 
-                : 'bg-red-50 text-red-600'
-              : 'bg-gray-50 text-gray-600'
-          }`}>
-            {showRecommendation 
-              ? needsIncrease 
-                ? <TrendingUp size={16} className="mr-1" /> 
-                : <TrendingDown size={16} className="mr-1" />
-              : <MinusCircle size={16} className="mr-1" />
-            }
-            <span className="text-sm font-medium">
-              {showRecommendation
-                ? `${needsIncrease ? "Aumentar" : "Diminuir"} ${formatCurrency(Math.abs(budgetDifference))}`
-                : "Nenhum ajuste necessário"
-              }
-            </span>
-          </div>
-        )}
-        
-        {hasCustomBudget && (
-          <div className="mt-2 flex justify-end">
-            <Link to="/revisao-meta?tab=custom-budgets">
-              <Button 
-                size="sm" 
-                variant="ghost"
-                className="text-[#ff6e00] hover:bg-[#ff6e00]/10 h-8"
-              >
-                <BadgeDollarSign size={14} className="mr-1" />
-                <span className="text-xs">Orçamento Personalizado</span>
-              </Button>
-            </Link>
-          </div>
-        )}
       </CardContent>
-      
-      <CardFooter className="p-3 pt-0 border-t bg-gray-50/50">
-        <Button 
-          variant={inactive ? "outline" : "default"}
-          size="sm" 
-          onClick={() => onReviewClient(client.id)}
-          disabled={isProcessing || inactive}
-          className={`w-full ${inactive ? "bg-gray-100" : ""}`}
-        >
-          {isProcessing ? (
-            <>
-              <Loader className="animate-spin mr-2" size={14} />
-              Analisando...
-            </>
-          ) : (
-            "Analisar"
-          )}
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
