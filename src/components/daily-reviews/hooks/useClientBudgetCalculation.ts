@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "./useEdgeFunction";
@@ -129,6 +130,15 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
 
   const budgetDifference = idealDailyBudget - currentDailyBudget;
 
+  // Mova esta declaração para ANTES do seu uso em needsBudgetAdjustment
+  const hasDailyBudget = hasReview && 
+    client.lastReview?.meta_daily_budget_current !== null && 
+    client.lastReview?.meta_daily_budget_current !== undefined;
+
+  const needsBudgetAdjustment = hasReview && 
+    hasDailyBudget && 
+    Math.abs(budgetDifference) >= 5;
+
   const calculateTotalSpent = async () => {
     if (!client.meta_account_id) {
       setCalculationError("Cliente sem ID de conta Meta configurado");
@@ -194,14 +204,6 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
       setCalculationAttempted(true);
     }
   };
-
-  const needsBudgetAdjustment = hasReview && 
-    hasDailyBudget && 
-    Math.abs(budgetDifference) >= 5;
-
-  const hasDailyBudget = hasReview && 
-    client.lastReview?.meta_daily_budget_current !== null && 
-    client.lastReview?.meta_daily_budget_current !== undefined;
 
   useEffect(() => {
     if (customBudget || isUsingCustomBudgetInReview) {
