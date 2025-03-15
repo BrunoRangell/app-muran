@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
@@ -99,39 +98,19 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
     if (!client.lastReview || !client.meta_account_id) return false;
     
-    // Verificar dias restantes
-    const today = new Date();
-    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    const dayOfMonth = today.getDate();
-    let daysRemaining = daysInMonth - dayOfMonth + 1;
-    
-    // Verificar se o cliente tem um orçamento personalizado ativo
-    const isUsingCustomBudget = client.lastReview.using_custom_budget === true;
-    let monthlyBudget = client.meta_ads_budget || 0;
-    
-    // Se está usando orçamento personalizado, usar esse valor
-    if (isUsingCustomBudget && client.lastReview.custom_budget_amount) {
-      monthlyBudget = client.lastReview.custom_budget_amount;
-      
-      // Se tem orçamento personalizado e data de fim personalizada, 
-      // calcular dias restantes com base na data de fim do orçamento personalizado
-      // Este cálculo não é possível aqui porque não temos acesso à data de fim do orçamento
-      // Vamos confiar na diferença entre o orçamento diário atual e ideal que já foi calculada
-    }
-    
-    // Se não temos o orçamento diário atual, não há como calcular a diferença
+    // Verificar se o cliente tem um orçamento diário atual válido
     if (client.lastReview.meta_daily_budget_current === null || 
         client.lastReview.meta_daily_budget_current === undefined) {
       return false;
     }
     
-    const totalSpent = client.lastReview.meta_total_spent || 0;
     const currentDailyBudget = client.lastReview.meta_daily_budget_current || 0;
     
-    // Usar a diferença que já foi calculada na revisão
-    const hasSignificantDifference = Math.abs(
-      client.lastReview?.meta_daily_budget_ideal - currentDailyBudget
-    ) >= 5;
+    // Usar idealDailyBudget que já foi calculado na revisão (em vez de meta_daily_budget_ideal que não existe)
+    const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
+    
+    // Verificar se há uma diferença significativa
+    const hasSignificantDifference = Math.abs(idealDailyBudget - currentDailyBudget) >= 5;
     
     return hasSignificantDifference;
   };
