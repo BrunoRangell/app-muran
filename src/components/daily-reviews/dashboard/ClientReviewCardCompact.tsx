@@ -53,6 +53,15 @@ export const ClientReviewCardCompact = ({
     hasDailyBudget
   } = useClientBudgetCalculation(client);
 
+  // Debug: Mostrar informações sobre ajustes necessários
+  console.log(`Cliente ${client.company_name}:`, { 
+    needsBudgetAdjustment,
+    hasDailyBudget,
+    currentDailyBudget,
+    idealDailyBudget,
+    budgetDifference
+  });
+
   // Usar needsBudgetAdjustment do hook para ter consistência com a lógica de ordenação
   const showRecommendation = hasDailyBudget && needsBudgetAdjustment;
   const needsIncrease = budgetDifference > 0;

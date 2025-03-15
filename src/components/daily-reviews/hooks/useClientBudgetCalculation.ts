@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "./useEdgeFunction";
@@ -129,10 +130,12 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
 
   const budgetDifference = idealDailyBudget - currentDailyBudget;
 
+  // Definir hasDailyBudget ANTES de ser utilizado em needsBudgetAdjustment
   const hasDailyBudget = hasReview && 
     client.lastReview?.meta_daily_budget_current !== null && 
     client.lastReview?.meta_daily_budget_current !== undefined;
 
+  // Verificar se precisa de ajuste de orçamento (diferença significativa >= 5)
   const needsBudgetAdjustment = hasReview && 
     hasDailyBudget && 
     Math.abs(budgetDifference) >= 5;
@@ -216,10 +219,12 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         diasRestantes: getRemainingDays(),
         orcamentoRestante: remainingBudget,
         orcamentoDiarioIdeal: idealDailyBudget,
-        needsBudgetAdjustment
+        needsBudgetAdjustment,
+        hasDailyBudget,
+        budgetDifference
       });
     }
-  }, [customBudget, client.company_name, remainingBudget, idealDailyBudget, isUsingCustomBudgetInReview, needsBudgetAdjustment]);
+  }, [customBudget, client.company_name, remainingBudget, idealDailyBudget, isUsingCustomBudgetInReview, needsBudgetAdjustment, hasDailyBudget, budgetDifference]);
 
   return {
     hasReview,

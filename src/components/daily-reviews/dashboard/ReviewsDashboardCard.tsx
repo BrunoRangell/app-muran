@@ -116,20 +116,24 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return Math.abs(idealDailyBudget - currentDailyBudget) >= 5;
   };
 
-  // Priorizar clientes que precisam de ajustes
+  // Modificando a ordenação para priorizar clientes que precisam de ajustes - CORRIGIDO
   const prioritizedClients = [...sortedClients].sort((a, b) => {
-    // Primeiro, verificar se tem meta_account_id (clientes ativos)
-    if (!a.meta_account_id && b.meta_account_id) return 1;
-    if (a.meta_account_id && !b.meta_account_id) return -1;
+    // Primeiro verificar se ambos têm meta_account_id (são clientes ativos)
+    const aHasMetaId = !!a.meta_account_id;
+    const bHasMetaId = !!b.meta_account_id;
     
-    // Se nenhum tem meta_account_id, não há como comparar ajustes
-    if (!a.meta_account_id && !b.meta_account_id) return 0;
+    // Somente clientes com Meta Ads aparecem no topo
+    if (!aHasMetaId && bHasMetaId) return 1;
+    if (aHasMetaId && !bHasMetaId) return -1;
     
-    // Agora verificar explicitamente quais clientes precisam de ajuste
+    // Se nenhum tem meta_account_id, manter a ordenação original
+    if (!aHasMetaId && !bHasMetaId) return 0;
+    
+    // Agora verificar se precisa de ajuste
     const aNeedsAdjustment = clientNeedsAdjustment(a);
     const bNeedsAdjustment = clientNeedsAdjustment(b);
     
-    // Prioridade para clientes que precisam de ajuste
+    // Os clientes que precisam de ajuste vêm primeiro
     if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
     if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
     
