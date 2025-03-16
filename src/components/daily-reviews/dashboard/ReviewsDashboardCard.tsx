@@ -92,37 +92,37 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     // Se não tem revisão ou ID de conta Meta, retorna 0
     if (!client.lastReview || !client.meta_account_id) return 0;
     
+    // Se a revisão já tem a diferença calculada, usar esse valor
+    if (client.lastReview.budget_difference !== undefined) {
+      return Math.abs(client.lastReview.budget_difference);
+    }
+    
     // Obtem valores da revisão
     const currentDailyBudget = client.lastReview?.meta_daily_budget_current || 0;
     
-    // Se estiver usando orçamento personalizado, usa os valores do orçamento personalizado
-    if (client.lastReview?.using_custom_budget) {
-      // Valida se há orçamento diário ideal
-      if (!client.lastReview || currentDailyBudget === 0) return 0;
-      
-      // Calcula dias restantes no período do orçamento personalizado
-      const monthlyBudget = client.lastReview.custom_budget_amount || 0;
-      const totalSpent = client.lastReview.meta_total_spent || 0;
-      
-      // Este valor seria calculado no hook useClientBudgetCalculation
-      const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
-      
-      // Retorna a diferença absoluta
-      return Math.abs(idealDailyBudget - currentDailyBudget);
-    } else {
-      // Para orçamento regular
-      const today = new Date();
-      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-      const dayOfMonth = today.getDate();
-      const daysRemaining = daysInMonth - dayOfMonth + 1;
-      
-      const monthlyBudget = client.meta_ads_budget || 0;
-      const totalSpent = client.lastReview.meta_total_spent || 0;
-      const remaining = monthlyBudget - totalSpent;
-      const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
-      
+    // Determinar o orçamento mensal (personalizado ou padrão)
+    const monthlyBudget = client.lastReview?.using_custom_budget && client.lastReview?.custom_budget_amount 
+      ? client.lastReview.custom_budget_amount 
+      : client.meta_ads_budget || 0;
+    
+    const totalSpent = client.lastReview.meta_total_spent || 0;
+    
+    // Se tem o valor ideal já calculado na revisão, usar esse valor
+    if (client.lastReview.ideal_daily_budget !== undefined) {
+      const idealDailyBudget = client.lastReview.ideal_daily_budget;
       return Math.abs(idealDailyBudget - currentDailyBudget);
     }
+    
+    // Cálculo padrão se não tiver valores pré-calculados
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const dayOfMonth = today.getDate();
+    const daysRemaining = daysInMonth - dayOfMonth + 1;
+    
+    const remaining = monthlyBudget - totalSpent;
+    const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
+    
+    return Math.abs(idealDailyBudget - currentDailyBudget);
   };
   
   // Verifica se um cliente precisa de ajuste (diferença >= 5)
@@ -130,12 +130,20 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     // Se não tem revisão, não precisa de ajuste
     if (!client.lastReview) return false;
     
+    // Se a revisão já tem a flag de ajuste, usar esse valor
+    if (client.lastReview.needs_budget_adjustment !== undefined) {
+      return client.lastReview.needs_budget_adjustment;
+    }
+    
     // Calcular o ajuste necessário
     const adjustment = calculateBudgetAdjustment(client);
     
-    // Adicionar log para diagnóstico
+    // Log para diagnóstico
     console.log(`Cliente ${client.company_name} - Verificando necessidade de ajuste:`, {
       usandoOrcamentoPersonalizado: client.lastReview?.using_custom_budget,
+      customBudgetAmount: client.lastReview?.custom_budget_amount,
+      orcamentoMensal: client.meta_ads_budget,
+      orcamentoUsado: client.lastReview?.using_custom_budget ? client.lastReview?.custom_budget_amount : client.meta_ads_budget,
       ajusteCalculado: adjustment,
       precisaAjuste: adjustment >= 5
     });
@@ -168,13 +176,10 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
       // Logs para diagnóstico de ordenação
       console.log(`Ordenação - Cliente A (${a.company_name}):`, {
         orçamentoPersonalizado: a.lastReview?.using_custom_budget || false,
+        valorOrçamentoPersonalizado: a.lastReview?.custom_budget_amount,
+        valorOrçamentoRegular: a.meta_ads_budget,
         precisaAjuste: aNeedsAdjustment,
         ajuste: calculateBudgetAdjustment(a)
-      });
-      console.log(`Ordenação - Cliente B (${b.company_name}):`, {
-        orçamentoPersonalizado: b.lastReview?.using_custom_budget || false,
-        precisaAjuste: bNeedsAdjustment,
-        ajuste: calculateBudgetAdjustment(b)
       });
       
       // Clientes que precisam de ajuste vêm primeiro
@@ -194,11 +199,13 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
       return a.company_name.localeCompare(b.company_name);
     } else if (sortBy === "budget") {
       // Para orçamento, considerar o personalizado se estiver ativo
-      const budgetA = a.lastReview?.using_custom_budget ? 
-        (a.lastReview.custom_budget_amount || 0) : (a.meta_ads_budget || 0);
+      const budgetA = a.lastReview?.using_custom_budget && a.lastReview?.custom_budget_amount 
+        ? a.lastReview.custom_budget_amount 
+        : a.meta_ads_budget || 0;
       
-      const budgetB = b.lastReview?.using_custom_budget ? 
-        (b.lastReview.custom_budget_amount || 0) : (b.meta_ads_budget || 0);
+      const budgetB = b.lastReview?.using_custom_budget && b.lastReview?.custom_budget_amount
+        ? b.lastReview.custom_budget_amount 
+        : b.meta_ads_budget || 0;
       
       return budgetB - budgetA;
     } else if (sortBy === "lastReview") {

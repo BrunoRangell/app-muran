@@ -17,6 +17,10 @@ export interface ClientWithReview {
     using_custom_budget?: boolean;
     custom_budget_id?: string | null;
     custom_budget_amount?: number | null;
+    // Propriedades para cálculos de ajuste
+    needs_budget_adjustment?: boolean;
+    budget_difference?: number;
+    ideal_daily_budget?: number;
   };
 }
 
