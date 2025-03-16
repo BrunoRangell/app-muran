@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "./useEdgeFunction";
@@ -129,12 +128,6 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   };
   
   const getDailyBudgetIdeal = () => {
-    // Se a revisão já tem o valor calculado persistido, usar ele
-    if (hasReview && client.lastReview?.ideal_daily_budget !== undefined) {
-      return client.lastReview.ideal_daily_budget;
-    }
-    
-    // Caso contrário, calcular
     const remaining = getBudgetRemaining();
     const days = getRemainingDays();
     
@@ -152,10 +145,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     : 0;
 
   // Gerar recomendação com base nos orçamentos
-  // Usar o valor persistido se disponível, senão calcular
-  const budgetDifference = hasReview && client.lastReview?.budget_difference !== undefined
-    ? client.lastReview.budget_difference
-    : idealDailyBudget - currentDailyBudget;
+  const budgetDifference = idealDailyBudget - currentDailyBudget;
 
   // Função para calcular total gasto manualmente (só será chamada quando solicitado)
   const calculateTotalSpent = async () => {
@@ -232,10 +222,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   };
 
   // Adicionar propriedade que indica se o cliente precisa de ajuste de orçamento significativo
-  // Primeiro tentar usar o valor persistido, caso contrário, calcular
-  const needsBudgetAdjustment = hasReview && client.lastReview?.needs_budget_adjustment !== undefined
-    ? client.lastReview.needs_budget_adjustment
-    : hasReview && Math.abs(budgetDifference) >= 5;
+  // Usado para ordenação de clientes
+  const needsBudgetAdjustment = hasReview && Math.abs(budgetDifference) >= 5;
 
   // Log para diagnóstico
   useEffect(() => {
@@ -251,12 +239,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         diasRestantes: getRemainingDays(),
         orcamentoRestante: remainingBudget,
         orcamentoDiarioIdeal: idealDailyBudget,
-        needsBudgetAdjustment,
-        valoresPersistidos: {
-          needs_budget_adjustment: client.lastReview?.needs_budget_adjustment,
-          budget_difference: client.lastReview?.budget_difference,
-          ideal_daily_budget: client.lastReview?.ideal_daily_budget
-        }
+        needsBudgetAdjustment
       });
     }
   }, [customBudget, client.company_name, remainingBudget, idealDailyBudget, isUsingCustomBudgetInReview, needsBudgetAdjustment]);
@@ -280,7 +263,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     // Informações adicionais
     isUsingCustomBudgetInReview,
     actualBudgetAmount: getBudgetAmount(),
-    // Usar o nome correto da propriedade conforme definido no tipo
+    // Nova propriedade para ajudar na ordenação
     needsBudgetAdjustment
   };
 };
