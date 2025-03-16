@@ -108,7 +108,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
       
       // Ideal diário para orçamento personalizado é calculado com base nos dias restantes
       // Este valor seria calculado no hook useClientBudgetCalculation
-      const idealDailyBudget = client.lastReview.ideal_daily_budget || 0;
+      const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
       
       // Retorna a diferença absoluta
       return Math.abs(idealDailyBudget - currentDailyBudget);
@@ -358,3 +358,4 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     </div>
   );
 };
+
