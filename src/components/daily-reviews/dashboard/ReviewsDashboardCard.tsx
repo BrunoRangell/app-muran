@@ -130,6 +130,9 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   
   // Verifica se um cliente precisa de ajuste (diferença >= 5)
   const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
+    // CORREÇÃO: Verificar explicitamente se o cliente tem orçamento personalizado ativo
+    if (!client.lastReview) return false;
+    
     const adjustment = calculateBudgetAdjustment(client);
     return adjustment >= 5;
   };
@@ -152,18 +155,31 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     
     // Agora aplica a lógica de ordenação específica
     if (sortBy === "adjustments") {
-      const adjustmentA = calculateBudgetAdjustment(a);
-      const adjustmentB = calculateBudgetAdjustment(b);
+      // CORREÇÃO: Verificar explicitamente se o cliente precisa de ajuste com base na lógica correta
+      // considerando o tipo de orçamento ativo
+      const aNeedsAdjustment = clientNeedsAdjustment(a);
+      const bNeedsAdjustment = clientNeedsAdjustment(b);
+      
+      // Log de diagnóstico para ordenação
+      console.log(`Ordenação - Cliente A (${a.company_name}):`, {
+        orçamentoPersonalizado: a.lastReview?.using_custom_budget,
+        precisaAjuste: aNeedsAdjustment,
+        ajuste: calculateBudgetAdjustment(a)
+      });
+      console.log(`Ordenação - Cliente B (${b.company_name}):`, {
+        orçamentoPersonalizado: b.lastReview?.using_custom_budget,
+        precisaAjuste: bNeedsAdjustment,
+        ajuste: calculateBudgetAdjustment(b)
+      });
       
       // Clientes que precisam de ajuste vêm primeiro
-      const aNeedsAdjustment = adjustmentA >= 5;
-      const bNeedsAdjustment = adjustmentB >= 5;
-      
       if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
       if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
       
       // Se ambos precisam ou não precisam de ajuste, ordena pelo tamanho do ajuste (decrescente)
       if (aNeedsAdjustment && bNeedsAdjustment) {
+        const adjustmentA = calculateBudgetAdjustment(a);
+        const adjustmentB = calculateBudgetAdjustment(b);
         return adjustmentB - adjustmentA;
       }
       
