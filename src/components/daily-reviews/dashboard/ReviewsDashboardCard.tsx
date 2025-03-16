@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -87,66 +88,71 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     client.company_name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  // Calcula o ajuste de orçamento necessário para cada cliente
-  const calculateBudgetAdjustment = (client: ClientWithReview): number => {
-    // Se não tem revisão ou ID de conta Meta, retorna 0
-    if (!client.lastReview || !client.meta_account_id) return 0;
-    
-    // Obtem valores da revisão
-    const currentDailyBudget = client.lastReview?.meta_daily_budget_current || 0;
-    
-    // Se estiver usando orçamento personalizado, usa os valores do orçamento personalizado
-    if (client.lastReview?.using_custom_budget) {
-      // Valida se há orçamento diário ideal
-      if (!client.lastReview || currentDailyBudget === 0) return 0;
-      
-      // Calcula dias restantes no período do orçamento personalizado
-      const monthlyBudget = client.lastReview.custom_budget_amount || 0;
-      const totalSpent = client.lastReview.meta_total_spent || 0;
-      
-      // Este valor seria calculado no hook useClientBudgetCalculation
-      const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
-      
-      // Retorna a diferença absoluta
-      return Math.abs(idealDailyBudget - currentDailyBudget);
-    } else {
-      // Para orçamento regular
-      const today = new Date();
-      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-      const dayOfMonth = today.getDate();
-      const daysRemaining = daysInMonth - dayOfMonth + 1;
-      
-      const monthlyBudget = client.meta_ads_budget || 0;
-      const totalSpent = client.lastReview.meta_total_spent || 0;
-      const remaining = monthlyBudget - totalSpent;
-      const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
-      
-      return Math.abs(idealDailyBudget - currentDailyBudget);
+  // Verificação completa da necessidade de ajuste usando hook
+  const getClientAdjustmentInfo = (client: ClientWithReview) => {
+    if (!client.meta_account_id || !client.lastReview) {
+      return { needsAdjustment: false, adjustmentValue: 0 };
     }
+
+    // Usar o hook para obter todas as informações de cálculo de orçamento
+    const {
+      needsBudgetAdjustment,
+      budgetDifference,
+      idealDailyBudget,
+      currentDailyBudget
+    } = useClientBudgetCalculation(client);
+
+    return {
+      needsAdjustment: needsBudgetAdjustment || false,
+      adjustmentValue: Math.abs(budgetDifference || 0),
+      idealDailyBudget,
+      currentDailyBudget
+    };
   };
-  
-  // Verifica se um cliente precisa de ajuste (diferença >= 5)
-  const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
-    // Se não tem revisão, não precisa de ajuste
-    if (!client.lastReview) return false;
-    
-    // Calcular o ajuste necessário
-    const adjustment = calculateBudgetAdjustment(client);
-    
-    // Adicionar log para diagnóstico
-    console.log(`Cliente ${client.company_name} - Verificando necessidade de ajuste:`, {
-      usandoOrcamentoPersonalizado: client.lastReview?.using_custom_budget,
-      ajusteCalculado: adjustment,
-      precisaAjuste: adjustment >= 5
-    });
-    
-    return adjustment >= 5;
-  };
-  
-  // Filtra apenas clientes que precisam de ajuste se a opção estiver marcada
+
+  // Filtrar apenas clientes que precisam de ajuste se a opção estiver marcada
   const filteredByAdjustment = showOnlyAdjustments 
-    ? filteredByName.filter(client => clientNeedsAdjustment(client))
+    ? filteredByName.filter(client => {
+        const { needsAdjustment } = getClientAdjustmentInfo(client);
+        return needsAdjustment;
+      })
     : filteredByName;
+
+  // Cache para otimizar a ordenação e evitar recálculos
+  const clientAdjustmentCache = new Map<string, { needsAdjustment: boolean, adjustmentValue: number }>();
+
+  // Função para obter as informações de ajuste, usando o cache para performance
+  const getAdjustmentInfoCached = (client: ClientWithReview) => {
+    if (!clientAdjustmentCache.has(client.id)) {
+      // Análise dos dados de orçamento e necessidade de ajuste
+      const needsAdjustment = client.lastReview?.needsBudgetAdjustment === true;
+      
+      // Valor absoluto da diferença para ordenação
+      let adjustmentValue = 0;
+      if (client.lastReview && client.lastReview.budgetDifference) {
+        adjustmentValue = Math.abs(client.lastReview.budgetDifference);
+      }
+      
+      // Log detalhado para diagnóstico
+      console.log(`[Ordenação Cache] Cliente ${client.company_name}:`, {
+        id: client.id,
+        orçamentoPersonalizado: client.lastReview?.using_custom_budget || false,
+        precisaAjuste: needsAdjustment,
+        valorAjuste: adjustmentValue,
+        dadosRevisão: client.lastReview ? {
+          needsBudgetAdjustment: client.lastReview.needsBudgetAdjustment,
+          budgetDifference: client.lastReview.budgetDifference
+        } : 'Sem revisão'
+      });
+      
+      clientAdjustmentCache.set(client.id, { 
+        needsAdjustment, 
+        adjustmentValue 
+      });
+    }
+    
+    return clientAdjustmentCache.get(client.id)!;
+  };
 
   // Ordena os clientes com base no critério selecionado
   const sortedClients = [...filteredByAdjustment].sort((a, b) => {
@@ -161,31 +167,25 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     
     // Agora aplica a lógica de ordenação específica
     if (sortBy === "adjustments") {
-      // Verificar se os clientes precisam de ajuste
-      const aNeedsAdjustment = clientNeedsAdjustment(a);
-      const bNeedsAdjustment = clientNeedsAdjustment(b);
-      
+      // Obter informações de ajuste dos clientes
+      const aInfo = getAdjustmentInfoCached(a);
+      const bInfo = getAdjustmentInfoCached(b);
+
       // Logs para diagnóstico de ordenação
-      console.log(`Ordenação - Cliente A (${a.company_name}):`, {
-        orçamentoPersonalizado: a.lastReview?.using_custom_budget || false,
-        precisaAjuste: aNeedsAdjustment,
-        ajuste: calculateBudgetAdjustment(a)
-      });
-      console.log(`Ordenação - Cliente B (${b.company_name}):`, {
-        orçamentoPersonalizado: b.lastReview?.using_custom_budget || false,
-        precisaAjuste: bNeedsAdjustment,
-        ajuste: calculateBudgetAdjustment(b)
+      console.log(`[Ordenação Comparação] ${a.company_name} vs ${b.company_name}:`, {
+        a_precisa: aInfo.needsAdjustment,
+        b_precisa: bInfo.needsAdjustment,
+        a_valor: aInfo.adjustmentValue,
+        b_valor: bInfo.adjustmentValue
       });
       
       // Clientes que precisam de ajuste vêm primeiro
-      if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
-      if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
+      if (aInfo.needsAdjustment && !bInfo.needsAdjustment) return -1;
+      if (!aInfo.needsAdjustment && bInfo.needsAdjustment) return 1;
       
       // Se ambos precisam de ajuste, ordena pelo tamanho do ajuste (decrescente)
-      if (aNeedsAdjustment && bNeedsAdjustment) {
-        const adjustmentA = calculateBudgetAdjustment(a);
-        const adjustmentB = calculateBudgetAdjustment(b);
-        return adjustmentB - adjustmentA;
+      if (aInfo.needsAdjustment && bInfo.needsAdjustment) {
+        return bInfo.adjustmentValue - aInfo.adjustmentValue;
       }
       
       // Se nenhum precisa de ajuste, ordena por nome
@@ -221,10 +221,16 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   const handleReviewClient = useCallback((clientId: string) => {
     console.log("Iniciando revisão para cliente:", clientId);
     reviewSingleClient(clientId);
+    
+    // Limpar o cache de ajustes quando um cliente é revisado
+    clientAdjustmentCache.clear();
   }, [reviewSingleClient]);
 
   const handleRefresh = useCallback(() => {
     refetchClients();
+    
+    // Limpar o cache de ajustes quando os dados são atualizados
+    clientAdjustmentCache.clear();
   }, [refetchClients]);
 
   return (
@@ -311,7 +317,10 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
             
             <Separator orientation="vertical" className="h-8 mx-2" />
             
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sortBy} onValueChange={(value) => {
+              setSortBy(value);
+              clientAdjustmentCache.clear(); // Limpar cache ao mudar ordenação
+            }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
@@ -330,7 +339,10 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
             <Switch 
               id="show-adjustments" 
               checked={showOnlyAdjustments}
-              onCheckedChange={setShowOnlyAdjustments}
+              onCheckedChange={(value) => {
+                setShowOnlyAdjustments(value);
+                clientAdjustmentCache.clear(); // Limpar cache ao mudar filtro
+              }}
             />
             <Label htmlFor="show-adjustments" className="text-sm font-medium flex items-center">
               <Filter size={16} className="mr-1 text-gray-500" />

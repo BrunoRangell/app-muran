@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
@@ -34,7 +33,9 @@ export const fetchClientsWithReviews = async () => {
         updated_at,
         using_custom_budget,
         custom_budget_id,
-        custom_budget_amount
+        custom_budget_amount,
+        needs_budget_adjustment,
+        budget_difference
       )
     `)
     .eq('status', 'active')
@@ -191,8 +192,42 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
     throw new Error("Valores inválidos recebidos da API Meta");
   }
   
-  console.log("Tipo de metaDailyBudgetCurrent:", typeof metaDailyBudgetCurrent);
-  console.log("Tipo de metaTotalSpent:", typeof metaTotalSpent);
+  // Cálculo de ajuste de orçamento para determinar se precisa de ajuste
+  // Se estiver usando orçamento personalizado:
+  let needsBudgetAdjustment = false;
+  let budgetDifference = 0;
+  let idealDailyBudget = 0;
+  
+  // Calcular orçamento diário ideal
+  if (customBudget) {
+    // Para orçamento personalizado
+    const daysRemaining = Math.max(1, Math.ceil((new Date(customBudget.end_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const budgetRemaining = customBudget.budget_amount - metaTotalSpent;
+    idealDailyBudget = daysRemaining > 0 ? budgetRemaining / daysRemaining : 0;
+  } else {
+    // Para orçamento regular
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const dayOfMonth = today.getDate();
+    const daysRemaining = daysInMonth - dayOfMonth + 1;
+    
+    const monthlyBudget = client.meta_ads_budget || 0;
+    const remaining = monthlyBudget - metaTotalSpent;
+    idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
+  }
+  
+  // Calcular a diferença e verificar se precisa de ajuste
+  budgetDifference = idealDailyBudget - metaDailyBudgetCurrent;
+  needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
+  
+  console.log("Cálculos de ajuste:", {
+    clientName: client.company_name,
+    idealDailyBudget,
+    currentDailyBudget: metaDailyBudgetCurrent,
+    budgetDifference,
+    needsAdjustment: needsBudgetAdjustment,
+    usingCustomBudget: !!customBudget
+  });
   
   try {
     // Verificar se já existe uma revisão para hoje
@@ -215,6 +250,13 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
       custom_budget_id: null,
       custom_budget_amount: null
     };
+    
+    // Adicionar informações de ajuste de orçamento
+    const budgetAdjustmentInfo = {
+      ideal_daily_budget: idealDailyBudget,
+      needs_budget_adjustment: needsBudgetAdjustment,
+      budget_difference: budgetDifference
+    };
 
     if (existingReview) {
       console.log("Atualizando revisão existente para hoje:", existingReview.id);
@@ -224,6 +266,7 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
           meta_daily_budget_current: metaDailyBudgetCurrent,
           meta_total_spent: metaTotalSpent,
           ...customBudgetInfo,
+          ...budgetAdjustmentInfo,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingReview.id)
@@ -246,7 +289,8 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
           meta_total_spent: metaTotalSpent,
           meta_account_id: client.meta_account_id,
           meta_account_name: `Conta ${client.meta_account_id}`,
-          ...customBudgetInfo
+          ...customBudgetInfo,
+          ...budgetAdjustmentInfo
         })
         .select()
         .single();
