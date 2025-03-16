@@ -1,7 +1,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
-import { getCurrentDateInBrasiliaTz, getRemainingDaysInMonth } from "../../summary/utils";
+import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
 import { ClientWithReview, ClientAnalysisResult, BatchReviewResult } from "../types/reviewTypes";
 import { AppError } from "@/lib/errors";
 
@@ -34,10 +34,7 @@ export const fetchClientsWithReviews = async () => {
         updated_at,
         using_custom_budget,
         custom_budget_id,
-        custom_budget_amount,
-        needs_budget_adjustment,
-        budget_difference,
-        ideal_daily_budget
+        custom_budget_amount
       )
     `)
     .eq('status', 'active')
@@ -106,35 +103,6 @@ async function getActiveCustomBudget(clientId: string) {
   }
   
   return data;
-}
-
-/**
- * Calcula o orçamento diário ideal com base no orçamento, gasto e dias restantes 
- */
-function calculateIdealDailyBudget(totalBudget: number, totalSpent: number, daysRemaining: number): number {
-  const budgetRemaining = totalBudget - totalSpent;
-  return daysRemaining > 0 ? budgetRemaining / daysRemaining : 0;
-}
-
-/**
- * Calcula o número de dias restantes no período (mês ou período personalizado)
- */
-function calculateRemainingDays(customBudget: any | null): number {
-  if (customBudget) {
-    // Para orçamento personalizado, calcular dias entre hoje e a data final
-    const today = getCurrentDateInBrasiliaTz();
-    const endDate = new Date(customBudget.end_date);
-    
-    // +1 para incluir o dia atual E o dia final
-    const diffTime = endDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    // Garantir que retorne pelo menos 1 dia (hoje)
-    return Math.max(1, diffDays);
-  }
-  
-  // Para orçamento regular, usar os dias restantes no mês
-  return getRemainingDaysInMonth();
 }
 
 /**
@@ -237,41 +205,27 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
 
     let reviewData;
     
-    // Calcular valores para orçamento ideal e ajustes
-    const totalBudget = customBudget ? customBudget.budget_amount : client.meta_ads_budget || 0;
-    const daysRemaining = calculateRemainingDays(customBudget);
-    const idealDailyBudget = calculateIdealDailyBudget(totalBudget, metaTotalSpent, daysRemaining);
-    const budgetDifference = idealDailyBudget - metaDailyBudgetCurrent;
-    const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
-    
-    console.log("Cálculos de orçamento:", {
-      totalBudget,
-      daysRemaining,
-      idealDailyBudget,
-      budgetDifference,
-      needsBudgetAdjustment
-    });
-
     // Adicionar campo para informar se está usando orçamento personalizado
-    const reviewDataToUpdate = {
-      meta_daily_budget_current: metaDailyBudgetCurrent,
-      meta_total_spent: metaTotalSpent,
-      updated_at: new Date().toISOString(),
-      // Campos de orçamento personalizado
-      using_custom_budget: !!customBudget,
-      custom_budget_id: customBudget ? customBudget.id : null,
-      custom_budget_amount: customBudget ? customBudget.budget_amount : null,
-      // Campos calculados para facilitar a ordenação e filtragem
-      ideal_daily_budget: idealDailyBudget,
-      budget_difference: budgetDifference,
-      needs_budget_adjustment: needsBudgetAdjustment
+    const customBudgetInfo = customBudget ? {
+      using_custom_budget: true,
+      custom_budget_id: customBudget.id,
+      custom_budget_amount: customBudget.budget_amount
+    } : {
+      using_custom_budget: false,
+      custom_budget_id: null,
+      custom_budget_amount: null
     };
 
     if (existingReview) {
       console.log("Atualizando revisão existente para hoje:", existingReview.id);
       const { data: updatedReview, error: updateError } = await supabase
         .from('daily_budget_reviews')
-        .update(reviewDataToUpdate)
+        .update({
+          meta_daily_budget_current: metaDailyBudgetCurrent,
+          meta_total_spent: metaTotalSpent,
+          ...customBudgetInfo,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', existingReview.id)
         .select()
         .single();
@@ -288,9 +242,11 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
         .insert({
           client_id: client.id,
           review_date: currentDate,
+          meta_daily_budget_current: metaDailyBudgetCurrent,
+          meta_total_spent: metaTotalSpent,
           meta_account_id: client.meta_account_id,
           meta_account_name: `Conta ${client.meta_account_id}`,
-          ...reviewDataToUpdate
+          ...customBudgetInfo
         })
         .select()
         .single();
