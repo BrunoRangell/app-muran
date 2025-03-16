@@ -101,12 +101,9 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
       if (!client.lastReview || currentDailyBudget === 0) return 0;
       
       // Calcula dias restantes no período do orçamento personalizado
-      const today = new Date();
       const monthlyBudget = client.lastReview.custom_budget_amount || 0;
       const totalSpent = client.lastReview.meta_total_spent || 0;
-      const remaining = monthlyBudget - totalSpent;
       
-      // Ideal diário para orçamento personalizado é calculado com base nos dias restantes
       // Este valor seria calculado no hook useClientBudgetCalculation
       const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
       
@@ -130,10 +127,19 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   
   // Verifica se um cliente precisa de ajuste (diferença >= 5)
   const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
-    // CORREÇÃO: Verificar explicitamente se o cliente tem orçamento personalizado ativo
+    // Se não tem revisão, não precisa de ajuste
     if (!client.lastReview) return false;
     
+    // Calcular o ajuste necessário
     const adjustment = calculateBudgetAdjustment(client);
+    
+    // Adicionar log para diagnóstico
+    console.log(`Cliente ${client.company_name} - Verificando necessidade de ajuste:`, {
+      usandoOrcamentoPersonalizado: client.lastReview?.using_custom_budget,
+      ajusteCalculado: adjustment,
+      precisaAjuste: adjustment >= 5
+    });
+    
     return adjustment >= 5;
   };
   
@@ -155,19 +161,18 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     
     // Agora aplica a lógica de ordenação específica
     if (sortBy === "adjustments") {
-      // CORREÇÃO: Verificar explicitamente se o cliente precisa de ajuste com base na lógica correta
-      // considerando o tipo de orçamento ativo
+      // Verificar se os clientes precisam de ajuste
       const aNeedsAdjustment = clientNeedsAdjustment(a);
       const bNeedsAdjustment = clientNeedsAdjustment(b);
       
-      // Log de diagnóstico para ordenação
+      // Logs para diagnóstico de ordenação
       console.log(`Ordenação - Cliente A (${a.company_name}):`, {
-        orçamentoPersonalizado: a.lastReview?.using_custom_budget,
+        orçamentoPersonalizado: a.lastReview?.using_custom_budget || false,
         precisaAjuste: aNeedsAdjustment,
         ajuste: calculateBudgetAdjustment(a)
       });
       console.log(`Ordenação - Cliente B (${b.company_name}):`, {
-        orçamentoPersonalizado: b.lastReview?.using_custom_budget,
+        orçamentoPersonalizado: b.lastReview?.using_custom_budget || false,
         precisaAjuste: bNeedsAdjustment,
         ajuste: calculateBudgetAdjustment(b)
       });
@@ -176,7 +181,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
       if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
       if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
       
-      // Se ambos precisam ou não precisam de ajuste, ordena pelo tamanho do ajuste (decrescente)
+      // Se ambos precisam de ajuste, ordena pelo tamanho do ajuste (decrescente)
       if (aNeedsAdjustment && bNeedsAdjustment) {
         const adjustmentA = calculateBudgetAdjustment(a);
         const adjustmentB = calculateBudgetAdjustment(b);
@@ -374,4 +379,3 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     </div>
   );
 };
-
