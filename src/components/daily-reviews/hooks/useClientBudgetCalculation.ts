@@ -280,7 +280,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     // Informações adicionais
     isUsingCustomBudgetInReview,
     actualBudgetAmount: getBudgetAmount(),
-    // Nova propriedade para ajudar na ordenação
+    // Usar o nome correto da propriedade conforme definido no tipo
     needsBudgetAdjustment
   };
 };

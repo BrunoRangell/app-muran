@@ -125,12 +125,12 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   const getAdjustmentInfoCached = (client: ClientWithReview) => {
     if (!clientAdjustmentCache.has(client.id)) {
       // Análise dos dados de orçamento e necessidade de ajuste
-      const needsAdjustment = client.lastReview?.needsBudgetAdjustment === true;
+      const needsAdjustment = client.lastReview?.needs_budget_adjustment === true;
       
       // Valor absoluto da diferença para ordenação
       let adjustmentValue = 0;
-      if (client.lastReview && client.lastReview.budgetDifference) {
-        adjustmentValue = Math.abs(client.lastReview.budgetDifference);
+      if (client.lastReview && client.lastReview.budget_difference) {
+        adjustmentValue = Math.abs(client.lastReview.budget_difference);
       }
       
       // Log detalhado para diagnóstico
@@ -140,8 +140,8 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
         precisaAjuste: needsAdjustment,
         valorAjuste: adjustmentValue,
         dadosRevisão: client.lastReview ? {
-          needsBudgetAdjustment: client.lastReview.needsBudgetAdjustment,
-          budgetDifference: client.lastReview.budgetDifference
+          needs_budget_adjustment: client.lastReview.needs_budget_adjustment,
+          budget_difference: client.lastReview.budget_difference
         } : 'Sem revisão'
       });
       
