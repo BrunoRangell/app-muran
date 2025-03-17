@@ -1,6 +1,9 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("api-error");
 
 interface ApiErrorDetailsProps {
   error: {
@@ -13,6 +16,9 @@ interface ApiErrorDetailsProps {
 
 export function ApiErrorDetails({ error }: ApiErrorDetailsProps) {
   if (!error) return null;
+  
+  // Registrar o erro no logger
+  logger.error("Detalhes do erro da API:", error);
   
   return (
     <Alert variant="destructive" className="mt-4">

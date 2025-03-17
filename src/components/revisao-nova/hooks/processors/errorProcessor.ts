@@ -1,4 +1,8 @@
 
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("error-processor");
+
 /**
  * Processa e formata detalhes de erros para apresentação e depuração
  */
@@ -6,7 +10,7 @@ export const processErrorDetails = (err: any): {
   message: string;
   details: any;
 } => {
-  console.error("[errorProcessor] Erro na análise:", err);
+  logger.error("Erro na análise:", err);
   
   // Extrair mensagem de erro
   const errorMessage = err instanceof Error ? err.message : String(err) || "Erro desconhecido";

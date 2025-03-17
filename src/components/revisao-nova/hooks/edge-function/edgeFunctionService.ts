@@ -1,5 +1,8 @@
 
 import { supabase } from "@/lib/supabase";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("edge-function");
 
 /**
  * Serviço para invocar funções Edge do Supabase
@@ -10,16 +13,16 @@ import { supabase } from "@/lib/supabase";
  */
 export const invokeEdgeFunction = async (payload: any) => {
   try {
-    console.log("[edgeFunctionService] Tentando invocar função Edge...");
+    logger.debug("Tentando invocar função Edge...");
     
     // Validação básica de payload
     if (!payload) {
-      console.error("[edgeFunctionService] Payload inválido (nulo ou indefinido)");
+      logger.error("Payload inválido (nulo ou indefinido)");
       throw new Error("Payload inválido para função Edge (nulo ou indefinido)");
     }
     
     if (typeof payload !== 'object') {
-      console.error("[edgeFunctionService] Payload deve ser um objeto:", typeof payload);
+      logger.error("Payload deve ser um objeto:", typeof payload);
       throw new Error(`Payload inválido para função Edge (tipo: ${typeof payload})`);
     }
     
@@ -29,13 +32,13 @@ export const invokeEdgeFunction = async (payload: any) => {
       // Abordagem que evita problemas com referências cíclicas
       safePayload = JSON.parse(JSON.stringify(payload));
     } catch (err) {
-      console.error("[edgeFunctionService] Erro ao serializar payload:", err);
+      logger.error("Erro ao serializar payload:", err);
       throw new Error(`Não foi possível serializar o payload: ${err.message}`);
     }
     
     // Verificação final de payload vazio
     if (!safePayload || Object.keys(safePayload).length === 0) {
-      console.error("[edgeFunctionService] Payload vazio após processamento");
+      logger.error("Payload vazio após processamento");
       throw new Error("Payload vazio após processamento");
     }
     
@@ -45,11 +48,8 @@ export const invokeEdgeFunction = async (payload: any) => {
       sanitizedPayload.accessToken = "***TOKEN OCULTADO***";
     }
     
-    console.log("[edgeFunctionService] Enviando payload:", 
-              JSON.stringify(sanitizedPayload));
-    
-    console.log("[edgeFunctionService] Tamanho do payload:", 
-              JSON.stringify(safePayload).length, "bytes");
+    logger.debug("Enviando payload:", sanitizedPayload);
+    logger.debug("Tamanho do payload:", JSON.stringify(safePayload).length, "bytes");
     
     // Adicionar timeout para evitar problemas de conexão pendente
     const timeoutPromise = new Promise((_, reject) => {
@@ -70,21 +70,21 @@ export const invokeEdgeFunction = async (payload: any) => {
       timeoutPromise
     ]) as any;
     
-    console.log("[edgeFunctionService] Resposta da função Edge:", result);
+    logger.debug("Resposta da função Edge:", result);
     
     if (functionError) {
-      console.error("[edgeFunctionService] Erro na função Edge:", functionError);
+      logger.error("Erro na função Edge:", functionError);
       throw new Error(`Erro na função Edge: ${functionError.message || "Erro desconhecido"}`);
     }
     
     if (!result) {
-      console.error("[edgeFunctionService] Resultado vazio da função Edge");
+      logger.error("Resultado vazio da função Edge");
       throw new Error("A função retornou dados vazios ou inválidos");
     }
     
     return { result };
   } catch (err) {
-    console.error("[edgeFunctionService] Erro ao chamar função Edge:", err);
+    logger.error("Erro ao chamar função Edge:", err);
     return { error: err };
   }
 };
@@ -94,7 +94,7 @@ export const invokeEdgeFunction = async (payload: any) => {
  */
 export const testEdgeConnectivity = async (testPayload: any) => {
   try {
-    console.log("[testEdgeConnectivity] Testando conectividade via fetch direto...");
+    logger.debug("Testando conectividade via fetch direto...");
     
     // Obter sessão para autenticação
     const session = await supabase.auth.getSession();
@@ -134,7 +134,7 @@ export const testEdgeConnectivity = async (testPayload: any) => {
       data = await response.json();
     } catch (err) {
       errorText = await response.text();
-      console.error("[testEdgeConnectivity] Erro ao parsear resposta JSON:", errorText);
+      logger.error("Erro ao parsear resposta JSON:", errorText);
     }
     
     const error = !response.ok ? { 
@@ -148,7 +148,7 @@ export const testEdgeConnectivity = async (testPayload: any) => {
       statusCode: response.status
     };
   } catch (err) {
-    console.error("[testEdgeConnectivity] Erro ao testar conectividade:", err);
+    logger.error("Erro ao testar conectividade:", err);
     return {
       success: false,
       error: err,

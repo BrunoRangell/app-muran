@@ -5,6 +5,9 @@ import { useMetaTokenService } from "./useMetaTokenService";
 import { useEdgeFunctionService } from "./useEdgeFunctionService";
 import { useMetaClientService } from "./useMetaClientService";
 import { useMetaResponseProcessor } from "./useMetaResponseProcessor";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("meta-ads-analysis");
 
 export const useMetaAdsAnalysis = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +40,7 @@ export const useMetaAdsAnalysis = () => {
 
   // Função para lidar com erro na função Edge
   const handleEdgeFunctionError = useCallback((edgeError: any) => {
-    console.error("[useMetaAdsAnalysis] Erro ao chamar função Edge:", edgeError);
+    logger.error("Erro ao chamar função Edge:", edgeError);
     
     if (edgeError.message?.includes("Timeout") || 
         edgeError.message?.includes("Failed to send") ||
@@ -82,7 +85,7 @@ export const useMetaAdsAnalysis = () => {
   const fetchAnalysis = useCallback(async (clientId: string) => {
     // Evitar múltiplas chamadas simultâneas
     if (isFetchingRef.current) {
-      console.log("[useMetaAdsAnalysis] Chamada ignorada, já existe uma em andamento");
+      logger.info("Chamada ignorada, já existe uma em andamento");
       return;
     }
 
@@ -91,7 +94,7 @@ export const useMetaAdsAnalysis = () => {
     isFetchingRef.current = true;
 
     try {
-      console.log("[useMetaAdsAnalysis] Iniciando análise para cliente:", clientId);
+      logger.info("Iniciando análise para cliente:", clientId);
       
       const clientData = await fetchClientData(clientId);
       
@@ -103,7 +106,7 @@ export const useMetaAdsAnalysis = () => {
       const dateRange = prepareDateRangeForCurrentMonth();
       
       try {
-        console.log("[useMetaAdsAnalysis] Tentando invocar função Edge...");
+        logger.debug("Tentando invocar função Edge...");
         
         const payload = prepareEdgeFunctionPayload(clientData, token, dateRange);
         

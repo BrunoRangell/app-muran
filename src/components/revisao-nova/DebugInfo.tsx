@@ -1,4 +1,8 @@
 
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("debug-info");
+
 interface DebugInfoProps {
   debugInfo: any;
   rawApiResponse: any;

@@ -1,11 +1,15 @@
 
-import { useToast } from "@/hooks/use-toast";
+import { createLogger } from "@/lib/logger";
 import { testEdgeConnectivity } from "./edgeFunctionService";
+
+const logger = createLogger("diagnostic");
 
 /**
  * Analisa o tipo de erro e gera informações de diagnóstico
  */
 export const analyzeEdgeError = (error: any) => {
+  logger.debug("Analisando erro da função Edge:", error);
+  
   let errorType = "UNKNOWN";
   let suggestion = "";
   
@@ -26,6 +30,8 @@ export const analyzeEdgeError = (error: any) => {
     suggestion = "O corpo da requisição está vazio. Verifique a serialização do payload e o content-type.";
   }
   
+  logger.info("Diagnóstico de erro:", { errorType, suggestion });
+  
   return {
     errorType,
     originalError: errorMessage,
@@ -43,6 +49,8 @@ export const analyzeEdgeError = (error: any) => {
  * Fornece informações detalhadas sobre um payload para debugging
  */
 export const inspectPayload = (payload: any) => {
+  logger.debug("Inspecionando payload");
+  
   try {
     return {
       payloadType: typeof payload,
@@ -54,6 +62,8 @@ export const inspectPayload = (payload: any) => {
       rawPayload: payload
     };
   } catch (err) {
+    logger.error("Erro ao inspecionar payload:", err);
+    
     return {
       payloadType: typeof payload,
       isNull: payload === null,
