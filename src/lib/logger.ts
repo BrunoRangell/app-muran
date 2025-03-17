@@ -17,8 +17,8 @@ const LOG_LEVEL_SEVERITY: Record<LogLevel, number> = {
 
 // Configuração global de logging
 const globalConfig: LoggerOptions = {
-  enabled: process.env.NODE_ENV !== 'production',
-  minLevel: 'info'
+  enabled: true,
+  minLevel: process.env.NODE_ENV === 'production' ? 'error' : 'info'
 };
 
 // Configurações por módulo (namespace)
@@ -62,6 +62,14 @@ function formatLogMessage(context: string | undefined, message: any): string {
   return `${timestamp} ${contextStr}${formattedMessage}`;
 }
 
+// Cores para diferentes níveis de log (para console)
+const LOG_COLORS = {
+  debug: '#6b7280', // Cinza
+  info: '#3b82f6',  // Azul
+  warn: '#f59e0b',  // Âmbar
+  error: '#ef4444'  // Vermelho
+};
+
 /**
  * Cria uma instância de logger para um contexto específico
  */
@@ -69,32 +77,52 @@ export function createLogger(context?: string) {
   return {
     debug: (message: any, ...args: any[]) => {
       if (shouldLog('debug', context)) {
-        console.debug(formatLogMessage(context, message), ...args);
+        console.debug(
+          `%c${formatLogMessage(context, message)}`, 
+          `color: ${LOG_COLORS.debug}`,
+          ...args
+        );
       }
     },
     
     info: (message: any, ...args: any[]) => {
       if (shouldLog('info', context)) {
-        console.info(formatLogMessage(context, message), ...args);
+        console.info(
+          `%c${formatLogMessage(context, message)}`, 
+          `color: ${LOG_COLORS.info}`, 
+          ...args
+        );
       }
     },
     
     warn: (message: any, ...args: any[]) => {
       if (shouldLog('warn', context)) {
-        console.warn(formatLogMessage(context, message), ...args);
+        console.warn(
+          `%c${formatLogMessage(context, message)}`, 
+          `color: ${LOG_COLORS.warn}`, 
+          ...args
+        );
       }
     },
     
     error: (message: any, ...args: any[]) => {
       if (shouldLog('error', context)) {
-        console.error(formatLogMessage(context, message), ...args);
+        console.error(
+          `%c${formatLogMessage(context, message)}`, 
+          `color: ${LOG_COLORS.error}`, 
+          ...args
+        );
       }
     },
     
     // Método para logs específicos de API
     api: (message: any, ...args: any[]) => {
       if (shouldLog('debug', context)) {
-        console.debug(formatLogMessage(`${context}-api`, message), ...args);
+        console.debug(
+          `%c${formatLogMessage(`${context}-api`, message)}`, 
+          `color: ${LOG_COLORS.debug}`, 
+          ...args
+        );
       }
     }
   };
@@ -105,6 +133,8 @@ export function createLogger(context?: string) {
  */
 export function configureLogging(options: Partial<LoggerOptions>): void {
   Object.assign(globalConfig, options);
+  // Log da alteração de configuração (sempre visível)
+  console.info(`%cConfiguração de logs alterada: ${JSON.stringify(options)}`, `color: ${LOG_COLORS.info}`);
 }
 
 /**
@@ -118,6 +148,8 @@ export function configureModuleLogging(
     ...(moduleConfigs[moduleName] || {}),
     ...options
   };
+  // Log da alteração de configuração (sempre visível)
+  console.info(`%cConfiguração de logs para '${moduleName}' alterada: ${JSON.stringify(options)}`, `color: ${LOG_COLORS.info}`);
 }
 
 /**
@@ -142,7 +174,7 @@ export function setupEnvironmentLogging(): void {
   else {
     configureLogging({
       enabled: true,
-      minLevel: 'debug'
+      minLevel: 'info'
     });
   }
 }

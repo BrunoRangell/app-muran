@@ -34,13 +34,17 @@ export function LoggingControls() {
   };
   
   return (
-    <div className="bg-gray-50 p-3 rounded-md mb-4 border border-gray-200">
-      <h3 className="text-sm font-medium mb-2">Controle de logs</h3>
+    <div className="bg-[#ebebf0] p-4 rounded-md mb-4 border border-[#321e32]/20">
+      <h3 className="text-sm font-medium mb-2 text-[#321e32]">Configurações de logs</h3>
       
       <Tabs defaultValue="global" className="w-full">
-        <TabsList className="mb-2">
-          <TabsTrigger value="global">Global</TabsTrigger>
-          <TabsTrigger value="modules">Por módulo</TabsTrigger>
+        <TabsList className="mb-2 bg-white">
+          <TabsTrigger value="global" className="data-[state=active]:bg-[#ff6e00] data-[state=active]:text-white">
+            Global
+          </TabsTrigger>
+          <TabsTrigger value="modules" className="data-[state=active]:bg-[#ff6e00] data-[state=active]:text-white">
+            Por módulo
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="global">
@@ -49,6 +53,7 @@ export function LoggingControls() {
               size="sm" 
               variant={logLevel === "debug" ? "default" : "outline"}
               onClick={() => handleSetLogLevel("debug")}
+              className={logLevel === "debug" ? "bg-[#ff6e00] hover:bg-[#ff8c33]" : "border-[#321e32] text-[#321e32]"}
             >
               Debug
             </Button>
@@ -56,6 +61,7 @@ export function LoggingControls() {
               size="sm" 
               variant={logLevel === "info" ? "default" : "outline"}
               onClick={() => handleSetLogLevel("info")}
+              className={logLevel === "info" ? "bg-[#ff6e00] hover:bg-[#ff8c33]" : "border-[#321e32] text-[#321e32]"}
             >
               Info
             </Button>
@@ -63,6 +69,7 @@ export function LoggingControls() {
               size="sm" 
               variant={logLevel === "warn" ? "default" : "outline"}
               onClick={() => handleSetLogLevel("warn")}
+              className={logLevel === "warn" ? "bg-[#ff6e00] hover:bg-[#ff8c33]" : "border-[#321e32] text-[#321e32]"}
             >
               Warn
             </Button>
@@ -70,6 +77,7 @@ export function LoggingControls() {
               size="sm" 
               variant={logLevel === "error" ? "default" : "outline"}
               onClick={() => handleSetLogLevel("error")}
+              className={logLevel === "error" ? "bg-[#ff6e00] hover:bg-[#ff8c33]" : "border-[#321e32] text-[#321e32]"}
             >
               Error
             </Button>
@@ -77,6 +85,7 @@ export function LoggingControls() {
               size="sm" 
               variant={logLevel === "none" ? "default" : "outline"}
               onClick={() => handleSetLogLevel("none")}
+              className={logLevel === "none" ? "bg-[#ff6e00] hover:bg-[#ff8c33]" : "border-[#321e32] text-[#321e32]"}
             >
               Nenhum
             </Button>
@@ -85,36 +94,81 @@ export function LoggingControls() {
         
         <TabsContent value="modules">
           <div className="grid grid-cols-2 gap-2">
-            <Button size="sm" variant="outline" onClick={() => configureModule("edge-function", true)}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => configureModule("edge-function", true)}
+              className="border-[#321e32] text-[#321e32] hover:bg-[#ff6e00] hover:text-white"
+            >
               Ativar Edge Function
             </Button>
-            <Button size="sm" variant="outline" onClick={() => configureModule("edge-function", false)}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => configureModule("edge-function", false)}
+              className="border-[#321e32] text-[#321e32] hover:bg-[#321e32] hover:text-white"
+            >
               Desativar Edge Function
             </Button>
             
-            <Button size="sm" variant="outline" onClick={() => configureModule("meta-ads-analysis", true)}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => configureModule("meta-ads-analysis", true)}
+              className="border-[#321e32] text-[#321e32] hover:bg-[#ff6e00] hover:text-white"
+            >
               Ativar Meta Ads
             </Button>
-            <Button size="sm" variant="outline" onClick={() => configureModule("meta-ads-analysis", false)}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => configureModule("meta-ads-analysis", false)}
+              className="border-[#321e32] text-[#321e32] hover:bg-[#321e32] hover:text-white"
+            >
               Desativar Meta Ads
             </Button>
             
-            <Button size="sm" variant="outline" onClick={() => configureModule("budget-calculation", true)}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => configureModule("budget-calculation", true)}
+              className="border-[#321e32] text-[#321e32] hover:bg-[#ff6e00] hover:text-white"
+            >
               Ativar Orçamentos
             </Button>
-            <Button size="sm" variant="outline" onClick={() => configureModule("budget-calculation", false)}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => configureModule("budget-calculation", false)}
+              className="border-[#321e32] text-[#321e32] hover:bg-[#321e32] hover:text-white"
+            >
               Desativar Orçamentos
             </Button>
             
-            <Button size="sm" variant="outline" onClick={() => configureModule("api-error", true)}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => configureModule("api-error", true)}
+              className="border-[#321e32] text-[#321e32] hover:bg-[#ff6e00] hover:text-white"
+            >
               Ativar Erros API
             </Button>
-            <Button size="sm" variant="outline" onClick={() => configureModule("api-error", false)}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => configureModule("api-error", false)}
+              className="border-[#321e32] text-[#321e32] hover:bg-[#321e32] hover:text-white"
+            >
               Desativar Erros API
             </Button>
           </div>
         </TabsContent>
       </Tabs>
+      
+      <div className="mt-4 text-xs text-[#321e32]/70">
+        <p>Por padrão, apenas erros são mostrados no console em produção.</p>
+        <p>Use estes controles para ativar logs adicionais quando precisar diagnosticar problemas.</p>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,8 @@ export const processErrorDetails = (err: any): {
   message: string;
   details: any;
 } => {
+  // Sempre registrar erros no console, independente do nível de log configurado
+  console.error("Erro crítico na análise:", err);
   logger.error("Erro na análise:", err);
   
   // Extrair mensagem de erro
