@@ -1,18 +1,10 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { getDaysInMonth } from 'date-fns';
-import { formatDateInBrasiliaTz, getCurrentDateInBrasiliaTz } from "../summary/utils";
+import { useClientBudgetRecommendation } from "../hooks/useClientBudgetRecommendation";
 
 export const useClientReviewDetails = (clientId: string) => {
-  const [recommendation, setRecommendation] = useState<string | null>(null);
-  const [idealDailyBudget, setIdealDailyBudget] = useState<number | null>(null);
-  const [suggestedBudgetChange, setSuggestedBudgetChange] = useState<number | null>(null);
-  // Novos estados para armazenar detalhes do cálculo
-  const [remainingDays, setRemainingDays] = useState<number | null>(null);
-  const [remainingBudget, setRemainingBudget] = useState<number | null>(null);
-  
   const queryClient = useQueryClient();
 
   // Função para recarregar os dados
@@ -118,66 +110,18 @@ export const useClientReviewDetails = (clientId: string) => {
     enabled: !!client,
   });
 
-  // Calcular orçamento diário ideal com base na data atual
-  useEffect(() => {
-    if (client?.meta_ads_budget && latestReview) {
-      try {
-        // Data atual para o cálculo (usando fuso horário de Brasília)
-        const saoPauloDate = getCurrentDateInBrasiliaTz();
-        
-        console.log("Data atual utilizada para cálculo (São Paulo):", saoPauloDate.toLocaleDateString('pt-BR'));
-        
-        // Obter valores do orçamento e gastos
-        const monthlyBudget = Number(client.meta_ads_budget);
-        // Usar exatamente o valor gasto no mês atual
-        const totalSpent = Number(latestReview.meta_total_spent) || 0;
-        const currentDailyBudget = Number(latestReview.meta_daily_budget_current) || 0;
-        
-        console.log("Orçamento mensal do cliente:", monthlyBudget);
-        console.log("Total gasto até agora:", totalSpent);
-        console.log("Orçamento diário atual:", currentDailyBudget);
-        
-        // Calculando dias restantes no mês
-        const daysInMonth = getDaysInMonth(saoPauloDate);
-        const currentDay = saoPauloDate.getDate();
-        const remainingDaysValue = daysInMonth - currentDay + 1; // +1 para incluir o dia atual
-        setRemainingDays(remainingDaysValue);
-        
-        console.log("Dias no mês:", daysInMonth);
-        console.log("Dia atual (São Paulo):", currentDay);
-        console.log("Dias restantes:", remainingDaysValue);
-        
-        // Calcular orçamento restante
-        const remainingBudgetValue = monthlyBudget - totalSpent;
-        setRemainingBudget(remainingBudgetValue);
-        console.log("Orçamento restante:", remainingBudgetValue);
-        
-        // Calcular orçamento diário ideal baseado no orçamento restante e dias restantes
-        const idealDaily = remainingDaysValue > 0 ? remainingBudgetValue / remainingDaysValue : 0;
-        console.log("Orçamento diário ideal calculado:", idealDaily);
-        setIdealDailyBudget(idealDaily);
-        
-        // Calcular diferença entre orçamento atual e ideal para recomendação
-        const budgetDifference = idealDaily - currentDailyBudget;
-        setSuggestedBudgetChange(budgetDifference);
-        console.log("Diferença de orçamento:", budgetDifference);
-        
-        // Gerar recomendação baseada na diferença
-        // Usar um threshold pequeno (R$5.00) para decidir se a mudança vale a pena
-        const thresholdValue = 5.00;
-        
-        if (budgetDifference > thresholdValue) {
-          setRecommendation(`Aumentar R$${budgetDifference.toFixed(2)}`);
-        } else if (budgetDifference < -thresholdValue) {
-          setRecommendation(`Diminuir R$${Math.abs(budgetDifference).toFixed(2)}`);
-        } else {
-          setRecommendation("Manter o orçamento diário atual");
-        }
-      } catch (error) {
-        console.error("Erro ao calcular orçamento ideal:", error);
-      }
-    }
-  }, [client, latestReview]);
+  // Calcular recomendações de orçamento usando o hook separado
+  const {
+    recommendation,
+    idealDailyBudget,
+    suggestedBudgetChange,
+    remainingDays,
+    remainingBudget
+  } = useClientBudgetRecommendation(
+    client?.meta_ads_budget,
+    latestReview?.meta_total_spent,
+    latestReview?.meta_daily_budget_current
+  );
 
   const isLoading = isLoadingClient || isLoadingReview;
   const hasError = clientError || reviewError || historyError;
