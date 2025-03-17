@@ -4,9 +4,6 @@ import { useToast } from "@/hooks/use-toast";
 import { preparePayload, preparePayloadForLog } from "./edge-function/payloadUtils";
 import { invokeEdgeFunction, testEdgeConnectivity } from "./edge-function/edgeFunctionService";
 import { analyzeEdgeError, inspectPayload } from "./edge-function/diagnosticService";
-import { createLogger } from "@/lib/logger";
-
-const logger = createLogger("edge-function-service");
 
 /**
  * Hook para gerenciar comunicação com funções Edge
@@ -26,12 +23,13 @@ export const useEdgeFunctionService = () => {
       const safePayload = preparePayload(payload);
       
       // Log com dados sensíveis ocultados
-      logger.debug("Enviando payload:", preparePayloadForLog(safePayload));
+      console.log("[useEdgeFunctionService] Enviando payload:", 
+                JSON.stringify(preparePayloadForLog(safePayload)));
       
       // Chamar a função Edge
       return await invokeEdgeFunction(safePayload);
     } catch (err) {
-      logger.error("Erro ao chamar função Edge:", err);
+      console.error("[useEdgeFunctionService] Erro ao chamar função Edge:", err);
       return { error: err };
     }
   };
@@ -44,7 +42,7 @@ export const useEdgeFunctionService = () => {
     setDebugInfo(null);
     
     try {
-      logger.info("Tentando conectar à função Edge...");
+      console.log("[testEdgeFunction] Tentando conectar à função Edge...");
       
       // Teste simples com payload mínimo
       const testPayload = { 
@@ -52,12 +50,12 @@ export const useEdgeFunctionService = () => {
         timestamp: new Date().toISOString() 
       };
       
-      logger.debug("Enviando payload de teste:", JSON.stringify(testPayload));
+      console.log("[testEdgeFunction] Enviando payload de teste:", JSON.stringify(testPayload));
       
       // Usar abordagem com fetch direto para testar
       const testResult = await testEdgeConnectivity(testPayload);
       
-      logger.debug("Resposta do teste (fetch direto):", testResult);
+      console.log("[testEdgeFunction] Resposta do teste (fetch direto):", testResult);
       
       // Preparar informações de debug
       setDebugInfo({
@@ -76,7 +74,7 @@ export const useEdgeFunctionService = () => {
       // Verificar resultado
       if (!testResult.success) {
         const errorMsg = testResult.error?.message || "Erro ao conectar à função Edge";
-        logger.error("Falha no teste:", errorMsg);
+        console.error("[testEdgeFunction] Falha no teste:", errorMsg);
         
         toast({
           title: "Erro na função Edge",
@@ -96,7 +94,7 @@ export const useEdgeFunctionService = () => {
         return false;
       }
       
-      logger.info("Teste bem-sucedido:", testResult.data);
+      console.log("[testEdgeFunction] Teste bem-sucedido:", testResult.data);
       
       toast({
         title: "Função Edge disponível",
@@ -105,7 +103,7 @@ export const useEdgeFunctionService = () => {
       
       return true;
     } catch (err) {
-      logger.error("Erro:", err);
+      console.error("[testEdgeFunction] Erro:", err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       
       setDebugInfo({

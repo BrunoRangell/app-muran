@@ -4,9 +4,6 @@ import { ClientWithReview } from "./types/reviewTypes";
 import { useBudgetFetcher } from "./budget/useBudgetFetcher";
 import { useBudgetCalculations } from "./budget/useBudgetCalculations";
 import { useTotalSpentCalculator } from "./budget/useTotalSpentCalculator";
-import { createLogger } from "@/lib/logger";
-
-const logger = createLogger("budget-calculation");
 
 export const useClientBudgetCalculation = (client: ClientWithReview) => {
   // Buscar dados de orçamento personalizado
@@ -38,10 +35,10 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     calculateTotalSpent
   } = useTotalSpentCalculator();
 
-  // Log para diagnóstico (apenas para orçamentos personalizados)
+  // Log para diagnóstico
   useEffect(() => {
     if (customBudget || isUsingCustomBudgetInReview) {
-      logger.debug(`Cliente ${client.company_name} - Orçamento Info:`, {
+      console.log(`Cliente ${client.company_name} - Orçamento Info:`, {
         isUsingCustomBudgetInReview,
         customBudget: customBudget ? {
           valor: customBudget.budget_amount,
