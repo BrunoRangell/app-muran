@@ -18,7 +18,7 @@ export const CardActions = ({
         size="sm" 
         onClick={onReviewClient}
         disabled={isProcessing}
-        className="w-full bg-[#ff6e00] text-white hover:bg-[#e06200]"
+        className="w-full"
       >
         {isProcessing ? (
           <>

@@ -57,43 +57,32 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   
   console.log(`Período de análise: ${dateRange.start} até ${dateRange.end}`);
   
-  try {
-    // Chamar função Edge para obter dados do Meta Ads
-    console.log("Invocando função Edge meta-budget-calculator com parâmetros:", {
+  // Chamar função Edge para obter dados do Meta Ads
+  const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
+    body: {
       accountId: client.meta_account_id,
-      dateRange: dateRange
-    });
-    
-    const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
-      body: {
-        accountId: client.meta_account_id,
-        accessToken,
-        dateRange: dateRange,
-        fetchSeparateInsights: true
-      }
-    });
-    
-    if (error) {
-      console.error("Erro na função de borda:", error);
-      throw new AppError(
-        `Erro ao analisar cliente: ${error.message}`, 
-        "EDGE_FUNCTION_ERROR",
-        { originalError: error, metaAccountId: client.meta_account_id }
-      );
+      accessToken,
+      dateRange: dateRange,
+      fetchSeparateInsights: true
     }
-    
-    if (!data) {
-      throw new Error("Resposta vazia da API");
-    }
-    
-    console.log("Dados recebidos da API Meta:", data);
-
-    // Salvar os dados no banco de dados
-    return await saveClientReviewData(client, data, customBudget);
-  } catch (error) {
-    console.error("Erro ao invocar função Edge:", error);
-    throw error;
+  });
+  
+  if (error) {
+    console.error("Erro na função de borda:", error);
+    throw new AppError(
+      `Erro ao analisar cliente: ${error.message}`, 
+      "EDGE_FUNCTION_ERROR",
+      { originalError: error, metaAccountId: client.meta_account_id }
+    );
   }
+  
+  if (!data) {
+    throw new Error("Resposta vazia da API");
+  }
+  
+  console.log("Dados recebidos da API Meta:", data);
+  
+  return await saveClientReviewData(client, data, customBudget);
 };
 
 /**
@@ -113,24 +102,18 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
   
   try {
     // Verificar se já existe uma revisão para hoje
-    const { data: existingReview, error: queryError } = await supabase
+    const { data: existingReview } = await supabase
       .from('daily_budget_reviews')
       .select('id')
       .eq('client_id', client.id)
       .eq('review_date', currentDate)
       .maybeSingle();
-      
-    if (queryError) {
-      console.error("Erro ao consultar revisão existente:", queryError);
-      throw queryError;
-    }
-
-    // Preparar informações de orçamento personalizado
-    const customBudgetInfo = prepareCustomBudgetInfo(customBudget);
-    console.log("Informações de orçamento personalizado:", customBudgetInfo);
 
     let reviewData;
     
+    // Preparar informações de orçamento personalizado
+    const customBudgetInfo = prepareCustomBudgetInfo(customBudget);
+
     if (existingReview) {
       console.log("Atualizando revisão existente para hoje:", existingReview.id);
       const { data: updatedReview, error: updateError } = await supabase
@@ -149,19 +132,9 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
         console.error("Erro ao atualizar revisão:", updateError);
         throw updateError;
       }
-      
-      console.log("Revisão atualizada com sucesso:", updatedReview);
       reviewData = updatedReview;
     } else {
-      console.log("Criando nova revisão para hoje com dados:", {
-        client_id: client.id,
-        review_date: currentDate,
-        meta_daily_budget_current: metaDailyBudgetCurrent,
-        meta_total_spent: metaTotalSpent,
-        meta_account_id: client.meta_account_id,
-        ...customBudgetInfo
-      });
-      
+      console.log("Criando nova revisão para hoje");
       const { data: newReview, error: insertError } = await supabase
         .from('daily_budget_reviews')
         .insert({
@@ -180,12 +153,11 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
         console.error("Erro ao inserir revisão:", insertError);
         throw insertError;
       }
-      
-      console.log("Nova revisão criada com sucesso:", newReview);
       reviewData = newReview;
     }
     
-    // Retornar os resultados da análise
+    console.log("Revisão salva/atualizada com sucesso:", reviewData);
+    
     return {
       clientId: client.id,
       reviewId: reviewData.id,

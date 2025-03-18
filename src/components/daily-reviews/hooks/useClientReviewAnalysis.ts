@@ -12,7 +12,6 @@ export const useClientReviewAnalysis = (
 
   // Importamos o hook useClientAnalysis para analisar o cliente
   const { analyzeMutation } = useClientAnalysis((data) => {
-    console.log("Análise concluída, atualizando dados:", data);
     toast({
       title: "Análise concluída",
       description: `Análise do cliente atualizada com sucesso.`,
@@ -34,9 +33,6 @@ export const useClientReviewAnalysis = (
           setIsRefreshing(false);
           
           // Mensagens de toast já são exibidas no hook useClientAnalysis
-        },
-        onSuccess: () => {
-          console.log("Análise completa, chamando callback");
         }
       });
     } catch (error) {

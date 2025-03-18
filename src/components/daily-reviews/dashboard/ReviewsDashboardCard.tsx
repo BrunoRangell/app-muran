@@ -36,42 +36,8 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     isBatchAnalyzing,
     refetchClients,
     batchProgress,
-    totalClientsToAnalyze,
-    error // Adicionamos o erro para exibição e diagnóstico
+    totalClientsToAnalyze
   } = useBatchReview();
-  
-  // Log de diagnóstico com mais informações
-  useEffect(() => {
-    console.log("Estado atual dos dados (detalhado):", {
-      temClientes: !!clientsWithReviews,
-      numeroClientes: clientsWithReviews?.length || 0,
-      isLoading,
-      lastReviewTime,
-      errorMessage: error,
-      clientesProc: processingClients.length,
-      isBatchAnalyzing
-    });
-    
-    // Se houver erro, mostrar toast com o erro
-    if (error) {
-      console.error("Erro ao buscar clientes:", error);
-      toast({
-        title: "Erro ao carregar clientes",
-        description: typeof error === 'string' ? error : "Ocorreu um erro ao buscar os clientes. Verifique o console para mais detalhes.",
-        variant: "destructive",
-      });
-    }
-    
-    // Reiniciar automaticamente a busca após 5 segundos em caso de erro
-    if (error && !isLoading) {
-      const timer = setTimeout(() => {
-        console.log("Tentando buscar clientes novamente após erro...");
-        refetchClients();
-      }, 5000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [clientsWithReviews, isLoading, lastReviewTime, error, processingClients, isBatchAnalyzing, toast, refetchClients]);
   
   useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe(event => {
@@ -130,7 +96,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   }, [reviewSingleClient]);
 
   const handleRefresh = useCallback(() => {
-    console.log("Forçando atualização manual dos clientes...");
     refetchClients();
   }, [refetchClients]);
 
@@ -167,25 +132,9 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
         />
       </div>
 
-      {/* Exibir mensagem de erro caso exista */}
-      {error && !isLoading && (
-        <Card className="p-4 bg-red-50 border-red-200 mb-4">
-          <p className="text-red-700 font-medium">Erro ao carregar clientes:</p>
-          <p className="text-red-600">{typeof error === 'string' ? error : 'Verifique o console para mais detalhes.'}</p>
-          <div className="flex justify-end mt-2">
-            <button 
-              onClick={handleRefresh} 
-              className="text-sm underline text-red-700 hover:text-red-900"
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </Card>
-      )}
-
       {isLoading ? (
         <LoadingView />
-      ) : !clientsWithReviews || (clientsWithReviews.length === 0 && !error) ? (
+      ) : sortedClients.length === 0 ? (
         <EmptyStateView />
       ) : (
         <ClientsGrid 

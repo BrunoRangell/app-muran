@@ -17,48 +17,34 @@ export const useBudgetCalculations = (
   // Usar o valor do banco de dados para o total gasto
   const totalSpent = totalSpentFromDB;
   
-  // Determinar se está usando orçamento personalizado
-  const isUsingCustomBudget = isUsingCustomBudgetInReview || !!customBudget;
-  
-  // Obter o orçamento correto com base no tipo (personalizado ou padrão)
+  // Obter o orçamento baseado no tipo (personalizado ou padrão)
   const getBudgetAmount = () => {
-    // Se está usando orçamento personalizado, SOMENTE ele deve ser considerado
-    if (isUsingCustomBudget) {
-      // Se está usando orçamento personalizado na revisão, priorizar esse valor
-      if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_amount) {
-        console.log("Usando orçamento personalizado da revisão:", client.lastReview.custom_budget_amount);
-        return client.lastReview.custom_budget_amount;
-      }
-      
-      // Se há um orçamento personalizado ativo, usar ele
-      if (customBudget) {
-        console.log("Usando orçamento personalizado:", customBudget.budget_amount);
-        return customBudget.budget_amount;
-      }
+    if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_amount) {
+      console.log("Usando orçamento personalizado da revisão:", client.lastReview.custom_budget_amount);
+      return client.lastReview.custom_budget_amount;
     }
     
-    // Somente usar o orçamento mensal padrão se não existir orçamento personalizado
-    console.log("Usando orçamento mensal padrão:", monthlyBudget);
+    if (customBudget) {
+      console.log("Usando orçamento personalizado:", customBudget.budget_amount);
+      return customBudget.budget_amount;
+    }
+    
     return monthlyBudget;
   };
 
   // Obter dias restantes com base no tipo de orçamento
   const getRemainingDays = () => {
-    // Se está usando orçamento personalizado
-    if (isUsingCustomBudget) {
-      // Usar dados do objeto customBudget se disponível
-      if (customBudget) {
-        // Para orçamento personalizado, contar os dias entre hoje e a data de término
-        const today = getCurrentDateInBrasiliaTz();
-        const endDate = new Date(customBudget.end_date);
-        
-        // +1 para incluir o dia atual
-        const diffTime = endDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        
-        // Garantir que retorne pelo menos 1 dia (hoje)
-        return Math.max(1, diffDays);
-      }
+    if (customBudget) {
+      // Para orçamento personalizado, contar os dias entre hoje e a data de término
+      const today = getCurrentDateInBrasiliaTz();
+      const endDate = new Date(customBudget.end_date);
+      
+      // +1 para incluir o dia atual E o dia final
+      const diffTime = endDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Garantir que retorne pelo menos 1 dia (hoje)
+      return Math.max(1, diffDays);
     }
     
     // Para orçamento regular, usar a função padrão
@@ -104,7 +90,6 @@ export const useBudgetCalculations = (
     remainingBudget,
     remainingDays,
     actualBudgetAmount,
-    needsBudgetAdjustment,
-    isUsingCustomBudget
+    needsBudgetAdjustment
   };
 };
