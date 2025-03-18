@@ -27,6 +27,7 @@ export const fetchClientsWithReviews = async () => {
         meta_ads_budget,
         daily_budget_reviews (
           id,
+          client_id,
           review_date,
           meta_daily_budget_current,
           meta_total_spent,
@@ -52,9 +53,17 @@ export const fetchClientsWithReviews = async () => {
     const processedClients = clientsData?.map(client => {
       let lastReview = null;
       
+      // Adicionar client_id às revisões se estiver faltando
+      const reviewsWithClientId = client.daily_budget_reviews?.map(review => {
+        if (!review.client_id) {
+          return { ...review, client_id: client.id };
+        }
+        return review;
+      });
+      
       // Ordenar revisões por data (mais recente primeiro)
-      if (client.daily_budget_reviews && client.daily_budget_reviews.length > 0) {
-        const sortedReviews = [...client.daily_budget_reviews].sort(
+      if (reviewsWithClientId && reviewsWithClientId.length > 0) {
+        const sortedReviews = [...reviewsWithClientId].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         
@@ -69,6 +78,7 @@ export const fetchClientsWithReviews = async () => {
       
       return {
         ...client,
+        daily_budget_reviews: reviewsWithClientId,
         lastReview
       };
     });

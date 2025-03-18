@@ -10,7 +10,7 @@ export interface ClientWithReview {
 
 export interface ReviewData {
   id: number;
-  client_id: string;
+  client_id?: string; // Modificado para ser opcional
   review_date: string;
   meta_daily_budget_current: number;
   meta_total_spent: number;
