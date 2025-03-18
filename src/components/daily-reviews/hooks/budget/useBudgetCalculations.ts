@@ -34,6 +34,20 @@ export const useBudgetCalculations = (
 
   // Obter dias restantes com base no tipo de orçamento
   const getRemainingDays = () => {
+    // Priorizar datas da revisão se disponíveis (para coerência com o cálculo de ajuste)
+    if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_end_date) {
+      const today = getCurrentDateInBrasiliaTz();
+      const endDate = new Date(client.lastReview.custom_budget_end_date);
+      
+      // Calcular dias entre hoje e a data de término
+      const diffTime = endDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir o dia atual
+      
+      // Garantir que retorne pelo menos 1 dia (hoje)
+      return Math.max(1, diffDays);
+    }
+    
+    // Usar dados do objeto customBudget se disponível
     if (customBudget) {
       // Para orçamento personalizado, contar os dias entre hoje e a data de término
       const today = getCurrentDateInBrasiliaTz();

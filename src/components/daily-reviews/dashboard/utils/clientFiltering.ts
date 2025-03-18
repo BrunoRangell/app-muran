@@ -1,5 +1,6 @@
 
 import { ClientWithReview } from "../../hooks/types/reviewTypes";
+import { supabase } from "@/lib/supabase";
 
 /**
  * Filtra clientes por nome
@@ -38,6 +39,26 @@ export const filterClientsByAdjustment = (
 };
 
 /**
+ * Busca dados completos do orçamento personalizado
+ */
+const getCustomBudgetById = async (budgetId: string) => {
+  if (!budgetId) return null;
+  
+  const { data, error } = await supabase
+    .from("meta_custom_budgets")
+    .select("*")
+    .eq("id", budgetId)
+    .maybeSingle();
+    
+  if (error) {
+    console.error("Erro ao buscar orçamento personalizado:", error);
+    return null;
+  }
+  
+  return data;
+};
+
+/**
  * Calcula o ajuste de orçamento necessário para cada cliente
  */
 export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
@@ -56,31 +77,37 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
     // com base no período do orçamento personalizado
     const today = new Date();
     
-    // Não temos acesso direto à data de término do orçamento personalizado na revisão
-    // Vamos buscar isso do orçamento personalizado associado ou usar uma lógica alternativa
-    
     // Verificar se temos o ID do orçamento personalizado
     if (!client.lastReview.custom_budget_id) {
       console.log(`Cliente ${client.company_name}: Sem ID de orçamento personalizado.`);
       return 0;
     }
     
-    // Não temos a data de término aqui, então precisamos calcular diferentemente
-    // Podemos usar um valor aproximado baseado nas informações disponíveis
-    
     // Obter valores de orçamento personalizado da revisão
     const customBudgetAmount = client.lastReview.custom_budget_amount || 0;
     const totalSpent = client.lastReview.meta_total_spent || 0;
     const remaining = customBudgetAmount - totalSpent;
     
-    // Assumir um período padrão de dias restantes (por exemplo, 30 dias)
-    // Isso é uma solução temporária até termos uma forma melhor de obter a data real
-    const assumedDaysRemaining = 30;
+    // Calcular ajuste baseado no orçamento personalizado
+    let daysRemaining;
+    
+    // Se temos as datas de início e fim no objeto de revisão
+    if (client.lastReview.custom_budget_start_date && client.lastReview.custom_budget_end_date) {
+      const endDate = new Date(client.lastReview.custom_budget_end_date);
+      // Calcular dias restantes do período personalizado
+      const diffTime = endDate.getTime() - today.getTime();
+      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir o dia atual
+      daysRemaining = Math.max(1, daysRemaining); // Garantir pelo menos 1 dia restante
+    } else {
+      // Se não temos as datas no objeto de revisão, usar um valor padrão
+      // Isso será melhorado quando tivermos essas informações disponíveis
+      daysRemaining = 30;
+    }
     
     // Calcular orçamento diário ideal para o período personalizado
-    const idealDailyBudget = remaining / assumedDaysRemaining;
+    const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
     
-    console.log(`Cliente ${client.company_name} (Personalizado): Ideal=${idealDailyBudget.toFixed(2)}, Atual=${currentDailyBudget.toFixed(2)}, Diferença=${Math.abs(idealDailyBudget - currentDailyBudget).toFixed(2)}`);
+    console.log(`Cliente ${client.company_name} (Personalizado): Ideal=${idealDailyBudget.toFixed(2)}, Atual=${currentDailyBudget.toFixed(2)}, Diferença=${Math.abs(idealDailyBudget - currentDailyBudget).toFixed(2)}, Dias restantes=${daysRemaining}`);
     
     // Retornar a diferença absoluta
     return Math.abs(idealDailyBudget - currentDailyBudget);

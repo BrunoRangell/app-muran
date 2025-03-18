@@ -59,7 +59,9 @@ export const useBudgetFetcher = (client: ClientWithReview) => {
         console.log(`[useBudgetFetcher] Verificando orçamentos personalizados para ${client.company_name}:`, {
           orçamentoEncontrado: data,
           isUsingCustomBudgetInReview,
-          custom_budget_id: client.lastReview?.custom_budget_id
+          custom_budget_id: client.lastReview?.custom_budget_id,
+          dataInicio: data?.start_date,
+          dataFim: data?.end_date
         });
         
         setCustomBudget(data);
