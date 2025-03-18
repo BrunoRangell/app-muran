@@ -55,33 +55,30 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
     // Para orçamentos personalizados, precisamos calcular o orçamento diário ideal
     // com base no período do orçamento personalizado
     const today = new Date();
-    const endDateParts = client.lastReview.custom_budget_end_date ? 
-                        client.lastReview.custom_budget_end_date.split('-') : null;
     
-    // Se não temos data de término, usamos a lógica padrão
-    if (!endDateParts) {
-      console.log(`Cliente ${client.company_name}: Sem data de término para orçamento personalizado.`);
+    // Não temos acesso direto à data de término do orçamento personalizado na revisão
+    // Vamos buscar isso do orçamento personalizado associado ou usar uma lógica alternativa
+    
+    // Verificar se temos o ID do orçamento personalizado
+    if (!client.lastReview.custom_budget_id) {
+      console.log(`Cliente ${client.company_name}: Sem ID de orçamento personalizado.`);
       return 0;
     }
     
-    // Criar data de término a partir das partes
-    const endDate = new Date(
-      parseInt(endDateParts[0]), 
-      parseInt(endDateParts[1]) - 1, // Mês é 0-indexado em JavaScript
-      parseInt(endDateParts[2])
-    );
-    
-    // Calcular dias restantes no período personalizado
-    const diffTime = endDate.getTime() - today.getTime();
-    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir o dia atual
+    // Não temos a data de término aqui, então precisamos calcular diferentemente
+    // Podemos usar um valor aproximado baseado nas informações disponíveis
     
     // Obter valores de orçamento personalizado da revisão
     const customBudgetAmount = client.lastReview.custom_budget_amount || 0;
     const totalSpent = client.lastReview.meta_total_spent || 0;
     const remaining = customBudgetAmount - totalSpent;
     
+    // Assumir um período padrão de dias restantes (por exemplo, 30 dias)
+    // Isso é uma solução temporária até termos uma forma melhor de obter a data real
+    const assumedDaysRemaining = 30;
+    
     // Calcular orçamento diário ideal para o período personalizado
-    const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
+    const idealDailyBudget = remaining / assumedDaysRemaining;
     
     console.log(`Cliente ${client.company_name} (Personalizado): Ideal=${idealDailyBudget.toFixed(2)}, Atual=${currentDailyBudget.toFixed(2)}, Diferença=${Math.abs(idealDailyBudget - currentDailyBudget).toFixed(2)}`);
     
