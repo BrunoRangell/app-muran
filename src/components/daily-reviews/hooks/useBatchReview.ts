@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientWithReview, BatchReviewResult } from "./types/reviewTypes";
@@ -8,17 +7,13 @@ import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./ser
 export const useBatchReview = () => {
   const [processingClients, setProcessingClients] = useState<string[]>([]);
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
-  // Novo estado para rastrear o progresso
   const [batchProgress, setBatchProgress] = useState(0);
-  // Número total de clientes a serem analisados
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
-  // Estado local para o timestamp da última revisão em massa
   const [localLastReviewTime, setLocalLastReviewTime] = useState<Date | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Consulta principal para obter clientes com revisões
   const { 
     data: clientsWithReviewsData,
     isLoading,
@@ -27,20 +22,20 @@ export const useBatchReview = () => {
     queryKey: ["clients-with-reviews"],
     queryFn: fetchClientsWithReviews,
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 5 * 60 * 1000,
   });
 
-  const clientsWithReviews = clientsWithReviewsData?.clientsData;
-  // Usar o timestamp local se disponível, caso contrário usar o do server
-  const lastReviewTime = localLastReviewTime || clientsWithReviewsData?.lastReviewTime;
+  const clientsWithReviews = clientsWithReviewsData ? 
+    (clientsWithReviewsData as any).clientsData : undefined;
   
-  // Função para recarregar dados
+  const lastReviewTime = localLastReviewTime || 
+    (clientsWithReviewsData ? (clientsWithReviewsData as any).lastReviewTime : null);
+
   const refetchClients = useCallback(async () => {
     console.log("Recarregando dados dos clientes...");
     await refetch();
   }, [refetch]);
 
-  // Função para revisar um único cliente
   const reviewSingleClient = useCallback(async (clientId: string) => {
     if (processingClients.includes(clientId)) {
       console.log(`Cliente ${clientId} já está em processamento.`);
@@ -75,7 +70,6 @@ export const useBatchReview = () => {
     }
   }, [processingClients, clientsWithReviews, toast, refetchClients]);
 
-  // Função para revisar todos os clientes - sempre atualiza as revisões
   const reviewAllClients = useCallback(async () => {
     if (isBatchAnalyzing) {
       console.log("Já existe uma análise em massa em andamento.");
@@ -92,7 +86,6 @@ export const useBatchReview = () => {
       return;
     }
 
-    // Filtrar apenas clientes com ID de conta Meta configurado
     const eligibleClients = clientsWithReviews.filter(client => 
       client.meta_account_id && client.meta_account_id.trim() !== ""
     );
@@ -110,7 +103,6 @@ export const useBatchReview = () => {
     setBatchProgress(0);
     setTotalClientsToAnalyze(eligibleClients.length);
     
-    // Atualizar o timestamp da revisão em massa para agora
     setLocalLastReviewTime(new Date());
 
     try {
@@ -122,7 +114,6 @@ export const useBatchReview = () => {
       
       const handleClientEnd = (clientId: string) => {
         setProcessingClients(prev => prev.filter(id => id !== clientId));
-        // Atualizar progresso quando um cliente for concluído
         setBatchProgress(prev => {
           const newProgress = prev + 1;
           return newProgress;
@@ -173,7 +164,6 @@ export const useBatchReview = () => {
     }
   }, [isBatchAnalyzing, clientsWithReviews, toast, refetchClients]);
 
-  // Monitorar mudanças nos clientes em processamento
   useEffect(() => {
     console.log("Clientes em processamento:", processingClients);
   }, [processingClients]);
@@ -187,7 +177,6 @@ export const useBatchReview = () => {
     reviewSingleClient,
     reviewAllClients,
     refetchClients,
-    // Retornar informações de progresso
     batchProgress,
     totalClientsToAnalyze
   };
