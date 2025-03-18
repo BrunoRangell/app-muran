@@ -60,6 +60,22 @@ export const ClientReviewCardCompact = ({
   // Verificar se tem orçamento personalizado
   const hasCustomBudget = customBudget && isUsingCustomBudgetInReview;
 
+  // Valor do orçamento a exibir (personalizado ou padrão)
+  const displayBudget = hasCustomBudget ? actualBudgetAmount : monthlyBudget;
+
+  // Log para diagnóstico dos valores de orçamento e ajustes
+  console.log(`Cliente ${client.company_name} - Diagnóstico:`, {
+    hasReview,
+    orçamentoMensal: monthlyBudget,
+    orçamentoPersonalizado: hasCustomBudget ? actualBudgetAmount : "Não está usando",
+    orçamentoExibido: displayBudget,
+    orçamentoDiárioAtual: currentDailyBudget,
+    orçamentoDiárioIdeal: idealDailyBudget,
+    diferençaNecessária: budgetDifference,
+    precisaAjuste: showRecommendation,
+    tipoAjuste: needsIncrease ? "Aumentar" : "Diminuir"
+  });
+
   // Determinar classes de estilo com base no status - Apenas destaque para cards que precisam de ajuste
   const cardClasses = `overflow-hidden transition-all ${
     inactive ? 'opacity-60 hover:opacity-80' : ''
@@ -97,7 +113,7 @@ export const ClientReviewCardCompact = ({
         <div className="flex-1 p-3 border-l">
           <div className="text-xs text-gray-500">Orçamento</div>
           <div className="flex items-center">
-            {formatCurrency(actualBudgetAmount)}
+            {formatCurrency(displayBudget)}
             {hasCustomBudget && (
               <span className="text-xs text-[#ff6e00] ml-1">*</span>
             )}
@@ -222,7 +238,7 @@ export const ClientReviewCardCompact = ({
           <div className="bg-gray-50 p-2 rounded">
             <div className="text-xs text-gray-500">Orçamento</div>
             <div className="font-medium flex items-center">
-              {formatCurrency(actualBudgetAmount)}
+              {formatCurrency(displayBudget)}
               {hasCustomBudget && (
                 <span className="text-xs text-[#ff6e00] ml-1">*</span>
               )}
