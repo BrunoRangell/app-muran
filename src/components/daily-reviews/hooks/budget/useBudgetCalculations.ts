@@ -20,7 +20,7 @@ export const useBudgetCalculations = (
   // Determinar se está usando orçamento personalizado
   const isUsingCustomBudget = isUsingCustomBudgetInReview || !!customBudget;
   
-  // Obter o orçamento baseado no tipo (personalizado ou padrão)
+  // Obter o orçamento correto com base no tipo (personalizado ou padrão)
   const getBudgetAmount = () => {
     // Se está usando orçamento personalizado na revisão, priorizar esse valor
     if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_amount) {
@@ -35,6 +35,7 @@ export const useBudgetCalculations = (
     }
     
     // Somente usar o orçamento mensal padrão se não existir orçamento personalizado
+    console.log("Usando orçamento mensal padrão:", monthlyBudget);
     return monthlyBudget;
   };
 

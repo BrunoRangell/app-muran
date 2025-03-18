@@ -1,6 +1,8 @@
 
 import { supabase } from "@/lib/supabase";
-import { ClientWithReview } from "../types/reviewTypes";
+import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
+import { ClientWithReview, BatchReviewResult } from "../types/reviewTypes";
+import { analyzeClient as clientAnalysisService } from "./clientAnalysisService";
 
 /**
  * Busca todos os clientes com suas respectivas revisões mais recentes
@@ -31,7 +33,8 @@ export const fetchClientsWithReviews = async () => {
         updated_at,
         using_custom_budget,
         custom_budget_id,
-        custom_budget_amount
+        custom_budget_amount,
+        custom_budget_end_date
       )
     `)
     .eq('status', 'active')
@@ -75,5 +78,71 @@ export const fetchClientsWithReviews = async () => {
   return { 
     clientsData: processedClients || [],
     lastReviewTime 
+  };
+};
+
+/**
+ * Analisa um cliente específico
+ */
+export const analyzeClient = async (clientId: string, clientsWithReviews?: ClientWithReview[]) => {
+  console.log(`Analisando cliente: ${clientId}`);
+  try {
+    return await clientAnalysisService(clientId, clientsWithReviews);
+  } catch (error) {
+    console.error("Erro ao analisar cliente:", error);
+    throw error;
+  }
+};
+
+/**
+ * Analisa todos os clientes elegíveis
+ */
+export const analyzeAllClients = async (
+  clients: ClientWithReview[],
+  onClientStart?: (clientId: string) => void,
+  onClientEnd?: (clientId: string) => void
+): Promise<BatchReviewResult> => {
+  console.log("Iniciando análise em massa de clientes...");
+  
+  const results: any[] = [];
+  const errors: any[] = [];
+  
+  // Filtrar apenas clientes com ID de conta Meta configurado
+  const eligibleClients = clients.filter(client => 
+    client.meta_account_id && client.meta_account_id.trim() !== ""
+  );
+  
+  console.log(`${eligibleClients.length} clientes elegíveis para análise`);
+  
+  // Processar cliente a cliente
+  for (const client of eligibleClients) {
+    try {
+      if (onClientStart) {
+        onClientStart(client.id);
+      }
+      
+      console.log(`Analisando cliente: ${client.company_name}`);
+      const result = await analyzeClient(client.id, clients);
+      results.push(result);
+      
+    } catch (error) {
+      console.error(`Erro ao analisar ${client.company_name}:`, error);
+      errors.push({
+        clientId: client.id,
+        clientName: client.company_name,
+        error: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    } finally {
+      if (onClientEnd) {
+        onClientEnd(client.id);
+      }
+    }
+  }
+  
+  console.log(`Análise em massa concluída: ${results.length} sucessos, ${errors.length} falhas`);
+  
+  return {
+    results,
+    errors
   };
 };
