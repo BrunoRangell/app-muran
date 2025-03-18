@@ -1,8 +1,7 @@
 
 import { useState, useCallback, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClientWithReview, BatchReviewResult } from "./types/reviewTypes";
-import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ClientWithReview } from "./types/reviewTypes";
 import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./services/clientService";
 
 export const useBatchReview = () => {
@@ -10,173 +9,118 @@ export const useBatchReview = () => {
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
-  const [localLastReviewTime, setLocalLastReviewTime] = useState<Date | null>(null);
-  
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Consulta para buscar clientes com revisões
   const { 
-    data: clientsWithReviewsData,
-    isLoading,
-    refetch 
+    data, 
+    isLoading, 
+    error,
+    refetch: refetchClientsQuery
   } = useQuery({
     queryKey: ["clients-with-reviews"],
     queryFn: fetchClientsWithReviews,
-    refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: 3,
+    retryDelay: attempt => Math.min(attempt * 1000, 30000),
   });
 
-  const clientsWithReviews = clientsWithReviewsData ? 
-    (clientsWithReviewsData as any).clientsData : undefined;
-  
-  const lastReviewTime = localLastReviewTime || 
-    (clientsWithReviewsData ? (clientsWithReviewsData as any).lastReviewTime : null);
+  // Extrair dados da consulta
+  const clientsWithReviews = data?.clientsData;
+  const lastReviewTime = data?.lastReviewTime;
 
-  const refetchClients = useCallback(async () => {
-    console.log("Recarregando dados dos clientes...");
-    await refetch();
-  }, [refetch]);
+  // Mutação para analisar um único cliente
+  const reviewClientMutation = useMutation({
+    mutationFn: (clientId: string) => analyzeClient(clientId, clientsWithReviews),
+    onSuccess: () => {
+      // Atualizar dados após análise bem-sucedida
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    },
+  });
 
-  const reviewSingleClient = useCallback(async (clientId: string) => {
-    if (processingClients.includes(clientId)) {
-      console.log(`Cliente ${clientId} já está em processamento.`);
-      return;
-    }
-
-    try {
-      setProcessingClients(prev => [...prev, clientId]);
-      
-      console.log(`Iniciando análise para cliente ${clientId}`);
-      const result = await analyzeClient(clientId, clientsWithReviews);
-      
-      toast({
-        title: "Análise concluída",
-        description: "Orçamentos de Meta Ads atualizados com sucesso!",
-      });
-      
-      console.log("Análise concluída com sucesso:", result);
-      await refetchClients();
-      
-    } catch (error) {
-      console.error("Erro ao analisar cliente:", error);
-      
-      toast({
-        title: "Erro na análise",
-        description: error instanceof Error ? error.message : "Erro desconhecido na análise do cliente.",
-        variant: "destructive",
-      });
-      
-    } finally {
-      setProcessingClients(prev => prev.filter(id => id !== clientId));
-    }
-  }, [processingClients, clientsWithReviews, toast, refetchClients]);
-
-  const reviewAllClients = useCallback(async () => {
-    if (isBatchAnalyzing) {
-      console.log("Já existe uma análise em massa em andamento.");
-      return;
-    }
-
-    if (!clientsWithReviews || clientsWithReviews.length === 0) {
-      console.log("Nenhum cliente disponível para análise.");
-      toast({
-        title: "Nenhum cliente disponível",
-        description: "Não há clientes disponíveis para analisar.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const eligibleClients = clientsWithReviews.filter(client => 
-      client.meta_account_id && client.meta_account_id.trim() !== ""
-    );
-    
-    if (eligibleClients.length === 0) {
-      toast({
-        title: "Nenhum cliente elegível",
-        description: "Nenhum cliente com conta Meta Ads configurada.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsBatchAnalyzing(true);
-    setBatchProgress(0);
-    setTotalClientsToAnalyze(eligibleClients.length);
-    
-    setLocalLastReviewTime(new Date());
-
-    try {
-      console.log("Iniciando análise em massa...");
-      
-      const handleClientStart = (clientId: string) => {
-        setProcessingClients(prev => [...prev, clientId]);
-      };
-      
-      const handleClientEnd = (clientId: string) => {
-        setProcessingClients(prev => prev.filter(id => id !== clientId));
-        setBatchProgress(prev => {
-          const newProgress = prev + 1;
-          return newProgress;
-        });
-      };
-      
-      const result: BatchReviewResult = await analyzeAllClients(
-        clientsWithReviews,
-        handleClientStart,
-        handleClientEnd
-      );
-      
-      console.log("Análise em massa concluída:", result);
-      
-      const successCount = result.results.length;
-      const errorCount = result.errors.length;
-      
-      if (successCount > 0 || errorCount > 0) {
-        toast({
-          title: "Análise em massa concluída",
-          description: `${successCount} análises concluídas com sucesso. ${errorCount} falhas.`,
-          variant: errorCount > 0 ? "destructive" : "default",
-        });
-      } else {
-        toast({
-          title: "Nenhum cliente analisado",
-          description: "Não foi possível analisar nenhum cliente.",
-          variant: "destructive",
-        });
+  // Mutação para analisar todos os clientes elegíveis
+  const reviewAllClientsMutation = useMutation({
+    mutationFn: () => {
+      if (!clientsWithReviews) {
+        return Promise.reject("Nenhum cliente disponível para análise");
       }
       
-      await refetchClients();
+      // Filtrar apenas clientes com ID de conta Meta
+      const eligibleClients = clientsWithReviews.filter(client => !!client.meta_account_id);
+      setTotalClientsToAnalyze(eligibleClients.length);
+      setBatchProgress(0);
       
-    } catch (error) {
-      console.error("Erro na análise em massa:", error);
-      
-      toast({
-        title: "Erro na análise em massa",
-        description: error instanceof Error ? error.message : "Erro desconhecido na análise em massa.",
-        variant: "destructive",
-      });
-      
-    } finally {
+      return analyzeAllClients(
+        eligibleClients,
+        // Callback quando inicia o processamento de um cliente
+        (clientId) => {
+          setProcessingClients(prev => [...prev, clientId]);
+        },
+        // Callback quando termina o processamento de um cliente
+        (clientId) => {
+          setProcessingClients(prev => prev.filter(id => id !== clientId));
+          setBatchProgress(prev => prev + 1);
+        }
+      );
+    },
+    onSuccess: () => {
+      // Atualizar dados após análise bem-sucedida
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
       setIsBatchAnalyzing(false);
-      setProcessingClients([]);
+      setBatchProgress(0);
+      setTotalClientsToAnalyze(0);
+    },
+    onError: () => {
+      setIsBatchAnalyzing(false);
       setBatchProgress(0);
       setTotalClientsToAnalyze(0);
     }
-  }, [isBatchAnalyzing, clientsWithReviews, toast, refetchClients]);
+  });
 
+  // Função para iniciar análise de um cliente individual
+  const reviewSingleClient = useCallback((clientId: string) => {
+    // Adicionar cliente à lista de processamento
+    setProcessingClients(prev => [...prev, clientId]);
+    
+    reviewClientMutation.mutate(clientId, {
+      onSettled: () => {
+        // Remover cliente da lista de processamento ao finalizar
+        setProcessingClients(prev => prev.filter(id => id !== clientId));
+      },
+    });
+  }, [reviewClientMutation]);
+
+  // Função para iniciar análise em lote de todos os clientes
+  const reviewAllClients = useCallback(() => {
+    setIsBatchAnalyzing(true);
+    reviewAllClientsMutation.mutate();
+  }, [reviewAllClientsMutation]);
+
+  // Função para recarregar os clientes
+  const refetchClients = useCallback(() => {
+    console.log("Recarregando dados de clientes...");
+    return refetchClientsQuery();
+  }, [refetchClientsQuery]);
+
+  // Limpar estados ao desmontar o componente
   useEffect(() => {
-    console.log("Clientes em processamento:", processingClients);
-  }, [processingClients]);
+    return () => {
+      setProcessingClients([]);
+      setIsBatchAnalyzing(false);
+      setBatchProgress(0);
+      setTotalClientsToAnalyze(0);
+    };
+  }, []);
 
   return {
     clientsWithReviews,
-    lastReviewTime,
     isLoading,
+    error,
     processingClients,
     isBatchAnalyzing,
     reviewSingleClient,
     reviewAllClients,
+    lastReviewTime,
     refetchClients,
     batchProgress,
     totalClientsToAnalyze

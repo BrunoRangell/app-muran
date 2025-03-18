@@ -1,3 +1,4 @@
+
 import { ClientWithReview } from "../../hooks/types/reviewTypes";
 
 /**
@@ -68,7 +69,7 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
     // Calcular ajuste baseado no orçamento personalizado
     let daysRemaining;
     
-    // Se temos as datas de início e fim no objeto de revisão
+    // Se temos a data de fim no objeto de revisão
     if (client.lastReview.custom_budget_end_date) {
       const endDate = new Date(client.lastReview.custom_budget_end_date);
       // Calcular dias restantes do período personalizado
@@ -76,8 +77,7 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
       daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 para incluir o dia atual
       daysRemaining = Math.max(1, daysRemaining); // Garantir pelo menos 1 dia restante
     } else {
-      // Se não temos as datas no objeto de revisão, usar um valor padrão
-      // Isso será melhorado quando tivermos essas informações disponíveis
+      // Se não temos a data de fim no objeto de revisão, usar um valor padrão
       daysRemaining = 30;
     }
     
