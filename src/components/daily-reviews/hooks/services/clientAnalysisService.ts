@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
@@ -164,6 +163,7 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
       analysis: {
         totalDailyBudget: metaDailyBudgetCurrent,
         totalSpent: metaTotalSpent,
+        // Adiciona campaigns dentro do objeto analysis conforme a interface atualizada
         campaigns: data.campaignDetails || []
       }
     };

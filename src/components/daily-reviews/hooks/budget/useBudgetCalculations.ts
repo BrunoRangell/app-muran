@@ -22,16 +22,19 @@ export const useBudgetCalculations = (
   
   // Obter o orçamento correto com base no tipo (personalizado ou padrão)
   const getBudgetAmount = () => {
-    // Se está usando orçamento personalizado na revisão, priorizar esse valor
-    if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_amount) {
-      console.log("Usando orçamento personalizado da revisão:", client.lastReview.custom_budget_amount);
-      return client.lastReview.custom_budget_amount;
-    }
-    
-    // Se há um orçamento personalizado ativo, usar ele
-    if (customBudget) {
-      console.log("Usando orçamento personalizado:", customBudget.budget_amount);
-      return customBudget.budget_amount;
+    // Se está usando orçamento personalizado, SOMENTE ele deve ser considerado
+    if (isUsingCustomBudget) {
+      // Se está usando orçamento personalizado na revisão, priorizar esse valor
+      if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_amount) {
+        console.log("Usando orçamento personalizado da revisão:", client.lastReview.custom_budget_amount);
+        return client.lastReview.custom_budget_amount;
+      }
+      
+      // Se há um orçamento personalizado ativo, usar ele
+      if (customBudget) {
+        console.log("Usando orçamento personalizado:", customBudget.budget_amount);
+        return customBudget.budget_amount;
+      }
     }
     
     // Somente usar o orçamento mensal padrão se não existir orçamento personalizado

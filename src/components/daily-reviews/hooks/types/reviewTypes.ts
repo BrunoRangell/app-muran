@@ -1,3 +1,4 @@
+
 export interface ClientWithReview {
   id: string;
   company_name: string;
@@ -19,6 +20,7 @@ export interface ReviewData {
   custom_budget_id?: string;
   custom_budget_amount?: number;
   custom_budget_end_date?: string;
+  custom_budget_start_date?: string;
   needsBudgetAdjustment?: boolean;
 }
 
@@ -28,6 +30,7 @@ export interface ClientAnalysisResult {
   analysis: {
     totalDailyBudget: number;
     totalSpent: number;
+    campaigns?: any[];
   };
 }
 
