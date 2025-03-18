@@ -1,6 +1,5 @@
 
 import { ClientWithReview } from "../../hooks/types/reviewTypes";
-import { supabase } from "@/lib/supabase";
 
 /**
  * Filtra clientes por nome
@@ -17,13 +16,11 @@ export const filterClientsByName = (
 };
 
 /**
- * Verifica se um cliente precisa de ajuste (diferença >= 5)
+ * Verifica se um cliente precisa de ajuste com base no flag na revisão
  */
 export const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
-  if (!client.lastReview) return false;
-  
-  const adjustment = calculateBudgetAdjustment(client);
-  return adjustment >= 5;
+  // Verificação simplificada: utiliza o campo needsBudgetAdjustment da última revisão
+  return client.lastReview?.needsBudgetAdjustment === true;
 };
 
 /**
@@ -39,27 +36,8 @@ export const filterClientsByAdjustment = (
 };
 
 /**
- * Busca dados completos do orçamento personalizado
- */
-const getCustomBudgetById = async (budgetId: string) => {
-  if (!budgetId) return null;
-  
-  const { data, error } = await supabase
-    .from("meta_custom_budgets")
-    .select("*")
-    .eq("id", budgetId)
-    .maybeSingle();
-    
-  if (error) {
-    console.error("Erro ao buscar orçamento personalizado:", error);
-    return null;
-  }
-  
-  return data;
-};
-
-/**
  * Calcula o ajuste de orçamento necessário para cada cliente
+ * Nota: Mantido para compatibilidade, mas não é mais usado na ordenação e filtragem
  */
 export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
   // Se não tem revisão ou ID de conta Meta, retorna 0

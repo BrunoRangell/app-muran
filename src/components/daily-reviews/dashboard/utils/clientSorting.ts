@@ -1,6 +1,5 @@
 
 import { ClientWithReview } from "../../hooks/types/reviewTypes";
-import { calculateBudgetAdjustment, clientNeedsAdjustment } from "./clientFiltering";
 
 /**
  * Ordena clientes com base no critério selecionado
@@ -21,21 +20,16 @@ export const sortClients = (
     
     // Agora aplica a lógica de ordenação específica
     if (sortBy === "adjustments") {
-      const aNeedsAdjustment = clientNeedsAdjustment(a);
-      const bNeedsAdjustment = clientNeedsAdjustment(b);
+      // Verificação simplificada: cliente precisa de ajuste se a última revisão
+      // tiver um valor de needsBudgetAdjustment como true
+      const aNeedsAdjustment = a.lastReview?.needsBudgetAdjustment === true;
+      const bNeedsAdjustment = b.lastReview?.needsBudgetAdjustment === true;
       
       // Clientes que precisam de ajuste vêm primeiro
       if (aNeedsAdjustment && !bNeedsAdjustment) return -1;
       if (!aNeedsAdjustment && bNeedsAdjustment) return 1;
       
-      // Se ambos precisam ou não precisam de ajuste, ordena pelo tamanho do ajuste (decrescente)
-      if (aNeedsAdjustment && bNeedsAdjustment) {
-        const adjustmentA = calculateBudgetAdjustment(a);
-        const adjustmentB = calculateBudgetAdjustment(b);
-        return adjustmentB - adjustmentA;
-      }
-      
-      // Se nenhum precisa de ajuste, ordena por nome
+      // Se ambos precisam ou não precisam de ajuste, ordena por nome
       return a.company_name.localeCompare(b.company_name);
     } else if (sortBy === "name") {
       return a.company_name.localeCompare(b.company_name);
