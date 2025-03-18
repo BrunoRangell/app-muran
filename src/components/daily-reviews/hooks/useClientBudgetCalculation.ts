@@ -24,7 +24,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     remainingBudget,
     remainingDays,
     actualBudgetAmount,
-    needsBudgetAdjustment
+    needsBudgetAdjustment,
+    isUsingCustomBudget
   } = useBudgetCalculations(client, customBudget, isUsingCustomBudgetInReview, hasReview);
   
   // Cálculo manual de total gasto
@@ -39,7 +40,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
   useEffect(() => {
     if (customBudget || isUsingCustomBudgetInReview) {
       console.log(`Cliente ${client.company_name} - Orçamento Info:`, {
-        isUsingCustomBudgetInReview,
+        isUsingCustomBudget,
         customBudget: customBudget ? {
           valor: customBudget.budget_amount,
           inicio: customBudget.start_date,
@@ -60,7 +61,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     isUsingCustomBudgetInReview, 
     needsBudgetAdjustment, 
     remainingDays, 
-    client.lastReview?.custom_budget_amount
+    client.lastReview?.custom_budget_amount,
+    isUsingCustomBudget
   ]);
 
   return {
@@ -81,6 +83,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     remainingBudget,
     // Informações adicionais
     isUsingCustomBudgetInReview,
+    isUsingCustomBudget,
     actualBudgetAmount,
     // Nova propriedade para ajudar na ordenação
     needsBudgetAdjustment

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -40,6 +39,13 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   } = useBatchReview();
   
   useEffect(() => {
+    console.log("Estado atual dos dados:", {
+      temClientes: !!clientsWithReviews,
+      numeroClientes: clientsWithReviews?.length || 0,
+      isLoading,
+      lastReviewTime
+    });
+    
     const unsubscribe = queryClient.getQueryCache().subscribe(event => {
       if (
         event.type === 'updated' || 
@@ -72,7 +78,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     return () => {
       unsubscribe();
     };
-  }, [queryClient, toast]);
+  }, [queryClient, toast, clientsWithReviews, isLoading]);
   
   // Calcular porcentagem de progresso
   const progressPercentage = totalClientsToAnalyze > 0 
@@ -134,7 +140,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
 
       {isLoading ? (
         <LoadingView />
-      ) : sortedClients.length === 0 ? (
+      ) : !clientsWithReviews || sortedClients.length === 0 ? (
         <EmptyStateView />
       ) : (
         <ClientsGrid 

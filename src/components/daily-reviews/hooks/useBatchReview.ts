@@ -1,8 +1,9 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientWithReview, BatchReviewResult } from "./types/reviewTypes";
 import { useToast } from "@/hooks/use-toast";
-import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./services/clientReviewService";
+import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./services/clientService";
 
 export const useBatchReview = () => {
   const [processingClients, setProcessingClients] = useState<string[]>([]);
