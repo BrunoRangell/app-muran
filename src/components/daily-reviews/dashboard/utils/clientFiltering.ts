@@ -47,15 +47,16 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
   // Obtem valores da revisão
   const currentDailyBudget = client.lastReview?.meta_daily_budget_current || 0;
   
-  // Se estiver usando orçamento personalizado, usa os valores do orçamento personalizado
+  // Se estiver usando orçamento personalizado, usa APENAS os valores do orçamento personalizado
   if (client.lastReview?.using_custom_budget) {
-    // Valida se há orçamento diário ideal
-    if (!client.lastReview || currentDailyBudget === 0) return 0;
+    // Se não tem o valor de orçamento diário ideal na revisão, retorna 0
+    // Isso garante que só considere valores calculados a partir do orçamento personalizado
+    if (!client.lastReview.idealDailyBudget) return 0;
     
-    // Ideal diário para orçamento personalizado
-    const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
+    // Usa o orçamento diário ideal calculado especificamente para o orçamento personalizado
+    const idealDailyBudget = client.lastReview.idealDailyBudget;
     
-    // Retorna a diferença absoluta
+    // Calcula e retorna a diferença absoluta
     return Math.abs(idealDailyBudget - currentDailyBudget);
   } else {
     // Para orçamento regular

@@ -19,23 +19,27 @@ export const useBudgetCalculations = (
   
   // Obter o orçamento baseado no tipo (personalizado ou padrão)
   const getBudgetAmount = () => {
+    // Se há orçamento personalizado na revisão, prioriza ele
     if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_amount) {
       console.log("Usando orçamento personalizado da revisão:", client.lastReview.custom_budget_amount);
       return client.lastReview.custom_budget_amount;
     }
     
+    // Se há orçamento personalizado ativo, usa ele
     if (customBudget) {
       console.log("Usando orçamento personalizado:", customBudget.budget_amount);
       return customBudget.budget_amount;
     }
     
+    // Caso contrário, usa o orçamento mensal padrão
     return monthlyBudget;
   };
 
   // Obter dias restantes com base no tipo de orçamento
   const getRemainingDays = () => {
+    // Para orçamento personalizado ativo
     if (customBudget) {
-      // Para orçamento personalizado, contar os dias entre hoje e a data de término
+      // Contar os dias entre hoje e a data de término
       const today = getCurrentDateInBrasiliaTz();
       const endDate = new Date(customBudget.end_date);
       
@@ -44,6 +48,17 @@ export const useBudgetCalculations = (
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       
       // Garantir que retorne pelo menos 1 dia (hoje)
+      return Math.max(1, diffDays);
+    }
+    
+    // Para orçamento personalizado da revisão, verificar se há data de término armazenada
+    if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_end_date) {
+      const today = getCurrentDateInBrasiliaTz();
+      const endDate = new Date(client.lastReview.custom_budget_end_date);
+      
+      const diffTime = endDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
       return Math.max(1, diffDays);
     }
     

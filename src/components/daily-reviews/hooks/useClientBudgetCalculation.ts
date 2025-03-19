@@ -14,7 +14,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     isUsingCustomBudgetInReview
   } = useBudgetFetcher(client);
   
-  // Cálculos de orçamento e recomendações
+  // Cálculos de orçamento e recomendações - usando o orçamento personalizado se disponível
   const {
     monthlyBudget,
     totalSpent,
@@ -43,13 +43,16 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         customBudget: customBudget ? {
           valor: customBudget.budget_amount,
           inicio: customBudget.start_date,
-          fim: customBudget.end_date
+          fim: customBudget.end_date,
+          isActive: customBudget.is_active
         } : 'Não encontrado',
         customBudgetFromReview: client.lastReview?.custom_budget_amount,
+        customBudgetEndDate: client.lastReview?.custom_budget_end_date,
         diasRestantes: remainingDays,
         orcamentoRestante: remainingBudget,
         orcamentoDiarioIdeal: idealDailyBudget,
-        needsBudgetAdjustment
+        needsBudgetAdjustment,
+        orçamentoDiárioAtual: currentDailyBudget
       });
     }
   }, [
@@ -60,7 +63,9 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     isUsingCustomBudgetInReview, 
     needsBudgetAdjustment, 
     remainingDays, 
-    client.lastReview?.custom_budget_amount
+    client.lastReview?.custom_budget_amount,
+    client.lastReview?.custom_budget_end_date,
+    currentDailyBudget
   ]);
 
   return {
