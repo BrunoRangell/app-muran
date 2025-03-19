@@ -4,7 +4,6 @@ import { ClientWithReview } from "./types/reviewTypes";
 import { useBudgetFetcher } from "./budget/useBudgetFetcher";
 import { useBudgetCalculations } from "./budget/useBudgetCalculations";
 import { useTotalSpentCalculator } from "./budget/useTotalSpentCalculator";
-import { calculateBudgetAdjustment } from "../dashboard/utils/clientFiltering";
 
 export const useClientBudgetCalculation = (client: ClientWithReview) => {
   // Buscar dados de orçamento personalizado
@@ -53,14 +52,12 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         orcamentoRestante: remainingBudget,
         orcamentoDiarioIdeal: idealDailyBudget,
         needsBudgetAdjustment,
-        orçamentoDiárioAtual: currentDailyBudget,
-        difAtual: Math.abs(idealDailyBudget - currentDailyBudget),
-        difCalculada: calculateBudgetAdjustment(client)
+        orçamentoDiárioAtual: currentDailyBudget
       });
     }
   }, [
     customBudget, 
-    client, 
+    client.company_name, 
     remainingBudget, 
     idealDailyBudget, 
     isUsingCustomBudgetInReview, 
@@ -90,7 +87,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     // Informações adicionais
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
-    // Utilizando diretamente a função de cálculo de ajuste para garantir consistência
-    needsBudgetAdjustment: hasReview ? calculateBudgetAdjustment(client) >= 5 : false
+    // Nova propriedade para ajudar na ordenação
+    needsBudgetAdjustment
   };
 };

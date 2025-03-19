@@ -77,13 +77,6 @@ export const useBudgetCalculations = (
     const remaining = getBudgetRemaining();
     const days = getRemainingDays();
     
-    // Adicionar log para diagnóstico
-    console.log(`Calculando orçamento diário ideal para ${client.company_name}:`, {
-      orçamentoRestante: remaining,
-      diasRestantes: days,
-      resultado: days > 0 ? remaining / days : 0
-    });
-    
     return days > 0 ? remaining / days : 0;
   };
   

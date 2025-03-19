@@ -22,7 +22,7 @@ export const FilterOptions = ({
         />
         <Label htmlFor="show-adjustments" className="text-sm font-medium flex items-center">
           <Filter size={16} className="mr-1 text-gray-500" />
-          Mostrar apenas clientes que necessitam ajustes (diferença ≥ 5)
+          Mostrar apenas clientes com ajustes necessários
         </Label>
       </div>
     </div>

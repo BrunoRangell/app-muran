@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
@@ -48,12 +49,12 @@ export const ClientReviewCardCompact = ({
     customBudget,
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
-    remainingDaysValue,
-    needsBudgetAdjustment
+    remainingDaysValue
   } = useClientBudgetCalculation(client);
 
-  // Flag para mostrar recomendação de orçamento - Usando a propriedade calculada pelo hook
-  const showRecommendation = hasReview && needsBudgetAdjustment;
+  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão existente
+  // e diferença significativa (>=5) no contexto do orçamento atual (padrão ou personalizado)
+  const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
   const needsIncrease = budgetDifference > 0;
   const lastReviewDate = client.lastReview?.updated_at;
   
@@ -73,8 +74,7 @@ export const ClientReviewCardCompact = ({
     orçamentoDiárioAtual: currentDailyBudget,
     orçamentoDiárioIdeal: idealDailyBudget,
     diferençaNecessária: budgetDifference,
-    precisaAjuste: needsBudgetAdjustment,
-    showRecommendation,
+    precisaAjuste: showRecommendation,
     tipoAjuste: needsIncrease ? "Aumentar" : "Diminuir"
   });
 
