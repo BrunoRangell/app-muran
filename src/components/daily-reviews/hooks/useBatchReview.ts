@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientWithReview, BatchReviewResult } from "./types/reviewTypes";
 import { useToast } from "@/hooks/use-toast";
 import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./services/clientReviewService";
+import { supabase } from "@/lib/supabase";
 
 export const useBatchReview = () => {
   const [processingClients, setProcessingClients] = useState<string[]>([]);
@@ -29,6 +30,33 @@ export const useBatchReview = () => {
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
+  // Consulta para obter a data da última revisão em massa
+  useQuery({
+    queryKey: ["last-batch-review-time"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("system_configs")
+        .select("value")
+        .eq("key", "last_batch_review_time")
+        .single();
+      
+      if (error) {
+        console.error("Erro ao buscar última data de revisão:", error);
+        return null;
+      }
+      
+      if (data && data.value !== "null") {
+        const timestamp = data.value;
+        setLastBatchReviewTime(new Date(timestamp));
+        return new Date(timestamp);
+      }
+      
+      return null;
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+
   const clientsWithReviews = clientsWithReviewsData?.clientsData;
   
   // Função para recarregar dados
@@ -36,6 +64,26 @@ export const useBatchReview = () => {
     console.log("Recarregando dados dos clientes...");
     await refetch();
   }, [refetch]);
+
+  // Função para salvar a data da última revisão em massa
+  const saveLastBatchReviewTime = async (timestamp: Date) => {
+    try {
+      const { error } = await supabase
+        .from("system_configs")
+        .update({ value: timestamp.toISOString() })
+        .eq("key", "last_batch_review_time");
+      
+      if (error) {
+        console.error("Erro ao salvar data da última revisão:", error);
+      } else {
+        console.log("Data da última revisão salva com sucesso:", timestamp);
+        // Invalidar a consulta para garantir que os dados sejam atualizados
+        queryClient.invalidateQueries({ queryKey: ["last-batch-review-time"] });
+      }
+    } catch (error) {
+      console.error("Erro ao salvar data da última revisão:", error);
+    }
+  };
 
   // Função para revisar um único cliente - NÃO atualiza timestamp de revisão em massa
   const reviewSingleClient = useCallback(async (clientId: string) => {
@@ -108,7 +156,11 @@ export const useBatchReview = () => {
     setTotalClientsToAnalyze(eligibleClients.length);
     
     // Atualizar o timestamp da revisão em massa para agora
-    setLastBatchReviewTime(new Date());
+    const now = new Date();
+    setLastBatchReviewTime(now);
+    
+    // Salvar a data da última revisão no Supabase
+    await saveLastBatchReviewTime(now);
 
     try {
       console.log("Iniciando análise em massa...");
