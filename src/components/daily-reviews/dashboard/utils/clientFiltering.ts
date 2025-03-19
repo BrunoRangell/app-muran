@@ -22,6 +22,13 @@ export const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
   if (!client.lastReview) return false;
   
   const adjustment = calculateBudgetAdjustment(client);
+  // Log para diagnóstico
+  console.log(`Ajuste para ${client.company_name}:`, {
+    adjustment,
+    isCustomBudget: client.lastReview.using_custom_budget,
+    budgetDifference: adjustment
+  });
+  
   return adjustment >= 5;
 };
 
@@ -50,7 +57,6 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
   // Se estiver usando orçamento personalizado, usa APENAS os valores do orçamento personalizado
   if (client.lastReview?.using_custom_budget) {
     // Se não tem o valor de orçamento diário ideal na revisão, retorna 0
-    // Isso garante que só considere valores calculados a partir do orçamento personalizado
     if (!client.lastReview.idealDailyBudget) return 0;
     
     // Usa o orçamento diário ideal calculado especificamente para o orçamento personalizado

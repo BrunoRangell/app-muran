@@ -31,11 +31,12 @@ export const ClientAltCard = ({
     // Informações sobre orçamento personalizado
     customBudget,
     isUsingCustomBudgetInReview,
-    actualBudgetAmount
+    actualBudgetAmount,
+    needsBudgetAdjustment
   } = useClientBudgetCalculation(client);
 
-  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa
-  const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
+  // Flag para mostrar recomendação de orçamento - Usando diretamente a propriedade calculada
+  const showRecommendation = hasReview && needsBudgetAdjustment;
   const needsIncrease = budgetDifference > 0;
 
   return (
