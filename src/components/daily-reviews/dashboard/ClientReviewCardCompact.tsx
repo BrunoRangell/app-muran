@@ -106,7 +106,7 @@ export const ClientReviewCardCompact = ({
             )}
           </div>
           <div className="text-xs text-gray-500">
-            {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
+            {lastReviewDate ? formatDateInBrasiliaTz(new Date(lastReviewDate), "dd/MM 'às' HH:mm") : "Sem revisão"}
           </div>
         </div>
         
@@ -216,7 +216,7 @@ export const ClientReviewCardCompact = ({
               )}
             </h3>
             <p className="text-xs text-gray-500">
-              {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
+              {lastReviewDate ? formatDateInBrasiliaTz(new Date(lastReviewDate), "dd/MM 'às' HH:mm") : "Sem revisão"}
             </p>
           </div>
           
