@@ -22,6 +22,7 @@ export interface ReviewData {
   using_custom_budget?: boolean;
   custom_budget_id?: string | null;
   custom_budget_amount?: number | null;
+  custom_budget_end_date?: string | null;
 }
 
 // Tipos relacionados à análise
