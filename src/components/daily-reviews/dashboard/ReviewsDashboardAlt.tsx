@@ -4,11 +4,11 @@ import { useBatchReview } from "../hooks/useBatchReview";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { Card } from "@/components/ui/card";
 import { Loader, AlertCircle, Search, Inbox, Filter } from "lucide-react";
-import { ClientsHeader } from "./ClientsHeader";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ClientAltCard } from "./ClientAltCard";
+import { sortClientsByName } from "./utils/clientSorting";
 
 interface ReviewsDashboardAltProps {
   onViewClientDetails: (clientId: string) => void;
@@ -23,7 +23,7 @@ export const ReviewsDashboardAlt = ({ onViewClientDetails }: ReviewsDashboardAlt
     processingClients, 
     reviewSingleClient, 
     reviewAllClients,
-    lastReviewTime,
+    lastBatchReviewTime,
     isBatchAnalyzing
   } = useBatchReview();
   
@@ -32,9 +32,12 @@ export const ReviewsDashboardAlt = ({ onViewClientDetails }: ReviewsDashboardAlt
     client.company_name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+  // Ordenar clientes por nome
+  const sortedClients = sortClientsByName(filteredClients);
+
   // Agrupar por status de revisão
-  const clientsWithoutMetaId = filteredClients.filter(client => !client.meta_account_id);
-  const clientsWithMetaId = filteredClients.filter(client => client.meta_account_id);
+  const clientsWithoutMetaId = sortedClients.filter(client => !client.meta_account_id);
+  const clientsWithMetaId = sortedClients.filter(client => client.meta_account_id);
 
   // Funções de manipulação
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,9 +58,9 @@ export const ReviewsDashboardAlt = ({ onViewClientDetails }: ReviewsDashboardAlt
             <h2 className="text-xl font-semibold text-muran-dark mb-1">
               Dashboard Alternativo 1
             </h2>
-            {lastReviewTime && (
+            {lastBatchReviewTime && (
               <p className="text-sm text-gray-500">
-                {formatDateInBrasiliaTz(lastReviewTime, "'Última revisão em massa em' dd 'de' MMMM 'às' HH:mm")}
+                {formatDateInBrasiliaTz(lastBatchReviewTime, "'Última revisão em massa em' dd 'de' MMMM 'às' HH:mm")}
               </p>
             )}
           </div>

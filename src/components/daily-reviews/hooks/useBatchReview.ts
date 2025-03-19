@@ -177,7 +177,7 @@ export const useBatchReview = () => {
 
   return {
     clientsWithReviews,
-    lastBatchReviewTime, // Agora retornamos apenas o timestamp de revisão em massa
+    lastBatchReviewTime, // Retornamos apenas o timestamp de revisão em massa
     isLoading,
     processingClients,
     isBatchAnalyzing,
