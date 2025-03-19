@@ -1,21 +1,19 @@
 
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Loader } from "lucide-react";
+import { Loader, RefreshCw } from "lucide-react";
 import { formatDateInBrasiliaTz } from "../../summary/utils";
 
 interface DashboardHeaderProps {
-  lastReviewTime: Date | null;
+  lastBatchReviewTime: Date | null;
   isBatchAnalyzing: boolean;
   isLoading: boolean;
-  onRefresh: () => void;
   onAnalyzeAll: () => void;
 }
 
 export const DashboardHeader = ({
-  lastReviewTime,
+  lastBatchReviewTime,
   isBatchAnalyzing,
   isLoading,
-  onRefresh,
   onAnalyzeAll
 }: DashboardHeaderProps) => {
   return (
@@ -24,23 +22,14 @@ export const DashboardHeader = ({
         <h2 className="text-xl font-semibold text-muran-dark mb-1">
           Dashboard Meta Ads
         </h2>
-        {lastReviewTime && (
+        {lastBatchReviewTime && (
           <p className="text-sm text-gray-500">
-            {formatDateInBrasiliaTz(lastReviewTime, "'Última revisão em massa em' dd/MM 'às' HH:mm")}
+            {formatDateInBrasiliaTz(lastBatchReviewTime, "'Última revisão em massa em' dd/MM 'às' HH:mm")}
           </p>
         )}
       </div>
       
       <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={onRefresh}
-          disabled={isBatchAnalyzing || isLoading}
-          size="sm"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-        
         <Button 
           variant="default"
           onClick={onAnalyzeAll}

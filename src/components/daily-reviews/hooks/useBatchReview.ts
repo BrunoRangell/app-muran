@@ -8,12 +8,11 @@ import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./ser
 export const useBatchReview = () => {
   const [processingClients, setProcessingClients] = useState<string[]>([]);
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
-  // Novo estado para rastrear o progresso
+  // Progresso da análise em massa
   const [batchProgress, setBatchProgress] = useState(0);
-  // Número total de clientes a serem analisados
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
-  // Estado local para o timestamp da última revisão em massa
-  const [localLastReviewTime, setLocalLastReviewTime] = useState<Date | null>(null);
+  // Timestamp específico para a última revisão em massa
+  const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -31,8 +30,6 @@ export const useBatchReview = () => {
   });
 
   const clientsWithReviews = clientsWithReviewsData?.clientsData;
-  // Usar o timestamp local se disponível, caso contrário usar o do server
-  const lastReviewTime = localLastReviewTime || clientsWithReviewsData?.lastReviewTime;
   
   // Função para recarregar dados
   const refetchClients = useCallback(async () => {
@@ -40,7 +37,7 @@ export const useBatchReview = () => {
     await refetch();
   }, [refetch]);
 
-  // Função para revisar um único cliente
+  // Função para revisar um único cliente - NÃO atualiza timestamp de revisão em massa
   const reviewSingleClient = useCallback(async (clientId: string) => {
     if (processingClients.includes(clientId)) {
       console.log(`Cliente ${clientId} já está em processamento.`);
@@ -75,7 +72,7 @@ export const useBatchReview = () => {
     }
   }, [processingClients, clientsWithReviews, toast, refetchClients]);
 
-  // Função para revisar todos os clientes - sempre atualiza as revisões
+  // Função para revisar todos os clientes - atualiza o timestamp de revisão em massa
   const reviewAllClients = useCallback(async () => {
     if (isBatchAnalyzing) {
       console.log("Já existe uma análise em massa em andamento.");
@@ -111,7 +108,7 @@ export const useBatchReview = () => {
     setTotalClientsToAnalyze(eligibleClients.length);
     
     // Atualizar o timestamp da revisão em massa para agora
-    setLocalLastReviewTime(new Date());
+    setLastBatchReviewTime(new Date());
 
     try {
       console.log("Iniciando análise em massa...");
@@ -180,14 +177,14 @@ export const useBatchReview = () => {
 
   return {
     clientsWithReviews,
-    lastReviewTime,
+    lastBatchReviewTime, // Agora retornamos apenas o timestamp de revisão em massa
     isLoading,
     processingClients,
     isBatchAnalyzing,
     reviewSingleClient,
     reviewAllClients,
     refetchClients,
-    // Retornar informações de progresso
+    // Informações de progresso
     batchProgress,
     totalClientsToAnalyze
   };
