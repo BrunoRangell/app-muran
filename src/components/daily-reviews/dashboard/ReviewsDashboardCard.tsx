@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -72,23 +71,19 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     };
   }, [queryClient, toast]);
   
-  // Calcular porcentagem de progresso
   const progressPercentage = totalClientsToAnalyze > 0 
     ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
     : 0;
   
-  // Filtragem de clientes com ordenação simplificada (apenas por nome)
   const filteredByName = clientsWithReviews ? filterClientsByName(clientsWithReviews, searchQuery) : [];
   const filteredByAdjustment = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
   
-  // Ordenação simples por nome
   const sortedClients = filteredByAdjustment.sort((a, b) => 
     a.company_name.localeCompare(b.company_name)
   );
   
   const { clientsWithMetaId, clientsWithoutMetaId } = splitClientsByMetaId(sortedClients);
 
-  // Handlers
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   }, []);
