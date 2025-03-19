@@ -20,7 +20,7 @@ export const CardHeader = ({
       )
     : lastReviewDate 
       ? formatDateInBrasiliaTz(
-          typeof lastReviewDate === 'string' ? new Date(lastReviewDate) : lastReviewDate, 
+          lastReviewDate instanceof Date ? lastReviewDate : new Date(lastReviewDate), 
           "'Última revisão em' dd/MM"
         ) 
       : "Sem revisão anterior";

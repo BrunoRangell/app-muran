@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -13,7 +14,14 @@ export interface CustomBudget {
   description: string | null;
   created_at: string;
   status: 'active' | 'completed' | 'cancelled';
+  is_active: boolean; // Propriedade adicionada para compatibilidade
   client_name?: string;
+}
+
+export interface ClientWithBudgets {
+  id: string;
+  company_name: string;
+  customBudgets: CustomBudget[];
 }
 
 export interface CustomBudgetFormData {
@@ -30,6 +38,8 @@ export const useCustomBudgets = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedBudget, setSelectedBudget] = useState<CustomBudget | null>(null);
 
   // Buscar todos os orçamentos personalizados
   const { data: customBudgets, isLoading } = useQuery({
@@ -76,8 +86,31 @@ export const useCustomBudgets = () => {
     },
   });
 
+  // Filtrar clientes com base no termo de pesquisa
+  const filteredClients = React.useMemo(() => {
+    if (!clients || !customBudgets) return [];
+
+    // Filtra clientes com base no termo de pesquisa
+    const filteredClientsList = clients.filter(client => 
+      client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Mapeia os clientes filtrados para o formato ClientWithBudgets
+    return filteredClientsList.map(client => {
+      const clientBudgets = customBudgets.filter(
+        (budget: CustomBudget) => budget.client_id === client.id
+      );
+      
+      return {
+        id: client.id,
+        company_name: client.company_name,
+        customBudgets: clientBudgets
+      };
+    });
+  }, [clients, customBudgets, searchTerm]);
+
   // Criar novo orçamento personalizado
-  const createBudget = useMutation({
+  const addCustomBudgetMutation = useMutation({
     mutationFn: async (formData: CustomBudgetFormData) => {
       // Validar dados
       const errors = validateBudgetForm(formData);
@@ -94,7 +127,8 @@ export const useCustomBudgets = () => {
           start_date: formData.startDate,
           end_date: formData.endDate,
           description: formData.description || null,
-          status: 'active'
+          status: 'active',
+          is_active: true
         })
         .select()
         .single();
@@ -126,8 +160,8 @@ export const useCustomBudgets = () => {
   });
 
   // Atualizar orçamento personalizado
-  const updateBudget = useMutation({
-    mutationFn: async ({ id, formData }: { id: string; formData: CustomBudgetFormData }) => {
+  const updateCustomBudgetMutation = useMutation({
+    mutationFn: async ({ id, ...formData }: { id: string } & CustomBudgetFormData) => {
       // Validar dados
       const errors = validateBudgetForm(formData);
       if (Object.keys(errors).length > 0) {
@@ -173,20 +207,18 @@ export const useCustomBudgets = () => {
     },
   });
 
-  // Cancelar orçamento personalizado
-  const cancelBudget = useMutation({
+  // Excluir orçamento personalizado
+  const deleteCustomBudgetMutation = useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
         .from("custom_budgets")
-        .update({
-          status: 'cancelled'
-        })
+        .delete()
         .eq('id', id)
         .select()
         .single();
 
       if (error) {
-        console.error("Erro ao cancelar orçamento personalizado:", error);
+        console.error("Erro ao excluir orçamento personalizado:", error);
         throw error;
       }
 
@@ -195,19 +227,54 @@ export const useCustomBudgets = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custom-budgets"] });
       toast({
-        title: "Orçamento personalizado cancelado",
-        description: "O orçamento personalizado foi cancelado com sucesso.",
+        title: "Orçamento personalizado excluído",
+        description: "O orçamento personalizado foi excluído com sucesso.",
       });
     },
     onError: (error) => {
       toast({
-        title: "Erro ao cancelar orçamento",
-        description: "Não foi possível cancelar o orçamento personalizado.",
+        title: "Erro ao excluir orçamento",
+        description: "Não foi possível excluir o orçamento personalizado.",
         variant: "destructive",
       });
     },
   });
 
+  // Alternar status do orçamento (ativo/inativo)
+  const toggleBudgetStatusMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
+      const { data, error } = await supabase
+        .from("custom_budgets")
+        .update({
+          is_active: isActive
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Erro ao alterar status do orçamento:", error);
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custom-budgets"] });
+      toast({
+        title: "Status alterado",
+        description: "O status do orçamento foi alterado com sucesso.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao alterar status",
+        description: "Não foi possível alterar o status do orçamento.",
+        variant: "destructive",
+      });
+    },
+  });
+  
   // Validar formulário
   const validateBudgetForm = (formData: CustomBudgetFormData): Record<string, string> => {
     const errors: Record<string, string> = {};
@@ -233,10 +300,7 @@ export const useCustomBudgets = () => {
       const startDate = new Date(formData.startDate);
       const endDate = new Date(formData.endDate);
       
-      const result = validateDateRange(
-        typeof startDate === 'string' ? new Date(startDate) : startDate,
-        typeof endDate === 'string' ? new Date(endDate) : endDate
-      );
+      const result = validateDateRange(startDate, endDate);
       
       if (!result.valid) {
         errors.dateRange = result.message;
@@ -289,20 +353,37 @@ export const useCustomBudgets = () => {
     return formatDateInBrasiliaTz(new Date(dateString), "dd/MM/yyyy");
   };
 
-  // Verificar se um orçamento está ativo
-  const isBudgetActive = (budget: CustomBudget) => {
-    return budget.status === 'active';
+  // Formatar valor do orçamento
+  const formatBudget = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
+    }).format(value);
   };
 
-  // Verificar se um orçamento está no período atual
-  const isBudgetCurrent = (budget: CustomBudget) => {
+  // Verificar se um orçamento está ativo
+  const isCurrentlyActive = (budget: CustomBudget) => {
+    if (!budget.is_active) return false;
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const startDate = new Date(budget.start_date);
     const endDate = new Date(budget.end_date);
     
-    return startDate <= today && endDate >= today && budget.status === 'active';
+    return startDate <= today && endDate >= today;
+  };
+
+  // Verificar se um orçamento está agendado para o futuro
+  const isFutureBudget = (budget: CustomBudget) => {
+    if (!budget.is_active) return false;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const startDate = new Date(budget.start_date);
+    
+    return startDate > today;
   };
 
   // Obter orçamentos ativos para um cliente específico
@@ -311,8 +392,8 @@ export const useCustomBudgets = () => {
     
     return customBudgets.filter((budget: CustomBudget) => 
       budget.client_id === clientId && 
-      isBudgetActive(budget) &&
-      isBudgetCurrent(budget)
+      budget.is_active &&
+      isCurrentlyActive(budget)
     );
   };
 
@@ -325,13 +406,24 @@ export const useCustomBudgets = () => {
     isEditing,
     setIsEditing,
     formErrors,
-    createBudget,
-    updateBudget,
-    cancelBudget,
+    searchTerm,
+    setSearchTerm,
+    selectedBudget,
+    setSelectedBudget,
+    filteredClients,
+    createBudget: addCustomBudgetMutation,
+    updateBudget: updateCustomBudgetMutation,
+    cancelBudget: deleteCustomBudgetMutation,
     clearFormErrors,
     formatDate,
-    isBudgetActive,
-    isBudgetCurrent,
-    getActiveBudgetsForClient
+    formatBudget,
+    isCurrentlyActive,
+    isFutureBudget,
+    getActiveBudgetsForClient,
+    // Adicionando as mutações necessárias
+    addCustomBudgetMutation,
+    updateCustomBudgetMutation,
+    deleteCustomBudgetMutation,
+    toggleBudgetStatusMutation
   };
 };
