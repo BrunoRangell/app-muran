@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDateInBrasiliaTz } from "@/components/daily-reviews/summary/utils";
+import React from "react";
 
 export interface CustomBudget {
   id: string;
@@ -87,27 +87,19 @@ export const useCustomBudgets = () => {
   });
 
   // Filtrar clientes com base no termo de pesquisa
-  const filteredClients = React.useMemo(() => {
-    if (!clients || !customBudgets) return [];
-
-    // Filtra clientes com base no termo de pesquisa
-    const filteredClientsList = clients.filter(client => 
-      client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredClients = filteredClients = clients && customBudgets ? clients.filter(client => 
+    client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+  ).map(client => {
+    const clientBudgets = customBudgets.filter(
+      (budget: CustomBudget) => budget.client_id === client.id
     );
-
-    // Mapeia os clientes filtrados para o formato ClientWithBudgets
-    return filteredClientsList.map(client => {
-      const clientBudgets = customBudgets.filter(
-        (budget: CustomBudget) => budget.client_id === client.id
-      );
-      
-      return {
-        id: client.id,
-        company_name: client.company_name,
-        customBudgets: clientBudgets
-      };
-    });
-  }, [clients, customBudgets, searchTerm]);
+    
+    return {
+      id: client.id,
+      company_name: client.company_name,
+      customBudgets: clientBudgets
+    };
+  }) : [];
 
   // Criar novo orçamento personalizado
   const addCustomBudgetMutation = useMutation({
