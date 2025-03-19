@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -87,7 +88,7 @@ export const useCustomBudgets = () => {
   });
 
   // Filtrar clientes com base no termo de pesquisa
-  const filteredClients = filteredClients = clients && customBudgets ? clients.filter(client => 
+  const filteredClients = clients && customBudgets ? clients.filter(client => 
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   ).map(client => {
     const clientBudgets = customBudgets.filter(

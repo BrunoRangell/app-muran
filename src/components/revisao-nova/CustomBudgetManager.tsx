@@ -69,6 +69,17 @@ export const CustomBudgetManager = () => {
     };
   };
 
+  // Função para converter do formato do form para o formato do banco de dados
+  const convertFormDataToBudget = (formData: CustomBudgetFormData) => {
+    return {
+      client_id: formData.clientId,
+      budget_amount: formData.budgetAmount,
+      start_date: formData.startDate,
+      end_date: formData.endDate,
+      description: formData.description || null
+    };
+  };
+
   return (
     <Card className="w-full shadow-md">
       <CardHeader className="pb-3">
@@ -111,7 +122,7 @@ export const CustomBudgetManager = () => {
 
           <TabsContent value="form">
             <CustomBudgetForm
-              selectedBudget={selectedBudget}
+              selectedBudget={selectedBudget ? convertBudgetToFormData(selectedBudget) : null}
               isSubmitting={
                 addCustomBudgetMutation.isPending || 
                 updateCustomBudgetMutation.isPending
