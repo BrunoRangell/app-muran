@@ -47,7 +47,7 @@ export const useCustomBudgets = () => {
     queryKey: ["custom-budgets"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
         .select(`
           *,
           clients (
@@ -113,7 +113,7 @@ export const useCustomBudgets = () => {
       }
 
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
         .insert({
           client_id: formData.clientId,
           budget_amount: formData.budgetAmount,
@@ -163,7 +163,7 @@ export const useCustomBudgets = () => {
       }
 
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
         .update({
           budget_amount: formData.budgetAmount,
           start_date: formData.startDate,
@@ -204,7 +204,7 @@ export const useCustomBudgets = () => {
   const deleteCustomBudgetMutation = useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
         .delete()
         .eq('id', id)
         .select()
@@ -237,7 +237,7 @@ export const useCustomBudgets = () => {
   const toggleBudgetStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
         .update({
           is_active: isActive
         })
