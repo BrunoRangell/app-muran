@@ -93,7 +93,7 @@ export const useBudgetCalculations = (
   // Gerar recomendação com base nos orçamentos
   const budgetDifference = idealDailyBudget - currentDailyBudget;
   
-  // Verificar se o cliente precisa de ajuste de orçamento significativo
+  // Verificar se o cliente precisa de ajuste de orçamento significativo (diferença absoluta >= 5)
   const needsBudgetAdjustment = hasReview && Math.abs(budgetDifference) >= 5;
   
   // Log para diagnóstico

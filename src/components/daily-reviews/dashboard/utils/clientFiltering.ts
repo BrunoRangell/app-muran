@@ -19,11 +19,21 @@ export const filterClientsByName = (
  * Verifica se um cliente precisa de ajuste (diferença >= 5)
  */
 export const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
-  if (!client.lastReview) return false;
+  // Verificar se a propriedade needsBudgetAdjustment já está presente
+  if (client.needsBudgetAdjustment !== undefined) {
+    return client.needsBudgetAdjustment;
+  }
   
-  // Verifica se o cliente tem ajuste significativo
-  const adjustment = calculateBudgetAdjustment(client);
-  return adjustment >= 5;
+  // Se não tiver revisão ou ID de conta Meta, retorna falso
+  if (!client.lastReview || !client.meta_account_id) return false;
+  
+  // Verificar se a diferença de orçamento é significativa (≥ 5)
+  const budgetDiff = Math.abs(
+    (client.lastReview.idealDailyBudget || 0) - 
+    (client.lastReview.meta_daily_budget_current || 0)
+  );
+  
+  return budgetDiff >= 5;
 };
 
 /**
@@ -35,7 +45,21 @@ export const filterClientsByAdjustment = (
 ): ClientWithReview[] => {
   if (!showOnlyAdjustments) return clients;
   
-  return clients.filter(client => clientNeedsAdjustment(client));
+  return clients.filter(client => {
+    const needsAdjustment = client.needsBudgetAdjustment === true || clientNeedsAdjustment(client);
+    
+    if (needsAdjustment) {
+      console.log(`Cliente filtrado que precisa de ajuste: ${client.company_name}`, {
+        needsAdjustment: client.needsBudgetAdjustment,
+        budgetDifference: client.lastReview?.idealDailyBudget 
+          ? Math.abs((client.lastReview.idealDailyBudget || 0) - (client.lastReview.meta_daily_budget_current || 0))
+          : "N/A",
+        usingCustomBudget: client.lastReview?.using_custom_budget || false
+      });
+    }
+    
+    return needsAdjustment;
+  });
 };
 
 /**

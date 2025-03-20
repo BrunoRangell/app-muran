@@ -33,7 +33,7 @@ export const FilterOptions = ({
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p>Exibe apenas clientes que precisam de ajuste no orçamento diário (diferença ≥ R$ 5). 
-                Inclui tanto orçamentos padrão quanto personalizados.</p>
+                Funciona tanto para orçamentos padrão quanto para orçamentos personalizados.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

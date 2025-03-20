@@ -56,8 +56,14 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         diferençaOrçamento: budgetDifference
       });
     }
+    
+    // Atualizar a propriedade needsBudgetAdjustment no objeto client
+    if (client && needsBudgetAdjustment !== undefined) {
+      client.needsBudgetAdjustment = needsBudgetAdjustment;
+    }
   }, [
     customBudget, 
+    client, 
     client.company_name, 
     remainingBudget, 
     idealDailyBudget, 
