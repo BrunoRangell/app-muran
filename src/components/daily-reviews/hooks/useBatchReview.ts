@@ -12,8 +12,6 @@ export const useBatchReview = () => {
   // Progresso da análise em massa
   const [batchProgress, setBatchProgress] = useState(0);
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
-  // Timestamp específico para a última revisão em massa
-  const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -31,7 +29,7 @@ export const useBatchReview = () => {
   });
 
   // Consulta para obter a data da última revisão em massa
-  useQuery({
+  const { data: lastBatchReviewTimeData } = useQuery({
     queryKey: ["last-batch-review-time"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -47,7 +45,6 @@ export const useBatchReview = () => {
       
       if (data && data.value !== "null") {
         const timestamp = data.value;
-        setLastBatchReviewTime(new Date(timestamp));
         return new Date(timestamp);
       }
       
@@ -57,6 +54,9 @@ export const useBatchReview = () => {
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
+  // Estado da última revisão em massa derivado da query
+  const lastBatchReviewTime = lastBatchReviewTimeData;
+  
   const clientsWithReviews = clientsWithReviewsData?.clientsData;
   
   // Função para recarregar dados
@@ -157,7 +157,6 @@ export const useBatchReview = () => {
     
     // Atualizar o timestamp da revisão em massa para agora
     const now = new Date();
-    setLastBatchReviewTime(now);
     
     // Salvar a data da última revisão no Supabase
     await saveLastBatchReviewTime(now);
@@ -229,7 +228,7 @@ export const useBatchReview = () => {
 
   return {
     clientsWithReviews,
-    lastBatchReviewTime, // Retornamos apenas o timestamp de revisão em massa
+    lastBatchReviewTime, // Retornamos o timestamp da revisão em massa da query
     isLoading,
     processingClients,
     isBatchAnalyzing,
