@@ -52,7 +52,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
         orcamentoRestante: remainingBudget,
         orcamentoDiarioIdeal: idealDailyBudget,
         needsBudgetAdjustment,
-        orçamentoDiárioAtual: currentDailyBudget
+        orçamentoDiárioAtual: currentDailyBudget,
+        diferençaOrçamento: budgetDifference
       });
     }
   }, [
@@ -65,7 +66,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     remainingDays, 
     client.lastReview?.custom_budget_amount,
     client.lastReview?.custom_budget_end_date,
-    currentDailyBudget
+    currentDailyBudget,
+    budgetDifference
   ]);
 
   return {

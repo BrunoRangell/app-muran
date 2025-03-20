@@ -43,8 +43,8 @@ export const useBudgetCalculations = (
       const today = getCurrentDateInBrasiliaTz();
       const endDate = new Date(customBudget.end_date);
       
-      // +1 para incluir o dia atual E o dia final
-      const diffTime = endDate.getTime() - today.getTime();
+      // +1 para incluir o dia atual
+      const diffTime = Math.abs(endDate.getTime() - today.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       
       // Garantir que retorne pelo menos 1 dia (hoje)
@@ -56,7 +56,7 @@ export const useBudgetCalculations = (
       const today = getCurrentDateInBrasiliaTz();
       const endDate = new Date(client.lastReview.custom_budget_end_date);
       
-      const diffTime = endDate.getTime() - today.getTime();
+      const diffTime = Math.abs(endDate.getTime() - today.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       
       return Math.max(1, diffDays);
@@ -95,6 +95,20 @@ export const useBudgetCalculations = (
   
   // Verificar se o cliente precisa de ajuste de orçamento significativo
   const needsBudgetAdjustment = hasReview && Math.abs(budgetDifference) >= 5;
+  
+  // Log para diagnóstico
+  if (isUsingCustomBudgetInReview || customBudget) {
+    console.log(`Diagnóstico de orçamento personalizado para ${client.company_name}:`, {
+      orçamentoPersonalizado: actualBudgetAmount,
+      totalGasto: totalSpent,
+      orçamentoRestante: remainingBudget,
+      diasRestantes: remainingDays,
+      orçamentoDiárioAtual: currentDailyBudget,
+      orçamentoDiárioIdeal: idealDailyBudget,
+      diferença: budgetDifference,
+      precisaAjuste: needsBudgetAdjustment
+    });
+  }
   
   return {
     monthlyBudget,
