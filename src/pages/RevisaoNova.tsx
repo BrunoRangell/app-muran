@@ -5,11 +5,13 @@ import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/Revie
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function RevisaoNova() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [selectedTab, setSelectedTab] = useState<string>("dashboard");
+  const queryClient = useQueryClient();
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {

@@ -28,7 +28,7 @@ export const ClientInfo = ({
       
       {lastReviewDate && (
         <div className="text-sm text-gray-500">
-          Última revisão: {formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm")}
+          Última revisão: {formatDateInBrasiliaTz(new Date(lastReviewDate), "dd/MM 'às' HH:mm")}
         </div>
       )}
       

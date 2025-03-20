@@ -73,6 +73,18 @@ export const CustomBudgetTable = ({
     return { label: "Encerrado", variant: "secondary" as const };
   };
 
+  // Função para calcular a duração do período em dias
+  const calculatePeriodDuration = (startDate: string, endDate: string): number => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Cálculo da diferença em dias (incluindo o último dia)
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    
+    return diffDays;
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -134,11 +146,7 @@ export const CustomBudgetTable = ({
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-xs">
-                                {new Date(budget.end_date).getTime() - 
-                                 new Date(budget.start_date).getTime() + 
-                                 1000 * 60 * 60 * 24
-                                }{" "}
-                                / {1000 * 60 * 60 * 24} dias
+                                {calculatePeriodDuration(budget.start_date, budget.end_date)} dias
                               </p>
                             </TooltipContent>
                           </Tooltip>

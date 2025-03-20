@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/tabs";
 import { CustomBudgetTable } from "./custom-budget/CustomBudgetTable";
 import { CustomBudgetForm } from "./custom-budget/CustomBudgetForm";
-import { useCustomBudgets } from "./hooks/useCustomBudgets";
+import { useCustomBudgets, CustomBudgetFormData } from "./hooks/useCustomBudgets";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const CustomBudgetManager = () => {
@@ -57,6 +57,28 @@ export const CustomBudgetManager = () => {
     deleteCustomBudgetMutation.isSuccess, 
     toggleBudgetStatusMutation.isSuccess
   ]);
+
+  // Função para converter o formato do orçamento para o formato esperado pelo form
+  const convertBudgetToFormData = (budget: any): CustomBudgetFormData => {
+    return {
+      clientId: budget.client_id,
+      budgetAmount: budget.budget_amount,
+      startDate: budget.start_date,
+      endDate: budget.end_date,
+      description: budget.description || ""
+    };
+  };
+
+  // Função para converter do formato do form para o formato do banco de dados
+  const convertFormDataToBudget = (formData: CustomBudgetFormData) => {
+    return {
+      client_id: formData.clientId,
+      budget_amount: formData.budgetAmount,
+      start_date: formData.startDate,
+      end_date: formData.endDate,
+      description: formData.description || null
+    };
+  };
 
   return (
     <Card className="w-full shadow-md">
@@ -100,19 +122,19 @@ export const CustomBudgetManager = () => {
 
           <TabsContent value="form">
             <CustomBudgetForm
-              selectedBudget={selectedBudget}
+              selectedBudget={selectedBudget ? convertBudgetToFormData(selectedBudget) : null}
               isSubmitting={
                 addCustomBudgetMutation.isPending || 
                 updateCustomBudgetMutation.isPending
               }
-              onSubmit={(data) => {
+              onSubmit={(formData: CustomBudgetFormData) => {
                 if (selectedBudget) {
                   updateCustomBudgetMutation.mutate({
                     id: selectedBudget.id,
-                    ...data
+                    ...formData
                   });
                 } else {
-                  addCustomBudgetMutation.mutate(data);
+                  addCustomBudgetMutation.mutate(formData);
                 }
                 setSelectedBudget(null);
                 setSelectedTab("active");

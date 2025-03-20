@@ -1,8 +1,6 @@
 
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Search, LayoutGrid, Table } from "lucide-react";
 
 interface SearchControlsProps {
@@ -10,17 +8,13 @@ interface SearchControlsProps {
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   viewMode: string;
   onViewModeChange: (value: string) => void;
-  sortBy: string;
-  onSortChange: (value: string) => void;
 }
 
 export const SearchControls = ({
   searchQuery,
   onSearchChange,
   viewMode,
-  onViewModeChange,
-  sortBy,
-  onSortChange
+  onViewModeChange
 }: SearchControlsProps) => {
   return (
     <div className="flex flex-col md:flex-row items-center gap-4 mb-3">
@@ -44,20 +38,6 @@ export const SearchControls = ({
             <Table size={18} />
           </ToggleGroupItem>
         </ToggleGroup>
-        
-        <Separator orientation="vertical" className="h-8 mx-2" />
-        
-        <Select value={sortBy} onValueChange={onSortChange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Ordenar por" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="adjustments">Ajustes Necessários</SelectItem>
-            <SelectItem value="name">Nome</SelectItem>
-            <SelectItem value="budget">Orçamento</SelectItem>
-            <SelectItem value="lastReview">Última Revisão</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
     </div>
   );

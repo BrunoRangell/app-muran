@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,7 +32,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
-import { CustomBudget } from "../hooks/useCustomBudgets";
+import { CustomBudgetFormData } from "../hooks/useCustomBudgets";
 
 // Schema para validação do formulário
 const customBudgetSchema = z.object({
@@ -62,15 +61,9 @@ const customBudgetSchema = z.object({
 );
 
 interface CustomBudgetFormProps {
-  selectedBudget: CustomBudget | null;
+  selectedBudget: CustomBudgetFormData | null;
   isSubmitting: boolean;
-  onSubmit: (data: {
-    client_id: string;
-    budget_amount: number;
-    start_date: string;
-    end_date: string;
-    description: string | null;
-  }) => void;
+  onSubmit: (data: CustomBudgetFormData) => void;
   onCancel: () => void;
 }
 
@@ -116,20 +109,20 @@ export const CustomBudgetForm = ({
     if (selectedBudget) {
       // Corrigindo o problema da data: converter as strings para objetos Date
       // sem modificar o fuso horário (utilizando a data local)
-      const correctedStartDate = new Date(selectedBudget.start_date + 'T00:00:00');
-      const correctedEndDate = new Date(selectedBudget.end_date + 'T00:00:00');
+      const correctedStartDate = new Date(selectedBudget.startDate + 'T00:00:00');
+      const correctedEndDate = new Date(selectedBudget.endDate + 'T00:00:00');
       
-      console.log('Datas originais:', selectedBudget.start_date, selectedBudget.end_date);
+      console.log('Datas originais:', selectedBudget.startDate, selectedBudget.endDate);
       console.log('Datas corrigidas:', correctedStartDate, correctedEndDate);
       
       form.reset({
-        client_id: selectedBudget.client_id,
-        budget_amount: selectedBudget.budget_amount,
+        client_id: selectedBudget.clientId,
+        budget_amount: selectedBudget.budgetAmount,
         start_date: correctedStartDate,
         end_date: correctedEndDate,
         description: selectedBudget.description,
       });
-      setFormattedBudget(formatCurrency(selectedBudget.budget_amount));
+      setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
     } else {
       form.reset({
         client_id: "",
@@ -185,11 +178,11 @@ export const CustomBudgetForm = ({
   // Manipulador de submissão do formulário
   const handleFormSubmit = (data: FormData) => {
     onSubmit({
-      client_id: data.client_id,
-      budget_amount: data.budget_amount,
-      start_date: data.start_date.toISOString().split("T")[0],
-      end_date: data.end_date.toISOString().split("T")[0],
-      description: data.description || null,
+      clientId: data.client_id,
+      budgetAmount: data.budget_amount,
+      startDate: data.start_date.toISOString().split("T")[0],
+      endDate: data.end_date.toISOString().split("T")[0],
+      description: data.description || "",
     });
   };
 

@@ -6,6 +6,7 @@ import { ClientReviewCard } from "./ClientReviewCard";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { Card } from "@/components/ui/card";
 import { Loader, AlertCircle } from "lucide-react";
+import { sortClientsByName } from "./utils/clientSorting";
 
 interface ReviewsDashboardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -20,7 +21,7 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
     processingClients, 
     reviewSingleClient, 
     reviewAllClients,
-    lastReviewTime,
+    lastBatchReviewTime,
     refetchClients,
     isBatchAnalyzing
   } = useBatchReview();
@@ -30,9 +31,12 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
     client.company_name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+  // Ordenar clientes por nome
+  const sortedClients = sortClientsByName(filteredClients);
+
   // Agrupar por status de revisão
-  const clientsWithoutMetaId = filteredClients.filter(client => !client.meta_account_id);
-  const clientsWithMetaId = filteredClients.filter(client => client.meta_account_id);
+  const clientsWithoutMetaId = sortedClients.filter(client => !client.meta_account_id);
+  const clientsWithMetaId = sortedClients.filter(client => client.meta_account_id);
 
   // Log para depuração
   console.log("Estado atual dos clientes:", {
@@ -40,7 +44,7 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
     comMetaId: clientsWithMetaId.length,
     semMetaId: clientsWithoutMetaId.length,
     emProcessamento: processingClients.length,
-    ultimaRevisao: lastReviewTime
+    ultimaRevisao: lastBatchReviewTime
   });
   
   // Funções de manipulação
@@ -60,9 +64,9 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
           <h2 className="text-xl font-semibold text-muran-dark mb-1">
             Revisão de Orçamentos Meta Ads
           </h2>
-          {lastReviewTime && (
+          {lastBatchReviewTime && (
             <p className="text-sm text-gray-500">
-              {formatDateInBrasiliaTz(lastReviewTime, "'Última revisão em massa em' dd 'de' MMMM 'às' HH:mm")}
+              {formatDateInBrasiliaTz(lastBatchReviewTime, "'Última revisão em massa em' dd 'de' MMMM 'às' HH:mm")}
             </p>
           )}
         </div>

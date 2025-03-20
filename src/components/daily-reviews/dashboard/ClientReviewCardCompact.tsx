@@ -53,12 +53,13 @@ export const ClientReviewCardCompact = ({
   } = useClientBudgetCalculation(client);
 
   // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão existente
+  // e diferença significativa (>=5) no contexto do orçamento atual (padrão ou personalizado)
   const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
   const needsIncrease = budgetDifference > 0;
   const lastReviewDate = client.lastReview?.updated_at;
   
   // Verificar se tem orçamento personalizado
-  const hasCustomBudget = customBudget && isUsingCustomBudgetInReview;
+  const hasCustomBudget = customBudget || isUsingCustomBudgetInReview;
 
   // Valor do orçamento a exibir (personalizado ou padrão)
   const displayBudget = hasCustomBudget ? actualBudgetAmount : monthlyBudget;
@@ -66,6 +67,7 @@ export const ClientReviewCardCompact = ({
   // Log para diagnóstico dos valores de orçamento e ajustes
   console.log(`Cliente ${client.company_name} - Diagnóstico:`, {
     hasReview,
+    hasCustomBudget,
     orçamentoMensal: monthlyBudget,
     orçamentoPersonalizado: hasCustomBudget ? actualBudgetAmount : "Não está usando",
     orçamentoExibido: displayBudget,
@@ -106,7 +108,7 @@ export const ClientReviewCardCompact = ({
             )}
           </div>
           <div className="text-xs text-gray-500">
-            {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
+            {lastReviewDate ? formatDateInBrasiliaTz(new Date(lastReviewDate), "dd/MM 'às' HH:mm") : "Sem revisão"}
           </div>
         </div>
         
@@ -216,7 +218,7 @@ export const ClientReviewCardCompact = ({
               )}
             </h3>
             <p className="text-xs text-gray-500">
-              {lastReviewDate ? formatDateInBrasiliaTz(lastReviewDate, "dd/MM 'às' HH:mm") : "Sem revisão"}
+              {lastReviewDate ? formatDateInBrasiliaTz(new Date(lastReviewDate), "dd/MM 'às' HH:mm") : "Sem revisão"}
             </p>
           </div>
           

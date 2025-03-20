@@ -19,10 +19,21 @@ export const filterClientsByName = (
  * Verifica se um cliente precisa de ajuste (diferença >= 5)
  */
 export const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
-  if (!client.lastReview) return false;
+  // Verificar se a propriedade needsBudgetAdjustment já está presente
+  if (client.needsBudgetAdjustment !== undefined) {
+    return client.needsBudgetAdjustment;
+  }
   
-  const adjustment = calculateBudgetAdjustment(client);
-  return adjustment >= 5;
+  // Se não tiver revisão ou ID de conta Meta, retorna falso
+  if (!client.lastReview || !client.meta_account_id) return false;
+  
+  // Verificar se a diferença de orçamento é significativa (≥ 5)
+  const budgetDiff = Math.abs(
+    (client.lastReview.idealDailyBudget || 0) - 
+    (client.lastReview.meta_daily_budget_current || 0)
+  );
+  
+  return budgetDiff >= 5;
 };
 
 /**
@@ -34,7 +45,21 @@ export const filterClientsByAdjustment = (
 ): ClientWithReview[] => {
   if (!showOnlyAdjustments) return clients;
   
-  return clients.filter(client => clientNeedsAdjustment(client));
+  return clients.filter(client => {
+    const needsAdjustment = client.needsBudgetAdjustment === true || clientNeedsAdjustment(client);
+    
+    if (needsAdjustment) {
+      console.log(`Cliente filtrado que precisa de ajuste: ${client.company_name}`, {
+        needsAdjustment: client.needsBudgetAdjustment,
+        budgetDifference: client.lastReview?.idealDailyBudget 
+          ? Math.abs((client.lastReview.idealDailyBudget || 0) - (client.lastReview.meta_daily_budget_current || 0))
+          : "N/A",
+        usingCustomBudget: client.lastReview?.using_custom_budget || false
+      });
+    }
+    
+    return needsAdjustment;
+  });
 };
 
 /**
@@ -44,19 +69,54 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
   // Se não tem revisão ou ID de conta Meta, retorna 0
   if (!client.lastReview || !client.meta_account_id) return 0;
   
-  // Obtem valores da revisão
+  // Obtém valores da revisão
   const currentDailyBudget = client.lastReview?.meta_daily_budget_current || 0;
   
-  // Se estiver usando orçamento personalizado, usa os valores do orçamento personalizado
+  // Se estiver usando orçamento personalizado, usa APENAS os valores do orçamento personalizado
   if (client.lastReview?.using_custom_budget) {
-    // Valida se há orçamento diário ideal
-    if (!client.lastReview || currentDailyBudget === 0) return 0;
+    console.log(`Calculando ajuste para cliente com orçamento personalizado: ${client.company_name}`);
     
-    // Ideal diário para orçamento personalizado
-    const idealDailyBudget = client.lastReview.idealDailyBudget || 0;
+    // Verificar se há valor ideal calculado na revisão
+    if (client.lastReview.idealDailyBudget) {
+      const idealDailyBudget = client.lastReview.idealDailyBudget;
+      console.log(`Cliente ${client.company_name} - Orçamento personalizado:`, {
+        orçamentoDiárioAtual: currentDailyBudget,
+        orçamentoDiárioIdeal: idealDailyBudget,
+        diferença: Math.abs(idealDailyBudget - currentDailyBudget)
+      });
+      return Math.abs(idealDailyBudget - currentDailyBudget);
+    }
     
-    // Retorna a diferença absoluta
-    return Math.abs(idealDailyBudget - currentDailyBudget);
+    // Se não tiver valor ideal calculado, calcula com base no orçamento personalizado
+    if (client.lastReview.custom_budget_amount && client.lastReview.custom_budget_end_date) {
+      const customBudgetAmount = client.lastReview.custom_budget_amount;
+      const endDate = new Date(client.lastReview.custom_budget_end_date);
+      const today = new Date();
+      
+      // Calcular dias restantes (+1 para incluir o dia atual)
+      const diffTime = Math.abs(endDate.getTime() - today.getTime());
+      const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      const totalSpent = client.lastReview.meta_total_spent || 0;
+      const remainingBudget = customBudgetAmount - totalSpent;
+      
+      // Se não houver dias restantes ou orçamento restante negativo, retorna 0
+      if (remainingDays <= 0 || remainingBudget <= 0) return 0;
+      
+      const idealDailyBudget = remainingBudget / remainingDays;
+      
+      console.log(`Cliente ${client.company_name} - Orçamento personalizado calculado:`, {
+        orçamentoPersonalizado: customBudgetAmount,
+        diasRestantes: remainingDays,
+        orçamentoDiárioAtual: currentDailyBudget,
+        orçamentoDiárioIdeal: idealDailyBudget,
+        diferença: Math.abs(idealDailyBudget - currentDailyBudget)
+      });
+      
+      return Math.abs(idealDailyBudget - currentDailyBudget);
+    }
+    
+    return 0;
   } else {
     // Para orçamento regular
     const today = new Date();

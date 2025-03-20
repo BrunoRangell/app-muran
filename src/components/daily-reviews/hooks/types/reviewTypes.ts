@@ -6,6 +6,7 @@ export interface ClientWithReview {
   meta_account_id: string | null;
   meta_ads_budget: number;
   lastReview?: ReviewData;
+  needsBudgetAdjustment?: boolean;
 }
 
 // Tipos relacionados à revisão
@@ -22,6 +23,7 @@ export interface ReviewData {
   using_custom_budget?: boolean;
   custom_budget_id?: string | null;
   custom_budget_amount?: number | null;
+  custom_budget_end_date?: string | null;
 }
 
 // Tipos relacionados à análise
