@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -362,7 +361,27 @@ export const useCustomBudgets = () => {
 
   // Formatar data para exibição
   const formatDate = (dateString: string) => {
-    return formatDateInBrasiliaTz(new Date(dateString), "dd/MM/yyyy");
+    try {
+      // Garantir que a data tenha um horário fixo de meio-dia para evitar problemas de fuso
+      const fullDate = `${dateString}T12:00:00`;
+      const date = new Date(fullDate);
+      
+      // Verificar se a data é válida
+      if (isNaN(date.getTime())) {
+        console.error("Data inválida para formatação:", dateString);
+        return dateString; // Retorna a string original se inválida
+      }
+      
+      // Formatar usando DD/MM/YYYY
+      return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(date);
+    } catch (error) {
+      console.error("Erro ao formatar data:", error, dateString);
+      return dateString;
+    }
   };
 
   // Formatar valor do orçamento
