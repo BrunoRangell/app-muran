@@ -1,3 +1,4 @@
+
 import { formatCurrency } from "@/utils/formatters";
 import { AlertCircle, Calendar, Loader } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,13 +53,13 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
     );
   }
 
-  console.log('Renderizando tabela com histórico de revisões');
+  // Exibir uma mensagem explicando que apenas a revisão mais recente é mantida
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Calendar className="text-muran-primary" size={18} />
-          Histórico de Revisões
+          Revisão Atual
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -72,28 +73,28 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
               </tr>
             </thead>
             <tbody>
-              {reviewHistory.map((review) => {
-                console.log('Antes do log da data da revisão para review.id:', review.id);
-                console.log('Tipo de review.review_date:', typeof review.review_date);
-                console.log('Data da revisão antes de formatar:', review.review_date);
-                console.log('Depois do log da data da revisão para review.id:', review.id);
-
-                return (
-                  <tr key={review.id} className="border-b">
-                    <td className="py-2">
-                      {formatDateInBrasiliaTz(review.review_date, "dd/MM/yyyy HH:mm")}
-                    </td>
-                    <td className="py-2">
-                      {formatCurrency(review.meta_daily_budget_current || 0)}
-                    </td>
-                    <td className="py-2">
-                      {formatCurrency(review.meta_total_spent || 0)}
-                    </td>
-                  </tr>
-                );
-              })}
+              {reviewHistory.map((review) => (
+                <tr key={review.id} className="border-b">
+                  <td className="py-2">
+                    {formatDateInBrasiliaTz(review.review_date, "dd/MM/yyyy HH:mm")}
+                  </td>
+                  <td className="py-2">
+                    {formatCurrency(review.meta_daily_budget_current || 0)}
+                  </td>
+                  <td className="py-2">
+                    {formatCurrency(review.meta_total_spent || 0)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
+        </div>
+        
+        <div className="mt-4 p-3 bg-gray-50 rounded-md text-xs text-gray-600">
+          <p className="flex items-center gap-1">
+            <AlertCircle size={12} className="text-muran-primary" />
+            Nota: Agora mantemos apenas a revisão mais recente para cada cliente. Todas as suas análises diárias anteriores foram otimizadas.
+          </p>
         </div>
       </CardContent>
     </Card>

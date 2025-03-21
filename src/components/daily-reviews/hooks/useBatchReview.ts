@@ -3,8 +3,56 @@ import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientWithReview, BatchReviewResult } from "./types/reviewTypes";
 import { useToast } from "@/hooks/use-toast";
-import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./services/clientReviewService";
+import { fetchClientsWithReviews, analyzeClient } from "./services/clientReviewService";
 import { supabase } from "@/lib/supabase";
+
+// Processar clientes em paralelo com controle de concorrência
+const analyzeClientsInParallel = async (
+  clients: ClientWithReview[],
+  batchSize: number,
+  onClientStart: (clientId: string) => void,
+  onClientEnd: (clientId: string) => void
+): Promise<BatchReviewResult> => {
+  const results = [];
+  const errors = [];
+  
+  // Processar em lotes para limitar a concorrência
+  for (let i = 0; i < clients.length; i += batchSize) {
+    const currentBatch = clients.slice(i, i + batchSize);
+    console.log(`Processando lote ${i / batchSize + 1} com ${currentBatch.length} clientes`);
+    
+    const batchPromises = currentBatch.map(async (client) => {
+      try {
+        onClientStart(client.id);
+        const result = await analyzeClient(client.id);
+        onClientEnd(client.id);
+        return { clientId: client.id, result };
+      } catch (error) {
+        onClientEnd(client.id);
+        return { 
+          clientId: client.id, 
+          error: {
+            clientId: client.id,
+            clientName: client.company_name,
+            error: error instanceof Error ? error.message : "Erro desconhecido"
+          }
+        };
+      }
+    });
+    
+    const batchResults = await Promise.all(batchPromises);
+    
+    batchResults.forEach(item => {
+      if (item.result) {
+        results.push(item.result);
+      } else if (item.error) {
+        errors.push(item.error);
+      }
+    });
+  }
+  
+  return { results, errors };
+};
 
 export const useBatchReview = () => {
   const [processingClients, setProcessingClients] = useState<string[]>([]);
@@ -63,7 +111,9 @@ export const useBatchReview = () => {
   const refetchClients = useCallback(async () => {
     console.log("Recarregando dados dos clientes...");
     await refetch();
-  }, [refetch]);
+    // Também atualizar as consultas de revisões atuais
+    queryClient.invalidateQueries({ queryKey: ["client-current-reviews"] });
+  }, [refetch, queryClient]);
 
   // Função para salvar a data da última revisão em massa
   const saveLastBatchReviewTime = async (timestamp: Date) => {
@@ -177,8 +227,10 @@ export const useBatchReview = () => {
         });
       };
       
-      const result: BatchReviewResult = await analyzeAllClients(
-        clientsWithReviews,
+      // Processar clientes em lotes paralelos com 3 clientes por vez
+      const result: BatchReviewResult = await analyzeClientsInParallel(
+        eligibleClients,
+        3, // tamanho do lote para processamento paralelo
         handleClientStart,
         handleClientEnd
       );
@@ -219,7 +271,7 @@ export const useBatchReview = () => {
       setBatchProgress(0);
       setTotalClientsToAnalyze(0);
     }
-  }, [isBatchAnalyzing, clientsWithReviews, toast, refetchClients]);
+  }, [isBatchAnalyzing, clientsWithReviews, toast, refetchClients, saveLastBatchReviewTime]);
 
   // Monitorar mudanças nos clientes em processamento
   useEffect(() => {
@@ -240,3 +292,5 @@ export const useBatchReview = () => {
     totalClientsToAnalyze
   };
 };
+
+export { analyzeClientsInParallel };

@@ -11,8 +11,8 @@ export const useClientReviewDetails = (clientId: string) => {
   const refetchData = useCallback(() => {
     console.log("Recarregando dados para cliente:", clientId);
     queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
+    queryClient.invalidateQueries({ queryKey: ["client-current-review", clientId] });
     queryClient.invalidateQueries({ queryKey: ["latest-review", clientId] });
-    queryClient.invalidateQueries({ queryKey: ["review-history", clientId] });
   }, [queryClient, clientId]);
 
   // Buscar dados do cliente
@@ -36,10 +36,64 @@ export const useClientReviewDetails = (clientId: string) => {
     },
   });
 
-  // Buscar a revisão mais recente
+  // Buscar a revisão atual do cliente (nova tabela)
+  const { data: currentReview, isLoading: isLoadingCurrentReview, error: currentReviewError } = useQuery({
+    queryKey: ["client-current-review", clientId],
+    queryFn: async () => {
+      console.log("Buscando revisão atual para cliente:", clientId);
+      const { data, error } = await supabase
+        .from("client_current_reviews")
+        .select("*")
+        .eq("client_id", clientId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Erro ao buscar revisão atual:", error);
+        
+        // Se não encontrar na nova tabela, tentar a tabela antiga para compatibilidade
+        const { data: legacyData, error: legacyError } = await supabase
+          .from("daily_budget_reviews")
+          .select("*")
+          .eq("client_id", clientId)
+          .order("review_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (legacyError) {
+          console.error("Erro ao buscar revisão legada:", legacyError);
+          return null;
+        }
+        
+        return legacyData;
+      }
+      
+      console.log("Revisão atual recuperada:", data);
+      
+      // Garantir que os valores numéricos sejam convertidos corretamente
+      if (data) {
+        if (data.meta_total_spent !== null && data.meta_total_spent !== undefined) {
+          data.meta_total_spent = Number(data.meta_total_spent);
+        }
+        
+        if (data.meta_daily_budget_current !== null && data.meta_daily_budget_current !== undefined) {
+          data.meta_daily_budget_current = Number(data.meta_daily_budget_current);
+        }
+      }
+      
+      return data;
+    },
+    enabled: !!client,
+  });
+
+  // Para compatibilidade, manter a busca da revisão mais recente na tabela antiga
   const { data: latestReview, isLoading: isLoadingReview, error: reviewError } = useQuery({
     queryKey: ["latest-review", clientId],
     queryFn: async () => {
+      // Se já temos a revisão atual, usá-la
+      if (currentReview) {
+        return currentReview;
+      }
+      
       console.log("Buscando revisão mais recente para cliente:", clientId);
       const { data, error } = await supabase
         .from("daily_budget_reviews")
@@ -65,50 +119,19 @@ export const useClientReviewDetails = (clientId: string) => {
         if (data.meta_daily_budget_current !== null && data.meta_daily_budget_current !== undefined) {
           data.meta_daily_budget_current = Number(data.meta_daily_budget_current);
         }
-        
-        console.log("Valores convertidos:", {
-          meta_total_spent: data.meta_total_spent,
-          meta_daily_budget_current: data.meta_daily_budget_current
-        });
       }
       
       return data;
     },
-    enabled: !!client,
+    enabled: !currentReview && !!client,
   });
 
-  // Histórico de revisões
-  const { data: reviewHistory, isLoading: isLoadingHistory, error: historyError } = useQuery({
-    queryKey: ["review-history", clientId],
-    queryFn: async () => {
-      console.log("Buscando histórico de revisões para cliente:", clientId);
-      const { data, error } = await supabase
-        .from("daily_budget_reviews")
-        .select("*")
-        .eq("client_id", clientId)
-        .order("review_date", { ascending: false })
-        .limit(10);
+  // Usar a revisão atual se disponível, ou a mais recente da tabela antiga
+  const effectiveReview = currentReview || latestReview;
 
-      if (error) {
-        console.error("Erro ao buscar histórico de revisões:", error);
-        throw error;
-      }
-      
-      console.log("Histórico de revisões recuperado:", data);
-      
-      // Garantir que os valores numéricos sejam convertidos corretamente
-      if (data && data.length > 0) {
-        return data.map(review => ({
-          ...review,
-          meta_total_spent: review.meta_total_spent !== null ? Number(review.meta_total_spent) : null,
-          meta_daily_budget_current: review.meta_daily_budget_current !== null ? Number(review.meta_daily_budget_current) : null
-        }));
-      }
-      
-      return data;
-    },
-    enabled: !!client,
-  });
+  // Para retrocompatibilidade, ainda criamos um array de "histórico" com a revisão atual
+  const reviewHistory = effectiveReview ? [effectiveReview] : null;
+  const isLoadingHistory = isLoadingCurrentReview || isLoadingReview;
 
   // Calcular recomendações de orçamento usando o hook separado
   const {
@@ -119,16 +142,16 @@ export const useClientReviewDetails = (clientId: string) => {
     remainingBudget
   } = useClientBudgetRecommendation(
     client?.meta_ads_budget,
-    latestReview?.meta_total_spent,
-    latestReview?.meta_daily_budget_current
+    effectiveReview?.meta_total_spent,
+    effectiveReview?.meta_daily_budget_current
   );
 
-  const isLoading = isLoadingClient || isLoadingReview;
-  const hasError = clientError || reviewError || historyError;
+  const isLoading = isLoadingClient || isLoadingCurrentReview || isLoadingReview;
+  const hasError = clientError || currentReviewError || reviewError;
 
   return {
     client,
-    latestReview,
+    latestReview: effectiveReview,
     reviewHistory,
     recommendation,
     idealDailyBudget,
@@ -141,6 +164,6 @@ export const useClientReviewDetails = (clientId: string) => {
     remainingDays,
     remainingBudget,
     monthlyBudget: client?.meta_ads_budget,
-    totalSpent: latestReview?.meta_total_spent
+    totalSpent: effectiveReview?.meta_total_spent
   };
 };

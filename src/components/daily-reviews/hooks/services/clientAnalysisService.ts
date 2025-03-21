@@ -101,26 +101,29 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
   }
   
   try {
-    // Verificar se já existe uma revisão para hoje
-    const { data: existingReview } = await supabase
-      .from('daily_budget_reviews')
-      .select('id')
-      .eq('client_id', client.id)
-      .eq('review_date', currentDate)
-      .maybeSingle();
-
-    let reviewData;
-    
     // Preparar informações de orçamento personalizado
     const customBudgetInfo = prepareCustomBudgetInfo(customBudget);
 
+    // Primeiro, salvar os dados na nova tabela client_current_reviews (revisões atuais)
+    let currentReviewData;
+    
+    // Verificar se já existe uma revisão atual para este cliente
+    const { data: existingReview } = await supabase
+      .from('client_current_reviews')
+      .select('id')
+      .eq('client_id', client.id)
+      .maybeSingle();
+
     if (existingReview) {
-      console.log("Atualizando revisão existente para hoje:", existingReview.id);
+      console.log("Atualizando revisão atual existente para o cliente:", client.id);
       const { data: updatedReview, error: updateError } = await supabase
-        .from('daily_budget_reviews')
+        .from('client_current_reviews')
         .update({
+          review_date: currentDate,
           meta_daily_budget_current: metaDailyBudgetCurrent,
           meta_total_spent: metaTotalSpent,
+          meta_account_id: client.meta_account_id,
+          meta_account_name: `Conta ${client.meta_account_id}`,
           ...customBudgetInfo,
           updated_at: new Date().toISOString()
         })
@@ -129,14 +132,14 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
         .single();
 
       if (updateError) {
-        console.error("Erro ao atualizar revisão:", updateError);
+        console.error("Erro ao atualizar revisão atual:", updateError);
         throw updateError;
       }
-      reviewData = updatedReview;
+      currentReviewData = updatedReview;
     } else {
-      console.log("Criando nova revisão para hoje");
+      console.log("Criando nova revisão atual para o cliente:", client.id);
       const { data: newReview, error: insertError } = await supabase
-        .from('daily_budget_reviews')
+        .from('client_current_reviews')
         .insert({
           client_id: client.id,
           review_date: currentDate,
@@ -150,17 +153,52 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
         .single();
       
       if (insertError) {
-        console.error("Erro ao inserir revisão:", insertError);
+        console.error("Erro ao inserir revisão atual:", insertError);
         throw insertError;
       }
-      reviewData = newReview;
+      currentReviewData = newReview;
     }
     
-    console.log("Revisão salva/atualizada com sucesso:", reviewData);
+    // Para compatibilidade, também adicionar na tabela diária antiga
+    // Verificar se já existe uma revisão diária para hoje
+    const { data: existingDailyReview } = await supabase
+      .from('daily_budget_reviews')
+      .select('id')
+      .eq('client_id', client.id)
+      .eq('review_date', currentDate)
+      .maybeSingle();
+
+    if (existingDailyReview) {
+      console.log("Atualizando revisão diária existente para hoje:", existingDailyReview.id);
+      await supabase
+        .from('daily_budget_reviews')
+        .update({
+          meta_daily_budget_current: metaDailyBudgetCurrent,
+          meta_total_spent: metaTotalSpent,
+          ...customBudgetInfo,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingDailyReview.id);
+    } else {
+      console.log("Criando nova revisão diária para hoje");
+      await supabase
+        .from('daily_budget_reviews')
+        .insert({
+          client_id: client.id,
+          review_date: currentDate,
+          meta_daily_budget_current: metaDailyBudgetCurrent,
+          meta_total_spent: metaTotalSpent,
+          meta_account_id: client.meta_account_id,
+          meta_account_name: `Conta ${client.meta_account_id}`,
+          ...customBudgetInfo
+        });
+    }
+    
+    console.log("Revisão atual e diária salvas/atualizadas com sucesso");
     
     return {
       clientId: client.id,
-      reviewId: reviewData.id,
+      reviewId: currentReviewData.id,
       analysis: {
         totalDailyBudget: metaDailyBudgetCurrent,
         totalSpent: metaTotalSpent,
@@ -172,3 +210,6 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
     throw new Error(`Erro ao salvar/atualizar no banco de dados: ${dbError.message}`);
   }
 }
+
+// Exportar todas as funções necessárias
+export { saveClientReviewData };
