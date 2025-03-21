@@ -73,7 +73,7 @@ export const CustomBudgetTable = ({
     return { label: "Encerrado", variant: "secondary" as const };
   };
 
-  // Função para calcular a duração do período em dias
+  // Função para calcular a duração do período em dias (corrigida)
   const calculatePeriodDuration = (startDate: string, endDate: string): number => {
     const start = new Date(startDate);
     const end = new Date(endDate);

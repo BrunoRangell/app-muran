@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -108,18 +109,18 @@ export const CustomBudgetForm = ({
   useEffect(() => {
     if (selectedBudget) {
       // Corrigindo o problema da data: converter as strings para objetos Date
-      // sem modificar o fuso horário (utilizando a data local)
-      const correctedStartDate = new Date(selectedBudget.startDate + 'T00:00:00');
-      const correctedEndDate = new Date(selectedBudget.endDate + 'T00:00:00');
+      // sem alterar o fuso horário
+      const startDate = new Date(selectedBudget.startDate + 'T12:00:00');
+      const endDate = new Date(selectedBudget.endDate + 'T12:00:00');
       
       console.log('Datas originais:', selectedBudget.startDate, selectedBudget.endDate);
-      console.log('Datas corrigidas:', correctedStartDate, correctedEndDate);
+      console.log('Datas corrigidas para form:', startDate, endDate);
       
       form.reset({
         client_id: selectedBudget.clientId,
         budget_amount: selectedBudget.budgetAmount,
-        start_date: correctedStartDate,
-        end_date: correctedEndDate,
+        start_date: startDate,
+        end_date: endDate,
         description: selectedBudget.description,
       });
       setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
@@ -177,11 +178,21 @@ export const CustomBudgetForm = ({
 
   // Manipulador de submissão do formulário
   const handleFormSubmit = (data: FormData) => {
+    // Garantir que as datas sejam formatadas no formato YYYY-MM-DD sem ajuste de fuso horário
+    const formatDateToYYYYMMDD = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    console.log('Dados do formulário antes de enviar:', data);
+
     onSubmit({
       clientId: data.client_id,
       budgetAmount: data.budget_amount,
-      startDate: data.start_date.toISOString().split("T")[0],
-      endDate: data.end_date.toISOString().split("T")[0],
+      startDate: formatDateToYYYYMMDD(data.start_date),
+      endDate: formatDateToYYYYMMDD(data.end_date),
       description: data.description || "",
     });
   };
