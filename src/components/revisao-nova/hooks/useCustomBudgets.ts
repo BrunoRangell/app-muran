@@ -115,6 +115,7 @@ export const useCustomBudgets = () => {
 
       console.log("Enviando dados para criação:", formData);
 
+      // Remova o campo status do objeto de inserção, já que ele não existe na tabela
       const { data, error } = await supabase
         .from("meta_custom_budgets")
         .insert({
@@ -123,8 +124,7 @@ export const useCustomBudgets = () => {
           start_date: formData.startDate,
           end_date: formData.endDate,
           description: formData.description || null,
-          status: 'active',
-          is_active: true
+          is_active: true  // Remova o campo status e use apenas is_active
         })
         .select()
         .single();
