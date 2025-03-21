@@ -178,23 +178,30 @@ export const CustomBudgetForm = ({
 
   // Manipulador de submissão do formulário
   const handleFormSubmit = (data: FormData) => {
-    // Garantir que as datas sejam formatadas no formato YYYY-MM-DD sem ajuste de fuso horário
-    const formatDateToYYYYMMDD = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
+    try {
+      // Garantir que as datas sejam formatadas no formato YYYY-MM-DD sem ajuste de fuso horário
+      const formatDateToYYYYMMDD = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
 
-    console.log('Dados do formulário antes de enviar:', data);
+      console.log('Dados do formulário antes de enviar:', data);
 
-    onSubmit({
-      clientId: data.client_id,
-      budgetAmount: data.budget_amount,
-      startDate: formatDateToYYYYMMDD(data.start_date),
-      endDate: formatDateToYYYYMMDD(data.end_date),
-      description: data.description || "",
-    });
+      const formData: CustomBudgetFormData = {
+        clientId: data.client_id,
+        budgetAmount: data.budget_amount,
+        startDate: formatDateToYYYYMMDD(data.start_date),
+        endDate: formatDateToYYYYMMDD(data.end_date),
+        description: data.description || "",
+      };
+
+      console.log('Dados formatados para envio:', formData);
+      onSubmit(formData);
+    } catch (error) {
+      console.error('Erro ao processar formulário:', error);
+    }
   };
 
   // Exibir um indicador de carregamento enquanto os clientes estão sendo carregados
