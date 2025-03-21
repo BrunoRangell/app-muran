@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -15,7 +14,7 @@ export interface CustomBudget {
   description: string | null;
   created_at: string;
   status: 'active' | 'completed' | 'cancelled';
-  is_active: boolean; // Propriedade adicionada para compatibilidade
+  is_active: boolean;
   client_name?: string;
 }
 
@@ -47,7 +46,7 @@ export const useCustomBudgets = () => {
     queryKey: ["custom-budgets"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
+        .from("meta_custom_budgets")
         .select(`
           *,
           clients (
@@ -109,19 +108,22 @@ export const useCustomBudgets = () => {
       const errors = validateBudgetForm(formData);
       if (Object.keys(errors).length > 0) {
         setFormErrors(errors);
+        console.error("Erros de validação:", errors);
         throw new Error("Formulário com erros");
       }
 
+      console.log("Enviando dados para criação:", formData);
+
+      // Remova o campo status do objeto de inserção, já que ele não existe na tabela
       const { data, error } = await supabase
-        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
+        .from("meta_custom_budgets")
         .insert({
           client_id: formData.clientId,
           budget_amount: formData.budgetAmount,
           start_date: formData.startDate,
           end_date: formData.endDate,
           description: formData.description || null,
-          status: 'active',
-          is_active: true
+          is_active: true  // Remova o campo status e use apenas is_active
         })
         .select()
         .single();
@@ -131,6 +133,7 @@ export const useCustomBudgets = () => {
         throw error;
       }
 
+      console.log("Orçamento criado com sucesso:", data);
       return data;
     },
     onSuccess: () => {
@@ -141,11 +144,13 @@ export const useCustomBudgets = () => {
         description: "O orçamento personalizado foi criado com sucesso.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Erro na mutação addCustomBudgetMutation:", error);
+      
       if (error.message !== "Formulário com erros") {
         toast({
           title: "Erro ao criar orçamento",
-          description: "Não foi possível criar o orçamento personalizado.",
+          description: "Não foi possível criar o orçamento personalizado: " + error.message,
           variant: "destructive",
         });
       }
@@ -159,11 +164,14 @@ export const useCustomBudgets = () => {
       const errors = validateBudgetForm(formData);
       if (Object.keys(errors).length > 0) {
         setFormErrors(errors);
+        console.error("Erros de validação:", errors);
         throw new Error("Formulário com erros");
       }
 
+      console.log("Enviando dados para atualização:", { id, ...formData });
+
       const { data, error } = await supabase
-        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
+        .from("meta_custom_budgets")
         .update({
           budget_amount: formData.budgetAmount,
           start_date: formData.startDate,
@@ -179,6 +187,7 @@ export const useCustomBudgets = () => {
         throw error;
       }
 
+      console.log("Orçamento atualizado com sucesso:", data);
       return data;
     },
     onSuccess: () => {
@@ -189,11 +198,13 @@ export const useCustomBudgets = () => {
         description: "O orçamento personalizado foi atualizado com sucesso.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error("Erro na mutação updateCustomBudgetMutation:", error);
+      
       if (error.message !== "Formulário com erros") {
         toast({
           title: "Erro ao atualizar orçamento",
-          description: "Não foi possível atualizar o orçamento personalizado.",
+          description: "Não foi possível atualizar o orçamento personalizado: " + error.message,
           variant: "destructive",
         });
       }
@@ -204,7 +215,7 @@ export const useCustomBudgets = () => {
   const deleteCustomBudgetMutation = useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
-        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
+        .from("meta_custom_budgets")
         .delete()
         .eq('id', id)
         .select()
@@ -237,7 +248,7 @@ export const useCustomBudgets = () => {
   const toggleBudgetStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
       const { data, error } = await supabase
-        .from("meta_custom_budgets") // Corrigido de "custom_budgets" para "meta_custom_budgets"
+        .from("meta_custom_budgets")
         .update({
           is_active: isActive
         })
@@ -272,6 +283,8 @@ export const useCustomBudgets = () => {
   const validateBudgetForm = (formData: CustomBudgetFormData): Record<string, string> => {
     const errors: Record<string, string> = {};
 
+    console.log("Validando dados:", formData);
+
     if (!formData.clientId) {
       errors.clientId = "Selecione um cliente";
     }
@@ -300,6 +313,10 @@ export const useCustomBudgets = () => {
       }
     }
 
+    if (Object.keys(errors).length > 0) {
+      console.log("Erros de validação encontrados:", errors);
+    }
+
     return errors;
   };
 
@@ -315,12 +332,13 @@ export const useCustomBudgets = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (startDate < today) {
-      return {
-        valid: false,
-        message: "A data de início não pode ser anterior a hoje"
-      };
-    }
+    // Remover esta validação que não permite datas no passado
+    // if (startDate < today) {
+    //   return {
+    //     valid: false,
+    //     message: "A data de início não pode ser anterior a hoje"
+    //   };
+    // }
 
     // Calcular a diferença em dias
     const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
@@ -343,7 +361,27 @@ export const useCustomBudgets = () => {
 
   // Formatar data para exibição
   const formatDate = (dateString: string) => {
-    return formatDateInBrasiliaTz(new Date(dateString), "dd/MM/yyyy");
+    try {
+      // Garantir que a data tenha um horário fixo de meio-dia para evitar problemas de fuso
+      const fullDate = `${dateString}T12:00:00`;
+      const date = new Date(fullDate);
+      
+      // Verificar se a data é válida
+      if (isNaN(date.getTime())) {
+        console.error("Data inválida para formatação:", dateString);
+        return dateString; // Retorna a string original se inválida
+      }
+      
+      // Formatar usando DD/MM/YYYY
+      return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(date);
+    } catch (error) {
+      console.error("Erro ao formatar data:", error, dateString);
+      return dateString;
+    }
   };
 
   // Formatar valor do orçamento

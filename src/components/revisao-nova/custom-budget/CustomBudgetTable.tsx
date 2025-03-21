@@ -65,18 +65,19 @@ export const CustomBudgetTable = ({
       return { label: "Inativo", variant: "outline" as const };
     }
     if (isCurrentlyActive(budget)) {
-      return { label: "Ativo", variant: "default" as const }; // Alterado de "success" para "default"
+      return { label: "Ativo", variant: "default" as const }; 
     }
     if (isFutureBudget(budget)) {
-      return { label: "Agendado", variant: "secondary" as const }; // Alterado de "warning" para "secondary"
+      return { label: "Agendado", variant: "secondary" as const };
     }
     return { label: "Encerrado", variant: "secondary" as const };
   };
 
-  // Função para calcular a duração do período em dias
+  // Função para calcular a duração do período em dias (corrigida)
   const calculatePeriodDuration = (startDate: string, endDate: string): number => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    // As datas estão no formato ISO YYYY-MM-DD
+    const start = new Date(`${startDate}T12:00:00`);
+    const end = new Date(`${endDate}T12:00:00`);
     
     // Cálculo da diferença em dias (incluindo o último dia)
     const diffTime = Math.abs(end.getTime() - start.getTime());
