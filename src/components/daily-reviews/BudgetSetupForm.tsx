@@ -15,16 +15,18 @@ export const BudgetSetupForm = () => {
     saveBudgetsMutation,
     handleBudgetChange,
     handleAccountIdChange,
+    handleGoogleBudgetChange,
+    handleGoogleAccountIdChange,
     handleSave,
     filteredClients
   } = useBudgetSetup();
 
   return (
-    <Card className="max-w-4xl mx-auto">
+    <Card className="max-w-5xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="text-muran-primary" />
-          Configurar Orçamentos Meta Ads
+          Configurar Orçamentos
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -41,6 +43,8 @@ export const BudgetSetupForm = () => {
             searchTerm={searchTerm}
             onBudgetChange={handleBudgetChange}
             onAccountIdChange={handleAccountIdChange}
+            onGoogleBudgetChange={handleGoogleBudgetChange}
+            onGoogleAccountIdChange={handleGoogleAccountIdChange}
           />
 
           <SaveButton

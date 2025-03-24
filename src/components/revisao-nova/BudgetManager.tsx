@@ -32,9 +32,12 @@ export const BudgetManager = () => {
     handleBudgetChange, 
     handleBudgetBlur,
     handleAccountIdChange, 
+    handleGoogleBudgetChange,
+    handleGoogleAccountIdChange,
     handleSave, 
     isSaving,
-    totalBudget 
+    totalBudget,
+    totalGoogleBudget
   } = useBudgetManager();
 
   // Filtrar clientes com base no termo de busca
@@ -55,7 +58,7 @@ export const BudgetManager = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <CardTitle className="text-xl text-muran-dark flex items-center gap-2">
-              Gerenciamento de Orçamentos Meta Ads
+              Gerenciamento de Orçamentos
               <Button 
                 size="icon" 
                 variant="ghost" 
@@ -91,15 +94,17 @@ export const BudgetManager = () => {
               <Table>
                 <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableHead className="w-[40%]">Cliente</TableHead>
-                    <TableHead className="w-[30%]">ID Conta Meta Ads</TableHead>
-                    <TableHead className="w-[30%]">Orçamento Mensal (R$)</TableHead>
+                    <TableHead className="w-[25%]">Cliente</TableHead>
+                    <TableHead className="w-[15%]">ID Conta Meta Ads</TableHead>
+                    <TableHead className="w-[15%]">Orçamento Meta Ads (R$)</TableHead>
+                    <TableHead className="w-[15%]">ID Conta Google Ads</TableHead>
+                    <TableHead className="w-[15%]">Orçamento Google Ads (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredClients?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-6 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-6 text-gray-500">
                         Nenhum cliente encontrado
                       </TableCell>
                     </TableRow>
@@ -111,7 +116,7 @@ export const BudgetManager = () => {
                           <Input
                             value={budgets[client.id]?.accountId || ""}
                             onChange={(e) => handleAccountIdChange(client.id, e.target.value)}
-                            placeholder="ID da conta"
+                            placeholder="ID da conta Meta"
                             className="bg-white"
                           />
                         </TableCell>
@@ -120,7 +125,25 @@ export const BudgetManager = () => {
                             type="text"
                             value={budgets[client.id]?.formattedValue || ""}
                             onChange={(e) => handleBudgetChange(client.id, e.target.value)}
-                            onBlur={() => handleBudgetBlur(client.id)}
+                            onBlur={() => handleBudgetBlur(client.id, 'meta')}
+                            placeholder="R$ 0,00"
+                            className="text-right bg-white"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={budgets[client.id]?.googleAccountId || ""}
+                            onChange={(e) => handleGoogleAccountIdChange(client.id, e.target.value)}
+                            placeholder="ID da conta Google"
+                            className="bg-white"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="text"
+                            value={budgets[client.id]?.googleFormattedValue || ""}
+                            onChange={(e) => handleGoogleBudgetChange(client.id, e.target.value)}
+                            onBlur={() => handleBudgetBlur(client.id, 'google')}
                             placeholder="R$ 0,00"
                             className="text-right bg-white"
                           />
@@ -132,10 +155,16 @@ export const BudgetManager = () => {
                 <TableFooter>
                   <TableRow>
                     <TableCell colSpan={2} className="text-right font-medium">
-                      Total de Orçamentos:
+                      Total de Orçamentos Meta Ads:
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {totalBudget}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      Total de Orçamentos Google Ads:
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {totalGoogleBudget}
                     </TableCell>
                   </TableRow>
                 </TableFooter>

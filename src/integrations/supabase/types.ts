@@ -74,6 +74,59 @@ export type Database = {
           },
         ]
       }
+      client_current_reviews: {
+        Row: {
+          client_id: string
+          created_at: string
+          custom_budget_amount: number | null
+          custom_budget_id: string | null
+          id: string
+          meta_account_id: string | null
+          meta_account_name: string | null
+          meta_daily_budget_current: number | null
+          meta_total_spent: number | null
+          review_date: string
+          updated_at: string
+          using_custom_budget: boolean | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          custom_budget_amount?: number | null
+          custom_budget_id?: string | null
+          id?: string
+          meta_account_id?: string | null
+          meta_account_name?: string | null
+          meta_daily_budget_current?: number | null
+          meta_total_spent?: number | null
+          review_date?: string
+          updated_at?: string
+          using_custom_budget?: boolean | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          custom_budget_amount?: number | null
+          custom_budget_id?: string | null
+          id?: string
+          meta_account_id?: string | null
+          meta_account_name?: string | null
+          meta_daily_budget_current?: number | null
+          meta_total_spent?: number | null
+          review_date?: string
+          updated_at?: string
+          using_custom_budget?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_current_reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           acquisition_channel: string | null
@@ -434,6 +487,39 @@ export type Database = {
             referencedColumns: ["manager_id"]
           },
         ]
+      }
+      scheduled_tasks: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_run: string | null
+          schedule: string
+          task_name: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_run?: string | null
+          schedule: string
+          task_name: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_run?: string | null
+          schedule?: string
+          task_name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       system_configs: {
         Row: {
