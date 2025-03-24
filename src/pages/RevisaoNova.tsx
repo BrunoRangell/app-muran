@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/ReviewsDashboardCard";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
-import { ScheduleSettings } from "@/components/revisao-nova/ScheduleSettings";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -16,7 +15,7 @@ export default function RevisaoNova() {
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {
-    if (tabParam && ["dashboard", "budgets", "custom-budgets", "settings"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "budgets", "custom-budgets"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -32,7 +31,6 @@ export default function RevisaoNova() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
           <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
-          <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
@@ -45,12 +43,6 @@ export default function RevisaoNova() {
         
         <TabsContent value="custom-budgets">
           <CustomBudgetManager />
-        </TabsContent>
-        
-        <TabsContent value="settings">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ScheduleSettings />
-          </div>
         </TabsContent>
       </Tabs>
     </div>

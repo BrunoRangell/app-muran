@@ -1,9 +1,0 @@
-
-# A string containing the project id.
-project_id = "socrnutfpqtcjmetskta"
-
-[functions.scheduled-reviews]
-verify_jwt = false
-
-[functions.cron-reviews]
-verify_jwt = false

@@ -3,11 +3,9 @@ import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientWithReview, BatchReviewResult } from "./types/reviewTypes";
 import { useToast } from "@/hooks/use-toast";
+import { fetchClientsWithReviews, analyzeClient, analyzeAllClients } from "./services/clientReviewService";
 import { supabase } from "@/lib/supabase";
 
-/**
- * Hook para gerenciar revisões em massa de orçamentos do Meta Ads
- */
 export const useBatchReview = () => {
   const [processingClients, setProcessingClients] = useState<string[]>([]);
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
@@ -25,71 +23,7 @@ export const useBatchReview = () => {
     refetch 
   } = useQuery({
     queryKey: ["clients-with-reviews"],
-    queryFn: async () => {
-      try {
-        console.log("Buscando clientes com revisões...");
-        
-        // Buscar todos os clientes
-        const { data: clientsData, error: clientsError } = await supabase
-          .from("clients")
-          .select("*")
-          .order("company_name");
-        
-        if (clientsError) {
-          throw clientsError;
-        }
-        
-        // Buscar revisões atuais
-        const { data: reviewsData, error: reviewsError } = await supabase
-          .from("client_current_reviews")
-          .select("*");
-        
-        if (reviewsError) {
-          throw reviewsError;
-        }
-        
-        // Mapear revisões por cliente
-        const reviewsByClientId = (reviewsData || []).reduce((acc, review) => {
-          acc[review.client_id] = review;
-          return acc;
-        }, {});
-        
-        // Buscar orçamentos personalizados ativos
-        const today = new Date().toISOString().split("T")[0];
-        const { data: customBudgetsData, error: customBudgetsError } = await supabase
-          .from("meta_custom_budgets")
-          .select("*")
-          .eq("is_active", true)
-          .lte("start_date", today)
-          .gte("end_date", today);
-        
-        if (customBudgetsError) {
-          throw customBudgetsError;
-        }
-        
-        // Mapear orçamentos personalizados por cliente
-        const customBudgetsByClientId = (customBudgetsData || []).reduce((acc, budget) => {
-          acc[budget.client_id] = budget;
-          return acc;
-        }, {});
-        
-        // Combinar os dados
-        const clientsWithReviews = (clientsData || []).map(client => ({
-          ...client,
-          currentReview: reviewsByClientId[client.id] || null,
-          customBudget: customBudgetsByClientId[client.id] || null
-        }));
-        
-        return {
-          clientsData: clientsWithReviews,
-          reviewsData: reviewsData || [],
-          customBudgetsData: customBudgetsData || []
-        };
-      } catch (error) {
-        console.error("Erro ao buscar clientes com revisões:", error);
-        throw error;
-      }
-    },
+    queryFn: fetchClientsWithReviews,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
@@ -129,19 +63,14 @@ export const useBatchReview = () => {
   const refetchClients = useCallback(async () => {
     console.log("Recarregando dados dos clientes...");
     await refetch();
-    // Também atualizar as consultas de revisões atuais
-    queryClient.invalidateQueries({ queryKey: ["client-current-reviews"] });
-  }, [refetch, queryClient]);
+  }, [refetch]);
 
   // Função para salvar a data da última revisão em massa
   const saveLastBatchReviewTime = async (timestamp: Date) => {
     try {
       const { error } = await supabase
         .from("system_configs")
-        .upsert({ 
-          key: "last_batch_review_time", 
-          value: timestamp.toISOString() 
-        })
+        .update({ value: timestamp.toISOString() })
         .eq("key", "last_batch_review_time");
       
       if (error) {
@@ -156,7 +85,7 @@ export const useBatchReview = () => {
     }
   };
 
-  // Função para revisar um único cliente
+  // Função para revisar um único cliente - NÃO atualiza timestamp de revisão em massa
   const reviewSingleClient = useCallback(async (clientId: string) => {
     if (processingClients.includes(clientId)) {
       console.log(`Cliente ${clientId} já está em processamento.`);
@@ -167,26 +96,14 @@ export const useBatchReview = () => {
       setProcessingClients(prev => [...prev, clientId]);
       
       console.log(`Iniciando análise para cliente ${clientId}`);
-      
-      // Chamar função Edge para analisar cliente
-      const { data, error } = await supabase.functions.invoke("daily-budget-reviews", {
-        body: { method: "analyzeClient", clientId }
-      });
-      
-      if (error) {
-        throw new Error(`Erro ao analisar cliente: ${error.message}`);
-      }
-      
-      if (!data || !data.success) {
-        throw new Error(data?.message || "Erro desconhecido na análise do cliente");
-      }
+      const result = await analyzeClient(clientId, clientsWithReviews);
       
       toast({
         title: "Análise concluída",
         description: "Orçamentos de Meta Ads atualizados com sucesso!",
       });
       
-      console.log("Análise concluída com sucesso:", data);
+      console.log("Análise concluída com sucesso:", result);
       await refetchClients();
       
     } catch (error) {
@@ -201,9 +118,9 @@ export const useBatchReview = () => {
     } finally {
       setProcessingClients(prev => prev.filter(id => id !== clientId));
     }
-  }, [processingClients, toast, refetchClients, supabase]);
+  }, [processingClients, clientsWithReviews, toast, refetchClients]);
 
-  // Função para revisar todos os clientes
+  // Função para revisar todos os clientes - atualiza o timestamp de revisão em massa
   const reviewAllClients = useCallback(async () => {
     if (isBatchAnalyzing) {
       console.log("Já existe uma análise em massa em andamento.");
@@ -238,37 +155,52 @@ export const useBatchReview = () => {
     setBatchProgress(0);
     setTotalClientsToAnalyze(eligibleClients.length);
     
+    // Atualizar o timestamp da revisão em massa para agora
+    const now = new Date();
+    
+    // Salvar a data da última revisão no Supabase
+    await saveLastBatchReviewTime(now);
+
     try {
       console.log("Iniciando análise em massa...");
       
-      // Executar a função Edge para revisão em massa
-      const { data, error } = await supabase.functions.invoke("scheduled-reviews", {
-        body: { method: "force-run" }
-      });
+      const handleClientStart = (clientId: string) => {
+        setProcessingClients(prev => [...prev, clientId]);
+      };
       
-      if (error) {
-        throw new Error(`Erro na análise em massa: ${error.message}`);
+      const handleClientEnd = (clientId: string) => {
+        setProcessingClients(prev => prev.filter(id => id !== clientId));
+        // Atualizar progresso quando um cliente for concluído
+        setBatchProgress(prev => {
+          const newProgress = prev + 1;
+          return newProgress;
+        });
+      };
+      
+      const result: BatchReviewResult = await analyzeAllClients(
+        clientsWithReviews,
+        handleClientStart,
+        handleClientEnd
+      );
+      
+      console.log("Análise em massa concluída:", result);
+      
+      const successCount = result.results.length;
+      const errorCount = result.errors.length;
+      
+      if (successCount > 0 || errorCount > 0) {
+        toast({
+          title: "Análise em massa concluída",
+          description: `${successCount} análises concluídas com sucesso. ${errorCount} falhas.`,
+          variant: errorCount > 0 ? "destructive" : "default",
+        });
+      } else {
+        toast({
+          title: "Nenhum cliente analisado",
+          description: "Não foi possível analisar nenhum cliente.",
+          variant: "destructive",
+        });
       }
-      
-      if (!data || !data.success) {
-        throw new Error(data?.message || "Erro desconhecido na análise em massa");
-      }
-      
-      console.log("Resultado da análise em massa:", data);
-      
-      // Atualizar o timestamp da revisão em massa para agora
-      const now = new Date();
-      await saveLastBatchReviewTime(now);
-      
-      const results = data.results || [];
-      const successCount = results.filter(r => r.success).length;
-      const errorCount = results.filter(r => !r.success).length;
-      
-      toast({
-        title: "Análise em massa concluída",
-        description: `${successCount} análises concluídas com sucesso. ${errorCount} falhas.`,
-        variant: errorCount > 0 ? "destructive" : "default",
-      });
       
       await refetchClients();
       
@@ -287,7 +219,7 @@ export const useBatchReview = () => {
       setBatchProgress(0);
       setTotalClientsToAnalyze(0);
     }
-  }, [isBatchAnalyzing, clientsWithReviews, toast, refetchClients, saveLastBatchReviewTime, supabase]);
+  }, [isBatchAnalyzing, clientsWithReviews, toast, refetchClients]);
 
   // Monitorar mudanças nos clientes em processamento
   useEffect(() => {
@@ -296,7 +228,7 @@ export const useBatchReview = () => {
 
   return {
     clientsWithReviews,
-    lastBatchReviewTime,
+    lastBatchReviewTime, // Retornamos o timestamp da revisão em massa da query
     isLoading,
     processingClients,
     isBatchAnalyzing,
