@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -16,10 +15,9 @@ import { splitClientsByMetaId } from "./utils/clientSorting";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
-  platform: "meta" | "google";
 }
 
-export const ReviewsDashboardCard = ({ onViewClientDetails, platform }: ReviewsDashboardCardProps) => {
+export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
@@ -36,7 +34,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails, platform }: ReviewsD
     isBatchAnalyzing,
     batchProgress,
     totalClientsToAnalyze
-  } = useBatchReview(platform);
+  } = useBatchReview();
   
   useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe(event => {
@@ -66,12 +64,12 @@ export const ReviewsDashboardCard = ({ onViewClientDetails, platform }: ReviewsD
       }
     });
 
-    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews", platform] });
+    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     
     return () => {
       unsubscribe();
     };
-  }, [queryClient, toast, platform]);
+  }, [queryClient, toast]);
   
   const progressPercentage = totalClientsToAnalyze > 0 
     ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
@@ -84,22 +82,21 @@ export const ReviewsDashboardCard = ({ onViewClientDetails, platform }: ReviewsD
     a.company_name.localeCompare(b.company_name)
   );
   
-  const { clientsWithMetaId, clientsWithoutMetaId } = splitClientsByMetaId(sortedClients, platform);
+  const { clientsWithMetaId, clientsWithoutMetaId } = splitClientsByMetaId(sortedClients);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   }, []);
 
   const handleReviewClient = useCallback((clientId: string) => {
-    console.log(`Iniciando revisão ${platform} para cliente:`, clientId);
+    console.log("Iniciando revisão para cliente:", clientId);
     reviewSingleClient(clientId);
-  }, [reviewSingleClient, platform]);
+  }, [reviewSingleClient]);
 
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <DashboardHeader 
-          platform={platform}
           lastBatchReviewTime={lastBatchReviewTime}
           isBatchAnalyzing={isBatchAnalyzing}
           isLoading={isLoading}
@@ -159,7 +156,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails, platform }: ReviewsD
       {isLoading ? (
         <LoadingView />
       ) : sortedClients.length === 0 ? (
-        <EmptyStateView platform={platform} />
+        <EmptyStateView />
       ) : (
         <ClientsGrid 
           clientsWithMetaId={clientsWithMetaId}
@@ -167,7 +164,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails, platform }: ReviewsD
           processingClients={processingClients}
           onReviewClient={handleReviewClient}
           viewMode={viewMode}
-          platform={platform}
         />
       )}
     </div>

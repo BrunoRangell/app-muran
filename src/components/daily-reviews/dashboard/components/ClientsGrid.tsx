@@ -9,7 +9,6 @@ interface ClientsGridProps {
   processingClients: string[];
   onReviewClient: (clientId: string) => void;
   viewMode: string;
-  platform: "meta" | "google";
 }
 
 export const ClientsGrid = ({
@@ -17,8 +16,7 @@ export const ClientsGrid = ({
   clientsWithoutMetaId,
   processingClients,
   onReviewClient,
-  viewMode,
-  platform
+  viewMode
 }: ClientsGridProps) => {
   return (
     <ScrollArea className="h-[calc(100vh-350px)]">
@@ -30,7 +28,6 @@ export const ClientsGrid = ({
             onReviewClient={onReviewClient}
             isProcessing={processingClients.includes(client.id)}
             compact={viewMode === 'table'}
-            platform={platform}
           />
         ))}
         
@@ -42,7 +39,6 @@ export const ClientsGrid = ({
             isProcessing={processingClients.includes(client.id)}
             compact={viewMode === 'table'}
             inactive
-            platform={platform}
           />
         ))}
       </div>
