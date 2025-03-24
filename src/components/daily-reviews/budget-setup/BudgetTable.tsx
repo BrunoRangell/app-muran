@@ -12,6 +12,8 @@ type BudgetTableProps = {
   searchTerm: string;
   onBudgetChange: (clientId: string, value: string) => void;
   onAccountIdChange: (clientId: string, value: string) => void;
+  onGoogleBudgetChange?: (clientId: string, value: string) => void;
+  onGoogleAccountIdChange?: (clientId: string, value: string) => void;
 };
 
 export const BudgetTable = ({
@@ -21,6 +23,8 @@ export const BudgetTable = ({
   searchTerm,
   onBudgetChange,
   onAccountIdChange,
+  onGoogleBudgetChange,
+  onGoogleAccountIdChange,
 }: BudgetTableProps) => {
   if (isLoading) {
     return (
@@ -39,14 +43,23 @@ export const BudgetTable = ({
     );
   }
 
+  // Verificar se os manipuladores de Google Ads estão disponíveis
+  const showGoogleFields = !!onGoogleBudgetChange && !!onGoogleAccountIdChange;
+
   return (
     <div className="border rounded-md">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[300px]">Cliente</TableHead>
-            <TableHead className="w-[200px]">ID da Conta Meta</TableHead>
-            <TableHead>Orçamento Meta Ads Mensal</TableHead>
+            <TableHead className="w-[250px]">Cliente</TableHead>
+            <TableHead className={showGoogleFields ? "w-[150px]" : "w-[200px]"}>ID da Conta Meta</TableHead>
+            <TableHead className={showGoogleFields ? "w-[150px]" : "w-[200px]"}>Orçamento Meta Ads</TableHead>
+            {showGoogleFields && (
+              <>
+                <TableHead className="w-[150px]">ID da Conta Google</TableHead>
+                <TableHead className="w-[150px]">Orçamento Google Ads</TableHead>
+              </>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -83,6 +96,40 @@ export const BudgetTable = ({
                   />
                 </div>
               </TableCell>
+              {showGoogleFields && (
+                <>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor={`google-account-${client.id}`} className="sr-only">
+                        ID da Conta Google
+                      </Label>
+                      <Input
+                        id={`google-account-${client.id}`}
+                        placeholder="ID da conta Google"
+                        value={budgets[client.id]?.googleAccountId || ""}
+                        onChange={(e) => onGoogleAccountIdChange(client.id, e.target.value)}
+                        className="max-w-[150px]"
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor={`google-${client.id}`} className="sr-only">
+                        Orçamento Google Ads
+                      </Label>
+                      <span className="text-gray-500">R$</span>
+                      <Input
+                        id={`google-${client.id}`}
+                        placeholder="0,00"
+                        value={budgets[client.id]?.googleMeta || ""}
+                        onChange={(e) => onGoogleBudgetChange(client.id, e.target.value)}
+                        className="max-w-[150px]"
+                        type="text"
+                      />
+                    </div>
+                  </TableCell>
+                </>
+              )}
             </TableRow>
           ))}
         </TableBody>
