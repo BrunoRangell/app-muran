@@ -5,15 +5,19 @@ import { MinusCircle, TrendingDown, TrendingUp } from "lucide-react";
 interface BudgetRecommendationProps {
   budgetDifference: number;
   shouldShow: boolean;
-  hasReview: boolean; // Nova prop para verificar se tem revisão
+  hasReview: boolean;
+  platform?: "meta" | "google";
 }
 
 export const BudgetRecommendation = ({ 
   budgetDifference,
   shouldShow,
-  hasReview
+  hasReview,
+  platform = "meta"
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
+  
+  const platformName = platform === "meta" ? "Meta Ads" : "Google Ads";
   
   if (shouldShow) {
     // Se há uma diferença significativa, mostra a recomendação de aumento ou diminuição
@@ -25,7 +29,7 @@ export const BudgetRecommendation = ({
           ) : (
             <TrendingDown size={18} />
           )}
-          Recomendação: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
+          Recomendação {platformName}: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
         </div>
       </div>
     );
@@ -35,7 +39,7 @@ export const BudgetRecommendation = ({
       <div className="mt-2 p-3 rounded-lg bg-gray-50">
         <div className="flex items-center gap-2 font-medium text-gray-700">
           <MinusCircle size={18} />
-          Recomendação: Nenhum ajuste necessário
+          Recomendação {platformName}: Nenhum ajuste necessário
         </div>
       </div>
     );

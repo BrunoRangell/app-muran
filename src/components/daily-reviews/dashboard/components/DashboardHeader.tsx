@@ -8,23 +8,28 @@ interface DashboardHeaderProps {
   isBatchAnalyzing: boolean;
   isLoading: boolean;
   onAnalyzeAll: () => void;
+  platform: "meta" | "google";
 }
 
 export const DashboardHeader = ({
   lastBatchReviewTime,
   isBatchAnalyzing,
   isLoading,
-  onAnalyzeAll
+  onAnalyzeAll,
+  platform
 }: DashboardHeaderProps) => {
   // Obter dias restantes no mês
   const remainingDays = getRemainingDaysInMonth();
+  
+  // Determinar o título com base na plataforma
+  const platformTitle = platform === "meta" ? "Meta Ads" : "Google Ads";
   
   return (
     <div className="flex flex-col gap-4 mb-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl font-semibold text-muran-dark mb-1">
-            Dashboard Meta Ads
+            Dashboard {platformTitle}
           </h2>
         </div>
         
