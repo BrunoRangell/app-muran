@@ -7,9 +7,9 @@ interface BudgetInfoGridProps {
   totalSpent: number;
   currentDailyBudget: number;
   idealDailyBudget: number;
-  isCalculating: boolean;
-  calculationError: string | null;
-  hasReview: boolean;
+  isCalculating?: boolean;
+  calculationError?: string | null;
+  hasReview?: boolean;
   actualBudgetAmount?: number;
   isUsingCustomBudget?: boolean;
 }
@@ -19,11 +19,11 @@ export const BudgetInfoGrid = ({
   totalSpent,
   currentDailyBudget,
   idealDailyBudget,
-  isCalculating,
-  calculationError,
-  hasReview,
+  isCalculating = false,
+  calculationError = null,
+  hasReview = false,
   actualBudgetAmount,
-  isUsingCustomBudget
+  isUsingCustomBudget = false
 }: BudgetInfoGridProps) => {
   // Determinar qual orçamento exibir (padrão ou personalizado)
   const displayBudget = isUsingCustomBudget && actualBudgetAmount ? actualBudgetAmount : monthlyBudget;
