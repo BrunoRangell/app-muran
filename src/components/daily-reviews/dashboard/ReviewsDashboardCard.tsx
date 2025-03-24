@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -15,9 +16,10 @@ import { splitClientsByMetaId } from "./utils/clientSorting";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
+  platform?: 'meta' | 'google';
 }
 
-export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCardProps) => {
+export const ReviewsDashboardCard = ({ onViewClientDetails, platform = 'meta' }: ReviewsDashboardCardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
@@ -34,7 +36,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     isBatchAnalyzing,
     batchProgress,
     totalClientsToAnalyze
-  } = useBatchReview();
+  } = useBatchReview(platform);
   
   useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe(event => {
@@ -93,6 +95,8 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     reviewSingleClient(clientId);
   }, [reviewSingleClient]);
 
+  const platformTitle = platform === 'meta' ? 'Meta Ads' : 'Google Ads';
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -101,6 +105,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           isBatchAnalyzing={isBatchAnalyzing}
           isLoading={isLoading}
           onAnalyzeAll={reviewAllClients}
+          platformTitle={platformTitle}
         />
         
         <AnalysisProgress 
@@ -164,6 +169,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           processingClients={processingClients}
           onReviewClient={handleReviewClient}
           viewMode={viewMode}
+          platform={platform}
         />
       )}
     </div>

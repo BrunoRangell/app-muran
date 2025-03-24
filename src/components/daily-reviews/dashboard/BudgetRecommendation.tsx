@@ -1,43 +1,47 @@
 
-import { formatCurrency } from "@/utils/formatters";
-import { MinusCircle, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowTrendingUp, ArrowTrendingDown, Minus } from "lucide-react";
+import { calculateIdealDailyBudget } from "@/components/daily-reviews/summary/utils";
 
 interface BudgetRecommendationProps {
-  budgetDifference: number;
-  shouldShow: boolean;
-  hasReview: boolean; // Nova prop para verificar se tem revisão
+  client: any;
+  platform?: 'meta' | 'google';
 }
 
-export const BudgetRecommendation = ({ 
-  budgetDifference,
-  shouldShow,
-  hasReview
-}: BudgetRecommendationProps) => {
-  if (!hasReview) return null;
+export const BudgetRecommendation = ({ client, platform = 'meta' }: BudgetRecommendationProps) => {
+  // Campos relacionados à plataforma
+  const budgetField = platform === 'meta' ? 'meta_ads_budget' : 'google_ads_budget';
+  const dailyBudgetField = platform === 'meta' ? 'meta_daily_budget_current' : 'google_daily_budget_current';
   
-  if (shouldShow) {
-    // Se há uma diferença significativa, mostra a recomendação de aumento ou diminuição
-    return (
-      <div className={`mt-2 p-3 rounded-lg ${budgetDifference > 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-        <div className={`flex items-center gap-2 font-medium ${budgetDifference > 0 ? 'text-green-700' : 'text-red-700'}`}>
-          {budgetDifference > 0 ? (
-            <TrendingUp size={18} />
-          ) : (
-            <TrendingDown size={18} />
-          )}
-          Recomendação: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
-        </div>
-      </div>
-    );
+  // Calcular orçamento diário ideal
+  const monthlyBudget = client[budgetField] || 0;
+  const currentDailyBudget = client.latestReview?.[dailyBudgetField] || 0;
+  const idealDailyBudget = calculateIdealDailyBudget(monthlyBudget, new Date());
+  
+  // Determinar a ação recomendada
+  let recommendation = "";
+  let icon = <Minus />;
+  let colorClass = "bg-gray-100 text-gray-700";
+  
+  if (currentDailyBudget === 0) {
+    recommendation = "Configure o orçamento diário";
+    colorClass = "bg-yellow-100 text-yellow-800";
+  } else if (idealDailyBudget > currentDailyBudget * 1.1) {
+    recommendation = "Aumentar orçamento diário";
+    icon = <ArrowTrendingUp className="text-emerald-600" />;
+    colorClass = "bg-emerald-100 text-emerald-800";
+  } else if (idealDailyBudget < currentDailyBudget * 0.9) {
+    recommendation = "Diminuir orçamento diário";
+    icon = <ArrowTrendingDown className="text-amber-600" />;
+    colorClass = "bg-amber-100 text-amber-800";
   } else {
-    // Se não há diferença significativa, mostra "Nenhum ajuste necessário"
-    return (
-      <div className="mt-2 p-3 rounded-lg bg-gray-50">
-        <div className="flex items-center gap-2 font-medium text-gray-700">
-          <MinusCircle size={18} />
-          Recomendação: Nenhum ajuste necessário
-        </div>
-      </div>
-    );
+    recommendation = "Manter orçamento diário";
+    colorClass = "bg-blue-100 text-blue-800";
   }
+  
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-md ${colorClass}`}>
+      <span className="p-1 rounded-full bg-white/50">{icon}</span>
+      <span className="text-sm font-medium">{recommendation}</span>
+    </div>
+  );
 };

@@ -10,12 +10,12 @@ import { useQueryClient } from "@tanstack/react-query";
 export default function RevisaoNova() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const [selectedTab, setSelectedTab] = useState<string>("dashboard");
+  const [selectedTab, setSelectedTab] = useState<string>("meta-ads");
   const queryClient = useQueryClient();
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {
-    if (tabParam && ["dashboard", "budgets", "custom-budgets"].includes(tabParam)) {
+    if (tabParam && ["meta-ads", "google-ads", "budgets", "custom-budgets"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -23,18 +23,23 @@ export default function RevisaoNova() {
   return (
     <div className="container mx-auto p-4 space-y-6">
       <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
-        Revisão de Orçamentos Meta Ads
+        Revisão Diária
       </h1>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="mb-4">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="meta-ads">Meta Ads</TabsTrigger>
+          <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
           <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
           <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="dashboard" className="space-y-6">
+        <TabsContent value="meta-ads" className="space-y-6">
           <ReviewsDashboardCard onViewClientDetails={() => {}} />
+        </TabsContent>
+        
+        <TabsContent value="google-ads" className="space-y-6">
+          <ReviewsDashboardCard onViewClientDetails={() => {}} platform="google" />
         </TabsContent>
         
         <TabsContent value="budgets">
