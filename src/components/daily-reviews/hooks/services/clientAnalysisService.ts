@@ -134,6 +134,10 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
       }
       reviewData = updatedReview;
     } else {
+      // Verificar se já existem revisões antigas para este cliente e data
+      // Se existirem, apagar todas elas antes de inserir a nova
+      await cleanOldReviews(client.id, currentDate);
+      
       console.log("Criando nova revisão para hoje");
       const { data: newReview, error: insertError } = await supabase
         .from('daily_budget_reviews')
@@ -172,3 +176,42 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
     throw new Error(`Erro ao salvar/atualizar no banco de dados: ${dbError.message}`);
   }
 }
+
+/**
+ * Limpa revisões antigas para um cliente e data específicos
+ * Mantém apenas a mais recente para a data especificada
+ */
+async function cleanOldReviews(clientId: string, reviewDate: string) {
+  // Verificar se já existem revisões antigas para a mesma data
+  const { data: existingReviews, error } = await supabase
+    .from('daily_budget_reviews')
+    .select('id, created_at')
+    .eq('client_id', clientId)
+    .eq('review_date', reviewDate)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Erro ao verificar revisões existentes:", error);
+    return; // Continuar mesmo com erro
+  }
+
+  // Se existirem mais de uma revisão para a mesma data, manter apenas a mais recente
+  if (existingReviews && existingReviews.length > 0) {
+    // Pular a primeira (mais recente) e excluir as demais
+    const reviewsToDelete = existingReviews.slice(1).map(review => review.id);
+    
+    if (reviewsToDelete.length > 0) {
+      console.log(`Removendo ${reviewsToDelete.length} revisões antigas para o cliente ${clientId}`);
+      
+      const { error: deleteError } = await supabase
+        .from('daily_budget_reviews')
+        .delete()
+        .in('id', reviewsToDelete);
+      
+      if (deleteError) {
+        console.error("Erro ao remover revisões antigas:", deleteError);
+      }
+    }
+  }
+}
+

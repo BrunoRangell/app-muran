@@ -14,25 +14,14 @@ export const fetchClientsWithReviews = async () => {
     throw new Error("Usuário não autenticado");
   }
 
-  // Buscar todos os clientes ativos com ID de conta Meta configurado
+  // Primeiro, buscar todos os clientes ativos
   const { data: clientsData, error } = await supabase
     .from('clients')
     .select(`
       id,
       company_name,
       meta_account_id,
-      meta_ads_budget,
-      daily_budget_reviews (
-        id,
-        review_date,
-        meta_daily_budget_current,
-        meta_total_spent,
-        created_at,
-        updated_at,
-        using_custom_budget,
-        custom_budget_id,
-        custom_budget_amount
-      )
+      meta_ads_budget
     `)
     .eq('status', 'active')
     .order('company_name');
@@ -42,38 +31,50 @@ export const fetchClientsWithReviews = async () => {
     throw new Error(`Erro ao buscar clientes: ${error.message}`);
   }
   
-  // Determinar a data da revisão mais recente
+  // Agora, para cada cliente, buscar apenas a revisão mais recente
   let lastReviewTime: Date | null = null;
+  const processedClients = [];
   
-  // Processar os clientes para obter apenas a revisão mais recente de cada um
-  const processedClients = clientsData?.map(client => {
-    let lastReview = null;
+  for (const client of clientsData || []) {
+    // Buscar apenas a revisão mais recente para este cliente
+    const { data: reviewData, error: reviewError } = await supabase
+      .from('daily_budget_reviews')
+      .select('*')
+      .eq('client_id', client.id)
+      .order('review_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+      
+    if (reviewError) {
+      console.error(`Erro ao buscar revisão para cliente ${client.company_name}:`, reviewError);
+      // Continuar com o próximo cliente
+      processedClients.push({
+        ...client,
+        lastReview: null
+      });
+      continue;
+    }
     
-    // Ordenar revisões por data (mais recente primeiro)
-    if (client.daily_budget_reviews && client.daily_budget_reviews.length > 0) {
-      const sortedReviews = [...client.daily_budget_reviews].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      
-      lastReview = sortedReviews[0];
-      
-      // Atualizar o timestamp da revisão mais recente global
-      const reviewDate = new Date(lastReview.created_at);
+    // Adicionar a revisão mais recente ao cliente
+    processedClients.push({
+      ...client,
+      lastReview: reviewData
+    });
+    
+    // Atualizar o timestamp da revisão mais recente global
+    if (reviewData) {
+      const reviewDate = new Date(reviewData.created_at);
       if (!lastReviewTime || reviewDate > lastReviewTime) {
         lastReviewTime = reviewDate;
       }
     }
-    
-    return {
-      ...client,
-      lastReview
-    };
-  });
+  }
   
   console.log("Clientes processados com revisões:", processedClients?.length);
   
   return { 
-    clientsData: processedClients || [],
+    clientsData: processedClients as ClientWithReview[] || [],
     lastReviewTime 
   };
 };

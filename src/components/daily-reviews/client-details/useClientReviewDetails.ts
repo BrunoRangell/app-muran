@@ -46,6 +46,7 @@ export const useClientReviewDetails = (clientId: string) => {
         .select("*")
         .eq("client_id", clientId)
         .order("review_date", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -87,6 +88,7 @@ export const useClientReviewDetails = (clientId: string) => {
         .select("*")
         .eq("client_id", clientId)
         .order("review_date", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(10);
 
       if (error) {
