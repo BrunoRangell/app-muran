@@ -1,5 +1,5 @@
 
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowTrendingUp, ArrowTrendingDown, Minus } from "lucide-react";
 import { calculateIdealDailyBudget } from "@/components/daily-reviews/summary/utils";
 
 interface BudgetRecommendationProps {
@@ -27,11 +27,11 @@ export const BudgetRecommendation = ({ client, platform = 'meta' }: BudgetRecomm
     colorClass = "bg-yellow-100 text-yellow-800";
   } else if (idealDailyBudget > currentDailyBudget * 1.1) {
     recommendation = "Aumentar orçamento diário";
-    icon = <TrendingUp className="text-emerald-600" />;
+    icon = <ArrowTrendingUp className="text-emerald-600" />;
     colorClass = "bg-emerald-100 text-emerald-800";
   } else if (idealDailyBudget < currentDailyBudget * 0.9) {
     recommendation = "Diminuir orçamento diário";
-    icon = <TrendingDown className="text-amber-600" />;
+    icon = <ArrowTrendingDown className="text-amber-600" />;
     colorClass = "bg-amber-100 text-amber-800";
   } else {
     recommendation = "Manter orçamento diário";

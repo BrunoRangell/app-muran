@@ -55,19 +55,19 @@ export const ClientReviewCard = ({
         {hasPlatformConfig ? (
           <>
             <BudgetInfoGrid 
-              monthlyBudget={client[budgetField] || 0}
-              totalSpent={client.latestReview?.[totalSpentField] || 0}
-              currentDailyBudget={client.latestReview?.[dailyBudgetField] || 0}
-              idealDailyBudget={calculateIdealDailyBudget(client[budgetField], new Date())}
-              hasReview={!!client.latestReview}
+              client={client}
+              budgetField={budgetField}
+              dailyBudgetField={dailyBudgetField}
+              totalSpentField={totalSpentField}
             />
             
             <BudgetRecommendation client={client} platform={platform} />
             
             <CardActions
-              onReviewClick={handleReviewClick}
-              onViewDetailsClick={onViewDetails ? handleViewDetailsClick : undefined}
+              client={client}
               isProcessing={isProcessing}
+              onReviewClick={handleReviewClick}
+              onViewDetailsClick={handleViewDetailsClick}
             />
           </>
         ) : (
@@ -87,16 +87,4 @@ export const ClientReviewCard = ({
       </CardContent>
     </Card>
   );
-};
-
-// Função utilitária para calcular orçamento diário ideal
-const calculateIdealDailyBudget = (monthlyBudget: number, date: Date) => {
-  if (!monthlyBudget) return 0;
-  
-  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  const dayOfMonth = date.getDate();
-  const remainingDays = daysInMonth - dayOfMonth + 1; // +1 para incluir o dia atual
-  
-  // Calcular orçamento diário ideal
-  return remainingDays > 0 ? monthlyBudget / daysInMonth : 0;
 };

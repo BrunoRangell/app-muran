@@ -3,35 +3,22 @@ import { Button } from "@/components/ui/button";
 import { Loader } from "lucide-react";
 
 interface CardActionsProps {
-  onReviewClick: () => void;
-  onViewDetailsClick?: () => void;
+  onReviewClient: () => void;
   isProcessing: boolean;
 }
 
 export const CardActions = ({ 
-  onReviewClick, 
-  onViewDetailsClick,
+  onReviewClient, 
   isProcessing 
 }: CardActionsProps) => {
   return (
-    <div className="p-3 pt-0 flex justify-end gap-2">
-      {onViewDetailsClick && (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={onViewDetailsClick}
-          className="flex-1"
-        >
-          Detalhes
-        </Button>
-      )}
-      
+    <div className="p-3 pt-0 flex justify-end">
       <Button 
         variant="outline" 
         size="sm" 
-        onClick={onReviewClick}
+        onClick={onReviewClient}
         disabled={isProcessing}
-        className={onViewDetailsClick ? "flex-1" : "w-full"}
+        className="w-full"
       >
         {isProcessing ? (
           <>
