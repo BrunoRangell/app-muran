@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'scheduled-reviews' carregada - v1.0.0");
+console.log("Função Edge 'scheduled-reviews' carregada - v1.0.1");
 
 // Função para criar um cliente Supabase com a chave de serviço
 const createServiceClient = () => {
@@ -48,16 +48,26 @@ const shouldRunScheduledReview = async (supabase: any): Promise<boolean> => {
       .eq("is_active", true)
       .single();
 
-    if (error || !tasks) {
+    if (error) {
       console.error("Erro ao verificar tarefas agendadas:", error);
       return false;
     }
 
+    if (!tasks) {
+      console.log("Nenhuma tarefa agendada ativa encontrada");
+      return false;
+    }
+
+    console.log("Tarefa agendada encontrada:", tasks);
+    
     // Obter a última execução
     const lastRun = tasks.last_run ? new Date(tasks.last_run) : null;
     const now = getCurrentDateInBrasiliaTz();
     
-    // Se nunca executou ou a última execução foi em outro dia, deve executar
+    console.log("Verificando agendamento. Hora atual Brasília:", now.toISOString());
+    console.log("Última execução:", lastRun ? lastRun.toISOString() : "Nunca executado");
+    
+    // Se nunca executou, deve executar
     if (!lastRun) {
       console.log("Primeira execução da tarefa agendada");
       return true;
@@ -67,13 +77,17 @@ const shouldRunScheduledReview = async (supabase: any): Promise<boolean> => {
     const lastRunDate = lastRun.toISOString().split("T")[0];
     const todayDate = now.toISOString().split("T")[0];
     
+    console.log(`Comparando datas - Última execução: ${lastRunDate}, Hoje: ${todayDate}`);
+    
     if (lastRunDate !== todayDate) {
       // Verificar horário de execução (configurado para 6h da manhã horário de Brasília)
       const currentHour = now.getHours();
       
+      console.log(`Hora atual: ${currentHour}h. Verificando se já passou das 6h da manhã.`);
+      
       // Executar se for depois das 6h da manhã
       if (currentHour >= 6) {
-        console.log("Hora de executar a revisão agendada");
+        console.log("Hora de executar a revisão agendada (6h da manhã ou depois)");
         return true;
       } else {
         console.log("Ainda não chegou a hora agendada (6h da manhã)");
@@ -93,6 +107,8 @@ const shouldRunScheduledReview = async (supabase: any): Promise<boolean> => {
 const updateLastRunTimestamp = async (supabase: any): Promise<void> => {
   try {
     const now = new Date();
+    console.log("Atualizando timestamp de última execução para:", now.toISOString());
+    
     const { error } = await supabase
       .from("scheduled_tasks")
       .update({ last_run: now.toISOString() })
@@ -102,7 +118,7 @@ const updateLastRunTimestamp = async (supabase: any): Promise<void> => {
       throw error;
     }
     
-    console.log("Timestamp de última execução atualizado para:", now.toISOString());
+    console.log("Timestamp de última execução atualizado com sucesso");
   } catch (error) {
     console.error("Erro ao atualizar timestamp de execução:", error);
   }
@@ -194,6 +210,8 @@ const analyzeClient = async (supabase: any, client: any, accessToken: string): P
 
     if (existingReview) {
       // Atualizar revisão existente
+      console.log(`Atualizando revisão existente para cliente ${client.id}`);
+      
       const { data: updatedReview, error: updateError } = await supabase
         .from("client_current_reviews")
         .update({
@@ -221,6 +239,8 @@ const analyzeClient = async (supabase: any, client: any, accessToken: string): P
       reviewData = updatedReview;
     } else {
       // Criar nova revisão
+      console.log(`Criando nova revisão para cliente ${client.id}`);
+      
       const { data: newReview, error: insertError } = await supabase
         .from("client_current_reviews")
         .insert({
@@ -247,6 +267,8 @@ const analyzeClient = async (supabase: any, client: any, accessToken: string): P
       reviewData = newReview;
     }
 
+    console.log(`Revisão concluída para cliente ${client.id} com sucesso`);
+    
     return {
       clientId: client.id,
       success: true,
@@ -299,6 +321,7 @@ const getClientsForReview = async (supabase: any): Promise<any[]> => {
       return [];
     }
 
+    console.log(`Encontrados ${data?.length || 0} clientes para revisão`);
     return data || [];
   } catch (error) {
     console.error("Erro ao buscar clientes:", error);
@@ -306,39 +329,21 @@ const getClientsForReview = async (supabase: any): Promise<any[]> => {
   }
 };
 
-// Processar clientes em paralelo com limitação de concorrência
+// Processar clientes sequencialmente para evitar erros de sobrecarga
 const processBatch = async (
   clients: any[], 
-  batchSize: number, 
   accessToken: string, 
   supabase: any
 ): Promise<any[]> => {
+  console.log(`Iniciando processamento de ${clients.length} clientes`);
+  
   const results = [];
-  let currentBatch = [];
   
+  // Processar um por um para evitar erros
   for (const client of clients) {
-    currentBatch.push(client);
-    
-    if (currentBatch.length >= batchSize) {
-      // Processar o lote atual em paralelo
-      console.log(`Processando lote de ${currentBatch.length} clientes...`);
-      
-      const batchPromises = currentBatch.map(c => analyzeClient(supabase, c, accessToken));
-      const batchResults = await Promise.all(batchPromises);
-      
-      results.push(...batchResults);
-      currentBatch = [];
-    }
-  }
-  
-  // Processar clientes restantes
-  if (currentBatch.length > 0) {
-    console.log(`Processando lote final de ${currentBatch.length} clientes...`);
-    
-    const batchPromises = currentBatch.map(c => analyzeClient(supabase, c, accessToken));
-    const batchResults = await Promise.all(batchPromises);
-    
-    results.push(...batchResults);
+    console.log(`Processando cliente: ${client.company_name}`);
+    const result = await analyzeClient(supabase, client, accessToken);
+    results.push(result);
   }
   
   return results;
@@ -366,11 +371,8 @@ const runBatchReview = async (supabase: any): Promise<any> => {
     
     console.log(`Iniciando análise de ${clients.length} clientes`);
     
-    // Definir tamanho do lote para processamento paralelo (3 clientes por vez)
-    const batchSize = 3;
-    
-    // Processar clientes em lotes paralelos
-    const results = await processBatch(clients, batchSize, accessToken, supabase);
+    // Processar clientes em sequência
+    const results = await processBatch(clients, accessToken, supabase);
     
     // Atualizar timestamp da última execução
     await updateLastRunTimestamp(supabase);

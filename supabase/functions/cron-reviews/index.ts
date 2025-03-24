@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'cron-reviews' carregada - v1.0.0");
+console.log("Função Edge 'cron-reviews' carregada - v1.0.1");
 
 serve(async (req) => {
   // Lidar com requisições OPTIONS para CORS
@@ -32,13 +32,18 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Verificar se é hora de executar a revisão agendada
+    console.log("Verificando se é hora de executar a revisão agendada...");
+    
     const { data, error } = await supabase.functions.invoke("scheduled-reviews", {
       body: { method: "check" }
     });
     
     if (error) {
+      console.error("Erro ao verificar agendamento:", error);
       throw new Error(`Erro ao verificar agendamento: ${error.message}`);
     }
+    
+    console.log("Resposta da verificação:", data);
     
     if (data && data.shouldRun) {
       console.log("É hora de executar a revisão agendada. Executando...");
@@ -49,8 +54,11 @@ serve(async (req) => {
       });
       
       if (runError) {
+        console.error("Erro ao executar revisão em massa:", runError);
         throw new Error(`Erro ao executar revisão em massa: ${runError.message}`);
       }
+      
+      console.log("Revisão em massa executada com sucesso:", runData);
       
       return new Response(
         JSON.stringify({

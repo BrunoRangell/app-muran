@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Loader, Calendar, Clock } from "lucide-react";
+import { Loader, Calendar, Clock, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from 'date-fns/locale';
 
@@ -16,6 +16,7 @@ export const ScheduleSettings = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [lastRun, setLastRun] = useState<Date | null>(null);
+  const [testResult, setTestResult] = useState<any>(null);
   const { toast } = useToast();
 
   // Carregar configurações atuais
@@ -31,7 +32,30 @@ export const ScheduleSettings = () => {
 
         if (error) {
           console.error("Erro ao buscar configurações:", error);
-          throw error;
+          // Se o erro for 'não encontrado', é porque ainda não temos configuração
+          if (error.code === 'PGRST116') {
+            // Criar configuração padrão
+            const { error: insertError } = await supabase
+              .from("scheduled_tasks")
+              .insert({
+                task_name: "daily_budget_review",
+                schedule: "0 9 * * *", // 6h horário de Brasília (9h UTC)
+                is_active: true,
+                config: {
+                  timezone: "UTC",
+                  localTime: "06:00 America/Sao_Paulo"
+                }
+              });
+
+            if (insertError) {
+              throw insertError;
+            }
+
+            setIsActive(true);
+            return;
+          } else {
+            throw error;
+          }
         }
 
         setIsActive(data.is_active);
@@ -80,6 +104,43 @@ export const ScheduleSettings = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Verificar status do agendamento
+  const handleCheckStatus = async () => {
+    try {
+      setIsTesting(true);
+      
+      toast({
+        title: "Verificando status",
+        description: "Verificando o status do agendamento...",
+      });
+
+      const { data, error } = await supabase.functions.invoke("scheduled-reviews", {
+        body: { method: "check" }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log("Resultado da verificação:", data);
+      setTestResult(data);
+      
+      toast({
+        title: "Verificação concluída",
+        description: data.message || "Verificação concluída com sucesso",
+      });
+    } catch (error) {
+      console.error("Erro ao verificar status:", error);
+      toast({
+        title: "Erro na verificação",
+        description: "Não foi possível verificar o status do agendamento.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -194,17 +255,41 @@ export const ScheduleSettings = () => {
               {formatDate(lastRun)}
             </div>
           </div>
+          
+          {testResult && (
+            <div className="bg-gray-50 p-3 rounded-md border border-gray-100 mt-4">
+              <div className="text-sm font-medium mb-1 flex items-center gap-1">
+                <AlertCircle size={16} className="text-muran-primary" />
+                Resultado da verificação:
+              </div>
+              <div className="text-xs text-gray-600">
+                <div><span className="font-medium">Status:</span> {testResult.shouldRun ? "Executaria agora" : "Não executaria agora"}</div>
+                <div><span className="font-medium">Mensagem:</span> {testResult.message}</div>
+                <div><span className="font-medium">Timestamp:</span> {new Date(testResult.timestamp).toLocaleString('pt-BR')}</div>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex justify-between pt-4">
-        <Button 
-          variant="outline" 
-          onClick={handleRunNow}
-          disabled={isTesting || isSaving}
-        >
-          {isTesting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-          Executar Agora
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRunNow}
+            disabled={isTesting || isSaving}
+          >
+            {isTesting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+            Executar Agora
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleCheckStatus}
+            disabled={isTesting || isSaving}
+          >
+            {isTesting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+            Verificar Status
+          </Button>
+        </div>
         <Button 
           onClick={handleSaveSettings}
           disabled={isSaving || isTesting}
