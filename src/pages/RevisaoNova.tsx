@@ -15,7 +15,7 @@ export default function RevisaoNova() {
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {
-    if (tabParam && ["dashboard", "budgets", "custom-budgets"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -29,11 +29,16 @@ export default function RevisaoNova() {
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="dashboard">Meta Ads</TabsTrigger>
+          <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
           <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
           <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
+          <ReviewsDashboardCard onViewClientDetails={() => {}} />
+        </TabsContent>
+        
+        <TabsContent value="google-ads" className="space-y-6">
           <ReviewsDashboardCard onViewClientDetails={() => {}} />
         </TabsContent>
         
