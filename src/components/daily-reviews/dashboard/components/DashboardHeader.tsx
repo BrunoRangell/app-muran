@@ -8,15 +8,13 @@ interface DashboardHeaderProps {
   isBatchAnalyzing: boolean;
   isLoading: boolean;
   onAnalyzeAll: () => void;
-  platformTitle?: string;
 }
 
 export const DashboardHeader = ({
   lastBatchReviewTime,
   isBatchAnalyzing,
   isLoading,
-  onAnalyzeAll,
-  platformTitle = "Meta Ads"
+  onAnalyzeAll
 }: DashboardHeaderProps) => {
   // Obter dias restantes no mês
   const remainingDays = getRemainingDaysInMonth();
@@ -26,7 +24,7 @@ export const DashboardHeader = ({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl font-semibold text-muran-dark mb-1">
-            Dashboard {platformTitle}
+            Dashboard Meta Ads
           </h2>
         </div>
         

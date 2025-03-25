@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/ReviewsDashboardCard";
-import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 import { useSearchParams } from "react-router-dom";
@@ -24,7 +23,7 @@ export default function RevisaoNova() {
   return (
     <div className="container mx-auto p-4 space-y-6">
       <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
-        Revisão Diária
+        Revisão Diária de Meta Ads
       </h1>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
@@ -40,7 +39,7 @@ export default function RevisaoNova() {
         </TabsContent>
         
         <TabsContent value="google-ads" className="space-y-6">
-          <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
+          <ReviewsDashboardCard onViewClientDetails={() => {}} />
         </TabsContent>
         
         <TabsContent value="budgets">
