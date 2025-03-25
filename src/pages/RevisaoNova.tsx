@@ -23,12 +23,12 @@ export default function RevisaoNova() {
   return (
     <div className="container mx-auto p-4 space-y-6">
       <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
-        Revisão de Orçamentos Meta Ads
+        Revisão Diária de Meta Ads
       </h1>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="mb-4">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="dashboard">Meta Ads</TabsTrigger>
           <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
           <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
         </TabsList>
