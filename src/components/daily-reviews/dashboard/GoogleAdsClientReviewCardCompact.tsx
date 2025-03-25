@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Loader } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/utils/formatters";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;

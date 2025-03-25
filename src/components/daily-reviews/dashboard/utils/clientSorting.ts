@@ -1,3 +1,4 @@
+
 import { ClientWithReview } from "../../hooks/types/reviewTypes";
 
 /**
@@ -23,9 +24,9 @@ export const splitClientsByMetaId = (clients: ClientWithReview[]) => {
 /**
  * Divide os clientes em dois grupos: com e sem ID Google Ads
  */
-export const splitClientsByGoogleAdsId = (clients: any[]): {
-  clientsWithGoogleAdsId: any[];
-  clientsWithoutGoogleAdsId: any[];
+export const splitClientsByGoogleAdsId = (clients: ClientWithReview[]): {
+  clientsWithGoogleAdsId: ClientWithReview[];
+  clientsWithoutGoogleAdsId: ClientWithReview[];
 } => {
   return {
     clientsWithGoogleAdsId: clients.filter(client => client.google_account_id),

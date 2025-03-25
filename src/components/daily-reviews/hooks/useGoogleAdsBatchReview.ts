@@ -1,207 +1,138 @@
 
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { ClientWithReview } from "./types/reviewTypes";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { fetchClientsWithGoogleReviews, reviewGoogleClient } from "./services/googleAdsClientReviewService";
+import { splitClientsByGoogleAdsId } from "../dashboard/utils/clientSorting";
+import { ClientWithReview } from "./types/reviewTypes";
 
-/**
- * Hook para gerenciar revisões em lote para Google Ads
- */
 export const useGoogleAdsBatchReview = () => {
+  const [isReviewingBatch, setIsReviewingBatch] = useState(false);
   const [processingClients, setProcessingClients] = useState<string[]>([]);
-  const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
-  const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
-  const [batchProgress, setBatchProgress] = useState(0);
-  const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
-  
-  const queryClient = useQueryClient();
+  const [lastBatchReviewDate, setLastBatchReviewDate] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Buscar clientes com suas revisões mais recentes
-  const { 
-    data: clientsWithReviews,
-    isLoading,
-    refetch: refetchClients
-  } = useQuery({
-    queryKey: ["clients-with-google-reviews"],
+  // Buscar clientes e suas revisões mais recentes
+  const { data: clients = [], isLoading, error, refetch } = useQuery({
+    queryKey: ["google-ads-clients-with-reviews"],
     queryFn: fetchClientsWithGoogleReviews,
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnWindowFocus: false,
   });
 
-  // Buscar a data da última revisão em lote
-  useEffect(() => {
-    const fetchLastBatchTime = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("system_configs")
-          .select("value")
-          .eq("key", "last_google_ads_batch_review")
-          .single();
+  // Separar clientes em dois grupos: com e sem ID Google Ads
+  const { clientsWithGoogleAdsId, clientsWithoutGoogleAdsId } = splitClientsByGoogleAdsId(clients);
 
-        if (error) {
-          console.log("Sem registro de última revisão em lote para Google Ads");
-          return;
-        }
-
-        if (data?.value?.timestamp) {
-          setLastBatchReviewTime(new Date(data.value.timestamp));
-        }
-      } catch (err) {
-        console.error("Erro ao buscar última revisão em lote:", err);
-      }
-    };
-
-    fetchLastBatchTime();
-  }, []);
-
-  // Função para atualizar a data da última revisão em lote
-  const updateLastBatchTime = useCallback(async () => {
-    const now = new Date();
-    
+  // Realizar revisão para um único cliente
+  const reviewClient = async (clientId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("system_configs")
-        .upsert({
-          key: "last_google_ads_batch_review",
-          value: { timestamp: now.toISOString() }
-        })
-        .select();
-
-      if (error) {
-        console.error("Erro ao atualizar última revisão em lote:", error);
-        return;
-      }
-
-      setLastBatchReviewTime(now);
-    } catch (err) {
-      console.error("Erro ao atualizar última revisão em lote:", err);
-    }
-  }, []);
-
-  // Função para revisar um único cliente
-  const reviewSingleClient = useCallback(async (clientId: string) => {
-    // Evitar revisão duplicada
-    if (processingClients.includes(clientId)) {
-      return;
-    }
-
-    setProcessingClients(prev => [...prev, clientId]);
-    
-    try {
-      // Buscar o cliente que está sendo processado
-      const client = clientsWithReviews?.find(c => c.id === clientId);
-      
+      // Encontrar o cliente pelo ID
+      const client = clients.find((c) => c.id === clientId);
       if (!client) {
         throw new Error("Cliente não encontrado");
       }
-      
-      // Verificar se o cliente tem ID Google Ads
-      if (!client.google_account_id) {
-        throw new Error("Cliente não possui ID Google Ads");
-      }
-      
-      // Executar revisão
+
+      // Adicionar o cliente à lista de processamento
+      setProcessingClients((prev) => [...prev, clientId]);
+
+      // Realizar a revisão
       await reviewGoogleClient(client);
-      
-      // Notificar sucesso
+
+      // Atualizar o cache do React Query
+      await queryClient.invalidateQueries({ queryKey: ["google-ads-clients-with-reviews"] });
+
+      // Mostrar toast de sucesso
       toast({
-        title: "Revisão concluída",
-        description: `Revisão do cliente ${client.company_name} realizada com sucesso.`,
-        duration: 3000,
+        title: "Análise concluída",
+        description: `Orçamento do cliente ${client.company_name} analisado com sucesso.`,
       });
-      
-      // Atualizar dados
-      queryClient.invalidateQueries({ queryKey: ["clients-with-google-reviews"] });
     } catch (error) {
-      console.error(`Erro ao revisar cliente ${clientId}:`, error);
-      
+      console.error("Erro ao revisar cliente:", error);
       toast({
-        title: "Erro na revisão",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao revisar o cliente.",
+        title: "Erro na análise",
+        description: `Não foi possível analisar o cliente: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         variant: "destructive",
       });
     } finally {
-      setProcessingClients(prev => prev.filter(id => id !== clientId));
+      // Remover o cliente da lista de processamento
+      setProcessingClients((prev) => prev.filter((id) => id !== clientId));
     }
-  }, [processingClients, clientsWithReviews, toast, queryClient]);
+  };
 
-  // Função para revisar todos os clientes
-  const reviewAllClients = useCallback(async () => {
-    if (isBatchAnalyzing || !clientsWithReviews) {
-      return;
-    }
-
-    const clientsWithGoogleAds = clientsWithReviews.filter(
-      client => client.google_account_id
-    );
-
-    if (clientsWithGoogleAds.length === 0) {
-      toast({
-        title: "Nenhum cliente a analisar",
-        description: "Não há clientes com ID Google Ads configurado.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsBatchAnalyzing(true);
-    setBatchProgress(0);
-    setTotalClientsToAnalyze(clientsWithGoogleAds.length);
+  // Realizar revisão em lote para todos os clientes com ID Google Ads
+  const reviewAllClients = async () => {
+    if (isReviewingBatch || clientsWithGoogleAdsId.length === 0) return;
 
     try {
-      // Processar clientes em série para evitar sobrecarga
-      for (let i = 0; i < clientsWithGoogleAds.length; i++) {
-        const client = clientsWithGoogleAds[i];
-        setProcessingClients(prev => [...prev, client.id]);
+      setIsReviewingBatch(true);
+      
+      // Inicializar lista de clientes em processamento
+      const clientIds = clientsWithGoogleAdsId.map((c) => c.id);
+      setProcessingClients(clientIds);
 
+      // Registrar a data/hora da revisão em lote
+      setLastBatchReviewDate(new Date().toISOString());
+
+      // Contador para acompanhar o progresso
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Processar um cliente de cada vez para não sobrecarregar o servidor
+      for (const client of clientsWithGoogleAdsId) {
         try {
+          // Verificar se o cliente tem ID Google Ads
+          if (!client.google_account_id) {
+            errorCount++;
+            continue;
+          }
+
+          // Realizar a revisão para este cliente
           await reviewGoogleClient(client);
-          console.log(`Cliente ${client.company_name} analisado com sucesso`);
+          successCount++;
+
+          // Remover o cliente da lista de processamento
+          setProcessingClients((prev) => prev.filter((id) => id !== client.id));
         } catch (error) {
-          console.error(`Erro ao analisar cliente ${client.company_name}:`, error);
-        } finally {
-          setProcessingClients(prev => prev.filter(id => id !== client.id));
-          setBatchProgress(i + 1);
+          console.error(`Erro ao revisar cliente ${client.company_name}:`, error);
+          errorCount++;
+          // Remover o cliente da lista de processamento mesmo em caso de erro
+          setProcessingClients((prev) => prev.filter((id) => id !== client.id));
         }
       }
 
-      // Atualizar timestamp da última revisão em lote
-      await updateLastBatchTime();
-      
-      // Atualizar dados após conclusão
-      queryClient.invalidateQueries({ queryKey: ["clients-with-google-reviews"] });
+      // Atualizar o cache do React Query
+      await queryClient.invalidateQueries({ queryKey: ["google-ads-clients-with-reviews"] });
 
+      // Mostrar toast com o resumo
       toast({
-        title: "Análise em lote concluída",
-        description: `${clientsWithGoogleAds.length} clientes foram analisados com sucesso.`,
+        title: "Revisão em lote concluída",
+        description: `${successCount} clientes analisados com sucesso. ${errorCount} falhas.`,
+        variant: successCount > 0 ? "default" : "destructive",
       });
     } catch (error) {
-      console.error("Erro na análise em lote:", error);
-      
+      console.error("Erro ao iniciar revisão em lote:", error);
       toast({
-        title: "Erro na análise em lote",
-        description: "Ocorreu um erro durante a análise em lote dos clientes.",
+        title: "Erro na revisão em lote",
+        description: "Não foi possível iniciar a revisão em lote",
         variant: "destructive",
       });
     } finally {
-      setIsBatchAnalyzing(false);
-      setBatchProgress(0);
-      setTotalClientsToAnalyze(0);
+      setIsReviewingBatch(false);
+      setProcessingClients([]);
     }
-  }, [isBatchAnalyzing, clientsWithReviews, toast, queryClient, updateLastBatchTime]);
+  };
 
   return {
-    clientsWithReviews,
+    clients,
+    clientsWithGoogleAdsId,
+    clientsWithoutGoogleAdsId,
     isLoading,
-    processingClients,
-    reviewSingleClient,
+    error,
+    refetch,
+    reviewClient,
     reviewAllClients,
-    lastBatchReviewTime,
-    refetchClients,
-    isBatchAnalyzing,
-    batchProgress,
-    totalClientsToAnalyze
+    isReviewingBatch,
+    processingClients,
+    lastBatchReviewDate,
   };
 };

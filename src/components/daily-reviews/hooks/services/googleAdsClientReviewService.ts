@@ -117,10 +117,10 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       const { error: updateError } = await supabase
         .from("client_current_reviews")
         .update({
-          meta_daily_budget_current: currentDailyBudget,
-          meta_total_spent: totalSpent,
-          meta_account_id: client.google_account_id,
-          meta_account_name: `Google Ads: ${client.google_account_id}`,
+          google_daily_budget_current: currentDailyBudget,
+          google_total_spent: totalSpent,
+          google_account_id: client.google_account_id,
+          google_account_name: `Google Ads: ${client.google_account_id}`,
           updated_at: new Date().toISOString()
         })
         .eq("id", existingReview.id);
@@ -138,10 +138,10 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
         .insert({
           client_id: client.id,
           review_date: formattedDate,
-          meta_daily_budget_current: currentDailyBudget,
-          meta_total_spent: totalSpent,
-          meta_account_id: client.google_account_id,
-          meta_account_name: `Google Ads: ${client.google_account_id}`,
+          google_daily_budget_current: currentDailyBudget,
+          google_total_spent: totalSpent,
+          google_account_id: client.google_account_id,
+          google_account_name: `Google Ads: ${client.google_account_id}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });

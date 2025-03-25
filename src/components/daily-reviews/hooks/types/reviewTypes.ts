@@ -5,6 +5,8 @@ export interface ClientWithReview {
   company_name: string;
   meta_account_id: string | null;
   meta_ads_budget: number;
+  google_account_id?: string | null;
+  google_ads_budget?: number;
   lastReview?: ReviewData;
   needsBudgetAdjustment?: boolean;
 }
