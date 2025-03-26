@@ -5,6 +5,7 @@ import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/Revie
 import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
+import { GoogleAdsTokensTest } from "@/components/revisao-nova/GoogleAdsTokensTest";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -16,7 +17,7 @@ export default function RevisaoNova() {
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {
-    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets", "settings"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -33,6 +34,7 @@ export default function RevisaoNova() {
           <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
           <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
           <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
+          <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
@@ -49,6 +51,13 @@ export default function RevisaoNova() {
         
         <TabsContent value="custom-budgets">
           <CustomBudgetManager />
+        </TabsContent>
+        
+        <TabsContent value="settings">
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-muran-dark">Configurações de API</h2>
+            <GoogleAdsTokensTest />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
