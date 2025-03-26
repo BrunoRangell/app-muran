@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +9,7 @@ export const useGoogleTokenService = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const { toast } = useToast();
 
-  const fetchGoogleTokens = async (): Promise<Record<string, string> | null> => {
+  const fetchGoogleTokens = async () => {
     try {
       const { data: tokensData, error: tokenError } = await supabase
         .from("api_tokens")
@@ -98,7 +97,23 @@ export const useGoogleTokenService = () => {
         throw new Error("Tokens do Google Ads não configurados");
       }
 
-      // Validação básica dos tokens
+      // Validação específica do token de desenvolvedor
+      if (!tokens['google_ads_developer_token']) {
+        setDebugInfo({
+          status: "warning",
+          message: "Token de desenvolvedor não configurado, necessário para chamadas à API"
+        });
+        
+        toast({
+          title: "Token de Desenvolvedor Ausente",
+          description: "Configure o token de desenvolvedor do Google Ads para usar a API.",
+          variant: "destructive"
+        });
+        
+        return false;
+      }
+
+      // Resto da lógica de validação...
       const requiredTokens = [
         'google_ads_access_token', 
         'google_ads_refresh_token', 
@@ -237,7 +252,6 @@ export const useGoogleTokenService = () => {
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      
       setError(errorMessage);
       
       toast({
