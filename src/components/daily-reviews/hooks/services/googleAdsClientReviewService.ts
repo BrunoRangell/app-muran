@@ -45,10 +45,32 @@ export const fetchClientsWithGoogleReviews = async (): Promise<ClientWithReview[
       // Buscar a revisão deste cliente para hoje
       const clientReview = reviews?.find(r => r.client_id === client.id);
       
+      // Calcular se precisa de ajuste baseado na revisão
+      let needsBudgetAdjustment = false;
+      
+      if (clientReview?.google_daily_budget_current && client.google_ads_budget) {
+        const dailyBudget = clientReview.google_daily_budget_current;
+        const spent = clientReview.google_total_spent || 0;
+        const monthlyBudget = client.google_ads_budget;
+        
+        // Dias restantes no mês
+        const today = new Date();
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        const remainingDays = lastDay.getDate() - today.getDate() + 1;
+        
+        // Orçamento ideal por dia
+        const remainingBudget = Math.max(monthlyBudget - spent, 0);
+        const idealDaily = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+        
+        // Verificar se precisa de ajuste (diferença > 5% ou R$5)
+        const diff = Math.abs(idealDaily - dailyBudget);
+        needsBudgetAdjustment = (diff >= 5) && (dailyBudget === 0 || diff / dailyBudget >= 0.05);
+      }
+      
       return {
         ...client,
         lastReview: clientReview || null,
-        needsBudgetAdjustment: false
+        needsBudgetAdjustment
       };
     });
     
@@ -79,8 +101,15 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const monthlyBudget = client.google_ads_budget || 0;
     
     // Simular valores para Google Ads (em um cenário real, esses dados viriam da API do Google)
-    const currentDailyBudget = monthlyBudget / 30; // Simplificação para exemplo
-    const totalSpent = monthlyBudget * 0.6; // Simulação: 60% do orçamento gasto
+    // Simulação mais realista: gasto entre 20% e 80% do orçamento mensal
+    const spentPercentage = Math.random() * 0.6 + 0.2; // Entre 0.2 (20%) e 0.8 (80%)
+    const totalSpent = monthlyBudget * spentPercentage;
+    
+    // Simular orçamento diário atual com variação
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const avgDailyBudget = monthlyBudget / daysInMonth;
+    const randomFactor = 0.8 + Math.random() * 0.4; // Entre 0.8 e 1.2
+    const currentDailyBudget = avgDailyBudget * randomFactor;
     
     // Calcular dias restantes no mês
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
