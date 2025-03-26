@@ -4,7 +4,7 @@ import { useGoogleAdsBatchReview } from "../hooks/useGoogleAdsBatchReview";
 import { Card } from "@/components/ui/card";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
-import { DashboardHeader } from "./components/GoogleAdsDashboardHeader";
+import { GoogleAdsDashboardHeader } from "./components/GoogleAdsDashboardHeader";
 import { AnalysisProgress } from "./components/AnalysisProgress";
 import { FilterOptions } from "./components/FilterOptions";
 import { GoogleAdsClientsGrid } from "./components/GoogleAdsClientsGrid";
@@ -97,7 +97,7 @@ export const GoogleAdsDashboardCard = ({ onViewClientDetails }: GoogleAdsDashboa
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <DashboardHeader 
+        <GoogleAdsDashboardHeader 
           lastBatchReviewTime={lastBatchReviewDate ? new Date(lastBatchReviewDate) : null}
           isBatchAnalyzing={isReviewingBatch}
           isLoading={isLoading}
