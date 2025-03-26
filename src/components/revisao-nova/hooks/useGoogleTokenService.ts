@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -98,15 +99,15 @@ export const useGoogleTokenService = () => {
       }
 
       // Validação específica do token de desenvolvedor
-      if (!tokens['google_ads_developer_token']) {
+      if (!tokens['google_ads_developer_token'] || tokens['google_ads_developer_token'] === 'SEU_TOKEN_AQUI') {
         setDebugInfo({
           status: "warning",
-          message: "Token de desenvolvedor não configurado, necessário para chamadas à API"
+          message: "Token de desenvolvedor não configurado ou com valor padrão, necessário para chamadas à API"
         });
         
         toast({
-          title: "Token de Desenvolvedor Ausente",
-          description: "Configure o token de desenvolvedor do Google Ads para usar a API.",
+          title: "Token de Desenvolvedor Inválido",
+          description: "Configure um token de desenvolvedor válido do Google Ads para usar a API.",
           variant: "destructive"
         });
         
@@ -135,22 +136,6 @@ export const useGoogleTokenService = () => {
       // Testar a validade do token de acesso tentando buscar uma lista de clientes
       try {
         // Verificar se temos um token de desenvolvedor e ID de gerenciador
-        if (!tokens['google_ads_developer_token']) {
-          setDebugInfo({
-            tokensPresent: Object.keys(tokens),
-            missingOptional: "google_ads_developer_token",
-            status: "warning",
-            message: "Token de desenvolvedor não configurado, necessário para chamadas à API"
-          });
-          
-          toast({
-            title: "Tokens Básicos Validados",
-            description: "Tokens OAuth do Google Ads verificados. Configure o token de desenvolvedor para usar a API.",
-          });
-          
-          return true;
-        }
-        
         if (!tokens['google_ads_manager_id']) {
           setDebugInfo({
             tokensPresent: Object.keys(tokens),
