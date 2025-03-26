@@ -13,6 +13,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   const [isCalculating, setIsCalculating] = useState<boolean>(true);
   const [remainingDaysValue, setRemainingDaysValue] = useState<number>(0);
   const [needsBudgetAdjustment, setNeedsBudgetAdjustment] = useState<boolean>(false);
+  const [calculationError, setCalculationError] = useState<string | null>(null);
 
   useEffect(() => {
     const calculateBudget = () => {
@@ -61,6 +62,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
         setIsCalculating(false);
       } catch (error) {
         console.error("Erro ao calcular orçamento Google Ads:", error);
+        setCalculationError("Erro ao calcular orçamento");
         setIsCalculating(false);
       }
     };
@@ -77,6 +79,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     budgetDifference,
     isCalculating,
     remainingDaysValue,
-    needsBudgetAdjustment
+    needsBudgetAdjustment,
+    calculationError
   };
 };

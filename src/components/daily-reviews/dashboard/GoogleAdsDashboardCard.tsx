@@ -25,15 +25,13 @@ export const GoogleAdsDashboardCard = ({ onViewClientDetails }: GoogleAdsDashboa
   const { toast } = useToast();
   
   const { 
-    clientsWithReviews, 
+    clients, 
     isLoading, 
     processingClients, 
-    reviewSingleClient, 
+    reviewClient, 
     reviewAllClients,
-    lastBatchReviewTime,
-    isBatchAnalyzing,
-    batchProgress,
-    totalClientsToAnalyze
+    isReviewingBatch,
+    lastBatchReviewDate
   } = useGoogleAdsBatchReview();
   
   useEffect(() => {
@@ -54,7 +52,7 @@ export const GoogleAdsDashboardCard = ({ onViewClientDetails }: GoogleAdsDashboa
            event.query.queryKey[0].includes("custom-budget"))
         ) {
           console.log("Mudança detectada em orçamentos personalizados, atualizando...");
-          queryClient.invalidateQueries({ queryKey: ["clients-with-google-reviews"] });
+          queryClient.invalidateQueries({ queryKey: ["google-ads-clients-with-reviews"] });
           toast({
             title: "Orçamentos atualizados",
             description: "O painel foi atualizado com as alterações nos orçamentos personalizados.",
@@ -64,18 +62,21 @@ export const GoogleAdsDashboardCard = ({ onViewClientDetails }: GoogleAdsDashboa
       }
     });
 
-    queryClient.invalidateQueries({ queryKey: ["clients-with-google-reviews"] });
+    queryClient.invalidateQueries({ queryKey: ["google-ads-clients-with-reviews"] });
     
     return () => {
       unsubscribe();
     };
   }, [queryClient, toast]);
   
+  // Calcular variáveis de progresso com base nas informações disponíveis
+  const batchProgress = processingClients ? processingClients.length : 0;
+  const totalClientsToAnalyze = clients.filter(c => c.google_account_id).length;
   const progressPercentage = totalClientsToAnalyze > 0 
     ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
     : 0;
   
-  const filteredByName = clientsWithReviews ? filterClientsByName(clientsWithReviews, searchQuery) : [];
+  const filteredByName = clients ? filterClientsByName(clients, searchQuery) : [];
   const filteredByAdjustment = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
   
   const sortedClients = filteredByAdjustment.sort((a, b) => 
@@ -90,22 +91,22 @@ export const GoogleAdsDashboardCard = ({ onViewClientDetails }: GoogleAdsDashboa
 
   const handleReviewClient = useCallback((clientId: string) => {
     console.log("Iniciando revisão Google Ads para cliente:", clientId);
-    reviewSingleClient(clientId);
-  }, [reviewSingleClient]);
+    reviewClient(clientId);
+  }, [reviewClient]);
 
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <DashboardHeader 
-          lastBatchReviewTime={lastBatchReviewTime}
-          isBatchAnalyzing={isBatchAnalyzing}
+          lastBatchReviewTime={lastBatchReviewDate ? new Date(lastBatchReviewDate) : null}
+          isBatchAnalyzing={isReviewingBatch}
           isLoading={isLoading}
           onAnalyzeAll={reviewAllClients}
         />
         
         <AnalysisProgress 
-          isBatchAnalyzing={isBatchAnalyzing}
-          batchProgress={batchProgress}
+          isBatchAnalyzing={isReviewingBatch}
+          batchProgress={processingClients.length}
           totalClientsToAnalyze={totalClientsToAnalyze}
           progressPercentage={progressPercentage}
         />

@@ -17,6 +17,8 @@ export interface ReviewData {
   review_date: string;
   meta_daily_budget_current: number | null;
   meta_total_spent: number;
+  google_daily_budget_current?: number | null;
+  google_total_spent?: number;
   created_at: string;
   updated_at: string;
   idealDailyBudget?: number;
