@@ -167,171 +167,185 @@ export const GoogleAdsDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="lista">Lista de Clientes</TabsTrigger>
-          <TabsTrigger value="analise">Análise Individual</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="lista" className="mt-4">
-          <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
-        </TabsContent>
-        
-        <TabsContent value="analise" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Análise de Orçamento Google Ads</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="w-full md:w-2/3">
-                  <label className="text-sm font-medium mb-2 block">
-                    Selecione um cliente com Google Ads configurado:
-                  </label>
-                  <div className="relative">
-                    <select 
-                      className="w-full p-2 border rounded-md"
-                      onChange={(e) => {
-                        const selected = clients.find(c => c.id === e.target.value);
-                        if (selected) handleClientSelect(selected);
-                      }}
-                      value={selectedClient?.id || ""}
-                      disabled={isLoading}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">
+              Revisão de Orçamentos Google Ads
+            </h2>
+            <p className="text-sm text-gray-500">
+              Analise o desempenho e ajuste os orçamentos diários das contas Google Ads
+            </p>
+          </div>
+        </div>
+
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+          <TabsList className="w-full justify-start mb-6 bg-gray-100">
+            <TabsTrigger value="lista" className="data-[state=active]:bg-muran-primary data-[state=active]:text-white">
+              Lista de Clientes
+            </TabsTrigger>
+            <TabsTrigger value="analise" className="data-[state=active]:bg-muran-primary data-[state=active]:text-white">
+              Análise Individual
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="lista" className="mt-0">
+            <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
+          </TabsContent>
+          
+          <TabsContent value="analise" className="mt-0">
+            <Card className="border-0 shadow-none">
+              <CardContent className="p-0 space-y-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="w-full md:w-2/3">
+                    <label className="text-sm font-medium mb-2 block">
+                      Selecione um cliente com Google Ads configurado:
+                    </label>
+                    <div className="relative">
+                      <select 
+                        className="w-full p-2 border rounded-md"
+                        onChange={(e) => {
+                          const selected = clients.find(c => c.id === e.target.value);
+                          if (selected) handleClientSelect(selected);
+                        }}
+                        value={selectedClient?.id || ""}
+                        disabled={isLoading}
+                      >
+                        <option value="">Selecione um cliente...</option>
+                        {clients.map(client => (
+                          <option key={client.id} value={client.id}>
+                            {client.company_name} {client.google_account_id ? `(ID: ${client.google_account_id})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {isLoading && (
+                        <Loader className="animate-spin absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="w-full md:w-1/3 flex items-end">
+                    <Button 
+                      onClick={analysisResult ? resetAnalysis : analyzeClient} 
+                      disabled={!selectedClient || isApiLoading || isAnalyzing}
+                      className="w-full bg-[#ff6e00] hover:bg-[#cc5800] text-white"
                     >
-                      <option value="">Selecione um cliente...</option>
-                      {clients.map(client => (
-                        <option key={client.id} value={client.id}>
-                          {client.company_name} {client.google_account_id ? `(ID: ${client.google_account_id})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    {isLoading && (
-                      <Loader className="animate-spin absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
-                    )}
+                      {isAnalyzing ? (
+                        <>
+                          <Loader className="mr-2 h-4 w-4 animate-spin" />
+                          Analisando...
+                        </>
+                      ) : analysisResult ? (
+                        "Nova Análise"
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Analisar Orçamento
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
                 
-                <div className="w-full md:w-1/3 flex items-end">
-                  <Button 
-                    onClick={analysisResult ? resetAnalysis : analyzeClient} 
-                    disabled={!selectedClient || isApiLoading || isAnalyzing}
-                    className="w-full bg-[#ff6e00] hover:bg-[#cc5800] text-white"
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                        Analisando...
-                      </>
-                    ) : analysisResult ? (
-                      "Nova Análise"
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Analisar Orçamento
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-              
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
-                  <div className="flex items-center">
-                    <AlertTriangle className="h-5 w-5 mr-2" />
-                    <span className="font-medium">Erro:</span>
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
+                    <div className="flex items-center">
+                      <AlertTriangle className="h-5 w-5 mr-2" />
+                      <span className="font-medium">Erro:</span>
+                    </div>
+                    <p className="mt-1">{error}</p>
                   </div>
-                  <p className="mt-1">{error}</p>
-                </div>
-              )}
+                )}
 
-              {selectedClient && analysisResult && (
-                <div className="mt-6 space-y-4">
-                  <h3 className="text-lg font-semibold">
-                    Resultado da Análise para {selectedClient.company_name}
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="text-sm text-gray-500">Orçamento Mensal</div>
-                        <div className="text-2xl font-bold">
-                          {formatCurrency(analysisResult.monthlyBudget)}
-                        </div>
-                      </CardContent>
-                    </Card>
+                {selectedClient && analysisResult && (
+                  <div className="mt-6 space-y-4">
+                    <h3 className="text-lg font-semibold">
+                      Resultado da Análise para {selectedClient.company_name}
+                    </h3>
                     
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="text-sm text-gray-500">Total Gasto</div>
-                        <div className="text-2xl font-bold">
-                          {formatCurrency(analysisResult.totalSpent)}
-                        </div>
-                        <div className="text-sm text-gray-500 mt-1">
-                          {((analysisResult.totalSpent / analysisResult.monthlyBudget) * 100).toFixed(1)}% do orçamento
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="text-sm text-gray-500">Média Diária Atual</div>
-                        <div className="text-2xl font-bold">
-                          {formatCurrency(analysisResult.currentDailyAverage)}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardContent className="pt-6">
-                        <div className="text-sm text-gray-500">Orçamento Diário Ideal</div>
-                        <div className={`text-2xl font-bold ${analysisResult.needsAdjustment ? 'text-amber-600' : 'text-green-600'}`}>
-                          {formatCurrency(analysisResult.idealDailyBudget)}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Card className="bg-gray-50 border-0">
+                        <CardContent className="pt-6">
+                          <div className="text-sm text-gray-500">Orçamento Mensal</div>
+                          <div className="text-2xl font-bold">
+                            {formatCurrency(analysisResult.monthlyBudget)}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="bg-gray-50 border-0">
+                        <CardContent className="pt-6">
+                          <div className="text-sm text-gray-500">Total Gasto</div>
+                          <div className="text-2xl font-bold">
+                            {formatCurrency(analysisResult.totalSpent)}
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            {((analysisResult.totalSpent / analysisResult.monthlyBudget) * 100).toFixed(1)}% do orçamento
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="bg-gray-50 border-0">
+                        <CardContent className="pt-6">
+                          <div className="text-sm text-gray-500">Média Diária Atual</div>
+                          <div className="text-2xl font-bold">
+                            {formatCurrency(analysisResult.currentDailyAverage)}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="bg-gray-50 border-0">
+                        <CardContent className="pt-6">
+                          <div className="text-sm text-gray-500">Orçamento Diário Ideal</div>
+                          <div className={`text-2xl font-bold ${analysisResult.needsAdjustment ? 'text-amber-600' : 'text-green-600'}`}>
+                            {formatCurrency(analysisResult.idealDailyBudget)}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
 
-                  <div className="bg-white border rounded-lg p-6 mt-4">
-                    <h4 className="font-semibold mb-2">Recomendação:</h4>
-                    
-                    {analysisResult.needsAdjustment ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center text-lg">
-                          {analysisResult.adjustmentAmount > 0 ? (
-                            <>
-                              <ChevronUp className="text-green-500 mr-2" />
-                              <span className="font-medium">Aumentar orçamento diário em {formatCurrency(Math.abs(analysisResult.adjustmentAmount))}</span>
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="text-red-500 mr-2" />
-                              <span className="font-medium">Reduzir orçamento diário em {formatCurrency(Math.abs(analysisResult.adjustmentAmount))}</span>
-                            </>
-                          )}
+                    <div className="bg-white border rounded-lg p-6 mt-4">
+                      <h4 className="font-semibold mb-2">Recomendação:</h4>
+                      
+                      {analysisResult.needsAdjustment ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center text-lg">
+                            {analysisResult.adjustmentAmount > 0 ? (
+                              <>
+                                <ChevronUp className="text-green-500 mr-2" />
+                                <span className="font-medium">Aumentar orçamento diário em {formatCurrency(Math.abs(analysisResult.adjustmentAmount))}</span>
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="text-red-500 mr-2" />
+                                <span className="font-medium">Reduzir orçamento diário em {formatCurrency(Math.abs(analysisResult.adjustmentAmount))}</span>
+                              </>
+                            )}
+                          </div>
+                          <p className="text-gray-600">
+                            Com base no gasto atual e no orçamento mensal de {formatCurrency(analysisResult.monthlyBudget)}, 
+                            o orçamento diário ideal para os {analysisResult.remainingDays} dias restantes no mês 
+                            é de {formatCurrency(analysisResult.idealDailyBudget)}.
+                          </p>
+                          <div className="text-sm text-gray-500 mt-2">
+                            <div>Orçamento restante: {formatCurrency(analysisResult.remainingBudget)}</div>
+                            <div>Dias restantes: {analysisResult.remainingDays}</div>
+                            <div className="mt-1">Cálculo: {formatCurrency(analysisResult.remainingBudget)} ÷ {analysisResult.remainingDays} = {formatCurrency(analysisResult.idealDailyBudget)}</div>
+                          </div>
                         </div>
+                      ) : (
                         <p className="text-gray-600">
-                          Com base no gasto atual e no orçamento mensal de {formatCurrency(analysisResult.monthlyBudget)}, 
-                          o orçamento diário ideal para os {analysisResult.remainingDays} dias restantes no mês 
-                          é de {formatCurrency(analysisResult.idealDailyBudget)}.
+                          O orçamento diário atual está adequado para o restante do mês. Não é necessário fazer ajustes.
                         </p>
-                        <div className="text-sm text-gray-500 mt-2">
-                          <div>Orçamento restante: {formatCurrency(analysisResult.remainingBudget)}</div>
-                          <div>Dias restantes: {analysisResult.remainingDays}</div>
-                          <div className="mt-1">Cálculo: {formatCurrency(analysisResult.remainingBudget)} ÷ {analysisResult.remainingDays} = {formatCurrency(analysisResult.idealDailyBudget)}</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-gray-600">
-                        O orçamento diário atual está adequado para o restante do mês. Não é necessário fazer ajustes.
-                      </p>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
