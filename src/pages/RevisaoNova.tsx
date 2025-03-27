@@ -6,6 +6,7 @@ import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/Goo
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 import { GoogleAdsTokensTest } from "@/components/revisao-nova/GoogleAdsTokensTest";
+import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -17,7 +18,7 @@ export default function RevisaoNova() {
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {
-    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets", "settings"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "google-ads", "google-dashboard", "budgets", "custom-budgets", "settings"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -31,7 +32,8 @@ export default function RevisaoNova() {
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="dashboard">Meta Ads</TabsTrigger>
-          <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
+          <TabsTrigger value="google-ads">Google Ads (Lista)</TabsTrigger>
+          <TabsTrigger value="google-dashboard">Google Ads (Análise)</TabsTrigger>
           <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
           <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
@@ -43,6 +45,10 @@ export default function RevisaoNova() {
         
         <TabsContent value="google-ads" className="space-y-6">
           <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
+        </TabsContent>
+        
+        <TabsContent value="google-dashboard" className="space-y-6">
+          <GoogleAdsDashboard />
         </TabsContent>
         
         <TabsContent value="budgets">

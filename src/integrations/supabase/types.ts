@@ -80,6 +80,10 @@ export type Database = {
           created_at: string
           custom_budget_amount: number | null
           custom_budget_id: string | null
+          google_account_id: string | null
+          google_account_name: string | null
+          google_daily_budget_current: number | null
+          google_total_spent: number | null
           id: string
           meta_account_id: string | null
           meta_account_name: string | null
@@ -94,6 +98,10 @@ export type Database = {
           created_at?: string
           custom_budget_amount?: number | null
           custom_budget_id?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_daily_budget_current?: number | null
+          google_total_spent?: number | null
           id?: string
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -108,6 +116,10 @@ export type Database = {
           created_at?: string
           custom_budget_amount?: number | null
           custom_budget_id?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_daily_budget_current?: number | null
+          google_total_spent?: number | null
           id?: string
           meta_account_id?: string | null
           meta_account_name?: string | null
