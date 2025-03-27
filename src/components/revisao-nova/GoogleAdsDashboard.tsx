@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader, RefreshCw, ChevronDown, ChevronUp, Alert } from "lucide-react";
+import { Loader, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { formatCurrency } from "@/utils/formatters";
 import { supabase } from "@/lib/supabase";
@@ -76,7 +76,7 @@ export const GoogleAdsDashboard = () => {
       
       // Calcular orçamento diário ideal
       const monthlyBudget = selectedClient.google_ads_budget || 0;
-      const totalSpent = spend.totalSpent || 0;
+      const totalSpent = spend.totalSpend || 0;
       const remainingBudget = Math.max(monthlyBudget - totalSpent, 0);
       const remainingDays = getRemainingDaysInMonth();
       const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
@@ -224,7 +224,7 @@ export const GoogleAdsDashboard = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
               <div className="flex items-center">
-                <Alert className="h-5 w-5 mr-2" />
+                <AlertTriangle className="h-5 w-5 mr-2" />
                 <span className="font-medium">Erro:</span>
               </div>
               <p className="mt-1">{error}</p>
