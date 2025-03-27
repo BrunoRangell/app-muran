@@ -72,7 +72,9 @@ export const GoogleAdsDashboard = () => {
           onAnalyzeAll={handleAnalyzeAll}
         />
 
-        <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
+        <div className="mt-6">
+          <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
+        </div>
       </div>
     </div>
   );
