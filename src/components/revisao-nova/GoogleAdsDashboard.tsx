@@ -41,8 +41,10 @@ export const GoogleAdsDashboard = () => {
     setIsBatchAnalyzing(true);
     
     try {
-      // Aqui seria implementada a análise de todos os clientes
-      // Similar ao que é feito no ReviewsDashboardCard
+      // Aqui vamos integrar com o useGoogleAdsBatchReview
+      const { data, error } = await supabase.rpc('review_all_google_ads_clients');
+      
+      if (error) throw error;
       
       toast({
         title: "Análise em lote iniciada",
