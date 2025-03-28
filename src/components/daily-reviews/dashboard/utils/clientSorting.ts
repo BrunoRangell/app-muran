@@ -20,3 +20,16 @@ export const splitClientsByMetaId = (clients: ClientWithReview[]) => {
     clientsWithoutMetaId
   };
 };
+
+/**
+ * Divide os clientes em dois grupos: com e sem ID Google Ads
+ */
+export const splitClientsByGoogleAdsId = (clients: ClientWithReview[]): {
+  clientsWithGoogleAdsId: ClientWithReview[];
+  clientsWithoutGoogleAdsId: ClientWithReview[];
+} => {
+  return {
+    clientsWithGoogleAdsId: clients.filter(client => client.google_account_id),
+    clientsWithoutGoogleAdsId: clients.filter(client => !client.google_account_id)
+  };
+};

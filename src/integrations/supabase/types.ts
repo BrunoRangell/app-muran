@@ -80,6 +80,10 @@ export type Database = {
           created_at: string
           custom_budget_amount: number | null
           custom_budget_id: string | null
+          google_account_id: string | null
+          google_account_name: string | null
+          google_daily_budget_current: number | null
+          google_total_spent: number | null
           id: string
           meta_account_id: string | null
           meta_account_name: string | null
@@ -94,6 +98,10 @@ export type Database = {
           created_at?: string
           custom_budget_amount?: number | null
           custom_budget_id?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_daily_budget_current?: number | null
+          google_total_spent?: number | null
           id?: string
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -108,6 +116,10 @@ export type Database = {
           created_at?: string
           custom_budget_amount?: number | null
           custom_budget_id?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_daily_budget_current?: number | null
+          google_total_spent?: number | null
           id?: string
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -337,6 +349,66 @@ export type Database = {
           target_value?: number
         }
         Relationships: []
+      }
+      google_ads_reviews: {
+        Row: {
+          client_id: string
+          created_at: string
+          custom_budget_amount: number | null
+          custom_budget_id: string | null
+          google_account_id: string | null
+          google_account_name: string | null
+          google_daily_budget_current: number | null
+          google_total_spent: number | null
+          id: string
+          review_date: string
+          updated_at: string
+          using_custom_budget: boolean | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          custom_budget_amount?: number | null
+          custom_budget_id?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_daily_budget_current?: number | null
+          google_total_spent?: number | null
+          id?: string
+          review_date?: string
+          updated_at?: string
+          using_custom_budget?: boolean | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          custom_budget_amount?: number | null
+          custom_budget_id?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_daily_budget_current?: number | null
+          google_total_spent?: number | null
+          id?: string
+          review_date?: string
+          updated_at?: string
+          using_custom_budget?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_ads_reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_ads_reviews_custom_budget_id_fkey"
+            columns: ["custom_budget_id"]
+            isOneToOne: false
+            referencedRelation: "meta_custom_budgets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       imported_transactions: {
         Row: {
@@ -628,6 +700,10 @@ export type Database = {
           p_meta_account_name: string
         }
         Returns: number
+      }
+      review_all_google_ads_clients: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       update_daily_budget_review: {
         Args: {
