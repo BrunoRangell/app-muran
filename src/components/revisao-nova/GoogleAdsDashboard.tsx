@@ -18,9 +18,8 @@ export const GoogleAdsDashboard = () => {
     const fetchLastBatchReview = async () => {
       try {
         const { data, error } = await supabase
-          .from('client_current_reviews')
+          .from('google_ads_reviews')
           .select('updated_at')
-          .not('google_account_id', 'is', null)
           .order('updated_at', { ascending: false })
           .limit(1);
 
@@ -41,7 +40,7 @@ export const GoogleAdsDashboard = () => {
     setIsBatchAnalyzing(true);
     
     try {
-      // Aqui vamos integrar com o useGoogleAdsBatchReview
+      // Chamar a função RPC para análise em lote
       const { data, error } = await supabase.rpc('review_all_google_ads_clients');
       
       if (error) throw error;

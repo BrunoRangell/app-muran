@@ -27,12 +27,12 @@ export const fetchClientsWithGoogleReviews = async (): Promise<ClientWithReview[
       return [];
     }
     
-    // Buscar revisões mais recentes para cada cliente
+    // Buscar revisões mais recentes para cada cliente da nova tabela google_ads_reviews
     const today = getCurrentDateInBrasiliaTz();
     const formattedDate = today.toISOString().split('T')[0];
     
     const { data: reviews, error: reviewsError } = await supabase
-      .from("client_current_reviews")
+      .from("google_ads_reviews")
       .select("*")
       .eq("review_date", formattedDate);
     
@@ -99,8 +99,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const today = getCurrentDateInBrasiliaTz();
     const formattedDate = today.toISOString().split('T')[0];
     
-    // Obter dados reais da API do Google Ads usando o useGoogleAdsService
-    // Vamos obter os dados de gasto e orçamento da API do Google Ads
+    // Obter tokens da API do Google Ads
     const { data: googleTokensData, error: googleTokensError } = await supabase
       .from("api_tokens")
       .select("name, value")
@@ -197,15 +196,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       
     } catch (apiError: any) {
       console.error("Erro na API do Google Ads:", apiError.response?.data || apiError.message);
-      
-      // Se não conseguimos dados da API, usamos uma estimativa baseada no orçamento mensal
-      totalSpent = client.google_ads_budget ? client.google_ads_budget * 0.5 : 0; // Estimativa de 50% do orçamento gasto
-      currentDailyBudget = client.google_ads_budget ? client.google_ads_budget / 30 : 0; // Estimativa de orçamento diário
-      
-      console.warn("Usando valores estimados devido a erro na API:", {
-        totalSpent,
-        currentDailyBudget
-      });
+      throw new Error(`Erro na API do Google Ads: ${apiError.response?.data?.error?.message || apiError.message}`);
     }
     
     // Obter orçamento mensal e dias restantes para cálculos
@@ -230,12 +221,12 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     
     // Verificar se já existe uma revisão para este cliente na data atual
     const { data: existingReview, error: reviewError } = await supabase
-      .from("client_current_reviews")
+      .from("google_ads_reviews")
       .select("id")
       .eq("client_id", client.id)
       .eq("review_date", formattedDate);
     
-    if (reviewError && reviewError.code !== "PGRST116") { // PGRST116 = Not found, não é um erro nesse caso
+    if (reviewError) {
       console.error("Erro ao verificar revisão existente:", reviewError);
       throw new Error("Erro ao verificar revisão existente: " + reviewError.message);
     }
@@ -251,7 +242,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     if (existingReview && existingReview.length > 0) {
       // Atualizar revisão existente
       const { error: updateError } = await supabase
-        .from("client_current_reviews")
+        .from("google_ads_reviews")
         .update(reviewData)
         .eq("id", existingReview[0].id);
         
@@ -264,7 +255,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     } else {
       // Criar nova revisão
       const { error: insertError } = await supabase
-        .from("client_current_reviews")
+        .from("google_ads_reviews")
         .insert({
           client_id: client.id,
           review_date: formattedDate,
