@@ -52,13 +52,18 @@ export const GoogleAdsDashboard = () => {
       
       // Atualize a hora da última revisão
       setLastBatchReviewTime(new Date());
+      
+      // Aguardar um tempo e atualizar os dados
+      setTimeout(() => {
+        setIsBatchAnalyzing(false);
+      }, 3000);
+      
     } catch (err: any) {
       toast({
         title: "Erro na análise em lote",
         description: err.message || "Ocorreu um erro ao iniciar a análise em lote",
         variant: "destructive",
       });
-    } finally {
       setIsBatchAnalyzing(false);
     }
   };

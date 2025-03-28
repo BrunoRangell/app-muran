@@ -1,6 +1,5 @@
 
 import { Button } from "@/components/ui/button";
-import { GoogleAdsTokensSetupForm } from "../../GoogleAdsTokensSetupForm";
 import { Loader, RefreshCw, Calendar } from "lucide-react";
 import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../../summary/utils";
 
@@ -30,8 +29,6 @@ export function GoogleAdsDashboardHeader({
         </div>
         
         <div className="flex gap-2">
-          <GoogleAdsTokensSetupForm />
-          
           <Button 
             variant="default"
             onClick={onAnalyzeAll}
