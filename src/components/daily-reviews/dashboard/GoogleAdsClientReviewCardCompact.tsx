@@ -4,6 +4,7 @@ import { Loader } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
+import { formatDateInBrasiliaTz } from "../summary/utils";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -45,6 +46,11 @@ export const GoogleAdsClientReviewCardCompact = ({
   const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
   const formattedDifference = formatCurrency(Math.abs(budgetDifference || 0));
 
+  // Formatação da data da última revisão
+  const formattedLastReviewDate = client.lastReview?.updated_at ? 
+    formatDateInBrasiliaTz(new Date(client.lastReview.updated_at), "dd/MM 'às' HH:mm") : 
+    "Sem revisão";
+
   // Determinar se precisa de ajuste (diferença maior ou igual a R$5)
   const needsAdjustmentClass = needsBudgetAdjustment
     ? 'border-yellow-400 bg-yellow-50'
@@ -64,7 +70,7 @@ export const GoogleAdsClientReviewCardCompact = ({
             </h3>
             <div className="flex items-center">
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                {client.google_account_id || 'Sem ID Google Ads'}
+                {formattedLastReviewDate}
               </span>
             </div>
           </div>
