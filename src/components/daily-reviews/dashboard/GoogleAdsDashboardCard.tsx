@@ -27,7 +27,7 @@ export const GoogleAdsDashboardCard = ({ onViewClientDetails }: GoogleAdsDashboa
     clients, 
     isLoading, 
     processingClients, 
-    reviewClient, 
+    reviewClient,
     reviewAllClients,
     isReviewingBatch,
     lastBatchReviewDate
@@ -69,9 +69,9 @@ export const GoogleAdsDashboardCard = ({ onViewClientDetails }: GoogleAdsDashboa
   }, [queryClient, toast]);
   
   // Calcular variáveis de progresso com base nas informações disponíveis
-  const batchProgress = processingClients ? processingClients.length : 0;
+  const batchProgress = isReviewingBatch ? clients.length - processingClients.length : 0;
   const totalClientsToAnalyze = clients.filter(c => c.google_account_id).length;
-  const progressPercentage = totalClientsToAnalyze > 0 
+  const progressPercentage = totalClientsToAnalyze > 0 && isReviewingBatch
     ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
     : 0;
   
@@ -97,7 +97,7 @@ export const GoogleAdsDashboardCard = ({ onViewClientDetails }: GoogleAdsDashboa
     <div className="space-y-6">
       <AnalysisProgress 
         isBatchAnalyzing={isReviewingBatch}
-        batchProgress={processingClients.length}
+        batchProgress={batchProgress}
         totalClientsToAnalyze={totalClientsToAnalyze}
         progressPercentage={progressPercentage}
       />

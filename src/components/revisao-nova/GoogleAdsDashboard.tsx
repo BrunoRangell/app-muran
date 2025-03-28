@@ -6,14 +6,27 @@ import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { supabase } from "@/lib/supabase";
 import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
 import { GoogleAdsDashboardHeader } from "@/components/daily-reviews/dashboard/components/GoogleAdsDashboardHeader";
+import { useGoogleAdsBatchReview } from "@/components/daily-reviews/hooks/useGoogleAdsBatchReview";
 
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
-  const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
+  const { 
+    reviewAllClients, 
+    isReviewingBatch, 
+    processingClients, 
+    lastBatchReviewDate 
+  } = useGoogleAdsBatchReview();
 
-  // Buscar a hora da última revisão em lote
+  // Usar a data de revisão em lote do hook
+  useEffect(() => {
+    if (lastBatchReviewDate) {
+      setLastBatchReviewTime(new Date(lastBatchReviewDate));
+    }
+  }, [lastBatchReviewDate]);
+
+  // Buscar a hora da última revisão em lote ao iniciar
   useEffect(() => {
     const fetchLastBatchReview = async () => {
       try {
@@ -37,34 +50,23 @@ export const GoogleAdsDashboard = () => {
   }, []);
 
   const handleAnalyzeAll = async () => {
-    setIsBatchAnalyzing(true);
-    
     try {
-      // Chamar a função RPC para análise em lote
-      const { data, error } = await supabase.rpc('review_all_google_ads_clients');
-      
-      if (error) throw error;
+      // Usar o método do hook para analisar todos os clientes
+      await reviewAllClients();
       
       toast({
         title: "Análise em lote iniciada",
         description: "A análise de todos os clientes foi iniciada com sucesso.",
       });
       
-      // Atualize a hora da última revisão
+      // Atualizar a hora da última revisão
       setLastBatchReviewTime(new Date());
-      
-      // Aguardar um tempo e atualizar os dados
-      setTimeout(() => {
-        setIsBatchAnalyzing(false);
-      }, 3000);
-      
     } catch (err: any) {
       toast({
         title: "Erro na análise em lote",
         description: err.message || "Ocorreu um erro ao iniciar a análise em lote",
         variant: "destructive",
       });
-      setIsBatchAnalyzing(false);
     }
   };
 
@@ -73,7 +75,7 @@ export const GoogleAdsDashboard = () => {
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <GoogleAdsDashboardHeader 
           lastBatchReviewTime={lastBatchReviewTime}
-          isBatchAnalyzing={isBatchAnalyzing}
+          isBatchAnalyzing={isReviewingBatch}
           isLoading={isApiLoading}
           onAnalyzeAll={handleAnalyzeAll}
         />
