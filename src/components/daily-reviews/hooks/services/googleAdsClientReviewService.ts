@@ -27,24 +27,35 @@ export const fetchClientsWithGoogleReviews = async (): Promise<ClientWithReview[
       return [];
     }
     
-    // Buscar revisões mais recentes para cada cliente da nova tabela google_ads_reviews
-    const today = getCurrentDateInBrasiliaTz();
-    const formattedDate = today.toISOString().split('T')[0];
-    
+    // Buscar as revisões mais recentes para cada cliente
     const { data: reviews, error: reviewsError } = await supabase
       .from("google_ads_reviews")
       .select("*")
-      .eq("review_date", formattedDate);
+      .order("review_date", { ascending: false })
+      .order("updated_at", { ascending: false });
     
     if (reviewsError) {
       console.error("Erro ao buscar revisões:", reviewsError);
       throw new Error("Erro ao buscar revisões: " + reviewsError.message);
     }
     
+    // Criar um mapa das revisões mais recentes para cada cliente
+    const latestReviewsMap = new Map();
+    
+    if (reviews && reviews.length > 0) {
+      reviews.forEach(review => {
+        // Apenas adicionar ao mapa se ainda não existir uma revisão para este cliente
+        // (a primeira que encontramos será a mais recente devido à ordenação)
+        if (!latestReviewsMap.has(review.client_id)) {
+          latestReviewsMap.set(review.client_id, review);
+        }
+      });
+    }
+    
     // Mapear clientes para incluir a revisão mais recente
     const clientsWithReviews = clients.map(client => {
-      // Buscar a revisão deste cliente para hoje
-      const clientReview = reviews?.find(r => r.client_id === client.id);
+      // Buscar a revisão mais recente deste cliente do mapa
+      const clientReview = latestReviewsMap.get(client.id);
       
       // Calcular se precisa de ajuste baseado na revisão
       let needsBudgetAdjustment = false;
