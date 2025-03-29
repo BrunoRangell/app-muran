@@ -17,7 +17,7 @@ export const AnalysisProgress = ({
   if (!isBatchAnalyzing) return null;
   
   return (
-    <div className="mb-6">
+    <div>
       <div className="flex justify-between items-center mb-2">
         <span className="text-sm font-medium">Progresso da análise</span>
         <span className="text-sm text-gray-500">
