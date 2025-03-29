@@ -66,7 +66,7 @@ export const useGoogleAdsBatchReview = () => {
     try {
       setIsReviewingBatch(true);
       
-      // Inicializar lista de clientes em processamento
+      // Inicializar lista de clientes em processamento com todos os clientes que têm ID Google Ads
       const clientIds = clientsWithGoogleAdsId.map((c) => c.id);
       setProcessingClients(clientIds);
 
@@ -83,6 +83,8 @@ export const useGoogleAdsBatchReview = () => {
           // Verificar se o cliente tem ID Google Ads
           if (!client.google_account_id) {
             errorCount++;
+            // Remover da lista de processamento se não tiver ID
+            setProcessingClients((prev) => prev.filter((id) => id !== client.id));
             continue;
           }
 

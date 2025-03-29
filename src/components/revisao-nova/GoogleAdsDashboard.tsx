@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
 import { GoogleAdsDashboardHeader } from "@/components/daily-reviews/dashboard/components/GoogleAdsDashboardHeader";
 import { useGoogleAdsBatchReview } from "@/components/daily-reviews/hooks/useGoogleAdsBatchReview";
+import { AnalysisProgress } from "@/components/daily-reviews/dashboard/components/AnalysisProgress";
 
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
@@ -16,7 +17,8 @@ export const GoogleAdsDashboard = () => {
     reviewAllClients, 
     isReviewingBatch, 
     processingClients, 
-    lastBatchReviewDate 
+    lastBatchReviewDate,
+    clientsWithGoogleAdsId
   } = useGoogleAdsBatchReview();
 
   // Usar a data de revisão em lote do hook
@@ -49,6 +51,13 @@ export const GoogleAdsDashboard = () => {
     fetchLastBatchReview();
   }, []);
 
+  // Calcular variáveis de progresso com base nas informações disponíveis
+  const batchProgress = isReviewingBatch ? clientsWithGoogleAdsId.length - processingClients.length : 0;
+  const totalClientsToAnalyze = clientsWithGoogleAdsId.length;
+  const progressPercentage = totalClientsToAnalyze > 0 && isReviewingBatch
+    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
+    : 0;
+
   const handleAnalyzeAll = async () => {
     try {
       // Usar o método do hook para analisar todos os clientes
@@ -79,6 +88,18 @@ export const GoogleAdsDashboard = () => {
           isLoading={isApiLoading}
           onAnalyzeAll={handleAnalyzeAll}
         />
+
+        {/* Adicionar barra de progresso quando estiver analisando */}
+        {isReviewingBatch && (
+          <div className="mb-6">
+            <AnalysisProgress 
+              isBatchAnalyzing={isReviewingBatch}
+              batchProgress={batchProgress}
+              totalClientsToAnalyze={totalClientsToAnalyze}
+              progressPercentage={progressPercentage}
+            />
+          </div>
+        )}
 
         <div className="mt-6">
           <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
