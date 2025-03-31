@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { formatDateInBrasiliaTz } from "../../summary/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowClockwise, Calendar, Check, RefreshCcw } from "lucide-react";
+import { Loader, Calendar, Check, RefreshCw } from "lucide-react";
 
 export function AutoReviewSettings() {
   const [lastAutoRun, setLastAutoRun] = useState<Date | null>(null);
@@ -99,12 +99,12 @@ export function AutoReviewSettings() {
           >
             {isRunning ? (
               <>
-                <ArrowClockwise className="mr-2 h-4 w-4 animate-spin" />
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
                 Executando revisão...
               </>
             ) : isLoading ? (
               <>
-                <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                 Carregando...
               </>
             ) : (
