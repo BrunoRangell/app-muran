@@ -30,7 +30,8 @@ export const GoogleAdsTokenManager = () => {
   const [healthCheckStatus, setHealthCheckStatus] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<TokenMetadata | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const { tokenManager, isLoading, checkTokenHealth, refreshAccessToken } = useGoogleAdsTokenManager();
+  const tokenManagerHook = useGoogleAdsTokenManager();
+  const { isLoading, checkTokenHealth, refreshAccessToken } = tokenManagerHook;
   const { toast } = useToast();
 
   // Atualizar status inicial
@@ -98,7 +99,7 @@ export const GoogleAdsTokenManager = () => {
         .from("system_configs")
         .upsert({
           key: "google_ads_token_config",
-          value: { auto_refresh_enabled: enabled, edge_function_enabled }
+          value: { auto_refresh_enabled: enabled, edge_function_enabled: edgeFunctionEnabled }
         });
       
       if (error) throw error;
@@ -303,7 +304,7 @@ export const GoogleAdsTokenManager = () => {
             )}
             
             {healthCheckStatus === "expired" && (
-              <Alert variant="warning" className="bg-orange-50 border-orange-200">
+              <Alert variant="default" className="bg-orange-50 border-orange-200">
                 <AlertCircle className="h-4 w-4 text-orange-500" />
                 <AlertTitle>Token expirado</AlertTitle>
                 <AlertDescription>

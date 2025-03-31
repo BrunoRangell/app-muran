@@ -8,6 +8,7 @@ import { useGoogleAdsTokenManager } from "./hooks/useGoogleAdsTokenManager";
 import { CheckCircle, AlertCircle, Loader, Settings, RefreshCw, Clock, List } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase";
 
 export const GoogleAdsTokensTest = () => {
   const [showDebug, setShowDebug] = useState(false);
@@ -19,7 +20,8 @@ export const GoogleAdsTokensTest = () => {
     refreshAccessToken,
     checkTokenHealth,
     getValidAccessToken,
-    logTokenEvent
+    logTokenEvent,
+    tokenStatus
   } = useGoogleAdsTokenManager();
 
   const handleTestTokens = async () => {
@@ -31,7 +33,7 @@ export const GoogleAdsTokensTest = () => {
       // Registrar evento de teste
       await logTokenEvent({
         event: 'check',
-        status: healthInfo.status,
+        status: healthInfo.status as 'valid' | 'expired' | 'unknown' | 'refreshing',
         message: 'Teste manual de token realizado',
         details: healthInfo
       });

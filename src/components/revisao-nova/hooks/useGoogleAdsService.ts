@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGoogleAdsTokenManager } from "./useGoogleAdsTokenManager";
 import axios from "axios";
 import { DateTime } from "luxon";
+import { supabase } from "@/lib/supabase";
 
 export interface GoogleAdsClient {
   customerId: string;

@@ -6,7 +6,7 @@ import axios from "axios";
 import { DateTime } from "luxon";
 
 // Definição do status do token
-type TokenStatus = 'valid' | 'expired' | 'unknown' | 'refreshing';
+export type TokenStatus = 'valid' | 'expired' | 'unknown' | 'refreshing';
 
 // Interface para registro de log
 interface TokenLogEntry {
