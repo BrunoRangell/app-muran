@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { FilterOptions } from "./components/FilterOptions";
 import { ClientsGrid } from "./components/ClientsGrid";
 import { EmptyStateView } from "./components/EmptyStateView";
 import { LoadingView } from "./components/LoadingView";
+import { AutoReviewSettings } from "./components/AutoReviewSettings";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { splitClientsByMetaId } from "./utils/clientSorting";
 
@@ -103,14 +105,21 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           onAnalyzeAll={reviewAllClients}
         />
         
-        <AnalysisProgress 
-          isBatchAnalyzing={isBatchAnalyzing}
-          batchProgress={batchProgress}
-          totalClientsToAnalyze={totalClientsToAnalyze}
-          progressPercentage={progressPercentage}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
+          <div className="lg:col-span-2">
+            <AnalysisProgress 
+              isBatchAnalyzing={isBatchAnalyzing}
+              batchProgress={batchProgress}
+              totalClientsToAnalyze={totalClientsToAnalyze}
+              progressPercentage={progressPercentage}
+            />
+          </div>
+          <div>
+            <AutoReviewSettings />
+          </div>
+        </div>
         
-        <div className="flex flex-col md:flex-row items-center gap-4 mb-3">
+        <div className="flex flex-col md:flex-row items-center gap-4 mb-3 mt-4">
           <div className="relative flex-1 w-full">
             <input
               type="text"
@@ -168,4 +177,4 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
       )}
     </div>
   );
-};
+}
