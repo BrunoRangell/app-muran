@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
@@ -16,13 +16,101 @@ interface TokenLogEntry {
   details?: any;
 }
 
+// Intervalo em minutos antes da expiração quando devemos renovar automaticamente
+const AUTO_REFRESH_THRESHOLD_MINUTES = 15;
+// Intervalo de verificação periódica (em ms)
+const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
+
 export const useGoogleAdsTokenManager = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>('unknown');
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [autoCheckEnabled, setAutoCheckEnabled] = useState<boolean>(false);
   const { toast } = useToast();
 
-  // Registrar log na consola e opcionalmente no banco de dados
+  // Verificação periódica do token quando ativada
+  useEffect(() => {
+    // Verificar configuração de renovação automática na inicialização
+    const checkAutoRefreshConfig = async () => {
+      try {
+        const { data: config } = await supabase
+          .from("system_configs")
+          .select("value")
+          .eq("key", "google_ads_token_config")
+          .maybeSingle();
+        
+        if (config?.value?.auto_refresh_enabled) {
+          console.log("Renovação automática de tokens está ativada");
+          setAutoCheckEnabled(true);
+        }
+      } catch (error) {
+        console.error("Erro ao verificar configuração de renovação automática:", error);
+      }
+    };
+    
+    checkAutoRefreshConfig();
+    
+    // Verificação inicial do token
+    const initialCheck = async () => {
+      const healthInfo = await checkTokenHealth();
+      
+      // Se o token estiver próximo de expirar, já renovamos automaticamente
+      if (healthInfo.status === 'valid' && healthInfo.expiresAt) {
+        const expiresAt = DateTime.fromISO(healthInfo.expiresAt);
+        const now = DateTime.local();
+        const minutesUntilExpiry = expiresAt.diff(now, 'minutes').minutes;
+        
+        if (minutesUntilExpiry < AUTO_REFRESH_THRESHOLD_MINUTES) {
+          console.log(`Token expira em ${minutesUntilExpiry.toFixed(1)} minutos. Renovando...`);
+          await refreshAccessToken();
+        }
+      }
+    };
+    
+    initialCheck();
+    
+    // Configurar verificações periódicas
+    let intervalId: number | undefined;
+    
+    if (autoCheckEnabled) {
+      intervalId = window.setInterval(async () => {
+        console.log("Verificação periódica do token Google Ads");
+        try {
+          const healthInfo = await checkTokenHealth();
+          
+          if (healthInfo.status === 'expired') {
+            console.log("Token expirado detectado na verificação periódica. Renovando...");
+            await refreshAccessToken();
+            return;
+          }
+          
+          // Verificar se está próximo de expirar
+          if (healthInfo.status === 'valid' && healthInfo.expiresAt) {
+            const expiresAt = DateTime.fromISO(healthInfo.expiresAt);
+            const now = DateTime.local();
+            const minutesUntilExpiry = expiresAt.diff(now, 'minutes').minutes;
+            
+            // Se estiver a menos de X minutos de expirar, renovar automaticamente
+            if (minutesUntilExpiry < AUTO_REFRESH_THRESHOLD_MINUTES) {
+              console.log(`Token expira em ${minutesUntilExpiry.toFixed(1)} minutos. Renovando proativamente...`);
+              await refreshAccessToken();
+            }
+          }
+        } catch (error) {
+          console.error("Erro na verificação periódica do token:", error);
+        }
+      }, CHECK_INTERVAL_MS);
+    }
+    
+    // Limpar intervalo quando o componente for desmontado
+    return () => {
+      if (intervalId !== undefined) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [autoCheckEnabled]);
+
+  // Registrar log na consola e no banco de dados
   const logTokenEvent = async (entry: TokenLogEntry) => {
     const timestamp = new Date();
     
@@ -181,9 +269,10 @@ export const useGoogleAdsTokenManager = () => {
         .from("google_ads_token_metadata")
         .upsert({
           token_type: "access_token",
+          status: "valid",
           last_refreshed: new Date().toISOString(),
           expires_at: expiresAt.toISOString(),
-          status: "valid"
+          details: response.data ? JSON.stringify(response.data) : null
         });
       
       if (metadataError) {
@@ -233,7 +322,7 @@ export const useGoogleAdsTokenManager = () => {
     }
   };
 
-  // Obter token de acesso válido
+  // Obter token de acesso válido - sempre verifica o tempo restante e renova proativamente
   const getValidAccessToken = async (): Promise<string | null> => {
     const tokens = await fetchTokens();
     
@@ -246,26 +335,48 @@ export const useGoogleAdsTokenManager = () => {
       return null;
     }
     
-    // Verificar metadata para saber se o token já está expirado
+    // Verificar metadata para saber se o token já está expirado ou próximo de expirar
     const { data: metadata } = await supabase
       .from("google_ads_token_metadata")
       .select("expires_at, status")
       .eq("token_type", "access_token")
       .maybeSingle();
     
-    // Se temos metadados e o token não expirou, podemos usá-lo
+    // Se temos metadados e o token não expirou, verificamos proativamente
     if (metadata?.expires_at) {
       const expiresAt = DateTime.fromISO(metadata.expires_at);
       const now = DateTime.local();
+      const minutesUntilExpiry = expiresAt.diff(now, 'minutes').minutes;
       
-      // Se o token expira em mais de 5 minutos, é considerado válido
-      if (expiresAt > now.plus({ minutes: 5 })) {
+      // Se está a menos de X minutos de expirar, renovamos proativamente
+      if (minutesUntilExpiry < AUTO_REFRESH_THRESHOLD_MINUTES) {
+        console.log(`Token expira em ${minutesUntilExpiry.toFixed(1)} minutos. Renovando proativamente...`);
+        
+        // Renovar token antecipadamente
+        return await refreshAccessToken();
+      }
+      
+      // Se o token expira em mais de X minutos, é considerado válido
+      if (expiresAt > now) {
         await logTokenEvent({
           event: 'check',
           status: 'valid',
           message: 'Token válido pelos metadados',
-          details: { expires_at: metadata.expires_at }
+          details: { 
+            expires_at: metadata.expires_at,
+            minutes_remaining: minutesUntilExpiry.toFixed(1)
+          }
         });
+        
+        // Atualizar o timestamp de last_checked nos metadados
+        await supabase
+          .from("google_ads_token_metadata")
+          .update({ 
+            last_checked: now.toISO(),
+            status: 'valid'
+          })
+          .eq("token_type", "access_token");
+        
         return tokens.google_ads_access_token;
       }
     }
@@ -274,6 +385,25 @@ export const useGoogleAdsTokenManager = () => {
     const isValid = await checkAccessToken(tokens.google_ads_access_token);
     
     if (isValid) {
+      // Mesmo se for válido agora, vamos verificar quanto tempo resta
+      const { data: refreshedMetadata } = await supabase
+        .from("google_ads_token_metadata")
+        .select("expires_at")
+        .eq("token_type", "access_token")
+        .maybeSingle();
+        
+      if (refreshedMetadata?.expires_at) {
+        const expiresAt = DateTime.fromISO(refreshedMetadata.expires_at);
+        const now = DateTime.local();
+        const minutesUntilExpiry = expiresAt.diff(now, 'minutes').minutes;
+        
+        // Se está a menos de X minutos de expirar, renovamos de qualquer forma
+        if (minutesUntilExpiry < AUTO_REFRESH_THRESHOLD_MINUTES) {
+          console.log(`Token expira em ${minutesUntilExpiry.toFixed(1)} minutos. Renovando proativamente...`);
+          return await refreshAccessToken();
+        }
+      }
+      
       return tokens.google_ads_access_token;
     }
     
@@ -392,6 +522,37 @@ export const useGoogleAdsTokenManager = () => {
     }
   };
 
+  // Ativar ou desativar verificação automática
+  const setAutoRefresh = async (enabled: boolean) => {
+    try {
+      setAutoCheckEnabled(enabled);
+      
+      // Atualizar configuração no banco de dados
+      const { data: config } = await supabase
+        .from("system_configs")
+        .select("value")
+        .eq("key", "google_ads_token_config")
+        .maybeSingle();
+      
+      // Preservar outras configurações se existirem
+      const existingConfig = config?.value || {};
+      
+      const { error } = await supabase
+        .from("system_configs")
+        .upsert({
+          key: "google_ads_token_config",
+          value: { ...existingConfig, auto_refresh_enabled: enabled }
+        });
+      
+      if (error) throw error;
+      
+      return true;
+    } catch (error) {
+      console.error("Erro ao salvar configuração de renovação automática:", error);
+      return false;
+    }
+  };
+
   return {
     isLoading,
     tokenStatus,
@@ -401,6 +562,8 @@ export const useGoogleAdsTokenManager = () => {
     getValidAccessToken,
     getAuthHeaders,
     checkTokenHealth,
-    logTokenEvent
+    logTokenEvent,
+    setAutoRefresh,
+    autoCheckEnabled
   };
 };

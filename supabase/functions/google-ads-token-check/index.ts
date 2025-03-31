@@ -8,6 +8,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Limiar de renovação: renovar token se expirar em menos de X minutos
+const REFRESH_THRESHOLD_MINUTES = 30;
+
 serve(async (req) => {
   // Tratamento da requisição OPTIONS (preflight)
   if (req.method === "OPTIONS") {
@@ -34,6 +37,31 @@ serve(async (req) => {
         console.error("Erro ao registrar log:", error);
       }
     }
+    
+    // Verificar configuração
+    const { data: config, error: configError } = await supabaseClient
+      .from("system_configs")
+      .select("value")
+      .eq("key", "google_ads_token_config")
+      .maybeSingle();
+      
+    // Se a edge function estiver desativada, retornamos
+    if (configError || !config?.value?.edge_function_enabled) {
+      if (configError) {
+        await logTokenEvent("error", "unknown", "Erro ao verificar configuração da edge function", configError);
+      } else {
+        await logTokenEvent("check", "unknown", "Edge function desativada nas configurações");
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          disabled: true,
+          message: "Edge function está desativada nas configurações" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Busca os tokens do Google Ads
     const { data: tokensData, error: tokensError } = await supabaseClient
@@ -51,7 +79,7 @@ serve(async (req) => {
       tokens[token.name] = token.value;
     });
     
-    // Verifica se todos os tokens necessários estão presentes
+    // Verificar se todos os tokens necessários estão presentes
     const requiredTokens = ['google_ads_access_token', 'google_ads_refresh_token', 'google_ads_client_id', 'google_ads_client_secret'];
     const missingTokens = requiredTokens.filter(token => !tokens[token]);
     
@@ -67,50 +95,83 @@ serve(async (req) => {
       );
     }
     
-    // Tenta verificar o token de acesso atual
-    try {
-      const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + tokens.google_ads_access_token);
+    // Verificar metadados do token para decisão inteligente
+    const { data: metadata } = await supabaseClient
+      .from("google_ads_token_metadata")
+      .select("*")
+      .eq("token_type", "access_token")
+      .maybeSingle();
       
-      if (response.status === 200) {
-        const tokenInfo = await response.json();
+    let shouldRefresh = false;
+    
+    // Se temos metadados, verificamos se o token está próximo de expirar
+    if (metadata?.expires_at) {
+      const expiresAt = new Date(metadata.expires_at);
+      const now = new Date();
+      const minutesUntilExpiry = (expiresAt.getTime() - now.getTime()) / (60 * 1000);
+      
+      await logTokenEvent("check", "info", `Token expira em ${minutesUntilExpiry.toFixed(1)} minutos`, {
+        expires_at: metadata.expires_at,
+        minutes_remaining: minutesUntilExpiry
+      });
+      
+      // Se o token expira em menos de X minutos, renovar proativamente
+      if (minutesUntilExpiry < REFRESH_THRESHOLD_MINUTES) {
+        shouldRefresh = true;
+      }
+    } else {
+      // Se não temos metadados, verificamos o token
+      shouldRefresh = true;
+    }
+    
+    // Se não precisamos renovar, apenas verificamos o token atual
+    if (!shouldRefresh) {
+      try {
+        const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + tokens.google_ads_access_token);
         
-        await logTokenEvent("check", "valid", "Token de acesso válido", { 
-          expires_in: tokenInfo.expires_in,
-          scope: tokenInfo.scope
-        });
-        
-        // Atualiza os metadados do token
-        await supabaseClient
-          .from("google_ads_token_metadata")
-          .upsert({
-            token_type: "access_token",
-            last_checked: new Date().toISOString(),
-            status: "valid",
-            details: JSON.stringify(tokenInfo)
-          });
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: "Token de acesso válido", 
+        if (response.status === 200) {
+          const tokenInfo = await response.json();
+          
+          await logTokenEvent("check", "valid", "Token de acesso válido", { 
             expires_in: tokenInfo.expires_in,
-            token_info: tokenInfo
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } else {
-        // Token inválido ou expirado, tenta renovar
-        await logTokenEvent("check", "expired", "Token de acesso expirado ou inválido");
-        
-        // Atualiza o status nos metadados
-        await supabaseClient
-          .from("google_ads_token_metadata")
-          .upsert({
-            token_type: "access_token",
-            last_checked: new Date().toISOString(),
-            status: "expired"
+            scope: tokenInfo.scope
           });
-        
+          
+          // Atualiza os metadados do token
+          await supabaseClient
+            .from("google_ads_token_metadata")
+            .upsert({
+              token_type: "access_token",
+              status: "valid",
+              last_checked: new Date().toISOString(),
+              details: JSON.stringify(tokenInfo)
+            });
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: "Token de acesso válido", 
+              expires_in: tokenInfo.expires_in,
+              token_info: tokenInfo
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else {
+          // Token inválido ou expirado, precisamos renovar
+          shouldRefresh = true;
+        }
+      } catch (error) {
+        // Erro ao verificar token, vamos tentar renovar
+        await logTokenEvent("check", "error", "Erro ao verificar token atual", error);
+        shouldRefresh = true;
+      }
+    }
+    
+    // Processo de renovação de token
+    if (shouldRefresh) {
+      await logTokenEvent("refresh", "refreshing", "Iniciando renovação proativa do token");
+      
+      try {
         // Tenta renovar o token
         const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
           method: "POST",
@@ -143,13 +204,14 @@ serve(async (req) => {
             .from("google_ads_token_metadata")
             .upsert({
               token_type: "access_token",
+              status: "valid",
               last_refreshed: new Date().toISOString(),
               expires_at: expiresAt.toISOString(),
-              status: "valid",
+              last_checked: new Date().toISOString(),
               details: JSON.stringify(refreshData)
             });
           
-          await logTokenEvent("refresh", "valid", "Token renovado com sucesso", { 
+          await logTokenEvent("refresh", "valid", "Token renovado com sucesso pela edge function", { 
             expires_in: expiresIn,
             expires_at: expiresAt.toISOString()
           });
@@ -157,7 +219,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: "Token renovado com sucesso",
+              message: "Token renovado com sucesso pela edge function",
               refreshed: true,
               expires_in: expiresIn,
               expires_at: expiresAt.toISOString()
@@ -166,29 +228,29 @@ serve(async (req) => {
           );
         } else {
           const errorData = await refreshResponse.json();
-          await logTokenEvent("error", "expired", "Falha ao renovar token", errorData);
+          await logTokenEvent("error", "expired", "Falha ao renovar token pela edge function", errorData);
           
           return new Response(
             JSON.stringify({ 
               success: false, 
-              message: "Falha ao renovar token",
+              message: "Falha ao renovar token pela edge function",
               error: errorData
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+      } catch (error) {
+        // Erro ao renovar token
+        await logTokenEvent("error", "unknown", "Erro durante renovação do token pela edge function", error);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: `Erro durante renovação do token pela edge function: ${error instanceof Error ? error.message : String(error)}` 
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-    } catch (error) {
-      // Erro ao verificar ou renovar token
-      await logTokenEvent("error", "unknown", "Erro durante verificação/renovação do token", error);
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: `Erro durante verificação/renovação do token: ${error instanceof Error ? error.message : String(error)}` 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
   } catch (error) {
     // Erro geral do serviço

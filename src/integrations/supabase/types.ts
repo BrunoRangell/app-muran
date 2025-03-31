@@ -410,6 +410,42 @@ export type Database = {
           },
         ]
       }
+      google_ads_token_metadata: {
+        Row: {
+          created_at: string
+          details: Json | null
+          expires_at: string | null
+          id: string
+          last_checked: string | null
+          last_refreshed: string | null
+          status: string
+          token_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          expires_at?: string | null
+          id?: string
+          last_checked?: string | null
+          last_refreshed?: string | null
+          status: string
+          token_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          expires_at?: string | null
+          id?: string
+          last_checked?: string | null
+          last_refreshed?: string | null
+          status?: string
+          token_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       imported_transactions: {
         Row: {
           cost_id: number | null
