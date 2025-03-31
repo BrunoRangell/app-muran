@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useGoogleTokenService } from "./useGoogleTokenService";
+import { useGoogleAdsTokenManager } from "./useGoogleAdsTokenManager";
 import axios from "axios";
 import { DateTime } from "luxon";
 
@@ -28,48 +27,42 @@ export const useGoogleAdsService = () => {
   const [clients, setClients] = useState<GoogleAdsClient[]>([]);
   const [campaigns, setCampaigns] = useState<GoogleAdsCampaign[]>([]);
   const [spendInfo, setSpendInfo] = useState<GoogleAdsSpend | null>(null);
-  const { fetchGoogleTokens, refreshGoogleAccessToken } = useGoogleTokenService();
+  const tokenManager = useGoogleAdsTokenManager();
 
-  const getAuthHeaders = async (tokens: Record<string, string>, customerId?: string) => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'developer-token': tokens.google_ads_developer_token,
-      'Authorization': `Bearer ${tokens.google_ads_access_token}`
-    };
+  const handleApiError = async (error: any, endpoint: string, params?: any) => {
+    console.error(`Erro na API Google Ads (${endpoint}):`, error.response?.data || error.message);
     
-    if (customerId && tokens.google_ads_manager_id) {
-      headers['login-customer-id'] = tokens.google_ads_manager_id;
-    }
-    
-    return headers;
-  };
-
-  const handleApiError = async (error: any, tokens: Record<string, string>) => {
-    console.error("Erro na API Google Ads:", error.response?.data || error.message);
-    
-    // Verificar se o erro é de token expirado (401)
     if (error.response?.status === 401) {
-      try {
-        // Tentar renovar o token
-        const newToken = await refreshGoogleAccessToken(
-          tokens.google_ads_refresh_token,
-          tokens.google_ads_client_id,
-          tokens.google_ads_client_secret
-        );
-        
-        if (newToken) {
-          // Atualizar o token na lista
-          tokens.google_ads_access_token = newToken;
-          return tokens;
+      await tokenManager.logTokenEvent({
+        event: 'error',
+        status: 'expired',
+        message: `Token expirado ao acessar ${endpoint}`,
+        details: {
+          response: error.response?.data,
+          params
         }
-      } catch (refreshError) {
-        console.error("Erro ao renovar token:", refreshError);
-        throw new Error("Falha ao renovar token de acesso");
+      });
+      
+      const newToken = await tokenManager.refreshAccessToken();
+      
+      if (newToken) {
+        return true;
       }
     }
     
-    // Para outros erros, propagamos a mensagem original
-    throw new Error(error.response?.data?.error?.message || error.message);
+    await tokenManager.logTokenEvent({
+      event: 'error',
+      status: 'unknown',
+      message: `Erro ao acessar ${endpoint}`,
+      details: {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        params
+      }
+    });
+    
+    return false;
   };
 
   const fetchCustomerIds = async () => {
@@ -77,11 +70,19 @@ export const useGoogleAdsService = () => {
     setError(null);
     
     try {
-      const tokens = await fetchGoogleTokens();
+      const { data: tokensData, error: tokensError } = await supabase
+        .from("api_tokens")
+        .select("name, value")
+        .or('name.eq.google_ads_developer_token,name.eq.google_ads_manager_id');
       
-      if (!tokens) {
-        throw new Error("Tokens do Google Ads não configurados");
+      if (tokensError) {
+        throw new Error("Erro ao buscar tokens de desenvolvedor e ID da conta gerenciadora");
       }
+      
+      const tokens: Record<string, string> = {};
+      tokensData?.forEach(token => {
+        tokens[token.name] = token.value;
+      });
       
       if (!tokens.google_ads_developer_token || !tokens.google_ads_manager_id) {
         throw new Error("Token de desenvolvedor ou ID da conta gerenciadora não configurados");
@@ -99,7 +100,11 @@ export const useGoogleAdsService = () => {
             customer_client.manager = FALSE
       `;
       
-      const headers = await getAuthHeaders(tokens);
+      const headers = await tokenManager.getAuthHeaders();
+      
+      if (!headers) {
+        throw new Error("Não foi possível obter headers de autenticação válidos");
+      }
       
       try {
         const response = await axios.post(
@@ -120,12 +125,14 @@ export const useGoogleAdsService = () => {
           throw new Error("Resposta inválida da API Google Ads");
         }
       } catch (apiError: any) {
-        // Tentar renovar o token se necessário
-        const updatedTokens = await handleApiError(apiError, tokens);
+        const shouldRetry = await handleApiError(apiError, 'fetchCustomerIds', { managerCustomerId });
         
-        if (updatedTokens) {
-          // Tentar novamente com o token atualizado
-          const newHeaders = await getAuthHeaders(updatedTokens);
+        if (shouldRetry) {
+          const newHeaders = await tokenManager.getAuthHeaders();
+          
+          if (!newHeaders) {
+            throw new Error("Não foi possível obter novos headers de autenticação válidos após renovação do token");
+          }
           
           const response = await axios.post(
             `https://googleads.googleapis.com/v18/customers/${managerCustomerId}/googleAds:search`,
@@ -140,6 +147,8 @@ export const useGoogleAdsService = () => {
           
           setClients(clientsList);
           return clientsList;
+        } else {
+          throw apiError;
         }
       }
     } catch (err: any) {
@@ -159,11 +168,19 @@ export const useGoogleAdsService = () => {
     setError(null);
     
     try {
-      const tokens = await fetchGoogleTokens();
+      const { data: tokensData, error: tokensError } = await supabase
+        .from("api_tokens")
+        .select("name, value")
+        .or('name.eq.google_ads_developer_token,name.eq.google_ads_manager_id');
       
-      if (!tokens) {
-        throw new Error("Tokens do Google Ads não configurados");
+      if (tokensError) {
+        throw new Error("Erro ao buscar tokens de desenvolvedor e ID da conta gerenciadora");
       }
+      
+      const tokens: Record<string, string> = {};
+      tokensData?.forEach(token => {
+        tokens[token.name] = token.value;
+      });
       
       if (!tokens.google_ads_developer_token || !tokens.google_ads_manager_id) {
         throw new Error("Token de desenvolvedor ou ID da conta gerenciadora não configurados");
@@ -180,7 +197,11 @@ export const useGoogleAdsService = () => {
             campaign
       `;
       
-      const headers = await getAuthHeaders(tokens, customerId);
+      const headers = await tokenManager.getAuthHeaders(customerId);
+      
+      if (!headers) {
+        throw new Error("Não foi possível obter headers de autenticação válidos");
+      }
       
       try {
         const response = await axios.post(
@@ -208,12 +229,14 @@ export const useGoogleAdsService = () => {
           throw new Error("Resposta inválida da API Google Ads");
         }
       } catch (apiError: any) {
-        // Tentar renovar o token se necessário
-        const updatedTokens = await handleApiError(apiError, tokens);
+        const shouldRetry = await handleApiError(apiError, 'fetchCampaigns', { customerId });
         
-        if (updatedTokens) {
-          // Tentar novamente com o token atualizado
-          const newHeaders = await getAuthHeaders(updatedTokens, customerId);
+        if (shouldRetry) {
+          const newHeaders = await tokenManager.getAuthHeaders(customerId);
+          
+          if (!newHeaders) {
+            throw new Error("Não foi possível obter novos headers de autenticação válidos após renovação do token");
+          }
           
           const response = await axios.post(
             `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
@@ -235,6 +258,8 @@ export const useGoogleAdsService = () => {
           
           setCampaigns(campaignsList);
           return campaignsList;
+        } else {
+          throw apiError;
         }
       }
     } catch (err: any) {
@@ -254,11 +279,19 @@ export const useGoogleAdsService = () => {
     setError(null);
     
     try {
-      const tokens = await fetchGoogleTokens();
+      const { data: tokensData, error: tokensError } = await supabase
+        .from("api_tokens")
+        .select("name, value")
+        .or('name.eq.google_ads_developer_token,name.eq.google_ads_manager_id');
       
-      if (!tokens) {
-        throw new Error("Tokens do Google Ads não configurados");
+      if (tokensError) {
+        throw new Error("Erro ao buscar tokens de desenvolvedor e ID da conta gerenciadora");
       }
+      
+      const tokens: Record<string, string> = {};
+      tokensData?.forEach(token => {
+        tokens[token.name] = token.value;
+      });
       
       if (!tokens.google_ads_developer_token || !tokens.google_ads_manager_id) {
         throw new Error("Token de desenvolvedor ou ID da conta gerenciadora não configurados");
@@ -281,7 +314,11 @@ export const useGoogleAdsService = () => {
             segments.date BETWEEN '${startDate}' AND '${endDate}'
       `;
       
-      const headers = await getAuthHeaders(tokens, customerId);
+      const headers = await tokenManager.getAuthHeaders(customerId);
+      
+      if (!headers) {
+        throw new Error("Não foi possível obter headers de autenticação válidos");
+      }
       
       try {
         const response = await axios.post(
@@ -297,13 +334,11 @@ export const useGoogleAdsService = () => {
         
         const campaigns = response.data.results;
         
-        // Cálculo do total gasto no mês
         let totalSpend = campaigns.reduce((acc: number, campaign: any) => {
           const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
           return acc + cost;
         }, 0);
         
-        // Cálculo da média dos últimos 5 dias, excluindo hoje
         let lastFiveDaysSpend = 0;
         let uniqueDates = new Set();
         
@@ -328,12 +363,14 @@ export const useGoogleAdsService = () => {
         setSpendInfo(result);
         return result;
       } catch (apiError: any) {
-        // Tentar renovar o token se necessário
-        const updatedTokens = await handleApiError(apiError, tokens);
+        const shouldRetry = await handleApiError(apiError, 'fetchMonthlySpend', { customerId });
         
-        if (updatedTokens) {
-          // Tentar novamente com o token atualizado
-          const newHeaders = await getAuthHeaders(updatedTokens, customerId);
+        if (shouldRetry) {
+          const newHeaders = await tokenManager.getAuthHeaders(customerId);
+          
+          if (!newHeaders) {
+            throw new Error("Não foi possível obter novos headers de autenticação válidos após renovação do token");
+          }
           
           const response = await axios.post(
             `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
@@ -341,7 +378,6 @@ export const useGoogleAdsService = () => {
             { headers: newHeaders }
           );
           
-          // Repetir a lógica de processamento com a nova resposta
           const campaigns = response.data.results || [];
           
           let totalSpend = campaigns.reduce((acc: number, campaign: any) => {
@@ -372,6 +408,8 @@ export const useGoogleAdsService = () => {
           
           setSpendInfo(result);
           return result;
+        } else {
+          throw apiError;
         }
       }
     } catch (err: any) {
@@ -411,6 +449,7 @@ export const useGoogleAdsService = () => {
     error,
     clients,
     campaigns,
-    spendInfo
+    spendInfo,
+    tokenManager
   };
 };
