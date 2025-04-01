@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Clock, Loader } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,16 +20,13 @@ export function CompactNextReviewCountdown() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // O intervalo de execução é de 2 minutos (120 segundos)
-  const EXECUTION_INTERVAL = 120; // 2 minutos em segundos
-  const PROGRESS_CHECK_INTERVAL = 3000; // 3 segundos
-  const STABILITY_CHECK_INTERVAL = 10000; // 10 segundos
-  const COMPLETION_DELAY = 2000; // 2 segundos após detectar 100% para finalizar
+  const EXECUTION_INTERVAL = 120;
+  const PROGRESS_CHECK_INTERVAL = 3000;
+  const STABILITY_CHECK_INTERVAL = 10000;
+  const COMPLETION_DELAY = 2000;
 
-  // Atualizar os segundos para a próxima execução
   const updateSecondsToNext = () => {
     const now = new Date();
-    // Calcular o tempo restante para o próximo múltiplo de 2 minutos
     const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
@@ -42,7 +38,6 @@ export function CompactNextReviewCountdown() {
     setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
   };
 
-  // Verificar se há uma revisão automática em andamento
   const checkForActiveReview = async () => {
     try {
       console.log("[CompactNextReviewCountdown] Verificando revisão ativa...");
@@ -63,10 +58,7 @@ export function CompactNextReviewCountdown() {
       if (data && data.length > 0) {
         console.log("[CompactNextReviewCountdown] Encontrada revisão em andamento:", data[0]);
         setIsAutoReviewing(true);
-        // Buscar o progresso atual da revisão
         fetchReviewProgress();
-        
-        // Iniciar monitoramento contínuo do progresso
         startProgressMonitoring();
       } else {
         console.log("[CompactNextReviewCountdown] Nenhuma revisão em andamento encontrada");
@@ -81,9 +73,7 @@ export function CompactNextReviewCountdown() {
     }
   };
 
-  // Iniciar monitoramento contínuo do progresso
   const startProgressMonitoring = () => {
-    // Limpar qualquer intervalo existente
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
     }
@@ -92,18 +82,15 @@ export function CompactNextReviewCountdown() {
       clearInterval(stabilityCheckRef.current);
     }
     
-    // Verificar progresso a cada intervalo definido
     progressIntervalRef.current = setInterval(() => {
       fetchReviewProgress();
     }, PROGRESS_CHECK_INTERVAL);
     
-    // Verificar estabilidade do progresso (se está parado)
     stabilityCheckRef.current = setInterval(() => {
       checkProgressStability();
     }, STABILITY_CHECK_INTERVAL);
   };
 
-  // Parar monitoramento do progresso
   const stopProgressMonitoring = () => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -116,26 +103,21 @@ export function CompactNextReviewCountdown() {
     }
   };
 
-  // Verificar se o progresso parou de avançar
   const checkProgressStability = () => {
     if (!isAutoReviewing || !lastProcessedTime) return;
     
     const now = new Date();
     const minutesSinceLastUpdate = (now.getTime() - lastProcessedTime.getTime()) / (1000 * 60);
     
-    // Se passou mais de 2 minutos sem atualizações e o progresso não está em 100%
     if (minutesSinceLastUpdate > 2 && progress < 100) {
       console.log(`[CompactNextReviewCountdown] Progresso parece estar parado. Última atualização: ${minutesSinceLastUpdate.toFixed(1)} minutos atrás`);
       
-      // Tentar retomar a revisão para os clientes pendentes
       resumeReviewForPendingClients();
     }
   };
 
-  // Buscar o progresso da revisão em andamento
   const fetchReviewProgress = async () => {
     try {
-      // Buscar todos os clientes com Meta Ads ativos
       const { data: clients, error: clientsError } = await supabase
         .from('clients')
         .select('id, meta_account_id')
@@ -152,7 +134,6 @@ export function CompactNextReviewCountdown() {
         setTotalClients(clients.length);
         console.log(`[CompactNextReviewCountdown] Total de clientes para processar: ${clients.length}`);
         
-        // Buscar quantos clientes já foram processados
         const today = new Date().toISOString().split('T')[0];
         const { data: processed, error: reviewsError } = await supabase
           .from('daily_budget_reviews')
@@ -166,14 +147,10 @@ export function CompactNextReviewCountdown() {
         }
         
         if (processed) {
-          // Eliminar duplicatas (considerar apenas a revisão mais recente por cliente)
           const clientIds = clients.map(c => c.id);
           const uniqueProcessed = [...new Set(processed.map(p => p.client_id))];
           
-          // Verificar quais clientes foram processados hoje
-          const processedClientIds = uniqueProcessed.filter(id => clientIds.includes(id));
-          
-          const numProcessedClients = processedClientIds.length;
+          const numProcessedClients = uniqueProcessed.filter(id => clientIds.includes(id)).length;
           setProcessedClients(numProcessedClients);
           
           console.log(`[CompactNextReviewCountdown] Clientes processados hoje: ${numProcessedClients} de ${clients.length}`);
@@ -181,24 +158,19 @@ export function CompactNextReviewCountdown() {
           const progressValue = clients.length > 0 ? (numProcessedClients / clients.length) * 100 : 0;
           setProgress(progressValue);
           
-          // Atualizar o timestamp da última atualização
           if (processed.length > 0) {
             setLastProcessedTime(new Date());
           }
           
-          // Se o progresso for 100%, esperar um pouco antes de finalizar para garantir que todos os clientes apareçam na UI
           if (progressValue >= 100) {
             console.log("[CompactNextReviewCountdown] Todos os clientes foram processados!");
             
-            // Esperar um tempo para garantir que todos os dados foram atualizados na UI
             setTimeout(() => {
               setIsAutoReviewing(false);
               stopProgressMonitoring();
               
-              // Recarregar os dados dos clientes
               queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
               
-              // Registrar conclusão no log de execução
               try {
                 supabase
                   .from('cron_execution_logs')
@@ -212,7 +184,6 @@ export function CompactNextReviewCountdown() {
                 console.error("[CompactNextReviewCountdown] Erro ao atualizar status do log:", updateError);
               }
               
-              // Atualizar a data/hora da última revisão em massa
               updateLastBatchReviewTime();
               
               toast({
@@ -229,12 +200,10 @@ export function CompactNextReviewCountdown() {
     }
   };
 
-  // Atualizar a data/hora da última revisão em massa
   const updateLastBatchReviewTime = async () => {
     try {
       const now = new Date().toISOString();
       
-      // Registrar no system_logs
       await supabase.from('system_logs').insert({
         event_type: 'batch_review_completed',
         message: `Revisão em lote concluída automaticamente`,
@@ -247,12 +216,10 @@ export function CompactNextReviewCountdown() {
     }
   };
 
-  // Retomar a revisão para clientes pendentes
   const resumeReviewForPendingClients = async () => {
     try {
       console.log("[CompactNextReviewCountdown] Tentando retomar a revisão para clientes pendentes...");
       
-      // Buscar clientes ativos com Meta Ads configurado
       const { data: allClients, error: clientsError } = await supabase
         .from('clients')
         .select('id')
@@ -270,7 +237,6 @@ export function CompactNextReviewCountdown() {
       
       const clientIds = allClients.map(c => c.id);
       
-      // Buscar revisões já feitas hoje
       const today = new Date().toISOString().split('T')[0];
       const { data: processed, error: reviewsError } = await supabase
         .from('daily_budget_reviews')
@@ -281,7 +247,6 @@ export function CompactNextReviewCountdown() {
         throw new Error(`Erro ao buscar revisões: ${reviewsError.message}`);
       }
       
-      // Identificar clientes pendentes (não processados hoje)
       const processedIds = (processed || []).map(p => p.client_id);
       const uniqueProcessedIds = [...new Set(processedIds)];
       const pendingClientIds = clientIds.filter(id => !uniqueProcessedIds.includes(id));
@@ -291,7 +256,6 @@ export function CompactNextReviewCountdown() {
       if (pendingClientIds.length === 0) {
         console.log("[CompactNextReviewCountdown] Todos os clientes já foram processados");
         
-        // Verificar se alguma revisão pode ter falhado parcialmente
         if (uniqueProcessedIds.length < clientIds.length) {
           console.log("[CompactNextReviewCountdown] Discrepância nos números, forçando atualização do status para 'success'");
           
@@ -315,7 +279,6 @@ export function CompactNextReviewCountdown() {
         return;
       }
       
-      // Registrar uma nova execução para os clientes pendentes
       const { data: logEntry, error: logError } = await supabase
         .from('cron_execution_logs')
         .insert({
@@ -359,7 +322,6 @@ export function CompactNextReviewCountdown() {
         variant: "default",
       });
       
-      // Atualizar o lastProcessedTime para evitar tentativas múltiplas seguidas
       setLastProcessedTime(new Date());
       
     } catch (error) {
@@ -374,7 +336,6 @@ export function CompactNextReviewCountdown() {
     }
   };
 
-  // Executar a revisão automática
   const executeAutoReview = async () => {
     if (isAutoReviewing) {
       console.log("[CompactNextReviewCountdown] Já existe uma revisão em andamento, ignorando nova execução");
@@ -386,7 +347,6 @@ export function CompactNextReviewCountdown() {
       setIsAutoReviewing(true);
       setErrorMessage(null);
       
-      // Primeiro, registre a execução no log
       const { data: logEntry, error: logError } = await supabase
         .from('cron_execution_logs')
         .insert({
@@ -420,7 +380,6 @@ export function CompactNextReviewCountdown() {
       
       console.log("[CompactNextReviewCountdown] Revisão automática iniciada:", data);
       
-      // Atualizar lastProcessedTime para iniciação do monitoramento
       setLastProcessedTime(new Date());
       
       toast({
@@ -429,14 +388,12 @@ export function CompactNextReviewCountdown() {
         variant: "default",
       });
       
-      // Iniciar verificação de progresso
       fetchReviewProgress();
       startProgressMonitoring();
       
     } catch (error) {
       console.error("[CompactNextReviewCountdown] Erro ao executar revisão automática:", error);
       
-      // Atualizar o log de execução para indicar erro
       try {
         await supabase
           .from('cron_execution_logs')
@@ -467,21 +424,15 @@ export function CompactNextReviewCountdown() {
   };
 
   useEffect(() => {
-    // Inicializar o contador
     updateSecondsToNext();
-    
-    // Verificar se há uma revisão em andamento
     checkForActiveReview();
     
-    // Limpar qualquer contador existente
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
     }
     
-    // Criar um novo contador regressivo
     countdownRef.current = setInterval(() => {
       setSecondsToNext(prev => {
-        // Se chegou a zero, reiniciar o contador e executar a revisão automática
         if (prev <= 1) {
           console.log("[CompactNextReviewCountdown] Contador chegou a zero, executando revisão automática...");
           executeAutoReview();
@@ -492,16 +443,14 @@ export function CompactNextReviewCountdown() {
       });
     }, 1000);
     
-    // Limpeza quando o componente for desmontado
     return () => {
       if (countdownRef.current) {
         clearInterval(countdownRef.current);
       }
       stopProgressMonitoring();
     };
-  }, []); // Executado apenas na montagem
+  }, []);
 
-  // Formatar o tempo para exibição
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -524,13 +473,12 @@ export function CompactNextReviewCountdown() {
     );
   }
 
-  // Usar o componente AnalysisProgress para manter a consistência com a análise manual
   const progressPercentage = Math.round(progress);
 
   return (
     <div className="space-y-1.5 bg-gray-50 px-2 py-1.5 rounded-md border border-gray-100">
       <AnalysisProgress
-        isBatchAnalyzing={isAutoReviewing}
+        isBatchAnalyzing={true}
         batchProgress={processedClients}
         totalClientsToAnalyze={totalClients}
         progressPercentage={progressPercentage}
