@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -13,6 +12,8 @@ import { EmptyStateView } from "./components/EmptyStateView";
 import { LoadingView } from "./components/LoadingView";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { splitClientsByMetaId } from "./utils/clientSorting";
+import { AutoReviewTest } from "./components/AutoReviewTest";
+import { AutoReviewSettings } from "./components/AutoReviewSettings";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -34,14 +35,12 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     lastBatchReviewTime,
     isBatchAnalyzing,
     batchProgress,
-    totalClientsToAnalyze
+    totalClientsToAnalyze,
+    refetchClients
   } = useBatchReview();
   
-  // Adicionar efeito para atualizar dados quando análises são concluídas
   useEffect(() => {
-    // Monitorar mudanças no estado de análise em lote
     if (!isBatchAnalyzing && batchProgress > 0) {
-      // Análise em lote foi concluída, atualizar dados
       queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     }
   }, [isBatchAnalyzing, batchProgress, queryClient]);
@@ -101,7 +100,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   const handleReviewClient = useCallback((clientId: string) => {
     console.log("Iniciando revisão para cliente:", clientId);
     reviewSingleClient(clientId).then(() => {
-      // Atualizar dados após a conclusão da revisão de um cliente
       queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     });
   }, [reviewSingleClient, queryClient]);
@@ -166,6 +164,11 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           showOnlyAdjustments={showOnlyAdjustments}
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
+        
+        <div className="mt-4 grid md:grid-cols-2 gap-4">
+          <AutoReviewSettings />
+          <AutoReviewTest />
+        </div>
       </div>
 
       {isLoading ? (

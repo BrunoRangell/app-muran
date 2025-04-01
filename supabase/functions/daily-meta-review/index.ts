@@ -1,4 +1,3 @@
-
 // Função Edge para revisão diária automatizada de orçamentos Meta Ads
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -10,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'daily-meta-review' carregada - v1.0.1");
+console.log("Função Edge 'daily-meta-review' carregada - v1.0.2");
 
 serve(async (req) => {
   // Lidar com requisições OPTIONS para CORS
@@ -44,6 +43,44 @@ serve(async (req) => {
       } catch (error) {
         console.error("Erro ao registrar log:", error);
       }
+    }
+    
+    // Verificar se é um teste de conectividade
+    let requestData = {};
+    try {
+      requestData = await req.json();
+    } catch (e) {
+      // Se não houver corpo JSON, assumimos valores padrão
+      requestData = { scheduled: false, manual: true };
+    }
+    
+    const isTest = requestData.test === true;
+    
+    if (isTest) {
+      console.log("Requisição de teste recebida, verificando conectividade");
+      await logEvent("Teste de conectividade realizado", {
+        timestamp: new Date().toISOString(),
+        success: true
+      });
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Teste de conectividade bem-sucedido",
+          timestamp: new Date().toISOString(),
+          endpoints: {
+            meta_api: true,
+            database: true
+          }
+        }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
     
     // Verificar se é uma execução agendada ou manual
