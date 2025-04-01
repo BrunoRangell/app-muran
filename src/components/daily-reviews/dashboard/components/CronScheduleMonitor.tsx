@@ -10,27 +10,42 @@ export function CronScheduleMonitor() {
   const [lastExecution, setLastExecution] = useState<Date | null>(null);
   const [status, setStatus] = useState<'active' | 'inactive' | 'loading'>('loading');
   const [loading, setLoading] = useState(true);
+  const [cronError, setCronError] = useState<string | null>(null);
 
   const fetchCronStatus = async () => {
     try {
       setLoading(true);
       
-      // Buscar o último log de execução do cron
+      // Buscar todos os logs de execução do cron para ter uma visão mais completa
       const { data: logs, error } = await supabase
         .from("cron_execution_logs")
         .select("*")
         .eq("job_name", "daily-meta-review-job")
         .order("execution_time", { ascending: false })
-        .limit(1);
+        .limit(10);
       
       if (error) {
         console.error("Erro ao buscar logs de execução:", error);
+        setCronError(`Erro ao verificar status: ${error.message}`);
         setStatus('inactive');
         return;
       }
       
-      if (logs && logs.length > 0) {
-        const lastLog = logs[0];
+      if (!logs || logs.length === 0) {
+        console.log("Nenhum log de execução encontrado");
+        setCronError("Nenhum registro de execução encontrado");
+        setStatus('inactive');
+        setLoading(false);
+        return;
+      }
+      
+      // Obter o último log de execução bem-sucedido ou iniciado
+      const validLogs = logs.filter(log => 
+        ['success', 'partial_success', 'started', 'test_success'].includes(log.status)
+      );
+      
+      if (validLogs.length > 0) {
+        const lastLog = validLogs[0];
         setLastExecution(new Date(lastLog.execution_time));
         
         // Verificar se a última execução foi recente (nas últimas 24 horas)
@@ -38,18 +53,30 @@ export function CronScheduleMonitor() {
         
         if (hoursSince < 24) {
           setStatus('active');
+          setCronError(null);
         } else {
           setStatus('inactive');
+          setCronError(`Última execução foi há mais de 24h (${Math.round(hoursSince)}h atrás)`);
         }
+      } else if (logs.length > 0) {
+        // Se há logs, mas nenhum com status de sucesso
+        const lastLog = logs[0];
+        setLastExecution(new Date(lastLog.execution_time));
+        setStatus('inactive');
+        setCronError(`Última execução com status: ${lastLog.status}`);
       }
       
       // Calcular a próxima execução com base no agendamento cron
       try {
-        // Estamos usando um intervalo fixo para simulação, mas idealmente consultaríamos o banco
-        // para obter a expressão cron exata
-        const { data: cronData } = await supabase.rpc('get_cron_expression', { 
+        const { data: cronData, error: cronError } = await supabase.rpc('get_cron_expression', { 
           job_name: 'daily-meta-review-job' 
         });
+        
+        if (cronError) {
+          console.warn("Erro ao obter expressão cron:", cronError);
+          setNextExecution("16:00 diariamente");
+          return;
+        }
         
         if (cronData && typeof cronData === 'object' && 'cron_expression' in cronData) {
           setNextExecution(`Agendamento: ${cronData.cron_expression}`);
@@ -64,6 +91,7 @@ export function CronScheduleMonitor() {
       
     } catch (e) {
       console.error("Erro ao verificar status do cron:", e);
+      setCronError(`Erro: ${e instanceof Error ? e.message : String(e)}`);
       setStatus('inactive');
     } finally {
       setLoading(false);
@@ -73,8 +101,8 @@ export function CronScheduleMonitor() {
   useEffect(() => {
     fetchCronStatus();
     
-    // Atualizar status a cada 5 minutos
-    const intervalId = setInterval(fetchCronStatus, 5 * 60 * 1000);
+    // Atualizar status a cada 3 minutos
+    const intervalId = setInterval(fetchCronStatus, 3 * 60 * 1000);
     
     return () => clearInterval(intervalId);
   }, []);
@@ -90,6 +118,20 @@ export function CronScheduleMonitor() {
       default:
         return <Clock className="h-5 w-5 text-gray-400" />;
     }
+  };
+
+  // Calcular tempo para próxima execução
+  const getMinutesToNextExecution = () => {
+    const now = new Date();
+    const targetTime = new Date();
+    targetTime.setHours(16, 0, 0, 0);
+    
+    // Se já passou das 16h hoje, a próxima execução é amanhã
+    if (now.getHours() >= 16) {
+      targetTime.setDate(targetTime.getDate() + 1);
+    }
+    
+    return Math.round((targetTime.getTime() - now.getTime()) / (1000 * 60));
   };
 
   return (
@@ -122,9 +164,15 @@ export function CronScheduleMonitor() {
             </span>
           </div>
           
+          {cronError && (
+            <div className="mt-1 text-xs text-amber-600 bg-amber-50 p-1.5 rounded border border-amber-100">
+              {cronError}
+            </div>
+          )}
+          
           <p className="text-xs text-gray-500 mt-2">
             Agendado para executar automaticamente às 16:00 - próxima execução em{" "}
-            {Math.round((new Date(new Date().setHours(16, 0, 0, 0)).getTime() - new Date().getTime()) / (1000 * 60))}{" "}
+            {getMinutesToNextExecution()}{" "}
             minutos
           </p>
         </div>

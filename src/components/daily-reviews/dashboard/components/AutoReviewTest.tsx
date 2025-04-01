@@ -78,10 +78,10 @@ export function AutoReviewTest() {
         console.warn("Erro ao registrar log de sistema (isso não afeta o resultado do teste):", logError);
       }
       
-      // Registrar na tabela cron_execution_logs para atualizar o status
+      // Registrar na tabela cron_execution_logs para atualizar o status do agendamento
       try {
         await supabase.from("cron_execution_logs").insert({
-          job_name: "daily-meta-review-job",
+          job_name: "daily-meta-review-job", // Usar o mesmo nome do job do cron
           execution_time: new Date().toISOString(),
           status: "test_success",
           details: {
