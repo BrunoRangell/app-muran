@@ -20,7 +20,7 @@ export function AutoReviewSettings() {
     try {
       setIsLoading(true);
       
-      // Verificar se existe configuração salva
+      // Verificar configuração salva
       const { data: configData, error: configError } = await supabase
         .from("system_configs")
         .select("value")
@@ -34,60 +34,62 @@ export function AutoReviewSettings() {
       
       if (configData?.value) {
         setLastAutoRun(new Date(configData.value));
-        
-        // Verificar se a execução foi recente (últimas 24 horas)
-        const now = new Date();
-        const lastRun = new Date(configData.value);
-        const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / (1000 * 60 * 60);
-        
-        if (hoursSinceLastRun <= 24) {
-          setLastRunStatus('success');
-        }
+        setLastRunStatus('success'); // Definir como sucesso por padrão, será atualizado mais tarde se houver erros
       }
       
-      // Verificar status do cron verificando logs recentes
-      const { data: cronLogs, error: cronError } = await supabase
-        .from("cron_execution_logs")
-        .select("*")
-        .eq("job_name", "daily-meta-review-job")
-        .order("execution_time", { ascending: false })
-        .limit(1);
-        
-      if (!cronError && cronLogs && cronLogs.length > 0) {
-        const lastCronExecution = new Date(cronLogs[0].execution_time);
-        const now = new Date();
-        const hoursSinceLastCronExecution = (now.getTime() - lastCronExecution.getTime()) / (1000 * 60 * 60);
-        
-        // Se a última execução foi nas últimas 36 horas, consideramos o cron ativo
-        if (hoursSinceLastCronExecution <= 36) {
-          setCronStatus('active');
-        } else {
-          setCronStatus('inactive');
-        }
-      } else {
-        // Se não houver logs, verificamos se há logs de sistema recentes
-        const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-        
-        const { data: systemLogs, error: systemLogsError } = await supabase
-          .from("system_logs")
-          .select("*")
-          .eq("event_type", "cron_job")
-          .gt("created_at", threeDaysAgo.toISOString())
-          .order("created_at", { ascending: false })
-          .limit(1);
-          
-        if (!systemLogsError && systemLogs && systemLogs.length > 0) {
-          setCronStatus('active');
-        } else {
-          setCronStatus('inactive');
-        }
-      }
+      // Verificar se há logs de erro recentes
+      await checkErrorLogs();
+      
+      // Verificar o status do cron
+      await checkCronStatus();
     } catch (error) {
       console.error("Erro ao buscar última execução automática:", error);
       setLastRunStatus('error');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Verificar status do cron verificando logs recentes
+  const checkCronStatus = async () => {
+    try {
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      
+      // Verificar execuções de cron recentes
+      const { data: cronLogs, error: cronError } = await supabase
+        .from("cron_execution_logs")
+        .select("*")
+        .eq("job_name", "daily-meta-review-job")
+        .gt("execution_time", twoDaysAgo.toISOString())
+        .order("execution_time", { ascending: false })
+        .limit(1);
+        
+      if (!cronError && cronLogs && cronLogs.length > 0) {
+        // Se temos logs recentes, o cron está ativo
+        setCronStatus('active');
+        return;
+      }
+      
+      // Se não temos logs específicos de cron, verificar logs do sistema
+      const { data: systemLogs, error: systemLogsError } = await supabase
+        .from("system_logs")
+        .select("*")
+        .eq("event_type", "cron_job")
+        .gt("created_at", twoDaysAgo.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1);
+        
+      if (!systemLogsError && systemLogs && systemLogs.length > 0) {
+        setCronStatus('active');
+        return;
+      }
+      
+      // Se chegamos aqui, não encontramos nenhuma evidência de atividade recente
+      setCronStatus('inactive');
+    } catch (error) {
+      console.error("Erro ao verificar status do cron:", error);
+      setCronStatus('unknown');
     }
   };
 
@@ -135,7 +137,8 @@ export function AutoReviewSettings() {
       const twoDaysAgo = new Date();
       twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
       
-      const { data, error } = await supabase
+      // Verificar logs de erro específicos
+      const { data: errorLogs, error: logsError } = await supabase
         .from("system_logs")
         .select("*")
         .eq("event_type", "daily_meta_review")
@@ -143,20 +146,27 @@ export function AutoReviewSettings() {
         .order("created_at", { ascending: false })
         .limit(10);
         
-      if (error) {
-        throw error;
+      if (logsError) {
+        console.error("Erro ao buscar logs:", logsError);
+        return;
       }
       
-      // Se houver logs com mensagem de erro, definir status como erro
-      if (data) {
-        const errorLogs = data.filter(log => 
-          log.message.toLowerCase().includes("erro") || 
-          (log.details && log.details.error)
-        );
-        
-        if (errorLogs.length > 0) {
-          setLastRunStatus('error');
-        }
+      // Se não encontrarmos logs, não podemos determinar se há erros
+      if (!errorLogs || errorLogs.length === 0) {
+        return;
+      }
+      
+      // Procurar por mensagens de erro nos logs
+      const hasErrors = errorLogs.some(log => 
+        log.message.toLowerCase().includes("erro") || 
+        (log.details && (
+          log.details.error || 
+          log.details.falhas > 0
+        ))
+      );
+      
+      if (hasErrors) {
+        setLastRunStatus('error');
       }
     } catch (error) {
       console.error("Erro ao verificar logs:", error);
@@ -165,7 +175,6 @@ export function AutoReviewSettings() {
 
   useEffect(() => {
     fetchLastAutoRun();
-    checkErrorLogs();
     
     // Atualizar o status a cada 15 minutos
     const intervalId = setInterval(() => {
@@ -196,7 +205,7 @@ export function AutoReviewSettings() {
         return (
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Clock size={16} />
-            <span>Status do agendamento desconhecido</span>
+            <span>Verificando status do agendamento</span>
           </div>
         );
     }

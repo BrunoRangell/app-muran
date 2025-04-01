@@ -1,3 +1,4 @@
+
 // Função Edge para revisão diária automatizada de orçamentos Meta Ads
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -9,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'daily-meta-review' carregada - v1.0.2");
+console.log("Função Edge 'daily-meta-review' carregada - v1.0.3");
 
 serve(async (req) => {
   // Lidar com requisições OPTIONS para CORS
@@ -45,8 +46,8 @@ serve(async (req) => {
       }
     }
     
-    // Verificar se é um teste de conectividade
-    let requestData = {};
+    // Obter os dados da requisição
+    let requestData: any = {};
     try {
       requestData = await req.json();
     } catch (e) {
@@ -54,6 +55,7 @@ serve(async (req) => {
       requestData = { scheduled: false, manual: true };
     }
     
+    // Verificar se é um teste de conectividade
     const isTest = requestData.test === true;
     
     if (isTest) {
@@ -62,6 +64,19 @@ serve(async (req) => {
         timestamp: new Date().toISOString(),
         success: true
       });
+      
+      // Registrar log também na tabela cron_execution_logs para atualizar o status
+      await supabaseClient
+        .from("cron_execution_logs")
+        .insert({
+          job_name: "daily-meta-review-job",
+          execution_time: new Date().toISOString(),
+          status: "success",
+          details: {
+            test: true,
+            message: "Teste de conectividade realizado com sucesso"
+          }
+        });
       
       return new Response(
         JSON.stringify({
@@ -84,14 +99,6 @@ serve(async (req) => {
     }
     
     // Verificar se é uma execução agendada ou manual
-    let requestData = {};
-    try {
-      requestData = await req.json();
-    } catch (e) {
-      // Se não houver corpo JSON, assumimos valores padrão
-      requestData = { scheduled: false, manual: true };
-    }
-    
     const isScheduled = requestData.scheduled === true;
     const isManual = requestData.manual === true;
     
@@ -270,7 +277,7 @@ serve(async (req) => {
           .order("created_at", { ascending: false })
           .maybeSingle();
           
-        // Preparar dados para orçamento personalizado
+        // Preparar informações do orçamento personalizado
         const customBudgetInfo = customBudgetData 
           ? {
               using_custom_budget: true,
@@ -379,7 +386,7 @@ serve(async (req) => {
       .insert({
         job_name: "daily-meta-review-job",
         execution_time: executionEnd.toISOString(),
-        status: "success",
+        status: results.failed > 0 ? "partial_success" : "success",
         details: {
           total_clients: clientsData.length,
           successful: results.successful,

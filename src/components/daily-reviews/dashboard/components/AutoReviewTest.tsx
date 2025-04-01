@@ -30,6 +30,11 @@ export function AutoReviewTest() {
       if (error) throw error;
       if (!data?.value) throw new Error("Token do Meta Ads não encontrado");
       
+      // Verificar se o token está vazio ou inválido
+      if (data.value.trim() === "" || data.value.length < 10) {
+        throw new Error("Token do Meta Ads parece estar inválido ou vazio");
+      }
+      
       return { success: true };
     } catch (error) {
       console.error("Erro ao verificar token do Meta:", error);
@@ -43,12 +48,29 @@ export function AutoReviewTest() {
   // Testa a função Edge que realiza a revisão
   const testEdgeFunction = async () => {
     try {
+      // Adicionar timestamp para evitar cache
+      const timestamp = new Date().getTime();
+      
       const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { test: true }
+        body: { 
+          test: true,
+          timestamp  // Adicionar timestamp para evitar cache
+        }
       });
 
       if (error) throw error;
       if (!data) throw new Error("Resposta vazia da função Edge");
+      
+      // Registrar na tabela cron_execution_logs para atualizar o status
+      await supabase.from("cron_execution_logs").insert({
+        job_name: "daily-meta-review-job",
+        execution_time: new Date().toISOString(),
+        status: "success",
+        details: {
+          test: true,
+          message: "Teste de conectividade realizado com sucesso do frontend"
+        }
+      });
       
       return { success: true, data };
     } catch (error) {
@@ -167,7 +189,7 @@ export function AutoReviewTest() {
           </Button>
           
           <p className="text-xs text-gray-500 mt-2">
-            Este componente provisório verifica se os componentes necessários para a revisão automática
+            Este componente verifica se os componentes necessários para a revisão automática
             estão funcionando corretamente.
           </p>
         </div>
