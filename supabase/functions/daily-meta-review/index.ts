@@ -1,688 +1,506 @@
 
-// Função Edge para revisão diária automatizada de orçamentos Meta Ads
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+// Importações necessárias
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Configuração CORS para permitir acesso da aplicação frontend
+// Cabeçalhos CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-console.log("Função Edge 'daily-meta-review' carregada - v1.1.0");
+// Função auxiliar para criar cliente do Supabase
+const createSupabaseClient = () => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-serve(async (req) => {
-  // Lidar com requisições OPTIONS para CORS
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Variáveis de ambiente SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não definidas");
   }
 
+  return createClient(supabaseUrl, supabaseKey);
+};
+
+// Função auxiliar para logar mensagens
+const logMessage = async (supabase: any, message: string, details: any = {}) => {
   try {
-    const executionStart = new Date();
-    console.log(`Iniciando revisão diária automatizada de Meta Ads às ${executionStart.toISOString()}`);
-    
-    // Inicializar cliente Supabase
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
-    
-    // Função para registrar logs
-    async function logEvent(message: string, details: any = {}) {
-      try {
-        await supabaseClient
-          .from("system_logs")
-          .insert({
-            event_type: "daily_meta_review",
-            message,
-            details: {
-              ...details,
-              timestamp: new Date().toISOString()
-            }
-          });
-      } catch (error) {
-        console.error("Erro ao registrar log:", error);
-      }
-    }
-    
-    // Obter os dados da requisição
-    let requestData: any = {};
-    try {
-      requestData = await req.json();
-    } catch (e) {
-      // Se não houver corpo JSON, assumimos valores padrão
-      requestData = { scheduled: false, manual: true };
-    }
-    
-    // Verificar se é um teste de status do cron
-    const isStatusTest = requestData.testType === "cron_status_check";
-    if (isStatusTest) {
-      console.log("Teste de status do cron recebido");
-      
-      // Registrar log de status
-      try {
-        await supabaseClient.from("system_logs").insert({
-          event_type: "cron_job",
-          message: "Verificação de status do cron realizada com sucesso",
-          details: {
-            timestamp: new Date().toISOString(),
-            source: "status_check"
-          }
-        });
-        
-        // Registrar também em cron_execution_logs
-        await supabaseClient.from("cron_execution_logs").insert({
-          job_name: "cron-status-check",
-          execution_time: new Date().toISOString(),
-          status: "active",
-          details: {
-            source: "status_check",
-            message: "Verificação de status do cron realizada com sucesso",
-            timestamp: new Date().toISOString()
-          }
-        });
-      } catch (error) {
-        console.error("Erro ao registrar logs de status:", error);
-      }
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          status: "active",
-          message: "Verificação de status do cron concluída"
-        }),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-    
-    // Verificar se é um teste de conectividade
-    const isTest = requestData.test === true;
-    
-    if (isTest) {
-      console.log("Requisição de teste recebida, verificando conectividade");
-      
-      // Registrar o teste no log
-      try {
-        await logEvent("Teste de conectividade realizado", {
-          timestamp: new Date().toISOString(),
-          success: true,
-          requestData
-        });
-      } catch (logError) {
-        console.error("Erro ao registrar log de teste:", logError);
-      }
-      
-      // Registrar log também na tabela cron_execution_logs para atualizar o status
-      try {
-        await supabaseClient
-          .from("cron_execution_logs")
-          .insert({
-            job_name: "daily-meta-review-job",
-            execution_time: new Date().toISOString(),
-            status: "test_success",
-            details: {
-              test: true,
-              message: "Teste de conectividade realizado com sucesso",
-              timestamp: new Date().toISOString()
-            }
-          });
-      } catch (error) {
-        console.error("Erro ao registrar log de execução de cron:", error);
-      }
-      
-      // Realizar verificação adicional no token Meta
-      let metaTokenValid = false;
-      try {
-        const { data: tokenData } = await supabaseClient
-          .from("api_tokens")
-          .select("value")
-          .eq("name", "meta_access_token")
-          .maybeSingle();
-          
-        metaTokenValid = Boolean(tokenData?.value && tokenData.value.length > 10);
-      } catch (error) {
-        console.error("Erro ao verificar token Meta:", error);
-      }
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Teste de conectividade bem-sucedido",
-          timestamp: new Date().toISOString(),
-          endpoints: {
-            meta_api: metaTokenValid,
-            database: true
-          }
-        }),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-    
-    // Verificar se é uma execução agendada ou manual
-    const isScheduled = requestData.scheduled === true;
-    const isManual = requestData.manual === true;
-    const shouldExecuteReview = requestData.executeReview === true;
-    const pendingClientsOnly = requestData.pendingClientsOnly === true;
-    const pendingClientIds = requestData.pendingClientIds || [];
-    
-    // Registrar início da execução
-    await logEvent(`Execução ${isScheduled ? 'agendada' : 'manual'} iniciada`, { 
-      requestData,
-      timestamp: executionStart.toISOString()
-    });
-    
-    // Verificar se devemos executar (checar a última execução)
-    const { data: configData } = await supabaseClient
-      .from("system_configs")
-      .select("value")
-      .eq("key", "last_batch_review_time")
-      .maybeSingle();
-      
-    const now = new Date();
-    let shouldRun = true;
-    
-    if (configData?.value && isScheduled && !shouldExecuteReview) {
-      const lastRun = new Date(configData.value);
-      const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / (1000 * 60 * 60);
-      
-      // Se a última execução foi há menos de 12 horas, não executar novamente
-      // (isso impede execuções duplicadas no mesmo dia)
-      // A menos que seja execução manual ou shouldExecuteReview=true
-      if (hoursSinceLastRun < 12) {
-        console.log(`Última execução foi há ${hoursSinceLastRun.toFixed(2)} horas. Pulando execução agendada.`);
-        shouldRun = false;
-      }
-    }
-    
-    if (!shouldRun && !isManual && !shouldExecuteReview) {
-      await logEvent("Execução ignorada - executada recentemente", {
-        lastExecution: configData?.value,
-        isScheduled,
-        shouldExecuteReview
+    await supabase
+      .from("system_logs")
+      .insert({
+        event_type: "edge_function",
+        message: message,
+        details: { ...details, timestamp: new Date().toISOString() },
       });
+    
+    // Também exibe no console para facilitar o debug
+    console.log(message);
+  } catch (error) {
+    console.error("Erro ao registrar log:", error);
+  }
+};
+
+// Função principal para revisar um cliente
+const reviewClient = async (supabase: any, clientId: string, clientName: string, metaAccountId: string) => {
+  try {
+    // Log de início do processamento
+    await logMessage(supabase, `Processando cliente: ${clientName}`);
+    
+    // Verificar se o cliente já foi processado hoje
+    const today = new Date().toISOString().split("T")[0];
+    const { data: existingReview, error: existingError } = await supabase
+      .from("daily_budget_reviews")
+      .select("id, created_at")
+      .eq("client_id", clientId)
+      .eq("review_date", today)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    
+    // Se já existe uma revisão recente (menos de 1 hora), pular
+    if (existingReview && existingReview.length > 0) {
+      const reviewTime = new Date(existingReview[0].created_at).getTime();
+      const currentTime = new Date().getTime();
+      const minutesSinceReview = (currentTime - reviewTime) / (1000 * 60);
       
-      // Mesmo assim vamos registrar um log para manter o status ativo
-      try {
-        await supabaseClient.from("cron_execution_logs").insert({
-          job_name: "daily-meta-review-job",
-          execution_time: new Date().toISOString(),
-          status: "skipped",
-          details: {
-            message: "Execução ignorada - realizada recentemente",
-            last_execution: configData?.value
-          }
-        });
-      } catch (error) {
-        console.error("Erro ao registrar logs de execução ignorada:", error);
+      if (minutesSinceReview < 60) {
+        await logMessage(
+          supabase,
+          `Cliente ${clientName} já foi revisado há ${Math.round(minutesSinceReview)} minutos, pulando.`
+        );
+        return {
+          success: true,
+          message: `Cliente já revisado recentemente (${Math.round(minutesSinceReview)} minutos atrás)`,
+          skipped: true,
+        };
       }
-      
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: "Revisão já foi executada recentemente. Pulando execução.",
-          lastExecution: configData?.value
-        }),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
     }
     
-    // Registrar o início da revisão
-    await supabaseClient.from("cron_execution_logs").insert({
-      job_name: "daily-meta-review-job",
-      execution_time: new Date().toISOString(),
-      status: "started",
-      details: {
-        message: "Iniciando revisão automática",
-        timestamp: new Date().toISOString(),
-        pendingClientsOnly,
-        pendingClientIdCount: pendingClientIds.length
-      }
-    });
-    
-    // Obter token de acesso Meta
-    const { data: tokenData, error: tokenError } = await supabaseClient
+    // Obter token da Meta
+    const { data: tokenData, error: tokenError } = await supabase
       .from("api_tokens")
       .select("value")
       .eq("name", "meta_access_token")
-      .maybeSingle();
-      
+      .single();
+    
     if (tokenError || !tokenData?.value) {
-      const errorMsg = "Token Meta Ads não encontrado ou inválido";
-      await logEvent(errorMsg, { error: tokenError });
-      
-      // Atualizar status para erro
-      await supabaseClient.from("cron_execution_logs").insert({
-        job_name: "daily-meta-review-job",
-        execution_time: now.toISOString(),
-        status: "error",
-        details: {
-          error: errorMsg,
-          timestamp: now.toISOString()
-        }
-      });
-      
-      throw new Error(errorMsg);
+      throw new Error("Token do Meta Ads não encontrado ou inválido");
     }
     
-    const metaToken = tokenData.value;
+    // Preparar datas para a API
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const formattedStartDate = startDate.toISOString().split("T")[0];
+    const formattedEndDate = now.toISOString().split("T")[0];
     
-    // Buscar clientes ativos com Meta Ads configurado
-    const clientsQuery = supabaseClient
+    // Chamar a API da Meta para obter dados de gastos
+    const url = `https://graph.facebook.com/v17.0/act_${metaAccountId}/insights`;
+    const params = new URLSearchParams({
+      fields: "spend",
+      time_range: JSON.stringify({
+        since: formattedStartDate,
+        until: formattedEndDate,
+      }),
+      access_token: tokenData.value,
+    });
+    
+    const response = await fetch(`${url}?${params}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Erro na API do Meta: ${JSON.stringify(errorData)}`);
+    }
+    
+    const data = await response.json();
+    
+    // Extrair gastos totais
+    const totalSpent = data.data && data.data[0] ? parseFloat(data.data[0].spend) || 0 : 0;
+    
+    // Obter orçamento diário atual
+    const campaignsUrl = `https://graph.facebook.com/v17.0/act_${metaAccountId}/campaigns`;
+    const campaignsParams = new URLSearchParams({
+      fields: "name,daily_budget,status",
+      access_token: tokenData.value,
+    });
+    
+    const campaignsResponse = await fetch(`${campaignsUrl}?${campaignsParams}`);
+    
+    if (!campaignsResponse.ok) {
+      const errorData = await campaignsResponse.json();
+      throw new Error(`Erro ao obter campanhas: ${JSON.stringify(errorData)}`);
+    }
+    
+    const campaignsData = await campaignsResponse.json();
+    
+    // Calcular orçamento diário total das campanhas ativas
+    let dailyBudget = 0;
+    
+    if (campaignsData.data) {
+      for (const campaign of campaignsData.data) {
+        if (campaign.status === "ACTIVE" && campaign.daily_budget) {
+          // Converter de centavos para reais
+          dailyBudget += parseFloat(campaign.daily_budget) / 100;
+        }
+      }
+    }
+    
+    // Verificar se existe orçamento personalizado para o cliente
+    const { data: customBudgetData } = await supabase
+      .from("meta_custom_budgets")
+      .select("id, budget_amount, start_date, end_date")
+      .eq("client_id", clientId)
+      .eq("is_active", true)
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .order("created_at", { ascending: false })
+      .maybeSingle();
+    
+    // Preparar dados de orçamento personalizado
+    const customBudgetInfo = customBudgetData
+      ? {
+          using_custom_budget: true,
+          custom_budget_id: customBudgetData.id,
+          custom_budget_amount: customBudgetData.budget_amount,
+        }
+      : {
+          using_custom_budget: false,
+          custom_budget_id: null,
+          custom_budget_amount: null,
+        };
+    
+    // Verificar se já existe uma revisão para hoje
+    if (existingReview && existingReview.length > 0) {
+      // Atualizar revisão existente
+      await supabase
+        .from("daily_budget_reviews")
+        .update({
+          meta_daily_budget_current: dailyBudget,
+          meta_total_spent: totalSpent,
+          ...customBudgetInfo,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingReview[0].id);
+    } else {
+      // Criar nova revisão
+      await supabase
+        .from("daily_budget_reviews")
+        .insert({
+          client_id: clientId,
+          review_date: today,
+          meta_daily_budget_current: dailyBudget,
+          meta_total_spent: totalSpent,
+          meta_account_id: metaAccountId,
+          meta_account_name: `Conta ${metaAccountId}`,
+          ...customBudgetInfo,
+        });
+    }
+    
+    await logMessage(supabase, `Cliente ${clientName}: Análise concluída com sucesso`, {
+      dailyBudget,
+      totalSpent,
+      hasCustomBudget: customBudgetInfo.using_custom_budget,
+    });
+    
+    return {
+      success: true,
+      clientId,
+      clientName,
+      metaAccountId,
+      dailyBudget,
+      totalSpent,
+      customBudgetInfo,
+    };
+    
+  } catch (error) {
+    await logMessage(
+      supabase,
+      `Erro ao processar cliente ${clientName}: ${error instanceof Error ? error.message : String(error)}`,
+      { error: error instanceof Error ? error.stack : String(error) }
+    );
+    
+    return {
+      success: false,
+      clientId,
+      clientName,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+};
+
+// Função principal para processar todos os clientes
+async function processAllClients(
+  supabase: any, 
+  logId?: string, 
+  pendingClientsOnly: boolean = false,
+  pendingClientIds: string[] = []
+) {
+  try {
+    await logMessage(supabase, "Iniciando processamento de clientes");
+    
+    // Determinar quais clientes precisam ser processados
+    let clientsQuery = supabase
       .from("clients")
       .select("id, company_name, meta_account_id")
       .eq("status", "active")
       .not("meta_account_id", "is", null)
       .not("meta_account_id", "eq", "");
-      
-    // Se for apenas clientes pendentes, filtrar pelo array passado
+    
+    // Se estamos processando apenas clientes pendentes específicos
     if (pendingClientsOnly && pendingClientIds.length > 0) {
-      clientsQuery.in("id", pendingClientIds);
+      clientsQuery = clientsQuery.in("id", pendingClientIds);
     }
     
-    const { data: clientsData, error: clientsError } = await clientsQuery;
-      
+    const { data: clients, error: clientsError } = await clientsQuery;
+    
     if (clientsError) {
-      const errorMsg = `Erro ao buscar clientes: ${clientsError.message}`;
-      await logEvent(errorMsg, { error: clientsError });
-      
-      // Atualizar status para erro
-      await supabaseClient.from("cron_execution_logs").insert({
-        job_name: "daily-meta-review-job", 
-        execution_time: now.toISOString(),
-        status: "error",
-        details: {
-          error: errorMsg,
-          timestamp: now.toISOString()
-        }
-      });
-      
-      throw new Error(errorMsg);
+      throw new Error(`Erro ao buscar clientes: ${clientsError.message}`);
     }
     
-    if (!clientsData || clientsData.length === 0) {
-      const msg = pendingClientsOnly 
-        ? "Nenhum cliente pendente para processar" 
-        : "Nenhum cliente com Meta Ads encontrado";
-      
-      await logEvent(msg);
-      
-      // Atualizar status para concluído (sem clientes para processar)
-      await supabaseClient.from("cron_execution_logs").insert({
-        job_name: "daily-meta-review-job",
-        execution_time: now.toISOString(),
-        status: "success",
-        details: {
-          message: msg,
-          timestamp: now.toISOString()
-        }
-      });
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: msg
-        }),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    if (!clients || clients.length === 0) {
+      await logMessage(supabase, "Nenhum cliente encontrado para processar");
+      return { success: true, message: "Nenhum cliente para processar", processedCount: 0 };
     }
     
-    console.log(`Encontrados ${clientsData.length} clientes para análise`);
-    await logEvent(`Encontrados ${clientsData.length} clientes para análise`, {
+    await logMessage(supabase, `Total de ${clients.length} clientes para processar`, {
+      clientCount: clients.length,
       pendingClientsOnly,
-      clientCount: clientsData.length
+      pendingClientCount: pendingClientIds.length,
     });
     
-    // Definir período de análise (primeiro dia do mês até hoje)
-    const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    const dateRange = {
-      start: startDate.toISOString().split('T')[0],
-      end: now.toISOString().split('T')[0]
-    };
+    // Processar cada cliente em sequência
+    const results = [];
+    let successCount = 0;
+    let errorCount = 0;
+    let skippedCount = 0;
     
-    // Processar cada cliente
-    const results = {
-      successful: 0,
-      failed: 0,
-      clients: [] as any[],
-      processedClientIds: [] as string[]
-    };
-    
-    // Usar EdgeRuntime.waitUntil para processamento em background
-    const backgroundProcessing = (async () => {
-      for (const client of clientsData) {
-        try {
-          console.log(`Processando cliente: ${client.company_name}`);
-          await logEvent(`Processando cliente: ${client.company_name}`, { 
-            clientId: client.id, 
-            metaAccountId: client.meta_account_id 
-          });
-          
-          if (!client.meta_account_id) {
-            console.log(`Cliente ${client.company_name} sem Meta Account ID. Pulando.`);
-            continue;
-          }
-          
-          // Verificar se o cliente já foi processado hoje
-          const currentDate = now.toISOString().split('T')[0];
-          const { data: existingReview } = await supabaseClient
-            .from('daily_budget_reviews')
-            .select('id, meta_daily_budget_current')
-            .eq('client_id', client.id)
-            .eq('review_date', currentDate)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          
-          // Se pendingClientsOnly=true, processar mesmo se já existe revisão
-          if (existingReview && !pendingClientsOnly) {
-            console.log(`Cliente ${client.company_name} já foi processado hoje. Pulando.`);
-            results.clients.push({
-              id: client.id,
-              name: client.company_name,
-              success: true,
-              skipped: true,
-              message: "Já processado hoje"
-            });
-            continue;
-          }
-          
-          // Chamar função para análise do Meta Ads
-          const { data: metaData, error: metaError } = await supabaseClient.functions.invoke(
-            "meta-budget-calculator", 
-            {
-              body: {
-                accountId: client.meta_account_id,
-                accessToken: metaToken,
-                dateRange: dateRange,
-                fetchSeparateInsights: true
-              }
-            }
-          );
-          
-          if (metaError) {
-            console.error(`Erro ao analisar cliente ${client.company_name}:`, metaError);
-            await logEvent(`Erro ao analisar cliente ${client.company_name}`, { error: metaError });
-            
-            results.failed++;
-            results.clients.push({
-              id: client.id,
-              name: client.company_name,
-              success: false,
-              error: metaError.message || "Erro desconhecido na API Meta"
-            });
-            
-            continue;
-          }
-          
-          if (!metaData) {
-            console.error(`Resposta vazia da API para cliente ${client.company_name}`);
-            await logEvent(`Resposta vazia da API para cliente ${client.company_name}`);
-            
-            results.failed++;
-            results.clients.push({
-              id: client.id,
-              name: client.company_name,
-              success: false,
-              error: "Resposta vazia da API"
-            });
-            
-            continue;
-          }
-          
-          // Verificar orçamento personalizado
-          const { data: customBudgetData } = await supabaseClient
-            .from("meta_custom_budgets")
-            .select("id, budget_amount, start_date, end_date")
-            .eq("client_id", client.id)
-            .eq("is_active", true)
-            .lte("start_date", now.toISOString().split('T')[0])
-            .gte("end_date", now.toISOString().split('T')[0])
-            .order("created_at", { ascending: false })
-            .maybeSingle();
-            
-          // Preparar informações do orçamento personalizado
-          const customBudgetInfo = customBudgetData 
-            ? {
-                using_custom_budget: true,
-                custom_budget_id: customBudgetData.id,
-                custom_budget_amount: customBudgetData.budget_amount
-              }
-            : {
-                using_custom_budget: false,
-                custom_budget_id: null,
-                custom_budget_amount: null
-              };
-          
-          // Extrair valores da resposta da API
-          const currentDate = now.toISOString().split('T')[0];
-          const metaDailyBudgetCurrent = metaData.totalDailyBudget || 0;
-          const metaTotalSpent = metaData.totalSpent || 0;
-          
-          // Salvar dados da revisão
-          if (existingReview) {
-            // Atualizar revisão existente
-            const { error: updateError } = await supabaseClient
-              .from('daily_budget_reviews')
-              .update({
-                meta_daily_budget_current: metaDailyBudgetCurrent,
-                meta_total_spent: metaTotalSpent,
-                ...customBudgetInfo,
-                updated_at: now.toISOString()
-              })
-              .eq('id', existingReview.id);
-              
-            if (updateError) {
-              console.error(`Erro ao atualizar revisão para ${client.company_name}:`, updateError);
-              results.failed++;
-              continue;
-            }
-          } else {
-            // Criar nova revisão
-            const { error: insertError } = await supabaseClient
-              .from('daily_budget_reviews')
-              .insert({
-                client_id: client.id,
-                review_date: currentDate,
-                meta_daily_budget_current: metaDailyBudgetCurrent,
-                meta_total_spent: metaTotalSpent,
-                meta_account_id: client.meta_account_id,
-                meta_account_name: `Conta ${client.meta_account_id}`,
-                ...customBudgetInfo
-              });
-              
-            if (insertError) {
-              console.error(`Erro ao inserir revisão para ${client.company_name}:`, insertError);
-              results.failed++;
-              continue;
-            }
-          }
-          
-          console.log(`Cliente ${client.company_name}: Análise concluída com sucesso`);
-          await logEvent(`Cliente ${client.company_name}: Análise concluída com sucesso`, { 
-            metaDailyBudget: metaDailyBudgetCurrent,
-            metaTotalSpent: metaTotalSpent,
-            hasCustomBudget: customBudgetInfo.using_custom_budget
-          });
-          
-          results.successful++;
-          results.processedClientIds.push(client.id);
-          results.clients.push({
-            id: client.id,
-            name: client.company_name,
-            success: true,
-            meta_daily_budget: metaDailyBudgetCurrent,
-            meta_total_spent: metaTotalSpent
-          });
-          
-        } catch (error) {
-          console.error(`Erro ao processar cliente ${client.company_name}:`, error);
-          await logEvent(`Erro ao processar cliente ${client.company_name}`, { 
-            error: error instanceof Error ? error.message : String(error) 
-          });
-          
-          results.failed++;
-          results.clients.push({
-            id: client.id,
-            name: client.company_name,
-            success: false,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-        
-        // Atualizar o log de execução com o progresso atual após cada cliente
-        const progressPercentage = Math.round((results.successful + results.failed) / clientsData.length * 100);
-        await supabaseClient.from("cron_execution_logs").insert({
-          job_name: "daily-meta-review-job",
-          execution_time: new Date().toISOString(),
-          status: "progress",
-          details: {
-            completed: results.successful + results.failed,
-            total: clientsData.length,
-            progress: progressPercentage,
-            success: results.successful,
-            failed: results.failed
-          }
-        });
+    for (const client of clients) {
+      if (!client.meta_account_id) {
+        await logMessage(supabase, `Cliente ${client.company_name} não possui ID de conta Meta, pulando.`);
+        skippedCount++;
+        continue;
       }
       
-      // Atualizar timestamp da última revisão
-      const executionEnd = new Date();
-      await supabaseClient
-        .from("system_configs")
-        .upsert({ 
-          key: "last_batch_review_time",
-          value: executionEnd.toISOString()
-        }, {
-          onConflict: "key"
-        });
-      
-      await logEvent("Revisão em massa concluída", {
-        sucessos: results.successful,
-        falhas: results.failed,
-        total: clientsData.length,
-        duracaoExecucao: `${(executionEnd.getTime() - executionStart.getTime()) / 1000}s`
-      });
-      
-      // Adicionar um registro de conclusão na tabela de execução de cron
-      await supabaseClient
-        .from("cron_execution_logs")
-        .insert({
-          job_name: "daily-meta-review-job",
-          execution_time: executionEnd.toISOString(),
-          status: results.failed > 0 ? "partial_success" : "success",
-          details: {
-            total_clients: clientsData.length,
-            successful: results.successful,
-            failed: results.failed,
-            execution_time_seconds: (executionEnd.getTime() - executionStart.getTime()) / 1000,
-            success_rate: Math.round((results.successful / clientsData.length) * 100),
-            processed_client_ids: results.processedClientIds
-          }
-        });
-    })();
-    
-    // Usar EdgeRuntime.waitUntil se disponível
-    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-      EdgeRuntime.waitUntil(backgroundProcessing);
-    } else {
-      // Se não estiver disponível, ainda iniciamos o processo
-      // mas não esperamos que termine
-      backgroundProcessing.catch(err => {
-        console.error("Erro no processamento em background:", err);
-      });
-    }
-    
-    // Retornar resposta imediata
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Revisão em massa iniciada",
-        timestamp: executionStart.toISOString(),
-        status: "processing",
-        clients_to_process: clientsData.length
-      }),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-  } catch (err) {
-    console.error("Erro na função de revisão diária:", err);
-    
-    // Tentar registrar o erro nos logs
-    try {
-      const supabaseErrorClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      const result = await reviewClient(
+        supabase, 
+        client.id, 
+        client.company_name, 
+        client.meta_account_id
       );
       
-      await supabaseErrorClient.from("system_logs").insert({
-        event_type: "daily_meta_review",
-        message: "Erro crítico na função de revisão diária",
-        details: {
-          error: err instanceof Error ? err.message : String(err),
-          timestamp: new Date().toISOString()
-        }
-      });
+      results.push(result);
       
-      // Registrar falha na tabela de execuções de cron
-      await supabaseErrorClient.from("cron_execution_logs").insert({
-        job_name: "daily-meta-review-job",
-        execution_time: new Date().toISOString(),
-        status: "error",
-        details: {
-          error: err instanceof Error ? err.message : String(err),
-          timestamp: new Date().toISOString()
+      if (result.success) {
+        if (result.skipped) {
+          skippedCount++;
+        } else {
+          successCount++;
         }
-      });
-    } catch (logErr) {
-      console.error("Erro ao registrar falha:", logErr);
+      } else {
+        errorCount++;
+      }
     }
+    
+    // Atualizar o log de execução com o resultado final
+    if (logId) {
+      await supabase
+        .from("cron_execution_logs")
+        .update({
+          status: errorCount === 0 ? "success" : errorCount < clients.length ? "partial_success" : "error",
+          details: {
+            totalClients: clients.length,
+            successCount,
+            errorCount,
+            skippedCount,
+            completedAt: new Date().toISOString(),
+          },
+        })
+        .eq("id", logId);
+    }
+    
+    await logMessage(supabase, `Processamento concluído: ${successCount} sucessos, ${errorCount} erros, ${skippedCount} pulados`);
+    
+    return {
+      success: true,
+      totalClients: clients.length,
+      successCount,
+      errorCount,
+      skippedCount,
+      results,
+    };
+    
+  } catch (error) {
+    await logMessage(
+      supabase,
+      `Erro no processamento em lote: ${error instanceof Error ? error.message : String(error)}`,
+      { error: error instanceof Error ? error.stack : String(error) }
+    );
+    
+    // Atualizar o log de execução para indicar erro
+    if (logId) {
+      await supabase
+        .from("cron_execution_logs")
+        .update({
+          status: "error",
+          details: {
+            error: error instanceof Error ? error.message : String(error),
+            completedAt: new Date().toISOString(),
+          },
+        })
+        .eq("id", logId);
+    }
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// Handler principal
+serve(async (req) => {
+  // Lidar com requisições OPTIONS (CORS)
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders, status: 204 });
+  }
+  
+  try {
+    const supabase = createSupabaseClient();
+    
+    // Para verificar se o servidor está respondendo
+    if (req.method === "GET") {
+      return new Response(
+        JSON.stringify({ status: "online", timestamp: new Date().toISOString() }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+    
+    // Processar requisição POST
+    if (req.method === "POST") {
+      const body = await req.json();
+      
+      // Verificar se é um ping de teste
+      if (body.method === "ping") {
+        return new Response(
+          JSON.stringify({ status: "ok", message: "pong", timestamp: new Date().toISOString() }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      }
+      
+      // Registrar execução no log
+      let logId = body.logId;
+      
+      if (!logId && (body.scheduled || body.manual)) {
+        const { data: logEntry, error } = await supabase
+          .from("cron_execution_logs")
+          .insert({
+            job_name: "daily-meta-review-job",
+            status: "started",
+            details: {
+              source: body.scheduled ? "scheduled" : "manual",
+              test: !!body.test,
+              timestamp: new Date().toISOString(),
+            },
+          })
+          .select()
+          .single();
+        
+        if (!error && logEntry) {
+          logId = logEntry.id;
+        }
+      }
+      
+      // Se é apenas um teste, não executar a revisão
+      if (body.test) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Teste realizado com sucesso",
+            timestamp: new Date().toISOString(),
+            logId,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      }
+      
+      // Se não foi solicitada a execução da revisão, retornar
+      if (!body.executeReview) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Solicitação recebida, mas executeReview=false",
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      }
+      
+      // Processar revisão em background
+      const processFunction = async () => {
+        const result = await processAllClients(
+          supabase, 
+          logId,
+          body.pendingClientsOnly === true,
+          body.pendingClientIds || []
+        );
+        return result;
+      };
+      
+      // Usar waitUntil para permitir que o processamento continue em background
+      let backgroundPromise;
+      try {
+        backgroundPromise = processFunction();
+        // @ts-ignore - EdgeRuntime existe em ambiente de produção do Supabase Edge Functions
+        EdgeRuntime.waitUntil(backgroundPromise);
+      } catch (error) {
+        console.error("Erro ao usar EdgeRuntime.waitUntil:", error);
+        // Se não puder usar waitUntil, continuar normalmente (isso afetará o tempo de resposta)
+        backgroundPromise = processFunction();
+      }
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Processamento de revisão iniciado em background",
+          timestamp: new Date().toISOString(),
+          logId,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 202, // Accepted
+        }
+      );
+    }
+    
+    // Método não suportado
+    return new Response(
+      JSON.stringify({ error: "Método não suportado" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 405,
+      }
+    );
+    
+  } catch (error) {
+    console.error("Erro na função:", error);
     
     return new Response(
       JSON.stringify({
-        success: false,
-        message: err instanceof Error ? err.message : "Erro na função de revisão diária",
-        error: err instanceof Error ? err.message : String(err),
-        timestamp: new Date().toISOString()
+        error: error instanceof Error ? error.message : "Erro interno do servidor",
       }),
       {
-        status: 200, // Retornar 200 mesmo com erro para evitar problemas de CORS
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
       }
     );
   }
