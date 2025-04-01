@@ -15,6 +15,7 @@ export function CronScheduleMonitor() {
   const [cronError, setCronError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [secondsToNext, setSecondsToNext] = useState<number>(0);
+  const [executingReview, setExecutingReview] = useState(false);
   const refreshTimerRef = useRef<number | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
@@ -87,20 +88,41 @@ export function CronScheduleMonitor() {
   };
 
   const handleCountdownEnd = () => {
-    console.log("Contador chegou a zero, atualizando status...");
+    console.log("Contador chegou a zero, executando revisão automática...");
+    
+    // Indicar que estamos executando a revisão
+    setExecutingReview(true);
     
     // Executar a revisão automaticamente ao zerar o contador
-    testEdgeFunction();
-    
-    // Depois de tentar executar a revisão, atualizar o status
-    setTimeout(() => {
-      fetchCronStatus();
-      toast({
-        title: "Verificando execução",
-        description: "Atualizando status da revisão automática...",
-        variant: "default",
+    testEdgeFunction()
+      .then(() => {
+        console.log("Revisão automática executada com sucesso");
+        toast({
+          title: "Revisão automática executada",
+          description: "O processo de revisão foi iniciado com sucesso",
+          variant: "default",
+        });
+      })
+      .catch((err) => {
+        console.error("Erro ao executar revisão automática:", err);
+        toast({
+          title: "Erro na revisão automática",
+          description: "Não foi possível executar a revisão automática",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        // Depois de tentar executar a revisão, atualizar o status
+        setTimeout(() => {
+          fetchCronStatus();
+          setExecutingReview(false);
+          toast({
+            title: "Verificando execução",
+            description: "Atualizando status da revisão automática...",
+            variant: "default",
+          });
+        }, 3000);
       });
-    }, 3000);
   };
 
   useEffect(() => {
@@ -115,7 +137,7 @@ export function CronScheduleMonitor() {
         clearTimeout(refreshTimerRef.current);
       }
       if (countdownRef.current) {
-        clearTimeout(countdownRef.current);
+        clearInterval(countdownRef.current);
       }
     };
   }, []);
@@ -180,15 +202,28 @@ export function CronScheduleMonitor() {
       
       console.log("Resposta do teste:", data);
       
+      // Agora vamos invocar novamente para executar a revisão de fato (não apenas teste)
+      const { data: execData, error: execError } = await supabase.functions.invoke("daily-meta-review", {
+        body: { manual: true, executeReview: true }
+      });
+      
+      if (execError) {
+        throw execError;
+      }
+      
+      console.log("Resposta da execução:", execData);
+      
       toast({
-        title: "Teste concluído",
-        description: "A função Edge respondeu com sucesso. Atualizando status...",
+        title: "Revisão iniciada",
+        description: "A função Edge está processando a revisão dos orçamentos",
         variant: "default",
       });
       
       refreshTimerRef.current = window.setTimeout(() => {
         fetchCronStatus();
       }, 2000);
+      
+      return true;
       
     } catch (e) {
       console.error("Erro ao testar função Edge:", e);
@@ -197,6 +232,8 @@ export function CronScheduleMonitor() {
         description: `Não foi possível conectar à função Edge: ${e instanceof Error ? e.message : String(e)}`,
         variant: "destructive",
       });
+      
+      return false;
     } finally {
       setTimeout(() => setRefreshing(false), 1000);
     }
@@ -214,7 +251,7 @@ export function CronScheduleMonitor() {
             variant="ghost" 
             size="sm" 
             onClick={handleManualRefresh}
-            disabled={refreshing}
+            disabled={refreshing || executingReview}
             title="Atualizar status"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-[#ff6e00]' : 'text-gray-500'}`} />
@@ -223,7 +260,7 @@ export function CronScheduleMonitor() {
             variant="outline" 
             size="sm" 
             onClick={testEdgeFunction}
-            disabled={refreshing}
+            disabled={refreshing || executingReview}
           >
             Testar
           </Button>
