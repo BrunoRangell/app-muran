@@ -37,10 +37,10 @@ SELECT cron.unschedule('daily-meta-review-job');
 SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 
--- Agendar execução a cada minuto para teste
+-- Agendar execução a cada 5 minutos
 SELECT cron.schedule(
   'daily-meta-review-job',
-  '* * * * *',  -- Executa a cada minuto (modificado para testes)
+  '*/5 * * * *',  -- Executa a cada 5 minutos (modificado conforme solicitado)
   $$
   -- Primeiro registrar o início da execução no log
   INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
@@ -56,7 +56,7 @@ SELECT cron.schedule(
     net.http_post(
       url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
       headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
-      body:='{"scheduled": true, "source": "cron", "test": true}'::jsonb
+      body:='{"scheduled": true, "source": "cron", "test": false}'::jsonb
     ) as request_id;
     
   -- Registrar a tentativa no log do sistema
