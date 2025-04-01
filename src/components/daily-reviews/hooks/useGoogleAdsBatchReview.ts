@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchClientsWithGoogleReviews, reviewGoogleClient } from "./services/googleAdsClientReviewService";
 import { splitClientsByGoogleAdsId } from "../dashboard/utils/clientSorting";
 import { ClientWithReview } from "./types/reviewTypes";
+import { supabase } from "@/lib/supabase";
 
 export const useGoogleAdsBatchReview = () => {
   const [isReviewingBatch, setIsReviewingBatch] = useState(false);
@@ -18,10 +19,29 @@ export const useGoogleAdsBatchReview = () => {
     queryKey: ["google-ads-clients-with-reviews"],
     queryFn: fetchClientsWithGoogleReviews,
     refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
   // Separar clientes em dois grupos: com e sem ID Google Ads
   const { clientsWithGoogleAdsId, clientsWithoutGoogleAdsId } = splitClientsByGoogleAdsId(clients);
+
+  // Testar tokens Google Ads
+  const testGoogleAdsTokens = async () => {
+    try {
+      // Invocar edge function para verificar tokens
+      const { data, error } = await supabase.functions.invoke('google-ads-token-check');
+      
+      if (error) {
+        console.error("Erro ao verificar tokens:", error);
+        throw new Error(`Erro ao verificar tokens: ${error.message}`);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error("Erro ao testar tokens:", error);
+      throw error;
+    }
+  };
 
   // Realizar revisão para um único cliente
   const reviewClient = async (clientId: string) => {
@@ -34,6 +54,9 @@ export const useGoogleAdsBatchReview = () => {
 
       // Adicionar o cliente à lista de processamento
       setProcessingClients((prev) => [...prev, clientId]);
+
+      // Verificar tokens antes de prosseguir
+      await testGoogleAdsTokens();
 
       // Realizar a revisão
       await reviewGoogleClient(client);
@@ -69,6 +92,9 @@ export const useGoogleAdsBatchReview = () => {
       // Inicializar lista de clientes em processamento com todos os clientes que têm ID Google Ads
       const clientIds = clientsWithGoogleAdsId.map((c) => c.id);
       setProcessingClients(clientIds);
+
+      // Verificar tokens antes de prosseguir
+      await testGoogleAdsTokens();
 
       // Registrar a data/hora da revisão em lote
       setLastBatchReviewDate(new Date().toISOString());
@@ -136,5 +162,6 @@ export const useGoogleAdsBatchReview = () => {
     isReviewingBatch,
     processingClients,
     lastBatchReviewDate,
+    testGoogleAdsTokens
   };
 };

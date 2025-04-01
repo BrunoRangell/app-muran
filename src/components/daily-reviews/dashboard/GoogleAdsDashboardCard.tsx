@@ -1,5 +1,5 @@
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useGoogleAdsBatchReview } from "../hooks/useGoogleAdsBatchReview";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
@@ -24,6 +24,7 @@ export const GoogleAdsDashboardCard = ({
 }: GoogleAdsDashboardCardProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [isTokenVerifying, setIsTokenVerifying] = useState(false);
   
   const { 
     clients, 
@@ -49,6 +50,48 @@ export const GoogleAdsDashboardCard = ({
     reviewClient(clientId);
   }, [reviewClient]);
 
+  const handleVerifyTokens = useCallback(async () => {
+    setIsTokenVerifying(true);
+    
+    try {
+      // Verificar tokens do Google Ads
+      const response = await fetch('/api/google-ads/verify-tokens', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).then(res => res.json());
+
+      // Também podemos usar a edge function do Supabase para verificar tokens
+      const supabaseResponse = await supabase.functions.invoke('google-ads-token-check');
+
+      if (response?.success || supabaseResponse?.data?.success) {
+        toast({
+          title: "Tokens verificados com sucesso",
+          description: "Os tokens do Google Ads estão válidos.",
+        });
+        
+        // Recarregar dados
+        queryClient.invalidateQueries({ queryKey: ["google-ads-clients-with-reviews"] });
+      } else {
+        toast({
+          title: "Problemas com os tokens",
+          description: "Verifique os tokens do Google Ads nas configurações.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao verificar tokens:", error);
+      toast({
+        title: "Erro ao verificar tokens",
+        description: "Não foi possível verificar os tokens do Google Ads.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTokenVerifying(false);
+    }
+  }, [queryClient, toast]);
+
   if (isLoading) {
     return <LoadingView />;
   }
@@ -64,6 +107,8 @@ export const GoogleAdsDashboardCard = ({
       processingClients={processingClients}
       onReviewClient={handleReviewClient}
       viewMode={viewMode}
+      onVerifyTokens={handleVerifyTokens}
+      isTokenVerifying={isTokenVerifying}
     />
   );
 };

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -52,18 +51,22 @@ export const useGoogleAdsTokenManager = () => {
     
     // Verificação inicial do token
     const initialCheck = async () => {
-      const healthInfo = await checkTokenHealth();
-      
-      // Se o token estiver próximo de expirar, já renovamos automaticamente
-      if (healthInfo.status === 'valid' && healthInfo.expiresAt) {
-        const expiresAt = DateTime.fromISO(healthInfo.expiresAt);
-        const now = DateTime.local();
-        const minutesUntilExpiry = expiresAt.diff(now, 'minutes').minutes;
+      try {
+        const healthInfo = await checkTokenHealth();
         
-        if (minutesUntilExpiry < AUTO_REFRESH_THRESHOLD_MINUTES) {
-          console.log(`Token expira em ${minutesUntilExpiry.toFixed(1)} minutos. Renovando...`);
-          await refreshAccessToken();
+        // Se o token estiver próximo de expirar, já renovamos automaticamente
+        if (healthInfo.status === 'valid' && healthInfo.expiresAt) {
+          const expiresAt = DateTime.fromISO(healthInfo.expiresAt);
+          const now = DateTime.local();
+          const minutesUntilExpiry = expiresAt.diff(now, 'minutes').minutes;
+          
+          if (minutesUntilExpiry < AUTO_REFRESH_THRESHOLD_MINUTES) {
+            console.log(`Token expira em ${minutesUntilExpiry.toFixed(1)} minutos. Renovando...`);
+            await refreshAccessToken();
+          }
         }
+      } catch (error) {
+        console.error("Erro na verificação inicial do token:", error);
       }
     };
     
@@ -118,6 +121,14 @@ export const useGoogleAdsTokenManager = () => {
     console.log(`[GoogleAdsToken][${entry.event.toUpperCase()}][${timestamp.toISOString()}] ${entry.status}: ${entry.message}`, entry.details || '');
     
     try {
+      // Tentar criar tabela se não existir
+      try {
+        await supabase.rpc('create_google_ads_token_logs_if_not_exists');
+      } catch (createError) {
+        // Ignorar erro caso a tabela já exista
+        console.log("Tabela de logs pode já existir:", createError);
+      }
+
       // Registrar log no banco de dados
       await supabase.from('google_ads_token_logs').insert({
         event_type: entry.event,
