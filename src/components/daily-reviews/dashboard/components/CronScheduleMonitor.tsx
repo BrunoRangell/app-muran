@@ -121,10 +121,10 @@ export function CronScheduleMonitor() {
   const getMinutesToNextExecution = () => {
     const now = new Date();
     const targetTime = new Date();
-    targetTime.setHours(16, 15, 0, 0); // Atualizado para 16:15
+    targetTime.setHours(16, 35, 0, 0); // Atualizado para 16:35
     
-    // Se já passou das 16:15 hoje, a próxima execução é amanhã
-    if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 15)) {
+    // Se já passou das 16:35 hoje, a próxima execução é amanhã
+    if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 35)) {
       targetTime.setDate(targetTime.getDate() + 1);
     }
     
@@ -168,7 +168,7 @@ export function CronScheduleMonitor() {
           )}
           
           <p className="text-xs text-gray-500 mt-2">
-            Agendado para executar automaticamente às 16:15 - próxima execução em{" "}
+            Agendado para executar automaticamente às 16:35 - próxima execução em{" "}
             {getMinutesToNextExecution()}{" "}
             minutos
           </p>
