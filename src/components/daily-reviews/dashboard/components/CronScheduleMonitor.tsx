@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
@@ -22,7 +21,6 @@ export function CronScheduleMonitor() {
     try {
       setLoading(true);
       
-      // Buscar logs de execução do cron para o job específico
       const { data: logs, error } = await supabase
         .from("cron_execution_logs")
         .select("*")
@@ -45,7 +43,6 @@ export function CronScheduleMonitor() {
         return;
       }
       
-      // Filtrar logs bem-sucedidos ou em andamento
       const validLogs = logs.filter(log => 
         ['success', 'partial_success', 'started', 'test_success'].includes(log.status)
       );
@@ -54,7 +51,6 @@ export function CronScheduleMonitor() {
         const lastLog = validLogs[0];
         setLastExecution(new Date(lastLog.execution_time));
         
-        // Verificar se a última execução foi recente (nos últimos 10 minutos para testes)
         const minutesSince = (new Date().getTime() - new Date(lastLog.execution_time).getTime()) / (1000 * 60);
         
         if (minutesSince < 10) {
@@ -65,15 +61,12 @@ export function CronScheduleMonitor() {
           setCronError(`Última execução foi há mais de 10 minutos (${Math.round(minutesSince)}min atrás)`);
         }
       } else {
-        // Se não há logs válidos
         setStatus('inactive');
         setCronError('Nenhum log de execução válido encontrado');
       }
       
-      // Cron expression agora é "* * * * *" (a cada minuto)
       setNextExecution("A cada minuto");
       
-      // Atualizar o contador regressivo
       updateSecondsToNext();
       
     } catch (e) {
@@ -85,17 +78,14 @@ export function CronScheduleMonitor() {
     }
   };
 
-  // Calcular tempo para próxima execução (agora é sempre menos de 1 minuto)
   const updateSecondsToNext = () => {
     const now = new Date();
     const seconds = 60 - now.getSeconds();
     setSecondsToNext(seconds);
   };
 
-  // Função que será chamada quando o contador chegar a zero
   const handleCountdownEnd = () => {
     console.log("Contador chegou a zero, atualizando status...");
-    // Aguardar 3 segundos para dar tempo de o cron job executar
     setTimeout(() => {
       fetchCronStatus();
       toast({
@@ -109,14 +99,11 @@ export function CronScheduleMonitor() {
   useEffect(() => {
     fetchCronStatus();
     
-    // Atualizar status a cada 15 segundos para capturar as execuções por minuto
     const intervalId = setInterval(fetchCronStatus, 15 * 1000);
     
-    // Atualizar o contador a cada segundo
     const countdownInterval = setInterval(() => {
       updateSecondsToNext();
       
-      // Se o contador chegou a zero ou está prestes a chegar (1s)
       if (secondsToNext <= 1) {
         handleCountdownEnd();
       }
@@ -144,7 +131,6 @@ export function CronScheduleMonitor() {
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  // Função para testar a função Edge manualmente
   const testEdgeFunction = async () => {
     try {
       setRefreshing(true);
@@ -168,10 +154,9 @@ export function CronScheduleMonitor() {
       toast({
         title: "Teste concluído",
         description: "A função Edge respondeu com sucesso. Atualizando status...",
-        variant: "success",
+        variant: "default",
       });
       
-      // Atualizar os dados após teste bem-sucedido
       refreshTimerRef.current = window.setTimeout(() => {
         fetchCronStatus();
       }, 2000);
