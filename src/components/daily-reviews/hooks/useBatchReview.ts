@@ -21,7 +21,7 @@ export const useBatchReview = () => {
   
   // Buscar a lista de clientes e suas revisões mais recentes
   const { 
-    data: clientsData = [], 
+    data: clientsData = { clientsData: [], lastReviewTime: null }, 
     isLoading, 
     error,
     refetch 
@@ -32,9 +32,9 @@ export const useBatchReview = () => {
   });
 
   // Extrair os arrays de clientes do resultado
-  const clientsWithReviews = Array.isArray(clientsData) 
+  const clientsWithReviews: ClientWithReview[] = Array.isArray(clientsData) 
     ? clientsData 
-    : clientsData.clientsData || [];
+    : (clientsData?.clientsData || []);
   
   // Buscar o horário da última revisão em massa
   useEffect(() => {

@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { AnalysisProgress } from "./components/AnalysisProgress";
 import { SearchControls } from "./components/SearchControls";
