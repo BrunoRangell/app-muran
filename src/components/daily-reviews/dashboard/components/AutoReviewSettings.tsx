@@ -122,7 +122,7 @@ export function AutoReviewSettings() {
     
     try {
       const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { manual: true }
+        body: { manual: true, source: "manual_trigger" }
       });
       
       if (error) {
@@ -225,7 +225,7 @@ export function AutoReviewSettings() {
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">Revisão Automática</CardTitle>
         <CardDescription>
-          As revisões de orçamento são executadas automaticamente todos os dias às 06:00.
+          As revisões de orçamento são executadas automaticamente todos os dias às 16:30.
         </CardDescription>
       </CardHeader>
       <CardContent>

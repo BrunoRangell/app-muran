@@ -1,235 +1,84 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/lib/supabase";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader, AlertCircle, CheckCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { Loader, Play } from "lucide-react";
 
 export function AutoReviewTest() {
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResults, setTestResults] = useState<{
-    metaToken: boolean | null;
-    edgeFunction: boolean | null;
-    errorMessage?: string;
-  }>({
-    metaToken: null,
-    edgeFunction: null
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
   const { toast } = useToast();
 
-  // Verifica o token do Meta Ads
-  const checkMetaToken = async () => {
+  const testCronFunction = async () => {
+    setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("api_tokens")
-        .select("value")
-        .eq("name", "meta_access_token")
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!data?.value) throw new Error("Token do Meta Ads não encontrado");
-      
-      // Verificar se o token está vazio ou inválido
-      if (data.value.trim() === "" || data.value.length < 10) {
-        throw new Error("Token do Meta Ads parece estar inválido ou vazio");
-      }
-      
-      return { success: true };
-    } catch (error) {
-      console.error("Erro ao verificar token do Meta:", error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Erro desconhecido" 
-      };
-    }
-  };
-
-  // Testa a função Edge que realiza a revisão
-  const testEdgeFunction = async () => {
-    try {
-      // Adicionar timestamp para evitar cache
-      const timestamp = new Date().getTime();
-      
+      // Chamamos a função Edge diretamente para testar
       const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { 
-          test: true,
-          timestamp  // Adicionar timestamp para evitar cache
-        }
+        body: { test: true, timestamp: new Date().toISOString() }
       });
-
-      if (error) throw error;
-      if (!data) throw new Error("Resposta vazia da função Edge");
       
-      console.log("Resultado do teste de conectividade:", data);
-      
-      // Registrar na tabela system_logs para atualizar o status
-      try {
-        await supabase.from("system_logs").insert({
-          event_type: "cron_job",
-          message: "Teste de conectividade realizado com sucesso do frontend",
-          details: {
-            test: true,
-            timestamp: new Date().toISOString(),
-            result: data
-          }
-        });
-      } catch (logError) {
-        console.warn("Erro ao registrar log de sistema (isso não afeta o resultado do teste):", logError);
+      if (error) {
+        throw new Error(`Erro ao testar função: ${error.message}`);
       }
       
-      // Registrar na tabela cron_execution_logs para atualizar o status do agendamento
-      try {
-        await supabase.from("cron_execution_logs").insert({
-          job_name: "daily-meta-review-job", // Usar o mesmo nome do job do cron
-          execution_time: new Date().toISOString(),
-          status: "test_success",
-          details: {
-            test: true,
-            message: "Teste de conectividade realizado com sucesso do frontend",
-            result: data
-          }
-        });
-      } catch (logError) {
-        console.warn("Erro ao registrar log de execução (isso não afeta o resultado do teste):", logError);
-      }
-      
-      return { success: true, data };
-    } catch (error) {
-      console.error("Erro ao testar função Edge:", error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Erro desconhecido" 
-      };
-    }
-  };
-
-  // Executa todos os testes
-  const runTests = async () => {
-    setIsTesting(true);
-    setTestResults({
-      metaToken: null,
-      edgeFunction: null
-    });
-
-    try {
-      // Verificar token do Meta Ads
-      const tokenResult = await checkMetaToken();
-      setTestResults(prev => ({...prev, metaToken: tokenResult.success}));
-      
-      if (!tokenResult.success) {
-        toast({
-          title: "Problema com o token do Meta Ads",
-          description: tokenResult.error,
-          variant: "destructive",
-        });
-        setIsTesting(false);
-        return;
-      }
-
-      // Testar função Edge
-      const edgeResult = await testEdgeFunction();
-      setTestResults(prev => ({
-        ...prev, 
-        edgeFunction: edgeResult.success,
-        errorMessage: edgeResult.success ? undefined : edgeResult.error
-      }));
-      
-      if (!edgeResult.success) {
-        toast({
-          title: "Problema com a função Edge",
-          description: edgeResult.error,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Testes concluídos com sucesso",
-          description: "A revisão automática de Meta Ads deve funcionar corretamente.",
-        });
-        
-        // Atualizar logs de teste bem-sucedido adicionais para reforçar o status ativo
-        try {
-          await supabase.from("system_logs").insert({
-            event_type: "cron_test",
-            message: "Teste de revisão automática bem-sucedido",
-            details: {
-              success: true,
-              timestamp: new Date().toISOString(),
-              test_mode: true
-            }
-          });
-        } catch (logError) {
-          console.warn("Erro ao registrar log de sistema (não crítico):", logError);
-        }
-      }
-    } catch (error) {
-      console.error("Erro durante os testes:", error);
-      setTestResults({
-        metaToken: false,
-        edgeFunction: false,
-        errorMessage: error instanceof Error ? error.message : "Erro desconhecido"
-      });
+      setResult(data);
       
       toast({
-        title: "Erro nos testes",
-        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido durante os testes.",
+        title: "Teste realizado com sucesso",
+        description: "A função Edge de revisão diária está funcionando corretamente.",
+      });
+    } catch (error) {
+      console.error("Erro ao testar função:", error);
+      setResult(null);
+      
+      toast({
+        title: "Falha no teste",
+        description: error instanceof Error ? error.message : "Não foi possível testar a função Edge.",
         variant: "destructive",
       });
     } finally {
-      setIsTesting(false);
+      setIsLoading(false);
     }
-  };
-
-  // Renderiza indicador de status
-  const renderStatus = (status: boolean | null) => {
-    if (status === null) return <span className="text-gray-400">Não testado</span>;
-    if (status === true) return <CheckCircle className="h-5 w-5 text-green-500" />;
-    return <AlertCircle className="h-5 w-5 text-red-500" />;
   };
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Teste de Revisão Automática</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg">Teste de Conectividade</CardTitle>
+        <CardDescription>
+          Verifique se a função Edge de revisão diária está acessível
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Token do Meta Ads:</span>
-            <div>{renderStatus(testResults.metaToken)}</div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Função Edge:</span>
-            <div>{renderStatus(testResults.edgeFunction)}</div>
-          </div>
-          
-          {testResults.errorMessage && (
-            <div className="text-xs text-red-500 mt-2 p-2 bg-red-50 rounded border border-red-200">
-              {testResults.errorMessage}
-            </div>
+      <CardContent className="space-y-4">
+        <Button 
+          onClick={testCronFunction} 
+          disabled={isLoading}
+          className="w-full bg-muran-complementary hover:bg-muran-complementary/90 text-white"
+        >
+          {isLoading ? (
+            <>
+              <Loader className="mr-2 h-4 w-4 animate-spin" />
+              Testando...
+            </>
+          ) : (
+            <>
+              <Play className="mr-2 h-4 w-4" />
+              Testar Função Edge
+            </>
           )}
-          
-          <Button 
-            onClick={runTests} 
-            disabled={isTesting}
-            className="w-full bg-muran-primary hover:bg-muran-primary/90"
-          >
-            {isTesting ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Testando...
-              </>
-            ) : (
-              'Testar Revisão Automática'
-            )}
-          </Button>
-          
-          <p className="text-xs text-gray-500 mt-2">
-            Este teste verifica se os componentes necessários para a revisão automática
-            estão funcionando corretamente.
-          </p>
-        </div>
+        </Button>
+        
+        {result && (
+          <div className="text-xs bg-gray-50 p-2 rounded border border-gray-100 overflow-auto max-h-20">
+            <pre>{JSON.stringify(result, null, 2)}</pre>
+          </div>
+        )}
+        
+        <p className="text-xs text-gray-500 mt-2">
+          Este teste verifica se a função Edge está publicada e acessível.
+        </p>
       </CardContent>
     </Card>
   );

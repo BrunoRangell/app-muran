@@ -47,7 +47,8 @@ export const useEdgeFunctionService = () => {
       // Teste simples com payload mínimo
       const testPayload = { 
         method: "ping",
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
+        test: true
       };
       
       console.log("[testEdgeFunction] Enviando payload de teste:", JSON.stringify(testPayload));
@@ -123,7 +124,7 @@ export const useEdgeFunctionService = () => {
       
       return false;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
