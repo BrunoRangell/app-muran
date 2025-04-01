@@ -16,7 +16,7 @@ export function NextReviewCountdown() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // O intervalo de execução agora é de 5 minutos (300 segundos)
+  // O intervalo de execução é de 5 minutos (300 segundos)
   const EXECUTION_INTERVAL = 300;
 
   // Atualizar os segundos para a próxima execução
@@ -102,6 +102,47 @@ export function NextReviewCountdown() {
     }
   };
 
+  // Executar a revisão automática
+  const executeAutoReview = async () => {
+    if (isAutoReviewing) return; // Não executar se já estiver em andamento
+    
+    try {
+      setIsAutoReviewing(true);
+      
+      console.log("Contador chegou a zero, executando revisão automática...");
+      
+      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
+        body: { manual: true, executeReview: true }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log("Revisão automática iniciada:", data);
+      
+      toast({
+        title: "Revisão automática iniciada",
+        description: "O processo de revisão foi iniciado com sucesso",
+        variant: "default",
+      });
+      
+      // Iniciar verificação de progresso
+      fetchReviewProgress();
+      
+    } catch (error) {
+      console.error("Erro ao executar revisão automática:", error);
+      
+      toast({
+        title: "Erro na revisão automática",
+        description: "Não foi possível executar a revisão automática",
+        variant: "destructive",
+      });
+      
+      setIsAutoReviewing(false);
+    }
+  };
+
   useEffect(() => {
     // Inicializar o contador
     updateSecondsToNext();
@@ -117,10 +158,10 @@ export function NextReviewCountdown() {
     // Criar um novo contador regressivo
     countdownRef.current = setInterval(() => {
       setSecondsToNext(prev => {
-        // Se chegou a zero, reiniciar o contador e verificar se há revisão ativa
+        // Se chegou a zero, reiniciar o contador e executar a revisão automática
         if (prev <= 1) {
-          console.log("Contador chegou a zero, verificando execução da revisão");
-          checkForActiveReview();
+          console.log("Contador chegou a zero, executando revisão automática");
+          executeAutoReview();
           updateSecondsToNext();
           return EXECUTION_INTERVAL;
         }

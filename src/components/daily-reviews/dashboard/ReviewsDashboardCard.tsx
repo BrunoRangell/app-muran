@@ -13,7 +13,6 @@ import { EmptyStateView } from "./components/EmptyStateView";
 import { LoadingView } from "./components/LoadingView";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { splitClientsByMetaId } from "./utils/clientSorting";
-import { NextReviewCountdown } from "./components/NextReviewCountdown";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -164,10 +163,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           showOnlyAdjustments={showOnlyAdjustments}
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
-        
-        <div className="mt-4">
-          <NextReviewCountdown />
-        </div>
       </div>
 
       {isLoading ? (
