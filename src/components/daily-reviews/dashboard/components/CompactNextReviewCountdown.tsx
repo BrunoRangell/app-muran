@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { AnalysisProgress } from "./AnalysisProgress";
 
 export function CompactNextReviewCountdown() {
   const [secondsToNext, setSecondsToNext] = useState<number>(0);
@@ -211,6 +212,9 @@ export function CompactNextReviewCountdown() {
                 console.error("[CompactNextReviewCountdown] Erro ao atualizar status do log:", updateError);
               }
               
+              // Atualizar a data/hora da última revisão em massa
+              updateLastBatchReviewTime();
+              
               toast({
                 title: "Revisão automática concluída",
                 description: `${numProcessedClients} clientes foram analisados com sucesso.`,
@@ -222,6 +226,24 @@ export function CompactNextReviewCountdown() {
     } catch (error) {
       console.error("[CompactNextReviewCountdown] Erro ao buscar progresso da revisão:", error);
       setErrorMessage(`Erro ao verificar progresso: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Atualizar a data/hora da última revisão em massa
+  const updateLastBatchReviewTime = async () => {
+    try {
+      const now = new Date().toISOString();
+      
+      // Registrar no system_logs
+      await supabase.from('system_logs').insert({
+        event_type: 'batch_review_completed',
+        message: `Revisão em lote concluída automaticamente`,
+        details: { timestamp: now }
+      });
+      
+      console.log("[CompactNextReviewCountdown] Data da última revisão em massa atualizada:", now);
+    } catch (error) {
+      console.error("[CompactNextReviewCountdown] Erro ao atualizar data da última revisão em massa:", error);
     }
   };
 
@@ -502,14 +524,17 @@ export function CompactNextReviewCountdown() {
     );
   }
 
+  // Usar o componente AnalysisProgress para manter a consistência com a análise manual
+  const progressPercentage = Math.round(progress);
+
   return (
     <div className="space-y-1.5 bg-gray-50 px-2 py-1.5 rounded-md border border-gray-100">
-      <div className="flex items-center gap-1 text-xs">
-        <Loader className="h-3 w-3 text-[#ff6e00] animate-spin" />
-        <span className="text-gray-600">Revisão em andamento</span>
-        <span className="ml-auto text-gray-500">{processedClients}/{totalClients} ({Math.round(progress)}%)</span>
-      </div>
-      <Progress value={progress} className="h-1" indicatorClassName="bg-[#ff6e00]" />
+      <AnalysisProgress
+        isBatchAnalyzing={isAutoReviewing}
+        batchProgress={processedClients}
+        totalClientsToAnalyze={totalClients}
+        progressPercentage={progressPercentage}
+      />
       {errorMessage && (
         <div className="text-xs text-amber-600">
           {errorMessage}
