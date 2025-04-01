@@ -72,18 +72,18 @@ export function CronScheduleMonitor() {
         
         if (cronError) {
           console.warn("Erro ao obter expressão cron:", cronError);
-          setNextExecution("16:15 diariamente");
+          setNextExecution("16:35 diariamente");
           return;
         }
         
         if (cronData && typeof cronData === 'object' && 'cron_expression' in cronData) {
           setNextExecution(`Agendamento: ${cronData.cron_expression}`);
         } else {
-          setNextExecution("16:15 diariamente");
+          setNextExecution("16:35 diariamente");
         }
       } catch (cronError) {
         console.warn("Não foi possível obter expressão cron:", cronError);
-        setNextExecution("16:15 diariamente");
+        setNextExecution("16:35 diariamente");
       }
       
     } catch (e) {
