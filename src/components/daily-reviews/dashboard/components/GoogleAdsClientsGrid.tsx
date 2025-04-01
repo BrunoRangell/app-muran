@@ -35,7 +35,7 @@ export const GoogleAdsClientsGrid = ({
             className="text-[#ff6e00] hover:text-[#ff6e00] border-[#ff6e00] hover:border-[#ff6e00] hover:bg-orange-50"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isTokenVerifying ? 'animate-spin' : ''}`} />
-            {isTokenVerifying ? 'Verificando tokens...' : 'Verificar tokens Google Ads'}
+            {isTokenVerifying ? 'Verificando tokens...' : 'Verificar/Renovar tokens'}
           </Button>
         </div>
       </div>

@@ -55,14 +55,23 @@ export const GoogleAdsDashboardCard = ({
     setIsTokenVerifying(true);
     
     try {
-      // Usando apenas a edge function do Supabase para verificar tokens
+      // Usar a edge function do Supabase para verificar e renovar tokens, quando necessário
       const { data, error } = await supabase.functions.invoke('google-ads-token-check');
       
       if (error) {
         throw new Error(`Erro na edge function: ${error.message}`);
       }
       
-      if (data?.success) {
+      // Verificar se os tokens foram renovados
+      if (data?.refreshed) {
+        toast({
+          title: "Tokens renovados com sucesso",
+          description: `Tokens renovados automaticamente. Novos tokens válidos por ${Math.floor((data?.expires_in || 3600) / 60)} minutos.`,
+        });
+        
+        // Recarregar dados após renovação
+        queryClient.invalidateQueries({ queryKey: ["google-ads-clients-with-reviews"] });
+      } else if (data?.success) {
         toast({
           title: "Tokens verificados com sucesso",
           description: data.message || "Os tokens do Google Ads estão válidos.",
