@@ -11,6 +11,9 @@ import { AnalysisProgress } from "@/components/daily-reviews/dashboard/component
 
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
+  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
   const { 
@@ -79,15 +82,29 @@ export const GoogleAdsDashboard = () => {
     }
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleViewModeChange = (value: string) => {
+    if (value) setViewMode(value);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Card de cabeçalho do dashboard separado */}
+      {/* Card de cabeçalho do dashboard com todos os controles */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <GoogleAdsDashboardHeader 
           lastBatchReviewTime={lastBatchReviewTime}
           isBatchAnalyzing={isReviewingBatch}
           isLoading={isApiLoading}
           onAnalyzeAll={handleAnalyzeAll}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          showOnlyAdjustments={showOnlyAdjustments}
+          onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
 
         {/* Adicionar barra de progresso quando estiver analisando */}
@@ -105,7 +122,12 @@ export const GoogleAdsDashboard = () => {
 
       {/* Card separado para os clientes */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
+        <GoogleAdsDashboardCard 
+          onViewClientDetails={() => {}}
+          searchQuery={searchQuery}
+          viewMode={viewMode}
+          showOnlyAdjustments={showOnlyAdjustments}
+        />
       </div>
     </div>
   );
