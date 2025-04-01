@@ -121,7 +121,7 @@ export function CronScheduleMonitor() {
   const getMinutesToNextExecution = () => {
     const now = new Date();
     const targetTime = new Date();
-    targetTime.setHours(16, 45, 0, 0); // Atualizado para 16:45
+    targetTime.setHours(16, 45, 0, 0); // Ajustado para 16:45
     
     // Se já passou das 16:45 hoje, a próxima execução é amanhã
     if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 45)) {
