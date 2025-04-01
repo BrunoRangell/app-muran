@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, Loader } from "lucide-react";
@@ -16,24 +15,22 @@ export function NextReviewCountdown() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // O intervalo de execução é de 5 minutos (300 segundos)
-  const EXECUTION_INTERVAL = 300;
+  // O intervalo de execução é de 2 minutos (120 segundos)
+  const EXECUTION_INTERVAL = 120;
 
-  // Atualizar os segundos para a próxima execução
   const updateSecondsToNext = () => {
     const now = new Date();
-    // Calcular o tempo restante para o próximo múltiplo de 5 minutos
+    // Calcular o tempo restante para o próximo múltiplo de 2 minutos
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
     const currentTotalSeconds = minutes * 60 + seconds;
-    const nextFiveMinMark = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
+    const nextTwoMinuteMark = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
     
-    const secondsUntilNext = nextFiveMinMark - currentTotalSeconds;
+    const secondsUntilNext = nextTwoMinuteMark - currentTotalSeconds;
     setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
   };
 
-  // Verificar se há uma revisão automática em andamento
   const checkForActiveReview = async () => {
     try {
       const { data } = await supabase
@@ -57,7 +54,6 @@ export function NextReviewCountdown() {
     }
   };
 
-  // Buscar o progresso da revisão em andamento
   const fetchReviewProgress = async () => {
     try {
       const { data: clients } = await supabase
@@ -102,7 +98,6 @@ export function NextReviewCountdown() {
     }
   };
 
-  // Executar a revisão automática
   const executeAutoReview = async () => {
     if (isAutoReviewing) return; // Não executar se já estiver em andamento
     
@@ -182,7 +177,6 @@ export function NextReviewCountdown() {
     };
   }, [isAutoReviewing]);
 
-  // Formatar o tempo para exibição
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -226,7 +220,7 @@ export function NextReviewCountdown() {
         
         <div className="pt-3 mt-3 border-t text-xs text-gray-500">
           <p>
-            A revisão automática de orçamentos está configurada para executar a cada 5 minutos. O sistema executa automaticamente sem necessidade de intervenção manual.
+            A revisão automática de orçamentos está configurada para executar a cada 2 minutos. O sistema executa automaticamente sem necessidade de intervenção manual.
           </p>
         </div>
       </CardContent>

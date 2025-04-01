@@ -82,17 +82,21 @@ export function CronScheduleMonitor() {
 
   const updateSecondsToNext = () => {
     const now = new Date();
-    const seconds = 60 - now.getSeconds();
-    setSecondsToNext(seconds);
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    
+    const currentTotalSeconds = minutes * 60 + seconds;
+    const nextTwoMinuteMark = Math.ceil(currentTotalSeconds / 120) * 120;
+    
+    const secondsUntilNext = nextTwoMinuteMark - currentTotalSeconds;
+    setSecondsToNext(secondsUntilNext === 0 ? 120 : secondsUntilNext);
   };
 
   const handleCountdownEnd = () => {
     console.log("Contador chegou a zero, executando revisão automática...");
     
-    // Indicar que estamos executando a revisão
     setExecutingReview(true);
     
-    // Executar a revisão automaticamente ao zerar o contador
     testEdgeFunction()
       .then(() => {
         console.log("Revisão automática executada com sucesso");
@@ -111,7 +115,6 @@ export function CronScheduleMonitor() {
         });
       })
       .finally(() => {
-        // Depois de tentar executar a revisão, atualizar o status
         setTimeout(() => {
           fetchCronStatus();
           setExecutingReview(false);
@@ -129,7 +132,6 @@ export function CronScheduleMonitor() {
     
     const intervalId = setInterval(fetchCronStatus, 15 * 1000);
     
-    // Limpeza ao desmontar o componente
     return () => {
       clearInterval(intervalId);
       if (refreshTimerRef.current) {
@@ -141,26 +143,21 @@ export function CronScheduleMonitor() {
     };
   }, []);
 
-  // Efeito separado para o contador regressivo
   useEffect(() => {
-    // Limpar qualquer contador existente
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
     }
     
-    // Criar um novo contador regressivo
     countdownRef.current = setInterval(() => {
       setSecondsToNext(prev => {
-        // Se chegou a zero, acionar o evento
         if (prev <= 1) {
           handleCountdownEnd();
-          return 60; // Reiniciar para 60 segundos
+          return 60;
         }
         return prev - 1;
       });
     }, 1000);
     
-    // Limpeza quando o componente for desmontado
     return () => {
       if (countdownRef.current) {
         clearInterval(countdownRef.current);
@@ -201,7 +198,6 @@ export function CronScheduleMonitor() {
       
       console.log("Resposta do teste:", data);
       
-      // Agora vamos invocar novamente para executar a revisão de fato (não apenas teste)
       const { data: execData, error: execError } = await supabase.functions.invoke("daily-meta-review", {
         body: { manual: true, executeReview: true }
       });
