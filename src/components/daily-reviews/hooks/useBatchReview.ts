@@ -17,10 +17,11 @@ export const useBatchReview = () => {
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<string | null>(null);
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
+  const [batchProgress, setBatchProgress] = useState(0);
   
   // Buscar a lista de clientes e suas revisões mais recentes
   const { 
-    data: clientsWithReviews = [], 
+    data: clientsData = [], 
     isLoading, 
     error,
     refetch 
@@ -29,6 +30,11 @@ export const useBatchReview = () => {
     queryFn: fetchClientsWithReviews,
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
+
+  // Extrair os arrays de clientes do resultado
+  const clientsWithReviews = Array.isArray(clientsData) 
+    ? clientsData 
+    : clientsData.clientsData || [];
   
   // Buscar o horário da última revisão em massa
   useEffect(() => {
@@ -130,6 +136,7 @@ export const useBatchReview = () => {
       
       setIsBatchAnalyzing(true);
       setTotalClientsToAnalyze(eligibleClients.length);
+      setBatchProgress(0);
       
       let successCount = 0;
       let errorCount = 0;
@@ -140,9 +147,11 @@ export const useBatchReview = () => {
           startProcessingClient(client.id);
           await analyzeClient(client.id, clientsWithReviews);
           successCount++;
+          setBatchProgress(prev => prev + 1);
         } catch (error) {
           console.error(`Erro ao analisar cliente ${client.company_name}:`, error);
           errorCount++;
+          setBatchProgress(prev => prev + 1);
         } finally {
           finishProcessingClient(client.id);
         }
@@ -188,6 +197,7 @@ export const useBatchReview = () => {
     reviewAllClients,
     lastBatchReviewTime,
     isBatchAnalyzing,
+    batchProgress,
     totalClientsToAnalyze,
     refetchClients: refetch
   };
