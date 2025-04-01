@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Clock, Loader } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,8 +20,8 @@ export function CompactNextReviewCountdown() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // O intervalo de execução é de 5 horas (18000 segundos)
-  const EXECUTION_INTERVAL = 18000; // 5 horas em segundos
+  // O intervalo de execução é de 2 minutos (120 segundos)
+  const EXECUTION_INTERVAL = 120; // 2 minutos em segundos
   const PROGRESS_CHECK_INTERVAL = 3000; // 3 segundos
   const STABILITY_CHECK_INTERVAL = 10000; // 10 segundos
   const COMPLETION_DELAY = 2000; // 2 segundos após detectar 100% para finalizar
@@ -28,7 +29,7 @@ export function CompactNextReviewCountdown() {
   // Atualizar os segundos para a próxima execução
   const updateSecondsToNext = () => {
     const now = new Date();
-    // Calcular o tempo restante para o próximo múltiplo de 5 horas
+    // Calcular o tempo restante para o próximo múltiplo de 2 minutos
     const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
