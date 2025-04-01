@@ -49,21 +49,21 @@ export const GoogleAdsDashboardCard = ({
     reviewClient(clientId);
   }, [reviewClient]);
 
+  if (isLoading) {
+    return <LoadingView />;
+  }
+  
+  if (sortedClients.length === 0) {
+    return <EmptyStateView />;
+  }
+
   return (
-    <div className="space-y-6">
-      {isLoading ? (
-        <LoadingView />
-      ) : sortedClients.length === 0 ? (
-        <EmptyStateView />
-      ) : (
-        <GoogleAdsClientsGrid 
-          clientsWithGoogleAdsId={clientsWithGoogleAdsId}
-          clientsWithoutGoogleAdsId={clientsWithoutGoogleAdsId}
-          processingClients={processingClients}
-          onReviewClient={handleReviewClient}
-          viewMode={viewMode}
-        />
-      )}
-    </div>
+    <GoogleAdsClientsGrid 
+      clientsWithGoogleAdsId={clientsWithGoogleAdsId}
+      clientsWithoutGoogleAdsId={clientsWithoutGoogleAdsId}
+      processingClients={processingClients}
+      onReviewClient={handleReviewClient}
+      viewMode={viewMode}
+    />
   );
 };

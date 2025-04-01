@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { supabase } from "@/lib/supabase";
@@ -120,15 +119,13 @@ export const GoogleAdsDashboard = () => {
         )}
       </div>
 
-      {/* Card separado para os clientes */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <GoogleAdsDashboardCard 
-          onViewClientDetails={() => {}}
-          searchQuery={searchQuery}
-          viewMode={viewMode}
-          showOnlyAdjustments={showOnlyAdjustments}
-        />
-      </div>
+      {/* Cards de clientes (sem o card externo agora) */}
+      <GoogleAdsDashboardCard 
+        onViewClientDetails={() => {}}
+        searchQuery={searchQuery}
+        viewMode={viewMode}
+        showOnlyAdjustments={showOnlyAdjustments}
+      />
     </div>
   );
 };
