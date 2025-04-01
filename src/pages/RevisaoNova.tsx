@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CronScheduleMonitor } from "@/components/daily-reviews/dashboard/components/CronScheduleMonitor";
 
 export default function RevisaoNova() {
+  // Usando useState para manter o estado da aba selecionada
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [selectedTab, setSelectedTab] = useState<string>("dashboard");
@@ -25,7 +26,7 @@ export default function RevisaoNova() {
   
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
+      <h1 className="text-2xl md:text-3xl font-bold text-[#321e32]">
         Revisão Diária
       </h1>
 
