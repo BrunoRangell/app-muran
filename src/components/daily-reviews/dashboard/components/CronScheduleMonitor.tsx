@@ -48,15 +48,15 @@ export function CronScheduleMonitor() {
         const lastLog = validLogs[0];
         setLastExecution(new Date(lastLog.execution_time));
         
-        // Verificar se a última execução foi recente (nas últimas 24 horas)
-        const hoursSince = (new Date().getTime() - new Date(lastLog.execution_time).getTime()) / (1000 * 60 * 60);
+        // Verificar se a última execução foi recente (nos últimos 10 minutos para testes)
+        const minutesSince = (new Date().getTime() - new Date(lastLog.execution_time).getTime()) / (1000 * 60);
         
-        if (hoursSince < 24) {
+        if (minutesSince < 10) {
           setStatus('active');
           setCronError(null);
         } else {
           setStatus('inactive');
-          setCronError(`Última execução foi há mais de 24h (${Math.round(hoursSince)}h atrás)`);
+          setCronError(`Última execução foi há mais de 10 minutos (${Math.round(minutesSince)}min atrás)`);
         }
       } else {
         // Se não há logs válidos
@@ -64,27 +64,8 @@ export function CronScheduleMonitor() {
         setCronError('Nenhum log de execução válido encontrado');
       }
       
-      // Calcular próxima execução
-      try {
-        const { data: cronData, error: cronError } = await supabase.rpc('get_cron_expression', { 
-          job_name: 'daily-meta-review-job' 
-        });
-        
-        if (cronError) {
-          console.warn("Erro ao obter expressão cron:", cronError);
-          setNextExecution("17:00 diariamente");
-          return;
-        }
-        
-        if (cronData && typeof cronData === 'object' && 'cron_expression' in cronData) {
-          setNextExecution(`Agendamento: ${cronData.cron_expression}`);
-        } else {
-          setNextExecution("17:00 diariamente");
-        }
-      } catch (cronError) {
-        console.warn("Não foi possível obter expressão cron:", cronError);
-        setNextExecution("17:00 diariamente");
-      }
+      // Cron expression agora é "* * * * *" (a cada minuto)
+      setNextExecution("A cada minuto");
       
     } catch (e) {
       console.error("Erro ao verificar status do cron:", e);
@@ -98,8 +79,8 @@ export function CronScheduleMonitor() {
   useEffect(() => {
     fetchCronStatus();
     
-    // Atualizar status a cada 1 minuto (reduzido de 3 para 1 para monitoramento mais frequente)
-    const intervalId = setInterval(fetchCronStatus, 60 * 1000);
+    // Atualizar status a cada 15 segundos para capturar as execuções por minuto
+    const intervalId = setInterval(fetchCronStatus, 15 * 1000);
     
     return () => clearInterval(intervalId);
   }, []);
@@ -117,18 +98,11 @@ export function CronScheduleMonitor() {
     }
   };
 
-  // Calcular tempo para próxima execução
-  const getMinutesToNextExecution = () => {
+  // Calcular tempo para próxima execução (agora é sempre menos de 1 minuto)
+  const getSecondsToNextExecution = () => {
     const now = new Date();
-    const targetTime = new Date();
-    targetTime.setHours(17, 0, 0, 0); // Mantém 17:00 como horário de execução
-    
-    // Se já passou das 17:00 hoje, a próxima execução é amanhã
-    if (now.getHours() > 17 || (now.getHours() === 17 && now.getMinutes() >= 0)) {
-      targetTime.setDate(targetTime.getDate() + 1);
-    }
-    
-    return Math.round((targetTime.getTime() - now.getTime()) / (1000 * 60));
+    const seconds = 60 - now.getSeconds();
+    return seconds;
   };
 
   return (
@@ -150,7 +124,7 @@ export function CronScheduleMonitor() {
           {lastExecution && (
             <div className="text-sm">
               <span className="font-semibold">Última execução:</span>{" "}
-              {formatDateInBrasiliaTz(lastExecution, "dd 'de' MMMM 'às' HH:mm")}
+              {formatDateInBrasiliaTz(lastExecution, "dd 'de' MMMM 'às' HH:mm:ss")}
             </div>
           )}
           
@@ -168,9 +142,9 @@ export function CronScheduleMonitor() {
           )}
           
           <p className="text-xs text-gray-500 mt-2">
-            Agendado para executar automaticamente às 17:00 - próxima execução em{" "}
-            {getMinutesToNextExecution()}{" "}
-            minutos
+            Agendado para executar automaticamente a cada minuto - próxima execução em aproximadamente{" "}
+            {getSecondsToNextExecution()}{" "}
+            segundos
           </p>
         </div>
       </CardContent>
