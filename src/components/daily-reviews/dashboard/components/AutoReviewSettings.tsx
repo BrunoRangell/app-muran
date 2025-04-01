@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -16,15 +15,13 @@ export function AutoReviewSettings() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const { toast } = useToast();
 
-  // Buscar a última execução automática e status do cron
   const fetchLastAutoRun = async () => {
     try {
-      if (isCheckingStatus) return; // Evitar chamadas simultâneas
+      if (isCheckingStatus) return;
       
       setIsLoading(true);
       setIsCheckingStatus(true);
       
-      // 1. Buscar configuração da última execução
       const { data: configData, error: configError } = await supabase
         .from("system_configs")
         .select("value")
@@ -43,7 +40,6 @@ export function AutoReviewSettings() {
         setLastRunStatus('success');
       }
       
-      // 2. Verificar registros de execução do cron (independente do step anterior)
       await checkCronStatus();
       
       setIsLoading(false);
@@ -55,11 +51,9 @@ export function AutoReviewSettings() {
       setIsCheckingStatus(false);
     }
   };
-  
-  // Verificar status do cron verificando logs recentes
+
   const checkCronStatus = async () => {
     try {
-      // Primeiro verificamos os logs de sistema com event_type específico
       const { data: logs, error } = await supabase
         .from("system_logs")
         .select("*")
@@ -67,7 +61,6 @@ export function AutoReviewSettings() {
         .order("created_at", { ascending: false })
         .limit(1);
       
-      // Se encontramos um log recente (menos de 24 horas)
       if (!error && logs && logs.length > 0) {
         const lastLog = logs[0];
         const logTime = new Date(lastLog.created_at);
@@ -79,7 +72,6 @@ export function AutoReviewSettings() {
         }
       }
       
-      // Se chegamos aqui, verificamos a última execução efetiva
       if (lastAutoRun) {
         const hoursSinceLastRun = (new Date().getTime() - lastAutoRun.getTime()) / (1000 * 60 * 60);
         if (hoursSinceLastRun < 36) {
@@ -88,7 +80,6 @@ export function AutoReviewSettings() {
         }
       }
       
-      // Tentar criar um log de teste para verificar se a função cron está funcionando
       try {
         await supabase.functions.invoke("daily-meta-review", {
           body: { 
@@ -98,15 +89,12 @@ export function AutoReviewSettings() {
           }
         });
         
-        // Se a chamada acima não lançou erro, presumimos que o cron está ativo
         setCronStatus('active');
         return;
       } catch (edgeFunctionError) {
         console.error("Erro ao testar função Edge:", edgeFunctionError);
-        // Erro na chamada da função Edge não é conclusivo sobre o status do cron
       }
       
-      // Se chegamos aqui, definimos como inativo
       setCronStatus('inactive');
       
     } catch (error) {
@@ -115,7 +103,6 @@ export function AutoReviewSettings() {
     }
   };
 
-  // Executar revisão manual
   const runManualReview = async () => {
     setIsRunning(true);
     setIsLoading(true);
@@ -134,7 +121,6 @@ export function AutoReviewSettings() {
         description: "O processo de revisão foi iniciado com sucesso. Isso pode levar alguns minutos.",
       });
       
-      // Registrar a execução manual no log
       await supabase.from("system_logs").insert({
         event_type: "cron_job",
         message: "Revisão iniciada manualmente pelo usuário",
@@ -145,7 +131,6 @@ export function AutoReviewSettings() {
         }
       });
       
-      // Registrar também em cron_execution_logs
       try {
         await supabase.from("cron_execution_logs").insert({
           job_name: "manual-meta-review",
@@ -161,7 +146,6 @@ export function AutoReviewSettings() {
         console.warn("Aviso: Não foi possível registrar log de execução:", logError);
       }
       
-      // Aguardar um tempo antes de atualizar o status
       setTimeout(() => {
         fetchLastAutoRun();
       }, 5000);
@@ -183,7 +167,6 @@ export function AutoReviewSettings() {
   useEffect(() => {
     fetchLastAutoRun();
     
-    // Atualizar o status a cada 15 minutos
     const intervalId = setInterval(() => {
       if (!isCheckingStatus) {
         fetchLastAutoRun();
@@ -193,7 +176,6 @@ export function AutoReviewSettings() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Renderizar indicador de status do cron
   const renderCronStatus = () => {
     switch (cronStatus) {
       case 'active':
@@ -225,7 +207,7 @@ export function AutoReviewSettings() {
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">Revisão Automática</CardTitle>
         <CardDescription>
-          As revisões de orçamento são executadas automaticamente todos os dias às 16:45.
+          As revisões de orçamento são executadas automaticamente todos os dias às 17:00.
         </CardDescription>
       </CardHeader>
       <CardContent>

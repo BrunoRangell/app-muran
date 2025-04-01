@@ -72,18 +72,18 @@ export function CronScheduleMonitor() {
         
         if (cronError) {
           console.warn("Erro ao obter expressão cron:", cronError);
-          setNextExecution("16:45 diariamente");
+          setNextExecution("17:00 diariamente");
           return;
         }
         
         if (cronData && typeof cronData === 'object' && 'cron_expression' in cronData) {
           setNextExecution(`Agendamento: ${cronData.cron_expression}`);
         } else {
-          setNextExecution("16:45 diariamente");
+          setNextExecution("17:00 diariamente");
         }
       } catch (cronError) {
         console.warn("Não foi possível obter expressão cron:", cronError);
-        setNextExecution("16:45 diariamente");
+        setNextExecution("17:00 diariamente");
       }
       
     } catch (e) {
@@ -121,10 +121,10 @@ export function CronScheduleMonitor() {
   const getMinutesToNextExecution = () => {
     const now = new Date();
     const targetTime = new Date();
-    targetTime.setHours(16, 45, 0, 0); // Ajustado para 16:45
+    targetTime.setHours(17, 0, 0, 0); // Atualizado para 17:00
     
-    // Se já passou das 16:45 hoje, a próxima execução é amanhã
-    if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 45)) {
+    // Se já passou das 17:00 hoje, a próxima execução é amanhã
+    if (now.getHours() > 17 || (now.getHours() === 17 && now.getMinutes() >= 0)) {
       targetTime.setDate(targetTime.getDate() + 1);
     }
     
@@ -168,7 +168,7 @@ export function CronScheduleMonitor() {
           )}
           
           <p className="text-xs text-gray-500 mt-2">
-            Agendado para executar automaticamente às 16:45 - próxima execução em{" "}
+            Agendado para executar automaticamente às 17:00 - próxima execução em{" "}
             {getMinutesToNextExecution()}{" "}
             minutos
           </p>
