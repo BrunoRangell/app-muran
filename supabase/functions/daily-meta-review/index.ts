@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'daily-meta-review' carregada - v1.0.3");
+console.log("Função Edge 'daily-meta-review' carregada - v1.0.4");
 
 serve(async (req) => {
   // Lidar com requisições OPTIONS para CORS
@@ -60,23 +60,41 @@ serve(async (req) => {
     
     if (isTest) {
       console.log("Requisição de teste recebida, verificando conectividade");
+      
+      // Registrar o teste no log
       await logEvent("Teste de conectividade realizado", {
         timestamp: new Date().toISOString(),
-        success: true
+        success: true,
+        requestData
       });
       
       // Registrar log também na tabela cron_execution_logs para atualizar o status
       await supabaseClient
         .from("cron_execution_logs")
         .insert({
-          job_name: "daily-meta-review-job",
+          job_name: "daily-meta-review-test",
           execution_time: new Date().toISOString(),
           status: "success",
           details: {
             test: true,
-            message: "Teste de conectividade realizado com sucesso"
+            message: "Teste de conectividade realizado com sucesso",
+            timestamp: new Date().toISOString()
           }
         });
+      
+      // Realizar verificação adicional no token Meta
+      let metaTokenValid = false;
+      try {
+        const { data: tokenData } = await supabaseClient
+          .from("api_tokens")
+          .select("value")
+          .eq("name", "meta_access_token")
+          .maybeSingle();
+          
+        metaTokenValid = Boolean(tokenData?.value && tokenData.value.length > 10);
+      } catch (error) {
+        console.error("Erro ao verificar token Meta:", error);
+      }
       
       return new Response(
         JSON.stringify({
@@ -84,7 +102,7 @@ serve(async (req) => {
           message: "Teste de conectividade bem-sucedido",
           timestamp: new Date().toISOString(),
           endpoints: {
-            meta_api: true,
+            meta_api: metaTokenValid,
             database: true
           }
         }),
@@ -391,7 +409,8 @@ serve(async (req) => {
           total_clients: clientsData.length,
           successful: results.successful,
           failed: results.failed,
-          execution_time_seconds: (executionEnd.getTime() - executionStart.getTime()) / 1000
+          execution_time_seconds: (executionEnd.getTime() - executionStart.getTime()) / 1000,
+          success_rate: Math.round((results.successful / clientsData.length) * 100)
         }
       });
     

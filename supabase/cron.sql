@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.cron_execution_logs (
 
 -- Remover job existente se houver
 SELECT cron.unschedule('daily-meta-review-job');
+SELECT cron.unschedule('cron-health-check');
 
 -- Criar job para executar revisão Meta Ads todos os dias às 06:00
 SELECT cron.schedule(

@@ -61,14 +61,17 @@ export function AutoReviewTest() {
       if (error) throw error;
       if (!data) throw new Error("Resposta vazia da função Edge");
       
+      console.log("Resultado do teste de conectividade:", data);
+      
       // Registrar na tabela cron_execution_logs para atualizar o status
       await supabase.from("cron_execution_logs").insert({
-        job_name: "daily-meta-review-job",
+        job_name: "daily-meta-review-job-test",
         execution_time: new Date().toISOString(),
         status: "success",
         details: {
           test: true,
-          message: "Teste de conectividade realizado com sucesso do frontend"
+          message: "Teste de conectividade realizado com sucesso do frontend",
+          result: data
         }
       });
       
@@ -189,7 +192,7 @@ export function AutoReviewTest() {
           </Button>
           
           <p className="text-xs text-gray-500 mt-2">
-            Este componente verifica se os componentes necessários para a revisão automática
+            Este teste verifica se os componentes necessários para a revisão automática
             estão funcionando corretamente.
           </p>
         </div>

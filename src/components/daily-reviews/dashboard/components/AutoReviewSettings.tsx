@@ -53,20 +53,27 @@ export function AutoReviewSettings() {
   // Verificar status do cron verificando logs recentes
   const checkCronStatus = async () => {
     try {
-      const twoDaysAgo = new Date();
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       
       // Verificar execuções de cron recentes
       const { data: cronLogs, error: cronError } = await supabase
         .from("cron_execution_logs")
         .select("*")
-        .eq("job_name", "daily-meta-review-job")
-        .gt("execution_time", twoDaysAgo.toISOString())
+        .gte("execution_time", threeDaysAgo.toISOString())
         .order("execution_time", { ascending: false })
-        .limit(1);
+        .limit(5);
         
-      if (!cronError && cronLogs && cronLogs.length > 0) {
-        // Se temos logs recentes, o cron está ativo
+      if (cronError) {
+        console.error("Erro ao buscar logs de cron:", cronError);
+        setCronStatus('unknown');
+        return;
+      }
+      
+      console.log("Logs de cron encontrados:", cronLogs?.length || 0);
+      
+      // Se temos logs recentes, o cron está ativo
+      if (cronLogs && cronLogs.length > 0) {
         setCronStatus('active');
         return;
       }
@@ -76,13 +83,30 @@ export function AutoReviewSettings() {
         .from("system_logs")
         .select("*")
         .eq("event_type", "cron_job")
-        .gt("created_at", twoDaysAgo.toISOString())
+        .gte("created_at", threeDaysAgo.toISOString())
         .order("created_at", { ascending: false })
-        .limit(1);
+        .limit(5);
         
-      if (!systemLogsError && systemLogs && systemLogs.length > 0) {
+      console.log("Logs de sistema encontrados:", systemLogs?.length || 0);
+      
+      if (systemLogsError) {
+        console.error("Erro ao buscar logs de sistema:", systemLogsError);
+        setCronStatus('unknown');
+        return;
+      }
+      
+      if (systemLogs && systemLogs.length > 0) {
         setCronStatus('active');
         return;
+      }
+      
+      // Verificar se há uma revisão recente
+      if (lastAutoRun) {
+        const hoursSinceLastRun = (new Date().getTime() - lastAutoRun.getTime()) / (1000 * 60 * 60);
+        if (hoursSinceLastRun < 36) { // Se temos uma execução recente (menos de 36h), consideramos o cron como ativo
+          setCronStatus('active');
+          return;
+        }
       }
       
       // Se chegamos aqui, não encontramos nenhuma evidência de atividade recente
@@ -110,6 +134,18 @@ export function AutoReviewSettings() {
       toast({
         title: "Revisão em massa iniciada",
         description: "O processo de revisão foi iniciado com sucesso. Isso pode levar alguns minutos.",
+      });
+      
+      // Registrar a execução manual no log
+      await supabase.from("cron_execution_logs").insert({
+        job_name: "manual-meta-review",
+        execution_time: new Date().toISOString(),
+        status: "started",
+        details: {
+          manual: true,
+          initiated_by: "user",
+          message: "Revisão iniciada manualmente pelo usuário"
+        }
       });
       
       // Aguardar um tempo antes de atualizar o status
@@ -142,7 +178,7 @@ export function AutoReviewSettings() {
         .from("system_logs")
         .select("*")
         .eq("event_type", "daily_meta_review")
-        .gt("created_at", twoDaysAgo.toISOString())
+        .gte("created_at", twoDaysAgo.toISOString())
         .order("created_at", { ascending: false })
         .limit(10);
         
@@ -241,7 +277,7 @@ export function AutoReviewSettings() {
           <Button 
             onClick={runManualReview} 
             disabled={isLoading || isRunning}
-            className="w-full"
+            className="w-full bg-muran-primary hover:bg-muran-primary/90"
           >
             {isRunning ? (
               <>
