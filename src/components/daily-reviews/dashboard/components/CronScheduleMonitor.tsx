@@ -1,10 +1,11 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { Calendar, Clock, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { formatDateInBrasiliaTz } from "../../summary/utils";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export function CronScheduleMonitor() {
   const [nextExecution, setNextExecution] = useState<string | null>(null);
@@ -13,6 +14,9 @@ export function CronScheduleMonitor() {
   const [loading, setLoading] = useState(true);
   const [cronError, setCronError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [secondsToNext, setSecondsToNext] = useState<number>(0);
+  const refreshTimerRef = useRef<number | null>(null);
+  const { toast } = useToast();
 
   const fetchCronStatus = async () => {
     try {
@@ -69,6 +73,9 @@ export function CronScheduleMonitor() {
       // Cron expression agora é "* * * * *" (a cada minuto)
       setNextExecution("A cada minuto");
       
+      // Atualizar o contador regressivo
+      updateSecondsToNext();
+      
     } catch (e) {
       console.error("Erro ao verificar status do cron:", e);
       setCronError(`Erro: ${e instanceof Error ? e.message : String(e)}`);
@@ -78,26 +85,107 @@ export function CronScheduleMonitor() {
     }
   };
 
+  // Calcular tempo para próxima execução (agora é sempre menos de 1 minuto)
+  const updateSecondsToNext = () => {
+    const now = new Date();
+    const seconds = 60 - now.getSeconds();
+    setSecondsToNext(seconds);
+  };
+
+  // Função que será chamada quando o contador chegar a zero
+  const handleCountdownEnd = () => {
+    console.log("Contador chegou a zero, atualizando status...");
+    // Aguardar 3 segundos para dar tempo de o cron job executar
+    setTimeout(() => {
+      fetchCronStatus();
+      toast({
+        title: "Verificando execução",
+        description: "Atualizando status da revisão automática...",
+        variant: "default",
+      });
+    }, 3000);
+  };
+
   useEffect(() => {
     fetchCronStatus();
     
     // Atualizar status a cada 15 segundos para capturar as execuções por minuto
     const intervalId = setInterval(fetchCronStatus, 15 * 1000);
     
-    return () => clearInterval(intervalId);
+    // Atualizar o contador a cada segundo
+    const countdownInterval = setInterval(() => {
+      updateSecondsToNext();
+      
+      // Se o contador chegou a zero ou está prestes a chegar (1s)
+      if (secondsToNext <= 1) {
+        handleCountdownEnd();
+      }
+    }, 1000);
+    
+    return () => {
+      clearInterval(intervalId);
+      clearInterval(countdownInterval);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
   }, []);
-
-  // Calcular tempo para próxima execução (agora é sempre menos de 1 minuto)
-  const getSecondsToNextExecution = () => {
-    const now = new Date();
-    const seconds = 60 - now.getSeconds();
-    return seconds;
-  };
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
     await fetchCronStatus();
+    
+    toast({
+      title: "Dados atualizados",
+      description: "Status da revisão automática atualizado com sucesso",
+      variant: "default",
+    });
+    
     setTimeout(() => setRefreshing(false), 1000);
+  };
+
+  // Função para testar a função Edge manualmente
+  const testEdgeFunction = async () => {
+    try {
+      setRefreshing(true);
+      
+      toast({
+        title: "Testando função",
+        description: "Enviando solicitação de teste para a função Edge...",
+        variant: "default",
+      });
+      
+      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
+        body: { test: true }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log("Resposta do teste:", data);
+      
+      toast({
+        title: "Teste concluído",
+        description: "A função Edge respondeu com sucesso. Atualizando status...",
+        variant: "success",
+      });
+      
+      // Atualizar os dados após teste bem-sucedido
+      refreshTimerRef.current = window.setTimeout(() => {
+        fetchCronStatus();
+      }, 2000);
+      
+    } catch (e) {
+      console.error("Erro ao testar função Edge:", e);
+      toast({
+        title: "Erro no teste",
+        description: `Não foi possível conectar à função Edge: ${e instanceof Error ? e.message : String(e)}`,
+        variant: "destructive",
+      });
+    } finally {
+      setTimeout(() => setRefreshing(false), 1000);
+    }
   };
 
   return (
@@ -107,14 +195,25 @@ export function CronScheduleMonitor() {
           <Calendar className="h-5 w-5 text-[#ff6e00]" />
           <span>Revisão Automática</span>
         </CardTitle>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={handleManualRefresh}
-          disabled={refreshing}
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-[#ff6e00]' : 'text-gray-500'}`} />
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            title="Atualizar status"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-[#ff6e00]' : 'text-gray-500'}`} />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={testEdgeFunction}
+            disabled={refreshing}
+          >
+            Testar
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="pt-4">
         <div className="space-y-3">
@@ -142,7 +241,7 @@ export function CronScheduleMonitor() {
             <div className="bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200">
               <div className="text-xs text-gray-500">Próxima execução em</div>
               <div className="font-mono font-bold text-lg">
-                {getSecondsToNextExecution()}s
+                {secondsToNext}s
               </div>
             </div>
           </div>
