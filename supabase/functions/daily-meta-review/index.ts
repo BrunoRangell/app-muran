@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'daily-meta-review' carregada - v1.0.0");
+console.log("Função Edge 'daily-meta-review' carregada - v1.0.1");
 
 serve(async (req) => {
   // Lidar com requisições OPTIONS para CORS
@@ -22,7 +22,8 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Iniciando revisão diária automatizada de Meta Ads");
+    const executionStart = new Date();
+    console.log(`Iniciando revisão diária automatizada de Meta Ads às ${executionStart.toISOString()}`);
     
     // Inicializar cliente Supabase
     const supabaseClient = createClient(
@@ -45,6 +46,23 @@ serve(async (req) => {
       }
     }
     
+    // Verificar se é uma execução agendada ou manual
+    let requestData = {};
+    try {
+      requestData = await req.json();
+    } catch (e) {
+      // Se não houver corpo JSON, assumimos valores padrão
+      requestData = { scheduled: false, manual: true };
+    }
+    
+    const isScheduled = requestData.scheduled === true;
+    const isManual = requestData.manual === true;
+    
+    await logEvent(`Execução ${isScheduled ? 'agendada' : 'manual'} iniciada`, { 
+      requestData,
+      timestamp: executionStart.toISOString()
+    });
+    
     // Verificar se devemos executar (checar a última execução)
     const { data: configData } = await supabaseClient
       .from("system_configs")
@@ -55,23 +73,30 @@ serve(async (req) => {
     const now = new Date();
     let shouldRun = true;
     
-    if (configData?.value) {
+    if (configData?.value && isScheduled) {
       const lastRun = new Date(configData.value);
       const hoursSinceLastRun = (now.getTime() - lastRun.getTime()) / (1000 * 60 * 60);
       
       // Se a última execução foi há menos de 12 horas, não executar novamente
       // (isso impede execuções duplicadas no mesmo dia)
+      // A menos que seja execução manual
       if (hoursSinceLastRun < 12) {
-        console.log(`Última execução foi há ${hoursSinceLastRun.toFixed(2)} horas. Pulando.`);
+        console.log(`Última execução foi há ${hoursSinceLastRun.toFixed(2)} horas. Pulando execução agendada.`);
         shouldRun = false;
       }
     }
     
-    if (!shouldRun) {
+    if (!shouldRun && !isManual) {
+      await logEvent("Execução ignorada - executada recentemente", {
+        lastExecution: configData?.value,
+        isScheduled
+      });
+      
       return new Response(
         JSON.stringify({
           success: false,
-          message: "Revisão já foi executada recentemente. Pulando execução."
+          message: "Revisão já foi executada recentemente. Pulando execução.",
+          lastExecution: configData?.value
         }),
         {
           status: 200,
@@ -294,22 +319,43 @@ serve(async (req) => {
     }
     
     // Atualizar timestamp da última revisão
+    const executionEnd = new Date();
     await supabaseClient
       .from("system_configs")
-      .update({ value: now.toISOString() })
-      .eq("key", "last_batch_review_time");
+      .upsert({ 
+        key: "last_batch_review_time",
+        value: executionEnd.toISOString()
+      }, {
+        onConflict: "key"
+      });
     
     await logEvent("Revisão em massa concluída", {
       sucessos: results.successful,
       falhas: results.failed,
-      total: clientsData.length
+      total: clientsData.length,
+      duracaoExecucao: `${(executionEnd.getTime() - executionStart.getTime()) / 1000}s`
     });
+    
+    // Adicionar um registro na tabela de execução de cron para monitoramento
+    await supabaseClient
+      .from("cron_execution_logs")
+      .insert({
+        job_name: "daily-meta-review-job",
+        execution_time: executionEnd.toISOString(),
+        status: "success",
+        details: {
+          total_clients: clientsData.length,
+          successful: results.successful,
+          failed: results.failed,
+          execution_time_seconds: (executionEnd.getTime() - executionStart.getTime()) / 1000
+        }
+      });
     
     return new Response(
       JSON.stringify({
         success: true,
         message: "Revisão em massa concluída",
-        timestamp: now.toISOString(),
+        timestamp: executionEnd.toISOString(),
         results: {
           total: clientsData.length,
           successful: results.successful,
