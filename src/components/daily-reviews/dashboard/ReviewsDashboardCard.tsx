@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -12,8 +13,7 @@ import { EmptyStateView } from "./components/EmptyStateView";
 import { LoadingView } from "./components/LoadingView";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { splitClientsByMetaId } from "./utils/clientSorting";
-import { AutoReviewTest } from "./components/AutoReviewTest";
-import { AutoReviewSettings } from "./components/AutoReviewSettings";
+import { NextReviewCountdown } from "./components/NextReviewCountdown";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -165,9 +165,8 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
         
-        <div className="mt-4 grid md:grid-cols-2 gap-4">
-          <AutoReviewSettings />
-          <AutoReviewTest />
+        <div className="mt-4">
+          <NextReviewCountdown />
         </div>
       </div>
 

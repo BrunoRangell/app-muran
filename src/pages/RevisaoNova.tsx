@@ -8,7 +8,7 @@ import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManag
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { CronScheduleMonitor } from "@/components/daily-reviews/dashboard/components/CronScheduleMonitor";
+import { NextReviewCountdown } from "@/components/daily-reviews/dashboard/components/NextReviewCountdown";
 
 export default function RevisaoNova() {
   // Usando useState para manter o estado da aba selecionada
@@ -44,7 +44,7 @@ export default function RevisaoNova() {
               <ReviewsDashboardCard onViewClientDetails={() => {}} />
             </div>
             <div className="space-y-6">
-              <CronScheduleMonitor />
+              <NextReviewCountdown />
             </div>
           </div>
         </TabsContent>
