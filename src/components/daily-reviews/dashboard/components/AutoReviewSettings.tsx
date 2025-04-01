@@ -13,12 +13,16 @@ export function AutoReviewSettings() {
   const [isRunning, setIsRunning] = useState(false);
   const [lastRunStatus, setLastRunStatus] = useState<'success' | 'error' | null>(null);
   const [cronStatus, setCronStatus] = useState<'active' | 'unknown' | 'inactive'>('unknown');
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const { toast } = useToast();
 
   // Buscar a última execução automática
   const fetchLastAutoRun = async () => {
     try {
+      if (isCheckingStatus) return; // Evita chamadas simultâneas
+      
       setIsLoading(true);
+      setIsCheckingStatus(true);
       
       // Verificar configuração salva
       const { data: configData, error: configError } = await supabase
@@ -29,6 +33,8 @@ export function AutoReviewSettings() {
         
       if (configError) {
         console.error("Erro ao buscar configuração:", configError);
+        setIsCheckingStatus(false);
+        setIsLoading(false);
         return;
       }
       
@@ -42,10 +48,13 @@ export function AutoReviewSettings() {
       
       // Verificar o status do cron
       await checkCronStatus();
+      
+      setIsCheckingStatus(false);
+      setIsLoading(false);
     } catch (error) {
       console.error("Erro ao buscar última execução automática:", error);
       setLastRunStatus('error');
-    } finally {
+      setIsCheckingStatus(false);
       setIsLoading(false);
     }
   };
@@ -56,48 +65,89 @@ export function AutoReviewSettings() {
       const threeDaysAgo = new Date();
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       
+      // Define um timeout para esta operação
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Timeout na verificação de status do cron")), 5000);
+      });
+      
       // Verificar execuções de cron recentes
-      const { data: cronLogs, error: cronError } = await supabase
+      const cronLogsPromise = supabase
         .from("cron_execution_logs")
         .select("*")
         .gte("execution_time", threeDaysAgo.toISOString())
         .order("execution_time", { ascending: false })
         .limit(5);
+      
+      // Corrida entre a promessa principal e o timeout
+      const { data: cronLogs, error: cronError } = await Promise.race([
+        cronLogsPromise,
+        timeoutPromise
+      ]) as any;
         
       if (cronError) {
         console.error("Erro ao buscar logs de cron:", cronError);
-        setCronStatus('unknown');
+        // Se houver erro na tabela (como table não existir), verificamos por última revisão apenas
+        if (lastAutoRun) {
+          const hoursSinceLastRun = (new Date().getTime() - lastAutoRun.getTime()) / (1000 * 60 * 60);
+          if (hoursSinceLastRun < 36) {
+            setCronStatus('active');
+          } else {
+            setCronStatus('inactive');
+          }
+        } else {
+          setCronStatus('unknown');
+        }
         return;
       }
       
-      console.log("Logs de cron encontrados:", cronLogs?.length || 0);
+      console.log("Logs de cron encontrados:", cronLogs?.length || 0, cronLogs);
       
       // Se temos logs recentes, o cron está ativo
       if (cronLogs && cronLogs.length > 0) {
-        setCronStatus('active');
-        return;
+        // Verificar se há execuções recentes nas últimas 24h
+        const recentLogs = cronLogs.filter(log => {
+          const logTime = new Date(log.execution_time);
+          const hoursSince = (new Date().getTime() - logTime.getTime()) / (1000 * 60 * 60);
+          return hoursSince < 24;
+        });
+        
+        if (recentLogs.length > 0) {
+          setCronStatus('active');
+          return;
+        }
       }
       
       // Se não temos logs específicos de cron, verificar logs do sistema
-      const { data: systemLogs, error: systemLogsError } = await supabase
+      const systemLogsPromise = supabase
         .from("system_logs")
         .select("*")
         .eq("event_type", "cron_job")
         .gte("created_at", threeDaysAgo.toISOString())
         .order("created_at", { ascending: false })
         .limit(5);
-        
+      
+      // Corrida entre a promessa principal e o timeout
+      const { data: systemLogs } = await Promise.race([
+        systemLogsPromise,
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Timeout na verificação de logs do sistema")), 3000);
+        })
+      ]) as any;
+      
       console.log("Logs de sistema encontrados:", systemLogs?.length || 0);
       
-      if (systemLogsError) {
-        console.error("Erro ao buscar logs de sistema:", systemLogsError);
-        setCronStatus('unknown');
-        return;
-      }
-      
       if (systemLogs && systemLogs.length > 0) {
-        setCronStatus('active');
-        return;
+        // Verificar se há logs recentes nas últimas 24h
+        const recentLogs = systemLogs.filter(log => {
+          const logTime = new Date(log.created_at);
+          const hoursSince = (new Date().getTime() - logTime.getTime()) / (1000 * 60 * 60);
+          return hoursSince < 24;
+        });
+        
+        if (recentLogs.length > 0) {
+          setCronStatus('active');
+          return;
+        }
       }
       
       // Verificar se há uma revisão recente
@@ -113,6 +163,16 @@ export function AutoReviewSettings() {
       setCronStatus('inactive');
     } catch (error) {
       console.error("Erro ao verificar status do cron:", error);
+      
+      // Se houver um erro na verificação, mas temos uma execução recente, consideramos ativo
+      if (lastAutoRun) {
+        const hoursSinceLastRun = (new Date().getTime() - lastAutoRun.getTime()) / (1000 * 60 * 60);
+        if (hoursSinceLastRun < 36) {
+          setCronStatus('active');
+          return;
+        }
+      }
+      
       setCronStatus('unknown');
     }
   };
@@ -173,14 +233,25 @@ export function AutoReviewSettings() {
       const twoDaysAgo = new Date();
       twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
       
+      // Define um timeout para esta operação
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Timeout na verificação de logs de erro")), 5000);
+      });
+      
       // Verificar logs de erro específicos
-      const { data: errorLogs, error: logsError } = await supabase
+      const logsPromise = supabase
         .from("system_logs")
         .select("*")
         .eq("event_type", "daily_meta_review")
         .gte("created_at", twoDaysAgo.toISOString())
         .order("created_at", { ascending: false })
         .limit(10);
+        
+      // Corrida entre a promessa principal e o timeout
+      const { data: errorLogs, error: logsError } = await Promise.race([
+        logsPromise,
+        timeoutPromise
+      ]) as any;
         
       if (logsError) {
         console.error("Erro ao buscar logs:", logsError);
@@ -194,7 +265,7 @@ export function AutoReviewSettings() {
       
       // Procurar por mensagens de erro nos logs
       const hasErrors = errorLogs.some(log => 
-        log.message.toLowerCase().includes("erro") || 
+        log.message?.toLowerCase().includes("erro") || 
         (log.details && (
           log.details.error || 
           log.details.falhas > 0
@@ -206,6 +277,7 @@ export function AutoReviewSettings() {
       }
     } catch (error) {
       console.error("Erro ao verificar logs:", error);
+      // Se houver timeout, não alteramos o status
     }
   };
 
@@ -214,7 +286,9 @@ export function AutoReviewSettings() {
     
     // Atualizar o status a cada 15 minutos
     const intervalId = setInterval(() => {
-      fetchLastAutoRun();
+      if (!isCheckingStatus) {
+        fetchLastAutoRun();
+      }
     }, 15 * 60 * 1000);
     
     return () => clearInterval(intervalId);

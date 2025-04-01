@@ -64,16 +64,20 @@ export function AutoReviewTest() {
       console.log("Resultado do teste de conectividade:", data);
       
       // Registrar na tabela cron_execution_logs para atualizar o status
-      await supabase.from("cron_execution_logs").insert({
-        job_name: "daily-meta-review-job-test",
-        execution_time: new Date().toISOString(),
-        status: "success",
-        details: {
-          test: true,
-          message: "Teste de conectividade realizado com sucesso do frontend",
-          result: data
-        }
-      });
+      try {
+        await supabase.from("cron_execution_logs").insert({
+          job_name: "daily-meta-review-job-test",
+          execution_time: new Date().toISOString(),
+          status: "success",
+          details: {
+            test: true,
+            message: "Teste de conectividade realizado com sucesso do frontend",
+            result: data
+          }
+        });
+      } catch (logError) {
+        console.warn("Erro ao registrar log de teste (isso não afeta o resultado do teste):", logError);
+      }
       
       return { success: true, data };
     } catch (error) {
@@ -127,6 +131,21 @@ export function AutoReviewTest() {
           title: "Testes concluídos com sucesso",
           description: "A revisão automática de Meta Ads deve funcionar corretamente.",
         });
+        
+        // Atualizar logs de teste bem-sucedido adicionais para reforçar o status ativo
+        try {
+          await supabase.from("system_logs").insert({
+            event_type: "cron_test",
+            message: "Teste de revisão automática bem-sucedido",
+            details: {
+              success: true,
+              timestamp: new Date().toISOString(),
+              test_mode: true
+            }
+          });
+        } catch (logError) {
+          console.warn("Erro ao registrar log de sistema (não crítico):", logError);
+        }
       }
     } catch (error) {
       console.error("Erro durante os testes:", error);

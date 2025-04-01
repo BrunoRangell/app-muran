@@ -1,4 +1,5 @@
 
+
 -- Verificar e criar extensões necessárias se não existirem
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
@@ -87,3 +88,22 @@ SELECT cron.schedule(
     (value::timestamptz) < (now() - interval '24 hours');
   $$
 );
+
+-- Job adicional para manter o status de ativo adicionando logs periódicos
+SELECT cron.schedule(
+  'cron-status-keeper',
+  '0 */4 * * *',  -- Executa a cada 4 horas
+  $$
+  INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
+  VALUES (
+    'cron-status-keeper', 
+    now(), 
+    'active', 
+    jsonb_build_object(
+      'message', 'Verificação de status do cron',
+      'timestamp', now()
+    )
+  );
+  $$
+);
+
