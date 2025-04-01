@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
@@ -72,18 +71,18 @@ export function CronScheduleMonitor() {
         
         if (cronError) {
           console.warn("Erro ao obter expressão cron:", cronError);
-          setNextExecution("16:35 diariamente");
+          setNextExecution("16:45 diariamente");
           return;
         }
         
         if (cronData && typeof cronData === 'object' && 'cron_expression' in cronData) {
           setNextExecution(`Agendamento: ${cronData.cron_expression}`);
         } else {
-          setNextExecution("16:35 diariamente");
+          setNextExecution("16:45 diariamente");
         }
       } catch (cronError) {
         console.warn("Não foi possível obter expressão cron:", cronError);
-        setNextExecution("16:35 diariamente");
+        setNextExecution("16:45 diariamente");
       }
       
     } catch (e) {
@@ -121,10 +120,10 @@ export function CronScheduleMonitor() {
   const getMinutesToNextExecution = () => {
     const now = new Date();
     const targetTime = new Date();
-    targetTime.setHours(16, 35, 0, 0); // Atualizado para 16:35
+    targetTime.setHours(16, 45, 0, 0); // Atualizado para 16:45
     
-    // Se já passou das 16:35 hoje, a próxima execução é amanhã
-    if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 35)) {
+    // Se já passou das 16:45 hoje, a próxima execução é amanhã
+    if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 45)) {
       targetTime.setDate(targetTime.getDate() + 1);
     }
     
@@ -168,7 +167,7 @@ export function CronScheduleMonitor() {
           )}
           
           <p className="text-xs text-gray-500 mt-2">
-            Agendado para executar automaticamente às 16:35 - próxima execução em{" "}
+            Agendado para executar automaticamente às 16:45 - próxima execução em{" "}
             {getMinutesToNextExecution()}{" "}
             minutos
           </p>

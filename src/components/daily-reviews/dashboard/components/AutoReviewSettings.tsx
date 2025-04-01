@@ -225,7 +225,7 @@ export function AutoReviewSettings() {
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">Revisão Automática</CardTitle>
         <CardDescription>
-          As revisões de orçamento são executadas automaticamente todos os dias às 16:35.
+          As revisões de orçamento são executadas automaticamente todos os dias às 16:45.
         </CardDescription>
       </CardHeader>
       <CardContent>
