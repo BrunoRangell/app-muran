@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
