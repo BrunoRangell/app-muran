@@ -160,7 +160,7 @@ export function NextReviewCountdown() {
       setSecondsToNext(prev => {
         // Se chegou a zero, reiniciar o contador e executar a revisão automática
         if (prev <= 1) {
-          console.log("Contador chegou a zero, executando revisão automática");
+          console.log("Contador chegou a zero, executando revisão automática...");
           executeAutoReview();
           updateSecondsToNext();
           return EXECUTION_INTERVAL;
