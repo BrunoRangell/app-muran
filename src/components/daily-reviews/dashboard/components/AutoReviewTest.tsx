@@ -63,12 +63,27 @@ export function AutoReviewTest() {
       
       console.log("Resultado do teste de conectividade:", data);
       
+      // Registrar na tabela system_logs para atualizar o status
+      try {
+        await supabase.from("system_logs").insert({
+          event_type: "cron_job",
+          message: "Teste de conectividade realizado com sucesso do frontend",
+          details: {
+            test: true,
+            timestamp: new Date().toISOString(),
+            result: data
+          }
+        });
+      } catch (logError) {
+        console.warn("Erro ao registrar log de sistema (isso não afeta o resultado do teste):", logError);
+      }
+      
       // Registrar na tabela cron_execution_logs para atualizar o status
       try {
         await supabase.from("cron_execution_logs").insert({
-          job_name: "daily-meta-review-job-test",
+          job_name: "daily-meta-review-job",
           execution_time: new Date().toISOString(),
-          status: "success",
+          status: "test_success",
           details: {
             test: true,
             message: "Teste de conectividade realizado com sucesso do frontend",
@@ -76,7 +91,7 @@ export function AutoReviewTest() {
           }
         });
       } catch (logError) {
-        console.warn("Erro ao registrar log de teste (isso não afeta o resultado do teste):", logError);
+        console.warn("Erro ao registrar log de execução (isso não afeta o resultado do teste):", logError);
       }
       
       return { success: true, data };

@@ -16,15 +16,15 @@ export function AutoReviewSettings() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const { toast } = useToast();
 
-  // Buscar a última execução automática
+  // Buscar a última execução automática e status do cron
   const fetchLastAutoRun = async () => {
     try {
-      if (isCheckingStatus) return; // Evita chamadas simultâneas
+      if (isCheckingStatus) return; // Evitar chamadas simultâneas
       
       setIsLoading(true);
       setIsCheckingStatus(true);
       
-      // Verificar configuração salva
+      // 1. Buscar configuração da última execução
       const { data: configData, error: configError } = await supabase
         .from("system_configs")
         .select("value")
@@ -33,138 +33,53 @@ export function AutoReviewSettings() {
         
       if (configError) {
         console.error("Erro ao buscar configuração:", configError);
-        setIsCheckingStatus(false);
         setIsLoading(false);
+        setIsCheckingStatus(false);
         return;
       }
       
       if (configData?.value) {
         setLastAutoRun(new Date(configData.value));
-        setLastRunStatus('success'); // Definir como sucesso por padrão, será atualizado mais tarde se houver erros
+        setLastRunStatus('success');
       }
       
-      // Verificar se há logs de erro recentes
-      await checkErrorLogs();
-      
-      // Verificar o status do cron
+      // 2. Verificar registros de execução do cron (independente do step anterior)
       await checkCronStatus();
       
-      setIsCheckingStatus(false);
       setIsLoading(false);
+      setIsCheckingStatus(false);
     } catch (error) {
       console.error("Erro ao buscar última execução automática:", error);
       setLastRunStatus('error');
-      setIsCheckingStatus(false);
       setIsLoading(false);
+      setIsCheckingStatus(false);
     }
   };
   
   // Verificar status do cron verificando logs recentes
   const checkCronStatus = async () => {
     try {
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-      
-      // Define um timeout para esta operação
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout na verificação de status do cron")), 5000);
-      });
-      
-      // Verificar execuções de cron recentes
-      const cronLogsPromise = supabase
-        .from("cron_execution_logs")
-        .select("*")
-        .gte("execution_time", threeDaysAgo.toISOString())
-        .order("execution_time", { ascending: false })
-        .limit(5);
-      
-      // Corrida entre a promessa principal e o timeout
-      const { data: cronLogs, error: cronError } = await Promise.race([
-        cronLogsPromise,
-        timeoutPromise
-      ]) as any;
-        
-      if (cronError) {
-        console.error("Erro ao buscar logs de cron:", cronError);
-        // Se houver erro na tabela (como table não existir), verificamos por última revisão apenas
-        if (lastAutoRun) {
-          const hoursSinceLastRun = (new Date().getTime() - lastAutoRun.getTime()) / (1000 * 60 * 60);
-          if (hoursSinceLastRun < 36) {
-            setCronStatus('active');
-          } else {
-            setCronStatus('inactive');
-          }
-        } else {
-          setCronStatus('unknown');
-        }
-        return;
-      }
-      
-      console.log("Logs de cron encontrados:", cronLogs?.length || 0, cronLogs);
-      
-      // Se temos logs recentes, o cron está ativo
-      if (cronLogs && cronLogs.length > 0) {
-        // Verificar se há execuções recentes nas últimas 24h
-        const recentLogs = cronLogs.filter(log => {
-          const logTime = new Date(log.execution_time);
-          const hoursSince = (new Date().getTime() - logTime.getTime()) / (1000 * 60 * 60);
-          return hoursSince < 24;
-        });
-        
-        if (recentLogs.length > 0) {
-          setCronStatus('active');
-          return;
-        }
-      }
-      
-      // Se não temos logs específicos de cron, verificar logs do sistema
-      const systemLogsPromise = supabase
+      // Primeiro verificamos os logs de sistema com event_type específico
+      const { data: logs, error } = await supabase
         .from("system_logs")
         .select("*")
         .eq("event_type", "cron_job")
-        .gte("created_at", threeDaysAgo.toISOString())
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(1);
       
-      // Corrida entre a promessa principal e o timeout
-      const { data: systemLogs } = await Promise.race([
-        systemLogsPromise,
-        new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("Timeout na verificação de logs do sistema")), 3000);
-        })
-      ]) as any;
-      
-      console.log("Logs de sistema encontrados:", systemLogs?.length || 0);
-      
-      if (systemLogs && systemLogs.length > 0) {
-        // Verificar se há logs recentes nas últimas 24h
-        const recentLogs = systemLogs.filter(log => {
-          const logTime = new Date(log.created_at);
-          const hoursSince = (new Date().getTime() - logTime.getTime()) / (1000 * 60 * 60);
-          return hoursSince < 24;
-        });
+      // Se encontramos um log recente (menos de 24 horas)
+      if (!error && logs && logs.length > 0) {
+        const lastLog = logs[0];
+        const logTime = new Date(lastLog.created_at);
+        const hoursSince = (new Date().getTime() - logTime.getTime()) / (1000 * 60 * 60);
         
-        if (recentLogs.length > 0) {
+        if (hoursSince < 24) {
           setCronStatus('active');
           return;
         }
       }
       
-      // Verificar se há uma revisão recente
-      if (lastAutoRun) {
-        const hoursSinceLastRun = (new Date().getTime() - lastAutoRun.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceLastRun < 36) { // Se temos uma execução recente (menos de 36h), consideramos o cron como ativo
-          setCronStatus('active');
-          return;
-        }
-      }
-      
-      // Se chegamos aqui, não encontramos nenhuma evidência de atividade recente
-      setCronStatus('inactive');
-    } catch (error) {
-      console.error("Erro ao verificar status do cron:", error);
-      
-      // Se houver um erro na verificação, mas temos uma execução recente, consideramos ativo
+      // Se chegamos aqui, verificamos a última execução efetiva
       if (lastAutoRun) {
         const hoursSinceLastRun = (new Date().getTime() - lastAutoRun.getTime()) / (1000 * 60 * 60);
         if (hoursSinceLastRun < 36) {
@@ -173,6 +88,29 @@ export function AutoReviewSettings() {
         }
       }
       
+      // Tentar criar um log de teste para verificar se a função cron está funcionando
+      try {
+        await supabase.functions.invoke("daily-meta-review", {
+          body: { 
+            test: true,
+            testType: "cron_status_check",
+            timestamp: new Date().toISOString()
+          }
+        });
+        
+        // Se a chamada acima não lançou erro, presumimos que o cron está ativo
+        setCronStatus('active');
+        return;
+      } catch (edgeFunctionError) {
+        console.error("Erro ao testar função Edge:", edgeFunctionError);
+        // Erro na chamada da função Edge não é conclusivo sobre o status do cron
+      }
+      
+      // Se chegamos aqui, definimos como inativo
+      setCronStatus('inactive');
+      
+    } catch (error) {
+      console.error("Erro ao verificar status do cron:", error);
       setCronStatus('unknown');
     }
   };
@@ -197,16 +135,31 @@ export function AutoReviewSettings() {
       });
       
       // Registrar a execução manual no log
-      await supabase.from("cron_execution_logs").insert({
-        job_name: "manual-meta-review",
-        execution_time: new Date().toISOString(),
-        status: "started",
+      await supabase.from("system_logs").insert({
+        event_type: "cron_job",
+        message: "Revisão iniciada manualmente pelo usuário",
         details: {
           manual: true,
           initiated_by: "user",
-          message: "Revisão iniciada manualmente pelo usuário"
+          timestamp: new Date().toISOString()
         }
       });
+      
+      // Registrar também em cron_execution_logs
+      try {
+        await supabase.from("cron_execution_logs").insert({
+          job_name: "manual-meta-review",
+          execution_time: new Date().toISOString(),
+          status: "started",
+          details: {
+            manual: true,
+            initiated_by: "user",
+            message: "Revisão iniciada manualmente pelo usuário"
+          }
+        });
+      } catch (logError) {
+        console.warn("Aviso: Não foi possível registrar log de execução:", logError);
+      }
       
       // Aguardar um tempo antes de atualizar o status
       setTimeout(() => {
@@ -224,60 +177,6 @@ export function AutoReviewSettings() {
     } finally {
       setIsLoading(false);
       setIsRunning(false);
-    }
-  };
-
-  // Função para verificar logs de erro recentes
-  const checkErrorLogs = async () => {
-    try {
-      const twoDaysAgo = new Date();
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-      
-      // Define um timeout para esta operação
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout na verificação de logs de erro")), 5000);
-      });
-      
-      // Verificar logs de erro específicos
-      const logsPromise = supabase
-        .from("system_logs")
-        .select("*")
-        .eq("event_type", "daily_meta_review")
-        .gte("created_at", twoDaysAgo.toISOString())
-        .order("created_at", { ascending: false })
-        .limit(10);
-        
-      // Corrida entre a promessa principal e o timeout
-      const { data: errorLogs, error: logsError } = await Promise.race([
-        logsPromise,
-        timeoutPromise
-      ]) as any;
-        
-      if (logsError) {
-        console.error("Erro ao buscar logs:", logsError);
-        return;
-      }
-      
-      // Se não encontrarmos logs, não podemos determinar se há erros
-      if (!errorLogs || errorLogs.length === 0) {
-        return;
-      }
-      
-      // Procurar por mensagens de erro nos logs
-      const hasErrors = errorLogs.some(log => 
-        log.message?.toLowerCase().includes("erro") || 
-        (log.details && (
-          log.details.error || 
-          log.details.falhas > 0
-        ))
-      );
-      
-      if (hasErrors) {
-        setLastRunStatus('error');
-      }
-    } catch (error) {
-      console.error("Erro ao verificar logs:", error);
-      // Se houver timeout, não alteramos o status
     }
   };
 

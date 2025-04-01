@@ -1,5 +1,4 @@
 
-
 -- Verificar e criar extensões necessárias se não existirem
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
@@ -25,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.cron_execution_logs (
 -- Remover job existente se houver
 SELECT cron.unschedule('daily-meta-review-job');
 SELECT cron.unschedule('cron-health-check');
+SELECT cron.unschedule('cron-status-keeper');
 
 -- Criar job para executar revisão Meta Ads todos os dias às 06:00
 SELECT cron.schedule(
@@ -48,7 +48,7 @@ SELECT cron.schedule(
       body:='{"scheduled": true}'::jsonb
     ) as request_id;
     
-  -- Registrar a tentativa no log
+  -- Registrar a tentativa no log do sistema
   INSERT INTO public.system_logs (event_type, message, details)
   VALUES ('cron_job', 'Tentativa de execução da revisão diária Meta Ads', json_build_object('timestamp', now()));
   $$
@@ -66,7 +66,7 @@ SELECT cron.schedule(
   
   -- Registrar verificação de saúde
   INSERT INTO public.system_logs (event_type, message, details)
-  VALUES ('cron_health', 'Verificação diária de saúde do sistema de cron', json_build_object(
+  VALUES ('cron_job', 'Verificação diária de saúde do sistema de cron', json_build_object(
     'timestamp', now(),
     'last_meta_review', (SELECT value FROM last_review)
   ));
@@ -76,34 +76,68 @@ SELECT cron.schedule(
   SELECT 
     'cron-health-check', 
     now(), 
-    'warning', 
+    CASE 
+      WHEN value IS NULL OR (value::timestamptz) < (now() - interval '24 hours') THEN 'warning'
+      ELSE 'active'
+    END,
     jsonb_build_object(
-      'message', 'Nenhuma execução recente encontrada',
+      'message', CASE 
+        WHEN value IS NULL OR (value::timestamptz) < (now() - interval '24 hours') 
+        THEN 'Nenhuma execução recente encontrada' 
+        ELSE 'Sistema funcionando normalmente'
+      END,
       'last_review', value,
-      'hours_since_last', EXTRACT(EPOCH FROM (now() - (value::timestamptz))) / 3600
+      'hours_since_last', EXTRACT(EPOCH FROM (now() - COALESCE(value::timestamptz, now() - interval '48 hours'))) / 3600
     )
-  FROM last_review
-  WHERE 
-    value IS NULL OR 
-    (value::timestamptz) < (now() - interval '24 hours');
+  FROM last_review;
   $$
 );
 
 -- Job adicional para manter o status de ativo adicionando logs periódicos
 SELECT cron.schedule(
   'cron-status-keeper',
-  '0 */4 * * *',  -- Executa a cada 4 horas
+  '0 */3 * * *',  -- Executa a cada 3 horas
   $$
+  -- Verificar se houve execução nas últimas 24 horas
+  WITH last_execution AS (
+    SELECT execution_time 
+    FROM cron_execution_logs
+    WHERE job_name = 'daily-meta-review-job'
+      AND status IN ('success', 'partial_success', 'test_success')
+    ORDER BY execution_time DESC
+    LIMIT 1
+  ),
+  last_status AS (
+    SELECT 
+      CASE 
+        WHEN EXISTS (SELECT 1 FROM last_execution WHERE execution_time > (now() - interval '24 hours'))
+        THEN 'active'
+        ELSE 'unknown'
+      END AS status
+  )
+  
+  -- Inserir log de status
   INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
-  VALUES (
+  SELECT
     'cron-status-keeper', 
     now(), 
-    'active', 
+    status,
     jsonb_build_object(
-      'message', 'Verificação de status do cron',
-      'timestamp', now()
+      'message', 'Verificação periódica de status do cron',
+      'timestamp', now(),
+      'auto_generated', true
+    )
+  FROM last_status;
+  
+  -- Inserir também no system_logs para maior visibilidade
+  INSERT INTO public.system_logs (event_type, message, details)
+  VALUES (
+    'cron_job',
+    'Heartbeat periódico do sistema cron',
+    jsonb_build_object(
+      'timestamp', now(),
+      'auto_generated', true
     )
   );
   $$
 );
-

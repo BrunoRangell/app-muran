@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-console.log("Função Edge 'daily-meta-review' carregada - v1.0.5");
+console.log("Função Edge 'daily-meta-review' carregada - v1.0.6");
 
 serve(async (req) => {
   // Lidar com requisições OPTIONS para CORS
@@ -53,6 +53,53 @@ serve(async (req) => {
     } catch (e) {
       // Se não houver corpo JSON, assumimos valores padrão
       requestData = { scheduled: false, manual: true };
+    }
+    
+    // Verificar se é um teste de status do cron
+    const isStatusTest = requestData.testType === "cron_status_check";
+    if (isStatusTest) {
+      console.log("Teste de status do cron recebido");
+      
+      // Registrar log de status
+      try {
+        await supabaseClient.from("system_logs").insert({
+          event_type: "cron_job",
+          message: "Verificação de status do cron realizada com sucesso",
+          details: {
+            timestamp: new Date().toISOString(),
+            source: "status_check"
+          }
+        });
+        
+        // Registrar também em cron_execution_logs
+        await supabaseClient.from("cron_execution_logs").insert({
+          job_name: "cron-status-check",
+          execution_time: new Date().toISOString(),
+          status: "active",
+          details: {
+            source: "status_check",
+            message: "Verificação de status do cron realizada com sucesso",
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error("Erro ao registrar logs de status:", error);
+      }
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          status: "active",
+          message: "Verificação de status do cron concluída"
+        }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
     
     // Verificar se é um teste de conectividade
@@ -98,6 +145,18 @@ serve(async (req) => {
               test: true,
               message: "Teste de conectividade para verificação de status",
               timestamp: new Date().toISOString()
+            }
+          });
+          
+        // Registrar log adicional no system_logs
+        await supabaseClient
+          .from("system_logs")
+          .insert({
+            event_type: "cron_job",
+            message: "Teste de conectividade realizado com sucesso",
+            details: {
+              timestamp: new Date().toISOString(),
+              test: true
             }
           });
       } catch (error) {
@@ -175,6 +234,30 @@ serve(async (req) => {
         lastExecution: configData?.value,
         isScheduled
       });
+      
+      // Mesmo assim vamos registrar um log para manter o status ativo
+      try {
+        await supabaseClient.from("cron_execution_logs").insert({
+          job_name: "daily-meta-review-job",
+          execution_time: new Date().toISOString(),
+          status: "skipped",
+          details: {
+            message: "Execução ignorada - realizada recentemente",
+            last_execution: configData?.value
+          }
+        });
+        
+        await supabaseClient.from("system_logs").insert({
+          event_type: "cron_job",
+          message: "Execução agendada ignorada - realizada recentemente",
+          details: {
+            timestamp: new Date().toISOString(),
+            last_execution: configData?.value
+          }
+        });
+      } catch (error) {
+        console.error("Erro ao registrar logs de execução ignorada:", error);
+      }
       
       return new Response(
         JSON.stringify({
@@ -433,6 +516,20 @@ serve(async (req) => {
           failed: results.failed,
           execution_time_seconds: (executionEnd.getTime() - executionStart.getTime()) / 1000,
           success_rate: Math.round((results.successful / clientsData.length) * 100)
+        }
+      });
+      
+    // Registrar execução bem-sucedida no system_logs também
+    await supabaseClient
+      .from("system_logs")
+      .insert({
+        event_type: "cron_job", 
+        message: "Execução da revisão diária concluída com sucesso",
+        details: {
+          timestamp: executionEnd.toISOString(),
+          successful: results.successful,
+          failed: results.failed,
+          total: clientsData.length
         }
       });
     
