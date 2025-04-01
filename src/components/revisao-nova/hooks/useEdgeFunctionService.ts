@@ -124,7 +124,7 @@ export const useEdgeFunctionService = () => {
       
       return false;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
