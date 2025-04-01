@@ -16,18 +16,16 @@ export const BudgetRecommendation = ({
   if (!hasReview) return null;
   
   if (shouldShow) {
-    // Diferença positiva (aumentar): verde
-    // Diferença negativa (diminuir): vermelho
     return (
       <div className={`mt-2 p-3 rounded-lg ${
         budgetDifference > 0 
-          ? 'bg-green-50' 
-          : 'bg-red-50'
+          ? 'bg-[#F2FCE2]' 
+          : 'bg-[#FEC6A1]'
       }`}>
         <div className={`flex items-center gap-2 font-medium ${
           budgetDifference > 0 
             ? 'text-green-700' 
-            : 'text-red-700'
+            : 'text-[#ea384c]'
         }`}>
           {budgetDifference > 0 ? (
             <TrendingUp size={18} />
@@ -39,9 +37,8 @@ export const BudgetRecommendation = ({
       </div>
     );
   } else {
-    // Nenhum ajuste necessário: cinza
     return (
-      <div className="mt-2 p-3 rounded-lg bg-gray-50">
+      <div className="mt-2 p-3 rounded-lg bg-[#F1F0FB]">
         <div className="flex items-center gap-2 font-medium text-gray-700">
           <MinusCircle size={18} />
           Recomendação: Nenhum ajuste necessário
