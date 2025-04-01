@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +16,7 @@ export function CronScheduleMonitor() {
   const [refreshing, setRefreshing] = useState(false);
   const [secondsToNext, setSecondsToNext] = useState<number>(0);
   const refreshTimerRef = useRef<number | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const fetchCronStatus = async () => {
@@ -86,6 +88,11 @@ export function CronScheduleMonitor() {
 
   const handleCountdownEnd = () => {
     console.log("Contador chegou a zero, atualizando status...");
+    
+    // Executar a revisão automaticamente ao zerar o contador
+    testEdgeFunction();
+    
+    // Depois de tentar executar a revisão, atualizar o status
     setTimeout(() => {
       fetchCronStatus();
       toast({
@@ -101,19 +108,41 @@ export function CronScheduleMonitor() {
     
     const intervalId = setInterval(fetchCronStatus, 15 * 1000);
     
-    const countdownInterval = setInterval(() => {
-      updateSecondsToNext();
-      
-      if (secondsToNext <= 1) {
-        handleCountdownEnd();
-      }
-    }, 1000);
-    
+    // Limpeza ao desmontar o componente
     return () => {
       clearInterval(intervalId);
-      clearInterval(countdownInterval);
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
+      }
+      if (countdownRef.current) {
+        clearTimeout(countdownRef.current);
+      }
+    };
+  }, []);
+
+  // Efeito separado para o contador regressivo
+  useEffect(() => {
+    // Limpar qualquer contador existente
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
+    
+    // Criar um novo contador regressivo
+    countdownRef.current = setInterval(() => {
+      setSecondsToNext(prev => {
+        // Se chegou a zero, acionar o evento
+        if (prev <= 1) {
+          handleCountdownEnd();
+          return 60; // Reiniciar para 60 segundos
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // Limpeza quando o componente for desmontado
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
       }
     };
   }, []);
