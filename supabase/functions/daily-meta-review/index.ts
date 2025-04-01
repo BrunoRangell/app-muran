@@ -40,8 +40,8 @@ const logMessage = async (supabase: any, message: string, details: any = {}) => 
   }
 };
 
-// Função principal para revisar um cliente
-const reviewClient = async (supabase: any, clientId: string, clientName: string, metaAccountId: string) => {
+// Função para analisar um cliente usando meta-budget-calculator (mesma lógica da revisão manual)
+const analyzeClient = async (supabase: any, clientId: string, clientName: string, metaAccountId: string) => {
   try {
     // Log de início do processamento
     await logMessage(supabase, `Processando cliente: ${clientName}`);
@@ -92,56 +92,33 @@ const reviewClient = async (supabase: any, clientId: string, clientName: string,
     const formattedStartDate = startDate.toISOString().split("T")[0];
     const formattedEndDate = now.toISOString().split("T")[0];
     
-    // Chamar a API da Meta para obter dados de gastos
-    const url = `https://graph.facebook.com/v17.0/act_${metaAccountId}/insights`;
-    const params = new URLSearchParams({
-      fields: "spend",
-      time_range: JSON.stringify({
-        since: formattedStartDate,
-        until: formattedEndDate,
-      }),
-      access_token: tokenData.value,
-    });
-    
-    const response = await fetch(`${url}?${params}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Erro na API do Meta: ${JSON.stringify(errorData)}`);
-    }
-    
-    const data = await response.json();
-    
-    // Extrair gastos totais
-    const totalSpent = data.data && data.data[0] ? parseFloat(data.data[0].spend) || 0 : 0;
-    
-    // Obter orçamento diário atual
-    const campaignsUrl = `https://graph.facebook.com/v17.0/act_${metaAccountId}/campaigns`;
-    const campaignsParams = new URLSearchParams({
-      fields: "name,daily_budget,status",
-      access_token: tokenData.value,
-    });
-    
-    const campaignsResponse = await fetch(`${campaignsUrl}?${campaignsParams}`);
-    
-    if (!campaignsResponse.ok) {
-      const errorData = await campaignsResponse.json();
-      throw new Error(`Erro ao obter campanhas: ${JSON.stringify(errorData)}`);
-    }
-    
-    const campaignsData = await campaignsResponse.json();
-    
-    // Calcular orçamento diário total das campanhas ativas
-    let dailyBudget = 0;
-    
-    if (campaignsData.data) {
-      for (const campaign of campaignsData.data) {
-        if (campaign.status === "ACTIVE" && campaign.daily_budget) {
-          // Converter de centavos para reais
-          dailyBudget += parseFloat(campaign.daily_budget) / 100;
-        }
+    // Usar a mesma função meta-budget-calculator que é usada na revisão manual
+    const { data: metaBudgetData, error: metaBudgetError } = await supabase.functions.invoke(
+      "meta-budget-calculator",
+      {
+        body: {
+          accountId: metaAccountId,
+          accessToken: tokenData.value,
+          dateRange: {
+            start: formattedStartDate,
+            end: formattedEndDate
+          },
+          fetchSeparateInsights: true
+        },
       }
+    );
+    
+    if (metaBudgetError) {
+      throw new Error(`Erro na função meta-budget-calculator: ${metaBudgetError.message}`);
     }
+    
+    if (!metaBudgetData) {
+      throw new Error("Resposta vazia da função meta-budget-calculator");
+    }
+    
+    // Extrair valores da resposta
+    const metaDailyBudgetCurrent = metaBudgetData.totalDailyBudget || 0;
+    const metaTotalSpent = metaBudgetData.totalSpent || 0;
     
     // Verificar se existe orçamento personalizado para o cliente
     const { data: customBudgetData } = await supabase
@@ -173,8 +150,8 @@ const reviewClient = async (supabase: any, clientId: string, clientName: string,
       await supabase
         .from("daily_budget_reviews")
         .update({
-          meta_daily_budget_current: dailyBudget,
-          meta_total_spent: totalSpent,
+          meta_daily_budget_current: metaDailyBudgetCurrent,
+          meta_total_spent: metaTotalSpent,
           ...customBudgetInfo,
           updated_at: new Date().toISOString(),
         })
@@ -186,8 +163,8 @@ const reviewClient = async (supabase: any, clientId: string, clientName: string,
         .insert({
           client_id: clientId,
           review_date: today,
-          meta_daily_budget_current: dailyBudget,
-          meta_total_spent: totalSpent,
+          meta_daily_budget_current: metaDailyBudgetCurrent,
+          meta_total_spent: metaTotalSpent,
           meta_account_id: metaAccountId,
           meta_account_name: `Conta ${metaAccountId}`,
           ...customBudgetInfo,
@@ -195,9 +172,10 @@ const reviewClient = async (supabase: any, clientId: string, clientName: string,
     }
     
     await logMessage(supabase, `Cliente ${clientName}: Análise concluída com sucesso`, {
-      dailyBudget,
-      totalSpent,
+      dailyBudget: metaDailyBudgetCurrent,
+      totalSpent: metaTotalSpent,
       hasCustomBudget: customBudgetInfo.using_custom_budget,
+      usesMeta_budget_calculator: true // Indicando que usou a mesma função da revisão manual
     });
     
     return {
@@ -205,15 +183,15 @@ const reviewClient = async (supabase: any, clientId: string, clientName: string,
       clientId,
       clientName,
       metaAccountId,
-      dailyBudget,
-      totalSpent,
+      dailyBudget: metaDailyBudgetCurrent,
+      totalSpent: metaTotalSpent,
       customBudgetInfo,
     };
     
   } catch (error) {
     await logMessage(
       supabase,
-      `Erro ao processar cliente ${clientName}: ${error instanceof Error ? error.message : String(error)}`,
+      `Erro ao processar cliente ${clientName} usando meta-budget-calculator: ${error instanceof Error ? error.message : String(error)}`,
       { error: error instanceof Error ? error.stack : String(error) }
     );
     
@@ -234,7 +212,7 @@ async function processAllClients(
   pendingClientIds: string[] = []
 ) {
   try {
-    await logMessage(supabase, "Iniciando processamento de clientes");
+    await logMessage(supabase, "Iniciando processamento de clientes com meta-budget-calculator");
     
     // Determinar quais clientes precisam ser processados
     let clientsQuery = supabase
@@ -264,6 +242,7 @@ async function processAllClients(
       clientCount: clients.length,
       pendingClientsOnly,
       pendingClientCount: pendingClientIds.length,
+      usesMeta_budget_calculator: true
     });
     
     // Processar cada cliente em sequência
@@ -279,7 +258,7 @@ async function processAllClients(
         continue;
       }
       
-      const result = await reviewClient(
+      const result = await analyzeClient(
         supabase, 
         client.id, 
         client.company_name, 
@@ -311,12 +290,41 @@ async function processAllClients(
             errorCount,
             skippedCount,
             completedAt: new Date().toISOString(),
+            usesMeta_budget_calculator: true
           },
         })
         .eq("id", logId);
     }
     
     await logMessage(supabase, `Processamento concluído: ${successCount} sucessos, ${errorCount} erros, ${skippedCount} pulados`);
+    
+    // Atualizar system_configs com o timestamp da última execução em lote bem-sucedida
+    if (successCount > 0) {
+      try {
+        const timeNow = new Date().toISOString();
+        const { data: existingConfig } = await supabase
+          .from("system_configs")
+          .select("id")
+          .eq("key", "last_batch_review_time")
+          .maybeSingle();
+        
+        if (existingConfig) {
+          await supabase
+            .from("system_configs")
+            .update({ value: timeNow })
+            .eq("id", existingConfig.id);
+        } else {
+          await supabase
+            .from("system_configs")
+            .insert({
+              key: "last_batch_review_time",
+              value: timeNow
+            });
+        }
+      } catch (updateError) {
+        await logMessage(supabase, `Erro ao atualizar timestamp da última revisão: ${String(updateError)}`);
+      }
+    }
     
     return {
       success: true,
@@ -404,6 +412,7 @@ serve(async (req) => {
               source: body.scheduled ? "scheduled" : "manual",
               test: !!body.test,
               timestamp: new Date().toISOString(),
+              usesMeta_budget_calculator: true
             },
           })
           .select()
@@ -474,6 +483,7 @@ serve(async (req) => {
           message: "Processamento de revisão iniciado em background",
           timestamp: new Date().toISOString(),
           logId,
+          usesMeta_budget_calculator: true
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
