@@ -28,7 +28,7 @@ export function GoogleAdsDashboardHeader({
           </h2>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <Button 
             variant="default"
             onClick={onAnalyzeAll}
@@ -58,7 +58,7 @@ export function GoogleAdsDashboardHeader({
             <span className="text-sm font-medium text-gray-700">Última revisão em massa:</span>
             {lastBatchReviewTime ? (
               <p className="text-sm text-muran-dark font-semibold">
-                {formatDateInBrasiliaTz(lastBatchReviewTime, "dd 'de' MMMM 'às' HH:mm")}
+                {formatDateInBrasiliaTz(lastBatchReviewTime, "dd 'de' MMMM 'às' HH:mm", 'pt-BR')}
               </p>
             ) : (
               <p className="text-sm text-gray-500 italic">Nenhuma revisão em massa realizada</p>

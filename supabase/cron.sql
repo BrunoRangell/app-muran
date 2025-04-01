@@ -37,10 +37,10 @@ SELECT cron.unschedule('daily-meta-review-job');
 SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 
--- Agendar execução a cada 5 minutos
+-- Agendar execução a cada 5 horas (modificado conforme solicitado)
 SELECT cron.schedule(
   'daily-meta-review-job',
-  '*/5 * * * *',  -- Executa a cada 5 minutos (modificado conforme solicitado)
+  '0 */5 * * *',  -- Executa a cada 5 horas (às 0h, 5h, 10h, 15h, 20h)
   $$
   -- Primeiro registrar o início da execução no log
   INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
@@ -68,7 +68,7 @@ SELECT cron.schedule(
 -- Adicionar uma execução de manutenção de status para verificar e manter o cron ativo
 SELECT cron.schedule(
   'cron-health-check',
-  '*/5 * * * *',  -- A cada 5 minutos
+  '*/30 * * * *',  -- A cada 30 minutos
   $$
   -- Registrar um heartbeat para monitoramento de atividade
   INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)

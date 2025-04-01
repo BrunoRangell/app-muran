@@ -65,7 +65,7 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
           </h2>
           {lastBatchReviewTime && (
             <p className="text-sm text-gray-500">
-              {formatDateInBrasiliaTz(lastBatchReviewTime, "'Última revisão em massa em' dd 'de' MMMM 'às' HH:mm")}
+              {formatDateInBrasiliaTz(lastBatchReviewTime, "'Última revisão em massa em' dd 'de' MMMM 'às' HH:mm", 'pt-BR')}
             </p>
           )}
         </div>

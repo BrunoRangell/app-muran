@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Clock, Loader } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,8 +19,8 @@ export function CompactNextReviewCountdown() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // O intervalo de execução é de 5 minutos (300 segundos)
-  const EXECUTION_INTERVAL = 300;
+  // O intervalo de execução é de 5 horas (18000 segundos)
+  const EXECUTION_INTERVAL = 18000; // 5 horas em segundos
   const PROGRESS_CHECK_INTERVAL = 3000; // 3 segundos
   const STABILITY_CHECK_INTERVAL = 10000; // 10 segundos
   const COMPLETION_DELAY = 2000; // 2 segundos após detectar 100% para finalizar
@@ -29,14 +28,15 @@ export function CompactNextReviewCountdown() {
   // Atualizar os segundos para a próxima execução
   const updateSecondsToNext = () => {
     const now = new Date();
-    // Calcular o tempo restante para o próximo múltiplo de 5 minutos
+    // Calcular o tempo restante para o próximo múltiplo de 5 horas
+    const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
-    const currentTotalSeconds = minutes * 60 + seconds;
-    const nextFiveMinMark = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
+    const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
+    const nextExecutionPoint = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
     
-    const secondsUntilNext = nextFiveMinMark - currentTotalSeconds;
+    const secondsUntilNext = nextExecutionPoint - currentTotalSeconds;
     setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
   };
 
@@ -480,8 +480,14 @@ export function CompactNextReviewCountdown() {
 
   // Formatar o tempo para exibição
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+    
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
