@@ -21,15 +21,26 @@ CREATE TABLE IF NOT EXISTS public.cron_execution_logs (
   details JSONB
 );
 
+-- Função para obter a expressão cron de um job
+CREATE OR REPLACE FUNCTION public.get_cron_expression(job_name text)
+RETURNS TABLE (cron_expression text) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT schedule
+  FROM cron.job
+  WHERE jobname = job_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Remover job existente se houver
 SELECT cron.unschedule('daily-meta-review-job');
 SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 
--- Criar job para executar revisão Meta Ads todos os dias às 06:00
+-- Criar job para executar revisão Meta Ads às 15:50
 SELECT cron.schedule(
   'daily-meta-review-job',
-  '0 6 * * *',  -- Executa às 6:00 todos os dias
+  '50 15 * * *',  -- Executa às 15:50 todos os dias
   $$
   -- Primeiro registrar o início da execução no log
   INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
@@ -57,7 +68,7 @@ SELECT cron.schedule(
 -- Adicionar job para verificação de saúde do sistema de cron
 SELECT cron.schedule(
   'cron-health-check',
-  '0 7 * * *',  -- Executa às 7:00 todos os dias (1 hora após a revisão)
+  '0 */1 * * *',  -- Executa a cada hora
   $$
   -- Obter o timestamp da última revisão
   WITH last_review AS (
@@ -66,7 +77,7 @@ SELECT cron.schedule(
   
   -- Registrar verificação de saúde
   INSERT INTO public.system_logs (event_type, message, details)
-  VALUES ('cron_job', 'Verificação diária de saúde do sistema de cron', json_build_object(
+  VALUES ('cron_job', 'Verificação periódica de saúde do sistema de cron', json_build_object(
     'timestamp', now(),
     'last_meta_review', (SELECT value FROM last_review)
   ));
@@ -96,14 +107,14 @@ SELECT cron.schedule(
 -- Job adicional para manter o status de ativo adicionando logs periódicos
 SELECT cron.schedule(
   'cron-status-keeper',
-  '0 */3 * * *',  -- Executa a cada 3 horas
+  '*/15 * * * *',  -- Executa a cada 15 minutos (mais frequente para testes)
   $$
   -- Verificar se houve execução nas últimas 24 horas
   WITH last_execution AS (
     SELECT execution_time 
     FROM cron_execution_logs
     WHERE job_name = 'daily-meta-review-job'
-      AND status IN ('success', 'partial_success', 'test_success')
+      AND status IN ('success', 'partial_success', 'test_success', 'started')
     ORDER BY execution_time DESC
     LIMIT 1
   ),

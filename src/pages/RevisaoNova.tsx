@@ -8,6 +8,7 @@ import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManag
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { CronScheduleMonitor } from "@/components/daily-reviews/dashboard/components/CronScheduleMonitor";
 
 export default function RevisaoNova() {
   const [searchParams] = useSearchParams();
@@ -37,7 +38,14 @@ export default function RevisaoNova() {
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
-          <ReviewsDashboardCard onViewClientDetails={() => {}} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+              <ReviewsDashboardCard onViewClientDetails={() => {}} />
+            </div>
+            <div className="space-y-6">
+              <CronScheduleMonitor />
+            </div>
+          </div>
         </TabsContent>
         
         <TabsContent value="google-ads" className="space-y-6">
