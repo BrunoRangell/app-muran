@@ -55,21 +55,17 @@ export const GoogleAdsDashboardCard = ({
     setIsTokenVerifying(true);
     
     try {
-      // Verificar tokens do Google Ads
-      const response = await fetch('/api/google-ads/verify-tokens', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }).then(res => res.json());
-
-      // Também podemos usar a edge function do Supabase para verificar tokens
-      const supabaseResponse = await supabase.functions.invoke('google-ads-token-check');
-
-      if (response?.success || supabaseResponse?.data?.success) {
+      // Usando apenas a edge function do Supabase para verificar tokens
+      const { data, error } = await supabase.functions.invoke('google-ads-token-check');
+      
+      if (error) {
+        throw new Error(`Erro na edge function: ${error.message}`);
+      }
+      
+      if (data?.success) {
         toast({
           title: "Tokens verificados com sucesso",
-          description: "Os tokens do Google Ads estão válidos.",
+          description: data.message || "Os tokens do Google Ads estão válidos.",
         });
         
         // Recarregar dados
@@ -77,7 +73,7 @@ export const GoogleAdsDashboardCard = ({
       } else {
         toast({
           title: "Problemas com os tokens",
-          description: "Verifique os tokens do Google Ads nas configurações.",
+          description: data?.message || "Verifique os tokens do Google Ads nas configurações.",
           variant: "destructive"
         });
       }
