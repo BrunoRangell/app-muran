@@ -81,6 +81,7 @@ export const GoogleAdsDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Card de cabeçalho do dashboard separado */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <GoogleAdsDashboardHeader 
           lastBatchReviewTime={lastBatchReviewTime}
@@ -91,7 +92,7 @@ export const GoogleAdsDashboard = () => {
 
         {/* Adicionar barra de progresso quando estiver analisando */}
         {isReviewingBatch && (
-          <div className="mb-6">
+          <div className="mt-4">
             <AnalysisProgress 
               isBatchAnalyzing={isReviewingBatch}
               batchProgress={batchProgress}
@@ -100,10 +101,11 @@ export const GoogleAdsDashboard = () => {
             />
           </div>
         )}
+      </div>
 
-        <div className="mt-6">
-          <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
-        </div>
+      {/* Card separado para os clientes */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
       </div>
     </div>
   );
