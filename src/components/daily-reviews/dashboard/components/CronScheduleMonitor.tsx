@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
@@ -14,7 +13,7 @@ export function CronScheduleMonitor() {
   const [loading, setLoading] = useState(true);
   const [cronError, setCronError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [secondsToNext, setSecondsToNext] = useState<number>(0);
+  const [secondsToNext, setSecondsToNext] = useState<number>(120);
   const [executingReview, setExecutingReview] = useState(false);
   const refreshTimerRef = useRef<number | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
@@ -301,7 +300,7 @@ export function CronScheduleMonitor() {
             <div className="text-sm font-medium text-gray-700 mb-1">Frequência:</div>
             <div className="text-sm font-medium bg-blue-50 text-blue-700 inline-flex items-center px-2 py-0.5 rounded">
               <Clock className="h-3.5 w-3.5 mr-1" />
-              {nextExecution || "Carregando..."}
+              A cada 2 minutos
             </div>
           </div>
           
@@ -322,7 +321,7 @@ export function CronScheduleMonitor() {
           
           <div className="pt-3 border-t text-xs text-gray-500">
             <p>
-              A revisão automática de orçamentos está configurada para executar a cada minuto para facilitar os testes. Você pode verificar os resultados na tabela de clientes abaixo.
+              A revisão automática de orçamentos está configurada para executar a cada 2 minutos para facilitar os testes. Você pode verificar os resultados na tabela de clientes abaixo.
             </p>
           </div>
         </div>
