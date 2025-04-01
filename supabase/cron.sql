@@ -37,10 +37,10 @@ SELECT cron.unschedule('daily-meta-review-job');
 SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 
--- Criar job para executar revisão Meta Ads às 15:50
+-- Criar job para executar revisão Meta Ads às 16:00
 SELECT cron.schedule(
   'daily-meta-review-job',
-  '50 15 * * *',  -- Executa às 15:50 todos os dias
+  '0 16 * * *',  -- Executa às 16:00 todos os dias
   $$
   -- Primeiro registrar o início da execução no log
   INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)

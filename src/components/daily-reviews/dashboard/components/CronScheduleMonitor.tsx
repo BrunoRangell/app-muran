@@ -49,17 +49,17 @@ export function CronScheduleMonitor() {
         // para obter a expressão cron exata
         const { data: cronData } = await supabase.rpc('get_cron_expression', { 
           job_name: 'daily-meta-review-job' 
-        }).maybeSingle();
+        });
         
-        if (cronData) {
+        if (cronData && typeof cronData === 'object' && 'cron_expression' in cronData) {
           setNextExecution(`Agendamento: ${cronData.cron_expression}`);
         } else {
           // Fallback para o horário que sabemos
-          setNextExecution("15:50 diariamente");
+          setNextExecution("16:00 diariamente");
         }
       } catch (cronError) {
         console.warn("Não foi possível obter expressão cron:", cronError);
-        setNextExecution("15:50 diariamente");
+        setNextExecution("16:00 diariamente");
       }
       
     } catch (e) {
@@ -123,8 +123,8 @@ export function CronScheduleMonitor() {
           </div>
           
           <p className="text-xs text-gray-500 mt-2">
-            Agendado para executar automaticamente às 15:50 - próxima execução em{" "}
-            {Math.round((new Date(new Date().setHours(15, 50, 0, 0)).getTime() - new Date().getTime()) / (1000 * 60))}{" "}
+            Agendado para executar automaticamente às 16:00 - próxima execução em{" "}
+            {Math.round((new Date(new Date().setHours(16, 0, 0, 0)).getTime() - new Date().getTime()) / (1000 * 60))}{" "}
             minutos
           </p>
         </div>
