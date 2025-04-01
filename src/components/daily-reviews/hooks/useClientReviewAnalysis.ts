@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useClientAnalysis } from "./useClientAnalysis";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const useClientReviewAnalysis = (
   clientId: string,
@@ -9,6 +10,7 @@ export const useClientReviewAnalysis = (
 ) => {
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
 
   // Importamos o hook useClientAnalysis para analisar o cliente
   const { analyzeMutation } = useClientAnalysis((data) => {
@@ -17,7 +19,12 @@ export const useClientReviewAnalysis = (
       description: `Análise do cliente atualizada com sucesso.`,
     });
     
-    // Após análise bem-sucedida, atualizamos os dados
+    // Após análise bem-sucedida, invalidamos as consultas relevantes
+    queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
+    queryClient.invalidateQueries({ queryKey: ["latest-review", clientId] });
+    queryClient.invalidateQueries({ queryKey: ["review-history", clientId] });
+    
+    // Atualizar os dados
     onRefreshComplete();
     setIsRefreshing(false);
   });

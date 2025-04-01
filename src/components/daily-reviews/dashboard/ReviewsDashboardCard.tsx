@@ -11,7 +11,6 @@ import { FilterOptions } from "./components/FilterOptions";
 import { ClientsGrid } from "./components/ClientsGrid";
 import { EmptyStateView } from "./components/EmptyStateView";
 import { LoadingView } from "./components/LoadingView";
-import { AutoReviewSettings } from "./components/AutoReviewSettings";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { splitClientsByMetaId } from "./utils/clientSorting";
 
@@ -37,6 +36,15 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     batchProgress,
     totalClientsToAnalyze
   } = useBatchReview();
+  
+  // Adicionar efeito para atualizar dados quando análises são concluídas
+  useEffect(() => {
+    // Monitorar mudanças no estado de análise em lote
+    if (!isBatchAnalyzing && batchProgress > 0) {
+      // Análise em lote foi concluída, atualizar dados
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    }
+  }, [isBatchAnalyzing, batchProgress, queryClient]);
   
   useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe(event => {
@@ -92,8 +100,11 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
 
   const handleReviewClient = useCallback((clientId: string) => {
     console.log("Iniciando revisão para cliente:", clientId);
-    reviewSingleClient(clientId);
-  }, [reviewSingleClient]);
+    reviewSingleClient(clientId).then(() => {
+      // Atualizar dados após a conclusão da revisão de um cliente
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    });
+  }, [reviewSingleClient, queryClient]);
 
   return (
     <div className="space-y-6">
@@ -105,18 +116,13 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
           onAnalyzeAll={reviewAllClients}
         />
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-          <div className="lg:col-span-2">
-            <AnalysisProgress 
-              isBatchAnalyzing={isBatchAnalyzing}
-              batchProgress={batchProgress}
-              totalClientsToAnalyze={totalClientsToAnalyze}
-              progressPercentage={progressPercentage}
-            />
-          </div>
-          <div>
-            <AutoReviewSettings />
-          </div>
+        <div className="lg:col-span-2">
+          <AnalysisProgress 
+            isBatchAnalyzing={isBatchAnalyzing}
+            batchProgress={batchProgress}
+            totalClientsToAnalyze={totalClientsToAnalyze}
+            progressPercentage={progressPercentage}
+          />
         </div>
         
         <div className="flex flex-col md:flex-row items-center gap-4 mb-3 mt-4">
