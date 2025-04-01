@@ -255,6 +255,30 @@ export type Database = {
           },
         ]
       }
+      cron_execution_logs: {
+        Row: {
+          details: Json | null
+          execution_time: string | null
+          id: string
+          job_name: string
+          status: string
+        }
+        Insert: {
+          details?: Json | null
+          execution_time?: string | null
+          id?: string
+          job_name: string
+          status: string
+        }
+        Update: {
+          details?: Json | null
+          execution_time?: string | null
+          id?: string
+          job_name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       daily_budget_reviews: {
         Row: {
           client_id: string | null

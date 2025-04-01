@@ -16,7 +16,7 @@ export function CronScheduleMonitor() {
     try {
       setLoading(true);
       
-      // Buscar todos os logs de execução do cron para ter uma visão mais completa
+      // Buscar logs de execução do cron para o job específico
       const { data: logs, error } = await supabase
         .from("cron_execution_logs")
         .select("*")
@@ -39,7 +39,7 @@ export function CronScheduleMonitor() {
         return;
       }
       
-      // Obter o último log de execução bem-sucedido ou iniciado
+      // Filtrar logs bem-sucedidos ou em andamento
       const validLogs = logs.filter(log => 
         ['success', 'partial_success', 'started', 'test_success'].includes(log.status)
       );
@@ -58,15 +58,13 @@ export function CronScheduleMonitor() {
           setStatus('inactive');
           setCronError(`Última execução foi há mais de 24h (${Math.round(hoursSince)}h atrás)`);
         }
-      } else if (logs.length > 0) {
-        // Se há logs, mas nenhum com status de sucesso
-        const lastLog = logs[0];
-        setLastExecution(new Date(lastLog.execution_time));
+      } else {
+        // Se não há logs válidos
         setStatus('inactive');
-        setCronError(`Última execução com status: ${lastLog.status}`);
+        setCronError('Nenhum log de execução válido encontrado');
       }
       
-      // Calcular a próxima execução com base no agendamento cron
+      // Calcular próxima execução
       try {
         const { data: cronData, error: cronError } = await supabase.rpc('get_cron_expression', { 
           job_name: 'daily-meta-review-job' 
@@ -81,7 +79,6 @@ export function CronScheduleMonitor() {
         if (cronData && typeof cronData === 'object' && 'cron_expression' in cronData) {
           setNextExecution(`Agendamento: ${cronData.cron_expression}`);
         } else {
-          // Fallback para o horário que sabemos
           setNextExecution("16:00 diariamente");
         }
       } catch (cronError) {
