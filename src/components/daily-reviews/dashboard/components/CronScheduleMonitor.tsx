@@ -98,8 +98,8 @@ export function CronScheduleMonitor() {
   useEffect(() => {
     fetchCronStatus();
     
-    // Atualizar status a cada 3 minutos
-    const intervalId = setInterval(fetchCronStatus, 3 * 60 * 1000);
+    // Atualizar status a cada 1 minuto (reduzido de 3 para 1 para monitoramento mais frequente)
+    const intervalId = setInterval(fetchCronStatus, 60 * 1000);
     
     return () => clearInterval(intervalId);
   }, []);
@@ -121,7 +121,7 @@ export function CronScheduleMonitor() {
   const getMinutesToNextExecution = () => {
     const now = new Date();
     const targetTime = new Date();
-    targetTime.setHours(17, 0, 0, 0); // Atualizado para 17:00
+    targetTime.setHours(17, 0, 0, 0); // Mantém 17:00 como horário de execução
     
     // Se já passou das 17:00 hoje, a próxima execução é amanhã
     if (now.getHours() > 17 || (now.getHours() === 17 && now.getMinutes() >= 0)) {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -81,7 +82,8 @@ export function AutoReviewSettings() {
       }
       
       try {
-        await supabase.functions.invoke("daily-meta-review", {
+        // Testar conexão com a função edge
+        const response = await supabase.functions.invoke("daily-meta-review", {
           body: { 
             test: true,
             testType: "cron_status_check",
@@ -89,13 +91,19 @@ export function AutoReviewSettings() {
           }
         });
         
-        setCronStatus('active');
+        console.log("Teste de status da função edge:", response);
+        if (!response.error) {
+          setCronStatus('active');
+        } else {
+          console.error("Erro no teste de função edge:", response.error);
+          setCronStatus('inactive');
+        }
+        
         return;
       } catch (edgeFunctionError) {
         console.error("Erro ao testar função Edge:", edgeFunctionError);
+        setCronStatus('inactive');
       }
-      
-      setCronStatus('inactive');
       
     } catch (error) {
       console.error("Erro ao verificar status do cron:", error);
@@ -171,7 +179,7 @@ export function AutoReviewSettings() {
       if (!isCheckingStatus) {
         fetchLastAutoRun();
       }
-    }, 15 * 60 * 1000);
+    }, 60 * 1000); // Atualizado para verificar a cada minuto
     
     return () => clearInterval(intervalId);
   }, []);
