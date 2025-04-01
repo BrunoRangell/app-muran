@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { Calendar, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Calendar, Clock, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { formatDateInBrasiliaTz } from "../../summary/utils";
+import { Button } from "@/components/ui/button";
 
 export function CronScheduleMonitor() {
   const [nextExecution, setNextExecution] = useState<string | null>(null);
@@ -11,6 +12,7 @@ export function CronScheduleMonitor() {
   const [status, setStatus] = useState<'active' | 'inactive' | 'loading'>('loading');
   const [loading, setLoading] = useState(true);
   const [cronError, setCronError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchCronStatus = async () => {
     try {
@@ -85,19 +87,6 @@ export function CronScheduleMonitor() {
     return () => clearInterval(intervalId);
   }, []);
 
-  const renderStatusIcon = () => {
-    if (loading) return <Clock className="h-5 w-5 animate-pulse text-gray-400" />;
-    
-    switch (status) {
-      case 'active':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case 'inactive':
-        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
-      default:
-        return <Clock className="h-5 w-5 text-gray-400" />;
-    }
-  };
-
   // Calcular tempo para próxima execução (agora é sempre menos de 1 minuto)
   const getSecondsToNextExecution = () => {
     const now = new Date();
@@ -105,47 +94,87 @@ export function CronScheduleMonitor() {
     return seconds;
   };
 
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    await fetchCronStatus();
+    setTimeout(() => setRefreshing(false), 1000);
+  };
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="border border-gray-200 shadow-sm">
+      <CardHeader className="pb-2 flex flex-row items-center justify-between bg-gray-50 border-b">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          <span>Status do Agendamento</span>
-          {renderStatusIcon()}
+          <Calendar className="h-5 w-5 text-[#ff6e00]" />
+          <span>Revisão Automática</span>
         </CardTitle>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleManualRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-[#ff6e00]' : 'text-gray-500'}`} />
+        </Button>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          <div className="text-sm">
-            <span className="font-semibold">Próxima execução:</span>{" "}
-            {nextExecution || "Carregando..."}
+      <CardContent className="pt-4">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-sm font-medium text-gray-700 mb-1">Status:</div>
+              <div className="flex items-center gap-1.5">
+                {status === 'loading' ? (
+                  <Clock className="h-5 w-5 animate-pulse text-gray-400" />
+                ) : status === 'active' ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                )}
+                <span className={`font-medium ${
+                  status === 'active' ? 'text-green-600' : 
+                  status === 'inactive' ? 'text-amber-600' : 'text-gray-500'
+                }`}>
+                  {status === 'active' ? 'Ativo' : 
+                   status === 'inactive' ? 'Inativo' : 'Verificando...'}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200">
+              <div className="text-xs text-gray-500">Próxima execução em</div>
+              <div className="font-mono font-bold text-lg">
+                {getSecondsToNextExecution()}s
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm font-medium text-gray-700 mb-1">Frequência:</div>
+            <div className="text-sm font-medium bg-blue-50 text-blue-700 inline-flex items-center px-2 py-0.5 rounded">
+              <Clock className="h-3.5 w-3.5 mr-1" />
+              {nextExecution || "Carregando..."}
+            </div>
           </div>
           
           {lastExecution && (
-            <div className="text-sm">
-              <span className="font-semibold">Última execução:</span>{" "}
-              {formatDateInBrasiliaTz(lastExecution, "dd 'de' MMMM 'às' HH:mm:ss")}
+            <div>
+              <div className="text-sm font-medium text-gray-700 mb-1">Última execução:</div>
+              <div className="text-sm">
+                {formatDateInBrasiliaTz(lastExecution, "dd 'de' MMMM 'às' HH:mm:ss")}
+              </div>
             </div>
           )}
           
-          <div className="text-sm">
-            <span className="font-semibold">Status:</span>{" "}
-            <span className={`${status === 'active' ? 'text-green-600' : status === 'inactive' ? 'text-amber-600' : 'text-gray-500'}`}>
-              {status === 'active' ? 'Ativo' : status === 'inactive' ? 'Inativo' : 'Verificando...'}
-            </span>
-          </div>
-          
           {cronError && (
-            <div className="mt-1 text-xs text-amber-600 bg-amber-50 p-1.5 rounded border border-amber-100">
+            <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-100">
               {cronError}
             </div>
           )}
           
-          <p className="text-xs text-gray-500 mt-2">
-            Agendado para executar automaticamente a cada minuto - próxima execução em aproximadamente{" "}
-            {getSecondsToNextExecution()}{" "}
-            segundos
-          </p>
+          <div className="pt-3 border-t text-xs text-gray-500">
+            <p>
+              A revisão automática de orçamentos está configurada para executar a cada minuto para facilitar os testes. Você pode verificar os resultados na tabela de clientes abaixo.
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
