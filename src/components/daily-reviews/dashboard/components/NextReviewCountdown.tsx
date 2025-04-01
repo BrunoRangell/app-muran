@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, Loader } from "lucide-react";
@@ -15,19 +16,19 @@ export function NextReviewCountdown() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // O intervalo de execução é de 2 minutos (120 segundos)
-  const EXECUTION_INTERVAL = 120;
+  // O intervalo de execução é de 5 horas (18000 segundos)
+  const EXECUTION_INTERVAL = 5 * 60 * 60; // 5 horas em segundos
 
   const updateSecondsToNext = () => {
     const now = new Date();
-    // Calcular o tempo restante para o próximo múltiplo de 2 minutos
+    const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
-    const currentTotalSeconds = minutes * 60 + seconds;
-    const nextTwoMinuteMark = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
+    const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
+    const nextFiveHourMark = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
     
-    const secondsUntilNext = nextTwoMinuteMark - currentTotalSeconds;
+    const secondsUntilNext = nextFiveHourMark - currentTotalSeconds;
     setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
   };
 
@@ -178,9 +179,12 @@ export function NextReviewCountdown() {
   }, [isAutoReviewing]);
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    
+    // Incluir horas no formato
+    return `${hours}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   return (
@@ -220,7 +224,7 @@ export function NextReviewCountdown() {
         
         <div className="pt-3 mt-3 border-t text-xs text-gray-500">
           <p>
-            A revisão automática de orçamentos está configurada para executar a cada 2 minutos. O sistema executa automaticamente sem necessidade de intervenção manual.
+            A revisão automática de orçamentos está configurada para executar a cada 5 horas. O sistema executa automaticamente sem necessidade de intervenção manual.
           </p>
         </div>
       </CardContent>

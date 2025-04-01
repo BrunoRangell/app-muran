@@ -82,14 +82,15 @@ export function CronScheduleMonitor() {
 
   const updateSecondsToNext = () => {
     const now = new Date();
+    const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
-    const currentTotalSeconds = minutes * 60 + seconds;
-    const nextTwoMinuteMark = Math.ceil(currentTotalSeconds / 120) * 120;
+    const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
+    const nextFiveHourMark = Math.ceil(currentTotalSeconds / (5 * 60 * 60)) * (5 * 60 * 60);
     
-    const secondsUntilNext = nextTwoMinuteMark - currentTotalSeconds;
-    setSecondsToNext(secondsUntilNext === 0 ? 120 : secondsUntilNext);
+    const secondsUntilNext = nextFiveHourMark - currentTotalSeconds;
+    setSecondsToNext(secondsUntilNext === 0 ? (5 * 60 * 60) : secondsUntilNext);
   };
 
   const handleCountdownEnd = () => {
@@ -296,7 +297,7 @@ export function CronScheduleMonitor() {
             <div className="text-sm font-medium text-gray-700 mb-1">Frequência:</div>
             <div className="text-sm font-medium bg-blue-50 text-blue-700 inline-flex items-center px-2 py-0.5 rounded">
               <Clock className="h-3.5 w-3.5 mr-1" />
-              A cada 2 minutos
+              A cada 5 horas
             </div>
           </div>
           
@@ -317,7 +318,7 @@ export function CronScheduleMonitor() {
           
           <div className="pt-3 border-t text-xs text-gray-500">
             <p>
-              A revisão automática de orçamentos está configurada para executar a cada 2 minutos para facilitar os testes. Você pode verificar os resultados na tabela de clientes abaixo.
+              A revisão automática de orçamentos está configurada para executar a cada 5 horas. Você pode verificar os resultados na tabela de clientes abaixo.
             </p>
           </div>
         </div>

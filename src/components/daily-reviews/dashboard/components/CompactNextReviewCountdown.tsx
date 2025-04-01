@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Clock, Loader } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,7 +21,8 @@ export function CompactNextReviewCountdown() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  const EXECUTION_INTERVAL = 120;
+  // O intervalo de execução é de 5 horas (18000 segundos)
+  const EXECUTION_INTERVAL = 5 * 60 * 60; // 5 horas em segundos
   const PROGRESS_CHECK_INTERVAL = 3000;
   const STABILITY_CHECK_INTERVAL = 10000;
   const COMPLETION_DELAY = 2000;
@@ -32,9 +34,9 @@ export function CompactNextReviewCountdown() {
     const seconds = now.getSeconds();
     
     const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
-    const nextExecutionPoint = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
+    const nextFiveHourMark = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
     
-    const secondsUntilNext = nextExecutionPoint - currentTotalSeconds;
+    const secondsUntilNext = nextFiveHourMark - currentTotalSeconds;
     setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
   };
 
@@ -456,6 +458,7 @@ export function CompactNextReviewCountdown() {
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     
+    // Incluir horas no formato já que estamos trabalhando com 5 horas
     if (hours > 0) {
       return `${hours}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }

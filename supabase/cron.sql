@@ -37,7 +37,7 @@ SELECT cron.unschedule('daily-meta-review-job');
 SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 
--- Agendar execução a cada 5 horas (modificado conforme solicitado)
+-- Agendar execução a cada 5 horas
 SELECT cron.schedule(
   'daily-meta-review-job',
   '0 */5 * * *',  -- Executa a cada 5 horas (às 0h, 5h, 10h, 15h, 20h)
