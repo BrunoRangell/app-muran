@@ -19,18 +19,18 @@ export const BudgetRecommendation = ({
     return (
       <div className={`mt-2 p-3 rounded-lg ${
         budgetDifference > 0 
-          ? 'bg-[#F2FCE2]' 
-          : 'bg-[#FEC6A1]'
+          ? 'bg-green-50 border-l-4 border-l-green-500' 
+          : 'bg-red-50 border-l-4 border-l-red-500'
       }`}>
         <div className={`flex items-center gap-2 font-medium ${
           budgetDifference > 0 
             ? 'text-green-700' 
-            : 'text-[#ea384c]'
+            : 'text-red-700'
         }`}>
           {budgetDifference > 0 ? (
-            <TrendingUp size={18} />
+            <TrendingUp size={18} className="text-green-500" />
           ) : (
-            <TrendingDown size={18} />
+            <TrendingDown size={18} className="text-red-500" />
           )}
           Recomendação: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
         </div>
@@ -38,9 +38,9 @@ export const BudgetRecommendation = ({
     );
   } else {
     return (
-      <div className="mt-2 p-3 rounded-lg bg-[#F1F0FB]">
+      <div className="mt-2 p-3 rounded-lg bg-gray-50 border-l-4 border-l-gray-500">
         <div className="flex items-center gap-2 font-medium text-gray-700">
-          <MinusCircle size={18} />
+          <MinusCircle size={18} className="text-gray-500" />
           Recomendação: Nenhum ajuste necessário
         </div>
       </div>
