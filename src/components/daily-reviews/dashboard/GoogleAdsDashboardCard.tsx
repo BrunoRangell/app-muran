@@ -8,6 +8,7 @@ import { EmptyStateView } from "./components/EmptyStateView";
 import { LoadingView } from "./components/LoadingView";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { splitClientsByGoogleAdsId } from "./utils/clientSorting";
+import { supabase } from "@/lib/supabase";
 
 interface GoogleAdsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
