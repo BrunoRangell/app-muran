@@ -19,8 +19,8 @@ const DailyReviews = () => {
   
   const { analyzeMutation } = useClientAnalysis((data) => {
     // Se há dados do cliente no retorno, selecione-o
-    if (data.client?.id) {
-      setSelectedClient(data.client.id);
+    if (data.clientId) {
+      setSelectedClient(data.clientId);
       setActiveTab("client-details");
     } else if (selectedClient) {
       // Caso contrário, mantém o cliente atual selecionado

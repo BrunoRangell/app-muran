@@ -22,7 +22,6 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
     reviewSingleClient, 
     reviewAllClients,
     lastBatchReviewTime,
-    refetchClients,
     isBatchAnalyzing
   } = useBatchReview();
   
