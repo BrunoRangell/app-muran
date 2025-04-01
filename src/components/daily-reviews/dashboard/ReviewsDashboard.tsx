@@ -22,7 +22,8 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
     reviewSingleClient, 
     reviewAllClients,
     lastBatchReviewTime,
-    isBatchAnalyzing
+    isBatchAnalyzing,
+    refetchClients
   } = useBatchReview();
   
   // Filtrar clientes com base na pesquisa

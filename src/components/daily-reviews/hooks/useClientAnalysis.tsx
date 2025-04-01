@@ -54,6 +54,8 @@ export const useClientAnalysis = (
         end: now.toISOString().split("T")[0],
       };
 
+      console.log("Invocando função Edge do Meta Ads para cliente:", client.company_name);
+
       // Chamar a função Edge para análise
       const { data, error } = await supabase.functions.invoke(
         "meta-budget-calculator",
@@ -68,12 +70,15 @@ export const useClientAnalysis = (
       );
 
       if (error) {
+        console.error("Erro na função Edge:", error);
         throw new Error(`Erro na análise do cliente: ${error.message}`);
       }
 
       if (!data) {
         throw new Error("Resposta vazia da API");
       }
+
+      console.log("Dados recebidos da API Meta:", data);
 
       // Buscar orçamento personalizado
       const today = now.toISOString().split("T")[0];
@@ -145,7 +150,7 @@ export const useClientAnalysis = (
           metaDailyBudgetCurrent,
           metaTotalSpent,
           customBudget: customBudgetInfo,
-        },
+        }
       };
     },
     onSuccess: (result) => {

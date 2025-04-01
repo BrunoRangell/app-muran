@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // Configuração de cabeçalhos CORS
@@ -44,6 +43,11 @@ serve(async (req) => {
   try {
     // Extrair corpo da requisição
     const requestBody = await req.json();
+    console.log("Meta Budget Calculator - Requisição recebida:", JSON.stringify({
+      ...requestBody,
+      accessToken: requestBody.accessToken ? "***TOKEN OCULTADO***" : undefined
+    }));
+    
     const { accountId, accessToken, dateRange } = requestBody;
 
     // Validar parâmetros de entrada
@@ -395,7 +399,7 @@ serve(async (req) => {
     // Calcular orçamento diário estimado
     const estimatedDailyBudget = parseFloat((totalSpent / daysDiff).toFixed(2));
     
-    // Retornar o resultado com detalhes e diagnóstico aprimorado
+    // Retornar o resultado
     return new Response(
       JSON.stringify({ 
         totalDailyBudget,

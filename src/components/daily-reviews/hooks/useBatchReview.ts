@@ -1,206 +1,184 @@
 
-// Atualizando o hook useBatchReview para suportar a atualização automática após análises
-import { useState, useCallback, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
-import { ClientWithReview } from './types/reviewTypes';
-import { useClientAnalysis } from './useClientAnalysis';
+import { useState, useCallback, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { ClientWithReview } from "./types/reviewTypes";
+import { useToast } from "@/hooks/use-toast";
+import { analyzeClient, fetchClientsWithReviews } from "./services/clientReviewService";
+import { getCurrentDateInBrasiliaTz } from "../summary/utils";
 
+/**
+ * Hook para gerenciar revisões em lote de clientes
+ */
 export const useBatchReview = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [processingClients, setProcessingClients] = useState<string[]>([]);
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
-  const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
-  const [batchProgress, setBatchProgress] = useState(0);
+  const [lastBatchReviewTime, setLastBatchReviewTime] = useState<string | null>(null);
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
   
-  // Usar o hook useClientAnalysis para analisar clientes
-  const { analyzeMutation } = useClientAnalysis((data) => {
-    // Remover cliente da lista de processamento
-    setProcessingClients(prev => prev.filter(id => id !== data.clientId));
-    
-    // Incrementar progresso quando estiver em análise em lote
-    if (isBatchAnalyzing) {
-      setBatchProgress(prev => prev + 1);
-    }
-    
-    // Atualizar o cache com os novos dados
-    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-  });
-
-  // Consulta para obter clientes com revisões
-  const { data: clientsWithReviews, isLoading, error } = useQuery({
+  // Buscar a lista de clientes e suas revisões mais recentes
+  const { 
+    data: clientsWithReviews = [], 
+    isLoading, 
+    error,
+    refetch 
+  } = useQuery({
     queryKey: ['clients-with-reviews'],
-    queryFn: async () => {
-      const { data: clients, error: clientsError } = await supabase
-        .from('clients')
-        .select('*, daily_budget_reviews(*)')
-        .eq('status', 'active')
-        .order('company_name');
-
-      if (clientsError) throw clientsError;
-
-      // Se não houver clientes, retornar array vazio
-      if (!clients || clients.length === 0) {
-        return [];
-      }
-
-      // Buscar orçamentos personalizados ativos
-      const today = new Date().toISOString().split('T')[0];
-      const { data: customBudgets, error: budgetsError } = await supabase
-        .from('meta_custom_budgets')
-        .select('*')
-        .lte('start_date', today)
-        .gte('end_date', today)
-        .eq('is_active', true);
-
-      if (budgetsError) {
-        console.error('Erro ao buscar orçamentos personalizados:', budgetsError);
-      }
-
-      // Mapear orçamentos personalizados para os clientes
-      const clientsWithCustomBudgets = clients.map(client => {
-        // Buscar o orçamento personalizado mais recente para este cliente
-        const customBudget = customBudgets?.find(
-          budget => budget.client_id === client.id
-        );
-
-        // Buscar a revisão mais recente
-        const latestReview = client.daily_budget_reviews
-          ?.sort((a: any, b: any) => {
-            // Ordenar por data de revisão (mais recente primeiro)
-            return new Date(b.review_date).getTime() - new Date(a.review_date).getTime();
-          })
-          .at(0);
-
-        return {
-          ...client,
-          daily_budget_reviews: client.daily_budget_reviews,
-          latestReview: latestReview || null,
-          customBudget: customBudget || null
-        };
-      });
-
-      return clientsWithCustomBudgets as ClientWithReview[];
-    }
+    queryFn: fetchClientsWithReviews,
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
-
-  // Mutação para revisar todos os clientes
-  const batchReviewMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('daily-meta-review', {
-        body: { manual: true }
-      });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      // Atualizar a hora da última revisão em lote
-      setLastBatchReviewTime(new Date());
-      
-      // Atualizar a lista de clientes com revisões após um pequeno atraso
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
-      }, 3000);
-      
-      // Indicar que o processo de análise em lote foi concluído
-      setIsBatchAnalyzing(false);
-      setBatchProgress(totalClientsToAnalyze);
-      
-      toast({
-        title: 'Análise em lote concluída',
-        description: `Todos os ${totalClientsToAnalyze} clientes foram analisados.`
-      });
-    },
-    onError: (error) => {
-      console.error('Erro na revisão em lote:', error);
-      setIsBatchAnalyzing(false);
-      
-      toast({
-        title: 'Erro na análise em lote',
-        description: error instanceof Error ? error.message : 'Ocorreu um erro ao analisar os clientes',
-        variant: 'destructive',
-      });
-    }
-  });
-
-  // Buscar a hora da última revisão em lote ao iniciar
+  
+  // Buscar o horário da última revisão em massa
   useEffect(() => {
     const fetchLastBatchReviewTime = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('system_configs')
-          .select('value')
-          .eq('key', 'last_batch_review_time')
-          .single();
-
-        if (!error && data?.value) {
-          setLastBatchReviewTime(new Date(data.value));
-        }
-      } catch (err) {
-        console.error('Erro ao buscar hora da última revisão em lote:', err);
+      const { data } = await supabase
+        .from('system_logs')
+        .select('created_at')
+        .eq('event_type', 'batch_review_completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (data) {
+        setLastBatchReviewTime(data.created_at);
       }
     };
-
+    
     fetchLastBatchReviewTime();
   }, []);
-
-  // Função para revisar um único cliente
-  const reviewSingleClient = useCallback(async (clientId: string) => {
+  
+  // Marcar que um cliente está sendo processado
+  const startProcessingClient = useCallback((clientId: string) => {
     setProcessingClients(prev => [...prev, clientId]);
-    
-    try {
-      await analyzeMutation.mutateAsync(clientId);
-      return true;
-    } catch (err) {
-      console.error(`Erro ao analisar cliente ${clientId}:`, err);
-      
-      // Remover cliente da lista de processamento em caso de erro
-      setProcessingClients(prev => prev.filter(id => id !== clientId));
+  }, []);
+  
+  // Marcar que um cliente terminou de ser processado
+  const finishProcessingClient = useCallback((clientId: string) => {
+    setProcessingClients(prev => prev.filter(id => id !== clientId));
+  }, []);
+  
+  // Revisar um único cliente
+  const reviewSingleClient = useCallback(async (clientId: string) => {
+    if (processingClients.includes(clientId)) {
+      toast({
+        title: "Processamento em andamento",
+        description: "Este cliente já está sendo analisado.",
+        variant: "default",
+      });
       return false;
     }
-  }, [analyzeMutation]);
-
-  // Função para revisar todos os clientes
-  const reviewAllClients = useCallback(async () => {
-    // Verificar se existem clientes com Meta Ads configurado
-    const clientsWithMeta = clientsWithReviews?.filter(client => 
-      client.meta_account_id && client.meta_account_id.trim() !== ''
-    ) || [];
     
-    if (clientsWithMeta.length === 0) {
+    try {
+      startProcessingClient(clientId);
+      
+      await analyzeClient(clientId, clientsWithReviews);
+      
+      // Invalidar a consulta para recarregar os dados
+      queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['client-detail', clientId] });
+      queryClient.invalidateQueries({ queryKey: ['latest-review', clientId] });
+      
       toast({
-        title: 'Nenhum cliente para analisar',
-        description: 'Não existem clientes com Meta Ads configurado.',
-        variant: 'destructive',
+        title: "Análise concluída",
+        description: "Cliente analisado com sucesso.",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Erro ao analisar cliente:", error);
+      
+      toast({
+        title: "Erro na análise",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      finishProcessingClient(clientId);
+    }
+  }, [processingClients, startProcessingClient, finishProcessingClient, toast, clientsWithReviews, queryClient]);
+  
+  // Revisar todos os clientes elegíveis
+  const reviewAllClients = useCallback(async () => {
+    // Verificar se já existe uma revisão em lote em andamento
+    if (isBatchAnalyzing) {
+      toast({
+        title: "Processamento em andamento",
+        description: "Já existe uma análise em lote em andamento.",
+        variant: "default",
       });
       return;
     }
     
-    // Configurar estado para análise em lote
-    setIsBatchAnalyzing(true);
-    setBatchProgress(0);
-    setTotalClientsToAnalyze(clientsWithMeta.length);
-    
     try {
-      // Executar a função de revisão em lote
-      await batchReviewMutation.mutateAsync();
+      // Filtrar clientes elegíveis (com meta_account_id configurado)
+      const eligibleClients = clientsWithReviews.filter(
+        client => client.meta_account_id && client.meta_account_id.trim() !== ""
+      );
       
-    } catch (err) {
-      console.error('Erro ao iniciar análise em lote:', err);
-      setIsBatchAnalyzing(false);
+      if (eligibleClients.length === 0) {
+        toast({
+          title: "Nenhum cliente elegível",
+          description: "Não há clientes com ID de conta Meta configurado.",
+          variant: "default",
+        });
+        return;
+      }
+      
+      setIsBatchAnalyzing(true);
+      setTotalClientsToAnalyze(eligibleClients.length);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // Processar cada cliente em sequência
+      for (const client of eligibleClients) {
+        try {
+          startProcessingClient(client.id);
+          await analyzeClient(client.id, clientsWithReviews);
+          successCount++;
+        } catch (error) {
+          console.error(`Erro ao analisar cliente ${client.company_name}:`, error);
+          errorCount++;
+        } finally {
+          finishProcessingClient(client.id);
+        }
+      }
+      
+      // Registrar conclusão da revisão em lote
+      const now = getCurrentDateInBrasiliaTz().toISOString();
+      setLastBatchReviewTime(now);
+      
+      await supabase.from('system_logs').insert({
+        event_type: 'batch_review_completed',
+        message: `Revisão em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
+        details: { successCount, errorCount }
+      });
+      
+      // Recarregar dados
+      queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
       
       toast({
-        title: 'Erro ao iniciar análise em lote',
-        description: err instanceof Error ? err.message : 'Ocorreu um erro ao iniciar a análise em lote',
-        variant: 'destructive',
+        title: "Revisão em lote concluída",
+        description: `${successCount} cliente(s) analisado(s) com sucesso. ${errorCount} erro(s).`,
       });
+      
+    } catch (error) {
+      console.error("Erro na revisão em lote:", error);
+      
+      toast({
+        title: "Erro na revisão em lote",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBatchAnalyzing(false);
     }
-  }, [clientsWithReviews, batchReviewMutation, toast]);
-
+  }, [clientsWithReviews, isBatchAnalyzing, startProcessingClient, finishProcessingClient, toast, queryClient]);
+  
   return {
     clientsWithReviews,
     isLoading,
@@ -208,9 +186,9 @@ export const useBatchReview = () => {
     processingClients,
     reviewSingleClient,
     reviewAllClients,
-    isBatchAnalyzing,
     lastBatchReviewTime,
-    batchProgress,
+    isBatchAnalyzing,
     totalClientsToAnalyze,
+    refetchClients: refetch
   };
 };

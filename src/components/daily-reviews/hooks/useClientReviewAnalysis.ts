@@ -23,6 +23,7 @@ export const useClientReviewAnalysis = (
     queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
     queryClient.invalidateQueries({ queryKey: ["latest-review", clientId] });
     queryClient.invalidateQueries({ queryKey: ["review-history", clientId] });
+    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     
     // Atualizar os dados
     onRefreshComplete();
