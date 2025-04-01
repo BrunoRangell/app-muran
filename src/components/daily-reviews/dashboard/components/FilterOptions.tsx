@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Filter } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { InfoIcon } from "lucide-react";
+import { CompactNextReviewCountdown } from "./CompactNextReviewCountdown";
 
 interface FilterOptionsProps {
   showOnlyAdjustments: boolean;
@@ -15,7 +16,7 @@ export const FilterOptions = ({
   onShowOnlyAdjustmentsChange
 }: FilterOptionsProps) => {
   return (
-    <div className="flex items-center gap-2 pl-2">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-t pt-2 mt-2">
       <div className="flex items-center space-x-2">
         <Switch 
           id="show-adjustments" 
@@ -38,6 +39,10 @@ export const FilterOptions = ({
             </Tooltip>
           </TooltipProvider>
         </Label>
+      </div>
+      
+      <div className="mt-2 md:mt-0">
+        <CompactNextReviewCountdown />
       </div>
     </div>
   );

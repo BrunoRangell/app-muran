@@ -8,7 +8,6 @@ import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManag
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { NextReviewCountdown } from "@/components/daily-reviews/dashboard/components/NextReviewCountdown";
 
 export default function RevisaoNova() {
   // Usando useState para manter o estado da aba selecionada
@@ -39,13 +38,8 @@ export default function RevisaoNova() {
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <ReviewsDashboardCard onViewClientDetails={() => {}} />
-            </div>
-            <div className="space-y-6">
-              <NextReviewCountdown />
-            </div>
+          <div className="md:col-span-3">
+            <ReviewsDashboardCard onViewClientDetails={() => {}} />
           </div>
         </TabsContent>
         
