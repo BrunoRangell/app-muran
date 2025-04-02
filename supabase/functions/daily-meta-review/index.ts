@@ -1,4 +1,3 @@
-
 // Este arquivo é muito extenso, então vamos fazer uma modificação pontual
 // para garantir que o cron chama o mesmo fluxo que o botão "Analisar todos"
 
@@ -112,6 +111,33 @@ const startBatchProcess = async (supabase: any, logId: string, isAutomatic: bool
           key: "batch_review_progress",
           value: batchInfo
         });
+    }
+
+    // IMPORTANTE: Atualizar o timestamp da última execução em lote
+    // Isso permite à interface detectar que o processo começou
+    try {
+      const timeNow = new Date().toISOString();
+      const { data: lastBatchConfig } = await supabase
+        .from("system_configs")
+        .select("id")
+        .eq("key", "last_batch_review_time")
+        .maybeSingle();
+        
+      if (lastBatchConfig) {
+        await supabase
+          .from("system_configs")
+          .update({ value: timeNow })
+          .eq("id", lastBatchConfig.id);
+      } else {
+        await supabase
+          .from("system_configs")
+          .insert({
+            key: "last_batch_review_time",
+            value: timeNow
+          });
+      }
+    } catch (updateError) {
+      console.error("Erro ao atualizar timestamp de revisão:", updateError);
     }
 
     // Atualizar o status do log para "in_progress"
@@ -651,33 +677,6 @@ serve(async (req) => {
       } catch (error) {
         console.error("Erro ao usar EdgeRuntime.waitUntil:", error);
         backgroundPromise = processClientsInBackground(supabase, logId, isAutomatic);
-      }
-      
-      // Nova adição aqui: Garantir que a última revisão em lote seja atualizada
-      // para que a UI mostre o mesmo comportamento do clique manual no botão
-      try {
-        const timeNow = new Date().toISOString();
-        const { data: existingConfig } = await supabase
-          .from("system_configs")
-          .select("id")
-          .eq("key", "last_batch_review_time")
-          .maybeSingle();
-        
-        if (existingConfig) {
-          await supabase
-            .from("system_configs")
-            .update({ value: timeNow })
-            .eq("id", existingConfig.id);
-        } else {
-          await supabase
-            .from("system_configs")
-            .insert({
-              key: "last_batch_review_time",
-              value: timeNow
-            });
-        }
-      } catch (updateError) {
-        console.error("Erro ao atualizar timestamp de revisão:", updateError);
       }
       
       return new Response(
