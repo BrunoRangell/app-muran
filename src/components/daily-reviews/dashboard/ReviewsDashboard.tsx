@@ -12,10 +12,19 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
   const [viewMode, setViewMode] = useState("grid");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
 
+  // Adicionando função dummy para onAnalyzeAll que será passada para MetaDashboardCard
+  const handleAnalyzeAll = async () => {
+    console.log("Análise em lote iniciada do componente ReviewsDashboard");
+    // Esta função será sobrescrita pela implementação real no MetaDashboardCard
+  };
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <div className="col-span-1">
-        <MetaDashboardCard onViewClientDetails={onViewClientDetails} />
+        <MetaDashboardCard 
+          onViewClientDetails={onViewClientDetails} 
+          onAnalyzeAll={handleAnalyzeAll}
+        />
       </div>
       <div className="col-span-1">
         <GoogleAdsDashboardCard 

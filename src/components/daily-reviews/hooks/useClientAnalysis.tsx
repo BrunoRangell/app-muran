@@ -173,7 +173,11 @@ export const useClientAnalysis = (
     },
   });
 
+  // Adicionar o getter isAnalyzing para compatibilidade
+  const isAnalyzing = analyzeMutation.isPending;
+
   return {
     analyzeMutation,
+    isAnalyzing,
   };
 };

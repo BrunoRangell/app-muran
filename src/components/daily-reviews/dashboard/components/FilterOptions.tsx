@@ -9,7 +9,7 @@ import { CompactNextReviewCountdown } from "./CompactNextReviewCountdown";
 interface FilterOptionsProps {
   showOnlyAdjustments: boolean;
   onShowOnlyAdjustmentsChange: (value: boolean) => void;
-  onAnalyzeAll: () => Promise<void>;
+  onAnalyzeAll?: () => Promise<void>; // Tornando opcional
 }
 
 export const FilterOptions = ({
@@ -44,7 +44,7 @@ export const FilterOptions = ({
       </div>
       
       <div className="mt-2 md:mt-0">
-        <CompactNextReviewCountdown onAnalyzeAll={onAnalyzeAll} />
+        {onAnalyzeAll && <CompactNextReviewCountdown onAnalyzeAll={onAnalyzeAll} />}
       </div>
     </div>
   );
