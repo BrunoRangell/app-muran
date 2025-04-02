@@ -210,12 +210,19 @@ serve(async (req) => {
       const apiData = await testResponse.json();
       const clientsCount = apiData.results ? apiData.results.length : 0;
       
+      // Preparar lista de clientes para retornar
+      const clients = apiData.results ? apiData.results.map((result: any) => ({
+        id: result.customerClient?.id || '',
+        name: result.customerClient?.descriptiveName || ''
+      })) : [];
+      
       return new Response(
         JSON.stringify({ 
           success: true, 
           tokenRefreshed: true, 
           apiAccess: true,
           clientsCount: clientsCount,
+          clients: clients,
           message: `Token renovado e API acessível. ${clientsCount} clientes encontrados.`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -9,11 +9,17 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Eye, EyeOff, Check, X, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Check, X, RefreshCw, List } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface Token {
   name: string;
@@ -21,11 +27,17 @@ interface Token {
   status: "valid" | "invalid" | "unknown" | "loading";
 }
 
+interface GoogleAdsClient {
+  id: string;
+  name: string;
+}
+
 export const GoogleAdsTokenTest = () => {
   const [showTokenValues, setShowTokenValues] = useState(false);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [clients, setClients] = useState<GoogleAdsClient[]>([]);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -103,6 +115,7 @@ export const GoogleAdsTokenTest = () => {
   const testGoogleAdsTokens = async () => {
     setIsRefreshing(true);
     setTestResult(null);
+    setClients([]);
     
     try {
       const { data, error } = await supabase.functions.invoke('google-ads-token-check');
@@ -142,6 +155,12 @@ export const GoogleAdsTokenTest = () => {
             tokenRefreshed: data.tokenRefreshed
           },
         });
+        
+        // Se houver clientes na resposta, armazenar para exibição
+        if (data.clients && Array.isArray(data.clients)) {
+          setClients(data.clients);
+        }
+        
         toast({
           title: "Sucesso",
           description: data.message || "Tokens verificados com sucesso",
@@ -236,6 +255,42 @@ export const GoogleAdsTokenTest = () => {
             )}
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Exibir clientes retornados da API */}
+      {clients.length > 0 && (
+        <Accordion type="single" collapsible className="w-full bg-white border rounded-md">
+          <AccordionItem value="clients">
+            <AccordionTrigger className="px-4 py-2 hover:bg-gray-50">
+              <div className="flex items-center">
+                <List className="h-4 w-4 mr-2 text-[#ff6e00]" />
+                <span>
+                  Contas Google Ads encontradas ({clients.length})
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="border-t">
+              <div className="max-h-64 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID da Conta</TableHead>
+                      <TableHead>Nome da Conta</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clients.map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell className="font-mono text-sm">{client.id}</TableCell>
+                        <TableCell>{client.name || "Sem nome"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
 
       <div className="border rounded-md overflow-hidden">
