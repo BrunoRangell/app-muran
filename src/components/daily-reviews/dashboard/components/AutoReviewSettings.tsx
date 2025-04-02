@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { formatDateInBrasiliaTz } from "../../summary/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader, Calendar, Check, RefreshCw, Clock, AlertCircle } from "lucide-react";
+import { Check, RefreshCw, Clock, AlertCircle } from "lucide-react";
 import { useBatchReview } from "../../hooks/useBatchReview";
 
 export function AutoReviewSettings() {
@@ -13,7 +13,7 @@ export function AutoReviewSettings() {
   const [cronStatus, setCronStatus] = useState<'active' | 'unknown' | 'inactive'>('unknown');
   const { toast } = useToast();
   
-  // Usando o mesmo hook de batchReview que é usado no botão "Analisar todos"
+  // Usando o hook useBatchReview para acessar a mesma função que o botão "Analisar todos"
   const { 
     reviewAllClients, 
     lastBatchReviewTime, 
@@ -86,19 +86,8 @@ export function AutoReviewSettings() {
 
   const runManualReview = async () => {
     try {
-      // Usando a mesma função que é chamada pelo botão "Analisar todos"
+      // Usando a mesma função que o botão "Analisar todos" usa
       await reviewAllClients();
-      
-      // Registrar no log
-      await supabase.from("system_logs").insert({
-        event_type: "cron_job",
-        message: "Revisão iniciada manualmente pelo usuário",
-        details: {
-          manual: true,
-          initiated_by: "user",
-          timestamp: new Date().toISOString()
-        }
-      });
       
     } catch (error) {
       console.error("Erro ao iniciar revisão manual:", error);

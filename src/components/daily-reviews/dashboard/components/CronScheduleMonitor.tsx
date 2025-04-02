@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { useBatchReview } from "../../hooks/useBatchReview";
 
 export function CronScheduleMonitor() {
   const [lastExecutions, setLastExecutions] = useState<any[]>([]);
@@ -13,8 +14,14 @@ export function CronScheduleMonitor() {
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [healthStatus, setHealthStatus] = useState<"healthy" | "warning" | "error" | "unknown">("unknown");
-  const [batchProgress, setBatchProgress] = useState<any>(null);
   const { toast } = useToast();
+  const { 
+    reviewAllClients,
+    lastBatchReviewTime,
+    isBatchAnalyzing,
+    batchProgress,
+    totalClientsToAnalyze
+  } = useBatchReview();
 
   // Função para carregar os dados do agendamento
   const loadScheduleData = async () => {
@@ -47,19 +54,6 @@ export function CronScheduleMonitor() {
         // Analisar a saúde do agendamento e calcular próxima execução
         analyzeScheduleHealth(executions);
         calculateNextRunTime(cronData?.[0]?.cron_expression, executions);
-      }
-
-      // Obter informações de progresso em lote atual
-      const { data: batchInfo } = await supabase
-        .from("system_configs")
-        .select("value")
-        .eq("key", "batch_review_progress")
-        .single();
-
-      if (batchInfo?.value) {
-        setBatchProgress(batchInfo.value);
-      } else {
-        setBatchProgress(null);
       }
       
     } catch (error) {
@@ -239,44 +233,8 @@ export function CronScheduleMonitor() {
   // Função para iniciar uma revisão manual
   const triggerManualReview = async () => {
     try {
-      setIsLoading(true);
-      
-      // Criar registro na tabela de logs
-      const { data: logEntry, error: logError } = await supabase
-        .from('cron_execution_logs')
-        .insert({
-          job_name: 'daily-meta-review-job',
-          status: 'started',
-          details: {
-            source: 'manual_trigger',
-            timestamp: new Date().toISOString(),
-            triggered_from: 'monitor_component'
-          }
-        })
-        .select()
-        .single();
-      
-      if (logError) throw logError;
-      
-      // Chamar a função edge
-      const { error: edgeError } = await supabase.functions.invoke(
-        "daily-meta-review",
-        {
-          body: {
-            executeReview: true,
-            manual: true,
-            logId: logEntry.id,
-            timestamp: new Date().toISOString()
-          }
-        }
-      );
-      
-      if (edgeError) throw edgeError;
-      
-      toast({
-        title: "Revisão iniciada",
-        description: "A revisão automática foi iniciada manualmente.",
-      });
+      // Usar a mesma função que o botão "Analisar todos" usa
+      await reviewAllClients();
       
       // Recarregar dados após um breve intervalo
       setTimeout(() => {
@@ -290,8 +248,6 @@ export function CronScheduleMonitor() {
         description: "Não foi possível iniciar a revisão automática.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -422,13 +378,8 @@ export function CronScheduleMonitor() {
   };
 
   // Se existe um processo em lote em andamento, mostrar seu progresso
-  const isBatchInProgress = batchProgress && 
-                            batchProgress.status === 'running' &&
-                            (new Date().getTime() - new Date(batchProgress.startTime).getTime()) < 15 * 60 * 1000; // 15 minutos
-
-  // Calculando a porcentagem de progresso
-  const progressPercentage = isBatchInProgress && batchProgress.totalClients
-    ? Math.min(Math.round((batchProgress.processedClients / batchProgress.totalClients) * 100), 100)
+  const progressPercentage = totalClientsToAnalyze > 0 
+    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
     : 0;
 
   return (
@@ -470,7 +421,7 @@ export function CronScheduleMonitor() {
                 size="sm" 
                 variant="default" 
                 onClick={triggerManualReview} 
-                disabled={isLoading || isBatchInProgress}
+                disabled={isBatchAnalyzing}
                 className="bg-[#ff6e00] hover:bg-[#e66300]"
               >
                 Iniciar Agora
@@ -479,7 +430,7 @@ export function CronScheduleMonitor() {
                 size="sm" 
                 variant="destructive" 
                 onClick={repairSchedule} 
-                disabled={isLoading || isBatchInProgress}
+                disabled={isLoading || isBatchAnalyzing}
               >
                 Reparar
               </Button>
@@ -495,12 +446,12 @@ export function CronScheduleMonitor() {
           </div>
           
           {/* Barra de progresso se houver um lote em andamento */}
-          {isBatchInProgress && (
+          {isBatchAnalyzing && (
             <div className="mt-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Progresso da análise automática</span>
                 <span className="text-sm text-gray-500">
-                  {batchProgress.processedClients || 0} de {batchProgress.totalClients} ({progressPercentage}%)
+                  {batchProgress || 0} de {totalClientsToAnalyze} ({progressPercentage}%)
                 </span>
               </div>
               <Progress 
@@ -508,12 +459,6 @@ export function CronScheduleMonitor() {
                 className="h-2" 
                 indicatorClassName="bg-[#ff6e00]" 
               />
-              <p className="text-xs text-gray-500 mt-1">
-                {batchProgress.isAutomatic 
-                  ? "Execução automática em andamento" 
-                  : "Execução manual em andamento"}
-                {batchProgress.lastProcessed && ` - Último processado: ${batchProgress.lastProcessed}`}
-              </p>
             </div>
           )}
           
