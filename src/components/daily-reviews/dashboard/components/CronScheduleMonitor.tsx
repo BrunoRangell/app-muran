@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
@@ -13,9 +14,13 @@ export function CronScheduleMonitor() {
   const [loading, setLoading] = useState(true);
   const [cronError, setCronError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [secondsToNext, setSecondsToNext] = useState<number>(120);
+  const [secondsToNext, setSecondsToNext] = useState<number>(0);
   const refreshTimerRef = useRef<number | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+
+  // O intervalo de execução é de 3 minutos (180 segundos) para testes
+  const EXECUTION_INTERVAL = 3 * 60; // 3 minutos em segundos
 
   const fetchCronStatus = async () => {
     try {
@@ -65,7 +70,7 @@ export function CronScheduleMonitor() {
         setCronError('Nenhum log de execução válido encontrado');
       }
       
-      setNextExecution("A cada 5 horas");
+      setNextExecution("A cada 3 minutos (teste)");
       
       updateSecondsToNext();
       
@@ -83,17 +88,55 @@ export function CronScheduleMonitor() {
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
-    const currentTotalSeconds = minutes * 60 + seconds;
-    const nextInterval = Math.ceil(currentTotalSeconds / (3 * 60)) * (3 * 60);
+    // Próximo minuto divisível por 3
+    const nextIntervalMinute = Math.ceil(minutes / 3) * 3;
     
-    const secondsUntilNext = nextInterval - currentTotalSeconds;
-    setSecondsToNext(secondsUntilNext === 0 ? (3 * 60) : secondsUntilNext);
+    if (nextIntervalMinute === minutes && seconds === 0) {
+      // Estamos exatamente no tempo de execução
+      setSecondsToNext(EXECUTION_INTERVAL);
+    } else if (nextIntervalMinute === minutes) {
+      // Estamos no minuto correto, mas não no segundo zero
+      setSecondsToNext(60 - seconds + ((nextIntervalMinute + 3 - minutes) * 60) - 60);
+    } else {
+      // Calculamos os segundos até o próximo intervalo
+      const secondsUntilNextMinute = 60 - seconds;
+      const minutesUntilNextInterval = nextIntervalMinute - minutes - 1;
+      
+      setSecondsToNext(secondsUntilNextMinute + (minutesUntilNextInterval * 60));
+    }
   };
+
+  // Configurar contador regressivo
+  useEffect(() => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
+    
+    countdownRef.current = setInterval(() => {
+      setSecondsToNext(prev => {
+        if (prev <= 1) {
+          updateSecondsToNext();
+          // Verificar status quando o contador chega a zero
+          fetchCronStatus();
+          return EXECUTION_INTERVAL;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetchCronStatus();
     
-    const intervalId = setInterval(fetchCronStatus, 3 * 60 * 1000);
+    const intervalId = setInterval(() => {
+      fetchCronStatus();
+    }, 3 * 60 * 1000); // Verificar a cada 3 minutos
     
     return () => {
       clearInterval(intervalId);
@@ -127,7 +170,7 @@ export function CronScheduleMonitor() {
       });
       
       const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { test: true }
+        body: { test: true, executeReview: true, manual: true }
       });
       
       if (error) {
@@ -138,7 +181,7 @@ export function CronScheduleMonitor() {
       
       toast({
         title: "Teste concluído",
-        description: "A função Edge respondeu com sucesso",
+        description: "A função Edge respondeu com sucesso e uma revisão foi iniciada.",
         variant: "default",
       });
       
@@ -185,7 +228,7 @@ export function CronScheduleMonitor() {
             onClick={testEdgeFunction}
             disabled={refreshing}
           >
-            Testar
+            Testar Agora
           </Button>
         </div>
       </CardHeader>
@@ -246,6 +289,7 @@ export function CronScheduleMonitor() {
           <div className="pt-3 border-t text-xs text-gray-500">
             <p>
               A revisão automática de orçamentos está configurada para executar a cada 3 minutos para fins de teste.
+              Você pode clicar em "Testar Agora" para iniciar uma revisão manual.
             </p>
           </div>
         </div>

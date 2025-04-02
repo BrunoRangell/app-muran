@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Loader } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -11,23 +12,41 @@ export function CompactNextReviewCountdown() {
   const progressCheckRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckRef = useRef<number>(0);
   
-  // O intervalo de execução agora é de 3 minutos (180 segundos) para testes
+  // O intervalo de execução é de 3 minutos (180 segundos) para testes
   const EXECUTION_INTERVAL = 3 * 60; // 3 minutos em segundos
   const PROGRESS_CHECK_INTERVAL = 60 * 1000; // Verificar progresso a cada 1 minuto
 
+  // Função aprimorada para calcular o tempo até a próxima revisão
   const updateSecondsToNext = () => {
     const now = new Date();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
-    // Calcular para o próximo múltiplo de 3 minutos
-    const currentTotalSeconds = minutes * 60 + seconds;
-    const nextInterval = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
+    // Calcular em relação aos múltiplos de 3 minutos dentro da hora atual
+    const currentMinuteOfHour = minutes;
+    const currentSecondOfMinute = seconds;
     
-    const secondsUntilNext = nextInterval - currentTotalSeconds;
-    setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
+    // Próximo minuto divisível por 3
+    const nextIntervalMinute = Math.ceil(currentMinuteOfHour / 3) * 3;
+    
+    if (nextIntervalMinute === currentMinuteOfHour && currentSecondOfMinute === 0) {
+      // Estamos exatamente no tempo de execução
+      setSecondsToNext(EXECUTION_INTERVAL);
+    } else if (nextIntervalMinute === currentMinuteOfHour) {
+      // Estamos no minuto correto, mas não no segundo zero
+      setSecondsToNext(60 - currentSecondOfMinute + ((nextIntervalMinute + 3 - currentMinuteOfHour) * 60) - 60);
+    } else {
+      // Calculamos os segundos até o próximo intervalo
+      const secondsUntilNextMinute = 60 - currentSecondOfMinute;
+      const minutesUntilNextInterval = nextIntervalMinute - currentMinuteOfHour - 1;
+      
+      setSecondsToNext(secondsUntilNextMinute + (minutesUntilNextInterval * 60));
+    }
+    
+    console.log("[CompactNextReviewCountdown] Próxima revisão em", Math.floor(secondsToNext / 60), "min", secondsToNext % 60, "seg");
   };
 
+  // Função para verificar se há revisão ativa
   const checkForActiveReview = async () => {
     // Evitar verificações muito frequentes
     const now = Date.now();
@@ -64,17 +83,17 @@ export function CompactNextReviewCountdown() {
     }
   };
 
+  // Iniciar monitoramento de progresso
   const startProgressMonitoring = () => {
-    // Limpar qualquer monitoramento existente
     stopProgressMonitoring();
     
-    // Configurar novo monitoramento a cada minuto
     console.log("[CompactNextReviewCountdown] Iniciando monitoramento de progresso");
     progressCheckRef.current = setInterval(() => {
       fetchReviewProgress();
     }, PROGRESS_CHECK_INTERVAL);
   };
 
+  // Parar monitoramento de progresso
   const stopProgressMonitoring = () => {
     if (progressCheckRef.current) {
       console.log("[CompactNextReviewCountdown] Parando monitoramento de progresso");
@@ -83,6 +102,7 @@ export function CompactNextReviewCountdown() {
     }
   };
 
+  // Verificar progresso da revisão
   const fetchReviewProgress = async () => {
     try {
       const { data: clients } = await supabase
@@ -113,24 +133,38 @@ export function CompactNextReviewCountdown() {
     }
   };
 
+  // Efeito para configurar temporizadores
   useEffect(() => {
     console.log("[CompactNextReviewCountdown] Componente montado - inicializando");
-    updateSecondsToNext();
-    checkForActiveReview(); // Verificar apenas uma vez no carregamento
     
+    // Inicializar o contador
+    updateSecondsToNext();
+    
+    // Verificar revisões ativas
+    checkForActiveReview();
+    
+    // Limpar contador existente
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
     }
     
+    // Configurar novo contador
     countdownRef.current = setInterval(() => {
       setSecondsToNext(prevSeconds => {
         if (prevSeconds <= 1) {
+          console.log("[CompactNextReviewCountdown] Contador zerou - verificando revisões");
           updateSecondsToNext();
+          checkForActiveReview(); // Verificar quando o contador chegar a zero
           return EXECUTION_INTERVAL;
         }
         return prevSeconds - 1;
       });
     }, 1000);
+    
+    // Verificação periódica adicional
+    const periodicCheckInterval = setInterval(() => {
+      checkForActiveReview();
+    }, 3 * 60 * 1000); // Verificar a cada 3 minutos
     
     return () => {
       console.log("[CompactNextReviewCountdown] Componente desmontado - limpando");
@@ -138,6 +172,7 @@ export function CompactNextReviewCountdown() {
         clearInterval(countdownRef.current);
       }
       stopProgressMonitoring();
+      clearInterval(periodicCheckInterval);
     };
   }, []); // Sem dependências - executar apenas uma vez
 
