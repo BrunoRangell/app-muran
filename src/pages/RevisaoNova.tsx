@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/ReviewsDashboardCard";
+import { MetaDashboardCard } from "@/components/daily-reviews/dashboard/MetaDashboardCard";
 import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
@@ -22,6 +22,12 @@ export default function RevisaoNova() {
     }
   }, [tabParam]);
   
+  // Função para lidar com detalhes do cliente (será passada para MetaDashboardCard)
+  const handleViewClientDetails = (clientId: string) => {
+    console.log("[RevisaoNova] Visualizando detalhes do cliente:", clientId);
+    // Esta função pode ser expandida no futuro para navegar para a página de detalhes
+  };
+  
   return (
     <div className="container mx-auto p-4 space-y-6">
       <h1 className="text-2xl md:text-3xl font-bold text-[#321e32]">
@@ -39,7 +45,7 @@ export default function RevisaoNova() {
         
         <TabsContent value="dashboard" className="space-y-6">
           <div className="md:col-span-3">
-            <ReviewsDashboardCard onViewClientDetails={() => {}} />
+            <MetaDashboardCard onViewClientDetails={handleViewClientDetails} />
           </div>
         </TabsContent>
         
