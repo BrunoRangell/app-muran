@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
@@ -14,9 +15,7 @@ export function CronScheduleMonitor() {
   const [cronError, setCronError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [secondsToNext, setSecondsToNext] = useState<number>(120);
-  const [executingReview, setExecutingReview] = useState(false);
   const refreshTimerRef = useRef<number | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const fetchCronStatus = async () => {
@@ -67,7 +66,7 @@ export function CronScheduleMonitor() {
         setCronError('Nenhum log de execução válido encontrado');
       }
       
-      setNextExecution("A cada minuto");
+      setNextExecution("A cada 5 horas");
       
       updateSecondsToNext();
       
@@ -80,6 +79,7 @@ export function CronScheduleMonitor() {
     }
   };
 
+  // Apenas atualiza o contador visual
   const updateSecondsToNext = () => {
     const now = new Date();
     const hours = now.getHours();
@@ -93,77 +93,34 @@ export function CronScheduleMonitor() {
     setSecondsToNext(secondsUntilNext === 0 ? (5 * 60 * 60) : secondsUntilNext);
   };
 
-  const handleCountdownEnd = () => {
-    console.log("Contador chegou a zero, executando revisão automática...");
-    
-    setExecutingReview(true);
-    
-    testEdgeFunction()
-      .then(() => {
-        console.log("Revisão automática executada com sucesso");
-        toast({
-          title: "Revisão automática executada",
-          description: "O processo de revisão foi iniciado com sucesso",
-          variant: "default",
-        });
-      })
-      .catch((err) => {
-        console.error("Erro ao executar revisão automática:", err);
-        toast({
-          title: "Erro na revisão automática",
-          description: "Não foi possível executar a revisão automática",
-          variant: "destructive",
-        });
-      })
-      .finally(() => {
-        setTimeout(() => {
-          fetchCronStatus();
-          setExecutingReview(false);
-          toast({
-            title: "Verificando execução",
-            description: "Atualizando status da revisão automática...",
-            variant: "default",
-          });
-        }, 3000);
-      });
-  };
-
   useEffect(() => {
     fetchCronStatus();
     
-    const intervalId = setInterval(fetchCronStatus, 15 * 1000);
+    // Reduzir frequência de verificações automáticas para a cada 5 minutos
+    const intervalId = setInterval(fetchCronStatus, 5 * 60 * 1000);
     
     return () => {
       clearInterval(intervalId);
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
       }
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-      }
     };
   }, []);
 
+  // Atualização visual do contador de segundos
   useEffect(() => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-    }
-    
-    countdownRef.current = setInterval(() => {
+    const intervalId = setInterval(() => {
       setSecondsToNext(prev => {
         if (prev <= 1) {
-          handleCountdownEnd();
-          return 60;
+          // Apenas reiniciar o contador visual
+          updateSecondsToNext();
+          return 5 * 60 * 60; // 5 horas
         }
         return prev - 1;
       });
     }, 1000);
     
-    return () => {
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-      }
-    };
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleManualRefresh = async () => {
@@ -199,19 +156,9 @@ export function CronScheduleMonitor() {
       
       console.log("Resposta do teste:", data);
       
-      const { data: execData, error: execError } = await supabase.functions.invoke("daily-meta-review", {
-        body: { manual: true, executeReview: true }
-      });
-      
-      if (execError) {
-        throw execError;
-      }
-      
-      console.log("Resposta da execução:", execData);
-      
       toast({
-        title: "Revisão iniciada",
-        description: "A função Edge está processando a revisão dos orçamentos",
+        title: "Teste concluído",
+        description: "A função Edge respondeu com sucesso",
         variant: "default",
       });
       
@@ -247,7 +194,7 @@ export function CronScheduleMonitor() {
             variant="ghost" 
             size="sm" 
             onClick={handleManualRefresh}
-            disabled={refreshing || executingReview}
+            disabled={refreshing}
             title="Atualizar status"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-[#ff6e00]' : 'text-gray-500'}`} />
@@ -256,7 +203,7 @@ export function CronScheduleMonitor() {
             variant="outline" 
             size="sm" 
             onClick={testEdgeFunction}
-            disabled={refreshing || executingReview}
+            disabled={refreshing}
           >
             Testar
           </Button>
@@ -288,7 +235,7 @@ export function CronScheduleMonitor() {
             <div className="bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200">
               <div className="text-xs text-gray-500">Próxima execução em</div>
               <div className="font-mono font-bold text-lg">
-                {secondsToNext}s
+                {Math.floor(secondsToNext / 3600)}h {Math.floor((secondsToNext % 3600) / 60)}m
               </div>
             </div>
           </div>

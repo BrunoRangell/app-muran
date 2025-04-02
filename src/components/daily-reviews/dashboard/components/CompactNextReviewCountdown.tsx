@@ -17,15 +17,12 @@ export function CompactNextReviewCountdown() {
   const [lastProcessedTime, setLastProcessedTime] = useState<Date | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const stabilityCheckRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   // O intervalo de execução é de 5 horas (18000 segundos)
   const EXECUTION_INTERVAL = 5 * 60 * 60; // 5 horas em segundos
-  const PROGRESS_CHECK_INTERVAL = 3000;
-  const STABILITY_CHECK_INTERVAL = 10000;
-  const COMPLETION_DELAY = 2000;
+  const PROGRESS_CHECK_INTERVAL = 60000; // Verificar progresso a cada 1 minuto em vez de 3 segundos
 
   const updateSecondsToNext = () => {
     const now = new Date();
@@ -80,41 +77,15 @@ export function CompactNextReviewCountdown() {
       clearInterval(progressIntervalRef.current);
     }
     
-    if (stabilityCheckRef.current) {
-      clearInterval(stabilityCheckRef.current);
-    }
-    
     progressIntervalRef.current = setInterval(() => {
       fetchReviewProgress();
     }, PROGRESS_CHECK_INTERVAL);
-    
-    stabilityCheckRef.current = setInterval(() => {
-      checkProgressStability();
-    }, STABILITY_CHECK_INTERVAL);
   };
 
   const stopProgressMonitoring = () => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
-    }
-    
-    if (stabilityCheckRef.current) {
-      clearInterval(stabilityCheckRef.current);
-      stabilityCheckRef.current = null;
-    }
-  };
-
-  const checkProgressStability = () => {
-    if (!isAutoReviewing || !lastProcessedTime) return;
-    
-    const now = new Date();
-    const minutesSinceLastUpdate = (now.getTime() - lastProcessedTime.getTime()) / (1000 * 60);
-    
-    if (minutesSinceLastUpdate > 2 && progress < 100) {
-      console.log(`[CompactNextReviewCountdown] Progresso parece estar parado. Última atualização: ${minutesSinceLastUpdate.toFixed(1)} minutos atrás`);
-      
-      resumeReviewForPendingClients();
     }
   };
 
@@ -166,7 +137,6 @@ export function CompactNextReviewCountdown() {
           
           if (progressValue >= 100) {
             console.log("[CompactNextReviewCountdown] Todos os clientes foram processados!");
-            
             setTimeout(() => {
               setIsAutoReviewing(false);
               stopProgressMonitoring();
@@ -192,7 +162,7 @@ export function CompactNextReviewCountdown() {
                 title: "Revisão automática concluída",
                 description: `${numProcessedClients} clientes foram analisados com sucesso.`,
               });
-            }, COMPLETION_DELAY);
+            }, 2000);
           }
         }
       }
@@ -218,213 +188,6 @@ export function CompactNextReviewCountdown() {
     }
   };
 
-  const resumeReviewForPendingClients = async () => {
-    try {
-      console.log("[CompactNextReviewCountdown] Tentando retomar a revisão para clientes pendentes...");
-      
-      const { data: allClients, error: clientsError } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('status', 'active')
-        .not('meta_account_id', 'is', null)
-        .not('meta_account_id', 'eq', '');
-      
-      if (clientsError) {
-        throw new Error(`Erro ao buscar clientes: ${clientsError.message}`);
-      }
-      
-      if (!allClients || allClients.length === 0) {
-        throw new Error("Nenhum cliente encontrado para processar");
-      }
-      
-      const clientIds = allClients.map(c => c.id);
-      
-      const today = new Date().toISOString().split('T')[0];
-      const { data: processed, error: reviewsError } = await supabase
-        .from('daily_budget_reviews')
-        .select('client_id')
-        .eq('review_date', today);
-      
-      if (reviewsError) {
-        throw new Error(`Erro ao buscar revisões: ${reviewsError.message}`);
-      }
-      
-      const processedIds = (processed || []).map(p => p.client_id);
-      const uniqueProcessedIds = [...new Set(processedIds)];
-      const pendingClientIds = clientIds.filter(id => !uniqueProcessedIds.includes(id));
-      
-      console.log(`[CompactNextReviewCountdown] Clientes pendentes: ${pendingClientIds.length} de ${clientIds.length}`);
-      
-      if (pendingClientIds.length === 0) {
-        console.log("[CompactNextReviewCountdown] Todos os clientes já foram processados");
-        
-        if (uniqueProcessedIds.length < clientIds.length) {
-          console.log("[CompactNextReviewCountdown] Discrepância nos números, forçando atualização do status para 'success'");
-          
-          await supabase
-            .from('cron_execution_logs')
-            .update({
-              status: 'success',
-              details: {
-                message: "Concluído com discrepância no número de clientes processados",
-                processed_count: uniqueProcessedIds.length,
-                total_clients: clientIds.length
-              }
-            })
-            .eq('job_name', 'daily-meta-review-job')
-            .eq('status', 'started');
-          
-          setIsAutoReviewing(false);
-          stopProgressMonitoring();
-        }
-        
-        return;
-      }
-      
-      const { data: logEntry, error: logError } = await supabase
-        .from('cron_execution_logs')
-        .insert({
-          job_name: 'daily-meta-review-job',
-          status: 'started',
-          details: {
-            pendingClientsCount: pendingClientIds.length,
-            reason: 'resume_incomplete',
-            timestamp: new Date().toISOString()
-          }
-        })
-        .select()
-        .single();
-      
-      if (logError) {
-        throw new Error(`Erro ao registrar log de execução: ${logError.message}`);
-      }
-      
-      console.log("[CompactNextReviewCountdown] Chamando função edge para clientes pendentes:", pendingClientIds.length);
-      
-      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { 
-          manual: true, 
-          executeReview: true,
-          pendingClientsOnly: true,
-          pendingClientIds,
-          logId: logEntry?.id,
-          resumeOperation: true
-        }
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log("[CompactNextReviewCountdown] Revisão retomada:", data);
-      
-      toast({
-        title: "Revisão retomada",
-        description: `Continuando revisão para ${pendingClientIds.length} clientes pendentes`,
-        variant: "default",
-      });
-      
-      setLastProcessedTime(new Date());
-      
-    } catch (error) {
-      console.error("[CompactNextReviewCountdown] Erro ao retomar revisão:", error);
-      setErrorMessage(`Erro ao retomar revisão: ${error instanceof Error ? error.message : String(error)}`);
-      
-      toast({
-        title: "Erro ao retomar revisão",
-        description: `Não foi possível processar os clientes pendentes: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const executeAutoReview = async () => {
-    if (isAutoReviewing) {
-      console.log("[CompactNextReviewCountdown] Já existe uma revisão em andamento, ignorando nova execução");
-      return;
-    }
-    
-    try {
-      console.log("[CompactNextReviewCountdown] Iniciando revisão automática...");
-      setIsAutoReviewing(true);
-      setErrorMessage(null);
-      
-      const { data: logEntry, error: logError } = await supabase
-        .from('cron_execution_logs')
-        .insert({
-          job_name: 'daily-meta-review-job',
-          status: 'started',
-          details: {
-            source: 'countdown_trigger',
-            timestamp: new Date().toISOString()
-          }
-        })
-        .select()
-        .single();
-      
-      if (logError) {
-        console.error("[CompactNextReviewCountdown] Erro ao registrar execução:", logError);
-      }
-      
-      console.log("[CompactNextReviewCountdown] Chamando função edge daily-meta-review...");
-      
-      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { 
-          manual: true, 
-          executeReview: true,
-          logId: logEntry?.id
-        }
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log("[CompactNextReviewCountdown] Revisão automática iniciada:", data);
-      
-      setLastProcessedTime(new Date());
-      
-      toast({
-        title: "Revisão automática iniciada",
-        description: "O processo de revisão foi iniciado com sucesso",
-        variant: "default",
-      });
-      
-      fetchReviewProgress();
-      startProgressMonitoring();
-      
-    } catch (error) {
-      console.error("[CompactNextReviewCountdown] Erro ao executar revisão automática:", error);
-      
-      try {
-        await supabase
-          .from('cron_execution_logs')
-          .update({
-            status: 'error',
-            details: {
-              error: error instanceof Error ? error.message : String(error),
-              timestamp: new Date().toISOString()
-            }
-          })
-          .eq('job_name', 'daily-meta-review-job')
-          .eq('status', 'started');
-      } catch (updateError) {
-        console.error("[CompactNextReviewCountdown] Erro ao atualizar status do log:", updateError);
-      }
-      
-      setErrorMessage(`Erro ao executar revisão: ${error instanceof Error ? error.message : String(error)}`);
-      
-      toast({
-        title: "Erro na revisão automática",
-        description: "Não foi possível executar a revisão automática. Verifique os logs para mais detalhes.",
-        variant: "destructive",
-      });
-      
-      setIsAutoReviewing(false);
-      stopProgressMonitoring();
-    }
-  };
-
   useEffect(() => {
     updateSecondsToNext();
     checkForActiveReview();
@@ -433,11 +196,11 @@ export function CompactNextReviewCountdown() {
       clearInterval(countdownRef.current);
     }
     
+    // Modificado para APENAS atualizar o contador visível, sem iniciar revisão
     countdownRef.current = setInterval(() => {
       setSecondsToNext(prev => {
         if (prev <= 1) {
-          console.log("[CompactNextReviewCountdown] Contador chegou a zero, executando revisão automática...");
-          executeAutoReview();
+          // APENAS atualiza o contador sem iniciar revisão
           updateSecondsToNext();
           return EXECUTION_INTERVAL;
         }

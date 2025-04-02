@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
@@ -115,7 +116,7 @@ export const GoogleAdsDashboard = () => {
         )}
       </div>
 
-      {/* Cards de clientes (sem o card externo agora) */}
+      {/* Cards de clientes */}
       <GoogleAdsDashboardCard 
         onViewClientDetails={() => {}}
         searchQuery={searchQuery}

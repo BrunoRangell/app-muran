@@ -32,6 +32,7 @@ export function NextReviewCountdown() {
     setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
   };
 
+  // Função modificada para apenas verificar status, sem iniciar revisão
   const checkForActiveReview = async () => {
     try {
       const { data } = await supabase
@@ -99,46 +100,7 @@ export function NextReviewCountdown() {
     }
   };
 
-  const executeAutoReview = async () => {
-    if (isAutoReviewing) return; // Não executar se já estiver em andamento
-    
-    try {
-      setIsAutoReviewing(true);
-      
-      console.log("Contador chegou a zero, executando revisão automática...");
-      
-      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { manual: true, executeReview: true }
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log("Revisão automática iniciada:", data);
-      
-      toast({
-        title: "Revisão automática iniciada",
-        description: "O processo de revisão foi iniciado com sucesso",
-        variant: "default",
-      });
-      
-      // Iniciar verificação de progresso
-      fetchReviewProgress();
-      
-    } catch (error) {
-      console.error("Erro ao executar revisão automática:", error);
-      
-      toast({
-        title: "Erro na revisão automática",
-        description: "Não foi possível executar a revisão automática",
-        variant: "destructive",
-      });
-      
-      setIsAutoReviewing(false);
-    }
-  };
-
+  // Função modificada para apenas mostrar informações, sem executar revisão
   useEffect(() => {
     // Inicializar o contador
     updateSecondsToNext();
@@ -151,21 +113,19 @@ export function NextReviewCountdown() {
       clearInterval(countdownRef.current);
     }
     
-    // Criar um novo contador regressivo
+    // Criar um novo contador regressivo - APENAS PARA MOSTRAR O CONTADOR, NÃO INICIA REVISÃO
     countdownRef.current = setInterval(() => {
       setSecondsToNext(prev => {
-        // Se chegou a zero, reiniciar o contador e executar a revisão automática
         if (prev <= 1) {
-          console.log("Contador chegou a zero, executando revisão automática...");
-          executeAutoReview();
+          // Apenas reinicia o contador sem executar revisão
           updateSecondsToNext();
           return EXECUTION_INTERVAL;
         }
         return prev - 1;
       });
       
-      // Verificar o progresso a cada 3 segundos se estiver em revisão
-      if (isAutoReviewing) {
+      // Verificar o progresso a cada minuto se estiver em revisão
+      if (isAutoReviewing && prev % 60 === 0) {
         fetchReviewProgress();
       }
     }, 1000);
