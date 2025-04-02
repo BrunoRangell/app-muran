@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -163,7 +162,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
         <FilterOptions 
           showOnlyAdjustments={showOnlyAdjustments}
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
-          onAnalyzeAll={reviewAllClients} // Passando a função aqui
         />
       </div>
 

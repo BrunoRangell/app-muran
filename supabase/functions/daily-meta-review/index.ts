@@ -1,5 +1,7 @@
 
-// Importações necessárias
+// Este arquivo é muito extenso, então vamos fazer uma modificação pontual
+// para garantir que o cron chama o mesmo fluxo que o botão "Analisar todos"
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -486,7 +488,7 @@ async function processClientsInBackground(supabase: any, logId: string, isAutoma
   }
 }
 
-// Handler principal
+// Handler principal - Modificado para garantir que a execução cron usa o mesmo fluxo
 serve(async (req) => {
   // Lidar com requisições OPTIONS (CORS)
   if (req.method === "OPTIONS") {
@@ -649,6 +651,33 @@ serve(async (req) => {
       } catch (error) {
         console.error("Erro ao usar EdgeRuntime.waitUntil:", error);
         backgroundPromise = processClientsInBackground(supabase, logId, isAutomatic);
+      }
+      
+      // Nova adição aqui: Garantir que a última revisão em lote seja atualizada
+      // para que a UI mostre o mesmo comportamento do clique manual no botão
+      try {
+        const timeNow = new Date().toISOString();
+        const { data: existingConfig } = await supabase
+          .from("system_configs")
+          .select("id")
+          .eq("key", "last_batch_review_time")
+          .maybeSingle();
+        
+        if (existingConfig) {
+          await supabase
+            .from("system_configs")
+            .update({ value: timeNow })
+            .eq("id", existingConfig.id);
+        } else {
+          await supabase
+            .from("system_configs")
+            .insert({
+              key: "last_batch_review_time",
+              value: timeNow
+            });
+        }
+      } catch (updateError) {
+        console.error("Erro ao atualizar timestamp de revisão:", updateError);
       }
       
       return new Response(

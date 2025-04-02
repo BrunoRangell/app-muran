@@ -6,55 +6,26 @@ import { supabase } from "@/lib/supabase";
 import { formatDateInBrasiliaTz } from "../../summary/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader, Calendar, Check, RefreshCw, Clock, AlertCircle } from "lucide-react";
+import { useBatchReview } from "../../hooks/useBatchReview";
 
 export function AutoReviewSettings() {
-  const [lastAutoRun, setLastAutoRun] = useState<Date | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
-  const [lastRunStatus, setLastRunStatus] = useState<'success' | 'error' | null>(null);
-  const [cronStatus, setCronStatus] = useState<'active' | 'unknown' | 'inactive'>('unknown');
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [cronStatus, setCronStatus] = useState<'active' | 'unknown' | 'inactive'>('unknown');
   const { toast } = useToast();
+  
+  // Usando o mesmo hook de batchReview que é usado no botão "Analisar todos"
+  const { 
+    reviewAllClients, 
+    lastBatchReviewTime, 
+    isLoading: isRunning
+  } = useBatchReview();
 
-  const fetchLastAutoRun = async () => {
+  const fetchCronStatus = async () => {
     try {
       if (isCheckingStatus) return;
       
-      setIsLoading(true);
       setIsCheckingStatus(true);
       
-      const { data: configData, error: configError } = await supabase
-        .from("system_configs")
-        .select("value")
-        .eq("key", "last_batch_review_time")
-        .maybeSingle();
-        
-      if (configError) {
-        console.error("Erro ao buscar configuração:", configError);
-        setIsLoading(false);
-        setIsCheckingStatus(false);
-        return;
-      }
-      
-      if (configData?.value) {
-        setLastAutoRun(new Date(configData.value));
-        setLastRunStatus('success');
-      }
-      
-      await checkCronStatus();
-      
-      setIsLoading(false);
-      setIsCheckingStatus(false);
-    } catch (error) {
-      console.error("Erro ao buscar última execução automática:", error);
-      setLastRunStatus('error');
-      setIsLoading(false);
-      setIsCheckingStatus(false);
-    }
-  };
-
-  const checkCronStatus = async () => {
-    try {
       const { data: logs, error } = await supabase
         .from("system_logs")
         .select("*")
@@ -69,14 +40,16 @@ export function AutoReviewSettings() {
         
         if (hoursSince < 24) {
           setCronStatus('active');
+          setIsCheckingStatus(false);
           return;
         }
       }
       
-      if (lastAutoRun) {
-        const hoursSinceLastRun = (new Date().getTime() - lastAutoRun.getTime()) / (1000 * 60 * 60);
+      if (lastBatchReviewTime) {
+        const hoursSinceLastRun = (new Date().getTime() - new Date(lastBatchReviewTime).getTime()) / (1000 * 60 * 60);
         if (hoursSinceLastRun < 36) {
           setCronStatus('active');
+          setIsCheckingStatus(false);
           return;
         }
       }
@@ -98,43 +71,23 @@ export function AutoReviewSettings() {
           console.error("Erro no teste de função edge:", response.error);
           setCronStatus('inactive');
         }
-        
-        return;
       } catch (edgeFunctionError) {
         console.error("Erro ao testar função Edge:", edgeFunctionError);
         setCronStatus('inactive');
       }
       
+      setIsCheckingStatus(false);
     } catch (error) {
       console.error("Erro ao verificar status do cron:", error);
       setCronStatus('unknown');
+      setIsCheckingStatus(false);
     }
   };
 
   const runManualReview = async () => {
-    setIsRunning(true);
-    setIsLoading(true);
-    
     try {
-      console.log("Iniciando revisão manual...");
-      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { 
-          manual: true, 
-          source: "manual_trigger", 
-          executeReview: true // Garantir que a revisão seja executada
-        }
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log("Resposta da função Edge:", data);
-      
-      toast({
-        title: "Revisão em massa iniciada",
-        description: "O processo de revisão foi iniciado com sucesso. Isso pode levar alguns minutos.",
-      });
+      // Usando a mesma função que é chamada pelo botão "Analisar todos"
+      await reviewAllClients();
       
       // Registrar no log
       await supabase.from("system_logs").insert({
@@ -147,51 +100,27 @@ export function AutoReviewSettings() {
         }
       });
       
-      try {
-        await supabase.from("cron_execution_logs").insert({
-          job_name: "manual-meta-review",
-          execution_time: new Date().toISOString(),
-          status: "started",
-          details: {
-            manual: true,
-            initiated_by: "user",
-            message: "Revisão iniciada manualmente pelo usuário"
-          }
-        });
-      } catch (logError) {
-        console.warn("Aviso: Não foi possível registrar log de execução:", logError);
-      }
-      
-      // Esperar tempo para a revisão em lote ser processada
-      setTimeout(() => {
-        fetchLastAutoRun();
-      }, 10000); // Aumentado para 10 segundos para dar mais tempo ao processamento
-      
     } catch (error) {
       console.error("Erro ao iniciar revisão manual:", error);
-      setLastRunStatus('error');
       toast({
         title: "Erro ao iniciar revisão",
         description: error instanceof Error ? error.message : "Não foi possível iniciar a revisão em massa.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
-      setIsRunning(false);
     }
   };
 
   useEffect(() => {
-    fetchLastAutoRun();
+    fetchCronStatus();
     
     const intervalId = setInterval(() => {
       if (!isCheckingStatus) {
-        fetchLastAutoRun();
+        fetchCronStatus();
       }
-    }, 60 * 1000); // Atualizado para verificar a cada minuto
+    }, 60 * 1000); // Verificar a cada minuto
     
     return () => clearInterval(intervalId);
-  }, []);
+  }, [isCheckingStatus]);
 
   const renderCronStatus = () => {
     switch (cronStatus) {
@@ -232,12 +161,9 @@ export function AutoReviewSettings() {
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Calendar size={16} />
             <span>Última execução automática:</span>
-            {lastAutoRun ? (
-              <span className={`font-medium ${lastRunStatus === 'error' ? 'text-red-600' : 'text-gray-900'}`}>
-                {formatDateInBrasiliaTz(lastAutoRun, "dd 'de' MMMM 'às' HH:mm")}
-                {lastRunStatus === 'error' && (
-                  <span className="ml-2 text-red-600">(com falhas)</span>
-                )}
+            {lastBatchReviewTime ? (
+              <span className="font-medium text-gray-900">
+                {formatDateInBrasiliaTz(new Date(lastBatchReviewTime), "dd 'de' MMMM 'às' HH:mm")}
               </span>
             ) : (
               <span className="italic text-gray-500">Nenhuma execução registrada</span>
@@ -248,18 +174,13 @@ export function AutoReviewSettings() {
           
           <Button 
             onClick={runManualReview} 
-            disabled={isLoading || isRunning}
+            disabled={isRunning}
             className="w-full bg-muran-primary hover:bg-muran-primary/90"
           >
             {isRunning ? (
               <>
                 <Loader className="mr-2 h-4 w-4 animate-spin" />
                 Executando revisão...
-              </>
-            ) : isLoading ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Carregando...
               </>
             ) : (
               <>
