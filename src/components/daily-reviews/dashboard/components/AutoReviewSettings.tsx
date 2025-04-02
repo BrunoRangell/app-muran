@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { formatDateInBrasiliaTz } from "../../summary/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, RefreshCw, Clock, AlertCircle } from "lucide-react";
+import { Check, RefreshCw, Clock, AlertCircle, Calendar, Loader } from "lucide-react";
 import { useBatchReview } from "../../hooks/useBatchReview";
 
 export function AutoReviewSettings() {
