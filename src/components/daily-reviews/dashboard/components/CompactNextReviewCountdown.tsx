@@ -18,6 +18,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   const updateCountdown = () => {
     setSecondsToNext(prev => {
       if (prev <= 1) {
+        // Quando o contador chegar a zero, executar a revisão automaticamente
         runAutomaticReview();
         return 180; // Reinicia para 3 minutos
       }
@@ -33,7 +34,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       console.log("[AutoReview] Executando revisão automática programada");
       setIsRunning(true);
       
-      // Executar a mesma função que é chamada quando clicamos em "analisar todos"
+      // Executar a função onAnalyzeAll passada como prop
       await onAnalyzeAll();
       
       // Registrar o horário da última execução
@@ -64,7 +65,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       console.log("[AutoReview] Executando revisão manual");
       setIsRunning(true);
       
-      // Executar a mesma função que é chamada quando clicamos em "analisar todos"
+      // Executar a mesma função que é chamada quando o contador chega a zero
       await onAnalyzeAll();
       
       // Registrar o horário da última execução
