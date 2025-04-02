@@ -1,19 +1,26 @@
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useClientDetail } from "../hooks/useClientDetail";
-import { useClientAnalysis } from "../hooks/useClientAnalysis";
+import { useClientDetail } from "./hooks/useClientDetail";
+import { useClientAnalysis } from "./hooks/useClientAnalysis";
 import { ClientReviewHistory } from "./ClientReviewHistory";
 import { ClientLatestReview } from "./ClientLatestReview";
 import { ClientBudgetSettings } from "./ClientBudgetSettings";
 import { ClientMetaAccountSettings } from "./ClientMetaAccountSettings";
-import { Loader, RefreshCw } from "lucide-react";
+import { Loader, RefreshCw, ArrowLeft } from "lucide-react";
 
-export const ClientReviewDetails = () => {
-  const { clientId } = useParams<{ clientId: string }>();
+interface ClientReviewDetailsProps {
+  clientId?: string;
+  onBack?: () => void;
+}
+
+export const ClientReviewDetails = ({ clientId: propClientId, onBack }: ClientReviewDetailsProps) => {
+  const params = useParams<{ clientId: string }>();
+  const clientId = propClientId || params.clientId;
   const [activeTab, setActiveTab] = useState("latest");
   const { toast } = useToast();
   
@@ -78,9 +85,17 @@ export const ClientReviewDetails = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-xl font-bold text-[#321e32]">
-            {client.company_name}
-          </CardTitle>
+          <div className="flex items-center space-x-2">
+            {onBack && (
+              <Button variant="ghost" size="sm" onClick={onBack} className="mr-2">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="ml-1">Voltar</span>
+              </Button>
+            )}
+            <CardTitle className="text-xl font-bold text-[#321e32]">
+              {client.company_name}
+            </CardTitle>
+          </div>
           <Button
             onClick={handleAnalyzeClient}
             disabled={isAnalyzing}

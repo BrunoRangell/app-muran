@@ -9,11 +9,13 @@ import { CompactNextReviewCountdown } from "./CompactNextReviewCountdown";
 interface FilterOptionsProps {
   showOnlyAdjustments: boolean;
   onShowOnlyAdjustmentsChange: (value: boolean) => void;
+  onAnalyzeAll: () => Promise<void>;
 }
 
 export const FilterOptions = ({
   showOnlyAdjustments,
-  onShowOnlyAdjustmentsChange
+  onShowOnlyAdjustmentsChange,
+  onAnalyzeAll
 }: FilterOptionsProps) => {
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-t pt-2 mt-2">
@@ -42,7 +44,7 @@ export const FilterOptions = ({
       </div>
       
       <div className="mt-2 md:mt-0">
-        <CompactNextReviewCountdown />
+        <CompactNextReviewCountdown onAnalyzeAll={onAnalyzeAll} />
       </div>
     </div>
   );

@@ -2,13 +2,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
-import { CompactNextReviewCountdown } from "./components/CompactNextReviewCountdown";
+import { FilterOptions } from "./components/FilterOptions";
+import { useState } from "react";
+import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
 }
 
 export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  
   const { 
     filteredClients, 
     isLoading, 
@@ -16,6 +21,9 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
     reviewClient,
     reviewAllClients 
   } = useClientReviewAnalysis();
+  
+  const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
+  const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
 
   return (
     <Card className="shadow-sm">
@@ -24,17 +32,33 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
           Revisão de Orçamentos Meta
         </CardTitle>
         <div className="text-right">
-          <CompactNextReviewCountdown onAnalyzeAll={reviewAllClients} />
+          {/* Este espaço permanece vazio pois o contador de revisão automática foi movido */}
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
+      <CardContent>
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Buscar cliente por nome..."
+            className="w-full h-10 px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#ff6e00] focus:border-transparent"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <FilterOptions 
+          showOnlyAdjustments={showOnlyAdjustments}
+          onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
+          onAnalyzeAll={reviewAllClients}
+        />
+
         {isLoading ? (
           <div className="text-center p-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6e00] mx-auto"></div>
             <p className="mt-2 text-gray-500">Carregando clientes...</p>
           </div>
-        ) : filteredClients.length > 0 ? (
-          <div className="overflow-x-auto">
+        ) : finalFilteredClients.length > 0 ? (
+          <div className="overflow-x-auto mt-4">
             <table className="w-full border-collapse">
               <thead className="bg-gray-50">
                 <tr>
@@ -47,7 +71,7 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
                 </tr>
               </thead>
               <tbody>
-                {filteredClients.map((client) => (
+                {finalFilteredClients.map((client) => (
                   <ClientAltCard
                     key={client.id}
                     client={client}
