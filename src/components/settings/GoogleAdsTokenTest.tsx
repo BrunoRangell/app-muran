@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { 
   Table, 
   TableBody, 
@@ -20,6 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Input } from "@/components/ui/input";
 
 interface Token {
   name: string;
@@ -38,69 +40,87 @@ export const GoogleAdsTokenTest = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [clients, setClients] = useState<GoogleAdsClient[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
-    details?: any;
+    details?: {
+      apiAccess: boolean;
+      tokenRefreshed: boolean;
+    }
   } | null>(null);
+
   const { toast } = useToast();
 
+  // Carregar tokens ao montar o componente
   useEffect(() => {
     fetchTokens();
   }, []);
 
+  // Buscar tokens do banco de dados
   const fetchTokens = async () => {
     setIsLoading(true);
+    
     try {
+      // Buscar tokens do Google Ads
       const { data, error } = await supabase
-        .from("api_tokens")
-        .select("name, value")
+        .from('api_tokens')
+        .select('name, value')
         .or('name.eq.google_ads_access_token,name.eq.google_ads_refresh_token,name.eq.google_ads_client_id,name.eq.google_ads_client_secret,name.eq.google_ads_developer_token,name.eq.google_ads_manager_id');
-
+      
       if (error) {
-        console.error("Erro ao buscar tokens:", error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os tokens do Google Ads",
-          variant: "destructive",
-        });
-        return;
+        throw error;
       }
 
-      const tokenStatuses: { [key: string]: "valid" | "invalid" | "unknown" } = {
-        google_ads_access_token: "unknown",
-        google_ads_refresh_token: "unknown",
-        google_ads_client_id: "unknown",
-        google_ads_client_secret: "unknown",
-        google_ads_developer_token: "unknown",
-        google_ads_manager_id: "unknown",
-      };
+      // Mapear para o formato de tokens
+      const formattedTokens: Token[] = [
+        {
+          name: 'google_ads_access_token',
+          value: '',
+          status: 'unknown'
+        },
+        {
+          name: 'google_ads_refresh_token',
+          value: '',
+          status: 'unknown'
+        },
+        {
+          name: 'google_ads_client_id',
+          value: '',
+          status: 'unknown'
+        },
+        {
+          name: 'google_ads_client_secret',
+          value: '',
+          status: 'unknown'
+        },
+        {
+          name: 'google_ads_developer_token',
+          value: '',
+          status: 'unknown'
+        },
+        {
+          name: 'google_ads_manager_id',
+          value: '',
+          status: 'unknown'
+        }
+      ];
 
-      // Verificar quais tokens estão disponíveis
-      data?.forEach((token) => {
-        if (token.value && token.value.length > 0) {
-          tokenStatuses[token.name] = "valid";
-        } else {
-          tokenStatuses[token.name] = "invalid";
+      // Preencher com os valores do banco de dados
+      data?.forEach(token => {
+        const tokenIndex = formattedTokens.findIndex(t => t.name === token.name);
+        if (tokenIndex !== -1) {
+          formattedTokens[tokenIndex].value = token.value || '';
+          formattedTokens[tokenIndex].status = token.value ? 'valid' : 'invalid';
         }
       });
 
-      // Criar array de tokens para exibição
-      const formattedTokens = Object.entries(tokenStatuses).map(([name, status]) => {
-        const tokenData = data?.find(t => t.name === name);
-        return {
-          name,
-          value: tokenData?.value || "",
-          status,
-        };
-      });
-
       setTokens(formattedTokens);
-    } catch (err) {
-      console.error("Erro ao processar tokens:", err);
+    } catch (error) {
+      console.error('Erro ao buscar tokens:', error);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao processar os tokens",
+        description: "Não foi possível buscar os tokens do Google Ads",
         variant: "destructive",
       });
     } finally {
@@ -108,10 +128,7 @@ export const GoogleAdsTokenTest = () => {
     }
   };
 
-  const toggleTokenVisibility = () => {
-    setShowTokenValues(!showTokenValues);
-  };
-
+  // Função para testar os tokens
   const testGoogleAdsTokens = async () => {
     setIsRefreshing(true);
     setTestResult(null);
@@ -121,37 +138,40 @@ export const GoogleAdsTokenTest = () => {
       const { data, error } = await supabase.functions.invoke('google-ads-token-check');
       
       if (error) {
-        console.error("Erro ao verificar tokens:", error);
+        console.error('Erro ao testar tokens:', error);
         setTestResult({
           success: false,
-          message: `Erro ao verificar tokens: ${error.message}`,
+          message: `Erro ao testar tokens: ${error.message || "Erro desconhecido"}`,
         });
+        
         toast({
           title: "Erro",
-          description: "Não foi possível verificar os tokens do Google Ads",
+          description: `Falha ao testar tokens: ${error.message || "Erro desconhecido"}`,
           variant: "destructive",
         });
-        return;
-      }
-      
-      if (data.error) {
+      } else if (data.error) {
+        console.error('Erro retornado pela função:', data.error);
         setTestResult({
           success: false,
-          message: data.error,
-          details: data.details || {},
+          message: `Erro: ${data.error}`,
         });
+        
         toast({
           title: "Erro",
-          description: data.error,
+          description: `Falha: ${data.error}`,
           variant: "destructive",
         });
       } else {
+        console.log('Resposta da função:', data);
+        
+        // Re-buscar os tokens para atualizar a lista
+        await fetchTokens();
+        
         setTestResult({
           success: true,
-          message: data.message || "Tokens verificados com sucesso",
+          message: data.message || "Tokens testados com sucesso",
           details: {
             apiAccess: data.apiAccess,
-            clientsCount: data.clientsCount,
             tokenRefreshed: data.tokenRefreshed
           },
         });
@@ -165,21 +185,17 @@ export const GoogleAdsTokenTest = () => {
           title: "Sucesso",
           description: data.message || "Tokens verificados com sucesso",
         });
-        
-        // Atualizar tokens após renovação bem-sucedida
-        if (data.tokenRefreshed) {
-          fetchTokens();
-        }
       }
-    } catch (err) {
-      console.error("Erro ao testar tokens:", err);
+    } catch (error) {
+      console.error('Erro ao invocar função:', error);
       setTestResult({
         success: false,
-        message: `Erro inesperado: ${err instanceof Error ? err.message : String(err)}`,
+        message: `Erro no teste: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
       });
+      
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao testar os tokens",
+        description: `Erro no teste: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         variant: "destructive",
       });
     } finally {
@@ -187,70 +203,86 @@ export const GoogleAdsTokenTest = () => {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-md font-medium">Tokens configurados</h3>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={toggleTokenVisibility}
-          className="h-8"
-        >
-          {showTokenValues ? (
-            <>
-              <EyeOff className="h-4 w-4 mr-1" />
-              Esconder valores
-            </>
-          ) : (
-            <>
-              <Eye className="h-4 w-4 mr-1" />
-              Mostrar valores
-            </>
-          )}
-        </Button>
-      </div>
+  // Filtrar clientes com base no termo de pesquisa
+  const filteredClients = clients.filter(client => 
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    client.id.includes(searchTerm)
+  );
 
-      <div className="mb-4">
-        <Button 
-          onClick={testGoogleAdsTokens} 
-          disabled={isRefreshing}
-          className="bg-[#ff6e00] hover:bg-[#cc5800]"
-        >
-          {isRefreshing ? (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> 
-              Verificando...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2" /> 
-              Verificar e Renovar Tokens
-            </>
-          )}
-        </Button>
+  // Renderizar nome do token de forma legível
+  const getTokenDisplayName = (name: string) => {
+    switch (name) {
+      case 'google_ads_access_token':
+        return 'Token de Acesso';
+      case 'google_ads_refresh_token':
+        return 'Refresh Token';
+      case 'google_ads_client_id':
+        return 'Client ID';
+      case 'google_ads_client_secret':
+        return 'Client Secret';
+      case 'google_ads_developer_token':
+        return 'Developer Token';
+      case 'google_ads_manager_id':
+        return 'ID da Conta Gerenciadora';
+      default:
+        return name;
+    }
+  };
+
+  return (
+    <Card className="space-y-4 p-4 md:p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Tokens do Google Ads</h3>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTokenValues(!showTokenValues)}
+          >
+            {showTokenValues ? (
+              <><EyeOff className="h-4 w-4 mr-2" /> Ocultar valores</>
+            ) : (
+              <><Eye className="h-4 w-4 mr-2" /> Mostrar valores</>
+            )}
+          </Button>
+          
+          <Button
+            onClick={testGoogleAdsTokens}
+            disabled={isRefreshing}
+            variant="default"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Testando...' : 'Testar tokens'}
+          </Button>
+        </div>
       </div>
 
       {testResult && (
-        <Alert className={`mb-4 ${testResult.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-          {testResult.success ? (
-            <Check className="h-4 w-4 text-green-600" />
-          ) : (
-            <X className="h-4 w-4 text-red-600" />
-          )}
-          <AlertTitle className={testResult.success ? "text-green-800" : "text-red-800"}>
-            {testResult.success ? "Operação bem-sucedida" : "Erro na operação"}
+        <Alert variant={testResult.success ? "default" : "destructive"} className="mb-4">
+          <AlertTitle className="flex items-center">
+            {testResult.success ? (
+              <><Check className="h-4 w-4 mr-2 text-green-500" /> Sucesso</>
+            ) : (
+              <><X className="h-4 w-4 mr-2" /> Erro</>
+            )}
           </AlertTitle>
-          <AlertDescription className={testResult.success ? "text-green-700" : "text-red-700"}>
-            {testResult.message}
-            
+          <AlertDescription>
+            <p>{testResult.message}</p>
             {testResult.success && testResult.details && (
               <div className="mt-2 text-sm">
-                {testResult.details.tokenRefreshed && <div>✓ Token de acesso renovado</div>}
-                {testResult.details.apiAccess && <div>✓ API Google Ads acessível</div>}
-                {testResult.details.clientsCount && (
-                  <div>✓ {testResult.details.clientsCount} contas de cliente encontradas</div>
-                )}
+                <p>
+                  Token renovado: 
+                  {testResult.details.tokenRefreshed ? 
+                    <span className="text-green-500 font-medium ml-1">Sim</span> : 
+                    <span className="text-red-500 font-medium ml-1">Não</span>}
+                </p>
+                <p>
+                  API acessível: 
+                  {testResult.details.apiAccess ? 
+                    <span className="text-green-500 font-medium ml-1">Sim</span> : 
+                    <span className="text-red-500 font-medium ml-1">Não</span>}
+                </p>
               </div>
             )}
           </AlertDescription>
@@ -270,23 +302,45 @@ export const GoogleAdsTokenTest = () => {
               </div>
             </AccordionTrigger>
             <AccordionContent className="border-t">
-              <div className="max-h-64 overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID da Conta</TableHead>
-                      <TableHead>Nome da Conta</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clients.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell className="font-mono text-sm">{client.id}</TableCell>
-                        <TableCell>{client.name || "Sem nome"}</TableCell>
+              <div className="p-4">
+                <Input
+                  placeholder="Pesquisar por nome ou ID da conta"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="mb-4"
+                />
+                
+                <div className="max-h-80 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-1/3">ID da Conta</TableHead>
+                        <TableHead>Nome da Conta</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredClients.length > 0 ? (
+                        filteredClients.map((client) => (
+                          <TableRow key={client.id}>
+                            <TableCell className="font-mono text-sm">{client.id}</TableCell>
+                            <TableCell>{client.name || "Sem nome"}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-4 text-gray-500">
+                            Nenhuma conta encontrada com esse termo de pesquisa
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {clients.length > 10 && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {filteredClients.length} de {clients.length} contas exibidas
+                  </p>
+                )}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -294,57 +348,67 @@ export const GoogleAdsTokenTest = () => {
       )}
 
       <div className="border rounded-md overflow-hidden">
-        {isLoading ? (
-          <div className="p-4 space-y-2">
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-5 w-full" />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome do Token</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead className="w-24">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tokens.map((token) => (
-                <TableRow key={token.name}>
-                  <TableCell className="font-mono text-sm">{token.name}</TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {showTokenValues ? 
-                      (token.value ? token.value : "Não configurado") : 
-                      (token.value ? "••••••••••••••••••••••" : "Não configurado")}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-1/3">Token</TableHead>
+              <TableHead>Valor</TableHead>
+              <TableHead className="w-24 text-center">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              // Estado de carregamento
+              Array(6).fill(0).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
                   </TableCell>
                   <TableCell>
+                    <Skeleton className="h-4 w-full" />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Skeleton className="h-4 w-8 mx-auto" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              // Dados dos tokens
+              tokens.map((token) => (
+                <TableRow key={token.name}>
+                  <TableCell className="font-medium">
+                    {getTokenDisplayName(token.name)}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {showTokenValues ? 
+                      token.value || <span className="text-gray-400">Não configurado</span> : 
+                      token.value ? "••••••••••••••••" : <span className="text-gray-400">Não configurado</span>
+                    }
+                  </TableCell>
+                  <TableCell className="text-center">
                     {token.status === "valid" ? (
-                      <div className="flex items-center text-green-600">
-                        <Check className="h-4 w-4 mr-1" /> Configurado
-                      </div>
+                      <Check className="h-5 w-5 text-green-500 mx-auto" />
                     ) : token.status === "invalid" ? (
-                      <div className="flex items-center text-red-600">
-                        <X className="h-4 w-4 mr-1" /> Não configurado
-                      </div>
+                      <X className="h-5 w-5 text-red-500 mx-auto" />
                     ) : token.status === "loading" ? (
-                      <div className="flex items-center text-yellow-600">
-                        <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> Verificando
-                      </div>
+                      <RefreshCw className="h-5 w-5 animate-spin text-amber-500 mx-auto" />
                     ) : (
-                      <div className="flex items-center text-yellow-600">
-                        ? Desconhecido
-                      </div>
+                      <span className="text-gray-400 text-sm">–</span>
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
-    </div>
+
+      <div className="text-sm text-gray-500 mt-2">
+        <p>
+          Clique em "Testar tokens" para verificar a conectividade com a API do Google Ads
+          e renovar automaticamente o token de acesso.
+        </p>
+      </div>
+    </Card>
   );
 };

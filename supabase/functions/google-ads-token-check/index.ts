@@ -186,7 +186,7 @@ serve(async (req) => {
                   customer_client.descriptive_name
               FROM
                   customer_client
-              LIMIT 10
+              LIMIT 100
             `
           })
         }
