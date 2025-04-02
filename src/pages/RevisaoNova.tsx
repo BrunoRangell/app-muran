@@ -6,6 +6,7 @@ import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/Goo
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
+import { MetaAdsDashboard } from "@/components/revisao-nova/MetaAdsDashboard";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPanel";
@@ -40,9 +41,7 @@ export default function RevisaoNova() {
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
-          <div className="md:col-span-3">
-            <ReviewsDashboardCard onViewClientDetails={() => {}} />
-          </div>
+          <MetaAdsDashboard />
         </TabsContent>
         
         <TabsContent value="google-ads" className="space-y-6">
