@@ -18,10 +18,8 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
 
   // Função para atualizar o contador
   const updateCountdown = () => {
-    console.log("[AutoReview] Contador atualizado:", secondsToNext - 1);
     setSecondsToNext(prev => {
       if (prev <= 1) {
-        console.log("[AutoReview] Contador chegou a zero! Executando revisão automática...");
         // Quando o contador chegar a zero, executar a revisão automaticamente
         runAutomaticReview();
         return 180; // Reinicia para 3 minutos
@@ -32,28 +30,21 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
 
   // Função para executar a revisão automaticamente
   const runAutomaticReview = async () => {
-    if (isRunning) {
-      console.log("[AutoReview] Já existe uma revisão em andamento, ignorando execução automática");
-      return;
-    }
+    if (isRunning) return;
     
     try {
       console.log("[AutoReview] Executando revisão automática programada");
       setIsRunning(true);
       
       // Executar a função onAnalyzeAll passada como prop
-      console.log("[AutoReview] Chamando função onAnalyzeAll");
       await onAnalyzeAll();
-      console.log("[AutoReview] Função onAnalyzeAll concluída");
       
       // Registrar o horário da última execução
       const now = new Date();
       setLastRunTime(now);
-      console.log("[AutoReview] Revisão concluída em:", now.toISOString());
       
       // Forçar atualização dos dados após a conclusão
       setTimeout(() => {
-        console.log("[AutoReview] Invalidando queries para atualização de dados");
         queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
         queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
       }, 5000); // Esperar 5 segundos para garantir que o processamento em segundo plano tenha avançado
@@ -71,38 +62,29 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       });
     } finally {
       setIsRunning(false);
-      console.log("[AutoReview] Estado de execução resetado para false");
     }
   };
 
   // Executar manualmente a revisão
   const handleManualRun = async () => {
-    if (isRunning) {
-      console.log("[AutoReview] Já existe uma revisão em andamento, ignorando execução manual");
-      return;
-    }
+    if (isRunning) return;
     
     try {
       console.log("[AutoReview] Executando revisão manual");
       setIsRunning(true);
       
       // Executar a mesma função que é chamada quando o contador chega a zero
-      console.log("[AutoReview] Chamando função onAnalyzeAll manualmente");
       await onAnalyzeAll();
-      console.log("[AutoReview] Função onAnalyzeAll concluída após chamada manual");
       
       // Registrar o horário da última execução
       const now = new Date();
       setLastRunTime(now);
-      console.log("[AutoReview] Revisão manual concluída em:", now.toISOString());
       
       // Reiniciar o contador
       setSecondsToNext(180);
-      console.log("[AutoReview] Contador reiniciado para 180 segundos");
       
       // Forçar atualização dos dados após a conclusão
       setTimeout(() => {
-        console.log("[AutoReview] Invalidando queries para atualização de dados após execução manual");
         queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
         queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
       }, 5000); // Esperar 5 segundos para garantir que o processamento em segundo plano tenha avançado
@@ -120,7 +102,6 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       });
     } finally {
       setIsRunning(false);
-      console.log("[AutoReview] Estado de execução manual resetado para false");
     }
   };
 
@@ -134,13 +115,11 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
     }
     
     // Configurar novo intervalo
-    console.log("[AutoReview] Configurando intervalo de atualização a cada 1 segundo");
     intervalRef.current = setInterval(updateCountdown, 1000);
     
     // Limpar o intervalo quando o componente for desmontado
     return () => {
       if (intervalRef.current) {
-        console.log("[AutoReview] Limpando intervalo ao desmontar componente");
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
@@ -184,4 +163,3 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
     </div>
   );
 }
-

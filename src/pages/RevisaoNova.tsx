@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MetaDashboardCard } from "@/components/daily-reviews/dashboard/MetaDashboardCard";
+import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/ReviewsDashboardCard";
 import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
@@ -21,8 +21,6 @@ export default function RevisaoNova() {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
-
-  console.log("[RevisaoNova] Tab selecionada:", selectedTab);
   
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -41,7 +39,7 @@ export default function RevisaoNova() {
         
         <TabsContent value="dashboard" className="space-y-6">
           <div className="md:col-span-3">
-            <MetaDashboardCard onViewClientDetails={() => {}} />
+            <ReviewsDashboardCard onViewClientDetails={() => {}} />
           </div>
         </TabsContent>
         
