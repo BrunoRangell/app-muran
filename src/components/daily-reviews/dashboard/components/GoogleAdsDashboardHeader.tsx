@@ -10,7 +10,7 @@ interface GoogleAdsDashboardHeaderProps {
   lastBatchReviewTime: Date | null;
   isBatchAnalyzing: boolean;
   isLoading: boolean;
-  onAnalyzeAll: () => void;
+  onAnalyzeAll: () => Promise<void>; // Ensure this is an async function
   searchQuery: string;
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   viewMode: string;
@@ -98,6 +98,7 @@ export const GoogleAdsDashboardHeader = ({
       <FilterOptions 
         showOnlyAdjustments={showOnlyAdjustments}
         onShowOnlyAdjustmentsChange={onShowOnlyAdjustmentsChange}
+        onAnalyzeAll={onAnalyzeAll} // Added this line
       />
     </div>
   );
