@@ -16,19 +16,16 @@ export const AnalysisProgress = ({
 }: AnalysisProgressProps) => {
   if (!isBatchAnalyzing) return null;
   
-  // Garantir que a porcentagem nunca exceda 100%
-  const safePercentage = Math.min(progressPercentage, 100);
-  
   return (
     <div>
       <div className="flex justify-between items-center mb-2">
         <span className="text-sm font-medium">Progresso da análise</span>
         <span className="text-sm text-gray-500">
-          {batchProgress} de {totalClientsToAnalyze} ({safePercentage}%)
+          {batchProgress} de {totalClientsToAnalyze} ({progressPercentage}%)
         </span>
       </div>
       <Progress 
-        value={safePercentage} 
+        value={progressPercentage} 
         className="h-2" 
         indicatorClassName="bg-muran-primary"
       />
