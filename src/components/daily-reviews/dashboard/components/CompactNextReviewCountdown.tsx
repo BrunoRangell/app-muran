@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface CompactNextReviewCountdownProps {
   onAnalyzeAll: () => Promise<void>;
@@ -13,6 +14,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Função para atualizar o contador
   const updateCountdown = () => {
@@ -40,6 +42,12 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       // Registrar o horário da última execução
       const now = new Date();
       setLastRunTime(now);
+      
+      // Forçar atualização dos dados após a conclusão
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+        queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+      }, 5000); // Esperar 5 segundos para garantir que o processamento em segundo plano tenha avançado
       
       toast({
         title: "Revisão automática iniciada",
@@ -74,6 +82,12 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       
       // Reiniciar o contador
       setSecondsToNext(180);
+      
+      // Forçar atualização dos dados após a conclusão
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+        queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+      }, 5000); // Esperar 5 segundos para garantir que o processamento em segundo plano tenha avançado
       
       toast({
         title: "Revisão iniciada",

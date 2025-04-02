@@ -1,12 +1,8 @@
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, AlertTriangle } from "lucide-react";
 
 export function NextReviewCountdown() {
-  // Estado simples apenas para renderização, sem funcionalidade real
-  const [isDisabled] = useState(true);
-
   return (
     <Card className="border border-gray-200 shadow-sm">
       <CardHeader className="pb-2 flex flex-row items-center justify-between bg-gray-50 border-b">
