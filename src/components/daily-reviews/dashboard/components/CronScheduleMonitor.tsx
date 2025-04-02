@@ -1,297 +1,377 @@
 
-import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Calendar, Clock, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
-import { formatDateInBrasiliaTz } from "../../summary/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { RefreshCw, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export function CronScheduleMonitor() {
-  const [nextExecution, setNextExecution] = useState<string | null>(null);
-  const [lastExecution, setLastExecution] = useState<Date | null>(null);
-  const [status, setStatus] = useState<'active' | 'inactive' | 'loading'>('loading');
-  const [loading, setLoading] = useState(true);
-  const [cronError, setCronError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [secondsToNext, setSecondsToNext] = useState<number>(0);
-  const refreshTimerRef = useRef<number | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  const [lastExecutions, setLastExecutions] = useState<any[]>([]);
+  const [cronExpression, setCronExpression] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [healthStatus, setHealthStatus] = useState<"healthy" | "warning" | "error" | "unknown">("unknown");
   const { toast } = useToast();
 
-  // O intervalo de execução é de 3 minutos (180 segundos) para testes
-  const EXECUTION_INTERVAL = 3 * 60; // 3 minutos em segundos
-
-  const fetchCronStatus = async () => {
+  // Função para carregar os dados do agendamento
+  const loadScheduleData = async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       
-      const { data: logs, error } = await supabase
-        .from("cron_execution_logs")
-        .select("*")
-        .eq("job_name", "daily-meta-review-job")
-        .order("execution_time", { ascending: false })
-        .limit(10);
-      
-      if (error) {
-        console.error("Erro ao buscar logs de execução:", error);
-        setCronError(`Erro ao verificar status: ${error.message}`);
-        setStatus('inactive');
-        return;
-      }
-      
-      if (!logs || logs.length === 0) {
-        console.log("Nenhum log de execução encontrado");
-        setCronError("Nenhum registro de execução encontrado");
-        setStatus('inactive');
-        setLoading(false);
-        return;
-      }
-      
-      const validLogs = logs.filter(log => 
-        ['success', 'partial_success', 'started', 'test_success'].includes(log.status)
+      // Obter a expressão cron atual
+      const { data: cronData, error: cronError } = await supabase.rpc(
+        'get_cron_expression',
+        { job_name: 'daily-meta-review-job' }
       );
       
-      if (validLogs.length > 0) {
-        const lastLog = validLogs[0];
-        setLastExecution(new Date(lastLog.execution_time));
+      if (cronError) throw cronError;
+      if (cronData && cronData.length > 0) {
+        setCronExpression(cronData[0].cron_expression);
+      }
+      
+      // Obter as últimas execuções
+      const { data: executions, error: execError } = await supabase
+        .from('cron_execution_logs')
+        .select('*')
+        .eq('job_name', 'daily-meta-review-job')
+        .order('execution_time', { ascending: false })
+        .limit(5);
+      
+      if (execError) throw execError;
+      if (executions) {
+        setLastExecutions(executions);
         
-        const minutesSince = (new Date().getTime() - new Date(lastLog.execution_time).getTime()) / (1000 * 60);
-        
-        if (minutesSince < 10) {
-          setStatus('active');
-          setCronError(null);
-        } else {
-          setStatus('inactive');
-          setCronError(`Última execução foi há mais de 10 minutos (${Math.round(minutesSince)}min atrás)`);
-        }
-      } else {
-        setStatus('inactive');
-        setCronError('Nenhum log de execução válido encontrado');
+        // Analisar a saúde do agendamento
+        analyzeScheduleHealth(executions);
       }
       
-      setNextExecution("A cada 3 minutos (teste)");
-      
-      updateSecondsToNext();
-      
-    } catch (e) {
-      console.error("Erro ao verificar status do cron:", e);
-      setCronError(`Erro: ${e instanceof Error ? e.message : String(e)}`);
-      setStatus('inactive');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateSecondsToNext = () => {
-    const now = new Date();
-    const minutes = now.getMinutes();
-    const seconds = now.getSeconds();
-    
-    // Próximo minuto divisível por 3
-    const nextIntervalMinute = Math.ceil(minutes / 3) * 3;
-    
-    if (nextIntervalMinute === minutes && seconds === 0) {
-      // Estamos exatamente no tempo de execução
-      setSecondsToNext(EXECUTION_INTERVAL);
-    } else if (nextIntervalMinute === minutes) {
-      // Estamos no minuto correto, mas não no segundo zero
-      setSecondsToNext(60 - seconds + ((nextIntervalMinute + 3 - minutes) * 60) - 60);
-    } else {
-      // Calculamos os segundos até o próximo intervalo
-      const secondsUntilNextMinute = 60 - seconds;
-      const minutesUntilNextInterval = nextIntervalMinute - minutes - 1;
-      
-      setSecondsToNext(secondsUntilNextMinute + (minutesUntilNextInterval * 60));
-    }
-  };
-
-  // Configurar contador regressivo
-  useEffect(() => {
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-    }
-    
-    countdownRef.current = setInterval(() => {
-      setSecondsToNext(prev => {
-        if (prev <= 1) {
-          updateSecondsToNext();
-          // Verificar status quando o contador chega a zero
-          fetchCronStatus();
-          return EXECUTION_INTERVAL;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => {
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchCronStatus();
-    
-    const intervalId = setInterval(() => {
-      fetchCronStatus();
-    }, 3 * 60 * 1000); // Verificar a cada 3 minutos
-    
-    return () => {
-      clearInterval(intervalId);
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-      }
-    };
-  }, []);
-
-  const handleManualRefresh = async () => {
-    setRefreshing(true);
-    await fetchCronStatus();
-    
-    toast({
-      title: "Dados atualizados",
-      description: "Status da revisão automática atualizado com sucesso",
-      variant: "default",
-    });
-    
-    setTimeout(() => setRefreshing(false), 1000);
-  };
-
-  const testEdgeFunction = async () => {
-    try {
-      setRefreshing(true);
-      
+    } catch (error) {
+      console.error("Erro ao carregar dados do agendamento:", error);
       toast({
-        title: "Testando função",
-        description: "Enviando solicitação de teste para a função Edge...",
-        variant: "default",
-      });
-      
-      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { test: true, executeReview: true, manual: true }
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log("Resposta do teste:", data);
-      
-      toast({
-        title: "Teste concluído",
-        description: "A função Edge respondeu com sucesso e uma revisão foi iniciada.",
-        variant: "default",
-      });
-      
-      refreshTimerRef.current = window.setTimeout(() => {
-        fetchCronStatus();
-      }, 2000);
-      
-      return true;
-      
-    } catch (e) {
-      console.error("Erro ao testar função Edge:", e);
-      toast({
-        title: "Erro no teste",
-        description: `Não foi possível conectar à função Edge: ${e instanceof Error ? e.message : String(e)}`,
+        title: "Erro ao carregar agendamento",
+        description: "Não foi possível obter informações do agendamento.",
         variant: "destructive",
       });
-      
-      return false;
+      setHealthStatus("error");
     } finally {
-      setTimeout(() => setRefreshing(false), 1000);
+      setIsLoading(false);
+    }
+  };
+
+  // Analisar a saúde do agendamento
+  const analyzeScheduleHealth = (executions: any[]) => {
+    if (!executions || executions.length === 0) {
+      setHealthStatus("error");
+      return;
+    }
+    
+    const now = new Date();
+    const lastExecution = new Date(executions[0].execution_time);
+    const minutesSinceLastExecution = (now.getTime() - lastExecution.getTime()) / (1000 * 60);
+    
+    // Verificar se a última execução foi concluída com sucesso
+    const lastStatus = executions[0].status;
+    const wasSuccessful = lastStatus === 'success' || lastStatus === 'completed';
+    
+    // Para o intervalo de teste de 3 minutos
+    if (minutesSinceLastExecution > 10) {
+      // Se passou mais de 10 minutos desde a última execução, algo está errado
+      setHealthStatus("error");
+    } else if (minutesSinceLastExecution > 5) {
+      // Se passou mais de 5 minutos, é um alerta
+      setHealthStatus("warning");
+    } else if (!wasSuccessful && minutesSinceLastExecution > 3) {
+      // Se a última não foi bem-sucedida e já passou o tempo de uma nova execução
+      setHealthStatus("warning");
+    } else {
+      setHealthStatus("healthy");
+    }
+  };
+
+  // Função para tentar corrigir o agendamento
+  const repairSchedule = async () => {
+    try {
+      setIsLoading(true);
+      
+      // 1. Verificar se o cron ainda existe
+      const { data: cronData } = await supabase.rpc(
+        'get_cron_expression',
+        { job_name: 'daily-meta-review-job' }
+      );
+      
+      // 2. Se não existir, recriar o agendamento via SQL
+      if (!cronData || cronData.length === 0) {
+        // Nota: Esta parte é importante, mas só pode ser feita via SQL em uma mensagem separada
+        toast({
+          title: "Agendamento não encontrado",
+          description: "O agendamento do cron não foi encontrado. Por favor, execute o SQL de configuração novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // 3. Criar um registro de execução manual para "forçar" o cron
+      const { data: logEntry, error: logError } = await supabase
+        .from('cron_execution_logs')
+        .insert({
+          job_name: 'daily-meta-review-job',
+          status: 'started',
+          details: {
+            source: 'manual_repair',
+            timestamp: new Date().toISOString(),
+            repair_attempt: true
+          }
+        })
+        .select()
+        .single();
+      
+      if (logError) throw logError;
+      
+      // 4. Chamar a função edge diretamente
+      const { error: edgeError } = await supabase.functions.invoke(
+        "daily-meta-review",
+        {
+          body: {
+            executeReview: true,
+            manual: true,
+            repair: true,
+            logId: logEntry.id,
+            timestamp: new Date().toISOString()
+          }
+        }
+      );
+      
+      if (edgeError) throw edgeError;
+      
+      toast({
+        title: "Reparo iniciado",
+        description: "Tentativa de reparo do agendamento iniciada com sucesso.",
+      });
+      
+      // Recarregar dados após um breve intervalo
+      setTimeout(() => {
+        loadScheduleData();
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Erro ao reparar agendamento:", error);
+      toast({
+        title: "Erro no reparo",
+        description: "Não foi possível reparar o agendamento.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Função para iniciar uma revisão manual
+  const triggerManualReview = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Criar registro na tabela de logs
+      const { data: logEntry, error: logError } = await supabase
+        .from('cron_execution_logs')
+        .insert({
+          job_name: 'daily-meta-review-job',
+          status: 'started',
+          details: {
+            source: 'manual_trigger',
+            timestamp: new Date().toISOString(),
+            triggered_from: 'monitor_component'
+          }
+        })
+        .select()
+        .single();
+      
+      if (logError) throw logError;
+      
+      // Chamar a função edge
+      const { error: edgeError } = await supabase.functions.invoke(
+        "daily-meta-review",
+        {
+          body: {
+            executeReview: true,
+            manual: true,
+            logId: logEntry.id,
+            timestamp: new Date().toISOString()
+          }
+        }
+      );
+      
+      if (edgeError) throw edgeError;
+      
+      toast({
+        title: "Revisão iniciada",
+        description: "A revisão automática foi iniciada manualmente.",
+      });
+      
+      // Recarregar dados após um breve intervalo
+      setTimeout(() => {
+        loadScheduleData();
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Erro ao iniciar revisão manual:", error);
+      toast({
+        title: "Erro ao iniciar revisão",
+        description: "Não foi possível iniciar a revisão automática.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Carregar dados ao montar o componente
+    loadScheduleData();
+    
+    // Configurar verificação periódica
+    const interval = setInterval(() => {
+      loadScheduleData();
+    }, 60000); // Verificar a cada minuto
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Formatador de data/hora para exibição
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+  };
+  
+  // Formatador para status
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'success':
+      case 'completed':
+        return <span className="text-green-600 font-medium">Sucesso</span>;
+      case 'started':
+        return <span className="text-orange-500 font-medium">Em andamento</span>;
+      case 'error':
+        return <span className="text-red-600 font-medium">Falha</span>;
+      case 'partial_success':
+        return <span className="text-yellow-600 font-medium">Parcial</span>;
+      default:
+        return <span className="text-gray-600">{status}</span>;
     }
   };
 
   return (
-    <Card className="border border-gray-200 shadow-sm">
-      <CardHeader className="pb-2 flex flex-row items-center justify-between bg-gray-50 border-b">
+    <Card className="mb-6">
+      <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-[#ff6e00]" />
-          <span>Revisão Automática</span>
+          <Clock className="h-5 w-5 text-[#ff6e00]" />
+          Status do Agendamento (Teste: 3 minutos)
+          {healthStatus === "healthy" && <CheckCircle className="h-5 w-5 text-green-500" />}
+          {healthStatus === "warning" && <AlertTriangle className="h-5 w-5 text-yellow-500" />}
+          {healthStatus === "error" && <AlertTriangle className="h-5 w-5 text-red-500" />}
         </CardTitle>
-        <div className="flex gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleManualRefresh}
-            disabled={refreshing}
-            title="Atualizar status"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin text-[#ff6e00]' : 'text-gray-500'}`} />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={testEdgeFunction}
-            disabled={refreshing}
-          >
-            Testar Agora
-          </Button>
-        </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        <div className="space-y-3">
-          <div className="flex items-start justify-between">
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2 justify-between">
             <div>
-              <div className="text-sm font-medium text-gray-700 mb-1">Status:</div>
-              <div className="flex items-center gap-1.5">
-                {status === 'loading' ? (
-                  <Clock className="h-5 w-5 animate-pulse text-gray-400" />
-                ) : status === 'active' ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                ) : (
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
-                )}
-                <span className={`font-medium ${
-                  status === 'active' ? 'text-green-600' : 
-                  status === 'inactive' ? 'text-amber-600' : 'text-gray-500'
-                }`}>
-                  {status === 'active' ? 'Ativo' : 
-                   status === 'inactive' ? 'Inativo' : 'Verificando...'}
-                </span>
-              </div>
+              <p className="text-sm font-medium">Expressão Cron:</p>
+              <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                {cronExpression || "Não disponível"}
+              </code>
+              <p className="text-xs text-gray-500 mt-1">
+                Configurado para executar a cada 3 minutos (teste)
+              </p>
             </div>
-
-            <div className="bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200">
-              <div className="text-xs text-gray-500">Próxima execução em</div>
-              <div className="font-mono font-bold text-lg">
-                {Math.floor(secondsToNext / 60)}m {secondsToNext % 60}s
-              </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={loadScheduleData} 
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+              <Button 
+                size="sm" 
+                variant="default" 
+                onClick={triggerManualReview} 
+                disabled={isLoading}
+                className="bg-[#ff6e00] hover:bg-[#e66300]"
+              >
+                Iniciar Revisão
+              </Button>
+              <Button 
+                size="sm" 
+                variant="destructive" 
+                onClick={repairSchedule} 
+                disabled={isLoading}
+              >
+                Reparar
+              </Button>
             </div>
           </div>
-
+          
           <div>
-            <div className="text-sm font-medium text-gray-700 mb-1">Frequência:</div>
-            <div className="text-sm font-medium bg-blue-50 text-blue-700 inline-flex items-center px-2 py-0.5 rounded">
-              <Clock className="h-3.5 w-3.5 mr-1" />
-              A cada 3 minutos (teste)
+            <h3 className="text-sm font-medium mb-2">Últimas Execuções:</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="p-2 text-left">Data/Hora</th>
+                    <th className="p-2 text-left">Status</th>
+                    <th className="p-2 text-left">Fonte</th>
+                    <th className="p-2 text-left">Detalhes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lastExecutions.length > 0 ? (
+                    lastExecutions.map((exec) => (
+                      <tr key={exec.id} className="border-b">
+                        <td className="p-2">{formatDateTime(exec.execution_time)}</td>
+                        <td className="p-2">{getStatusLabel(exec.status)}</td>
+                        <td className="p-2">{exec.details?.source || "cron"}</td>
+                        <td className="p-2">
+                          {exec.details?.message || 
+                           (exec.details?.completedAt ? `Completado: ${new Date(exec.details.completedAt).toLocaleTimeString()}` : "")}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="p-2 text-center">
+                        Nenhuma execução encontrada
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
           
-          {lastExecution && (
-            <div>
-              <div className="text-sm font-medium text-gray-700 mb-1">Última execução:</div>
-              <div className="text-sm">
-                {formatDateInBrasiliaTz(lastExecution, "dd 'de' MMMM 'às' HH:mm:ss")}
-              </div>
+          {healthStatus === "error" && (
+            <div className="bg-red-50 text-red-800 p-3 rounded-md text-sm">
+              <p className="font-medium">Problema detectado no agendamento</p>
+              <p className="text-xs mt-1">
+                O agendamento parece não estar funcionando corretamente. 
+                Tente usar o botão "Reparar" ou "Iniciar Revisão" para forçar uma execução manual.
+              </p>
             </div>
           )}
           
-          {cronError && (
-            <div className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-100">
-              {cronError}
+          {healthStatus === "warning" && (
+            <div className="bg-yellow-50 text-yellow-800 p-3 rounded-md text-sm">
+              <p className="font-medium">Aviso no agendamento</p>
+              <p className="text-xs mt-1">
+                O agendamento pode estar com problemas. Monitore as próximas execuções.
+              </p>
             </div>
           )}
           
-          <div className="pt-3 border-t text-xs text-gray-500">
-            <p>
-              A revisão automática de orçamentos está configurada para executar a cada 3 minutos para fins de teste.
-              Você pode clicar em "Testar Agora" para iniciar uma revisão manual.
-            </p>
-          </div>
+          <p className="text-xs text-gray-500 italic">
+            Este componente é usado apenas em ambiente de testes para diagnosticar problemas com o agendamento.
+          </p>
         </div>
       </CardContent>
     </Card>
