@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -19,8 +18,7 @@ export const useBatchReview = () => {
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
   const [batchProgress, setBatchProgress] = useState(0);
   
-  // Buscar a lista de clientes e suas revisões mais recentes com um staleTime maior
-  // para evitar refetches desnecessários
+  // Buscar a lista de clientes e suas revisões mais recentes sem refetch automático
   const { 
     data: clientsData = { clientsData: [], lastReviewTime: null }, 
     isLoading, 
@@ -29,9 +27,9 @@ export const useBatchReview = () => {
   } = useQuery({
     queryKey: ['clients-with-reviews'],
     queryFn: fetchClientsWithReviews,
-    staleTime: 15 * 60 * 1000, // Aumentado para 15 minutos para reduzir refetches
     refetchOnWindowFocus: false, // Evita refetch ao focar na janela
     refetchOnMount: false, // Evita refetch ao montar o componente
+    staleTime: Infinity, // Nunca marca os dados como desatualizados automaticamente
   });
 
   // Extrair os arrays de clientes do resultado
