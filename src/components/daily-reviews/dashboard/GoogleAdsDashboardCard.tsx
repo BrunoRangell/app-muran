@@ -2,7 +2,7 @@
 import { useCallback } from "react";
 import { useGoogleAdsBatchReview } from "../hooks/useGoogleAdsBatchReview";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { GoogleAdsClientsGrid } from "./components/GoogleAdsClientsGrid";
 import { EmptyStateView } from "./components/EmptyStateView";
 import { LoadingView } from "./components/LoadingView";
@@ -66,8 +66,8 @@ export const GoogleAdsDashboardCard = ({
       viewMode={viewMode}
       onVerifyTokens={() => {
         toast({
-          title: "Funcionalidade removida",
-          description: "A verificação de tokens foi removida temporariamente.",
+          title: "Verificar tokens",
+          description: "Acesse a página de configurações para testar os tokens do Google Ads.",
         });
       }}
       isTokenVerifying={false}

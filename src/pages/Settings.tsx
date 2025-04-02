@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPanel";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -11,7 +12,7 @@ export default function Settings() {
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {
-    if (tabParam && ["general", "meta", "integrations"].includes(tabParam)) {
+    if (tabParam && ["general", "meta", "integrations", "api"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -37,6 +38,7 @@ export default function Settings() {
           <TabsTrigger value="general">Geral</TabsTrigger>
           <TabsTrigger value="meta">Meta Ads</TabsTrigger>
           <TabsTrigger value="integrations">Integrações</TabsTrigger>
+          <TabsTrigger value="api">APIs</TabsTrigger>
         </TabsList>
         
         <TabsContent value="general" className="space-y-6">
@@ -58,6 +60,10 @@ export default function Settings() {
             <h2 className="text-xl font-semibold text-[#321e32]">Integrações</h2>
             <p>Configurações para integrações com serviços externos.</p>
           </div>
+        </TabsContent>
+
+        <TabsContent value="api" className="space-y-6">
+          <ApiConfigurationPanel />
         </TabsContent>
       </Tabs>
     </div>
