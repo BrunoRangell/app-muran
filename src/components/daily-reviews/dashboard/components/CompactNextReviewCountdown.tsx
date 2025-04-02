@@ -198,13 +198,13 @@ export function CompactNextReviewCountdown() {
     
     // Modificado para APENAS atualizar o contador visível, sem iniciar revisão
     countdownRef.current = setInterval(() => {
-      setSecondsToNext(prev => {
-        if (prev <= 1) {
+      setSecondsToNext(prevSeconds => {
+        if (prevSeconds <= 1) {
           // APENAS atualiza o contador sem iniciar revisão
           updateSecondsToNext();
           return EXECUTION_INTERVAL;
         }
-        return prev - 1;
+        return prevSeconds - 1;
       });
     }, 1000);
     

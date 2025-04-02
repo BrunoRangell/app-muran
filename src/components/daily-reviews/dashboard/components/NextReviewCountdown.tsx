@@ -115,17 +115,17 @@ export function NextReviewCountdown() {
     
     // Criar um novo contador regressivo - APENAS PARA MOSTRAR O CONTADOR, NÃO INICIA REVISÃO
     countdownRef.current = setInterval(() => {
-      setSecondsToNext(prev => {
-        if (prev <= 1) {
+      setSecondsToNext(prevSeconds => {
+        if (prevSeconds <= 1) {
           // Apenas reinicia o contador sem executar revisão
           updateSecondsToNext();
           return EXECUTION_INTERVAL;
         }
-        return prev - 1;
+        return prevSeconds - 1;
       });
       
       // Verificar o progresso a cada minuto se estiver em revisão
-      if (isAutoReviewing && prev % 60 === 0) {
+      if (isAutoReviewing) {
         fetchReviewProgress();
       }
     }, 1000);
