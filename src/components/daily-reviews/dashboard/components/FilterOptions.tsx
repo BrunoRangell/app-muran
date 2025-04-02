@@ -1,18 +1,15 @@
 
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
-import { CompactNextReviewCountdown } from "./CompactNextReviewCountdown";
 
 interface FilterOptionsProps {
   showOnlyAdjustments: boolean;
   onShowOnlyAdjustmentsChange: (value: boolean) => void;
-  onAnalyzeAll: () => Promise<void>;
 }
 
 export function FilterOptions({ 
   showOnlyAdjustments, 
-  onShowOnlyAdjustmentsChange,
-  onAnalyzeAll 
+  onShowOnlyAdjustmentsChange 
 }: FilterOptionsProps) {
   return (
     <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-100">
@@ -28,10 +25,6 @@ export function FilterOptions({
         >
           Mostrar apenas clientes com recomendações
         </label>
-      </div>
-      
-      <div className="border-l pl-4">
-        <CompactNextReviewCountdown onAnalyzeAll={onAnalyzeAll} />
       </div>
     </div>
   );

@@ -4,13 +4,12 @@ import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../../summary/u
 import { Loader, PlayCircle, Calendar } from "lucide-react";
 import { SearchControls } from "./SearchControls";
 import { FilterOptions } from "./FilterOptions";
-import { CompactNextReviewCountdown } from "./CompactNextReviewCountdown";
 
 interface GoogleAdsDashboardHeaderProps {
   lastBatchReviewTime: Date | null;
   isBatchAnalyzing: boolean;
   isLoading: boolean;
-  onAnalyzeAll: () => Promise<void>; // Ensure this is an async function
+  onAnalyzeAll: () => Promise<void>;
   searchQuery: string;
   onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   viewMode: string;
@@ -98,7 +97,6 @@ export const GoogleAdsDashboardHeader = ({
       <FilterOptions 
         showOnlyAdjustments={showOnlyAdjustments}
         onShowOnlyAdjustmentsChange={onShowOnlyAdjustmentsChange}
-        onAnalyzeAll={onAnalyzeAll} // Added this line
       />
     </div>
   );
