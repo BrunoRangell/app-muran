@@ -44,34 +44,36 @@ SELECT cron.schedule(
   '*/3 * * * *',  -- Executa a cada 3 minutos para testes
   $$
   -- Primeiro registrar o início da execução no log com ID
-  INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
-  VALUES (
-    'daily-meta-review-job', 
-    now(), 
-    'started', 
-    jsonb_build_object('timestamp', now())
-  );
-  
-  -- Capturar o ID do log para atualização posterior
   DO $$
   DECLARE
     log_id UUID;
   BEGIN
-    SELECT id INTO log_id FROM public.cron_execution_logs 
-    WHERE job_name = 'daily-meta-review-job' 
-    ORDER BY execution_time DESC LIMIT 1;
+    -- Criar o registro de log para a execução
+    INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
+    VALUES (
+      'daily-meta-review-job', 
+      now(), 
+      'started', 
+      jsonb_build_object(
+        'timestamp', now(),
+        'source', 'scheduled',
+        'isAutomatic', true
+      )
+    )
+    RETURNING id INTO log_id;
     
     -- Invocar a função Edge com token de serviço para garantir autenticação
+    -- Usando o novo fluxo unificado que se comporta igual ao "analisar todos" do frontend
     PERFORM
       net.http_post(
         url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
-        body:=concat('{"scheduled": true, "source": "cron", "test": false, "executeReview": true, "logId": "', log_id, '"}'::text)::jsonb
+        body:=concat('{"scheduled": true, "executeReview": true, "source": "cron", "test": false, "logId": "', log_id, '"}'::text)::jsonb
       );
       
     -- Registrar a tentativa no log do sistema
     INSERT INTO public.system_logs (event_type, message, details)
-    VALUES ('cron_job', 'Tentativa de execução da revisão diária Meta Ads', jsonb_build_object('timestamp', now(), 'source', 'scheduled_job', 'log_id', log_id));
+    VALUES ('cron_job', 'Execução automática da revisão diária Meta Ads (fluxo unificado)', jsonb_build_object('timestamp', now(), 'source', 'scheduled_job', 'log_id', log_id));
   END;
   $$;
   $$
@@ -144,7 +146,7 @@ SELECT cron.schedule(
       'auto_closed', true
     )
   WHERE 
-    status = 'started' AND
+    status = 'started' OR status = 'in_progress' AND
     execution_time < (now() - INTERVAL '15 minutes');
   $$
 );

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 
 export function CronScheduleMonitor() {
   const [lastExecutions, setLastExecutions] = useState<any[]>([]);
@@ -12,6 +13,7 @@ export function CronScheduleMonitor() {
   const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [healthStatus, setHealthStatus] = useState<"healthy" | "warning" | "error" | "unknown">("unknown");
+  const [batchProgress, setBatchProgress] = useState<any>(null);
   const { toast } = useToast();
 
   // Função para carregar os dados do agendamento
@@ -45,6 +47,19 @@ export function CronScheduleMonitor() {
         // Analisar a saúde do agendamento e calcular próxima execução
         analyzeScheduleHealth(executions);
         calculateNextRunTime(cronData?.[0]?.cron_expression, executions);
+      }
+
+      // Obter informações de progresso em lote atual
+      const { data: batchInfo } = await supabase
+        .from("system_configs")
+        .select("value")
+        .eq("key", "batch_review_progress")
+        .single();
+
+      if (batchInfo?.value) {
+        setBatchProgress(batchInfo.value);
+      } else {
+        setBatchProgress(null);
       }
       
     } catch (error) {
@@ -95,23 +110,49 @@ export function CronScheduleMonitor() {
     if (!cronExpr) return;
     
     try {
-      // Simplificação: por enquanto, para expressão de teste de 3 minutos,
-      // calculamos a próxima execução baseada na última execução + 3 minutos
+      // Para expressão de teste de 3 minutos, calculamos a próxima execução
+      // baseada na última execução + 3 minutos
       if (executions && executions.length > 0) {
         const lastExecution = new Date(executions[0].execution_time);
-        const nextExecution = new Date(lastExecution.getTime() + 3 * 60 * 1000); // 3 minutos para teste
+        const nextExecution = new Date(lastExecution.getTime() + 3 * 60 * 1000);
         
         // Se a próxima execução já passou, calcular a partir de agora
         if (nextExecution < new Date()) {
           const now = new Date();
-          setNextRunTime(new Date(now.getTime() + 3 * 60 * 1000));
+          const minutes = now.getMinutes();
+          const nextMinute = Math.ceil(minutes / 3) * 3;
+          
+          const nextRun = new Date(now);
+          nextRun.setMinutes(nextMinute);
+          nextRun.setSeconds(0);
+          nextRun.setMilliseconds(0);
+          
+          // Se já passou desse minuto, adicionar 3 minutos
+          if (nextRun <= now) {
+            nextRun.setMinutes(nextRun.getMinutes() + 3);
+          }
+          
+          setNextRunTime(nextRun);
         } else {
           setNextRunTime(nextExecution);
         }
       } else {
         // Se não há execuções anteriores, calcular a partir de agora
         const now = new Date();
-        setNextRunTime(new Date(now.getTime() + 3 * 60 * 1000));
+        const minutes = now.getMinutes();
+        const nextMinute = Math.ceil(minutes / 3) * 3;
+        
+        const nextRun = new Date(now);
+        nextRun.setMinutes(nextMinute);
+        nextRun.setSeconds(0);
+        nextRun.setMilliseconds(0);
+        
+        // Se já passou desse minuto, adicionar 3 minutos
+        if (nextRun <= now) {
+          nextRun.setMinutes(nextRun.getMinutes() + 3);
+        }
+        
+        setNextRunTime(nextRun);
       }
     } catch (error) {
       console.error("Erro ao calcular próxima execução:", error);
@@ -254,12 +295,12 @@ export function CronScheduleMonitor() {
     }
   };
 
-  // Função para limpar logs antigos com status "started"
+  // Função para limpar logs antigos com status "started" ou "in_progress"
   const resetStuckJobs = async () => {
     try {
       setIsLoading(true);
       
-      // Atualizar execuções antigas com status "started" para "error"
+      // Atualizar execuções antigas com status "started" ou "in_progress" para "error"
       const { data, error } = await supabase
         .from('cron_execution_logs')
         .update({
@@ -270,10 +311,34 @@ export function CronScheduleMonitor() {
             original_status: 'started'
           }
         })
-        .eq('status', 'started')
+        .in('status', ['started', 'in_progress'])
         .lt('execution_time', new Date(Date.now() - 10 * 60 * 1000).toISOString()); // Execuções mais antigas que 10 minutos
         
       if (error) throw error;
+      
+      // Também resetar o status de processamento em lote, se necessário
+      const { data: batchConfig } = await supabase
+        .from("system_configs")
+        .select("value")
+        .eq("key", "batch_review_progress")
+        .single();
+        
+      if (batchConfig?.value && 
+          batchConfig.value.status === 'running' && 
+          new Date(batchConfig.value.startTime).getTime() < Date.now() - 10 * 60 * 1000) {
+        
+        await supabase
+          .from("system_configs")
+          .update({
+            value: {
+              ...batchConfig.value,
+              status: 'error',
+              completedAt: new Date().toISOString(),
+              message: 'Processo em lote interrompido manualmente'
+            }
+          })
+          .eq("key", "batch_review_progress");
+      }
       
       toast({
         title: "Execuções travadas resetadas",
@@ -322,7 +387,7 @@ export function CronScheduleMonitor() {
     
     const dataInterval = setInterval(() => {
       loadScheduleData();
-    }, 30000); // Verificar a cada 30 segundos
+    }, 5000); // Verificar a cada 5 segundos
     
     return () => {
       clearInterval(timerInterval);
@@ -344,7 +409,9 @@ export function CronScheduleMonitor() {
       case 'test_success':
         return <span className="text-green-600 font-medium">Sucesso</span>;
       case 'started':
-        return <span className="text-orange-500 font-medium">Em andamento</span>;
+        return <span className="text-orange-500 font-medium">Iniciado</span>;
+      case 'in_progress':
+        return <span className="text-blue-500 font-medium">Em andamento</span>;
       case 'error':
         return <span className="text-red-600 font-medium">Falha</span>;
       case 'partial_success':
@@ -353,6 +420,16 @@ export function CronScheduleMonitor() {
         return <span className="text-gray-600">{status}</span>;
     }
   };
+
+  // Se existe um processo em lote em andamento, mostrar seu progresso
+  const isBatchInProgress = batchProgress && 
+                            batchProgress.status === 'running' &&
+                            (new Date().getTime() - new Date(batchProgress.startTime).getTime()) < 15 * 60 * 1000; // 15 minutos
+
+  // Calculando a porcentagem de progresso
+  const progressPercentage = isBatchInProgress && batchProgress.totalClients
+    ? Math.min(Math.round((batchProgress.processedClients / batchProgress.totalClients) * 100), 100)
+    : 0;
 
   return (
     <Card className="mb-6">
@@ -367,9 +444,10 @@ export function CronScheduleMonitor() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {/* Próxima execução */}
           <div className="flex flex-wrap items-center gap-2 justify-between">
             <div>
-              <p className="text-sm font-medium">Próxima execução:</p>
+              <p className="text-sm font-medium">Próxima execução automática:</p>
               <div className="text-2xl font-bold text-[#ff6e00]">
                 {formatTimeRemaining()}
               </div>
@@ -392,7 +470,7 @@ export function CronScheduleMonitor() {
                 size="sm" 
                 variant="default" 
                 onClick={triggerManualReview} 
-                disabled={isLoading}
+                disabled={isLoading || isBatchInProgress}
                 className="bg-[#ff6e00] hover:bg-[#e66300]"
               >
                 Iniciar Agora
@@ -401,7 +479,7 @@ export function CronScheduleMonitor() {
                 size="sm" 
                 variant="destructive" 
                 onClick={repairSchedule} 
-                disabled={isLoading}
+                disabled={isLoading || isBatchInProgress}
               >
                 Reparar
               </Button>
@@ -416,6 +494,30 @@ export function CronScheduleMonitor() {
             </div>
           </div>
           
+          {/* Barra de progresso se houver um lote em andamento */}
+          {isBatchInProgress && (
+            <div className="mt-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium">Progresso da análise automática</span>
+                <span className="text-sm text-gray-500">
+                  {batchProgress.processedClients || 0} de {batchProgress.totalClients} ({progressPercentage}%)
+                </span>
+              </div>
+              <Progress 
+                value={progressPercentage} 
+                className="h-2" 
+                indicatorClassName="bg-[#ff6e00]" 
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {batchProgress.isAutomatic 
+                  ? "Execução automática em andamento" 
+                  : "Execução manual em andamento"}
+                {batchProgress.lastProcessed && ` - Último processado: ${batchProgress.lastProcessed}`}
+              </p>
+            </div>
+          )}
+          
+          {/* Últimas execuções */}
           <div>
             <h3 className="text-sm font-medium mb-2">Últimas Execuções:</h3>
             <div className="overflow-x-auto">
@@ -436,9 +538,15 @@ export function CronScheduleMonitor() {
                         <td className="p-2">{getStatusLabel(exec.status)}</td>
                         <td className="p-2">{exec.details?.source || "cron"}</td>
                         <td className="p-2">
-                          {exec.details?.message || 
-                           (exec.details?.completedAt ? `Completado: ${new Date(exec.details.completedAt).toLocaleTimeString()}` : "")}
-                          {exec.status === "started" && 
+                          {exec.details?.message ? exec.details.message : ""}
+                          {exec.details?.completedAt && 
+                            ` Completado: ${new Date(exec.details.completedAt).toLocaleTimeString()}`}
+                          {exec.status === "in_progress" && exec.details?.processedClients && (
+                            <span className="text-blue-500 ml-1">
+                              ({exec.details.processedClients}/{exec.details.totalClients || '?'})
+                            </span>
+                          )}
+                          {(exec.status === "started" || exec.status === "in_progress") && 
                             <span className="text-orange-500 ml-1">(em processamento)</span>
                           }
                         </td>
