@@ -38,12 +38,13 @@ export const useClientBudgetRecommendation = (
         // Calculando dias restantes no mês
         const daysInMonth = getDaysInMonth(saoPauloDate);
         const currentDay = saoPauloDate.getDate();
-        const remainingDaysValue = daysInMonth - currentDay + 1; // +1 para incluir o dia atual
+        // Ajustando para incluir o dia atual na contagem
+        const remainingDaysValue = daysInMonth - currentDay + 1;
         setRemainingDays(remainingDaysValue);
         
         console.log("Dias no mês:", daysInMonth);
         console.log("Dia atual (São Paulo):", currentDay);
-        console.log("Dias restantes:", remainingDaysValue);
+        console.log("Dias restantes (incluindo hoje):", remainingDaysValue);
         
         // Calcular orçamento restante
         const remainingBudgetValue = monthlyBudget - totalSpentValue;

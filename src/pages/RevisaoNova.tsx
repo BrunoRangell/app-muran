@@ -6,8 +6,9 @@ import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/Goo
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { Settings as SettingsIcon } from "lucide-react";
 
 export default function RevisaoNova() {
   // Usando useState para manter o estado da aba selecionada
@@ -18,7 +19,7 @@ export default function RevisaoNova() {
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {
-    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets", "settings"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -35,6 +36,10 @@ export default function RevisaoNova() {
           <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
           <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
           <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-1">
+            <SettingsIcon className="h-4 w-4" />
+            <span>Configurações</span>
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
@@ -53,6 +58,25 @@ export default function RevisaoNova() {
         
         <TabsContent value="custom-budgets">
           <CustomBudgetManager />
+        </TabsContent>
+        
+        <TabsContent value="settings" className="space-y-6">
+          <div className="grid gap-6">
+            <Link to="/configuracoes?tab=google-ads" className="w-full">
+              <div className="bg-white border border-gray-200 p-4 rounded-lg shadow-sm hover:shadow-md transition-all">
+                <h2 className="text-lg font-semibold text-[#321e32] mb-2">Configurações Completas</h2>
+                <p className="text-gray-600">
+                  Acesse a página de configurações completas para gerenciar tokens do Google Ads,
+                  Meta Ads e outras configurações do sistema.
+                </p>
+              </div>
+            </Link>
+            <iframe 
+              src="/configuracoes?tab=google-ads" 
+              className="w-full h-[800px] border-none rounded-lg shadow-sm"
+              title="Configurações"
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

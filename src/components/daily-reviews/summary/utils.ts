@@ -1,16 +1,16 @@
-
 import { formatInTimeZone } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale';
 
 /**
  * Calcula quantos dias faltam para o final do mês
+ * Inclui o dia atual na contagem
  */
 export const getRemainingDaysInMonth = (): number => {
   const now = new Date();
   const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const diff = lastDayOfMonth.getTime() - now.getTime();
   const days = Math.ceil(diff / (1000 * 3600 * 24));
-  return days;
+  return days + 1;
 };
 
 /**
