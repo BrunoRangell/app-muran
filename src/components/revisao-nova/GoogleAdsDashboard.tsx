@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
@@ -81,14 +80,6 @@ export const GoogleAdsDashboard = () => {
     }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleViewModeChange = (value: string) => {
-    if (value) setViewMode(value);
-  };
-
   return (
     <div className="space-y-6">
       {/* Card de cabeçalho do dashboard com todos os controles */}
@@ -99,11 +90,12 @@ export const GoogleAdsDashboard = () => {
           isLoading={isApiLoading}
           onAnalyzeAll={handleAnalyzeAll}
           searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
+          onSearchChange={(e) => setSearchQuery(e.target.value)}
           viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
+          onViewModeChange={setViewMode}
           showOnlyAdjustments={showOnlyAdjustments}
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
+          // Removido o botão de verificar/renovar tokens
         />
 
         {/* Adicionar barra de progresso quando estiver analisando */}
@@ -111,9 +103,13 @@ export const GoogleAdsDashboard = () => {
           <div className="mt-4">
             <AnalysisProgress 
               isBatchAnalyzing={isReviewingBatch}
-              batchProgress={batchProgress}
-              totalClientsToAnalyze={totalClientsToAnalyze}
-              progressPercentage={progressPercentage}
+              batchProgress={clientsWithGoogleAdsId.length - processingClients.length}
+              totalClientsToAnalyze={clientsWithGoogleAdsId.length}
+              progressPercentage={
+                clientsWithGoogleAdsId.length > 0 && isReviewingBatch
+                  ? Math.round(((clientsWithGoogleAdsId.length - processingClients.length) / clientsWithGoogleAdsId.length) * 100)
+                  : 0
+              }
             />
           </div>
         )}

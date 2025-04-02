@@ -31,7 +31,6 @@ export const GoogleAdsDashboardHeader = ({
   showOnlyAdjustments,
   onShowOnlyAdjustmentsChange
 }: GoogleAdsDashboardHeaderProps) => {
-  // Obter dias restantes no mês
   const remainingDays = getRemainingDaysInMonth();
   
   return (
@@ -63,7 +62,6 @@ export const GoogleAdsDashboardHeader = ({
         </Button>
       </div>
       
-      {/* Bloco de informações sobre última revisão e dias restantes */}
       <div className="bg-gray-50 rounded-lg p-4 flex flex-col md:flex-row gap-4 md:gap-8">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-muran-primary" />
@@ -90,7 +88,6 @@ export const GoogleAdsDashboardHeader = ({
         </div>
       </div>
 
-      {/* Controles de busca */}
       <SearchControls
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
@@ -98,7 +95,6 @@ export const GoogleAdsDashboardHeader = ({
         onViewModeChange={onViewModeChange}
       />
       
-      {/* Opções de filtro */}
       <FilterOptions 
         showOnlyAdjustments={showOnlyAdjustments}
         onShowOnlyAdjustmentsChange={onShowOnlyAdjustmentsChange}
