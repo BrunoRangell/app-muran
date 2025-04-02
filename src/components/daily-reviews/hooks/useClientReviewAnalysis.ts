@@ -11,6 +11,7 @@ export const useClientReviewAnalysis = (
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
+  const [lastAnalysisTimestamp, setLastAnalysisTimestamp] = useState<number>(0);
 
   // Importamos o hook useClientAnalysis para analisar o cliente
   const { analyzeMutation } = useClientAnalysis((data) => {
@@ -23,14 +24,34 @@ export const useClientReviewAnalysis = (
     queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
     queryClient.invalidateQueries({ queryKey: ["latest-review", clientId] });
     queryClient.invalidateQueries({ queryKey: ["review-history", clientId] });
-    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    
+    // Limitamos a invalidação apenas para as queries essenciais
+    // Não invalidamos "clients-with-reviews" aqui para evitar loops de atualização
     
     // Atualizar os dados
     onRefreshComplete();
     setIsRefreshing(false);
+    
+    // Registrar timestamp da análise
+    setLastAnalysisTimestamp(Date.now());
   });
 
   const handleRefreshAnalysis = () => {
+    // Evitar análises muito frequentes (não mais de uma vez por minuto)
+    const now = Date.now();
+    if (now - lastAnalysisTimestamp < 60000) {
+      console.log("Análise ignorada - muito frequente. Tentativa:", 
+        new Date().toISOString(), 
+        "Última análise:", 
+        new Date(lastAnalysisTimestamp).toISOString());
+        
+      toast({
+        title: "Aguarde um momento",
+        description: "Você já realizou uma análise recentemente. Aguarde pelo menos 1 minuto para analisar novamente.",
+      });
+      return;
+    }
+    
     setIsRefreshing(true);
     
     try {

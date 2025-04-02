@@ -14,6 +14,7 @@ export function NextReviewCountdown() {
   const [totalClients, setTotalClients] = useState<number>(0);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const progressCheckRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCheckRef = useRef<number>(0);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -34,8 +35,18 @@ export function NextReviewCountdown() {
     setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
   };
 
-  // Função modificada para apenas verificar status, sem iniciar revisão
+  // Função para verificar se há uma revisão ativa
   const checkForActiveReview = async () => {
+    // Evitar verificações muito frequentes (não verificar mais de uma vez por minuto)
+    const now = Date.now();
+    if (now - lastCheckRef.current < 60000) {
+      console.log("[NextReviewCountdown] Verificação ignorada - muito frequente");
+      return;
+    }
+    
+    lastCheckRef.current = now;
+    console.log("[NextReviewCountdown] Verificando revisões ativas...");
+    
     try {
       const { data } = await supabase
         .from('cron_execution_logs')
@@ -46,11 +57,13 @@ export function NextReviewCountdown() {
         .limit(1);
       
       if (data && data.length > 0) {
+        console.log("[NextReviewCountdown] Revisão ativa encontrada");
         setIsAutoReviewing(true);
         // Buscar o progresso atual da revisão
         fetchReviewProgress();
         startProgressMonitoring();
       } else {
+        console.log("[NextReviewCountdown] Nenhuma revisão ativa encontrada");
         setIsAutoReviewing(false);
         setProgress(0);
         stopProgressMonitoring();
@@ -65,13 +78,16 @@ export function NextReviewCountdown() {
     stopProgressMonitoring();
     
     // Configurar novo monitoramento a cada minuto
+    console.log("[NextReviewCountdown] Iniciando monitoramento de progresso");
     progressCheckRef.current = setInterval(() => {
+      console.log("[NextReviewCountdown] Verificação periódica de progresso");
       fetchReviewProgress();
     }, PROGRESS_CHECK_INTERVAL);
   };
 
   const stopProgressMonitoring = () => {
     if (progressCheckRef.current) {
+      console.log("[NextReviewCountdown] Parando monitoramento de progresso");
       clearInterval(progressCheckRef.current);
       progressCheckRef.current = null;
     }
@@ -79,6 +95,7 @@ export function NextReviewCountdown() {
 
   const fetchReviewProgress = async () => {
     try {
+      console.log("[NextReviewCountdown] Buscando progresso da revisão");
       const { data: clients } = await supabase
         .from('clients')
         .select('id, meta_account_id')
@@ -100,10 +117,12 @@ export function NextReviewCountdown() {
           // Eliminar duplicatas (considerar apenas a revisão mais recente por cliente)
           const uniqueProcessed = [...new Set(processed.map(p => p.client_id))];
           const progressValue = clients.length > 0 ? (uniqueProcessed.length / clients.length) * 100 : 0;
+          console.log(`[NextReviewCountdown] Progresso: ${progressValue.toFixed(1)}% (${uniqueProcessed.length}/${clients.length})`);
           setProgress(progressValue);
           
           // Se o progresso for 100%, a revisão terminou
           if (progressValue >= 100) {
+            console.log("[NextReviewCountdown] Revisão concluída (100%)");
             setIsAutoReviewing(false);
             stopProgressMonitoring();
             
@@ -122,8 +141,10 @@ export function NextReviewCountdown() {
     }
   };
 
-  // Função modificada para apenas mostrar informações, sem executar revisão
+  // Função modificada para inicialização única
   useEffect(() => {
+    console.log("[NextReviewCountdown] Componente montado - inicializando");
+    
     // Inicializar o contador
     updateSecondsToNext();
     
@@ -149,12 +170,13 @@ export function NextReviewCountdown() {
     
     // Limpeza quando o componente for desmontado
     return () => {
+      console.log("[NextReviewCountdown] Componente desmontado - limpando");
       if (countdownRef.current) {
         clearInterval(countdownRef.current);
       }
       stopProgressMonitoring();
     };
-  }, []);
+  }, []); // Sem dependências - executar apenas uma vez
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
