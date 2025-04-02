@@ -1,32 +1,39 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
-import { useBatchReview } from "../hooks/useBatchReview";
+import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
 import { FilterOptions } from "./components/FilterOptions";
 import { useState } from "react";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
-import { CronScheduleMonitor } from "./components/CronScheduleMonitor";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
+  onAnalyzeAll?: () => Promise<void>; // Adicionando propriedade onAnalyzeAll como opcional
 }
 
-export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProps) => {
+export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDashboardCardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   
   const { 
-    clientsWithReviews, 
+    filteredClients, 
     isLoading, 
     processingClients, 
-    reviewSingleClient,
-    reviewAllClients,
-    lastBatchReviewTime,
-    isBatchAnalyzing
-  } = useBatchReview();
+    reviewClient,
+    reviewAllClients 
+  } = useClientReviewAnalysis();
   
-  const filteredByName = clientsWithReviews ? filterClientsByName(clientsWithReviews, searchQuery) : [];
+  const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
+
+  // Função que será chamada para análise em lote
+  const handleAnalyzeAll = async () => {
+    // Usar a função do hook se disponível, caso contrário usar a propriedade passada
+    if (reviewAllClients) {
+      await reviewAllClients();
+    } else if (onAnalyzeAll) {
+      await onAnalyzeAll();
+    }
+  };
 
   return (
     <Card className="shadow-sm">
@@ -34,21 +41,8 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
         <CardTitle className="text-xl font-bold text-[#321e32]">
           Revisão de Orçamentos Meta
         </CardTitle>
-        <div className="flex gap-2">
-          <button
-            onClick={() => reviewAllClients()}
-            disabled={isBatchAnalyzing || isLoading}
-            className="bg-[#ff6e00] hover:bg-orange-600 text-white px-3 py-1.5 rounded text-sm font-medium flex items-center"
-          >
-            {isBatchAnalyzing ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Analisando...
-              </>
-            ) : (
-              <>Analisar todos</>
-            )}
-          </button>
+        <div className="text-right">
+          {/* Este espaço permanece vazio */}
         </div>
       </CardHeader>
       <CardContent>
@@ -61,8 +55,6 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-
-        <CronScheduleMonitor />
 
         <FilterOptions 
           showOnlyAdjustments={showOnlyAdjustments}
@@ -92,7 +84,7 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
                   <ClientAltCard
                     key={client.id}
                     client={client}
-                    onReviewClient={reviewSingleClient}
+                    onReviewClient={reviewClient}
                     isProcessing={processingClients.includes(client.id)}
                   />
                 ))}
