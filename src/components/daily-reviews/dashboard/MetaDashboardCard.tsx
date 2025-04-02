@@ -8,9 +8,10 @@ import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFi
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
+  onAnalyzeAll?: () => Promise<void>; // Adicionando propriedade onAnalyzeAll como opcional
 }
 
-export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProps) => {
+export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDashboardCardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   
@@ -24,6 +25,16 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
   
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
+
+  // Função que será chamada para análise em lote
+  const handleAnalyzeAll = async () => {
+    // Usar a função do hook se disponível, caso contrário usar a propriedade passada
+    if (reviewAllClients) {
+      await reviewAllClients();
+    } else if (onAnalyzeAll) {
+      await onAnalyzeAll();
+    }
+  };
 
   return (
     <Card className="shadow-sm">
@@ -49,7 +60,7 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
         <FilterOptions 
           showOnlyAdjustments={showOnlyAdjustments}
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
-          onAnalyzeAll={reviewAllClients}
+          onAnalyzeAll={handleAnalyzeAll}
         />
 
         {isLoading ? (

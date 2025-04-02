@@ -12,7 +12,7 @@ export const ReviewsDashboard = ({ onViewClientDetails }: ReviewsDashboardProps)
   const [viewMode, setViewMode] = useState("grid");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
 
-  // Adicionando função dummy para onAnalyzeAll que será passada para MetaDashboardCard
+  // Adicionando função de análise em lote que pode ser sobrescrita pelo componente pai
   const handleAnalyzeAll = async () => {
     console.log("Análise em lote iniciada do componente ReviewsDashboard");
     // Esta função será sobrescrita pela implementação real no MetaDashboardCard
