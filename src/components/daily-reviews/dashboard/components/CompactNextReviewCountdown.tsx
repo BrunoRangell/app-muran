@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Loader } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -12,20 +11,20 @@ export function CompactNextReviewCountdown() {
   const progressCheckRef = useRef<NodeJS.Timeout | null>(null);
   const lastCheckRef = useRef<number>(0);
   
-  // O intervalo de execução é de 5 horas (18000 segundos)
-  const EXECUTION_INTERVAL = 5 * 60 * 60; // 5 horas em segundos
+  // O intervalo de execução agora é de 3 minutos (180 segundos) para testes
+  const EXECUTION_INTERVAL = 3 * 60; // 3 minutos em segundos
   const PROGRESS_CHECK_INTERVAL = 60 * 1000; // Verificar progresso a cada 1 minuto
 
   const updateSecondsToNext = () => {
     const now = new Date();
-    const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
-    const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
-    const nextFiveHourMark = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
+    // Calcular para o próximo múltiplo de 3 minutos
+    const currentTotalSeconds = minutes * 60 + seconds;
+    const nextInterval = Math.ceil(currentTotalSeconds / EXECUTION_INTERVAL) * EXECUTION_INTERVAL;
     
-    const secondsUntilNext = nextFiveHourMark - currentTotalSeconds;
+    const secondsUntilNext = nextInterval - currentTotalSeconds;
     setSecondsToNext(secondsUntilNext === 0 ? EXECUTION_INTERVAL : secondsUntilNext);
   };
 
@@ -143,13 +142,8 @@ export function CompactNextReviewCountdown() {
   }, []); // Sem dependências - executar apenas uma vez
 
   const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
+    const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours}h${mins < 10 ? '0' : ''}${mins}m`;
-    }
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 

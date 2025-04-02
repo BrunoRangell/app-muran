@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
@@ -79,25 +78,22 @@ export function CronScheduleMonitor() {
     }
   };
 
-  // Apenas atualiza o contador visual
   const updateSecondsToNext = () => {
     const now = new Date();
-    const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
     
-    const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
-    const nextFiveHourMark = Math.ceil(currentTotalSeconds / (5 * 60 * 60)) * (5 * 60 * 60);
+    const currentTotalSeconds = minutes * 60 + seconds;
+    const nextInterval = Math.ceil(currentTotalSeconds / (3 * 60)) * (3 * 60);
     
-    const secondsUntilNext = nextFiveHourMark - currentTotalSeconds;
-    setSecondsToNext(secondsUntilNext === 0 ? (5 * 60 * 60) : secondsUntilNext);
+    const secondsUntilNext = nextInterval - currentTotalSeconds;
+    setSecondsToNext(secondsUntilNext === 0 ? (3 * 60) : secondsUntilNext);
   };
 
   useEffect(() => {
     fetchCronStatus();
     
-    // Reduzir frequência de verificações automáticas para a cada 5 minutos
-    const intervalId = setInterval(fetchCronStatus, 5 * 60 * 1000);
+    const intervalId = setInterval(fetchCronStatus, 3 * 60 * 1000);
     
     return () => {
       clearInterval(intervalId);
@@ -105,22 +101,6 @@ export function CronScheduleMonitor() {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, []);
-
-  // Atualização visual do contador de segundos
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setSecondsToNext(prev => {
-        if (prev <= 1) {
-          // Apenas reiniciar o contador visual
-          updateSecondsToNext();
-          return 5 * 60 * 60; // 5 horas
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => clearInterval(intervalId);
   }, []);
 
   const handleManualRefresh = async () => {
@@ -235,7 +215,7 @@ export function CronScheduleMonitor() {
             <div className="bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200">
               <div className="text-xs text-gray-500">Próxima execução em</div>
               <div className="font-mono font-bold text-lg">
-                {Math.floor(secondsToNext / 3600)}h {Math.floor((secondsToNext % 3600) / 60)}m
+                {Math.floor(secondsToNext / 60)}m {secondsToNext % 60}s
               </div>
             </div>
           </div>
@@ -244,7 +224,7 @@ export function CronScheduleMonitor() {
             <div className="text-sm font-medium text-gray-700 mb-1">Frequência:</div>
             <div className="text-sm font-medium bg-blue-50 text-blue-700 inline-flex items-center px-2 py-0.5 rounded">
               <Clock className="h-3.5 w-3.5 mr-1" />
-              A cada 5 horas
+              A cada 3 minutos (teste)
             </div>
           </div>
           
@@ -265,7 +245,7 @@ export function CronScheduleMonitor() {
           
           <div className="pt-3 border-t text-xs text-gray-500">
             <p>
-              A revisão automática de orçamentos está configurada para executar a cada 5 horas. Você pode verificar os resultados na tabela de clientes abaixo.
+              A revisão automática de orçamentos está configurada para executar a cada 3 minutos para fins de teste.
             </p>
           </div>
         </div>
