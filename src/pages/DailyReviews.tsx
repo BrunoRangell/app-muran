@@ -9,7 +9,6 @@ import { RecentReviews } from "@/components/daily-reviews/RecentReviews";
 import { ClientReviewDetails } from "@/components/daily-reviews/ClientReviewDetails";
 import { DailyReviewsSummary } from "@/components/daily-reviews/DailyReviewsSummary";
 import { BudgetSetupForm } from "@/components/daily-reviews/BudgetSetupForm";
-import { TokensSetupForm } from "@/components/daily-reviews/TokensSetupForm";
 import { useClientAnalysis } from "@/components/daily-reviews/hooks/useClientAnalysis";
 import { ReviewsDashboard } from "@/components/daily-reviews/dashboard/ReviewsDashboard";
 
@@ -63,7 +62,6 @@ const DailyReviews = () => {
         </div>
 
         <div className="flex gap-2">
-          <TokensSetupForm />
           <Select
             value={activeTab}
             onValueChange={setActiveTab}
