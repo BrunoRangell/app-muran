@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -110,8 +111,12 @@ export const useBatchReview = () => {
   
   // Revisar todos os clientes elegíveis
   const reviewAllClients = useCallback(async () => {
+    // Adicionar log no início da função
+    console.log("[useBatchReview] reviewAllClients iniciando...");
+    
     // Verificar se já existe uma revisão em lote em andamento
     if (isBatchAnalyzing) {
+      console.log("[useBatchReview] Já existe uma revisão em andamento, cancelando nova solicitação");
       toast({
         title: "Processamento em andamento",
         description: "Já existe uma análise em lote em andamento.",
@@ -126,7 +131,10 @@ export const useBatchReview = () => {
         client => client.meta_account_id && client.meta_account_id.trim() !== ""
       );
       
+      console.log("[useBatchReview] Clientes elegíveis:", eligibleClients.length);
+      
       if (eligibleClients.length === 0) {
+        console.log("[useBatchReview] Nenhum cliente elegível encontrado");
         toast({
           title: "Nenhum cliente elegível",
           description: "Não há clientes com ID de conta Meta configurado.",
@@ -136,58 +144,199 @@ export const useBatchReview = () => {
       }
       
       setIsBatchAnalyzing(true);
+      console.log("[useBatchReview] Estado isBatchAnalyzing definido como true");
+      
       setTotalClientsToAnalyze(eligibleClients.length);
       setBatchProgress(0);
+      console.log("[useBatchReview] Progresso inicial definido: 0/" + eligibleClients.length);
       
-      let successCount = 0;
-      let errorCount = 0;
+      // Registrar início da revisão em lote
+      console.log("[useBatchReview] Iniciando chamada à função Edge para revisão em lote");
       
-      // Processar cada cliente em sequência
-      for (const client of eligibleClients) {
-        try {
-          startProcessingClient(client.id);
-          await analyzeClient(client.id, clientsWithReviews);
-          successCount++;
-          setBatchProgress(prev => prev + 1);
-        } catch (error) {
-          console.error(`Erro ao analisar cliente ${client.company_name}:`, error);
-          errorCount++;
-          setBatchProgress(prev => prev + 1);
-        } finally {
-          finishProcessingClient(client.id);
+      try {
+        // Chamada à função Edge para iniciar processamento em lote
+        console.log("[useBatchReview] Enviando requisição para função Edge daily-meta-review");
+        const { data: edgeResponse, error: edgeError } = await supabase.functions.invoke(
+          "daily-meta-review",
+          {
+            body: {
+              executeReview: true,
+              manual: true,
+              timestamp: new Date().toISOString(),
+              source: "review_all_button"
+            }
+          }
+        );
+        
+        if (edgeError) {
+          console.error("[useBatchReview] Erro na chamada à função Edge:", edgeError);
+          throw new Error(`Erro ao iniciar revisão em lote: ${edgeError.message}`);
         }
+        
+        console.log("[useBatchReview] Resposta da função Edge:", edgeResponse);
+        
+        // Verificar resposta da função Edge
+        if (!edgeResponse || !edgeResponse.success) {
+          console.error("[useBatchReview] A função Edge retornou erro:", edgeResponse?.error || "Erro desconhecido");
+          throw new Error("A função Edge retornou um erro ao iniciar a revisão");
+        }
+        
+        const logId = edgeResponse.logId;
+        console.log("[useBatchReview] ID do log de execução:", logId);
+        
+        // Atualizar informações de progresso periodicamente
+        const progressInterval = setInterval(async () => {
+          console.log("[useBatchReview] Verificando progresso do processamento em lote");
+          
+          try {
+            // Buscar informações atualizadas de progresso
+            const { data: batchInfo } = await supabase
+              .from("system_configs")
+              .select("value")
+              .eq("key", "batch_review_progress")
+              .single();
+            
+            if (batchInfo?.value) {
+              console.log("[useBatchReview] Informações de progresso:", batchInfo.value);
+              
+              const progress = batchInfo.value.processedClients || 0;
+              const total = batchInfo.value.totalClients || eligibleClients.length;
+              const status = batchInfo.value.status;
+              
+              setBatchProgress(progress);
+              setTotalClientsToAnalyze(total);
+              
+              console.log(`[useBatchReview] Progresso atualizado: ${progress}/${total} (${status})`);
+              
+              // Se o processamento foi concluído ou houve erro, parar de verificar
+              if (status === 'completed' || status === 'error') {
+                console.log("[useBatchReview] Processamento em lote finalizado com status:", status);
+                clearInterval(progressInterval);
+                setIsBatchAnalyzing(false);
+                
+                // Atualizar dados
+                queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
+                queryClient.invalidateQueries({ queryKey: ['last-batch-review-info'] });
+                
+                // Registrar conclusão da revisão em lote
+                const now = getCurrentDateInBrasiliaTz().toISOString();
+                setLastBatchReviewTime(now);
+                
+                // Registrar sucesso ou erro
+                if (status === 'completed') {
+                  console.log("[useBatchReview] Revisão em lote concluída com sucesso");
+                  toast({
+                    title: "Revisão em lote concluída",
+                    description: `${progress} cliente(s) analisado(s) com sucesso.`,
+                  });
+                } else {
+                  console.error("[useBatchReview] Revisão em lote concluída com erro:", batchInfo.value.error);
+                  toast({
+                    title: "Erro na revisão em lote",
+                    description: batchInfo.value.error || "Ocorreu um erro durante o processamento",
+                    variant: "destructive",
+                  });
+                }
+              }
+            }
+          } catch (progressError) {
+            console.error("[useBatchReview] Erro ao verificar progresso:", progressError);
+          }
+        }, 5000); // Verificar a cada 5 segundos
+        
+        // Parar de verificar após 5 minutos para evitar loop infinito em caso de erro
+        setTimeout(() => {
+          console.log("[useBatchReview] Tempo limite de verificação de progresso atingido");
+          clearInterval(progressInterval);
+          
+          if (isBatchAnalyzing) {
+            console.log("[useBatchReview] Encerrando estado de análise após timeout");
+            setIsBatchAnalyzing(false);
+            
+            // Atualizar dados
+            queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
+            
+            toast({
+              title: "Status de revisão desconhecido",
+              description: "O tempo limite para verificação do progresso foi atingido. Verifique o status na lista de clientes.",
+              variant: "default",
+            });
+          }
+        }, 5 * 60 * 1000);
+        
+        toast({
+          title: "Revisão em lote iniciada",
+          description: `Iniciando análise de ${eligibleClients.length} cliente(s).`,
+        });
+      } catch (edgeFunctionError) {
+        console.error("[useBatchReview] Erro ao chamar função Edge:", edgeFunctionError);
+        
+        // Se ocorrer um erro na chamada à função Edge, tentar o método antigo (processamento local)
+        console.log("[useBatchReview] Tentando método alternativo de processamento em lote");
+        await processClientsLocally(eligibleClients);
       }
-      
-      // Registrar conclusão da revisão em lote
-      const now = getCurrentDateInBrasiliaTz().toISOString();
-      setLastBatchReviewTime(now);
-      
-      await supabase.from('system_logs').insert({
-        event_type: 'batch_review_completed',
-        message: `Revisão em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
-        details: { successCount, errorCount }
-      });
-      
-      // Recarregar dados
-      queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
-      
-      toast({
-        title: "Revisão em lote concluída",
-        description: `${successCount} cliente(s) analisado(s) com sucesso. ${errorCount} erro(s).`,
-      });
-      
     } catch (error) {
-      console.error("Erro na revisão em lote:", error);
+      console.error("[useBatchReview] Erro na revisão em lote:", error);
+      
+      setIsBatchAnalyzing(false);
+      console.log("[useBatchReview] Estado isBatchAnalyzing redefinido como false após erro");
       
       toast({
         title: "Erro na revisão em lote",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
-    } finally {
-      setIsBatchAnalyzing(false);
     }
-  }, [clientsWithReviews, isBatchAnalyzing, startProcessingClient, finishProcessingClient, toast, queryClient]);
+  }, [clientsWithReviews, isBatchAnalyzing, toast, queryClient]);
+  
+  // Método secundário de processamento (caso a chamada Edge falhe)
+  const processClientsLocally = async (eligibleClients: ClientWithReview[]) => {
+    console.log("[useBatchReview] Iniciando processamento local de clientes:", eligibleClients.length);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    // Processar cada cliente em sequência
+    for (const client of eligibleClients) {
+      try {
+        console.log(`[useBatchReview] Processando cliente ${client.id} (${client.company_name})`);
+        startProcessingClient(client.id);
+        await analyzeClient(client.id, clientsWithReviews);
+        successCount++;
+        console.log(`[useBatchReview] Cliente ${client.id} processado com sucesso`);
+        setBatchProgress(prev => prev + 1);
+      } catch (error) {
+        console.error(`[useBatchReview] Erro ao analisar cliente ${client.company_name}:`, error);
+        errorCount++;
+        setBatchProgress(prev => prev + 1);
+      } finally {
+        finishProcessingClient(client.id);
+      }
+    }
+    
+    console.log(`[useBatchReview] Processamento local concluído: ${successCount} sucesso(s), ${errorCount} erro(s)`);
+    
+    // Registrar conclusão da revisão em lote
+    const now = getCurrentDateInBrasiliaTz().toISOString();
+    setLastBatchReviewTime(now);
+    
+    await supabase.from('system_logs').insert({
+      event_type: 'batch_review_completed',
+      message: `Revisão em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
+      details: { successCount, errorCount, localProcessing: true }
+    });
+    
+    // Recarregar dados
+    queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
+    
+    setIsBatchAnalyzing(false);
+    console.log("[useBatchReview] Estado isBatchAnalyzing redefinido como false após processamento local");
+    
+    toast({
+      title: "Revisão em lote concluída",
+      description: `${successCount} cliente(s) analisado(s) com sucesso. ${errorCount} erro(s).`,
+    });
+  };
   
   return {
     clientsWithReviews,
