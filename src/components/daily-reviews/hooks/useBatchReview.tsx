@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,7 +9,6 @@ export const useBatchReview = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Buscar dados dos clientes com revisões
   const {
     data: clientsWithReviews,
     isLoading,
@@ -24,7 +22,6 @@ export const useBatchReview = () => {
         throw new Error("Usuário não autenticado");
       }
 
-      // Buscar clientes ativos
       const { data: clients, error } = await supabase
         .from('clients')
         .select(`
@@ -40,7 +37,6 @@ export const useBatchReview = () => {
         throw new Error(`Erro ao buscar clientes: ${error.message}`);
       }
 
-      // Para cada cliente, buscar sua revisão mais recente
       const clientsWithLastReview = await Promise.all(
         clients.map(async (client) => {
           const { data: reviewData } = await supabase
@@ -61,24 +57,21 @@ export const useBatchReview = () => {
       return clientsWithLastReview;
     },
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000 // 5 minutos
+    staleTime: 5 * 60 * 1000
   });
 
-  // Buscar informações da última execução em lote
   const {
     data: lastBatchInfo,
     refetch: refetchBatchInfo
   } = useQuery({
     queryKey: ["last-batch-review-info"],
     queryFn: async () => {
-      // Buscar timestamp da última execução bem-sucedida
       const { data: lastTimeConfig } = await supabase
         .from("system_configs")
         .select("value")
         .eq("key", "last_batch_review_time")
         .single();
 
-      // Buscar informações do processo em lote atual (se existir)
       const { data: batchProgress } = await supabase
         .from("system_configs")
         .select("value")
@@ -90,16 +83,14 @@ export const useBatchReview = () => {
         batchProgress: batchProgress?.value || null
       };
     },
-    refetchInterval: 5000, // Atualizar a cada 5 segundos para mostrar o progresso
+    refetchInterval: 5000,
     refetchOnWindowFocus: false
   });
 
-  // Mutação para iniciar análise em lote
   const batchReviewMutation = useMutation({
     mutationFn: async () => {
       console.log("Iniciando análise em lote de todos os clientes");
       
-      // Criar registro na tabela de logs
       const { data: logEntry, error: logError } = await supabase
         .from('cron_execution_logs')
         .insert({
@@ -119,7 +110,6 @@ export const useBatchReview = () => {
         throw new Error(`Erro ao criar log de execução: ${logError.message}`);
       }
       
-      // Chamar a função Edge
       const { data, error: edgeError } = await supabase.functions.invoke(
         "daily-meta-review",
         {
@@ -149,15 +139,12 @@ export const useBatchReview = () => {
         description: "A análise de todos os clientes foi iniciada. Acompanhe o progresso na barra acima.",
       });
       
-      // Atualizar dados
       refetchBatchInfo();
       
-      // Começar a monitorar o progresso
       const intervalId = setInterval(() => {
         refetchBatchInfo();
       }, 3000);
       
-      // Limpar o intervalo após 2 minutos
       setTimeout(() => {
         clearInterval(intervalId);
         queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
@@ -172,12 +159,10 @@ export const useBatchReview = () => {
     }
   });
 
-  // Mutação para análise individual de clientes
   const clientReviewMutation = useMutation({
     mutationFn: async (clientId: string) => {
       console.log(`Analisando cliente individual: ${clientId}`);
       
-      // Buscar dados do cliente
       const { data: client, error: clientError } = await supabase
         .from("clients")
         .select("*")
@@ -192,7 +177,6 @@ export const useBatchReview = () => {
         throw new Error("Cliente não possui Meta Account ID configurado");
       }
 
-      // Buscar token do Meta Ads
       const { data: tokenData, error: tokenError } = await supabase
         .from("api_tokens")
         .select("value")
@@ -203,7 +187,6 @@ export const useBatchReview = () => {
         throw new Error("Token do Meta Ads não encontrado ou não configurado");
       }
 
-      // Preparar datas para análise
       const now = new Date();
       const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       const dateRange = {
@@ -211,7 +194,6 @@ export const useBatchReview = () => {
         end: now.toISOString().split("T")[0],
       };
 
-      // Chamar a função Edge para análise
       const { data, error } = await supabase.functions.invoke(
         "meta-budget-calculator",
         {
@@ -232,7 +214,6 @@ export const useBatchReview = () => {
         throw new Error("Resposta vazia da API");
       }
 
-      // Buscar orçamento personalizado
       const today = now.toISOString().split("T")[0];
       const { data: customBudgetData } = await supabase
         .from("meta_custom_budgets")
@@ -244,7 +225,6 @@ export const useBatchReview = () => {
         .order("created_at", { ascending: false })
         .maybeSingle();
 
-      // Preparar informações de orçamento personalizado
       const customBudgetInfo = customBudgetData
         ? {
             using_custom_budget: true,
@@ -257,11 +237,9 @@ export const useBatchReview = () => {
             custom_budget_amount: null,
           };
 
-      // Extrair valores da resposta da API
       const metaDailyBudgetCurrent = data.totalDailyBudget || 0;
       const metaTotalSpent = data.totalSpent || 0;
 
-      // Verificar se já existe revisão para hoje
       const currentDate = today;
       const { data: existingReview } = await supabase
         .from("daily_budget_reviews")
@@ -270,9 +248,7 @@ export const useBatchReview = () => {
         .eq("review_date", currentDate)
         .maybeSingle();
 
-      // Salvar dados da revisão
       if (existingReview) {
-        // Atualizar revisão existente
         await supabase
           .from("daily_budget_reviews")
           .update({
@@ -283,7 +259,6 @@ export const useBatchReview = () => {
           })
           .eq("id", existingReview.id);
       } else {
-        // Criar nova revisão
         await supabase.from("daily_budget_reviews").insert({
           client_id: clientId,
           review_date: currentDate,
@@ -301,16 +276,13 @@ export const useBatchReview = () => {
       };
     },
     onSuccess: (data) => {
-      // Remover cliente da lista de processamento
       setProcessingClients(prev => prev.filter(id => id !== data.clientId));
       
-      // Atualizar dados
       queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     },
     onError: (error, clientId) => {
       console.error(`Erro na análise do cliente ${clientId}:`, error);
       
-      // Remover cliente da lista de processamento mesmo em caso de erro
       setProcessingClients(prev => prev.filter(id => id !== clientId));
       
       toast({
@@ -321,9 +293,7 @@ export const useBatchReview = () => {
     }
   });
 
-  // Função para analisar um cliente individual
   const reviewSingleClient = async (clientId: string) => {
-    // Evitar análises simultâneas do mesmo cliente
     if (processingClients.includes(clientId)) {
       toast({
         title: "Análise em andamento",
@@ -332,14 +302,11 @@ export const useBatchReview = () => {
       return;
     }
     
-    // Adicionar o cliente à lista de processamento
     setProcessingClients(prev => [...prev, clientId]);
     
-    // Chamar a mutação
     return clientReviewMutation.mutateAsync(clientId);
   };
 
-  // Função para analisar todos os clientes
   const reviewAllClients = async () => {
     if (batchReviewMutation.isPending) {
       toast({
@@ -352,19 +319,17 @@ export const useBatchReview = () => {
     return batchReviewMutation.mutateAsync();
   };
 
-  // Verificar se alguma análise está em andamento
   const isBatchAnalyzing = useMemo(() => {
     const batchProgress = lastBatchInfo?.batchProgress;
     if (!batchProgress) return false;
     
     const isRunning = batchProgress.status === 'running';
     const isRecent = batchProgress.startTime && 
-      (new Date().getTime() - new Date(batchProgress.startTime).getTime()) < 10 * 60 * 1000; // 10 minutos
+      (new Date().getTime() - new Date(batchProgress.startTime).getTime()) < 10 * 60 * 1000;
     
     return isRunning && isRecent;
   }, [lastBatchInfo]);
 
-  // Extrair informações de progresso
   const batchProgress = useMemo(() => {
     if (!lastBatchInfo?.batchProgress) return 0;
     return lastBatchInfo.batchProgress.processedClients || 0;
