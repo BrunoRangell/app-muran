@@ -70,8 +70,6 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
         }
       }
     });
-
-    queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     
     return () => {
       unsubscribe();
