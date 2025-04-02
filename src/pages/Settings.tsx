@@ -2,13 +2,15 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GoogleAdsTokensTest } from "@/components/revisao-nova/GoogleAdsTokensTest";
 import { GoogleAdsTokenManager } from "@/components/revisao-nova/GoogleAdsTokenManager";
+import { GoogleAdsTokensSetupForm } from "@/components/daily-reviews/GoogleAdsTokensSetupForm";
+import { GoogleAdsTokenLogs } from "@/components/daily-reviews/GoogleAdsTokenLogs";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const [selectedTab, setSelectedTab] = useState<string>("general");
+  const [selectedTab, setSelectedTab] = useState<string>("google-ads");
   
   // Atualizar a tab selecionada com base no parâmetro da URL
   useEffect(() => {
@@ -41,7 +43,12 @@ export default function Settings() {
         <TabsContent value="google-ads" className="space-y-6">
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-muran-dark">Google Ads</h2>
+            <div className="grid gap-6 md:grid-cols-2">
+              <GoogleAdsTokensTest />
+              <GoogleAdsTokensSetupForm />
+            </div>
             <GoogleAdsTokenManager />
+            <GoogleAdsTokenLogs />
           </div>
         </TabsContent>
         

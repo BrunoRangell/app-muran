@@ -32,6 +32,13 @@ serve(async (req) => {
       console.log("Requisição sem payload ou payload inválido");
     }
     
+    // Verificar se é uma chamada manual
+    const isManual = payload && (payload as any).manual === true;
+    // Verificar se é uma chamada para forçar a renovação
+    const forceRefresh = payload && (payload as any).forceRefresh === true;
+    // Verificar se é uma chamada de teste
+    const isTest = payload && (payload as any).test === true;
+    
     // Inicializa o cliente Supabase
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -62,7 +69,6 @@ serve(async (req) => {
       .maybeSingle();
       
     // Se a edge function estiver desativada e não for uma chamada manual, retornamos
-    const isManual = payload && (payload as any).manual === true;
     if (!isManual && configError || !isManual && !config?.value?.edge_function_enabled) {
       if (configError) {
         await logTokenEvent("error", "unknown", "Erro ao verificar configuração da edge function", configError);
@@ -84,7 +90,7 @@ serve(async (req) => {
     const { data: tokensData, error: tokensError } = await supabaseClient
       .from("api_tokens")
       .select("name, value")
-      .or('name.eq.google_ads_access_token,name.eq.google_ads_refresh_token,name.eq.google_ads_client_id,name.eq.google_ads_client_secret');
+      .or('name.eq.google_ads_access_token,name.eq.google_ads_refresh_token,name.eq.google_ads_client_id,name.eq.google_ads_client_secret,name.eq.google_ads_developer_token,name.eq.google_ads_manager_id');
     
     if (tokensError) {
       await logTokenEvent("error", "unknown", "Erro ao buscar tokens", tokensError);
@@ -112,38 +118,41 @@ serve(async (req) => {
       );
     }
     
-    // Verificar metadados do token para decisão inteligente
-    const { data: metadata } = await supabaseClient
-      .from("google_ads_token_metadata")
-      .select("*")
-      .eq("token_type", "access_token")
-      .maybeSingle();
-      
-    let shouldRefresh = isManual; // Sempre renovar se for chamada manual
+    // Se for uma chamada manual com forceRefresh, vamos renovar o token de qualquer forma
+    let shouldRefresh = isManual && forceRefresh;
     
-    // Se temos metadados e não é uma chamada manual, verificamos se o token está próximo de expirar
-    if (!isManual && metadata?.expires_at) {
-      const expiresAt = new Date(metadata.expires_at);
-      const now = new Date();
-      const minutesUntilExpiry = (expiresAt.getTime() - now.getTime()) / (60 * 1000);
-      
-      await logTokenEvent("check", "info", `Token expira em ${minutesUntilExpiry.toFixed(1)} minutos`, {
-        expires_at: metadata.expires_at,
-        minutes_remaining: minutesUntilExpiry,
-        is_manual: isManual
-      });
-      
-      // Se o token expira em menos de X minutos, renovar proativamente
-      if (minutesUntilExpiry < REFRESH_THRESHOLD_MINUTES) {
+    if (!shouldRefresh) {
+      // Verificar metadados do token para decisão inteligente
+      const { data: metadata } = await supabaseClient
+        .from("google_ads_token_metadata")
+        .select("*")
+        .eq("token_type", "access_token")
+        .maybeSingle();
+        
+      // Se temos metadados e o token não expirou, verificamos proativamente
+      if (metadata?.expires_at) {
+        const expiresAt = new Date(metadata.expires_at);
+        const now = new Date();
+        const minutesUntilExpiry = (expiresAt.getTime() - now.getTime()) / (60 * 1000);
+        
+        await logTokenEvent("check", "info", `Token expira em ${minutesUntilExpiry.toFixed(1)} minutos`, {
+          expires_at: metadata.expires_at,
+          minutes_remaining: minutesUntilExpiry,
+          is_manual: isManual
+        });
+        
+        // Se o token expira em menos de X minutos, renovar proativamente
+        if (minutesUntilExpiry < REFRESH_THRESHOLD_MINUTES) {
+          shouldRefresh = true;
+        }
+      } else {
+        // Se não temos metadados, verificamos o token
         shouldRefresh = true;
       }
-    } else if (!isManual) {
-      // Se não temos metadados e não é chamada manual, verificamos o token
-      shouldRefresh = true;
     }
     
     // Se não precisamos renovar, apenas verificamos o token atual
-    if (!shouldRefresh) {
+    if (!shouldRefresh && !isTest) {
       try {
         const response = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + tokens.google_ads_access_token);
         
@@ -166,6 +175,35 @@ serve(async (req) => {
               expires_at: new Date(Date.now() + (tokenInfo.expires_in * 1000)).toISOString()
             });
           
+          // Se for uma chamada de teste, também testamos a conexão com a API
+          if (isTest) {
+            try {
+              // Tentar fazer uma chamada para listar clientes e verificar quantos existem
+              const customerCountResponse = await testGoogleAdsConnection(tokens);
+              return new Response(
+                JSON.stringify({ 
+                  success: true, 
+                  message: "Token de acesso válido e API conectada", 
+                  expires_in: tokenInfo.expires_in,
+                  token_info: tokenInfo,
+                  customerCount: customerCountResponse.customerCount
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            } catch (testError) {
+              return new Response(
+                JSON.stringify({ 
+                  success: true, 
+                  message: "Token de acesso válido, mas erro ao testar API", 
+                  expires_in: tokenInfo.expires_in,
+                  token_info: tokenInfo,
+                  test_error: testError instanceof Error ? testError.message : String(testError)
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          }
+          
           return new Response(
             JSON.stringify({ 
               success: true, 
@@ -187,7 +225,7 @@ serve(async (req) => {
     }
     
     // Processo de renovação de token
-    if (shouldRefresh) {
+    if (shouldRefresh || isTest) {
       await logTokenEvent("refresh", "refreshing", isManual ? "Iniciando renovação manual do token" : "Iniciando renovação proativa do token");
       
       try {
@@ -250,6 +288,41 @@ serve(async (req) => {
             is_manual: isManual
           });
           
+          // Se for uma chamada de teste, também testamos a conexão com a API
+          if (isTest) {
+            try {
+              // Atualize os tokens com o novo access token
+              tokens.google_ads_access_token = newAccessToken;
+              
+              // Tentar fazer uma chamada para listar clientes e verificar quantos existem
+              const customerCountResponse = await testGoogleAdsConnection(tokens);
+              
+              return new Response(
+                JSON.stringify({ 
+                  success: true, 
+                  message: "Token renovado com sucesso e API conectada",
+                  refreshed: true,
+                  expires_in: expiresIn,
+                  expires_at: expiresAt.toISOString(),
+                  customerCount: customerCountResponse.customerCount
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            } catch (testError) {
+              return new Response(
+                JSON.stringify({ 
+                  success: true, 
+                  message: "Token renovado com sucesso, mas erro ao testar API",
+                  refreshed: true,
+                  expires_in: expiresIn,
+                  expires_at: expiresAt.toISOString(),
+                  test_error: testError instanceof Error ? testError.message : String(testError)
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          }
+          
           return new Response(
             JSON.stringify({ 
               success: true, 
@@ -299,3 +372,48 @@ serve(async (req) => {
     );
   }
 });
+
+// Função para testar a conexão com a API Google Ads
+async function testGoogleAdsConnection(tokens: Record<string, string>) {
+  // Verificar se temos o developer token e manager id
+  if (!tokens.google_ads_developer_token) {
+    return { 
+      success: false, 
+      message: "Developer token não configurado"
+    };
+  }
+  
+  try {
+    // Usar a Google Ads API para listar os clientes disponíveis
+    // Usamos a Customer service para isso
+    const customerServiceUrl = "https://googleads.googleapis.com/v16/customers:listAccessibleCustomers";
+    
+    const response = await fetch(customerServiceUrl, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${tokens.google_ads_access_token}`,
+        "developer-token": tokens.google_ads_developer_token,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro na API Google Ads (${response.status}): ${errorText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Contar quantos clientes estão disponíveis
+    const customerCount = data.resourceNames ? data.resourceNames.length : 0;
+    
+    return {
+      success: true,
+      customerCount,
+      data
+    };
+  } catch (error) {
+    console.error("Erro ao testar conexão com Google Ads API:", error);
+    throw error;
+  }
+}

@@ -56,10 +56,11 @@ export const GoogleAdsDashboardCard = ({
     setIsTokenVerifying(true);
     
     try {
-      // Fazer chamada direta à edge function para garantir que está sendo invocada
+      // Fazer chamada à edge function com flag para renovação manual
       const { data, error } = await supabase.functions.invoke('google-ads-token-check', {
         body: { 
           manual: true,
+          forceRefresh: true,
           timestamp: new Date().toISOString()
         }
       });
