@@ -5,7 +5,8 @@ import { GoogleAdsTokenManager } from "@/components/revisao-nova/GoogleAdsTokenM
 import { GoogleAdsTokensSetupForm } from "@/components/daily-reviews/GoogleAdsTokensSetupForm";
 import { GoogleAdsTokenLogs } from "@/components/daily-reviews/GoogleAdsTokenLogs";
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
@@ -21,28 +22,38 @@ export default function Settings() {
   
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
+      <div className="flex items-center space-x-2 mb-4">
+        <Link 
+          to="/dashboard" 
+          className="flex items-center text-[#ff6e00] hover:text-[#cc5800] transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Voltar ao Dashboard
+        </Link>
+      </div>
+
+      <h1 className="text-2xl md:text-3xl font-bold text-[#321e32]">
         Configurações
       </h1>
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList className="mb-4">
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+        <TabsList className="mb-4 w-full flex justify-start overflow-x-auto">
           <TabsTrigger value="general">Geral</TabsTrigger>
-          <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
+          <TabsTrigger value="google-ads" className="font-medium">Google Ads</TabsTrigger>
           <TabsTrigger value="meta">Meta Ads</TabsTrigger>
           <TabsTrigger value="integrations">Integrações</TabsTrigger>
         </TabsList>
         
         <TabsContent value="general" className="space-y-6">
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-muran-dark">Configurações gerais</h2>
+            <h2 className="text-xl font-semibold text-[#321e32]">Configurações gerais</h2>
             <p>Configurações gerais do sistema.</p>
           </div>
         </TabsContent>
         
         <TabsContent value="google-ads" className="space-y-6">
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-muran-dark">Google Ads</h2>
+            <h2 className="text-xl font-semibold text-[#321e32]">Google Ads</h2>
             <div className="grid gap-6 md:grid-cols-2">
               <GoogleAdsTokensTest />
               <GoogleAdsTokensSetupForm />
@@ -54,14 +65,14 @@ export default function Settings() {
         
         <TabsContent value="meta" className="space-y-6">
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-muran-dark">Meta Ads</h2>
+            <h2 className="text-xl font-semibold text-[#321e32]">Meta Ads</h2>
             <p>Configurações para integração com Meta Ads.</p>
           </div>
         </TabsContent>
         
         <TabsContent value="integrations" className="space-y-6">
           <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-muran-dark">Integrações</h2>
+            <h2 className="text-xl font-semibold text-[#321e32]">Integrações</h2>
             <p>Configurações para integrações com serviços externos.</p>
           </div>
         </TabsContent>
