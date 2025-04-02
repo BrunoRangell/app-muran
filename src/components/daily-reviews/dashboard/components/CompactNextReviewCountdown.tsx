@@ -2,37 +2,79 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useBatchReview } from "@/hooks/useBatchReview";
+import { useQueryClient } from "@tanstack/react-query";
 
-export function CompactNextReviewCountdown() {
+interface CompactNextReviewCountdownProps {
+  onAnalyzeAll: () => Promise<void>;
+}
+
+export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCountdownProps) {
   const [secondsToNext, setSecondsToNext] = useState<number>(180); // 3 minutos
+  const [isRunning, setIsRunning] = useState<boolean>(false);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
-  
-  // Usar o hook centralizado para revisão em lote
-  const { reviewAllClients, isLoading, lastBatchReviewTime } = useBatchReview();
+  const queryClient = useQueryClient();
 
   // Função para atualizar o contador
   const updateCountdown = () => {
     setSecondsToNext(prev => {
       if (prev <= 1) {
         // Quando o contador chegar a zero, executar a revisão automaticamente
-        handleExecuteReview();
+        runAutomaticReview();
         return 180; // Reinicia para 3 minutos
       }
       return prev - 1;
     });
   };
 
-  // Função para executar a revisão
-  const handleExecuteReview = async () => {
-    if (isLoading) return;
-    
-    console.log("[CompactNextReviewCountdown] Executando revisão programada");
+  // Função para executar a revisão automaticamente
+  const runAutomaticReview = async () => {
+    if (isRunning) return;
     
     try {
-      await reviewAllClients();
+      console.log("[AutoReview] Executando revisão automática programada");
+      setIsRunning(true);
+      
+      // Executar a função onAnalyzeAll passada como prop
+      await onAnalyzeAll();
+      
+      // Registrar o horário da última execução
+      const now = new Date();
+      setLastRunTime(now);
+      
+      // Forçar atualização dos dados após a conclusão
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+        queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+      }, 5000); // Esperar 5 segundos para garantir que o processamento em segundo plano tenha avançado
+      
+      toast({
+        title: "Revisão automática iniciada",
+        description: "A revisão automática foi iniciada com sucesso.",
+      });
+    } catch (error) {
+      console.error("[AutoReview] Erro ao executar revisão automática:", error);
+      toast({
+        title: "Erro na revisão automática",
+        description: "Ocorreu um erro ao iniciar a revisão automática.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  // Executar manualmente a revisão
+  const handleManualRun = async () => {
+    if (isRunning) return;
+    
+    try {
+      console.log("[AutoReview] Executando revisão manual");
+      setIsRunning(true);
+      
+      // Executar a mesma função que é chamada quando o contador chega a zero
+      await onAnalyzeAll();
       
       // Registrar o horário da última execução
       const now = new Date();
@@ -40,14 +82,32 @@ export function CompactNextReviewCountdown() {
       
       // Reiniciar o contador
       setSecondsToNext(180);
+      
+      // Forçar atualização dos dados após a conclusão
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+        queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+      }, 5000); // Esperar 5 segundos para garantir que o processamento em segundo plano tenha avançado
+      
+      toast({
+        title: "Revisão iniciada",
+        description: "A revisão foi iniciada com sucesso.",
+      });
     } catch (error) {
-      console.error("[CompactNextReviewCountdown] Erro ao executar revisão:", error);
+      console.error("[AutoReview] Erro ao executar revisão manual:", error);
+      toast({
+        title: "Erro na revisão",
+        description: "Ocorreu um erro ao iniciar a revisão.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRunning(false);
     }
   };
 
   // Configurar o intervalo quando o componente é montado
   useEffect(() => {
-    console.log("[CompactNextReviewCountdown] Inicializando contador");
+    console.log("[AutoReview] Inicializando contador de revisão automática");
     
     // Limpar qualquer intervalo existente
     if (intervalRef.current) {
@@ -57,11 +117,6 @@ export function CompactNextReviewCountdown() {
     // Configurar novo intervalo
     intervalRef.current = setInterval(updateCountdown, 1000);
     
-    // Usar lastBatchReviewTime para atualizar lastRunTime
-    if (lastBatchReviewTime) {
-      setLastRunTime(new Date(lastBatchReviewTime));
-    }
-    
     // Limpar o intervalo quando o componente for desmontado
     return () => {
       if (intervalRef.current) {
@@ -69,7 +124,7 @@ export function CompactNextReviewCountdown() {
         intervalRef.current = null;
       }
     };
-  }, [lastBatchReviewTime]);
+  }, []);
 
   // Formatar o tempo para exibição
   const formatTime = (seconds: number) => {
@@ -87,11 +142,11 @@ export function CompactNextReviewCountdown() {
         </div>
         
         <button 
-          onClick={handleExecuteReview} 
-          disabled={isLoading}
+          onClick={handleManualRun} 
+          disabled={isRunning}
           className="flex items-center justify-center gap-1 text-xs py-1 px-2 rounded bg-[#ff6e00] hover:bg-[#e66300] text-white disabled:opacity-50"
         >
-          {isLoading ? (
+          {isRunning ? (
             <Loader className="h-3 w-3 animate-spin" />
           ) : (
             <RefreshCw className="h-3 w-3" />
