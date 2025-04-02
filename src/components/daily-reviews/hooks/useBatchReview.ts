@@ -1,198 +1,150 @@
-import { useState, useCallback, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { ClientWithReview } from "./types/reviewTypes";
+import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { analyzeClient, fetchClientsWithReviews } from "./services/clientReviewService";
-import { getCurrentDateInBrasiliaTz } from "../summary/utils";
+import { useClientAnalysis } from "./useClientAnalysis";
+import { useQueryClient } from "@tanstack/react-query";
+import { fetchClientsWithReviews } from "./services/clientReviewService";
 
-/**
- * Hook para gerenciar revisões em lote de clientes
- */
 export const useBatchReview = () => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [processingClients, setProcessingClients] = useState<string[]>([]);
+  const [clientsWithReviews, setClientsWithReviews] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [processingClients, setProcessingClients] = useState([]);
+  const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
-  const [lastBatchReviewTime, setLastBatchReviewTime] = useState<string | null>(null);
-  const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
+  const queryClient = useQueryClient();
   
-  // Buscar a lista de clientes e suas revisões mais recentes sem refetch automático
-  const { 
-    data: clientsData = { clientsData: [], lastReviewTime: null }, 
-    isLoading, 
-    error,
-    refetch 
-  } = useQuery({
-    queryKey: ['clients-with-reviews'],
-    queryFn: fetchClientsWithReviews,
-    refetchOnWindowFocus: false, // Evita refetch ao focar na janela
-    refetchOnMount: false, // Evita refetch ao montar o componente
-    staleTime: Infinity, // Nunca marca os dados como desatualizados automaticamente
-  });
-
-  // Extrair os arrays de clientes do resultado
-  const clientsWithReviews: ClientWithReview[] = Array.isArray(clientsData) 
-    ? clientsData 
-    : (clientsData?.clientsData || []);
-  
-  // Buscar o horário da última revisão em massa
-  useEffect(() => {
-    const fetchLastBatchReviewTime = async () => {
-      const { data } = await supabase
-        .from('system_logs')
-        .select('created_at')
-        .eq('event_type', 'batch_review_completed')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
-      if (data) {
-        setLastBatchReviewTime(data.created_at);
-      }
-    };
+  const { analyzeMutation } = useClientAnalysis((data) => {
+    toast({
+      title: "Análise concluída",
+      description: `Análise do cliente atualizada com sucesso.`,
+    });
     
-    fetchLastBatchReviewTime();
-  }, []);
+    setProcessingClients(prev => prev.filter(id => id !== data.clientId));
+    queryClient.invalidateQueries({ queryKey: ["client-detail", data.clientId] });
+    queryClient.invalidateQueries({ queryKey: ["latest-review", data.clientId] });
+    queryClient.invalidateQueries({ queryKey: ["review-history", data.clientId] });
+    loadClients();
+  });
   
-  // Marcar que um cliente está sendo processado
-  const startProcessingClient = useCallback((clientId: string) => {
-    setProcessingClients(prev => [...prev, clientId]);
-  }, []);
+  const loadClients = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const clients = await fetchClientsWithReviews();
+      setClientsWithReviews(clients);
+    } catch (error) {
+      console.error("Erro ao carregar clientes:", error);
+      toast({
+        title: "Erro ao carregar clientes",
+        description: "Não foi possível carregar a lista de clientes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
   
-  // Marcar que um cliente terminou de ser processado
-  const finishProcessingClient = useCallback((clientId: string) => {
-    setProcessingClients(prev => prev.filter(id => id !== clientId));
-  }, []);
-  
-  // Revisar um único cliente
   const reviewSingleClient = useCallback(async (clientId: string) => {
     if (processingClients.includes(clientId)) {
       toast({
-        title: "Processamento em andamento",
+        title: "Análise em andamento",
         description: "Este cliente já está sendo analisado.",
-        variant: "default",
       });
-      return false;
+      return;
     }
     
+    setProcessingClients(prev => [...prev, clientId]);
+    console.log(`Iniciando análise para cliente: ${clientId}`);
+    
     try {
-      startProcessingClient(clientId);
-      
-      await analyzeClient(clientId, clientsWithReviews);
-      
-      // Invalidar a consulta para recarregar os dados
-      queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
-      queryClient.invalidateQueries({ queryKey: ['client-detail', clientId] });
-      queryClient.invalidateQueries({ queryKey: ['latest-review', clientId] });
-      
+      await analyzeMutation.mutateAsync(clientId);
       toast({
         title: "Análise concluída",
-        description: "Cliente analisado com sucesso.",
+        description: `Análise do cliente ${clientId} concluída com sucesso.`,
       });
-      
-      return true;
     } catch (error) {
-      console.error("Erro ao analisar cliente:", error);
-      
+      console.error("Erro na análise do cliente:", error);
       toast({
         title: "Erro na análise",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
-      
-      return false;
     } finally {
-      finishProcessingClient(clientId);
+      setProcessingClients(prev => prev.filter(id => id !== clientId));
     }
-  }, [processingClients, startProcessingClient, finishProcessingClient, toast, clientsWithReviews, queryClient]);
+  }, [analyzeMutation, processingClients, toast]);
   
-  // Revisar todos os clientes elegíveis
-  const reviewAllClients = useCallback(async () => {
-    // Verificar se já existe uma revisão em lote em andamento
-    if (isBatchAnalyzing) {
-      toast({
-        title: "Processamento em andamento",
-        description: "Já existe uma análise em lote em andamento.",
-        variant: "default",
-      });
-      return;
-    }
-    
+  const reviewAllClients = async () => {
     try {
-      // Filtrar clientes elegíveis (com meta_account_id configurado)
-      const eligibleClients = clientsWithReviews.filter(
-        client => client.meta_account_id && client.meta_account_id.trim() !== ""
-      );
+      setIsBatchAnalyzing(true);
       
-      if (eligibleClients.length === 0) {
+      // Resetar o progresso antes de iniciar
+      setBatchProgress(0);
+      
+      // Obter a lista de clientes a serem analisados
+      const clientsToProcess = clientsWithReviews.filter(client => client.meta_account_id);
+      setTotalClientsToAnalyze(clientsToProcess.length);
+      
+      if (clientsToProcess.length === 0) {
         toast({
-          title: "Nenhum cliente elegível",
-          description: "Não há clientes com ID de conta Meta configurado.",
-          variant: "default",
+          title: "Nenhum cliente para analisar",
+          description: "Não há clientes com Meta Ads configurado.",
         });
+        setIsBatchAnalyzing(false);
         return;
       }
       
-      setIsBatchAnalyzing(true);
-      setTotalClientsToAnalyze(eligibleClients.length);
-      setBatchProgress(0);
+      const clientIds = clientsToProcess.map(client => client.id);
+      setProcessingClients(prev => [...new Set([...prev, ...clientIds])]);
       
-      let successCount = 0;
-      let errorCount = 0;
+      // Processar cada cliente e atualizar o progresso corretamente
+      let currentProgress = 0;
       
-      // Processar cada cliente em sequência
-      for (const client of eligibleClients) {
+      for (const client of clientsToProcess) {
+        console.log(`Iniciando análise para cliente: ${client.company_name} (${client.id})`);
+        
         try {
-          startProcessingClient(client.id);
-          await analyzeClient(client.id, clientsWithReviews);
-          successCount++;
-          setBatchProgress(prev => prev + 1);
-        } catch (error) {
-          console.error(`Erro ao analisar cliente ${client.company_name}:`, error);
-          errorCount++;
-          setBatchProgress(prev => prev + 1);
-        } finally {
-          finishProcessingClient(client.id);
+          await analyzeMutation.mutateAsync(client.id);
+          
+          // Incrementar o progresso apenas após o processamento bem-sucedido
+          currentProgress++;
+          setBatchProgress(currentProgress);
+          
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (err) {
+          console.error(`Erro ao analisar cliente ${client.company_name}:`, err);
+          // Mesmo em caso de erro, incrementar o progresso
+          currentProgress++;
+          setBatchProgress(currentProgress);
         }
       }
       
-      // Registrar conclusão da revisão em lote
-      const now = getCurrentDateInBrasiliaTz().toISOString();
+      toast({
+        title: "Análise em lote concluída",
+        description: `Foram processados ${clientsToProcess.length} clientes.`,
+      });
+      
+      const now = new Date();
       setLastBatchReviewTime(now);
       
-      await supabase.from('system_logs').insert({
-        event_type: 'batch_review_completed',
-        message: `Revisão em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
-        details: { successCount, errorCount }
-      });
-      
-      // Recarregar dados
-      queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
-      
-      toast({
-        title: "Revisão em lote concluída",
-        description: `${successCount} cliente(s) analisado(s) com sucesso. ${errorCount} erro(s).`,
-      });
-      
     } catch (error) {
-      console.error("Erro na revisão em lote:", error);
-      
+      console.error("Erro ao processar análise em lote:", error);
       toast({
-        title: "Erro na revisão em lote",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
+        title: "Erro na análise em lote",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar a análise em lote",
         variant: "destructive",
       });
     } finally {
       setIsBatchAnalyzing(false);
+      // Não resetar o progresso aqui, para permitir que o usuário veja o resultado final
+      loadClients();
     }
-  }, [clientsWithReviews, isBatchAnalyzing, startProcessingClient, finishProcessingClient, toast, queryClient]);
+  };
   
   return {
     clientsWithReviews,
     isLoading,
-    error,
     processingClients,
     reviewSingleClient,
     reviewAllClients,
@@ -200,6 +152,6 @@ export const useBatchReview = () => {
     isBatchAnalyzing,
     batchProgress,
     totalClientsToAnalyze,
-    refetchClients: refetch
+    refetchClients: loadClients
   };
 };

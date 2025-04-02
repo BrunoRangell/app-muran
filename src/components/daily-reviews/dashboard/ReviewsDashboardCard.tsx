@@ -78,7 +78,7 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
   }, [queryClient, toast]);
   
   const progressPercentage = totalClientsToAnalyze > 0 
-    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
+    ? Math.min(Math.round((batchProgress / totalClientsToAnalyze) * 100), 100) 
     : 0;
   
   const filteredByName = clientsWithReviews ? filterClientsByName(clientsWithReviews, searchQuery) : [];
