@@ -22,7 +22,7 @@ export function CompactNextReviewCountdown() {
   
   // O intervalo de execução é de 5 horas (18000 segundos)
   const EXECUTION_INTERVAL = 5 * 60 * 60; // 5 horas em segundos
-  const PROGRESS_CHECK_INTERVAL = 60000; // Verificar progresso a cada 1 minuto em vez de 3 segundos
+  const PROGRESS_CHECK_INTERVAL = 60000; // Verificar progresso a cada 1 minuto
 
   const updateSecondsToNext = () => {
     const now = new Date();
@@ -190,7 +190,7 @@ export function CompactNextReviewCountdown() {
 
   useEffect(() => {
     updateSecondsToNext();
-    checkForActiveReview();
+    checkForActiveReview(); // Verificar apenas uma vez no carregamento
     
     if (countdownRef.current) {
       clearInterval(countdownRef.current);

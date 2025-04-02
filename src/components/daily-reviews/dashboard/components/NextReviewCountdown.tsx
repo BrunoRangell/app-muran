@@ -13,11 +13,13 @@ export function NextReviewCountdown() {
   const [progress, setProgress] = useState<number>(0);
   const [totalClients, setTotalClients] = useState<number>(0);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  const progressCheckRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
   // O intervalo de execução é de 5 horas (18000 segundos)
   const EXECUTION_INTERVAL = 5 * 60 * 60; // 5 horas em segundos
+  const PROGRESS_CHECK_INTERVAL = 60 * 1000; // Verificar progresso a cada 1 minuto
 
   const updateSecondsToNext = () => {
     const now = new Date();
@@ -47,12 +49,31 @@ export function NextReviewCountdown() {
         setIsAutoReviewing(true);
         // Buscar o progresso atual da revisão
         fetchReviewProgress();
+        startProgressMonitoring();
       } else {
         setIsAutoReviewing(false);
         setProgress(0);
+        stopProgressMonitoring();
       }
     } catch (error) {
       console.error("Erro ao verificar revisão ativa:", error);
+    }
+  };
+
+  const startProgressMonitoring = () => {
+    // Limpar qualquer monitoramento existente
+    stopProgressMonitoring();
+    
+    // Configurar novo monitoramento a cada minuto
+    progressCheckRef.current = setInterval(() => {
+      fetchReviewProgress();
+    }, PROGRESS_CHECK_INTERVAL);
+  };
+
+  const stopProgressMonitoring = () => {
+    if (progressCheckRef.current) {
+      clearInterval(progressCheckRef.current);
+      progressCheckRef.current = null;
     }
   };
 
@@ -84,6 +105,7 @@ export function NextReviewCountdown() {
           // Se o progresso for 100%, a revisão terminou
           if (progressValue >= 100) {
             setIsAutoReviewing(false);
+            stopProgressMonitoring();
             
             // Recarregar os dados dos clientes
             queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
@@ -105,7 +127,7 @@ export function NextReviewCountdown() {
     // Inicializar o contador
     updateSecondsToNext();
     
-    // Verificar se há uma revisão em andamento
+    // Verificar se há uma revisão em andamento (apenas uma vez no carregamento)
     checkForActiveReview();
     
     // Limpar qualquer contador existente
@@ -123,11 +145,6 @@ export function NextReviewCountdown() {
         }
         return prevSeconds - 1;
       });
-      
-      // Verificar o progresso a cada minuto se estiver em revisão
-      if (isAutoReviewing) {
-        fetchReviewProgress();
-      }
     }, 1000);
     
     // Limpeza quando o componente for desmontado
@@ -135,8 +152,9 @@ export function NextReviewCountdown() {
       if (countdownRef.current) {
         clearInterval(countdownRef.current);
       }
+      stopProgressMonitoring();
     };
-  }, [isAutoReviewing]);
+  }, []);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
