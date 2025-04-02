@@ -116,19 +116,27 @@ export function AutoReviewSettings() {
     setIsLoading(true);
     
     try {
+      console.log("Iniciando revisão manual...");
       const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: { manual: true, source: "manual_trigger" }
+        body: { 
+          manual: true, 
+          source: "manual_trigger", 
+          executeReview: true // Garantir que a revisão seja executada
+        }
       });
       
       if (error) {
         throw error;
       }
       
+      console.log("Resposta da função Edge:", data);
+      
       toast({
         title: "Revisão em massa iniciada",
         description: "O processo de revisão foi iniciado com sucesso. Isso pode levar alguns minutos.",
       });
       
+      // Registrar no log
       await supabase.from("system_logs").insert({
         event_type: "cron_job",
         message: "Revisão iniciada manualmente pelo usuário",
@@ -154,9 +162,10 @@ export function AutoReviewSettings() {
         console.warn("Aviso: Não foi possível registrar log de execução:", logError);
       }
       
+      // Esperar tempo para a revisão em lote ser processada
       setTimeout(() => {
         fetchLastAutoRun();
-      }, 5000);
+      }, 10000); // Aumentado para 10 segundos para dar mais tempo ao processamento
       
     } catch (error) {
       console.error("Erro ao iniciar revisão manual:", error);

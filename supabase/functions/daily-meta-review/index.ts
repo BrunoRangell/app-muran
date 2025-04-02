@@ -1,4 +1,3 @@
-
 // Importações necessárias
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -258,6 +257,7 @@ async function processAllClients(
         continue;
       }
       
+      console.log(`Processando cliente: ${client.company_name}`);
       const result = await analyzeClient(
         supabase, 
         client.id, 
@@ -271,9 +271,11 @@ async function processAllClients(
         if (result.skipped) {
           skippedCount++;
         } else {
+          console.log(`Cliente ${client.company_name} processado com sucesso`);
           successCount++;
         }
       } else {
+        console.error(`Erro ao processar cliente ${client.company_name}: ${result.error || 'Erro desconhecido'}`);
         errorCount++;
       }
     }
@@ -388,6 +390,8 @@ serve(async (req) => {
     if (req.method === "POST") {
       const body = await req.json();
       
+      console.log("Recebida requisição POST:", body);
+      
       // Verificar se é um ping de teste
       if (body.method === "ping") {
         return new Response(
@@ -425,6 +429,7 @@ serve(async (req) => {
       
       // Se é apenas um teste, não executar a revisão
       if (body.test) {
+        console.log("Requisição de teste recebida, não executando revisão");
         return new Response(
           JSON.stringify({
             success: true,
@@ -439,8 +444,13 @@ serve(async (req) => {
         );
       }
       
+      // IMPORTANTE: Modificação aqui para garantir que executeReview seja verdadeiro por padrão
+      // se não for especificado explicitamente como false
+      const shouldExecuteReview = body.executeReview !== false;
+      
       // Se não foi solicitada a execução da revisão, retornar
-      if (!body.executeReview) {
+      if (!shouldExecuteReview) {
+        console.log("Solicitação recebida, mas executeReview=false. Não executando revisão.");
         return new Response(
           JSON.stringify({
             success: true,
@@ -453,6 +463,8 @@ serve(async (req) => {
           }
         );
       }
+      
+      console.log("Iniciando processamento de revisão com executeReview=true");
       
       // Processar revisão em background
       const processFunction = async () => {
@@ -483,6 +495,7 @@ serve(async (req) => {
           message: "Processamento de revisão iniciado em background",
           timestamp: new Date().toISOString(),
           logId,
+          executeReviewSet: true, // Indicando explicitamente que executeReview é verdadeiro
           usesMeta_budget_calculator: true
         }),
         {
