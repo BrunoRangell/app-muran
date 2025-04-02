@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { ReviewsDashboardCard } from "./ReviewsDashboardCard";
 import { NextReviewCountdown } from "./components/NextReviewCountdown";
 import { CronScheduleMonitor } from "./components/CronScheduleMonitor";
@@ -10,6 +11,11 @@ interface ReviewsDashboardProps {
 }
 
 export function ReviewsDashboard({ onViewClientDetails }: ReviewsDashboardProps) {
+  // Estado para os filtros
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
+  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -26,7 +32,12 @@ export function ReviewsDashboard({ onViewClientDetails }: ReviewsDashboardProps)
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <MetaDashboardCard onViewClientDetails={onViewClientDetails} />
-        <GoogleAdsDashboardCard onViewClientDetails={onViewClientDetails} />
+        <GoogleAdsDashboardCard 
+          onViewClientDetails={onViewClientDetails} 
+          searchQuery={searchQuery}
+          viewMode={viewMode}
+          showOnlyAdjustments={showOnlyAdjustments}
+        />
       </div>
     </div>
   );
