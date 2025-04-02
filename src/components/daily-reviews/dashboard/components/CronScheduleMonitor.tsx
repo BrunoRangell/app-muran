@@ -44,7 +44,7 @@ export function CronScheduleMonitor() {
         
         // Analisar a saúde do agendamento e calcular próxima execução
         analyzeScheduleHealth(executions);
-        calculateNextRunTime(cronData[0].cron_expression, executions);
+        calculateNextRunTime(cronData?.[0]?.cron_expression, executions);
       }
       
     } catch (error) {
@@ -73,7 +73,7 @@ export function CronScheduleMonitor() {
     
     // Verificar se a última execução foi concluída com sucesso
     const lastStatus = executions[0].status;
-    const wasSuccessful = lastStatus === 'success' || lastStatus === 'completed';
+    const wasSuccessful = lastStatus === 'success' || lastStatus === 'completed' || lastStatus === 'test_success';
     
     // Para o intervalo de teste de 3 minutos (posteriormente será ajustado para 5 horas)
     if (minutesSinceLastExecution > 10) {
@@ -91,7 +91,7 @@ export function CronScheduleMonitor() {
   };
 
   // Calcular o tempo da próxima execução com base na expressão cron
-  const calculateNextRunTime = (cronExpr: string, executions: any[]) => {
+  const calculateNextRunTime = (cronExpr: string | undefined, executions: any[]) => {
     if (!cronExpr) return;
     
     try {
@@ -240,13 +240,54 @@ export function CronScheduleMonitor() {
       // Recarregar dados após um breve intervalo
       setTimeout(() => {
         loadScheduleData();
-      }, 2000);
+      }, 3000);
       
     } catch (error) {
       console.error("Erro ao iniciar revisão manual:", error);
       toast({
         title: "Erro ao iniciar revisão",
         description: "Não foi possível iniciar a revisão automática.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Função para limpar logs antigos com status "started"
+  const resetStuckJobs = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Atualizar execuções antigas com status "started" para "error"
+      const { data, error } = await supabase
+        .from('cron_execution_logs')
+        .update({
+          status: 'error',
+          details: {
+            message: 'Execução travada e marcada como erro manualmente',
+            reset_timestamp: new Date().toISOString(),
+            original_status: 'started'
+          }
+        })
+        .eq('status', 'started')
+        .lt('execution_time', new Date(Date.now() - 10 * 60 * 1000).toISOString()); // Execuções mais antigas que 10 minutos
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Execuções travadas resetadas",
+        description: "Execuções antigas com status 'em andamento' foram marcadas como erro.",
+      });
+      
+      // Recarregar dados
+      loadScheduleData();
+      
+    } catch (error) {
+      console.error("Erro ao resetar execuções travadas:", error);
+      toast({
+        title: "Erro ao resetar execuções",
+        description: "Não foi possível resetar as execuções travadas.",
         variant: "destructive",
       });
     } finally {
@@ -300,6 +341,7 @@ export function CronScheduleMonitor() {
     switch (status) {
       case 'success':
       case 'completed':
+      case 'test_success':
         return <span className="text-green-600 font-medium">Sucesso</span>;
       case 'started':
         return <span className="text-orange-500 font-medium">Em andamento</span>;
@@ -336,7 +378,7 @@ export function CronScheduleMonitor() {
               </p>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button 
                 size="sm" 
                 variant="outline" 
@@ -363,6 +405,14 @@ export function CronScheduleMonitor() {
               >
                 Reparar
               </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={resetStuckJobs}
+                disabled={isLoading}
+              >
+                Resetar Travados
+              </Button>
             </div>
           </div>
           
@@ -388,6 +438,9 @@ export function CronScheduleMonitor() {
                         <td className="p-2">
                           {exec.details?.message || 
                            (exec.details?.completedAt ? `Completado: ${new Date(exec.details.completedAt).toLocaleTimeString()}` : "")}
+                          {exec.status === "started" && 
+                            <span className="text-orange-500 ml-1">(em processamento)</span>
+                          }
                         </td>
                       </tr>
                     ))
@@ -408,7 +461,9 @@ export function CronScheduleMonitor() {
               <p className="font-medium">Problema detectado no agendamento</p>
               <p className="text-xs mt-1">
                 O agendamento parece não estar funcionando corretamente. 
-                Tente usar o botão "Reparar" ou "Iniciar Agora" para forçar uma execução manual.
+                Tente usar o botão "Resetar Travados" para limpar execuções pendentes, 
+                ou "Reparar" para forçar uma reconfiguração, 
+                ou "Iniciar Agora" para forçar uma execução manual.
               </p>
             </div>
           )}

@@ -1,3 +1,4 @@
+
 // Importações necessárias
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -234,6 +235,25 @@ async function processAllClients(
     
     if (!clients || clients.length === 0) {
       await logMessage(supabase, "Nenhum cliente encontrado para processar");
+      
+      // Mesmo sem clientes para processar, atualizar o log de execução para completed
+      if (logId) {
+        await supabase
+          .from("cron_execution_logs")
+          .update({
+            status: "completed",
+            details: {
+              totalClients: 0,
+              successCount: 0,
+              errorCount: 0,
+              skippedCount: 0,
+              completedAt: new Date().toISOString(),
+              message: "Nenhum cliente para processar"
+            },
+          })
+          .eq("id", logId);
+      }
+      
       return { success: true, message: "Nenhum cliente para processar", processedCount: 0 };
     }
     
@@ -296,6 +316,10 @@ async function processAllClients(
           },
         })
         .eq("id", logId);
+      
+      console.log(`Log de execução ${logId} atualizado com status: ${errorCount === 0 ? "success" : errorCount < clients.length ? "partial_success" : "error"}`);
+    } else {
+      console.log("Nenhum logId fornecido, não foi possível atualizar o log de execução");
     }
     
     await logMessage(supabase, `Processamento concluído: ${successCount} sucessos, ${errorCount} erros, ${skippedCount} pulados`);
@@ -356,6 +380,8 @@ async function processAllClients(
           },
         })
         .eq("id", logId);
+      
+      console.log(`Log de execução ${logId} atualizado com status de erro`);
     }
     
     return {
@@ -403,7 +429,7 @@ serve(async (req) => {
         );
       }
       
-      // Registrar execução no log
+      // Obter ID do log de execução, se fornecido
       let logId = body.logId;
       
       if (!logId && (body.scheduled || body.manual)) {
@@ -424,12 +450,31 @@ serve(async (req) => {
         
         if (!error && logEntry) {
           logId = logEntry.id;
+          console.log(`Criado novo log de execução com ID: ${logId}`);
+        } else {
+          console.error("Erro ao criar log de execução:", error);
         }
       }
       
       // Se é apenas um teste, não executar a revisão
       if (body.test) {
         console.log("Requisição de teste recebida, não executando revisão");
+        
+        // Mesmo sendo teste, atualizar o status para completed
+        if (logId) {
+          await supabase
+            .from("cron_execution_logs")
+            .update({
+              status: "completed",
+              details: jsonb_build_object(
+                "timestamp", new Date().toISOString(),
+                "message", "Teste concluído com sucesso, sem execução real",
+                "test", true
+              )
+            })
+            .eq("id", logId);
+        }
+        
         return new Response(
           JSON.stringify({
             success: true,
@@ -451,6 +496,22 @@ serve(async (req) => {
       // Se não foi solicitada a execução da revisão, retornar
       if (!shouldExecuteReview) {
         console.log("Solicitação recebida, mas executeReview=false. Não executando revisão.");
+        
+        // Atualizar o status como completed mesmo sem executar revisão
+        if (logId) {
+          await supabase
+            .from("cron_execution_logs")
+            .update({
+              status: "completed",
+              details: {
+                timestamp: new Date().toISOString(),
+                message: "Solicitação recebida, mas executeReview=false",
+                completedAt: new Date().toISOString()
+              }
+            })
+            .eq("id", logId);
+        }
+        
         return new Response(
           JSON.stringify({
             success: true,
@@ -465,9 +526,11 @@ serve(async (req) => {
       }
       
       console.log("Iniciando processamento de revisão com executeReview=true");
+      await logMessage(supabase, "Iniciando processamento da revisão diária", { logId });
       
       // Processar revisão em background
       const processFunction = async () => {
+        console.log("Iniciando processamento em background com logId:", logId);
         const result = await processAllClients(
           supabase, 
           logId,
@@ -482,7 +545,12 @@ serve(async (req) => {
       try {
         backgroundPromise = processFunction();
         // @ts-ignore - EdgeRuntime existe em ambiente de produção do Supabase Edge Functions
-        EdgeRuntime.waitUntil(backgroundPromise);
+        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+          EdgeRuntime.waitUntil(backgroundPromise);
+          console.log("Processamento em background registrado com EdgeRuntime.waitUntil");
+        } else {
+          console.log("EdgeRuntime.waitUntil não está disponível, processando normalmente");
+        }
       } catch (error) {
         console.error("Erro ao usar EdgeRuntime.waitUntil:", error);
         // Se não puder usar waitUntil, continuar normalmente (isso afetará o tempo de resposta)
