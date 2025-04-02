@@ -96,7 +96,6 @@ export const GoogleAdsDashboard = () => {
           onViewModeChange={setViewMode}
           showOnlyAdjustments={showOnlyAdjustments}
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
-          // Removido o botão de verificar/renovar tokens
         />
 
         {/* Adicionar barra de progresso quando estiver analisando */}
