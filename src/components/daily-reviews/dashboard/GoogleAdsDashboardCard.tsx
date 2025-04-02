@@ -52,11 +52,19 @@ export const GoogleAdsDashboardCard = ({
   }, [reviewClient]);
 
   const handleVerifyTokens = useCallback(async () => {
+    console.log("Iniciando verificação dos tokens do Google Ads...");
     setIsTokenVerifying(true);
     
     try {
-      // Usar a edge function do Supabase para verificar e renovar tokens, quando necessário
-      const { data, error } = await supabase.functions.invoke('google-ads-token-check');
+      // Fazer chamada direta à edge function para garantir que está sendo invocada
+      const { data, error } = await supabase.functions.invoke('google-ads-token-check', {
+        body: { 
+          manual: true,
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      console.log("Resposta da edge function google-ads-token-check:", { data, error });
       
       if (error) {
         throw new Error(`Erro na edge function: ${error.message}`);
@@ -90,7 +98,7 @@ export const GoogleAdsDashboardCard = ({
       console.error("Erro ao verificar tokens:", error);
       toast({
         title: "Erro ao verificar tokens",
-        description: "Não foi possível verificar os tokens do Google Ads.",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
     } finally {

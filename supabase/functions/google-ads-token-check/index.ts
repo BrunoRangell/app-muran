@@ -18,6 +18,20 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Edge function google-ads-token-check iniciada");
+    
+    // Extrair corpo da requisição
+    let payload = {};
+    try {
+      if (req.body) {
+        const body = await req.json();
+        payload = body;
+        console.log("Payload recebido:", JSON.stringify(payload));
+      }
+    } catch (e) {
+      console.log("Requisição sem payload ou payload inválido");
+    }
+    
     // Inicializa o cliente Supabase
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -27,6 +41,8 @@ serve(async (req) => {
     // Função para registrar logs
     async function logTokenEvent(event: string, status: string, message: string, details?: any) {
       try {
+        console.log(`[TokenEvent] ${event} - ${status}: ${message}`);
+        
         await supabaseClient.from("google_ads_token_logs").insert({
           event_type: event,
           token_status: status,
@@ -45,8 +61,9 @@ serve(async (req) => {
       .eq("key", "google_ads_token_config")
       .maybeSingle();
       
-    // Se a edge function estiver desativada, retornamos
-    if (configError || !config?.value?.edge_function_enabled) {
+    // Se a edge function estiver desativada e não for uma chamada manual, retornamos
+    const isManual = payload && (payload as any).manual === true;
+    if (!isManual && configError || !isManual && !config?.value?.edge_function_enabled) {
       if (configError) {
         await logTokenEvent("error", "unknown", "Erro ao verificar configuração da edge function", configError);
       } else {
@@ -102,25 +119,26 @@ serve(async (req) => {
       .eq("token_type", "access_token")
       .maybeSingle();
       
-    let shouldRefresh = false;
+    let shouldRefresh = isManual; // Sempre renovar se for chamada manual
     
-    // Se temos metadados, verificamos se o token está próximo de expirar
-    if (metadata?.expires_at) {
+    // Se temos metadados e não é uma chamada manual, verificamos se o token está próximo de expirar
+    if (!isManual && metadata?.expires_at) {
       const expiresAt = new Date(metadata.expires_at);
       const now = new Date();
       const minutesUntilExpiry = (expiresAt.getTime() - now.getTime()) / (60 * 1000);
       
       await logTokenEvent("check", "info", `Token expira em ${minutesUntilExpiry.toFixed(1)} minutos`, {
         expires_at: metadata.expires_at,
-        minutes_remaining: minutesUntilExpiry
+        minutes_remaining: minutesUntilExpiry,
+        is_manual: isManual
       });
       
       // Se o token expira em menos de X minutos, renovar proativamente
       if (minutesUntilExpiry < REFRESH_THRESHOLD_MINUTES) {
         shouldRefresh = true;
       }
-    } else {
-      // Se não temos metadados, verificamos o token
+    } else if (!isManual) {
+      // Se não temos metadados e não é chamada manual, verificamos o token
       shouldRefresh = true;
     }
     
@@ -170,9 +188,11 @@ serve(async (req) => {
     
     // Processo de renovação de token
     if (shouldRefresh) {
-      await logTokenEvent("refresh", "refreshing", "Iniciando renovação proativa do token");
+      await logTokenEvent("refresh", "refreshing", isManual ? "Iniciando renovação manual do token" : "Iniciando renovação proativa do token");
       
       try {
+        console.log("Iniciando processo de renovação do token...");
+        
         // Tenta renovar o token
         const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
           method: "POST",
@@ -185,6 +205,8 @@ serve(async (req) => {
           })
         });
         
+        console.log("Resposta do Google OAuth:", refreshResponse.status);
+        
         if (refreshResponse.status === 200) {
           const refreshData = await refreshResponse.json();
           const newAccessToken = refreshData.access_token;
@@ -194,6 +216,8 @@ serve(async (req) => {
             throw new Error("Resposta da API Google não contém access_token");
           }
 
+          console.log("Token renovado com sucesso, atualizando no banco de dados");
+          
           // Salva o novo token de acesso
           const { error: updateError } = await supabaseClient
             .from("api_tokens")
@@ -220,15 +244,16 @@ serve(async (req) => {
               details: JSON.stringify(refreshData)
             });
           
-          await logTokenEvent("refresh", "valid", "Token renovado com sucesso pela edge function", { 
+          await logTokenEvent("refresh", "valid", isManual ? "Token renovado com sucesso manualmente" : "Token renovado com sucesso pela edge function", { 
             expires_in: expiresIn,
-            expires_at: expiresAt.toISOString()
+            expires_at: expiresAt.toISOString(),
+            is_manual: isManual
           });
           
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: "Token renovado com sucesso pela edge function",
+              message: isManual ? "Token renovado com sucesso manualmente" : "Token renovado com sucesso pela edge function",
               refreshed: true,
               expires_in: expiresIn,
               expires_at: expiresAt.toISOString()
