@@ -20,10 +20,6 @@ const Index = lazy(() => {
   return page;
 });
 
-// Usando uma função específica para carregar o componente RevisaoNova
-// para evitar possíveis problemas de importação circular
-const RevisaoNova = lazy(() => import("@/pages/RevisaoNova"));
-
 // Lazy load das demais páginas com timeout maior e retry
 const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 10000) => {
   return lazy(() => {
@@ -58,6 +54,7 @@ const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const DailyReviews = lazyWithTimeout(() => import("@/pages/DailyReviews"));
+const RevisaoNova = lazyWithTimeout(() => import("@/pages/RevisaoNova"));
 
 function App() {
   return (

@@ -1,15 +1,13 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
 import { FilterOptions } from "./components/FilterOptions";
 import { useState } from "react";
-import { Calendar } from "lucide-react";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
-  onAnalyzeAll?: () => Promise<void>;
+  onAnalyzeAll?: () => Promise<void>; // Adicionando propriedade onAnalyzeAll como opcional
 }
 
 export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDashboardCardProps) => {

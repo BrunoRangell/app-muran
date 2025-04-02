@@ -8,8 +8,6 @@ import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManag
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
 import { useSearchParams } from "react-router-dom";
 import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPanel";
-import { MetaDashboardCard } from "@/components/daily-reviews/dashboard/MetaDashboardCard"; 
-import { AutoReviewSettings } from "@/components/daily-reviews/dashboard/components/AutoReviewSettings";
 
 export default function RevisaoNova() {
   // Usando useState para manter o estado da aba selecionada
@@ -40,9 +38,8 @@ export default function RevisaoNova() {
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
-          <AutoReviewSettings />
           <div className="md:col-span-3">
-            <MetaDashboardCard onViewClientDetails={() => {}} />
+            <ReviewsDashboardCard onViewClientDetails={() => {}} />
           </div>
         </TabsContent>
         
