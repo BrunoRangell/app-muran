@@ -36,8 +36,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 SELECT cron.unschedule('daily-meta-review-job');
 SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
+SELECT cron.unschedule('google-ads-token-check-job');
 
--- Agendar execução a cada 5 horas
+-- Agendar execução da revisão Meta Ads a cada 5 horas
 SELECT cron.schedule(
   'daily-meta-review-job',
   '0 */5 * * *',  -- Executa a cada 5 horas (às 0h, 5h, 10h, 15h, 20h)
@@ -62,6 +63,46 @@ SELECT cron.schedule(
   -- Registrar a tentativa no log do sistema
   INSERT INTO public.system_logs (event_type, message, details)
   VALUES ('cron_job', 'Tentativa de execução da revisão diária Meta Ads', jsonb_build_object('timestamp', now(), 'source', 'scheduled_job'));
+  $$
+);
+
+-- Adicionar job específico para verificação de tokens do Google Ads a cada 2 horas
+SELECT cron.schedule(
+  'google-ads-token-check-job',
+  '0 */2 * * *',  -- Executa a cada 2 horas
+  $$
+  -- Registrar início da execução
+  INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
+  VALUES (
+    'google-ads-token-check-job', 
+    now(), 
+    'started', 
+    jsonb_build_object('timestamp', now())
+  );
+  
+  -- Invocar a função Edge para verificação de tokens
+  SELECT
+    net.http_post(
+      url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/google-ads-token-check',
+      headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
+      body:='{"scheduled": true, "source": "cron"}'::jsonb
+    ) as token_check_id;
+    
+  -- Registrar a tentativa no log do sistema
+  INSERT INTO public.system_logs (event_type, message, details)
+  VALUES ('cron_job', 'Verificação automática de tokens do Google Ads', jsonb_build_object('timestamp', now(), 'source', 'scheduled_job'));
+  
+  -- Atualizar status da execução
+  UPDATE public.cron_execution_logs
+  SET 
+    status = 'completed',
+    details = jsonb_build_object(
+      'timestamp', now(),
+      'message', 'Verificação de tokens concluída'
+    )
+  WHERE 
+    job_name = 'google-ads-token-check-job' AND
+    execution_time = (SELECT MAX(execution_time) FROM public.cron_execution_logs WHERE job_name = 'google-ads-token-check-job');
   $$
 );
 
@@ -93,6 +134,19 @@ VALUES (
   jsonb_build_object(
     'timestamp', now(),
     'message', 'Registro de teste para inicializar o monitoramento',
+    'source', 'manual_update'
+  )
+);
+
+-- Registrar uma execução de teste para o job de verificação de tokens do Google Ads
+INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
+VALUES (
+  'google-ads-token-check-job',
+  now(),
+  'test_success', 
+  jsonb_build_object(
+    'timestamp', now(),
+    'message', 'Registro de teste para inicializar o monitoramento de tokens',
     'source', 'manual_update'
   )
 );

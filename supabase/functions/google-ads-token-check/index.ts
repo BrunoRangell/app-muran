@@ -75,7 +75,7 @@ serve(async (req) => {
     }
     
     const tokens: Record<string, string> = {};
-    tokensData.forEach((token: any) => {
+    tokensData?.forEach((token: any) => {
       tokens[token.name] = token.value;
     });
     
@@ -144,7 +144,8 @@ serve(async (req) => {
               token_type: "access_token",
               status: "valid",
               last_checked: new Date().toISOString(),
-              details: JSON.stringify(tokenInfo)
+              details: JSON.stringify(tokenInfo),
+              expires_at: new Date(Date.now() + (tokenInfo.expires_in * 1000)).toISOString()
             });
           
           return new Response(
@@ -188,12 +189,20 @@ serve(async (req) => {
           const refreshData = await refreshResponse.json();
           const newAccessToken = refreshData.access_token;
           const expiresIn = refreshData.expires_in || 3600; // Padrão 1 hora
+          
+          if (!newAccessToken) {
+            throw new Error("Resposta da API Google não contém access_token");
+          }
 
           // Salva o novo token de acesso
-          await supabaseClient
+          const { error: updateError } = await supabaseClient
             .from("api_tokens")
             .update({ value: newAccessToken })
             .eq("name", "google_ads_access_token");
+            
+          if (updateError) {
+            throw new Error(`Erro ao atualizar token no banco de dados: ${updateError.message}`);
+          }
           
           // Calcula e salva quando o token expira
           const expiresAt = new Date();

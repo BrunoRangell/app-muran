@@ -34,16 +34,43 @@ export const useGoogleTokenService = () => {
     }
   };
 
-  const refreshGoogleAccessToken = async (refreshToken: string, clientId: string, clientSecret: string): Promise<string | null> => {
+  const refreshGoogleAccessToken = async (refreshToken?: string, clientId?: string, clientSecret?: string): Promise<string | null> => {
     try {
       setIsLoading(true);
+      
+      // Se os parâmetros não foram fornecidos, buscamos do banco
+      let tokens = {
+        refresh_token: refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret
+      };
+      
+      if (!refreshToken || !clientId || !clientSecret) {
+        const tokenData = await fetchGoogleTokens();
+        
+        if (!tokenData) {
+          throw new Error("Não foi possível obter tokens para renovação");
+        }
+        
+        tokens = {
+          refresh_token: tokenData.google_ads_refresh_token,
+          client_id: tokenData.google_ads_client_id,
+          client_secret: tokenData.google_ads_client_secret
+        };
+      }
+      
+      if (!tokens.refresh_token || !tokens.client_id || !tokens.client_secret) {
+        throw new Error("Tokens obrigatórios para renovação estão faltando");
+      }
+      
+      console.log("Iniciando renovação de token com refresh_token");
       
       const response = await axios.post(
         'https://oauth2.googleapis.com/token',
         {
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
+          client_id: tokens.client_id,
+          client_secret: tokens.client_secret,
+          refresh_token: tokens.refresh_token,
           grant_type: 'refresh_token'
         },
         {
@@ -52,6 +79,12 @@ export const useGoogleTokenService = () => {
           }
         }
       );
+
+      console.log("Resposta da API Google:", response.status);
+      
+      if (response.status !== 200 || !response.data?.access_token) {
+        throw new Error("API Google não retornou um novo access_token válido");
+      }
 
       const newAccessToken = response.data.access_token;
       
@@ -65,6 +98,22 @@ export const useGoogleTokenService = () => {
         console.error("Erro ao atualizar access token:", updateError);
         throw new Error("Falha ao salvar novo token de acesso");
       }
+      
+      // Atualizar também os metadados
+      const expiresIn = response.data.expires_in || 3600;
+      const expiresAt = new Date();
+      expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+      
+      await supabase
+        .from("google_ads_token_metadata")
+        .upsert({
+          token_type: "access_token",
+          status: "valid",
+          last_refreshed: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          last_checked: new Date().toISOString(),
+          details: JSON.stringify(response.data)
+        });
       
       toast({
         title: "Token atualizado",
@@ -133,111 +182,104 @@ export const useGoogleTokenService = () => {
         throw new Error(`Tokens obrigatórios ausentes: ${missingTokens.join(', ')}`);
       }
 
-      // Testar a validade do token de acesso tentando buscar uma lista de clientes
+      // Usar a edge function para testar os tokens ao invés de fazer a chamada direta
       try {
-        // Verificar se temos um token de desenvolvedor e ID de gerenciador
-        if (!tokens['google_ads_manager_id']) {
+        console.log("Testando tokens via edge function...");
+        const response = await supabase.functions.invoke('google-ads-token-check');
+        
+        if (response.error) {
+          console.error("Erro na edge function:", response.error);
+          throw new Error(`Erro na edge function: ${response.error.message}`);
+        }
+        
+        const result = response.data;
+        console.log("Resultado da edge function:", result);
+        
+        if (result.refreshed) {
           setDebugInfo({
-            tokensPresent: Object.keys(tokens),
-            missingOptional: "google_ads_manager_id",
-            status: "warning",
-            message: "ID de conta gerenciadora não configurado, necessário para chamadas à API"
+            tokenRefreshed: true,
+            tokenInfo: result,
+            status: "success",
+            message: `Token renovado automaticamente. Válido por ${Math.floor((result.expires_in || 3600) / 60)} minutos.`
           });
           
           toast({
-            title: "Tokens Básicos Validados",
-            description: "Tokens OAuth do Google Ads verificados. Configure o ID da conta gerenciadora para usar a API.",
+            title: "Token Renovado",
+            description: `Token renovado automaticamente. Válido por ${Math.floor((result.expires_in || 3600) / 60)} minutos.`,
+          });
+          
+          // Recarregar tokens após renovação
+          const updatedTokens = await fetchGoogleTokens();
+          
+          return true;
+        } else if (result.success) {
+          setDebugInfo({
+            tokenStatus: "valid",
+            tokenInfo: result,
+            status: "success",
+            message: "Tokens validados com sucesso pela edge function"
+          });
+          
+          toast({
+            title: "Tokens Validados",
+            description: "Tokens do Google Ads validados com sucesso pela edge function.",
           });
           
           return true;
+        } else {
+          throw new Error(result.message || "Erro desconhecido na verificação de tokens");
         }
-        
-        // Tentar fazer uma chamada à API para testar os tokens
-        const managerCustomerId = tokens['google_ads_manager_id'];
-        const developerToken = tokens['google_ads_developer_token'];
-        const accessToken = tokens['google_ads_access_token'];
-        
-        // Query para buscar clientes
-        const query = `
-          SELECT
-            customer_client.id,
-            customer_client.level,
-            customer_client.descriptive_name
-          FROM
-            customer_client
-          WHERE
-            customer_client.manager = FALSE
-        `;
-        
-        const apiResponse = await axios.post(
-          `https://googleads.googleapis.com/v18/customers/${managerCustomerId}/googleAds:search`,
-          { query },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'developer-token': developerToken,
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }
+      } catch (edgeFunctionError: any) {
+        // Erro ao chamar a edge function, tentamos o método direto
+        console.error("Erro ao usar edge function, tentando método direto:", edgeFunctionError);
+
+        // Verificar diretamente o token de acesso
+        const tokenInfoResponse = await axios.get(
+          `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${tokens.google_ads_access_token}`
         );
         
-        setDebugInfo({
-          tokensPresent: Object.keys(tokens),
-          apiCallSuccess: true,
-          clientsFound: apiResponse.data.results?.length || 0,
-          status: "success"
-        });
-        
-        toast({
-          title: "Tokens Validados",
-          description: `Conexão com o Google Ads estabelecida com sucesso. ${apiResponse.data.results?.length || 0} contas de cliente encontradas.`,
-        });
-        
-      } catch (apiError: any) {
-        // Verificar se o erro é de token expirado
-        if (apiError?.response?.status === 401) {
-          // Tentar renovar o token
-          console.log("Token expirado, tentando renovar...");
+        if (tokenInfoResponse.status === 200) {
+          const tokenInfo = tokenInfoResponse.data;
           
-          const newAccessToken = await refreshGoogleAccessToken(
-            tokens['google_ads_refresh_token'],
-            tokens['google_ads_client_id'],
-            tokens['google_ads_client_secret']
-          );
+          setDebugInfo({
+            tokenInfo,
+            status: "success",
+            verificationMethod: "direct",
+            message: `Token válido por ${Math.floor(tokenInfo.expires_in / 60)} minutos`
+          });
           
-          if (newAccessToken) {
+          toast({
+            title: "Token Válido",
+            description: `Token de acesso do Google Ads está válido por ${Math.floor(tokenInfo.expires_in / 60)} minutos.`,
+          });
+          
+          return true;
+        } else {
+          // Se o token está inválido, tenta renovar
+          console.log("Token inválido, tentando renovar...");
+          const newToken = await refreshGoogleAccessToken();
+          
+          if (newToken) {
             setDebugInfo({
-              tokensPresent: Object.keys(tokens),
               tokenRefreshed: true,
               status: "success",
-              message: "Token de acesso renovado com sucesso"
-            });
-            
-            toast({
-              title: "Token Renovado",
-              description: "Token de acesso do Google Ads renovado com sucesso.",
+              verificationMethod: "direct refresh",
+              message: "Token renovado com sucesso"
             });
             
             return true;
           } else {
-            throw new Error("Falha ao renovar token de acesso");
+            throw new Error("Falha ao renovar token inválido");
           }
-        } else {
-          // Outros erros de API
-          setDebugInfo({
-            tokensPresent: Object.keys(tokens),
-            apiCallError: apiError?.response?.data || apiError.message,
-            status: "error"
-          });
-          
-          throw new Error(`Erro ao testar API do Google Ads: ${apiError?.response?.data?.error?.message || apiError.message}`);
         }
       }
-
-      return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(errorMessage);
+      setDebugInfo({
+        status: "error",
+        message: errorMessage
+      });
       
       toast({
         title: "Erro na Validação",
@@ -251,10 +293,58 @@ export const useGoogleTokenService = () => {
     }
   };
 
+  const checkTokenViaEdgeFunction = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log("Verificando tokens via edge function...");
+      const response = await supabase.functions.invoke('google-ads-token-check');
+      
+      if (response.error) {
+        throw new Error(`Erro na edge function: ${response.error.message}`);
+      }
+      
+      const result = response.data;
+      console.log("Resultado da verificação de tokens:", result);
+      
+      setDebugInfo(result);
+      
+      if (result.success) {
+        toast({
+          title: result.refreshed ? "Token Renovado" : "Token Válido",
+          description: result.message,
+        });
+        return true;
+      } else {
+        toast({
+          title: "Problema com Token",
+          description: result.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(errorMessage);
+      
+      toast({
+        title: "Erro na Verificação",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     fetchGoogleTokens,
     refreshGoogleAccessToken,
     testGoogleTokens,
+    checkTokenViaEdgeFunction,
     isLoading,
     error,
     debugInfo
