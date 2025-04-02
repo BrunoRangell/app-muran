@@ -39,14 +39,14 @@ enable_confirmations = false
 enable_signup = true
 enable_confirmations = true
 
-[realtime]
-webhook_config = {enabled = false}
-
+# A configuração 'disabled' foi removida de analytics
 [analytics]
-disabled = false
 port = 54327
 vector_port = 54328
 backend = "postgres"
+
+# A configuração 'webhook_config' foi removida de realtime
+[realtime]
 
 [functions.daily-meta-review]
 verify_jwt = true
