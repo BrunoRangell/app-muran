@@ -8,23 +8,49 @@ import { Loader, Search, RefreshCcw } from "lucide-react";
 
 export function GoogleAdsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<any | null>(null);
+  
   const {
     isLoading,
-    accounts,
-    selectedAccount,
-    selectAccount,
-    fetchAccountData
+    fetchCustomerIds,
+    fetchCampaigns,
+    error,
+    clients,
+    campaigns,
+    spendInfo
   } = useGoogleAdsService();
 
+  // Buscar a lista de clientes quando o componente montar
+  useState(() => {
+    const loadAccounts = async () => {
+      const fetchedAccounts = await fetchCustomerIds();
+      if (fetchedAccounts && fetchedAccounts.length > 0) {
+        setAccounts(fetchedAccounts);
+      }
+    };
+    
+    loadAccounts();
+  });
+
   const filteredAccounts = accounts.filter(account => 
-    account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    account.id.toLowerCase().includes(searchQuery.toLowerCase())
+    account.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    account.customerId?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleFetchAccount = (accountId: string) => {
+  const handleFetchAccount = async (accountId: string) => {
     if (accountId) {
-      selectAccount(accountId);
-      fetchAccountData(accountId);
+      setSelectedAccountId(accountId);
+      
+      // Buscar dados da conta selecionada
+      const campaignsData = await fetchCampaigns(accountId);
+      
+      // Encontrar a conta selecionada na lista
+      const account = accounts.find(acc => acc.customerId === accountId);
+      if (account) {
+        setSelectedAccount(account);
+      }
     }
   };
 
@@ -33,15 +59,15 @@ export function GoogleAdsDashboard() {
       <div className="flex flex-col md:flex-row gap-4 md:items-center">
         <div className="flex-grow md:max-w-md">
           <ClientSelector
-            onClientSelected={handleFetchAccount}
+            onClientSelect={handleFetchAccount}
             showSearch={true}
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
             icon={<Search className="h-4 w-4 text-gray-400" />}
             customOptions={accounts.map(account => ({
-              id: account.id,
-              name: `${account.name} (${account.id})`,
-              metadata: { accountId: account.id }
+              id: account.customerId,
+              name: `${account.name} (${account.customerId})`,
+              metadata: { accountId: account.customerId }
             }))}
             buttonText="Analisar"
             buttonIcon={<RefreshCcw className="h-4 w-4 mr-2" />}
@@ -89,7 +115,7 @@ export function GoogleAdsDashboard() {
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">ID da Conta</div>
-                  <div className="font-medium">{selectedAccount.id}</div>
+                  <div className="font-medium">{selectedAccount.customerId}</div>
                 </div>
               </div>
             </div>

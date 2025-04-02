@@ -48,7 +48,7 @@ export function MetaAdsDashboard() {
       <div className="flex flex-col md:flex-row gap-4 md:items-center">
         <div className="flex-grow md:max-w-md">
           <ClientSelector 
-            onClientSelected={handleAnalyzeClient}
+            onClientSelect={handleAnalyzeClient}
             showSearch={true}
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
