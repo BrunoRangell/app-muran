@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
+import { CompactNextReviewCountdown } from "./components/CompactNextReviewCountdown";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -12,15 +13,19 @@ export const MetaDashboardCard = ({ onViewClientDetails }: MetaDashboardCardProp
     filteredClients, 
     isLoading, 
     processingClients, 
-    reviewClient 
+    reviewClient,
+    reviewAllClients 
   } = useClientReviewAnalysis();
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex flex-row justify-between items-center">
         <CardTitle className="text-xl font-bold text-[#321e32]">
           Revisão de Orçamentos Meta
         </CardTitle>
+        <div className="text-right">
+          <CompactNextReviewCountdown onAnalyzeAll={reviewAllClients} />
+        </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         {isLoading ? (
