@@ -10,27 +10,9 @@ import { supabase } from "@/lib/supabase";
 
 interface ClientSelectorProps {
   onClientSelect: (clientId: string) => void;
-  showSearch?: boolean;
-  searchValue?: string;
-  onSearchChange?: (value: string) => void;
-  icon?: React.ReactNode;
-  buttonText?: string;
-  buttonIcon?: React.ReactNode;
-  customOptions?: Array<{id: string; name: string; metadata?: any}>;
-  placeholder?: string;
 }
 
-export function ClientSelector({ 
-  onClientSelect,
-  showSearch = false,
-  searchValue = "",
-  onSearchChange,
-  icon,
-  buttonText = "Selecionar",
-  buttonIcon,
-  customOptions,
-  placeholder = "Selecione um cliente..."
-}: ClientSelectorProps) {
+export function ClientSelector({ onClientSelect }: ClientSelectorProps) {
   const [open, setOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedClientName, setSelectedClientName] = useState("");
@@ -39,12 +21,6 @@ export function ClientSelector({
   const [loadingClientId, setLoadingClientId] = useState<string | null>(null);
 
   const fetchClients = useCallback(async () => {
-    // Se temos opções personalizadas, use-as em vez de buscar do banco de dados
-    if (customOptions) {
-      setClients(customOptions);
-      return;
-    }
-    
     try {
       setIsLoading(true);
       
@@ -64,7 +40,7 @@ export function ClientSelector({
     } finally {
       setIsLoading(false);
     }
-  }, [customOptions]);
+  }, []);
 
   useEffect(() => {
     fetchClients();
@@ -110,43 +86,37 @@ export function ClientSelector({
                   ) : selectedClientName ? (
                     selectedClientName
                   ) : (
-                    placeholder
+                    "Selecione um cliente..."
                   )}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0" align="start">
                 <Command>
-                  {showSearch && <CommandInput placeholder="Buscar cliente..." value={searchValue} onValueChange={onSearchChange} />}
+                  <CommandInput placeholder="Buscar cliente..." />
                   <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
                   <CommandGroup>
                     <CommandList>
-                      {clients.map((client) => {
-                        const id = client.id || client.customerId;
-                        const name = client.company_name || client.name;
-                        const metaId = client.meta_account_id;
-                        
-                        return (
-                          <CommandItem
-                            key={id}
-                            value={name}
-                            onSelect={() => handleSelect(id, name)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedClientId === id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {name}
-                            {metaId && (
-                              <span className="ml-2 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
-                                Meta ID: {metaId}
-                              </span>
+                      {clients.map((client) => (
+                        <CommandItem
+                          key={client.id}
+                          value={client.company_name}
+                          onSelect={() => handleSelect(client.id, client.company_name)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedClientId === client.id ? "opacity-100" : "opacity-0"
                             )}
-                          </CommandItem>
-                        );
-                      })}
+                          />
+                          {client.company_name}
+                          {client.meta_account_id && (
+                            <span className="ml-2 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                              Meta ID: {client.meta_account_id}
+                            </span>
+                          )}
+                        </CommandItem>
+                      ))}
                     </CommandList>
                   </CommandGroup>
                 </Command>
@@ -165,10 +135,7 @@ export function ClientSelector({
                 Analisando...
               </>
             ) : (
-              <>
-                {buttonIcon}
-                {buttonText}
-              </>
+              "Analisar"
             )}
           </Button>
         </div>
