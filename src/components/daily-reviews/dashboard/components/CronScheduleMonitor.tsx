@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 export function CronScheduleMonitor() {
   const [lastExecutions, setLastExecutions] = useState<any[]>([]);
   const [cronExpression, setCronExpression] = useState<string>("");
+  const [nextRunTime, setNextRunTime] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [healthStatus, setHealthStatus] = useState<"healthy" | "warning" | "error" | "unknown">("unknown");
   const { toast } = useToast();
@@ -41,8 +42,9 @@ export function CronScheduleMonitor() {
       if (executions) {
         setLastExecutions(executions);
         
-        // Analisar a saúde do agendamento
+        // Analisar a saúde do agendamento e calcular próxima execução
         analyzeScheduleHealth(executions);
+        calculateNextRunTime(cronData[0].cron_expression, executions);
       }
       
     } catch (error) {
@@ -73,7 +75,7 @@ export function CronScheduleMonitor() {
     const lastStatus = executions[0].status;
     const wasSuccessful = lastStatus === 'success' || lastStatus === 'completed';
     
-    // Para o intervalo de teste de 3 minutos
+    // Para o intervalo de teste de 3 minutos (posteriormente será ajustado para 5 horas)
     if (minutesSinceLastExecution > 10) {
       // Se passou mais de 10 minutos desde a última execução, algo está errado
       setHealthStatus("error");
@@ -85,6 +87,35 @@ export function CronScheduleMonitor() {
       setHealthStatus("warning");
     } else {
       setHealthStatus("healthy");
+    }
+  };
+
+  // Calcular o tempo da próxima execução com base na expressão cron
+  const calculateNextRunTime = (cronExpr: string, executions: any[]) => {
+    if (!cronExpr) return;
+    
+    try {
+      // Simplificação: por enquanto, para expressão de teste de 3 minutos,
+      // calculamos a próxima execução baseada na última execução + 3 minutos
+      if (executions && executions.length > 0) {
+        const lastExecution = new Date(executions[0].execution_time);
+        const nextExecution = new Date(lastExecution.getTime() + 3 * 60 * 1000); // 3 minutos para teste
+        
+        // Se a próxima execução já passou, calcular a partir de agora
+        if (nextExecution < new Date()) {
+          const now = new Date();
+          setNextRunTime(new Date(now.getTime() + 3 * 60 * 1000));
+        } else {
+          setNextRunTime(nextExecution);
+        }
+      } else {
+        // Se não há execuções anteriores, calcular a partir de agora
+        const now = new Date();
+        setNextRunTime(new Date(now.getTime() + 3 * 60 * 1000));
+      }
+    } catch (error) {
+      console.error("Erro ao calcular próxima execução:", error);
+      setNextRunTime(null);
     }
   };
 
@@ -101,7 +132,6 @@ export function CronScheduleMonitor() {
       
       // 2. Se não existir, recriar o agendamento via SQL
       if (!cronData || cronData.length === 0) {
-        // Nota: Esta parte é importante, mas só pode ser feita via SQL em uma mensagem separada
         toast({
           title: "Agendamento não encontrado",
           description: "O agendamento do cron não foi encontrado. Por favor, execute o SQL de configuração novamente.",
@@ -224,16 +254,39 @@ export function CronScheduleMonitor() {
     }
   };
 
+  // Função para formatar o tempo restante
+  const formatTimeRemaining = () => {
+    if (!nextRunTime) return "Indisponível";
+    
+    const now = new Date();
+    const diff = nextRunTime.getTime() - now.getTime();
+    
+    if (diff <= 0) return "Executando agora...";
+    
+    const minutes = Math.floor(diff / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    return `${minutes}m ${seconds}s`;
+  };
+
   useEffect(() => {
     // Carregar dados ao montar o componente
     loadScheduleData();
     
-    // Configurar verificação periódica
-    const interval = setInterval(() => {
-      loadScheduleData();
-    }, 60000); // Verificar a cada minuto
+    // Configurar atualizações periódicas do contador e dos dados
+    const timerInterval = setInterval(() => {
+      // Apenas para atualizar o contador sem fazer requisição
+      setNextRunTime(prev => prev);
+    }, 1000);
     
-    return () => clearInterval(interval);
+    const dataInterval = setInterval(() => {
+      loadScheduleData();
+    }, 30000); // Verificar a cada 30 segundos
+    
+    return () => {
+      clearInterval(timerInterval);
+      clearInterval(dataInterval);
+    };
   }, []);
 
   // Formatador de data/hora para exibição
@@ -264,7 +317,7 @@ export function CronScheduleMonitor() {
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <Clock className="h-5 w-5 text-[#ff6e00]" />
-          Status do Agendamento (Teste: 3 minutos)
+          Status da Revisão Automática
           {healthStatus === "healthy" && <CheckCircle className="h-5 w-5 text-green-500" />}
           {healthStatus === "warning" && <AlertTriangle className="h-5 w-5 text-yellow-500" />}
           {healthStatus === "error" && <AlertTriangle className="h-5 w-5 text-red-500" />}
@@ -274,10 +327,10 @@ export function CronScheduleMonitor() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 justify-between">
             <div>
-              <p className="text-sm font-medium">Expressão Cron:</p>
-              <code className="bg-gray-100 px-2 py-1 rounded text-sm">
-                {cronExpression || "Não disponível"}
-              </code>
+              <p className="text-sm font-medium">Próxima execução:</p>
+              <div className="text-2xl font-bold text-[#ff6e00]">
+                {formatTimeRemaining()}
+              </div>
               <p className="text-xs text-gray-500 mt-1">
                 Configurado para executar a cada 3 minutos (teste)
               </p>
@@ -300,7 +353,7 @@ export function CronScheduleMonitor() {
                 disabled={isLoading}
                 className="bg-[#ff6e00] hover:bg-[#e66300]"
               >
-                Iniciar Revisão
+                Iniciar Agora
               </Button>
               <Button 
                 size="sm" 
@@ -355,7 +408,7 @@ export function CronScheduleMonitor() {
               <p className="font-medium">Problema detectado no agendamento</p>
               <p className="text-xs mt-1">
                 O agendamento parece não estar funcionando corretamente. 
-                Tente usar o botão "Reparar" ou "Iniciar Revisão" para forçar uma execução manual.
+                Tente usar o botão "Reparar" ou "Iniciar Agora" para forçar uma execução manual.
               </p>
             </div>
           )}
@@ -368,10 +421,6 @@ export function CronScheduleMonitor() {
               </p>
             </div>
           )}
-          
-          <p className="text-xs text-gray-500 italic">
-            Este componente é usado apenas em ambiente de testes para diagnosticar problemas com o agendamento.
-          </p>
         </div>
       </CardContent>
     </Card>

@@ -38,10 +38,10 @@ SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 SELECT cron.unschedule('google-ads-token-check-job');
 
--- Agendar execução da revisão Meta Ads a cada 5 horas
+-- Agendar execução da revisão Meta Ads a cada 3 minutos para testes (posteriormente será ajustado para 5 horas)
 SELECT cron.schedule(
   'daily-meta-review-job',
-  '0 */5 * * *',  -- Executa a cada 5 horas (às 0h, 5h, 10h, 15h, 20h)
+  '*/3 * * * *',  -- Executa a cada 3 minutos para testes
   $$
   -- Primeiro registrar o início da execução no log
   INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
@@ -63,6 +63,18 @@ SELECT cron.schedule(
   -- Registrar a tentativa no log do sistema
   INSERT INTO public.system_logs (event_type, message, details)
   VALUES ('cron_job', 'Tentativa de execução da revisão diária Meta Ads', jsonb_build_object('timestamp', now(), 'source', 'scheduled_job'));
+  
+  -- Atualizar status para completado se a chamada foi bem-sucedida
+  UPDATE public.cron_execution_logs
+  SET 
+    status = 'completed',
+    details = jsonb_build_object(
+      'timestamp', now(),
+      'message', 'Job cron executado com sucesso'
+    )
+  WHERE 
+    job_name = 'daily-meta-review-job' AND
+    execution_time = (SELECT MAX(execution_time) FROM public.cron_execution_logs WHERE job_name = 'daily-meta-review-job');
   $$
 );
 

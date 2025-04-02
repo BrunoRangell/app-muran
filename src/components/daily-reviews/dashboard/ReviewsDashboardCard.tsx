@@ -13,6 +13,7 @@ import { EmptyStateView } from "./components/EmptyStateView";
 import { LoadingView } from "./components/LoadingView";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { splitClientsByMetaId } from "./utils/clientSorting";
+import { CronScheduleMonitor } from "./components/CronScheduleMonitor";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -103,6 +104,8 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
 
   return (
     <div className="space-y-6">
+      <CronScheduleMonitor />
+      
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <DashboardHeader 
           lastBatchReviewTime={lastBatchReviewTime}
