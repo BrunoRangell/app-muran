@@ -1,16 +1,16 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { fetchClientsWithGoogleReviews, reviewGoogleClient } from "./services/googleAdsClientReviewService";
 import { splitClientsByGoogleAdsId } from "../dashboard/utils/clientSorting";
-import { ClientWithReview } from "./types/reviewTypes";
 import { supabase } from "@/lib/supabase";
 
 export const useGoogleAdsBatchReview = () => {
   const [isReviewingBatch, setIsReviewingBatch] = useState(false);
   const [processingClients, setProcessingClients] = useState<string[]>([]);
   const [lastBatchReviewDate, setLastBatchReviewDate] = useState<string | null>(null);
+  const [isTokenVerifying, setIsTokenVerifying] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -28,18 +28,45 @@ export const useGoogleAdsBatchReview = () => {
   // Testar tokens Google Ads
   const testGoogleAdsTokens = async () => {
     try {
+      setIsTokenVerifying(true);
       // Invocar edge function para verificar tokens
       const { data, error } = await supabase.functions.invoke('google-ads-token-check');
       
       if (error) {
         console.error("Erro ao verificar tokens:", error);
-        throw new Error(`Erro ao verificar tokens: ${error.message}`);
+        toast({
+          title: "Erro",
+          description: `Erro ao verificar tokens: ${error.message}`,
+          variant: "destructive",
+        });
+        return false;
       }
       
-      return data;
+      if (data.error) {
+        toast({
+          title: "Erro",
+          description: data.error,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      toast({
+        title: "Sucesso",
+        description: data.message || "Tokens verificados com sucesso",
+      });
+      
+      return data.apiAccess === true;
     } catch (error) {
       console.error("Erro ao testar tokens:", error);
-      throw error;
+      toast({
+        title: "Erro",
+        description: `Erro inesperado: ${error instanceof Error ? error.message : String(error)}`,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsTokenVerifying(false);
     }
   };
 
@@ -56,7 +83,11 @@ export const useGoogleAdsBatchReview = () => {
       setProcessingClients((prev) => [...prev, clientId]);
 
       // Verificar tokens antes de prosseguir
-      await testGoogleAdsTokens();
+      const tokensValid = await testGoogleAdsTokens();
+      
+      if (!tokensValid) {
+        throw new Error("Tokens inválidos ou API inacessível");
+      }
 
       // Realizar a revisão
       await reviewGoogleClient(client);
@@ -94,7 +125,11 @@ export const useGoogleAdsBatchReview = () => {
       setProcessingClients(clientIds);
 
       // Verificar tokens antes de prosseguir
-      await testGoogleAdsTokens();
+      const tokensValid = await testGoogleAdsTokens();
+      
+      if (!tokensValid) {
+        throw new Error("Tokens inválidos ou API inacessível");
+      }
 
       // Registrar a data/hora da revisão em lote
       setLastBatchReviewDate(new Date().toISOString());
@@ -162,6 +197,7 @@ export const useGoogleAdsBatchReview = () => {
     isReviewingBatch,
     processingClients,
     lastBatchReviewDate,
-    testGoogleAdsTokens
+    testGoogleAdsTokens,
+    isTokenVerifying
   };
 };

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -63,7 +64,7 @@ export const GoogleAdsClientsGrid = ({
             )}
           </Button>
           
-          <Link to="/settings?tab=google-ads">
+          <Link to="/settings?tab=api">
             <Button 
               variant="default"
               className="bg-[#ff6e00] hover:bg-[#cc5800] text-white"

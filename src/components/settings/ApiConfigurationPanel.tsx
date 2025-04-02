@@ -6,9 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { GoogleAdsTokenTest } from "./GoogleAdsTokenTest";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 export const ApiConfigurationPanel = () => {
-  const [activeTab, setActiveTab] = useState<string>("details");
+  const [activeTab, setActiveTab] = useState<string>("google-ads");
   const [showDetails, setShowDetails] = useState(false);
   const [testResult, setTestResult] = useState<{
     success: boolean;
@@ -17,111 +19,177 @@ export const ApiConfigurationPanel = () => {
     details?: any;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const testGoogleAdsTokens = async () => {
+    setIsLoading(true);
+    setTestResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('google-ads-token-check');
+
+      if (error) {
+        console.error("Erro ao invocar função:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível acessar a API do Google Ads",
+          variant: "destructive",
+        });
+        setTestResult({
+          success: false,
+          message: `Erro ao acessar API: ${error.message}`,
+        });
+        return;
+      }
+
+      if (data.error) {
+        setTestResult({
+          success: false,
+          message: data.error,
+          details: {
+            status: "erro",
+            apiCall: "Falha",
+            errorDetails: data.details
+          }
+        });
+        toast({
+          title: "Erro",
+          description: data.error,
+          variant: "destructive",
+        });
+      } else {
+        setTestResult({
+          success: true,
+          message: data.message || "API do Google Ads conectada",
+          clientCount: data.clientsCount || 0,
+          details: {
+            status: "success",
+            apiCall: "Sucesso",
+            clientsFound: data.clientsCount || 0,
+            tokenRefreshed: data.tokenRefreshed
+          }
+        });
+        toast({
+          title: "Sucesso",
+          description: data.message || "API do Google Ads conectada",
+        });
+      }
+    } catch (err) {
+      console.error("Erro ao testar tokens:", err);
+      setTestResult({
+        success: false,
+        message: `Erro inesperado: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao testar os tokens",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-[#321e32]">Configurações de API</h2>
       
-      <div className="bg-white rounded-lg border p-6 space-y-4">
-        <h3 className="text-lg font-medium">Diagnóstico do Google Ads</h3>
-        <p className="text-sm text-gray-600">
-          Teste a configuração dos tokens da API Google Ads
-        </p>
-        
-        <div className="flex flex-wrap gap-3 mt-4">
-          <Button 
-            onClick={() => {
-              setIsLoading(true);
-              setTimeout(() => {
-                setTestResult({
-                  success: true,
-                  message: "API do Google Ads conectada! 30 contas de cliente encontradas.",
-                  clientCount: 30,
-                  details: {
-                    status: "success",
-                    apiCall: "Sucesso",
-                    clientsFound: 30
-                  }
-                });
-                setIsLoading(false);
-              }, 1500);
-            }}
-            className="bg-[#ff6e00] hover:bg-[#e56200]"
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} /> 
-            Testar Tokens
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            onClick={() => setShowDetails(!showDetails)}
-          >
-            {showDetails ? (
-              <>
-                <EyeOff className="h-4 w-4 mr-2" /> 
-                Ocultar Detalhes
-              </>
-            ) : (
-              <>
-                <Eye className="h-4 w-4 mr-2" /> 
-                Mostrar Detalhes
-              </>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-4 w-full flex justify-start overflow-x-auto">
+          <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
+          <TabsTrigger value="meta-ads">Meta Ads</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="google-ads" className="space-y-6">
+          <div className="bg-white rounded-lg border p-6 space-y-4">
+            <h3 className="text-lg font-medium">Diagnóstico do Google Ads</h3>
+            <p className="text-sm text-gray-600">
+              Verifique e renove os tokens da API Google Ads
+            </p>
+            
+            <div className="flex flex-wrap gap-3 mt-4">
+              <Button 
+                onClick={testGoogleAdsTokens}
+                className="bg-[#ff6e00] hover:bg-[#e56200]"
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} /> 
+                Testar Conexão
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDetails(!showDetails)}
+              >
+                {showDetails ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-2" /> 
+                    Ocultar Detalhes
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" /> 
+                    Mostrar Detalhes
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {testResult?.success && (
+              <Alert className="bg-green-50 border-green-200 mt-4">
+                <Check className="h-4 w-4 text-green-600" />
+                <AlertTitle className="text-green-800 font-medium flex items-center gap-2">
+                  Conexão bem-sucedida
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                    Sucesso
+                  </Badge>
+                </AlertTitle>
+                <AlertDescription className="text-green-700">
+                  {testResult.message}
+                  {testResult.clientCount !== undefined && (
+                    <div className="mt-1">
+                      {testResult.clientCount} contas de cliente encontradas
+                    </div>
+                  )}
+                  {testResult.details?.tokenRefreshed && (
+                    <div className="mt-1">
+                      O token de acesso foi renovado com sucesso
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
             )}
-          </Button>
-        </div>
 
-        {testResult?.success && (
-          <Alert className="bg-green-50 border-green-200 mt-4">
-            <Check className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800 font-medium flex items-center gap-2">
-              Conexão bem-sucedida
-              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-                Sucesso
-              </Badge>
-            </AlertTitle>
-            <AlertDescription className="text-green-700">
-              {testResult.message}
-            </AlertDescription>
-          </Alert>
-        )}
+            {testResult?.success === false && (
+              <Alert className="bg-red-50 border-red-200 mt-4">
+                <Check className="h-4 w-4 text-red-600" />
+                <AlertTitle className="text-red-800 font-medium">
+                  Erro de conexão
+                </AlertTitle>
+                <AlertDescription className="text-red-700">
+                  {testResult.message}
+                </AlertDescription>
+              </Alert>
+            )}
 
-        {showDetails && testResult && (
-          <div className="mt-4 border rounded-lg overflow-hidden">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="details" className="text-center">Detalhes</TabsTrigger>
-                <TabsTrigger value="tokens" className="text-center">Tokens</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details" className="p-4">
-                <div className="space-y-3">
-                  <h4 className="font-medium">Informações de Diagnóstico</h4>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Status:</span>
-                      <span>{testResult.details?.status}</span>
-                    </div>
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Chamada à API:</span>
-                      <span>{testResult.details?.apiCall}</span>
-                    </div>
-                    <div className="flex justify-between border-b pb-2">
-                      <span className="font-medium">Clientes encontrados:</span>
-                      <span>{testResult.details?.clientsFound}</span>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="tokens" className="p-4">
+            {showDetails && (
+              <div className="mt-4">
                 <GoogleAdsTokenTest />
-              </TabsContent>
-            </Tabs>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="meta-ads" className="space-y-6">
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-lg font-medium">Configurações do Meta Ads</h3>
+            <p className="text-gray-500 mt-2">
+              Configure seus tokens de acesso para a API do Meta Ads.
+            </p>
+            {/* Implementação do Meta Ads será adicionada no futuro */}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
