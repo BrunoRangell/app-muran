@@ -30,8 +30,6 @@ export const GoogleAdsDashboardCard = ({
     isLoading, 
     processingClients, 
     reviewClient,
-    testGoogleAdsTokens,
-    isTokenVerifying
   } = useGoogleAdsBatchReview();
   
   // Filtrar clientes por nome e necessidade de ajuste
@@ -51,16 +49,6 @@ export const GoogleAdsDashboardCard = ({
     reviewClient(clientId);
   }, [reviewClient]);
 
-  const handleVerifyTokens = useCallback(async () => {
-    const result = await testGoogleAdsTokens();
-    if (!result) {
-      toast({
-        title: "Configuração necessária",
-        description: "Acesse a página de configurações para verificar os tokens do Google Ads.",
-      });
-    }
-  }, [testGoogleAdsTokens, toast]);
-
   if (isLoading) {
     return <LoadingView />;
   }
@@ -76,8 +64,6 @@ export const GoogleAdsDashboardCard = ({
       processingClients={processingClients}
       onReviewClient={handleReviewClient}
       viewMode={viewMode}
-      onVerifyTokens={handleVerifyTokens}
-      isTokenVerifying={isTokenVerifying}
     />
   );
 };
