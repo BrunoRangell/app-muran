@@ -9,6 +9,7 @@ import { Loader, Calendar, Check, RefreshCw, Clock, AlertCircle } from "lucide-r
 import { useBatchReview } from "../../hooks/useBatchReview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AutoReviewTest } from "./AutoReviewTest";
+import { CompactNextReviewCountdown } from "./CompactNextReviewCountdown";
 
 export function AutoReviewSettings() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -159,53 +160,67 @@ export function AutoReviewSettings() {
         </TabsList>
         
         <TabsContent value="settings">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Revisão Automática</CardTitle>
-              <CardDescription>
-                As revisões de orçamento são executadas automaticamente a cada 5 horas.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Calendar size={16} />
-                  <span>Última execução automática:</span>
-                  {lastBatchReviewTime ? (
-                    <span className="font-medium text-gray-900">
-                      {formatDateInBrasiliaTz(new Date(lastBatchReviewTime), "dd 'de' MMMM 'às' HH:mm")}
-                    </span>
-                  ) : (
-                    <span className="italic text-gray-500">Nenhuma execução registrada</span>
-                  )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Revisão Automática</CardTitle>
+                <CardDescription>
+                  As revisões de orçamento são executadas automaticamente a cada 5 horas.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar size={16} />
+                    <span>Última execução automática:</span>
+                    {lastBatchReviewTime ? (
+                      <span className="font-medium text-gray-900">
+                        {formatDateInBrasiliaTz(new Date(lastBatchReviewTime), "dd 'de' MMMM 'às' HH:mm")}
+                      </span>
+                    ) : (
+                      <span className="italic text-gray-500">Nenhuma execução registrada</span>
+                    )}
+                  </div>
+                  
+                  {renderCronStatus()}
+                  
+                  <Button 
+                    onClick={runManualReview} 
+                    disabled={isRunning}
+                    className="w-full bg-muran-primary hover:bg-muran-primary/90"
+                  >
+                    {isRunning ? (
+                      <>
+                        <Loader className="mr-2 h-4 w-4 animate-spin" />
+                        Executando revisão...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Executar revisão agora
+                      </>
+                    )}
+                  </Button>
+                  
+                  <p className="text-xs text-gray-500 mt-2">
+                    Esta operação irá executar uma revisão completa de todos os clientes com Meta Ads configurado.
+                  </p>
                 </div>
-                
-                {renderCronStatus()}
-                
-                <Button 
-                  onClick={runManualReview} 
-                  disabled={isRunning}
-                  className="w-full bg-muran-primary hover:bg-muran-primary/90"
-                >
-                  {isRunning ? (
-                    <>
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      Executando revisão...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Executar revisão agora
-                    </>
-                  )}
-                </Button>
-                
-                <p className="text-xs text-gray-500 mt-2">
-                  Esta operação irá executar uma revisão completa de todos os clientes com Meta Ads configurado.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Revisão Rápida</CardTitle>
+                <CardDescription className="text-xs">
+                  Execute revisões programadas em intervalos curtos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CompactNextReviewCountdown onAnalyzeAll={reviewAllClients} />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
         
         <TabsContent value="test">
