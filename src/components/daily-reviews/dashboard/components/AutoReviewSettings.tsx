@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -9,17 +8,19 @@ import { Loader, Calendar, Check, RefreshCw, Clock, AlertCircle } from "lucide-r
 import { useBatchReview } from "../../hooks/useBatchReview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AutoReviewTest } from "./AutoReviewTest";
+import { AnalysisProgress } from "./AnalysisProgress";
 
 export function AutoReviewSettings() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [cronStatus, setCronStatus] = useState<'active' | 'unknown' | 'inactive'>('unknown');
   const { toast } = useToast();
   
-  // Usando o mesmo hook de batchReview que é usado no botão "Analisar todos"
   const { 
     reviewAllClients, 
-    lastBatchReviewTime, 
-    isLoading: isRunning
+    lastBatchReviewTime,
+    isBatchAnalyzing,
+    batchProgress,
+    totalClientsToAnalyze
   } = useBatchReview();
 
   const fetchCronStatus = async () => {
@@ -57,7 +58,6 @@ export function AutoReviewSettings() {
       }
       
       try {
-        // Testar conexão com a função edge
         const response = await supabase.functions.invoke("daily-meta-review", {
           body: { 
             test: true,
@@ -86,8 +86,6 @@ export function AutoReviewSettings() {
     }
   };
 
-  // Usar diretamente a função reviewAllClients do hook useBatchReview para garantir
-  // que execute exatamente a mesma operação que o botão "Analisar todos" da aba Clientes
   const runManualReview = () => {
     reviewAllClients();
   };
@@ -99,10 +97,14 @@ export function AutoReviewSettings() {
       if (!isCheckingStatus) {
         fetchCronStatus();
       }
-    }, 60 * 1000); // Verificar a cada minuto
+    }, 60 * 1000);
     
     return () => clearInterval(intervalId);
   }, [isCheckingStatus]);
+
+  const progressPercentage = totalClientsToAnalyze > 0 
+    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
+    : 0;
 
   const renderCronStatus = () => {
     switch (cronStatus) {
@@ -139,7 +141,7 @@ export function AutoReviewSettings() {
         </TabsList>
         
         <TabsContent value="settings">
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Revisão Automática</CardTitle>
@@ -163,12 +165,19 @@ export function AutoReviewSettings() {
                   
                   {renderCronStatus()}
                   
+                  <AnalysisProgress 
+                    isBatchAnalyzing={isBatchAnalyzing}
+                    batchProgress={batchProgress}
+                    totalClientsToAnalyze={totalClientsToAnalyze}
+                    progressPercentage={progressPercentage}
+                  />
+                  
                   <Button 
                     onClick={runManualReview} 
-                    disabled={isRunning}
+                    disabled={isBatchAnalyzing}
                     className="w-full bg-muran-primary hover:bg-muran-primary/90"
                   >
-                    {isRunning ? (
+                    {isBatchAnalyzing ? (
                       <>
                         <Loader className="mr-2 h-4 w-4 animate-spin" />
                         Executando revisão...
@@ -197,4 +206,3 @@ export function AutoReviewSettings() {
     </div>
   );
 }
-
