@@ -86,30 +86,10 @@ export function AutoReviewSettings() {
     }
   };
 
-  const runManualReview = async () => {
-    try {
-      // Usando a mesma função que é chamada pelo botão "Analisar todos"
-      await reviewAllClients();
-      
-      // Registrar no log
-      await supabase.from("system_logs").insert({
-        event_type: "cron_job",
-        message: "Revisão iniciada manualmente pelo usuário",
-        details: {
-          manual: true,
-          initiated_by: "user",
-          timestamp: new Date().toISOString()
-        }
-      });
-      
-    } catch (error) {
-      console.error("Erro ao iniciar revisão manual:", error);
-      toast({
-        title: "Erro ao iniciar revisão",
-        description: error instanceof Error ? error.message : "Não foi possível iniciar a revisão em massa.",
-        variant: "destructive",
-      });
-    }
+  // Usar diretamente a função reviewAllClients do hook useBatchReview para garantir
+  // que execute exatamente a mesma operação que o botão "Analisar todos" da aba Clientes
+  const runManualReview = () => {
+    reviewAllClients();
   };
 
   useEffect(() => {
