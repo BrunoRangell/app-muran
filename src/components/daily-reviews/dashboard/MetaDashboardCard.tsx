@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
@@ -43,7 +42,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
           Revisão de Orçamentos Meta
         </CardTitle>
         <div className="text-right">
-          {/* Este espaço permanece vazio pois o contador de revisão automática foi movido */}
+          {/* Este espaço permanece vazio */}
         </div>
       </CardHeader>
       <CardContent>
@@ -60,7 +59,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
         <FilterOptions 
           showOnlyAdjustments={showOnlyAdjustments}
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
-          onAnalyzeAll={handleAnalyzeAll}
         />
 
         {isLoading ? (
