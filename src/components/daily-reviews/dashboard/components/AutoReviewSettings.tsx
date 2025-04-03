@@ -1,14 +1,14 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { formatDateInBrasiliaTz } from "../../summary/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader, Calendar, Check, RefreshCw, Clock, AlertCircle } from "lucide-react";
+import { Loader, Calendar, Check, Clock, AlertCircle } from "lucide-react";
 import { useBatchReview } from "../../hooks/useBatchReview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AutoReviewTest } from "./AutoReviewTest";
-import { AnalysisProgress } from "./AnalysisProgress";
 
 export function AutoReviewSettings() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -18,9 +18,7 @@ export function AutoReviewSettings() {
   const { 
     reviewAllClients, 
     lastBatchReviewTime,
-    isBatchAnalyzing,
-    batchProgress,
-    totalClientsToAnalyze
+    isBatchAnalyzing
   } = useBatchReview();
 
   const fetchCronStatus = async () => {
@@ -87,7 +85,14 @@ export function AutoReviewSettings() {
   };
 
   const runManualReview = () => {
+    // Aqui usamos a mesma função que é chamada pelo botão principal
     reviewAllClients();
+    
+    // Alterar para a aba de clientes para ver a barra de progresso
+    const clientsTab = document.querySelector('[data-state="inactive"][value="clientes"]') as HTMLElement;
+    if (clientsTab) {
+      clientsTab.click();
+    }
   };
 
   useEffect(() => {
@@ -101,10 +106,6 @@ export function AutoReviewSettings() {
     
     return () => clearInterval(intervalId);
   }, [isCheckingStatus]);
-
-  const progressPercentage = totalClientsToAnalyze > 0 
-    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
-    : 0;
 
   const renderCronStatus = () => {
     switch (cronStatus) {
@@ -164,13 +165,6 @@ export function AutoReviewSettings() {
                   </div>
                   
                   {renderCronStatus()}
-                  
-                  <AnalysisProgress 
-                    isBatchAnalyzing={isBatchAnalyzing}
-                    batchProgress={batchProgress}
-                    totalClientsToAnalyze={totalClientsToAnalyze}
-                    progressPercentage={progressPercentage}
-                  />
                   
                   <Button 
                     onClick={runManualReview} 
