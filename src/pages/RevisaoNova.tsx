@@ -7,6 +7,7 @@ import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
 import { useSearchParams } from "react-router-dom";
+import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPanel";
 
 export default function RevisaoNova() {
   const [searchParams] = useSearchParams();
@@ -14,7 +15,7 @@ export default function RevisaoNova() {
   const [selectedTab, setSelectedTab] = useState<string>("dashboard");
   
   useEffect(() => {
-    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets", "configuracoes"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -32,6 +33,7 @@ export default function RevisaoNova() {
             <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
             <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
             <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
+            <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
           </TabsList>
           
           <TabsContent value="dashboard" className="space-y-6">
@@ -48,6 +50,10 @@ export default function RevisaoNova() {
           
           <TabsContent value="custom-budgets">
             <CustomBudgetManager />
+          </TabsContent>
+
+          <TabsContent value="configuracoes">
+            <ApiConfigurationPanel />
           </TabsContent>
         </Tabs>
       </div>
