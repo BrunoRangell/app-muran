@@ -4,9 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReviewsDashboardCard } from "@/components/daily-reviews/dashboard/ReviewsDashboardCard";
 import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
+import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
 import { useSearchParams } from "react-router-dom";
-import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPanel";
 
 export default function RevisaoNova() {
   const [searchParams] = useSearchParams();
@@ -14,7 +14,7 @@ export default function RevisaoNova() {
   const [selectedTab, setSelectedTab] = useState<string>("dashboard");
   
   useEffect(() => {
-    if (tabParam && ["dashboard", "google-ads", "budgets", "configuracoes"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -31,7 +31,7 @@ export default function RevisaoNova() {
             <TabsTrigger value="dashboard">Meta Ads</TabsTrigger>
             <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
             <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
-            <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
+            <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
           </TabsList>
           
           <TabsContent value="dashboard" className="space-y-6">
@@ -46,12 +46,11 @@ export default function RevisaoNova() {
             <BudgetManager />
           </TabsContent>
           
-          <TabsContent value="configuracoes">
-            <ApiConfigurationPanel />
+          <TabsContent value="custom-budgets">
+            <CustomBudgetManager />
           </TabsContent>
         </Tabs>
       </div>
     </div>
   );
 }
-
