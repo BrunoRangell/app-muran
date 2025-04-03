@@ -9,7 +9,6 @@ import { Loader, Calendar, Check, RefreshCw, Clock, AlertCircle } from "lucide-r
 import { useBatchReview } from "../../hooks/useBatchReview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AutoReviewTest } from "./AutoReviewTest";
-import { CompactNextReviewCountdown } from "./CompactNextReviewCountdown";
 
 export function AutoReviewSettings() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -160,8 +159,8 @@ export function AutoReviewSettings() {
         </TabsList>
         
         <TabsContent value="settings">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+            <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Revisão Automática</CardTitle>
                 <CardDescription>
@@ -208,18 +207,6 @@ export function AutoReviewSettings() {
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Revisão Rápida</CardTitle>
-                <CardDescription className="text-xs">
-                  Execute revisões programadas em intervalos curtos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CompactNextReviewCountdown onAnalyzeAll={reviewAllClients} />
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
         
@@ -230,3 +217,4 @@ export function AutoReviewSettings() {
     </div>
   );
 }
+
