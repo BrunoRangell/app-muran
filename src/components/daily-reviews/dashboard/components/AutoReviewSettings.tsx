@@ -9,11 +9,13 @@ import { Loader, Calendar, Check, Clock, AlertCircle } from "lucide-react";
 import { useBatchReview } from "../../hooks/useBatchReview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AutoReviewTest } from "./AutoReviewTest";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function AutoReviewSettings() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [cronStatus, setCronStatus] = useState<'active' | 'unknown' | 'inactive'>('unknown');
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const { 
     reviewAllClients, 
@@ -85,13 +87,33 @@ export function AutoReviewSettings() {
   };
 
   const runManualReview = () => {
-    // Aqui usamos a mesma função que é chamada pelo botão principal
-    reviewAllClients();
-    
-    // Alterar para a aba de clientes para ver a barra de progresso
-    const clientsTab = document.querySelector('[data-state="inactive"][value="clientes"]') as HTMLElement;
+    // Primeiro vamos navegar para a aba de clientes
+    const clientsTab = document.querySelector('[value="clientes"]') as HTMLElement;
     if (clientsTab) {
       clientsTab.click();
+      
+      // Esperar um momento para garantir que a navegação ocorreu
+      setTimeout(() => {
+        // Agora executamos a análise
+        reviewAllClients();
+        
+        // Invalidar as queries para forçar atualização dos dados
+        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+        queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+        
+        // Notificar o usuário
+        toast({
+          title: "Análise iniciada",
+          description: "A análise foi iniciada e você pode acompanhar o progresso na aba Clientes.",
+        });
+      }, 100);
+    } else {
+      // Caso não encontre a tab, executa de qualquer forma
+      reviewAllClients();
+      toast({
+        title: "Análise iniciada",
+        description: "A análise foi iniciada. Por favor, vá para a aba Clientes para acompanhar o progresso.",
+      });
     }
   };
 

@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -40,6 +41,18 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
     refetchClients
   } = useBatchReview();
   
+  // Aumentar a frequência de atualização quando uma análise em lote estiver em andamento
+  useEffect(() => {
+    if (isBatchAnalyzing) {
+      const intervalId = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+        queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+      }, 3000); // Atualizar a cada 3 segundos durante a análise
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [isBatchAnalyzing, queryClient]);
+  
   useEffect(() => {
     if (!isBatchAnalyzing && batchProgress > 0) {
       queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
@@ -78,6 +91,15 @@ export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCa
       unsubscribe();
     };
   }, [queryClient, toast]);
+  
+  // Verificar mudanças na aba ativa
+  useEffect(() => {
+    // Quando mudar para a aba de clientes e estiver em análise, atualizar os dados
+    if (activeTab === 'clientes' && isBatchAnalyzing) {
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+    }
+  }, [activeTab, isBatchAnalyzing, queryClient]);
   
   const progressPercentage = totalClientsToAnalyze > 0 
     ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
