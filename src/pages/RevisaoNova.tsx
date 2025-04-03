@@ -6,7 +6,6 @@ import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/Goo
 import { BudgetManager } from "@/components/revisao-nova/BudgetManager";
 import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManager";
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
-import { ReviewStatusMonitor } from "@/components/daily-reviews/dashboard/components/ReviewStatusMonitor";
 import { useSearchParams } from "react-router-dom";
 import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPanel";
 
@@ -27,42 +26,36 @@ export default function RevisaoNova() {
         Revisão Diária
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-3">
-          <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="dashboard">Meta Ads</TabsTrigger>
-              <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
-              <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
-              <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
-              <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="dashboard" className="space-y-6">
-              <ReviewsDashboardCard onViewClientDetails={() => {}} />
-            </TabsContent>
-            
-            <TabsContent value="google-ads" className="space-y-6">
-              <GoogleAdsDashboard />
-            </TabsContent>
-            
-            <TabsContent value="budgets">
-              <BudgetManager />
-            </TabsContent>
-            
-            <TabsContent value="custom-budgets">
-              <CustomBudgetManager />
-            </TabsContent>
+      <div className="grid grid-cols-1 gap-6">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="dashboard">Meta Ads</TabsTrigger>
+            <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
+            <TabsTrigger value="budgets">Gerenciar Orçamentos</TabsTrigger>
+            <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
+            <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="dashboard" className="space-y-6">
+            <ReviewsDashboardCard onViewClientDetails={() => {}} />
+          </TabsContent>
+          
+          <TabsContent value="google-ads" className="space-y-6">
+            <GoogleAdsDashboard />
+          </TabsContent>
+          
+          <TabsContent value="budgets">
+            <BudgetManager />
+          </TabsContent>
+          
+          <TabsContent value="custom-budgets">
+            <CustomBudgetManager />
+          </TabsContent>
 
-            <TabsContent value="configuracoes">
-              <ApiConfigurationPanel />
-            </TabsContent>
-          </Tabs>
-        </div>
-        
-        <div className="md:col-span-1">
-          <ReviewStatusMonitor />
-        </div>
+          <TabsContent value="configuracoes">
+            <ApiConfigurationPanel />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
