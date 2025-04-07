@@ -6,17 +6,22 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { Loader, Clock, CheckCircle2, XCircle, Zap } from "lucide-react";
+import { Loader, Clock, CheckCircle2, XCircle, Zap, RefreshCw } from "lucide-react";
 import { useMetaReviewService } from "@/components/revisao-nova/hooks/useMetaReviewService";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function AutoReviewSettings() {
   const [isLoading, setIsLoading] = useState(false);
-  const [isConnectionTesting, setIsConnectionTesting] = useState(false);
   const [isAutoReviewEnabled, setIsAutoReviewEnabled] = useState(true);
   const [lastReviewTime, setLastReviewTime] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<"unknown" | "success" | "error">("unknown");
   const { toast } = useToast();
-  const { testMetaReviewFunction } = useMetaReviewService();
+  const { 
+    testMetaReviewFunction,
+    lastConnectionStatus,
+    lastErrorMessage,
+    resetConnectionStatus,
+    isLoading: isTesting,
+  } = useMetaReviewService();
 
   useEffect(() => {
     loadSettings();
@@ -53,28 +58,6 @@ export function AutoReviewSettings() {
       
       if (autoReviewConfig?.value !== undefined) {
         setIsAutoReviewEnabled(autoReviewConfig.value === "true");
-      }
-      
-      // Verificar status da conexão
-      const { data: lastExecution } = await supabase
-        .from("cron_execution_logs")
-        .select("status, execution_time")
-        .eq("job_name", "daily-meta-review-test-job")
-        .order("execution_time", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (lastExecution) {
-        const executionTime = new Date(lastExecution.execution_time);
-        const now = new Date();
-        const diffMinutes = (now.getTime() - executionTime.getTime()) / (1000 * 60);
-        
-        // Se a última execução foi há menos de 45 minutos e foi bem-sucedida
-        if (diffMinutes < 45 && lastExecution.status === "completed") {
-          setConnectionStatus("success");
-        } else if (diffMinutes >= 45 || lastExecution.status !== "completed") {
-          setConnectionStatus("error");
-        }
       }
       
     } catch (error) {
@@ -129,37 +112,15 @@ export function AutoReviewSettings() {
   };
 
   const testConnection = async () => {
-    try {
-      setIsConnectionTesting(true);
-      
-      const result = await testMetaReviewFunction();
-      
-      if (result.success) {
-        setConnectionStatus("success");
-        toast({
-          title: "Teste realizado com sucesso",
-          description: "A conexão com o serviço de revisão está funcionando.",
-        });
-      } else {
-        setConnectionStatus("error");
-        toast({
-          title: "Falha no teste de conexão",
-          description: String(result.error),
-          variant: "destructive",
-        });
-      }
-      
-    } catch (error) {
-      console.error("Erro ao testar conexão:", error);
-      setConnectionStatus("error");
-      toast({
-        title: "Erro no teste",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConnectionTesting(false);
-    }
+    await testMetaReviewFunction();
+  };
+
+  const handleReset = () => {
+    resetConnectionStatus();
+    toast({
+      title: "Status de conexão resetado",
+      description: "O status da conexão foi reiniciado.",
+    });
   };
 
   const formatDateTime = (dateStr: string) => {
@@ -204,25 +165,25 @@ export function AutoReviewSettings() {
             />
           </div>
           
-          <div className="border rounded-md p-4 space-y-2">
+          <div className="border rounded-md p-4 space-y-3">
             <h3 className="font-medium">Status da Conexão</h3>
             
             <div className="flex items-center space-x-2">
-              {connectionStatus === "unknown" && (
+              {!lastConnectionStatus && (
                 <div className="text-gray-500 flex items-center">
                   <Clock className="h-4 w-4 mr-2" />
                   <span>Status desconhecido</span>
                 </div>
               )}
               
-              {connectionStatus === "success" && (
+              {lastConnectionStatus === "success" && (
                 <div className="text-green-600 flex items-center">
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   <span>Conectado e funcionando</span>
                 </div>
               )}
               
-              {connectionStatus === "error" && (
+              {lastConnectionStatus === "error" && (
                 <div className="text-red-600 flex items-center">
                   <XCircle className="h-4 w-4 mr-2" />
                   <span>Problema de conexão detectado</span>
@@ -230,25 +191,43 @@ export function AutoReviewSettings() {
               )}
             </div>
             
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              onClick={testConnection}
-              disabled={isConnectionTesting}
-              className="mt-2"
-            >
-              {isConnectionTesting ? (
-                <>
-                  <Loader className="h-4 w-4 mr-2 animate-spin" />
-                  Testando...
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4 mr-2" />
-                  Testar Conexão
-                </>
+            {lastConnectionStatus === "error" && lastErrorMessage && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertDescription className="text-xs">{lastErrorMessage}</AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={testConnection}
+                disabled={isTesting}
+              >
+                {isTesting ? (
+                  <>
+                    <Loader className="h-4 w-4 mr-2 animate-spin" />
+                    Testando...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Testar Conexão
+                  </>
+                )}
+              </Button>
+              
+              {lastConnectionStatus && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleReset}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Resetar Status
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
           
           {lastReviewTime && (
@@ -266,7 +245,17 @@ export function AutoReviewSettings() {
               <li>As revisões automáticas são executadas a cada 6 minutos pelo cron</li>
               <li>Na interface, o contador executa a cada 3 minutos quando a aba estiver ativa</li>
               <li>Se você notar que as revisões não estão sendo executadas automaticamente, use o botão "Testar Conexão"</li>
-              <li>Verifique também o monitor de jobs cron para mais detalhes</li>
+              <li>Se o problema persistir após testar a conexão, verifique os logs de erro na interface de jobs</li>
+            </ul>
+          </div>
+          
+          <div className="bg-blue-50 text-blue-800 p-4 rounded-md">
+            <h3 className="font-medium mb-1">Solução de problemas</h3>
+            <ul className="text-sm list-disc list-inside space-y-1">
+              <li>Se aparecer "Problema de conexão detectado", teste a conexão usando o botão acima</li>
+              <li>Verifique se a função Edge "daily-meta-review" está publicada no Supabase</li>
+              <li>Caso a interface não consiga se conectar, a função Meta pode estar desativada ou com erro</li>
+              <li>Tente reiniciar o navegador ou limpar o cache em caso de problemas persistentes</li>
             </ul>
           </div>
         </div>

@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from "react";
-import { Loader, RefreshCw } from "lucide-react";
+import { Loader, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMetaReviewService } from "@/components/revisao-nova/hooks/useMetaReviewService";
@@ -16,7 +16,11 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { executeAutomaticReview } = useMetaReviewService();
+  const { 
+    executeAutomaticReview, 
+    isLoading, 
+    lastConnectionStatus 
+  } = useMetaReviewService();
 
   // Função para atualizar o contador
   const updateCountdown = () => {
@@ -164,16 +168,23 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
         
         <button 
           onClick={handleManualRun} 
-          disabled={isRunning}
+          disabled={isRunning || isLoading}
           className="flex items-center justify-center gap-1 text-xs py-1 px-2 rounded bg-[#ff6e00] hover:bg-[#e66300] text-white disabled:opacity-50"
         >
-          {isRunning ? (
+          {isRunning || isLoading ? (
             <Loader className="h-3 w-3 animate-spin" />
           ) : (
             <RefreshCw className="h-3 w-3" />
           )}
           Executar Agora
         </button>
+        
+        {lastConnectionStatus === "error" && (
+          <div className="text-[10px] text-red-500 flex items-center mt-1 gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            <span>Problema de conexão detectado</span>
+          </div>
+        )}
         
         {lastRunTime && (
           <div className="text-[10px] text-gray-500 mt-1">
