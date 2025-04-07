@@ -32,6 +32,28 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Nova função para obter múltiplos jobs do cron
+CREATE OR REPLACE FUNCTION public.get_cron_jobs(job_names text[])
+RETURNS TABLE (
+  jobid int, 
+  jobname text, 
+  schedule text, 
+  active boolean
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    j.jobid, 
+    j.jobname, 
+    j.schedule, 
+    j.active
+  FROM 
+    cron.job j
+  WHERE 
+    j.jobname = ANY(job_names);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Remover jobs existentes para evitar duplicidade
 SELECT cron.unschedule('daily-meta-review-job');
 SELECT cron.unschedule('daily-meta-review-test-job');
