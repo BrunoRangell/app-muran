@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { Loader, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useMetaReviewService } from "@/components/revisao-nova/hooks/useMetaReviewService";
 
 interface CompactNextReviewCountdownProps {
   onAnalyzeAll: () => Promise<void>;
@@ -15,6 +16,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { executeAutomaticReview } = useMetaReviewService();
 
   // Função para atualizar o contador
   const updateCountdown = () => {
@@ -36,8 +38,31 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       console.log("[AutoReview] Executando revisão automática programada");
       setIsRunning(true);
       
-      // Executar a função onAnalyzeAll passada como prop
-      await onAnalyzeAll();
+      // Usar o serviço dedicado para Meta Review
+      const result = await executeAutomaticReview();
+      
+      if (!result.success) {
+        console.error("[AutoReview] Falha na execução automática:", result.error);
+        toast({
+          title: "Erro na execução automática",
+          description: String(result.error),
+          variant: "destructive",
+        });
+        
+        // Como falhou, tentar o método alternativo
+        try {
+          await onAnalyzeAll();
+          console.log("[AutoReview] Execução via método alternativo concluída");
+        } catch (altError) {
+          console.error("[AutoReview] Ambos os métodos falharam:", altError);
+        }
+      } else {
+        console.log("[AutoReview] Execução automática iniciada com sucesso");
+        toast({
+          title: "Revisão automática iniciada",
+          description: "A revisão automática foi iniciada com sucesso pelo serviço dedicado.",
+        });
+      }
       
       // Registrar o horário da última execução
       const now = new Date();
@@ -49,10 +74,6 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
         queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
       }, 5000); // Esperar 5 segundos para garantir que o processamento em segundo plano tenha avançado
       
-      toast({
-        title: "Revisão automática iniciada",
-        description: "A revisão automática foi iniciada com sucesso.",
-      });
     } catch (error) {
       console.error("[AutoReview] Erro ao executar revisão automática:", error);
       toast({
