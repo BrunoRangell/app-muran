@@ -43,7 +43,7 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT 
-    j.jobid, 
+    j.jobid::int, 
     j.jobname, 
     j.schedule, 
     j.active
@@ -159,7 +159,8 @@ SELECT cron.schedule(
         'isAutomatic', true,
         'executeReview', true,
         'executionType', 'real',
-        'test', false
+        'test', false,
+        'forceExecution', true
       )
     )
     RETURNING id INTO log_id;
@@ -177,7 +178,7 @@ SELECT cron.schedule(
       )
     );
     
-    -- CHAMADA CORRIGIDA com executeReview=true E test=false
+    -- CHAMADA CORRIGIDA com executeReview=true E test=false E forceExecution=true
     PERFORM
       net.http_post(
         url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
@@ -255,7 +256,19 @@ SELECT cron.schedule(
       'auto_closed', true
     )
   WHERE 
-    status = 'started' OR status = 'in_progress' AND
+    (status = 'started' OR status = 'in_progress') AND
     execution_time < (now() - INTERVAL '15 minutes');
   $$
+);
+
+-- Registrar log de atualização da configuração
+INSERT INTO public.system_logs (event_type, message, details)
+VALUES (
+  'cron_job', 
+  'Recriação completa das configurações de cron', 
+  jsonb_build_object(
+    'timestamp', now(),
+    'source', 'manual_update',
+    'jobs', ARRAY['daily-meta-review-job', 'daily-meta-review-test-job', 'cron-health-check', 'google-ads-token-check-job']
+  )
 );
