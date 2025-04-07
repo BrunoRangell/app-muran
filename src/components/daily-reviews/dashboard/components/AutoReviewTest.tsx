@@ -107,14 +107,26 @@ export function AutoReviewTest() {
         .from("cron_execution_logs")
         .select("*")
         .eq("job_name", "daily-meta-review-job")
-        .contains("details", { executeReview: true })
+        .eq("status", "success")
         .order("execution_time", { ascending: false })
         .limit(10);
         
       if (realLogsError) {
         console.error("Erro ao buscar logs de execução real:", realLogsError);
-      } else {
+      } else if (realLogs && realLogs.length > 0) {
         setRealExecutionLogs(realLogs || []);
+      } else {
+        const { data: inProgressLogs, error: inProgressError } = await supabase
+          .from("cron_execution_logs")
+          .select("*")
+          .eq("job_name", "daily-meta-review-job")
+          .or("status.eq.in_progress,status.eq.started,status.eq.partial_success")
+          .order("execution_time", { ascending: false })
+          .limit(10);
+          
+        if (!inProgressError && inProgressLogs) {
+          setRealExecutionLogs(inProgressLogs);
+        }
       }
     } catch (error) {
       console.error("Erro ao buscar logs de execução real:", error);
@@ -204,12 +216,29 @@ export function AutoReviewTest() {
   const triggerRealExecution = async () => {
     setIsLoading(true);
     try {
+      const { data: logEntry } = await supabase
+        .from("cron_execution_logs")
+        .insert({
+          job_name: "daily-meta-review-job",
+          status: "started",
+          details: { 
+            timestamp: new Date().toISOString(),
+            source: "manual_trigger",
+            executeReview: true
+          }
+        })
+        .select()
+        .single();
+        
+      const logId = logEntry?.id;
+        
       const { data, error } = await supabase.functions.invoke("daily-meta-review", {
         body: { 
           executeReview: true, 
           timestamp: new Date().toISOString(),
           source: "manual_trigger",
-          scheduled: false
+          scheduled: false,
+          logId
         }
       });
       

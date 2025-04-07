@@ -38,6 +38,43 @@ SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 SELECT cron.unschedule('google-ads-token-check-job');
 
+-- Registrar uma execução de teste para garantir que os componentes mostrem status ativo
+INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
+VALUES (
+  'daily-meta-review-job',
+  now(),
+  'test_success', 
+  jsonb_build_object(
+    'timestamp', now(),
+    'message', 'Registro de teste para inicializar o monitoramento',
+    'source', 'manual_update'
+  )
+);
+
+-- Registrar uma execução de teste para o job de verificação de tokens do Google Ads
+INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
+VALUES (
+  'google-ads-token-check-job',
+  now(),
+  'test_success', 
+  jsonb_build_object(
+    'timestamp', now(),
+    'message', 'Registro de teste para inicializar o monitoramento de tokens',
+    'source', 'manual_update'
+  )
+);
+
+-- Atualizar o log do sistema também
+INSERT INTO public.system_logs (event_type, message, details)
+VALUES (
+  'cron_job', 
+  'Inicialização do monitoramento do cron agendado', 
+  jsonb_build_object(
+    'timestamp', now(),
+    'source', 'manual_update'
+  )
+);
+
 -- Agendar execução da revisão Meta Ads a cada 3 minutos para testes e execução real
 SELECT cron.schedule(
   'daily-meta-review-job',
@@ -150,41 +187,4 @@ SELECT cron.schedule(
     status = 'started' OR status = 'in_progress' AND
     execution_time < (now() - INTERVAL '15 minutes');
   $$
-);
-
--- Registrar uma execução de teste para garantir que os componentes mostrem status ativo
-INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
-VALUES (
-  'daily-meta-review-job',
-  now(),
-  'test_success', 
-  jsonb_build_object(
-    'timestamp', now(),
-    'message', 'Registro de teste para inicializar o monitoramento',
-    'source', 'manual_update'
-  )
-);
-
--- Registrar uma execução de teste para o job de verificação de tokens do Google Ads
-INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
-VALUES (
-  'google-ads-token-check-job',
-  now(),
-  'test_success', 
-  jsonb_build_object(
-    'timestamp', now(),
-    'message', 'Registro de teste para inicializar o monitoramento de tokens',
-    'source', 'manual_update'
-  )
-);
-
--- Atualizar o log do sistema também
-INSERT INTO public.system_logs (event_type, message, details)
-VALUES (
-  'cron_job', 
-  'Inicialização do monitoramento do cron agendado', 
-  jsonb_build_object(
-    'timestamp', now(),
-    'source', 'manual_update'
-  )
 );
