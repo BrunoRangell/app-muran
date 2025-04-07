@@ -44,23 +44,22 @@ export const GoogleAdsClientReviewCardCompact = ({
   const formattedTotalSpent = formatCurrency(totalSpent || 0);
   const formattedCurrentDaily = formatCurrency(currentDailyBudget || 0);
   const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
-  const formattedDifference = formatCurrency(Math.abs(budgetDifference || 0));
 
   // Formatação da data da última revisão
   const formattedLastReviewDate = client.lastReview?.updated_at ? 
     formatDateInBrasiliaTz(new Date(client.lastReview.updated_at), "dd/MM 'às' HH:mm") : 
     "Sem revisão";
 
-  // Determinar se precisa de ajuste (diferença maior ou igual a R$5)
-  const needsAdjustmentClass = needsBudgetAdjustment
-    ? 'border-yellow-400 bg-yellow-50'
-    : 'border-gray-200';
+  // Determinar se o card deve ter destaque
+  const cardBorderClass = needsBudgetAdjustment
+    ? 'border-l-4 border-l-muran-primary'
+    : '';
 
   return (
     <Card 
       className={`overflow-hidden hover:shadow-md transition-shadow ${
-        inactive ? 'opacity-60 border-gray-200 bg-gray-50' : needsAdjustmentClass
-      }`}
+        inactive ? 'opacity-60' : ''
+      } ${cardBorderClass}`}
     >
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
@@ -138,12 +137,13 @@ export const GoogleAdsClientReviewCardCompact = ({
         )}
 
         {needsBudgetAdjustment && budgetDifference && (
-          <div className="mt-2 text-xs bg-yellow-100 p-2 rounded text-yellow-800">
-            {budgetDifference > 0 ? (
-              <span>Aumentar orçamento diário em {formattedDifference}</span>
-            ) : (
-              <span>Diminuir orçamento diário em {formattedDifference}</span>
-            )}
+          <div className="mt-2 text-xs p-2 rounded flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-muran-primary"></div>
+            <span className="font-medium">
+              {budgetDifference > 0 ? 
+                `Aumentar orçamento diário em ${formatCurrency(Math.abs(budgetDifference))}` : 
+                `Diminuir orçamento diário em ${formatCurrency(Math.abs(budgetDifference))}`}
+            </span>
           </div>
         )}
       </div>

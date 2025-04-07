@@ -1,4 +1,3 @@
-
 export const formatCurrency = (value: string | number, includeSymbol: boolean = true) => {
   // Se o valor for undefined ou null, retorna R$ 0,00
   if (value == null) return includeSymbol ? 'R$ 0,00' : '0,00';

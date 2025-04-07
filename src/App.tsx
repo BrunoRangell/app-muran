@@ -21,19 +21,21 @@ const Index = lazy(() => {
 });
 
 // Lazy load das demais páginas com timeout maior e retry
-const lazyWithTimeout = (importFn: () => Promise<any>) => {
+const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 10000) => {
   return lazy(() => {
-    const loadWithRetry = (retries = 2): Promise<any> => {
+    const loadWithRetry = (retriesLeft = retries): Promise<any> => {
       return Promise.race([
         importFn(),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Tempo limite excedido')), 8000)
+          setTimeout(() => reject(new Error('Tempo limite excedido')), timeout)
         )
       ]).catch(error => {
-        if (retries > 0) {
-          console.log(`Tentando novamente... ${retries} tentativas restantes`);
-          return loadWithRetry(retries - 1);
+        console.error(`Erro ao carregar módulo: ${error.message}, tentativas restantes: ${retriesLeft}`);
+        if (retriesLeft > 0) {
+          console.log(`Tentando novamente... ${retriesLeft} tentativas restantes`);
+          return loadWithRetry(retriesLeft - 1);
         }
+        console.error("Falha em todas as tentativas de carregamento");
         throw error;
       });
     };

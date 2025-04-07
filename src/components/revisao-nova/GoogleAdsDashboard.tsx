@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { supabase } from "@/lib/supabase";
@@ -11,6 +10,9 @@ import { AnalysisProgress } from "@/components/daily-reviews/dashboard/component
 
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
+  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
   const { 
@@ -81,30 +83,45 @@ export const GoogleAdsDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Card de cabeçalho do dashboard com todos os controles */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <GoogleAdsDashboardHeader 
           lastBatchReviewTime={lastBatchReviewTime}
           isBatchAnalyzing={isReviewingBatch}
           isLoading={isApiLoading}
           onAnalyzeAll={handleAnalyzeAll}
+          searchQuery={searchQuery}
+          onSearchChange={(e) => setSearchQuery(e.target.value)}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          showOnlyAdjustments={showOnlyAdjustments}
+          onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
 
         {/* Adicionar barra de progresso quando estiver analisando */}
         {isReviewingBatch && (
-          <div className="mb-6">
+          <div className="mt-4">
             <AnalysisProgress 
               isBatchAnalyzing={isReviewingBatch}
-              batchProgress={batchProgress}
-              totalClientsToAnalyze={totalClientsToAnalyze}
-              progressPercentage={progressPercentage}
+              batchProgress={clientsWithGoogleAdsId.length - processingClients.length}
+              totalClientsToAnalyze={clientsWithGoogleAdsId.length}
+              progressPercentage={
+                clientsWithGoogleAdsId.length > 0 && isReviewingBatch
+                  ? Math.round(((clientsWithGoogleAdsId.length - processingClients.length) / clientsWithGoogleAdsId.length) * 100)
+                  : 0
+              }
             />
           </div>
         )}
-
-        <div className="mt-6">
-          <GoogleAdsDashboardCard onViewClientDetails={() => {}} />
-        </div>
       </div>
+
+      {/* Cards de clientes */}
+      <GoogleAdsDashboardCard 
+        onViewClientDetails={() => {}}
+        searchQuery={searchQuery}
+        viewMode={viewMode}
+        showOnlyAdjustments={showOnlyAdjustments}
+      />
     </div>
   );
 };

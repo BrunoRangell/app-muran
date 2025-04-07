@@ -1,56 +1,66 @@
 
 import { Button } from "@/components/ui/button";
-import { Loader, RefreshCw, Calendar } from "lucide-react";
 import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../../summary/utils";
+import { Loader, PlayCircle, Calendar } from "lucide-react";
+import { SearchControls } from "./SearchControls";
+import { FilterOptions } from "./FilterOptions";
 
 interface GoogleAdsDashboardHeaderProps {
   lastBatchReviewTime: Date | null;
   isBatchAnalyzing: boolean;
   isLoading: boolean;
-  onAnalyzeAll: () => void;
+  onAnalyzeAll: () => Promise<void>;
+  searchQuery: string;
+  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  viewMode: string;
+  onViewModeChange: (value: string) => void;
+  showOnlyAdjustments: boolean;
+  onShowOnlyAdjustmentsChange: (value: boolean) => void;
 }
 
-export function GoogleAdsDashboardHeader({
+export const GoogleAdsDashboardHeader = ({
   lastBatchReviewTime,
   isBatchAnalyzing,
   isLoading,
-  onAnalyzeAll
-}: GoogleAdsDashboardHeaderProps) {
-  // Obter dias restantes no mês
+  onAnalyzeAll,
+  searchQuery,
+  onSearchChange,
+  viewMode,
+  onViewModeChange,
+  showOnlyAdjustments,
+  onShowOnlyAdjustmentsChange
+}: GoogleAdsDashboardHeaderProps) => {
   const remainingDays = getRemainingDaysInMonth();
   
   return (
-    <div className="flex flex-col gap-4 mb-6">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl font-semibold text-muran-dark mb-1">
-            Dashboard Google Ads
+            Revisão de Orçamentos Google Ads
           </h2>
         </div>
         
-        <div className="flex gap-2">
-          <Button 
-            variant="default"
-            onClick={onAnalyzeAll}
-            disabled={isBatchAnalyzing || isLoading}
-            className="bg-muran-primary hover:bg-muran-primary/90"
-          >
-            {isBatchAnalyzing ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Analisando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Analisar Todos
-              </>
-            )}
-          </Button>
-        </div>
+        <Button
+          onClick={onAnalyzeAll}
+          disabled={isBatchAnalyzing || isLoading}
+          variant="default"
+          className="bg-muran-primary hover:bg-muran-primary/90 text-white"
+        >
+          {isBatchAnalyzing ? (
+            <>
+              <Loader size={16} className="mr-2 animate-spin" />
+              Analisando...
+            </>
+          ) : (
+            <>
+              <PlayCircle size={16} className="mr-2" />
+              Analisar Todos
+            </>
+          )}
+        </Button>
       </div>
       
-      {/* Bloco de informações sobre última revisão e dias restantes */}
       <div className="bg-gray-50 rounded-lg p-4 flex flex-col md:flex-row gap-4 md:gap-8">
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-muran-primary" />
@@ -58,7 +68,7 @@ export function GoogleAdsDashboardHeader({
             <span className="text-sm font-medium text-gray-700">Última revisão em massa:</span>
             {lastBatchReviewTime ? (
               <p className="text-sm text-muran-dark font-semibold">
-                {formatDateInBrasiliaTz(lastBatchReviewTime, "dd 'de' MMMM 'às' HH:mm")}
+                {formatDateInBrasiliaTz(lastBatchReviewTime, "dd 'de' MMMM 'às' HH:mm", 'pt-BR')}
               </p>
             ) : (
               <p className="text-sm text-gray-500 italic">Nenhuma revisão em massa realizada</p>
@@ -76,6 +86,18 @@ export function GoogleAdsDashboardHeader({
           </div>
         </div>
       </div>
+
+      <SearchControls
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+      />
+      
+      <FilterOptions 
+        showOnlyAdjustments={showOnlyAdjustments}
+        onShowOnlyAdjustmentsChange={onShowOnlyAdjustmentsChange}
+      />
     </div>
   );
-}
+};

@@ -1,10 +1,10 @@
 
 import { Button } from "@/components/ui/button";
-import { Calendar, Loader } from "lucide-react";
 import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../../summary/utils";
+import { Loader, PlayCircle, Calendar } from "lucide-react";
 
 interface DashboardHeaderProps {
-  lastBatchReviewTime: Date | null;
+  lastBatchReviewTime: string | null;
   isBatchAnalyzing: boolean;
   isLoading: boolean;
   onAnalyzeAll: () => void;
@@ -24,27 +24,28 @@ export const DashboardHeader = ({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl font-semibold text-muran-dark mb-1">
-            Dashboard Meta Ads
+            Revisão de Orçamentos Meta Ads
           </h2>
         </div>
         
-        <div className="flex gap-2">
-          <Button 
-            variant="default"
-            onClick={onAnalyzeAll}
-            disabled={isBatchAnalyzing || isLoading}
-            className="bg-muran-primary hover:bg-muran-primary/90"
-          >
-            {isBatchAnalyzing ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Analisando...
-              </>
-            ) : (
-              'Analisar Todos'
-            )}
-          </Button>
-        </div>
+        <Button
+          onClick={onAnalyzeAll}
+          disabled={isBatchAnalyzing || isLoading}
+          variant="default"
+          className="bg-muran-primary hover:bg-muran-primary/90 text-white"
+        >
+          {isBatchAnalyzing ? (
+            <>
+              <Loader size={16} className="mr-2 animate-spin" />
+              Analisando...
+            </>
+          ) : (
+            <>
+              <PlayCircle size={16} className="mr-2" />
+              Analisar Todos
+            </>
+          )}
+        </Button>
       </div>
       
       {/* Bloco de informações sobre última revisão e dias restantes */}
@@ -55,7 +56,7 @@ export const DashboardHeader = ({
             <span className="text-sm font-medium text-gray-700">Última revisão em massa:</span>
             {lastBatchReviewTime ? (
               <p className="text-sm text-muran-dark font-semibold">
-                {formatDateInBrasiliaTz(lastBatchReviewTime, "dd 'de' MMMM 'às' HH:mm")}
+                {formatDateInBrasiliaTz(lastBatchReviewTime, "dd 'de' MMMM 'às' HH:mm", 'pt-BR')}
               </p>
             ) : (
               <p className="text-sm text-gray-500 italic">Nenhuma revisão em massa realizada</p>
