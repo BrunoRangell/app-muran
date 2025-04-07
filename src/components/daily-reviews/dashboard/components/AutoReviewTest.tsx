@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Loader, Play, Check, AlertCircle, CalendarClock, BarChart, Clock, Dot } from "lucide-react";
+import { Loader, Play, Check, AlertCircle, CalendarClock, BarChart, Clock, Dot, FileText } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -18,12 +18,15 @@ export function AutoReviewTest() {
   const [systemLogs, setSystemLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [cronExpression, setCronExpression] = useState<string>("");
+  const [executionModeTab, setExecutionModeTab] = useState<'tests' | 'real-executions'>('real-executions');
+  const [realExecutionLogs, setRealExecutionLogs] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchCronStatus();
     fetchExecutionLogs();
     fetchCronExpression();
+    fetchRealExecutionLogs();
   }, []);
 
   const fetchCronExpression = async () => {
@@ -47,7 +50,6 @@ export function AutoReviewTest() {
 
   const fetchCronStatus = async () => {
     try {
-      // Verificar registros de execução recentes
       const { data: logs, error } = await supabase
         .from("cron_execution_logs")
         .select("*")
@@ -66,14 +68,12 @@ export function AutoReviewTest() {
         const executionTime = new Date(lastLog.execution_time);
         const hoursSince = (new Date().getTime() - executionTime.getTime()) / (1000 * 60 * 60);
         
-        // Se a última execução foi há menos de 6 horas, consideramos ativo
         if (hoursSince < 6) {
           setCronStatus('active');
           return;
         }
       }
       
-      // Verificar logs do sistema como fallback
       const { data: systemLogs, error: systemLogsError } = await supabase
         .from("system_logs")
         .select("*")
@@ -92,7 +92,6 @@ export function AutoReviewTest() {
         }
       }
       
-      // Se chegamos aqui, significa que não houve execuções recentes
       setCronStatus('inactive');
       
     } catch (error) {
@@ -101,14 +100,37 @@ export function AutoReviewTest() {
     }
   };
 
+  const fetchRealExecutionLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const { data: realLogs, error: realLogsError } = await supabase
+        .from("cron_execution_logs")
+        .select("*")
+        .eq("job_name", "daily-meta-review-job")
+        .contains("details", { executeReview: true })
+        .order("execution_time", { ascending: false })
+        .limit(10);
+        
+      if (realLogsError) {
+        console.error("Erro ao buscar logs de execução real:", realLogsError);
+      } else {
+        setRealExecutionLogs(realLogs || []);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar logs de execução real:", error);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
   const fetchExecutionLogs = async () => {
     setIsLoadingLogs(true);
     try {
-      // Buscar logs de execução do cron
       const { data: cronLogs, error: cronLogsError } = await supabase
         .from("cron_execution_logs")
         .select("*")
         .eq("job_name", "daily-meta-review-job")
+        .filter("details->executeReview", "not.eq", true)
         .order("execution_time", { ascending: false })
         .limit(10);
         
@@ -118,14 +140,13 @@ export function AutoReviewTest() {
         setExecutionLogs(cronLogs || []);
       }
       
-      // Buscar logs do sistema
       const { data: sysLogs, error: sysLogsError } = await supabase
         .from("system_logs")
         .select("*")
         .eq("event_type", "cron_job")
         .order("created_at", { ascending: false })
         .limit(10);
-        
+      
       if (sysLogsError) {
         console.error("Erro ao buscar logs do sistema:", sysLogsError);
       } else {
@@ -142,7 +163,6 @@ export function AutoReviewTest() {
   const testCronFunction = async () => {
     setIsLoading(true);
     try {
-      // Chamamos a função Edge diretamente para testar
       const { data, error } = await supabase.functions.invoke("daily-meta-review", {
         body: { 
           test: true, 
@@ -158,7 +178,6 @@ export function AutoReviewTest() {
       
       setResult(data);
       
-      // Atualizar os logs após o teste
       await Promise.all([
         fetchCronStatus(),
         fetchExecutionLogs()
@@ -175,6 +194,47 @@ export function AutoReviewTest() {
       toast({
         title: "Falha no teste",
         description: error instanceof Error ? error.message : "Não foi possível testar a função Edge.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const triggerRealExecution = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
+        body: { 
+          executeReview: true, 
+          timestamp: new Date().toISOString(),
+          source: "manual_trigger",
+          scheduled: false
+        }
+      });
+      
+      if (error) {
+        throw new Error(`Erro ao iniciar execução real: ${error.message}`);
+      }
+      
+      setResult(data);
+      
+      await Promise.all([
+        fetchCronStatus(),
+        fetchRealExecutionLogs()
+      ]);
+      
+      toast({
+        title: "Execução real iniciada",
+        description: "A execução real da revisão diária foi iniciada. Acompanhe o progresso nos logs.",
+      });
+    } catch (error) {
+      console.error("Erro ao iniciar execução real:", error);
+      setResult(null);
+      
+      toast({
+        title: "Falha ao iniciar execução real",
+        description: error instanceof Error ? error.message : "Não foi possível iniciar a execução real.",
         variant: "destructive",
       });
     } finally {
@@ -208,7 +268,6 @@ export function AutoReviewTest() {
   const renderCronExpressionHelp = () => {
     if (!cronExpression) return null;
     
-    // Explicar a expressão cron
     let explanation = "Este agendamento ocorre ";
     const parts = cronExpression.split(" ");
     
@@ -233,6 +292,7 @@ export function AutoReviewTest() {
     <Tabs defaultValue="status" className="w-full">
       <TabsList className="mb-4">
         <TabsTrigger value="status">Status do Agendamento</TabsTrigger>
+        <TabsTrigger value="real-executions">Execuções Reais</TabsTrigger>
         <TabsTrigger value="test">Testar Função</TabsTrigger>
         <TabsTrigger value="logs">Logs de Execução</TabsTrigger>
         <TabsTrigger value="system-logs">Logs do Sistema</TabsTrigger>
@@ -332,6 +392,129 @@ export function AutoReviewTest() {
         </Card>
       </TabsContent>
       
+      <TabsContent value="real-executions">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Execuções Reais</CardTitle>
+            <CardDescription>
+              Histórico e controle das execuções reais de revisão automática
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              onClick={triggerRealExecution} 
+              disabled={isLoading}
+              className="w-full bg-muran-primary hover:bg-muran-primary/90 text-white"
+            >
+              {isLoading ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Iniciando execução real...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Iniciar Execução Real Agora
+                </>
+              )}
+            </Button>
+            
+            <Alert className="bg-amber-50 border-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <AlertTitle>Diferença entre Testes e Execuções Reais</AlertTitle>
+              <AlertDescription className="text-xs">
+                <p className="mb-2">As execuções reais processam todos os clientes e atualizam os dados de orçamento, enquanto os testes apenas verificam a conectividade.</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Execuções reais são agendadas para ocorrer a cada 3 minutos</li>
+                  <li>Cada execução processa todos os clientes ativos com Meta Ads configurado</li>
+                  <li>O processamento pode levar alguns minutos, dependendo do número de clientes</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+            
+            <div className="mt-4">
+              <h3 className="text-sm font-medium mb-2">Histórico de Execuções Reais:</h3>
+              
+              {isLoadingLogs ? (
+                <div className="flex justify-center p-4">
+                  <Loader className="h-5 w-5 animate-spin text-muran-primary" />
+                </div>
+              ) : realExecutionLogs.length > 0 ? (
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-3">
+                    {realExecutionLogs.map((log) => (
+                      <div key={log.id} className="border p-3 rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="font-medium">
+                            {formatDateInBrasiliaTz(
+                              new Date(log.execution_time),
+                              "dd/MM/yyyy HH:mm:ss"
+                            )}
+                          </p>
+                          {getStatusBadge(log.status)}
+                        </div>
+                        
+                        {log.details && (
+                          <div className="text-sm space-y-1 mt-2">
+                            {log.details.message && (
+                              <p><span className="text-gray-500">Mensagem:</span> {log.details.message}</p>
+                            )}
+                            
+                            <div className="grid grid-cols-3 gap-2 text-sm mt-2">
+                              <div className="text-center bg-gray-50 p-2 rounded">
+                                <p className="text-xs text-gray-500">Processados</p>
+                                <p className="font-bold text-muran-complementary">
+                                  {log.details.totalClients !== undefined ? log.details.totalClients : "-"}
+                                </p>
+                              </div>
+                              
+                              <div className="text-center bg-gray-50 p-2 rounded">
+                                <p className="text-xs text-gray-500">Sucessos</p>
+                                <p className="font-bold text-green-600">
+                                  {log.details.successCount !== undefined ? log.details.successCount : "-"}
+                                </p>
+                              </div>
+                              
+                              <div className="text-center bg-gray-50 p-2 rounded">
+                                <p className="text-xs text-gray-500">Erros</p>
+                                <p className="font-bold text-red-600">
+                                  {log.details.errorCount !== undefined ? log.details.errorCount : "-"}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {log.details.source && (
+                              <p><span className="text-gray-500">Origem:</span> {log.details.source === 'cron' ? 'Agendamento automático' : 'Execução manual'}</p>
+                            )}
+                            
+                            {log.details.error && (
+                              <p className="text-red-600"><span className="text-gray-500">Erro:</span> {log.details.error}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <div className="text-center p-4 text-gray-500 border rounded-lg">
+                  <p>Nenhuma execução real encontrada. Use o botão acima para iniciar uma.</p>
+                </div>
+              )}
+              
+              <Button
+                onClick={fetchRealExecutionLogs}
+                className="w-full mt-4"
+                variant="outline"
+              >
+                <BarChart className="mr-2 h-4 w-4" />
+                Atualizar Logs de Execução Real
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+      
       <TabsContent value="test">
         <Card>
           <CardHeader className="pb-3">
@@ -373,6 +556,7 @@ export function AutoReviewTest() {
                 <li>Se a função consegue responder corretamente</li>
                 <li>Se a conexão com o banco de dados está funcionando</li>
               </ul>
+              <p className="mt-2 text-amber-600 font-medium">Importante: Este teste apenas verifica a conectividade, mas não executa a revisão real de clientes.</p>
             </div>
           </CardContent>
         </Card>

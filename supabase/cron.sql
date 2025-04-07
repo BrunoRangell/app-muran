@@ -38,7 +38,7 @@ SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 SELECT cron.unschedule('google-ads-token-check-job');
 
--- Agendar execução da revisão Meta Ads a cada 3 minutos (modificado de 5 horas para 3 minutos)
+-- Agendar execução da revisão Meta Ads a cada 3 minutos para testes e execução real
 SELECT cron.schedule(
   'daily-meta-review-job',
   '*/3 * * * *',  -- Executa a cada 3 minutos para testes e execução real
@@ -57,13 +57,14 @@ SELECT cron.schedule(
       jsonb_build_object(
         'timestamp', now(),
         'source', 'scheduled',
-        'isAutomatic', true
+        'isAutomatic', true,
+        'executeReview', true
       )
     )
     RETURNING id INTO log_id;
     
     -- Invocar a função Edge com token de serviço para garantir autenticação
-    -- Usando o novo fluxo unificado que se comporta igual ao "analisar todos" do frontend
+    -- Usando o fluxo unificado que se comporta igual ao "analisar todos" do frontend
     PERFORM
       net.http_post(
         url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
