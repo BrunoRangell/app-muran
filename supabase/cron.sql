@@ -100,18 +100,24 @@ SELECT cron.schedule(
     )
     RETURNING id INTO log_id;
     
-    -- Invocar a função Edge com token de serviço para garantir autenticação
-    -- Usando o fluxo unificado que se comporta igual ao "analisar todos" do frontend
+    -- MUDANÇA CRUCIAL: Parâmetro executeReview definido como true e claramente especificado
+    -- Isso garante que a função saiba que deve executar a revisão real e não apenas um teste
     PERFORM
       net.http_post(
         url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
-        body:=concat('{"scheduled": true, "executeReview": true, "source": "cron", "test": false, "logId": "', log_id, '"}'::text)::jsonb
+        body:=concat('{"scheduled": true, "executeReview": true, "source": "cron", "test": false, "logId": "', log_id, '"}')::jsonb
       );
       
     -- Registrar a tentativa no log do sistema
     INSERT INTO public.system_logs (event_type, message, details)
-    VALUES ('cron_job', 'Execução automática da revisão diária Meta Ads (fluxo unificado)', jsonb_build_object('timestamp', now(), 'source', 'scheduled_job', 'log_id', log_id));
+    VALUES ('cron_job', 'Execução automática da revisão diária Meta Ads', jsonb_build_object(
+      'timestamp', now(), 
+      'source', 'scheduled_job', 
+      'log_id', log_id,
+      'executeReview', true,
+      'type', 'real_execution'
+    ));
   END;
   $$;
   $$

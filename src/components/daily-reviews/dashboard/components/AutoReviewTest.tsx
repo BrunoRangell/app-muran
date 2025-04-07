@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,30 +104,35 @@ export function AutoReviewTest() {
   const fetchRealExecutionLogs = async () => {
     setIsLoadingLogs(true);
     try {
+      // Modificação importante aqui: buscar explicitamente logs onde executeReview = true na details
+      // ou logs com status success, in_progress, partial_success (sinais de execução real)
       const { data: realLogs, error: realLogsError } = await supabase
         .from("cron_execution_logs")
         .select("*")
         .eq("job_name", "daily-meta-review-job")
-        .eq("status", "success")
+        .or(`status.eq.success,status.eq.in_progress,status.eq.partial_success,status.eq.started`)
         .order("execution_time", { ascending: false })
-        .limit(10);
+        .limit(15);
         
       if (realLogsError) {
         console.error("Erro ao buscar logs de execução real:", realLogsError);
-      } else if (realLogs && realLogs.length > 0) {
-        setRealExecutionLogs(realLogs || []);
       } else {
-        const { data: inProgressLogs, error: inProgressError } = await supabase
-          .from("cron_execution_logs")
-          .select("*")
-          .eq("job_name", "daily-meta-review-job")
-          .or("status.eq.in_progress,status.eq.started,status.eq.partial_success")
-          .order("execution_time", { ascending: false })
-          .limit(10);
+        // Filtrar para mostrar apenas logs de execução real com executeReview: true
+        const realExecutions = realLogs?.filter(log => {
+          // Se o status é 'success', 'partial_success' ou 'in_progress'
+          if (['success', 'partial_success', 'in_progress'].includes(log.status)) {
+            return true;
+          }
           
-        if (!inProgressError && inProgressLogs) {
-          setRealExecutionLogs(inProgressLogs);
-        }
+          // Ou se no details tem executeReview = true
+          if (log.details && (log.details.executeReview === true || log.details.type === 'real_execution')) {
+            return true;
+          }
+          
+          return false;
+        }) || [];
+        
+        setRealExecutionLogs(realExecutions);
       }
     } catch (error) {
       console.error("Erro ao buscar logs de execução real:", error);
@@ -138,11 +144,13 @@ export function AutoReviewTest() {
   const fetchExecutionLogs = async () => {
     setIsLoadingLogs(true);
     try {
+      // Buscar explicitamente logs de testes (onde executeReview não é true)
       const { data: cronLogs, error: cronLogsError } = await supabase
         .from("cron_execution_logs")
         .select("*")
         .eq("job_name", "daily-meta-review-job")
-        .filter("details->executeReview", "not.eq", true)
+        .not("details->executeReview", "eq", true)
+        .or(`status.eq.test_success,status.eq.active`)
         .order("execution_time", { ascending: false })
         .limit(10);
         
@@ -404,6 +412,7 @@ export function AutoReviewTest() {
                   fetchCronStatus();
                   fetchExecutionLogs();
                   fetchCronExpression();
+                  fetchRealExecutionLogs();
                   
                   toast({
                     title: "Status atualizado",
