@@ -155,7 +155,7 @@ export function CronJobMonitor() {
         return "destructive";
       case 'started':
       case 'in_progress':
-        return "warning";
+        return "secondary";  // Changed from "warning" to "secondary"
       default:
         return "secondary";
     }
