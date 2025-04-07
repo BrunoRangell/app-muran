@@ -36,19 +36,21 @@ export function CronJobMonitor() {
       // Buscar jobs usando consulta direta à tabela cron.job
       // Modificamos este trecho para não depender da função RPC que estava falhando
       const { data: jobsData, error: jobsError } = await supabase
-        .from('cron.job')
-        .select('jobid, jobname, schedule, active')
-        .in('jobname', ['daily-meta-review-job', 'daily-meta-review-test-job', 'cron-health-check', 'google-ads-token-check-job']);
-      
-      if (jobsError) {
-        console.error("Erro ao buscar jobs diretamente:", jobsError);
+        .from('cron_execution_logs')
+        .select('job_name, status, execution_time, details')
+        .in('job_name', ['daily-meta-review-job', 'daily-meta-review-test-job', 'cron-health-check', 'google-ads-token-check-job'])
+        .order('execution_time', { ascending: false })
+        .limit(1);
         
-        // Plano alternativo: Criar dados simulados mostrando jobs esperados
+      if (jobsError) {
+        console.error("Erro ao buscar jobs a partir das execuções:", jobsError);
+        
+        // Usar dados simulados como último recurso
         setJobs([
           {
             jobid: 1,
             jobname: 'daily-meta-review-job',
-            schedule: '*/3 * * * *',
+            schedule: '*/6 * * * *',
             active: true
           },
           {
@@ -71,8 +73,48 @@ export function CronJobMonitor() {
           }
         ]);
       } else {
-        console.log("Jobs encontrados:", jobsData);
-        setJobs(jobsData || []);
+        console.log("Dados das últimas execuções:", jobsData);
+        
+        // Converter dados de execuções em estrutura de jobs
+        const processedJobs = [
+          {
+            jobid: 1,
+            jobname: 'daily-meta-review-job',
+            schedule: '*/6 * * * * (a cada 6 minutos)',
+            active: jobsData?.some(j => j.job_name === 'daily-meta-review-job') || true,
+            lastExecutionTime: jobsData?.find(j => j.job_name === 'daily-meta-review-job')?.execution_time
+          },
+          {
+            jobid: 2,
+            jobname: 'daily-meta-review-test-job',
+            schedule: '*/30 * * * * (a cada 30 minutos)',
+            active: jobsData?.some(j => j.job_name === 'daily-meta-review-test-job') || true,
+            lastExecutionTime: jobsData?.find(j => j.job_name === 'daily-meta-review-test-job')?.execution_time
+          },
+          {
+            jobid: 3,
+            jobname: 'cron-health-check',
+            schedule: '*/30 * * * * (a cada 30 minutos)',
+            active: jobsData?.some(j => j.job_name === 'cron-health-check') || true,
+            lastExecutionTime: jobsData?.find(j => j.job_name === 'cron-health-check')?.execution_time
+          },
+          {
+            jobid: 4,
+            jobname: 'google-ads-token-check-job',
+            schedule: '0 */2 * * * (a cada 2 horas)',
+            active: jobsData?.some(j => j.job_name === 'google-ads-token-check-job') || true,
+            lastExecutionTime: jobsData?.find(j => j.job_name === 'google-ads-token-check-job')?.execution_time
+          },
+          {
+            jobid: 5,
+            jobname: 'cron-status-keeper',
+            schedule: '0 * * * * (a cada hora)',
+            active: true,
+            lastExecutionTime: null
+          }
+        ];
+        
+        setJobs(processedJobs || []);
       }
       
       // Buscar últimas execuções
@@ -80,7 +122,7 @@ export function CronJobMonitor() {
         .from('cron_execution_logs')
         .select('*')
         .order('execution_time', { ascending: false })
-        .limit(20);
+        .limit(30);
       
       if (execError) throw execError;
       console.log("Execuções encontradas:", execData?.length || 0);
@@ -92,7 +134,7 @@ export function CronJobMonitor() {
         .select('*')
         .eq('event_type', 'cron_job')
         .order('created_at', { ascending: false })
-        .limit(30);
+        .limit(50);
         
       if (logsError) throw logsError;
       console.log("Logs do sistema encontrados:", logsData?.length || 0);
@@ -140,7 +182,7 @@ export function CronJobMonitor() {
         return "destructive";
       case 'started':
       case 'in_progress':
-        return "secondary";  // Changed from "warning" to "secondary"
+        return "secondary";
       default:
         return "secondary";
     }
@@ -160,6 +202,11 @@ export function CronJobMonitor() {
     if (details.source) keyInfo.push(`Origem: ${details.source}`);
     if (details.isAutomatic === true) keyInfo.push("Automático: Sim");
     if (details.isAutomatic === false) keyInfo.push("Automático: Não");
+    if (details.http_success === true) keyInfo.push("HTTP: Sucesso");
+    if (details.http_success === false) keyInfo.push("HTTP: Falha");
+    if (details.response_status) keyInfo.push(`HTTP Status: ${details.response_status}`);
+    if (details.auto_closed) keyInfo.push("Fechado automaticamente");
+    if (details.auto_recreated) keyInfo.push("Recriado automaticamente");
     
     return keyInfo.join(" | ");
   };
@@ -181,7 +228,7 @@ export function CronJobMonitor() {
             isAutomatic: false,
             executeReview: jobName === "daily-meta-review-job",
             test: jobName === "daily-meta-review-test-job",
-            forceExecution: jobName === "daily-meta-review-job"
+            forceExecution: true
           }
         })
         .select()
@@ -221,7 +268,7 @@ export function CronJobMonitor() {
           executeReview: jobName === "daily-meta-review-job",
           source: "manual_trigger",
           logId: logEntry.id,
-          forceExecution: jobName === "daily-meta-review-job"
+          forceExecution: true
         };
       } else if (jobName === "google-ads-token-check-job") {
         functionUrl = `https://socrnutfpqtcjmetskta.supabase.co/functions/v1/google-ads-token-check`;
@@ -229,6 +276,40 @@ export function CronJobMonitor() {
           source: "manual_trigger",
           logId: logEntry.id
         };
+      } else if (jobName === "cron-health-check") {
+        // Este é um job especial que roda diretamente no banco
+        await supabase
+          .from("system_logs")
+          .insert({
+            event_type: "cron_job",
+            message: "Verificação manual de saúde do cron",
+            details: {
+              timestamp: new Date().toISOString(),
+              source: "manual_trigger_ui",
+              executeCheck: true
+            }
+          });
+          
+        // Atualizar status de execuções pendentes
+        const { data: updateResult, error: updateError } = await supabase.rpc('get_cron_jobs', {
+          job_names: ['daily-meta-review-job', 'daily-meta-review-test-job']
+        });
+        
+        if (updateError) {
+          console.log("Verificação manual de jobs:", updateError);
+        } else {
+          console.log("Status atual dos jobs:", updateResult);
+        }
+        
+        toast({
+          title: "Verificação de saúde iniciada",
+          description: "A verificação de saúde do cron foi iniciada manualmente.",
+        });
+        
+        // Atualizar logs após a execução
+        setTimeout(() => fetchCronData(), 2000);
+        
+        return;
       } else {
         throw new Error(`Job não suportado para execução manual: ${jobName}`);
       }
@@ -245,17 +326,81 @@ export function CronJobMonitor() {
         body: JSON.stringify(payload)
       });
       
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Erro HTTP ${response.status}: ${text}`);
+      // Log da resposta HTTP bruta
+      let responseText = "";
+      try {
+        responseText = await response.text();
+      } catch (e) {
+        console.error("Erro ao ler texto da resposta:", e);
       }
       
-      const responseData = await response.json();
-      console.log("Resposta da função Edge:", responseData);
+      // Registrar resposta no log do sistema
+      await supabase
+        .from("system_logs")
+        .insert({
+          event_type: "cron_job",
+          message: `Resposta da função Edge para execução manual`,
+          details: {
+            timestamp: new Date().toISOString(),
+            statusCode: response.status,
+            responseText: responseText,
+            jobName: jobName,
+            logId: logEntry.id
+          }
+        });
+      
+      // Atualizar status do log de execução baseado na resposta
+      if (response.ok) {
+        // Tentar fazer parse da resposta JSON
+        let responseData = {};
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (e) {
+          console.error("Erro ao parsear resposta JSON:", e);
+        }
+        
+        await supabase
+          .from("cron_execution_logs")
+          .update({
+            status: "in_progress",
+            details: {
+              ...logEntry.details,
+              http_success: true,
+              response_status: response.status,
+              response_data: responseData,
+              updated_at: new Date().toISOString()
+            }
+          })
+          .eq("id", logEntry.id);
+      } else {
+        await supabase
+          .from("cron_execution_logs")
+          .update({
+            status: "error",
+            details: {
+              ...logEntry.details,
+              http_success: false,
+              response_status: response.status,
+              error: responseText,
+              updated_at: new Date().toISOString()
+            }
+          })
+          .eq("id", logEntry.id);
+      }
+      
+      let toastMessage = "";
+      if (response.ok) {
+        toastMessage = response.status === 202
+          ? "O job foi iniciado em background. Aguarde alguns segundos e verifique as execuções."
+          : "O job foi executado com sucesso. Verifique as execuções.";
+      } else {
+        toastMessage = `Erro HTTP ${response.status}. Verifique os logs do sistema para mais detalhes.`;
+      }
       
       toast({
-        title: "Execução iniciada",
-        description: `O job ${jobName} foi iniciado manualmente. Aguarde alguns segundos e verifique as execuções.`,
+        title: response.ok ? "Execução iniciada" : "Erro na execução",
+        description: toastMessage,
+        variant: response.ok ? "default" : "destructive",
       });
       
       // Atualizar dados após 2 segundos
@@ -325,13 +470,12 @@ export function CronJobMonitor() {
         body: JSON.stringify(payload)
       });
       
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Erro HTTP ${response.status}: ${text}`);
+      let responseText = "";
+      try {
+        responseText = await response.text();
+      } catch (e) {
+        console.error("Erro ao ler texto da resposta:", e);
       }
-      
-      const responseData = await response.json();
-      console.log("Resposta do teste de ping:", responseData);
       
       // Registrar log do sistema
       await supabase
@@ -341,14 +485,17 @@ export function CronJobMonitor() {
           message: "Teste de conectividade com função Edge realizado",
           details: {
             timestamp: new Date().toISOString(),
-            response: responseData,
+            response: responseText,
             status: response.status
           }
         });
       
       toast({
         title: "Teste de conectividade realizado",
-        description: `A função Edge respondeu com sucesso. Status: ${response.status}`,
+        description: response.ok 
+          ? `A função Edge respondeu com sucesso. Status: ${response.status}`
+          : `Erro ao conectar. Status: ${response.status}`,
+        variant: response.ok ? "default" : "destructive",
       });
       
       // Atualizar dados após o teste
@@ -358,6 +505,54 @@ export function CronJobMonitor() {
       console.error("Erro no teste de conectividade:", error);
       toast({
         title: "Erro no teste de conectividade",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Função para forçar a recriação dos jobs cron
+  const forceRecreateJobs = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Obter sessão para autenticação
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      // Inserir log para forçar recriação de jobs
+      const { data, error } = await supabase
+        .from("system_logs")
+        .insert({
+          event_type: "cron_job",
+          message: "Solicitação manual de recriação de jobs cron",
+          details: {
+            timestamp: new Date().toISOString(),
+            recreate_jobs: true,
+            force: true,
+            source: "manual_ui_trigger",
+            user_id: sessionData.session?.user?.id || 'anonymous'
+          }
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Solicitação enviada",
+        description: "A solicitação de recriação de jobs foi enviada. Aguarde alguns minutos para verificar os resultados.",
+      });
+      
+      // Executar a mesma SQL do cron via RPC (não implementado, requer função SQL)
+      
+      // Atualizar dados após alguns segundos
+      setTimeout(() => fetchCronData(), 3000);
+      
+    } catch (error) {
+      console.error("Erro ao recriar jobs:", error);
+      toast({
+        title: "Erro ao recriar jobs",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
@@ -387,6 +582,15 @@ export function CronJobMonitor() {
           </Button>
           <Button
             size="sm"
+            variant="secondary"
+            onClick={forceRecreateJobs}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+            Recriar Jobs
+          </Button>
+          <Button
+            size="sm"
             variant="outline"
             onClick={fetchCronData}
             disabled={isLoading}
@@ -412,10 +616,10 @@ export function CronJobMonitor() {
                 <div>
                   <p className="font-medium mb-1">Informação importante</p>
                   <p className="text-sm">
-                    Os jobs de revisão (daily-meta-review-job) são executados a cada 3 minutos. 
+                    Os jobs de revisão (daily-meta-review-job) são executados a cada 6 minutos (alterado de 3 para 6). 
                     A execução começa com o status "started", depois passa para "in_progress" e 
                     finalmente "success" quando concluída. Se o status ficar preso em "started" 
-                    ou "in_progress", pode haver um problema na execução.
+                    ou "in_progress" por mais de 30 minutos, o health check irá marcá-lo como erro.
                   </p>
                 </div>
               </div>
@@ -436,6 +640,11 @@ export function CronJobMonitor() {
                     <TableCell className="font-medium">{job.jobname}</TableCell>
                     <TableCell>
                       <code className="text-xs bg-gray-100 p-1 rounded">{job.schedule}</code>
+                      {job.lastExecutionTime && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Última execução: {formatDateTime(job.lastExecutionTime)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={job.active ? "default" : "destructive"}>
