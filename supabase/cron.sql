@@ -32,8 +32,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Remover jobs existentes se houver para evitar duplicidade
+-- Remover jobs existentes para evitar duplicidade
 SELECT cron.unschedule('daily-meta-review-job');
+SELECT cron.unschedule('daily-meta-review-test-job');
 SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 SELECT cron.unschedule('google-ads-token-check-job');
@@ -104,16 +105,22 @@ SELECT cron.schedule(
       'executeReview', false
     )
   );
+  
+  -- Chamar a função edge com parâmetro de teste explícito
+  PERFORM
+    net.http_post(
+      url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
+      headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
+      body:='{"scheduled": true, "test": true, "executeReview": false, "source": "cron_test"}'::jsonb
+    );
   $$
 );
 
--- Agendar execução REAL da revisão Meta Ads a cada 3 minutos - AGORA COM FLUXO REAL GARANTIDO
+-- Agendar execução REAL da revisão Meta Ads a cada 3 minutos - VERSÃO CORRIGIDA
 SELECT cron.schedule(
   'daily-meta-review-job',
   '*/3 * * * *',  -- Executa a cada 3 minutos para execução real
   $$
-  -- Primeiro registrar o início da execução no log com ID
-  DO $$
   DECLARE
     log_id UUID;
   BEGIN
@@ -138,34 +145,23 @@ SELECT cron.schedule(
     INSERT INTO public.system_logs (event_type, message, details)
     VALUES (
       'cron_job', 
-      'INICIANDO EXECUÇÃO REAL da revisão diária Meta Ads', 
+      'Iniciando execução REAL da revisão diária Meta Ads via cron', 
       jsonb_build_object(
         'timestamp', now(),
         'logId', log_id,
-        'isReal', true
+        'isReal', true,
+        'job', 'daily-meta-review-job'
       )
     );
     
-    -- CHAMADA REAL COM executeReview=true E test=false EXPLICITAMENTE
+    -- CHAMADA CORRIGIDA com executeReview=true E test=false
     PERFORM
       net.http_post(
         url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
-        body:=concat('{"scheduled": true, "executeReview": true, "source": "cron_real", "test": false, "logId": "', log_id, '", "forceExecution": true}')::jsonb
+        body:=concat('{"scheduled": true, "executeReview": true, "test": false, "source": "cron_real", "logId": "', log_id, '", "forceExecution": true}')::jsonb
       );
-      
-    -- Registrar a tentativa real no log do sistema
-    INSERT INTO public.system_logs (event_type, message, details)
-    VALUES ('cron_job', 'Execução automática REAL da revisão diária Meta Ads ENVIADA', jsonb_build_object(
-      'timestamp', now(), 
-      'source', 'scheduled_job_real', 
-      'log_id', log_id,
-      'executeReview', true,
-      'test', false,
-      'type', 'real_execution'
-    ));
   END;
-  $$;
   $$
 );
 
