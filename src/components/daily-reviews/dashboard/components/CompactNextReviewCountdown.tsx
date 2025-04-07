@@ -1,9 +1,15 @@
 
 import { useState, useEffect, useRef } from "react";
-import { Loader, RefreshCw, AlertTriangle } from "lucide-react";
+import { Loader, RefreshCw, AlertTriangle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMetaReviewService } from "@/components/revisao-nova/hooks/useMetaReviewService";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CompactNextReviewCountdownProps {
   onAnalyzeAll: () => Promise<void>;
@@ -13,13 +19,16 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   const [secondsToNext, setSecondsToNext] = useState<number>(180); // 3 minutos
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { 
     executeAutomaticReview, 
     isLoading, 
-    lastConnectionStatus 
+    lastConnectionStatus,
+    lastErrorMessage,
+    resetConnectionStatus
   } = useMetaReviewService();
 
   // Função para atualizar o contador
@@ -41,12 +50,15 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
     try {
       console.log("[AutoReview] Executando revisão automática programada");
       setIsRunning(true);
+      setErrorDetails(null);
       
       // Usar o serviço dedicado para Meta Review
       const result = await executeAutomaticReview();
       
       if (!result.success) {
         console.error("[AutoReview] Falha na execução automática:", result.error);
+        setErrorDetails(String(result.error));
+        
         toast({
           title: "Erro na execução automática",
           description: String(result.error),
@@ -57,11 +69,22 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
         try {
           await onAnalyzeAll();
           console.log("[AutoReview] Execução via método alternativo concluída");
+          toast({
+            title: "Execução alternativa concluída",
+            description: "A revisão foi iniciada através do método alternativo.",
+          });
         } catch (altError) {
           console.error("[AutoReview] Ambos os métodos falharam:", altError);
+          toast({
+            title: "Falha em ambos os métodos",
+            description: "Não foi possível iniciar a revisão através de nenhum método.",
+            variant: "destructive",
+          });
         }
       } else {
         console.log("[AutoReview] Execução automática iniciada com sucesso");
+        setErrorDetails(null);
+        
         toast({
           title: "Revisão automática iniciada",
           description: "A revisão automática foi iniciada com sucesso pelo serviço dedicado.",
@@ -80,6 +103,8 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       
     } catch (error) {
       console.error("[AutoReview] Erro ao executar revisão automática:", error);
+      setErrorDetails(error instanceof Error ? error.message : String(error));
+      
       toast({
         title: "Erro na revisão automática",
         description: "Ocorreu um erro ao iniciar a revisão automática.",
@@ -97,6 +122,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
     try {
       console.log("[AutoReview] Executando revisão manual");
       setIsRunning(true);
+      setErrorDetails(null);
       
       // Executar a mesma função que é chamada quando o contador chega a zero
       await onAnalyzeAll();
@@ -120,6 +146,8 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
       });
     } catch (error) {
       console.error("[AutoReview] Erro ao executar revisão manual:", error);
+      setErrorDetails(error instanceof Error ? error.message : String(error));
+      
       toast({
         title: "Erro na revisão",
         description: "Ocorreu um erro ao iniciar a revisão.",
@@ -128,6 +156,16 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
     } finally {
       setIsRunning(false);
     }
+  };
+
+  // Resetar status de conexão quando necessário
+  const handleResetConnectionStatus = () => {
+    resetConnectionStatus();
+    setErrorDetails(null);
+    toast({
+      title: "Status de conexão resetado",
+      description: "O status de conexão foi resetado. Tente executar novamente.",
+    });
   };
 
   // Configurar o intervalo quando o componente é montado
@@ -181,8 +219,38 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
         
         {lastConnectionStatus === "error" && (
           <div className="text-[10px] text-red-500 flex items-center mt-1 gap-1">
-            <AlertTriangle className="h-3 w-3" />
-            <span>Problema de conexão detectado</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center cursor-help">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>Problema de conexão detectado</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[250px] text-xs">
+                  <p className="font-semibold">Erro:</p>
+                  <p className="text-[10px]">{lastErrorMessage || "Erro na conexão com a função Edge"}</p>
+                  <p className="mt-1 text-[10px]">Clique no botão abaixo para resetar o status.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <button 
+              onClick={handleResetConnectionStatus}
+              className="text-[10px] text-blue-500 hover:text-blue-700 underline ml-auto"
+            >
+              Resetar
+            </button>
+          </div>
+        )}
+        
+        {errorDetails && (
+          <div className="text-[10px] bg-red-50 border border-red-200 p-1 rounded mt-1">
+            <div className="flex items-center">
+              <Info className="h-3 w-3 text-red-500 mr-1" />
+              <span className="font-semibold text-red-600">Detalhes do erro:</span>
+            </div>
+            <p className="text-red-600 mt-0.5 break-all">{errorDetails}</p>
           </div>
         )}
         
