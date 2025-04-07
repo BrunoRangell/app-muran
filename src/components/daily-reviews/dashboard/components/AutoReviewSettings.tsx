@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AutoReviewTest } from "./AutoReviewTest";
 import { DebugTools } from "./DebugTools";
@@ -7,13 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Clock, AlertCircle, InfoIcon } from "lucide-react";
+import { Clock, AlertCircle, InfoIcon, RefreshCw, Activity } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export function AutoReviewSettings() {
   const [selectedTab, setSelectedTab] = useState("monitor");
   const [isCheckingJobs, setIsCheckingJobs] = useState(false);
   const [cronJobs, setCronJobs] = useState<any[]>([]);
+  const [recentExecutions, setRecentExecutions] = useState<any[]>([]);
+  const [isLoadingExecutions, setIsLoadingExecutions] = useState(false);
   const { toast } = useToast();
 
   // Função para verificar os jobs do cron diretamente na base de dados
@@ -68,17 +72,189 @@ export function AutoReviewSettings() {
     }
   };
 
+  // Nova função para buscar execuções recentes
+  const fetchRecentExecutions = async () => {
+    try {
+      setIsLoadingExecutions(true);
+      
+      // Buscar as execuções mais recentes
+      const { data, error } = await supabase
+        .from('cron_execution_logs')
+        .select('*')
+        .in('job_name', ['daily-meta-review-job', 'daily-meta-review-test-job'])
+        .order('execution_time', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      
+      setRecentExecutions(data || []);
+    } catch (error) {
+      console.error("Erro ao buscar execuções recentes:", error);
+      toast({
+        title: "Erro ao buscar execuções",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingExecutions(false);
+    }
+  };
+
+  // Carregar os jobs quando o componente for montado
+  useEffect(() => {
+    checkCronJobs();
+    fetchRecentExecutions();
+  }, []);
+
+  // Função para formatar data
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "dd/MM/yyyy, HH:mm:ss", { locale: ptBR });
+    } catch (error) {
+      return "Data inválida";
+    }
+  };
+
+  // Função para obter a classe de cor com base no status
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'success':
+      case 'partial_success':
+        return 'bg-green-100 text-green-800';
+      case 'error':
+        return 'bg-red-100 text-red-800';
+      case 'started':
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Função para extrair mensagem dos detalhes
+  const getExecutionDetails = (execution: any) => {
+    if (!execution.details) return null;
+    
+    const details = typeof execution.details === 'string' 
+      ? JSON.parse(execution.details) 
+      : execution.details;
+    
+    return {
+      message: details.message || "",
+      source: details.source || "",
+      isAutomatic: details.isAutomatic,
+      executeReview: details.executeReview,
+      test: details.test
+    };
+  };
+
+  // Função para atualizar manualmente
+  const refreshMonitoring = () => {
+    checkCronJobs();
+    fetchRecentExecutions();
+  };
+
   return (
     <div className="space-y-6">
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="monitor">Monitoramento</TabsTrigger>
-          <TabsTrigger value="support">Suporte Técnico</TabsTrigger>
+          <TabsTrigger value="executions">Execuções Recentes</TabsTrigger>
           <TabsTrigger value="jobs">Jobs Agendados</TabsTrigger>
+          <TabsTrigger value="support">Suporte Técnico</TabsTrigger>
         </TabsList>
         
         <TabsContent value="monitor">
           <AutoReviewTest />
+        </TabsContent>
+        
+        <TabsContent value="executions">
+          <Card>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Monitoramento de Execuções</CardTitle>
+                <CardDescription>
+                  Lista das execuções mais recentes dos jobs do cron
+                </CardDescription>
+              </div>
+              <Button 
+                onClick={refreshMonitoring} 
+                variant="outline" 
+                size="sm" 
+                disabled={isLoadingExecutions}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingExecutions ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Alert className="mb-4 bg-blue-50 border-blue-200">
+                <Activity className="h-4 w-4 text-blue-500" />
+                <AlertTitle>Monitoramento de Execuções</AlertTitle>
+                <AlertDescription className="text-xs">
+                  Esta aba mostra as execuções mais recentes dos jobs do cron. As execuções reais (daily-meta-review-job) devem ocorrer a cada 3 minutos,
+                  enquanto os testes (daily-meta-review-test-job) ocorrem a cada 30 minutos.
+                </AlertDescription>
+              </Alert>
+              
+              {isLoadingExecutions ? (
+                <div className="flex justify-center items-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : recentExecutions.length > 0 ? (
+                <div className="space-y-4">
+                  {recentExecutions.map((execution) => {
+                    const details = getExecutionDetails(execution);
+                    const isRealExecution = execution.job_name === 'daily-meta-review-job';
+                    const jobType = isRealExecution ? 'Execução Real' : 'Teste';
+                    
+                    return (
+                      <div key={execution.id} className={`border rounded-md p-4 ${
+                        isRealExecution ? 'border-l-4 border-l-muran-primary' : ''
+                      }`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-medium">{execution.job_name}</h3>
+                            <p className="text-sm text-gray-500">
+                              {jobType} {details?.test === true ? '(Modo Teste)' : ''}
+                            </p>
+                          </div>
+                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            getStatusColor(execution.status)
+                          }`}>
+                            {execution.status}
+                          </div>
+                        </div>
+                        <div className="mt-2 text-sm space-y-1">
+                          <p><span className="font-medium">Data:</span> {formatDate(execution.execution_time)}</p>
+                          {details?.message && (
+                            <p><span className="font-medium">Mensagem:</span> {details.message}</p>
+                          )}
+                          {details?.source && (
+                            <p><span className="font-medium">Fonte:</span> {details.source}</p>
+                          )}
+                          {details !== null && (
+                            <div className="mt-2 pt-2 border-t text-xs text-gray-500">
+                              <p>Execução {details.isAutomatic ? 'Automática' : 'Manual'} | 
+                                 {details.executeReview === true ? ' Execução Real' : ' Sem Execução'} | 
+                                 {details.test === true ? ' Modo Teste' : ' Modo Normal'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p>Nenhuma execução encontrada. Clique em "Atualizar" para verificar novamente.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="support">
