@@ -1,30 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ReviewsDashboardCard } from '@/components/daily-reviews/dashboard/ReviewsDashboardCard';
 import { GoogleAdsDashboardCard } from '@/components/daily-reviews/dashboard/GoogleAdsDashboardCard';
-import { useNavigate } from 'react-router-dom';
 
 const DailyReviews: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
-  const navigate = useNavigate();
   
   const handleViewClientDetails = (clientId: string) => {
     console.log("Visualizando detalhes do cliente:", clientId);
-    navigate(`/client/${clientId}/reviews`);
-  };
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-  };
-
-  const handleViewModeChange = (mode: string) => {
-    setViewMode(mode);
-  };
-
-  const handleAdjustmentsChange = (showAdjustments: boolean) => {
-    setShowOnlyAdjustments(showAdjustments);
+    // Implementar a navegação para a página de detalhes do cliente, se necessário
   };
 
   return (
@@ -34,12 +20,7 @@ const DailyReviews: React.FC = () => {
       </h1>
       
       <div className="grid md:grid-cols-2 gap-6">
-        <ReviewsDashboardCard 
-          onViewClientDetails={handleViewClientDetails}
-          onSearchChange={handleSearchChange}
-          onViewModeChange={handleViewModeChange}
-          onAdjustmentsChange={handleAdjustmentsChange}
-        />
+        <ReviewsDashboardCard onViewClientDetails={handleViewClientDetails} />
         <GoogleAdsDashboardCard 
           onViewClientDetails={handleViewClientDetails}
           searchQuery={searchQuery}

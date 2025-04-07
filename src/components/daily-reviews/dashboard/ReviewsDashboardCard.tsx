@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useBatchReview } from "../hooks/useBatchReview";
 import { Card } from "@/components/ui/card";
@@ -17,17 +18,9 @@ import { AutoReviewSettings } from "./components/AutoReviewSettings";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
-  onSearchChange?: (value: string) => void;
-  onViewModeChange?: (mode: string) => void;
-  onAdjustmentsChange?: (showAdjustments: boolean) => void;
 }
 
-export const ReviewsDashboardCard = ({ 
-  onViewClientDetails,
-  onSearchChange,
-  onViewModeChange,
-  onAdjustmentsChange
-}: ReviewsDashboardCardProps) => {
+export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
@@ -51,7 +44,6 @@ export const ReviewsDashboardCard = ({
   // Aumentar a frequência de atualização quando uma análise em lote estiver em andamento
   useEffect(() => {
     if (isBatchAnalyzing) {
-      console.log("Análise em lote em andamento, configurando atualizações frequentes");
       const intervalId = setInterval(() => {
         queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
         queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
@@ -61,14 +53,12 @@ export const ReviewsDashboardCard = ({
     }
   }, [isBatchAnalyzing, queryClient]);
   
-  // Atualizar quando uma análise acabar de completar
   useEffect(() => {
     if (!isBatchAnalyzing && batchProgress > 0) {
-      console.log("Análise em lote concluída, atualizando dados");
       queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     }
   }, [isBatchAnalyzing, batchProgress, queryClient]);
-
+  
   useEffect(() => {
     const unsubscribe = queryClient.getQueryCache().subscribe(event => {
       if (
@@ -106,7 +96,6 @@ export const ReviewsDashboardCard = ({
   useEffect(() => {
     // Quando mudar para a aba de clientes e estiver em análise, atualizar os dados
     if (activeTab === 'clientes' && isBatchAnalyzing) {
-      console.log("Aba de clientes ativa durante análise, atualizando dados");
       queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
       queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
     }
@@ -126,26 +115,8 @@ export const ReviewsDashboardCard = ({
   const { clientsWithMetaId, clientsWithoutMetaId } = splitClientsByMetaId(sortedClients);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    if (onSearchChange) {
-      onSearchChange(value);
-    }
-  }, [onSearchChange]);
-
-  const handleViewModeChange = useCallback((mode: string) => {
-    setViewMode(mode);
-    if (onViewModeChange) {
-      onViewModeChange(mode);
-    }
-  }, [onViewModeChange]);
-
-  const handleAdjustmentsChange = useCallback((value: boolean) => {
-    setShowOnlyAdjustments(value);
-    if (onAdjustmentsChange) {
-      onAdjustmentsChange(value);
-    }
-  }, [onAdjustmentsChange]);
+    setSearchQuery(e.target.value);
+  }, []);
 
   const handleReviewClient = useCallback((clientId: string) => {
     console.log("Iniciando revisão para cliente:", clientId);
@@ -209,7 +180,7 @@ export const ReviewsDashboardCard = ({
                 <select 
                   className="h-10 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-muran-primary focus:border-transparent"
                   value={viewMode}
-                  onChange={(e) => handleViewModeChange(e.target.value)}
+                  onChange={(e) => setViewMode(e.target.value)}
                 >
                   <option value="grid">Grade</option>
                   <option value="table">Tabela</option>
@@ -219,7 +190,7 @@ export const ReviewsDashboardCard = ({
             
             <FilterOptions 
               showOnlyAdjustments={showOnlyAdjustments}
-              onShowOnlyAdjustmentsChange={handleAdjustmentsChange}
+              onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
             />
           </div>
 
@@ -234,7 +205,6 @@ export const ReviewsDashboardCard = ({
               processingClients={processingClients}
               onReviewClient={handleReviewClient}
               viewMode={viewMode}
-              onViewClientDetails={onViewClientDetails}
             />
           )}
         </TabsContent>

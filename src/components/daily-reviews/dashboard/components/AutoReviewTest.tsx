@@ -4,34 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
-import { Loader, Play, Check } from "lucide-react";
+import { Loader, Play } from "lucide-react";
 
 export function AutoReviewTest() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [testSuccess, setTestSuccess] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const testCronFunction = async () => {
     setIsLoading(true);
-    setTestSuccess(null);
-    
     try {
-      console.log("Testando função Edge daily-meta-review");
-      
       // Chamamos a função Edge diretamente para testar
       const { data, error } = await supabase.functions.invoke("daily-meta-review", {
         body: { test: true, timestamp: new Date().toISOString() }
       });
       
       if (error) {
-        console.error("Erro ao testar função:", error);
         throw new Error(`Erro ao testar função: ${error.message}`);
       }
       
-      console.log("Resposta do teste:", data);
       setResult(data);
-      setTestSuccess(true);
       
       toast({
         title: "Teste realizado com sucesso",
@@ -40,7 +32,6 @@ export function AutoReviewTest() {
     } catch (error) {
       console.error("Erro ao testar função:", error);
       setResult(null);
-      setTestSuccess(false);
       
       toast({
         title: "Falha no teste",
@@ -79,21 +70,8 @@ export function AutoReviewTest() {
           )}
         </Button>
         
-        {testSuccess === true && (
-          <div className="flex items-center gap-2 text-green-600 bg-green-50 p-2 rounded">
-            <Check size={16} />
-            <span>Função Edge disponível e respondendo</span>
-          </div>
-        )}
-        
-        {testSuccess === false && (
-          <div className="flex items-center gap-2 text-red-600 bg-red-50 p-2 rounded">
-            <span>Erro ao conectar com a função Edge. Verifique os logs para mais detalhes.</span>
-          </div>
-        )}
-        
         {result && (
-          <div className="text-xs bg-gray-50 p-2 rounded border border-gray-100 overflow-auto max-h-60">
+          <div className="text-xs bg-gray-50 p-2 rounded border border-gray-100 overflow-auto max-h-20">
             <pre>{JSON.stringify(result, null, 2)}</pre>
           </div>
         )}
