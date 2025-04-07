@@ -4,24 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PlayIcon, RefreshCw } from "lucide-react";
+import { PlayIcon, RefreshCw, AlertCircle, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function CronJobMonitor() {
   const [isLoading, setIsLoading] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [executions, setExecutions] = useState<any[]>([]);
+  const [systemLogs, setSystemLogs] = useState<any[]>([]);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [activeTab, setActiveTab] = useState("jobs");
   const { toast } = useToast();
 
   useEffect(() => {
     fetchCronData();
     
-    // Atualizar a cada 15 segundos
+    // Atualizar a cada 10 segundos
     const intervalId = setInterval(() => {
       fetchCronData();
-    }, 15000);
+    }, 10000);
     
     return () => clearInterval(intervalId);
   }, []);
@@ -30,7 +33,7 @@ export function CronJobMonitor() {
     try {
       setIsLoading(true);
       
-      // Buscar jobs do cron - CORREÇÃO: usando a tabela cron.job sem o prefixo "public"
+      // Buscar jobs do cron usando a nova função RPC
       const { data: jobsData, error: jobsError } = await supabase.rpc(
         'get_cron_jobs',
         { job_names: ['daily-meta-review-job', 'daily-meta-review-test-job', 'cron-health-check', 'google-ads-token-check-job'] }
@@ -60,6 +63,18 @@ export function CronJobMonitor() {
               jobname: 'daily-meta-review-test-job',
               schedule: '*/30 * * * *',
               active: true
+            },
+            {
+              jobid: 3,
+              jobname: 'cron-health-check',
+              schedule: '*/30 * * * *',
+              active: true
+            },
+            {
+              jobid: 4,
+              jobname: 'google-ads-token-check-job',
+              schedule: '0 */2 * * *',
+              active: true
             }
           ]);
         } else if (jobExpressions && jobExpressions.length > 0) {
@@ -82,10 +97,21 @@ export function CronJobMonitor() {
         .from('cron_execution_logs')
         .select('*')
         .order('execution_time', { ascending: false })
-        .limit(10);
+        .limit(20);
       
       if (execError) throw execError;
       setExecutions(execData || []);
+      
+      // Buscar logs do sistema relacionados ao cron
+      const { data: logsData, error: logsError } = await supabase
+        .from('system_logs')
+        .select('*')
+        .eq('event_type', 'cron_job')
+        .order('created_at', { ascending: false })
+        .limit(30);
+        
+      if (logsError) throw logsError;
+      setSystemLogs(logsData || []);
       
       setLastRefreshed(new Date());
     } catch (error) {
@@ -117,6 +143,42 @@ export function CronJobMonitor() {
     }
   };
 
+  // Função para obter cor da badge de status
+  const getStatusVariant = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'success':
+      case 'test_success':
+      case 'active':
+        return "default";
+      case 'error':
+        return "destructive";
+      case 'started':
+      case 'in_progress':
+        return "warning";
+      default:
+        return "secondary";
+    }
+  };
+
+  // Função para exibir detalhes da execução como tooltip ou em um formato legível
+  const formatExecutionDetails = (details: any) => {
+    if (!details) return "Sem detalhes";
+    
+    const keyInfo = [];
+    
+    if (details.executeReview === true) keyInfo.push("Executa Revisão: Sim");
+    if (details.executeReview === false) keyInfo.push("Executa Revisão: Não");
+    if (details.test === true) keyInfo.push("Modo Teste: Sim");
+    if (details.test === false) keyInfo.push("Modo Teste: Não");
+    if (details.forceExecution === true) keyInfo.push("Forçar Execução: Sim");
+    if (details.source) keyInfo.push(`Origem: ${details.source}`);
+    if (details.isAutomatic === true) keyInfo.push("Automático: Sim");
+    if (details.isAutomatic === false) keyInfo.push("Automático: Não");
+    
+    return keyInfo.join(" | ");
+  };
+
   // Função para disparar execução manual
   const triggerManualExecution = async (jobName: string) => {
     try {
@@ -133,7 +195,8 @@ export function CronJobMonitor() {
             source: "manual_trigger",
             isAutomatic: false,
             executeReview: jobName === "daily-meta-review-job",
-            test: jobName === "daily-meta-review-test-job"
+            test: jobName === "daily-meta-review-test-job",
+            forceExecution: jobName === "daily-meta-review-job"
           }
         })
         .select()
@@ -207,6 +270,27 @@ export function CronJobMonitor() {
     }
   };
 
+  // Função para mostrar há quanto tempo ocorreu o evento
+  const getTimeAgo = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      
+      const seconds = Math.floor(diffMs / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      
+      if (seconds < 60) return `${seconds} segundos atrás`;
+      if (minutes < 60) return `${minutes} minutos atrás`;
+      if (hours < 24) return `${hours} horas atrás`;
+      
+      return formatDateTime(dateStr);
+    } catch (error) {
+      return dateStr;
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -228,9 +312,29 @@ export function CronJobMonitor() {
       </CardHeader>
       
       <CardContent>
-        <div className="space-y-5">
-          <div>
-            <h3 className="text-sm font-medium mb-2">Jobs Agendados</h3>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="jobs">Jobs Agendados</TabsTrigger>
+            <TabsTrigger value="executions">Execuções Recentes</TabsTrigger>
+            <TabsTrigger value="logs">Logs do Sistema</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="jobs" className="space-y-4">
+            <div className="bg-amber-50 text-amber-800 p-4 rounded-md mb-4">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium mb-1">Informação importante</p>
+                  <p className="text-sm">
+                    Os jobs de revisão (daily-meta-review-job) são executados a cada 3 minutos. 
+                    A execução começa com o status "started", depois passa para "in_progress" e 
+                    finalmente "success" quando concluída. Se o status ficar preso em "started" 
+                    ou "in_progress", pode haver um problema na execução.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             <Table>
               <TableHeader>
                 <TableRow>
@@ -244,7 +348,9 @@ export function CronJobMonitor() {
                 {jobs.map((job) => (
                   <TableRow key={job.jobid}>
                     <TableCell className="font-medium">{job.jobname}</TableCell>
-                    <TableCell><code>{job.schedule}</code></TableCell>
+                    <TableCell>
+                      <code className="text-xs bg-gray-100 p-1 rounded">{job.schedule}</code>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={job.active ? "default" : "destructive"}>
                         {job.active ? 'Ativo' : 'Inativo'}
@@ -272,52 +378,91 @@ export function CronJobMonitor() {
                 )}
               </TableBody>
             </Table>
-          </div>
+          </TabsContent>
           
-          <div>
-            <h3 className="text-sm font-medium mb-2">Execuções Recentes</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Job</TableHead>
-                  <TableHead>Hora</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Tipo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {executions.map((exec) => (
-                  <TableRow key={exec.id}>
-                    <TableCell className="font-medium">{exec.job_name}</TableCell>
-                    <TableCell>{formatDateTime(exec.execution_time)}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        exec.status === 'completed' || exec.status === 'success' || exec.status === 'test_success' || exec.status === 'active' ? "default" : 
-                        exec.status === 'error' ? "destructive" : 
-                        "default"
-                      }>
-                        {exec.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {exec.details?.executeReview === true ? "Execução Real" : 
-                       exec.details?.test === true ? "Teste" : 
-                       exec.job_name === "cron-health-check" ? "Health Check" :
-                       "N/A"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {executions.length === 0 && (
+          <TabsContent value="executions">
+            <div>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                      Nenhuma execução encontrada
-                    </TableCell>
+                    <TableHead>Job</TableHead>
+                    <TableHead>Hora</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Detalhes</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {executions.map((exec) => (
+                    <TableRow key={exec.id}>
+                      <TableCell className="font-medium">{exec.job_name}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span>{formatDateTime(exec.execution_time)}</span>
+                          <span className="text-xs text-gray-500 flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {getTimeAgo(exec.execution_time)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(exec.status)}>
+                          {exec.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-sm truncate">
+                        <div className="text-xs">
+                          {formatExecutionDetails(exec.details)}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {executions.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-4 text-gray-500">
+                        Nenhuma execução encontrada
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="logs">
+            <div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mensagem</TableHead>
+                    <TableHead>Hora</TableHead>
+                    <TableHead>Detalhes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {systemLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium">{log.message}</TableCell>
+                      <TableCell>{formatDateTime(log.created_at)}</TableCell>
+                      <TableCell className="max-w-sm truncate">
+                        <div className="text-xs">
+                          {log.details && JSON.stringify(log.details).substring(0, 100)}
+                          {log.details && JSON.stringify(log.details).length > 100 ? '...' : ''}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {systemLogs.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4 text-gray-500">
+                        Nenhum log encontrado
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

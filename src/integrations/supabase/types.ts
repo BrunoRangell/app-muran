@@ -774,6 +774,15 @@ export type Database = {
           cron_expression: string
         }[]
       }
+      get_cron_jobs: {
+        Args: { job_names: string[] }
+        Returns: {
+          jobid: number
+          jobname: string
+          schedule: string
+          active: boolean
+        }[]
+      }
       insert_daily_budget_review: {
         Args: {
           p_client_id: string
