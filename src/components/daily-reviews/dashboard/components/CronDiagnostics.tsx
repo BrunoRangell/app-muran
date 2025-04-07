@@ -114,7 +114,7 @@ export function CronDiagnostics() {
                   <div key={job.jobid} className="border p-3 rounded-md">
                     <div className="flex justify-between">
                       <div className="font-medium">{job.jobname}</div>
-                      <Badge variant={job.active ? "success" : "destructive"}>
+                      <Badge variant={job.active ? "default" : "destructive"}>
                         {job.active ? "Ativo" : "Inativo"}
                       </Badge>
                     </div>
@@ -170,7 +170,7 @@ export function CronDiagnostics() {
                     <div className="flex justify-between">
                       <div className="font-medium">{exec.job_name}</div>
                       <Badge variant={
-                        exec.status === 'completed' || exec.status === 'success' ? "success" : 
+                        exec.status === 'completed' || exec.status === 'success' ? "default" : 
                         exec.status === 'error' ? "destructive" : 
                         "default"
                       }>

@@ -121,6 +121,7 @@ SELECT cron.schedule(
   'daily-meta-review-job',
   '*/3 * * * *',  -- Executa a cada 3 minutos para execução real
   $$
+  -- Criar o registro de log para a execução REAL
   DECLARE
     log_id UUID;
   BEGIN
@@ -159,7 +160,7 @@ SELECT cron.schedule(
       net.http_post(
         url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
-        body:=concat('{"scheduled": true, "executeReview": true, "test": false, "source": "cron_real", "logId": "', log_id, '", "forceExecution": true}')::jsonb
+        body:=format('{"scheduled": true, "executeReview": true, "test": false, "source": "cron_real", "logId": "%s", "forceExecution": true}', log_id)::jsonb
       );
   END;
   $$
@@ -193,7 +194,7 @@ SELECT cron.schedule(
       net.http_post(
         url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/google-ads-token-check',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
-        body:=concat('{"scheduled": true, "source": "cron", "logId": "', log_id, '"}'::text)::jsonb
+        body:=format('{"scheduled": true, "source": "cron", "logId": "%s"}', log_id)::jsonb
       );
     
     -- Registrar a tentativa no log do sistema
