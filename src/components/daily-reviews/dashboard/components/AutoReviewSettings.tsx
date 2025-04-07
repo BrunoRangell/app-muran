@@ -28,6 +28,7 @@ export function AutoReviewSettings() {
       if (isCheckingStatus) return;
       
       setIsCheckingStatus(true);
+      console.log("Verificando status do cron...");
       
       const { data: logs, error } = await supabase
         .from("system_logs")
@@ -41,6 +42,8 @@ export function AutoReviewSettings() {
         const logTime = new Date(lastLog.created_at);
         const hoursSince = (new Date().getTime() - logTime.getTime()) / (1000 * 60 * 60);
         
+        console.log("Último log cron encontrado de", hoursSince, "horas atrás");
+        
         if (hoursSince < 24) {
           setCronStatus('active');
           setIsCheckingStatus(false);
@@ -50,6 +53,8 @@ export function AutoReviewSettings() {
       
       if (lastBatchReviewTime) {
         const hoursSinceLastRun = (new Date().getTime() - new Date(lastBatchReviewTime).getTime()) / (1000 * 60 * 60);
+        console.log("Última execução do batch há", hoursSinceLastRun, "horas");
+        
         if (hoursSinceLastRun < 36) {
           setCronStatus('active');
           setIsCheckingStatus(false);
@@ -58,6 +63,7 @@ export function AutoReviewSettings() {
       }
       
       try {
+        console.log("Testando conexão com a função edge...");
         const response = await supabase.functions.invoke("daily-meta-review", {
           body: { 
             test: true,
@@ -66,7 +72,8 @@ export function AutoReviewSettings() {
           }
         });
         
-        console.log("Teste de status da função edge:", response);
+        console.log("Resposta do teste de status da função edge:", response);
+        
         if (!response.error) {
           setCronStatus('active');
         } else {
@@ -90,11 +97,13 @@ export function AutoReviewSettings() {
     // Primeiro vamos navegar para a aba de clientes
     const clientsTab = document.querySelector('[value="clientes"]') as HTMLElement;
     if (clientsTab) {
+      console.log("Navegando para a aba de clientes antes de iniciar a análise");
       clientsTab.click();
       
       // Esperar um momento para garantir que a navegação ocorreu
       setTimeout(() => {
         // Agora executamos a análise
+        console.log("Iniciando análise de todos os clientes");
         reviewAllClients();
         
         // Invalidar as queries para forçar atualização dos dados
@@ -109,6 +118,7 @@ export function AutoReviewSettings() {
       }, 100);
     } else {
       // Caso não encontre a tab, executa de qualquer forma
+      console.log("Tab clientes não encontrada, executando análise diretamente");
       reviewAllClients();
       toast({
         title: "Análise iniciada",

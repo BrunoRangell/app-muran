@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -91,6 +92,7 @@ export const useBatchReview = () => {
     mutationFn: async () => {
       console.log("Iniciando análise em lote de todos os clientes");
       
+      // Registrar início do processo
       const { data: logEntry, error: logError } = await supabase
         .from('cron_execution_logs')
         .insert({
@@ -107,50 +109,65 @@ export const useBatchReview = () => {
         .single();
       
       if (logError) {
+        console.error("Erro ao criar log de execução:", logError);
         throw new Error(`Erro ao criar log de execução: ${logError.message}`);
       }
       
-      const { data, error: edgeError } = await supabase.functions.invoke(
-        "daily-meta-review",
-        {
-          body: {
-            executeReview: true,
-            manual: true,
-            logId: logEntry.id,
-            isAutomatic: false,
-            timestamp: new Date().toISOString()
+      // Chamar a função Edge para iniciar revisão
+      try {
+        const { data, error: edgeError } = await supabase.functions.invoke(
+          "daily-meta-review",
+          {
+            body: {
+              executeReview: true,
+              manual: true,
+              logId: logEntry?.id,
+              isAutomatic: false,
+              timestamp: new Date().toISOString()
+            }
           }
+        );
+        
+        if (edgeError) {
+          console.error("Erro na função Edge:", edgeError);
+          throw new Error(`Erro na função Edge: ${edgeError.message}`);
         }
-      );
-      
-      if (edgeError) {
-        throw new Error(`Erro na função Edge: ${edgeError.message}`);
+        
+        return { 
+          success: true, 
+          logId: logEntry?.id,
+          ...data
+        };
+      } catch (error) {
+        console.error("Falha ao chamar função Edge:", error);
+        throw error;
       }
-      
-      return { 
-        success: true, 
-        logId: logEntry.id,
-        ...data
-      };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Análise em lote iniciada com sucesso:", data);
+      
       toast({
         title: "Análise iniciada",
         description: "A análise de todos os clientes foi iniciada. Acompanhe o progresso na barra acima.",
       });
       
+      // Atualizar informações do lote
       refetchBatchInfo();
       
+      // Configurar atualização periódica durante o processamento
       const intervalId = setInterval(() => {
         refetchBatchInfo();
       }, 3000);
       
+      // Limpar intervalo após 2 minutos e atualizar lista de clientes
       setTimeout(() => {
         clearInterval(intervalId);
         queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
       }, 2 * 60 * 1000);
     },
     onError: (error) => {
+      console.error("Erro na análise em lote:", error);
+      
       toast({
         title: "Erro na análise em lote",
         description: error instanceof Error ? error.message : "Ocorreu um erro ao iniciar a análise em lote",
@@ -316,6 +333,7 @@ export const useBatchReview = () => {
       return;
     }
     
+    console.log("Iniciando análise em lote para todos os clientes");
     return batchReviewMutation.mutateAsync();
   };
 
