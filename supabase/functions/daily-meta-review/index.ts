@@ -515,6 +515,9 @@ serve(async (req) => {
       
       console.log("Recebida requisição POST:", body);
       
+      // LOG ADICIONAL PARA DEPURAÇÃO NO CRON
+      await logMessage(supabase, "Dados recebidos na requisição POST", body);
+
       // Verificar se é um ping de teste
       if (body.method === "ping") {
         return new Response(
@@ -530,17 +533,29 @@ serve(async (req) => {
       let logId = body.logId;
       const isAutomatic = body.scheduled === true;
       
+      // IMPORTANTE: Verificar explicitamente o parâmetro "executeReview"
+      // Agora usamos DOIS parâmetros para determinar se a execução é real:
+      // 1. executeReview: deve ser true para execução real
+      // 2. test: deve ser false para execução real
+      const shouldExecuteReview = body.executeReview === true && (body.test !== true || body.forceExecution === true);
+      
+      await logMessage(supabase, `Parâmetros de execução: executeReview=${body.executeReview}, test=${body.test}, forceExecution=${body.forceExecution}`, { 
+        shouldExecuteReview, 
+        body
+      });
+      
       if (!logId && (body.scheduled || body.manual)) {
         const { data: logEntry, error } = await supabase
           .from("cron_execution_logs")
           .insert({
-            job_name: "daily-meta-review-job",
+            job_name: body.test ? "daily-meta-review-test-job" : "daily-meta-review-job",
             status: "started",
             details: {
-              source: body.scheduled ? "scheduled" : "manual",
+              source: body.source || (body.scheduled ? "scheduled" : "manual"),
               test: !!body.test,
               timestamp: new Date().toISOString(),
               isAutomatic: body.scheduled === true,
+              executeReview: shouldExecuteReview,
               unified: true // Indicando que usa o novo fluxo unificado
             },
           })
@@ -550,14 +565,20 @@ serve(async (req) => {
         if (!error && logEntry) {
           logId = logEntry.id;
           console.log(`Criado novo log de execução com ID: ${logId}`);
+          await logMessage(supabase, `Criado novo log de execução com ID: ${logId}`, {
+            jobName: body.test ? "daily-meta-review-test-job" : "daily-meta-review-job",
+            shouldExecuteReview
+          });
         } else {
           console.error("Erro ao criar log de execução:", error);
+          await logMessage(supabase, `Erro ao criar log de execução: ${error?.message}`, { error });
         }
       }
       
       // Se é apenas um teste, não executar a revisão
-      if (body.test) {
+      if (body.test === true && body.forceExecution !== true) {
         console.log("Requisição de teste recebida, não executando revisão");
+        await logMessage(supabase, "Requisição de teste recebida, não executando revisão");
         
         // Mesmo sendo teste, atualizar o status para completed
         if (logId) {
@@ -569,7 +590,8 @@ serve(async (req) => {
                 timestamp: new Date().toISOString(),
                 message: "Teste concluído com sucesso, sem execução real",
                 test: true,
-                isAutomatic
+                isAutomatic,
+                executeReview: false
               }
             })
             .eq("id", logId);
@@ -581,7 +603,8 @@ serve(async (req) => {
             message: "Teste realizado com sucesso",
             timestamp: new Date().toISOString(),
             logId,
-            isAutomatic
+            isAutomatic,
+            executionType: "test"
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -590,13 +613,14 @@ serve(async (req) => {
         );
       }
       
-      // IMPORTANTE: Modificação aqui para garantir que executeReview seja verdadeiro por padrão
-      // se não for especificado explicitamente como false
-      const shouldExecuteReview = body.executeReview !== false;
-      
       // Se não foi solicitada a execução da revisão, retornar
       if (!shouldExecuteReview) {
-        console.log("Solicitação recebida, mas executeReview=false. Não executando revisão.");
+        console.log("Solicitação recebida, mas executeReview=false ou test=true. Não executando revisão.");
+        await logMessage(supabase, "Solicitação recebida, mas parâmetros indicam que não deve executar revisão", {
+          executeReview: body.executeReview,
+          test: body.test,
+          forceExecution: body.forceExecution
+        });
         
         // Atualizar o status como completed mesmo sem executar revisão
         if (logId) {
@@ -606,9 +630,11 @@ serve(async (req) => {
               status: "completed",
               details: {
                 timestamp: new Date().toISOString(),
-                message: "Solicitação recebida, mas executeReview=false",
+                message: "Solicitação recebida, mas não deve executar revisão",
                 completedAt: new Date().toISOString(),
-                isAutomatic
+                isAutomatic,
+                executeReview: false,
+                test: body.test === true
               }
             })
             .eq("id", logId);
@@ -617,8 +643,9 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: true,
-            message: "Solicitação recebida, mas executeReview=false",
+            message: "Solicitação recebida, mas não deve executar revisão",
             timestamp: new Date().toISOString(),
+            shouldExecuteReview: false
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -627,10 +654,12 @@ serve(async (req) => {
         );
       }
       
-      console.log("Iniciando processamento de revisão com executeReview=true");
-      await logMessage(supabase, "Iniciando processamento da revisão diária (fluxo unificado)", { 
+      console.log("Iniciando processamento de revisão REAL com executeReview=true");
+      await logMessage(supabase, "Iniciando processamento da revisão diária REAL (fluxo unificado)", { 
         logId, 
-        isAutomatic 
+        isAutomatic,
+        executeReview: true,
+        test: false
       });
       
       // Iniciar o processamento unificado
@@ -645,11 +674,15 @@ serve(async (req) => {
           // @ts-ignore - Edge Runtime existe em ambiente de produção
           EdgeRuntime.waitUntil(backgroundPromise);
           console.log("Processamento em background registrado com EdgeRuntime.waitUntil");
+          await logMessage(supabase, "Processamento em background registrado com EdgeRuntime.waitUntil");
         } else {
           console.log("EdgeRuntime.waitUntil não está disponível, o processamento pode ser interrompido");
+          await logMessage(supabase, "EdgeRuntime.waitUntil não está disponível, processamento em background iniciado sem garantias");
+          backgroundPromise = processClientsInBackground(supabase, logId, isAutomatic);
         }
       } catch (error) {
         console.error("Erro ao usar EdgeRuntime.waitUntil:", error);
+        await logMessage(supabase, `Erro ao usar EdgeRuntime.waitUntil: ${error instanceof Error ? error.message : String(error)}`);
         backgroundPromise = processClientsInBackground(supabase, logId, isAutomatic);
       }
       
@@ -668,6 +701,11 @@ serve(async (req) => {
             .from("system_configs")
             .update({ value: timeNow })
             .eq("id", existingConfig.id);
+          
+          await logMessage(supabase, "Timestamp de última revisão atualizado", { 
+            timestamp: timeNow,
+            existingConfigId: existingConfig.id
+          });
         } else {
           await supabase
             .from("system_configs")
@@ -675,20 +713,26 @@ serve(async (req) => {
               key: "last_batch_review_time",
               value: timeNow
             });
+          
+          await logMessage(supabase, "Novo registro de timestamp de última revisão criado", { 
+            timestamp: timeNow
+          });
         }
       } catch (updateError) {
         console.error("Erro ao atualizar timestamp de revisão:", updateError);
+        await logMessage(supabase, `Erro ao atualizar timestamp de revisão: ${updateError instanceof Error ? updateError.message : String(updateError)}`);
       }
       
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Processamento de revisão iniciado em background (fluxo unificado)",
+          message: "Processamento de revisão REAL iniciado em background (fluxo unificado)",
           timestamp: new Date().toISOString(),
           logId,
           isAutomatic,
           totalClients: startResult.totalClients || 0,
-          unifiedProcess: true
+          unifiedProcess: true,
+          executionType: "real"
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

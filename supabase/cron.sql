@@ -75,17 +75,49 @@ VALUES (
   )
 );
 
--- Agendar execução da revisão Meta Ads a cada 3 minutos para testes e execução real
+-- Adicionar job SEPARADO para execução de teste - executa a cada 30 minutos
+SELECT cron.schedule(
+  'daily-meta-review-test-job',
+  '*/30 * * * *',  -- Executa a cada 30 minutos
+  $$
+  -- Registrar o teste no log do sistema
+  INSERT INTO public.system_logs (event_type, message, details)
+  VALUES (
+    'cron_job', 
+    'Teste de revisão automática a cada 30 minutos', 
+    jsonb_build_object(
+      'timestamp', now(),
+      'source', 'test_interval'
+    )
+  );
+  
+  -- Criar um registro para o teste
+  INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
+  VALUES (
+    'daily-meta-review-test-job', 
+    now(), 
+    'started', 
+    jsonb_build_object(
+      'timestamp', now(),
+      'source', 'scheduled_test',
+      'test', true,
+      'executeReview', false
+    )
+  );
+  $$
+);
+
+-- Agendar execução REAL da revisão Meta Ads a cada 3 minutos - AGORA COM FLUXO REAL GARANTIDO
 SELECT cron.schedule(
   'daily-meta-review-job',
-  '*/3 * * * *',  -- Executa a cada 3 minutos para testes e execução real
+  '*/3 * * * *',  -- Executa a cada 3 minutos para execução real
   $$
   -- Primeiro registrar o início da execução no log com ID
   DO $$
   DECLARE
     log_id UUID;
   BEGIN
-    -- Criar o registro de log para a execução
+    -- Criar o registro de log para a execução REAL
     INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
     VALUES (
       'daily-meta-review-job', 
@@ -95,27 +127,41 @@ SELECT cron.schedule(
         'timestamp', now(),
         'source', 'scheduled',
         'isAutomatic', true,
-        'executeReview', true
+        'executeReview', true,
+        'executionType', 'real',
+        'test', false
       )
     )
     RETURNING id INTO log_id;
     
-    -- MUDANÇA CRUCIAL: Parâmetro executeReview definido como true e claramente especificado
-    -- Isso garante que a função saiba que deve executar a revisão real e não apenas um teste
+    -- LOG DE DEPURAÇÃO
+    INSERT INTO public.system_logs (event_type, message, details)
+    VALUES (
+      'cron_job', 
+      'INICIANDO EXECUÇÃO REAL da revisão diária Meta Ads', 
+      jsonb_build_object(
+        'timestamp', now(),
+        'logId', log_id,
+        'isReal', true
+      )
+    );
+    
+    -- CHAMADA REAL COM executeReview=true E test=false EXPLICITAMENTE
     PERFORM
       net.http_post(
         url:='https://socrnutfpqtcjmetskta.supabase.co/functions/v1/daily-meta-review',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw"}'::jsonb,
-        body:=concat('{"scheduled": true, "executeReview": true, "source": "cron", "test": false, "logId": "', log_id, '"}')::jsonb
+        body:=concat('{"scheduled": true, "executeReview": true, "source": "cron_real", "test": false, "logId": "', log_id, '", "forceExecution": true}')::jsonb
       );
       
-    -- Registrar a tentativa no log do sistema
+    -- Registrar a tentativa real no log do sistema
     INSERT INTO public.system_logs (event_type, message, details)
-    VALUES ('cron_job', 'Execução automática da revisão diária Meta Ads', jsonb_build_object(
+    VALUES ('cron_job', 'Execução automática REAL da revisão diária Meta Ads ENVIADA', jsonb_build_object(
       'timestamp', now(), 
-      'source', 'scheduled_job', 
+      'source', 'scheduled_job_real', 
       'log_id', log_id,
       'executeReview', true,
+      'test', false,
       'type', 'real_execution'
     ));
   END;
