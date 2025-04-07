@@ -38,10 +38,10 @@ SELECT cron.unschedule('cron-health-check');
 SELECT cron.unschedule('cron-status-keeper');
 SELECT cron.unschedule('google-ads-token-check-job');
 
--- Agendar execução da revisão Meta Ads a cada 3 minutos para testes (posteriormente será ajustado para 5 horas)
+-- Agendar execução da revisão Meta Ads a cada 3 minutos (modificado de 5 horas para 3 minutos)
 SELECT cron.schedule(
   'daily-meta-review-job',
-  '*/3 * * * *',  -- Executa a cada 3 minutos para testes
+  '*/3 * * * *',  -- Executa a cada 3 minutos para testes e execução real
   $$
   -- Primeiro registrar o início da execução no log com ID
   DO $$

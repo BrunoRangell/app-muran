@@ -218,7 +218,7 @@ export function AutoReviewSettings() {
                   <div>
                     <CardTitle className="text-lg">Revisão Automática</CardTitle>
                     <CardDescription>
-                      As revisões de orçamento são executadas automaticamente a cada 5 horas.
+                      As revisões de orçamento são executadas automaticamente a cada 3 minutos.
                     </CardDescription>
                   </div>
                   {renderStatusBadge()}
@@ -321,7 +321,7 @@ export function AutoReviewSettings() {
                     <p className="font-medium mb-1">Informações importantes:</p>
                     <ul className="list-disc pl-5 space-y-1">
                       <li>Esta operação irá executar uma revisão completa de todos os clientes com Meta Ads configurado</li>
-                      <li>O agendamento automático ocorre a cada 5 horas através de cron</li>
+                      <li>O agendamento automático ocorre a cada 3 minutos através de cron</li>
                       <li>Para verificar detalhes completos, use a aba de Diagnóstico</li>
                       <li>A execução pode levar alguns minutos, dependendo do número de clientes</li>
                     </ul>
