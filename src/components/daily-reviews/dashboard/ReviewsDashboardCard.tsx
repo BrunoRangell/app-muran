@@ -1,144 +1,218 @@
 
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClientReviewList } from "./components/ClientReviewList";
+import { useState, useCallback, useEffect } from "react";
+import { useBatchReview } from "../hooks/useBatchReview";
+import { Card } from "@/components/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { DashboardHeader } from "./components/DashboardHeader";
+import { AnalysisProgress } from "./components/AnalysisProgress";
+import { SearchControls } from "./components/SearchControls";
+import { FilterOptions } from "./components/FilterOptions";
+import { ClientsGrid } from "./components/ClientsGrid";
+import { EmptyStateView } from "./components/EmptyStateView";
+import { LoadingView } from "./components/LoadingView";
+import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
+import { splitClientsByMetaId } from "./utils/clientSorting";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AutoReviewSettings } from "./components/AutoReviewSettings";
 
 interface ReviewsDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
 }
 
-export function ReviewsDashboardCard({ onViewClientDetails }: ReviewsDashboardCardProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
+export const ReviewsDashboardCard = ({ onViewClientDetails }: ReviewsDashboardCardProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
+  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [activeTab, setActiveTab] = useState("clientes");
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   
-  // Consulta para buscar clientes com revisão Meta
-  const { data: clientsData, isLoading, error, refetch } = useQuery({
-    queryKey: ["clients-with-reviews"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients_with_reviews")
-        .select("*")
-        .order("client_name");
-        
-      if (error) throw error;
-      return data || [];
-    },
-  });
+  const { 
+    clientsWithReviews, 
+    isLoading, 
+    processingClients, 
+    reviewSingleClient, 
+    reviewAllClients,
+    lastBatchReviewTime,
+    isBatchAnalyzing,
+    batchProgress,
+    totalClientsToAnalyze,
+    refetchClients
+  } = useBatchReview();
   
-  // Buscar informações sobre a última revisão em lote
-  const { data: lastBatchInfo } = useQuery({
-    queryKey: ["last-batch-review-info"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("system_configs")
-        .select("value")
-        .eq("key", "last_batch_review_time")
-        .single();
-        
-      if (error) return null;
-      return data || null;
-    },
-  });
-  
-  // Função para analisar todos os clientes
-  const handleAnalyzeAll = async () => {
-    try {
-      setIsProcessing(true);
+  // Aumentar a frequência de atualização quando uma análise em lote estiver em andamento
+  useEffect(() => {
+    if (isBatchAnalyzing) {
+      const intervalId = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+        queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+      }, 3000); // Atualizar a cada 3 segundos durante a análise
       
-      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
-        body: {
-          executeReview: true,
-          scheduled: false,
-          source: "ui_manual_trigger"
+      return () => clearInterval(intervalId);
+    }
+  }, [isBatchAnalyzing, queryClient]);
+  
+  useEffect(() => {
+    if (!isBatchAnalyzing && batchProgress > 0) {
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    }
+  }, [isBatchAnalyzing, batchProgress, queryClient]);
+  
+  useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe(event => {
+      if (
+        event.type === 'updated' || 
+        event.type === 'added' || 
+        event.type === 'removed'
+      ) {
+        if (
+          (event.query.queryKey && 
+           Array.isArray(event.query.queryKey) &&
+           event.query.queryKey[0] === "clients-with-custom-budgets") ||
+          (Array.isArray(event.query.queryKey) && 
+           event.query.queryKey.length > 0 &&
+           Array.isArray(event.query.queryKey[0]) && 
+           event.query.queryKey[0].includes && 
+           event.query.queryKey[0].includes("custom-budget"))
+        ) {
+          console.log("Mudança detectada em orçamentos personalizados, atualizando...");
+          queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+          toast({
+            title: "Orçamentos atualizados",
+            description: "O painel foi atualizado com as alterações nos orçamentos personalizados.",
+            duration: 3000,
+          });
         }
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Processo iniciado",
-        description: "A análise de todos os clientes foi iniciada com sucesso.",
-      });
-      
-      // Aguardar um pouco e então atualizar a lista
-      setTimeout(() => {
-        refetch();
-      }, 3000);
-      
-    } catch (error) {
-      console.error("Erro ao analisar todos os clientes:", error);
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao iniciar análise",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-  
-  // Função para formatar a data da última revisão
-  const formatLastReviewTime = () => {
-    if (!lastBatchInfo?.value) return "Nunca realizada";
+      }
+    });
     
-    try {
-      const date = new Date(lastBatchInfo.value);
-      return date.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return "Formato de data inválido";
-    }
-  };
+    return () => {
+      unsubscribe();
+    };
+  }, [queryClient, toast]);
   
+  // Verificar mudanças na aba ativa
+  useEffect(() => {
+    // Quando mudar para a aba de clientes e estiver em análise, atualizar os dados
+    if (activeTab === 'clientes' && isBatchAnalyzing) {
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["last-batch-review-info"] });
+    }
+  }, [activeTab, isBatchAnalyzing, queryClient]);
+  
+  const progressPercentage = totalClientsToAnalyze > 0 
+    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
+    : 0;
+  
+  const filteredByName = clientsWithReviews ? filterClientsByName(clientsWithReviews, searchQuery) : [];
+  const filteredByAdjustment = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
+  
+  const sortedClients = filteredByAdjustment.sort((a, b) => 
+    a.company_name.localeCompare(b.company_name)
+  );
+  
+  const { clientsWithMetaId, clientsWithoutMetaId } = splitClientsByMetaId(sortedClients);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
+
+  const handleReviewClient = useCallback((clientId: string) => {
+    console.log("Iniciando revisão para cliente:", clientId);
+    reviewSingleClient(clientId).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    });
+  }, [reviewSingleClient, queryClient]);
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>Relatórios de Revisão Meta Ads</CardTitle>
-            <CardDescription>
-              Visualize e gerencie relatórios de revisão diária para seus clientes
-            </CardDescription>
-          </div>
-          
-          <Button
-            onClick={handleAnalyzeAll}
-            disabled={isProcessing}
-            className="bg-[#ff6e00] hover:bg-[#e66300] text-white"
-          >
-            {isProcessing ? "Processando..." : "Analisar Todos"}
-          </Button>
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        <div className="mb-4 text-sm text-gray-500">
-          <span>Última revisão em lote: {formatLastReviewTime()}</span>
-        </div>
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="clientes">Clientes</TabsTrigger>
+          <TabsTrigger value="revisao-automatica">Revisão Automática</TabsTrigger>
+        </TabsList>
         
-        <ClientReviewList 
-          clients={clientsData || []} 
-          isLoading={isLoading} 
-          error={error}
-          onViewDetails={onViewClientDetails}
-          onRefresh={refetch}
-        />
-      </CardContent>
-      
-      <CardFooter className="border-t pt-4 flex justify-between">
-        <div className="text-sm text-gray-500">
-          {clientsData ? `${clientsData.length} clientes com Meta Ads` : "Carregando..."}
-        </div>
-      </CardFooter>
-    </Card>
+        <TabsContent value="clientes" className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <DashboardHeader 
+              lastBatchReviewTime={lastBatchReviewTime}
+              isBatchAnalyzing={isBatchAnalyzing}
+              isLoading={isLoading}
+              onAnalyzeAll={reviewAllClients}
+            />
+            
+            <div className="lg:col-span-2">
+              <AnalysisProgress 
+                isBatchAnalyzing={isBatchAnalyzing}
+                batchProgress={batchProgress}
+                totalClientsToAnalyze={totalClientsToAnalyze}
+                progressPercentage={progressPercentage}
+              />
+            </div>
+            
+            <div className="flex flex-col md:flex-row items-center gap-4 mb-3 mt-4">
+              <div className="relative flex-1 w-full">
+                <input
+                  type="text"
+                  placeholder="Buscar cliente por nome..."
+                  className="pl-10 w-full h-10 px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-muran-primary focus:border-transparent"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                />
+                <svg 
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+                  width="18" 
+                  height="18" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+              
+              <div className="flex gap-2 items-center">
+                <select 
+                  className="h-10 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-muran-primary focus:border-transparent"
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value)}
+                >
+                  <option value="grid">Grade</option>
+                  <option value="table">Tabela</option>
+                </select>
+              </div>
+            </div>
+            
+            <FilterOptions 
+              showOnlyAdjustments={showOnlyAdjustments}
+              onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
+            />
+          </div>
+
+          {isLoading ? (
+            <LoadingView />
+          ) : sortedClients.length === 0 ? (
+            <EmptyStateView />
+          ) : (
+            <ClientsGrid 
+              clientsWithMetaId={clientsWithMetaId}
+              clientsWithoutMetaId={clientsWithoutMetaId}
+              processingClients={processingClients}
+              onReviewClient={handleReviewClient}
+              viewMode={viewMode}
+            />
+          )}
+        </TabsContent>
+        
+        <TabsContent value="revisao-automatica">
+          <AutoReviewSettings />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
