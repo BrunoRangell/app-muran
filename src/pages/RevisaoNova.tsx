@@ -11,6 +11,7 @@ import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPan
 import { CronJobMonitor } from "@/components/daily-reviews/dashboard/components/CronJobMonitor";
 import { DebugTools } from "@/components/daily-reviews/dashboard/components/DebugTools";
 import { EdgeFunctionDiagnostics } from "@/components/revisao-nova/EdgeFunctionDiagnostics";
+import { MetaEdgeFunctionDiagnostic } from "@/components/revisao-nova/MetaEdgeFunctionDiagnostic";
 
 export default function RevisaoNova() {
   const [searchParams] = useSearchParams();
@@ -18,7 +19,7 @@ export default function RevisaoNova() {
   const [selectedTab, setSelectedTab] = useState<string>("dashboard");
   
   useEffect(() => {
-    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets", "configuracoes", "cron", "debug", "diagnostico"].includes(tabParam)) {
+    if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets", "configuracoes", "cron", "debug", "diagnostico", "meta-diagnostico"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
@@ -39,6 +40,7 @@ export default function RevisaoNova() {
             <TabsTrigger value="cron">Monitor de Jobs</TabsTrigger>
             <TabsTrigger value="debug">Diagnóstico</TabsTrigger>
             <TabsTrigger value="diagnostico">Funções Edge</TabsTrigger>
+            <TabsTrigger value="meta-diagnostico">Meta Diagnóstico</TabsTrigger>
             <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
           </TabsList>
           
@@ -68,6 +70,10 @@ export default function RevisaoNova() {
           
           <TabsContent value="diagnostico">
             <EdgeFunctionDiagnostics />
+          </TabsContent>
+          
+          <TabsContent value="meta-diagnostico">
+            <MetaEdgeFunctionDiagnostic />
           </TabsContent>
 
           <TabsContent value="configuracoes">
