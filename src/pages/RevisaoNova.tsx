@@ -13,12 +13,20 @@ export default function RevisaoNova() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [selectedTab, setSelectedTab] = useState<string>("dashboard");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
+  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   
   useEffect(() => {
     if (tabParam && ["dashboard", "google-ads", "budgets", "custom-budgets", "configuracoes"].includes(tabParam)) {
       setSelectedTab(tabParam);
     }
   }, [tabParam]);
+  
+  const handleViewClientDetails = (clientId: string) => {
+    console.log("Visualizando detalhes do cliente:", clientId);
+    // Aqui poderia implementar navegação para página de detalhes
+  };
   
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -37,11 +45,16 @@ export default function RevisaoNova() {
           </TabsList>
           
           <TabsContent value="dashboard" className="space-y-6">
-            <ReviewsDashboardCard onViewClientDetails={() => {}} />
+            <ReviewsDashboardCard onViewClientDetails={handleViewClientDetails} />
           </TabsContent>
           
           <TabsContent value="google-ads" className="space-y-6">
-            <GoogleAdsDashboard />
+            <GoogleAdsDashboardCard 
+              onViewClientDetails={handleViewClientDetails}
+              searchQuery={searchQuery}
+              viewMode={viewMode}
+              showOnlyAdjustments={showOnlyAdjustments}
+            />
           </TabsContent>
           
           <TabsContent value="budgets">
