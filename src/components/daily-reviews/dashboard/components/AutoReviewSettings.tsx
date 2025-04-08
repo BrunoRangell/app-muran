@@ -6,19 +6,23 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { Loader, Clock, CheckCircle2, XCircle, Zap, RefreshCw } from "lucide-react";
+import { Loader, Clock, CheckCircle2, XCircle, Zap, RefreshCw, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { useMetaReviewService } from "@/components/revisao-nova/hooks/useMetaReviewService";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export function AutoReviewSettings() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAutoReviewEnabled, setIsAutoReviewEnabled] = useState(true);
   const [lastReviewTime, setLastReviewTime] = useState<string | null>(null);
+  const [isErrorDetailsOpen, setIsErrorDetailsOpen] = useState(false);
+  const [isTroubleshootingOpen, setIsTroubleshootingOpen] = useState(false);
   const { toast } = useToast();
   const { 
     testMetaReviewFunction,
     lastConnectionStatus,
     lastErrorMessage,
+    lastErrorDetails,
     resetConnectionStatus,
     isLoading: isTesting,
   } = useMetaReviewService();
@@ -33,6 +37,14 @@ export function AutoReviewSettings() {
     
     return () => clearInterval(intervalId);
   }, []);
+
+  // Abrir detalhes de erro automaticamente quando houver um erro
+  useEffect(() => {
+    if (lastConnectionStatus === "error" && lastErrorMessage) {
+      setIsErrorDetailsOpen(true);
+      setIsTroubleshootingOpen(true);
+    }
+  }, [lastConnectionStatus, lastErrorMessage]);
 
   const loadSettings = async () => {
     try {
@@ -191,10 +203,60 @@ export function AutoReviewSettings() {
               )}
             </div>
             
-            {lastConnectionStatus === "error" && lastErrorMessage && (
-              <Alert variant="destructive" className="mt-2">
-                <AlertDescription className="text-xs">{lastErrorMessage}</AlertDescription>
-              </Alert>
+            {lastConnectionStatus === "error" && (
+              <Collapsible 
+                open={isErrorDetailsOpen} 
+                onOpenChange={setIsErrorDetailsOpen}
+                className="w-full"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-red-600">Detalhes do erro</span>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="p-0 h-8 w-8">
+                      {isErrorDetailsOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                
+                <CollapsibleContent className="space-y-2 mt-2">
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle className="text-sm font-medium">Mensagem de erro</AlertTitle>
+                    <AlertDescription className="text-xs">{lastErrorMessage}</AlertDescription>
+                  </Alert>
+                  
+                  {lastErrorDetails && (
+                    <div className="bg-red-50 p-3 rounded border border-red-200 text-sm">
+                      {lastErrorDetails.type && (
+                        <div className="mb-2">
+                          <span className="font-medium">Tipo de erro:</span> {lastErrorDetails.type}
+                        </div>
+                      )}
+                      
+                      {lastErrorDetails.message && (
+                        <div className="mb-2">
+                          <span className="font-medium">Detalhes:</span> {lastErrorDetails.message}
+                        </div>
+                      )}
+                      
+                      {lastErrorDetails.suggestions && (
+                        <div>
+                          <span className="font-medium">Sugestões:</span>
+                          <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                            {lastErrorDetails.suggestions.map((suggestion: string, index: number) => (
+                              <li key={index}>{suggestion}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
             )}
             
             <div className="flex items-center gap-2">
@@ -239,23 +301,71 @@ export function AutoReviewSettings() {
             </div>
           )}
           
-          <div className="bg-amber-50 text-amber-800 p-4 rounded-md">
+          <Collapsible 
+            open={isTroubleshootingOpen} 
+            onOpenChange={setIsTroubleshootingOpen}
+            className="w-full border rounded-md overflow-hidden"
+          >
+            <CollapsibleTrigger asChild>
+              <div className="bg-amber-50 p-4 cursor-pointer hover:bg-amber-100 transition-colors flex justify-between items-center">
+                <h3 className="font-medium text-amber-800">Solução de problemas</h3>
+                {isTroubleshootingOpen ? (
+                  <ChevronUp className="h-4 w-4 text-amber-800" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-amber-800" />
+                )}
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="p-4 bg-amber-50 text-amber-800 border-t border-amber-200">
+                <h4 className="font-medium mb-2">Erros comuns e suas soluções:</h4>
+                
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <h5 className="font-medium">Erro "Unexpected end of JSON input"</h5>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>Este erro ocorre quando a função Edge retorna uma resposta JSON inválida ou vazia</li>
+                      <li>Verifique se a função "daily-meta-review" está publicada no Supabase</li>
+                      <li>Tente republicar a função Edge no console do Supabase</li>
+                      <li>Verifique os logs da função Edge para identificar o erro exato</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h5 className="font-medium">Erro "Edge Function returned a non-2xx status code"</h5>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>A função Edge está retornando um erro (código 4xx ou 5xx)</li>
+                      <li>Verifique se você tem permissões para acessar a função</li>
+                      <li>Verifique se a função está publicada e acessível</li>
+                      <li>Consulte os logs da função Edge para entender o erro específico</li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h5 className="font-medium">Passos de solução geral:</h5>
+                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                      <li>Use o botão "Testar Conexão" para diagnosticar problemas</li>
+                      <li>Se o teste falhar, verifique a mensagem de erro detalhada</li>
+                      <li>Verifique se a função Edge está publicada no Supabase</li>
+                      <li>Se necessário, republique a função Edge no console do Supabase</li>
+                      <li>Limpe o cache do navegador ou use uma guia anônima</li>
+                      <li>Verifique se há problemas de rede ou firewall</li>
+                      <li>Se o problema persistir, consulte os logs no console do Supabase</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+          
+          <div className="bg-blue-50 text-blue-800 p-4 rounded-md">
             <h3 className="font-medium mb-1">Informações importantes</h3>
             <ul className="text-sm list-disc list-inside space-y-1">
               <li>As revisões automáticas são executadas a cada 6 minutos pelo cron</li>
               <li>Na interface, o contador executa a cada 3 minutos quando a aba estiver ativa</li>
               <li>Se você notar que as revisões não estão sendo executadas automaticamente, use o botão "Testar Conexão"</li>
               <li>Se o problema persistir após testar a conexão, verifique os logs de erro na interface de jobs</li>
-            </ul>
-          </div>
-          
-          <div className="bg-blue-50 text-blue-800 p-4 rounded-md">
-            <h3 className="font-medium mb-1">Solução de problemas</h3>
-            <ul className="text-sm list-disc list-inside space-y-1">
-              <li>Se aparecer "Problema de conexão detectado", teste a conexão usando o botão acima</li>
-              <li>Verifique se a função Edge "daily-meta-review" está publicada no Supabase</li>
-              <li>Caso a interface não consiga se conectar, a função Meta pode estar desativada ou com erro</li>
-              <li>Tente reiniciar o navegador ou limpar o cache em caso de problemas persistentes</li>
             </ul>
           </div>
         </div>
