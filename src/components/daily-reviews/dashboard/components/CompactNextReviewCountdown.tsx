@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from "react";
-import { Loader, RefreshCw, AlertTriangle, Info } from "lucide-react";
+import { Loader, RefreshCw, AlertTriangle, Info, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMetaReviewService } from "@/components/revisao-nova/hooks/useMetaReviewService";
@@ -10,6 +10,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+  DialogFooter
+} from "@/components/ui/dialog";
 
 interface CompactNextReviewCountdownProps {
   onAnalyzeAll: () => Promise<void>;
@@ -20,6 +31,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState<boolean>(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -28,6 +40,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
     isLoading, 
     lastConnectionStatus,
     lastErrorMessage,
+    lastErrorDetails,
     resetConnectionStatus
   } = useMetaReviewService();
 
@@ -168,6 +181,11 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
     });
   };
 
+  // Abrir diálogo de detalhes do erro
+  const handleOpenErrorDetails = () => {
+    setIsErrorDialogOpen(true);
+  };
+
   // Configurar o intervalo quando o componente é montado
   useEffect(() => {
     console.log("[AutoReview] Inicializando contador de revisão automática");
@@ -236,8 +254,15 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
             </TooltipProvider>
             
             <button 
-              onClick={handleResetConnectionStatus}
+              onClick={handleOpenErrorDetails}
               className="text-[10px] text-blue-500 hover:text-blue-700 underline ml-auto"
+            >
+              Detalhes
+            </button>
+            
+            <button 
+              onClick={handleResetConnectionStatus}
+              className="text-[10px] text-blue-500 hover:text-blue-700 underline"
             >
               Resetar
             </button>
@@ -260,6 +285,83 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
           </div>
         )}
       </div>
+
+      <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Problema de conexão detectado
+            </DialogTitle>
+            <DialogDescription>
+              Detalhes do erro para ajudar na solução do problema
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-2">
+            <div className="bg-red-50 p-3 rounded border border-red-200">
+              <h4 className="font-medium text-red-800 mb-1">Mensagem de erro:</h4>
+              <p className="text-sm text-red-700">{lastErrorMessage || "Erro na conexão com a função Edge"}</p>
+            </div>
+            
+            {lastErrorDetails && (
+              <div className="space-y-2">
+                {lastErrorDetails.type && (
+                  <div>
+                    <h4 className="font-medium text-gray-700">Tipo de erro:</h4>
+                    <p className="text-sm">{lastErrorDetails.type}</p>
+                  </div>
+                )}
+                
+                {lastErrorDetails.message && (
+                  <div>
+                    <h4 className="font-medium text-gray-700">Detalhes:</h4>
+                    <p className="text-sm">{lastErrorDetails.message}</p>
+                  </div>
+                )}
+                
+                {lastErrorDetails.suggestions && (
+                  <div>
+                    <h4 className="font-medium text-gray-700">Sugestões:</h4>
+                    <ul className="text-sm list-disc pl-5 space-y-1">
+                      {lastErrorDetails.suggestions.map((suggestion: string, index: number) => (
+                        <li key={index}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <h4 className="font-medium text-blue-800 mb-1">Solução para "Unexpected end of JSON input":</h4>
+              <ul className="text-sm text-blue-700 list-disc pl-5 space-y-1">
+                <li>Verifique se a função Edge está publicada corretamente</li>
+                <li>Tente republicar a função Edge no console do Supabase</li>
+                <li>Verifique os logs da função Edge para identificar o erro exato</li>
+                <li>Verifique se os parâmetros enviados estão corretos</li>
+              </ul>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={handleResetConnectionStatus}
+              className="mt-2 sm:mt-0"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Resetar Status
+            </Button>
+            
+            <DialogClose asChild>
+              <Button className="bg-[#ff6e00] hover:bg-[#e66300] text-white">
+                Fechar
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

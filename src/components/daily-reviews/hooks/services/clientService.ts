@@ -21,7 +21,8 @@ export const fetchClientsWithReviews = async () => {
       id,
       company_name,
       meta_account_id,
-      meta_ads_budget
+      meta_ads_budget,
+      status
     `)
     .eq('status', 'active')
     .order('company_name');
