@@ -150,22 +150,12 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const startDate = startOfMonth.toISOString().split('T')[0];
     const endDate = today.toISOString().split('T')[0];
     
-    // Calcular data de 5 dias atrás (considerando ontem para trás)
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const fiveDaysAgo = new Date(yesterday);
-    fiveDaysAgo.setDate(yesterday.getDate() - 4); // Ontem - 4 = 5 dias atrás
-    
-    const last5DaysStartDate = fiveDaysAgo.toISOString().split('T')[0];
-    const last5DaysEndDate = yesterday.toISOString().split('T')[0];
-    
     const query = `
       SELECT
           metrics.cost_micros,
           campaign.id,
           campaign.name,
-          campaign_budget.amount_micros,
-          segments.date
+          campaign_budget.amount_micros
       FROM
           campaign
       WHERE
@@ -174,9 +164,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     
     let totalSpent = 0;
     let currentDailyBudget = 0;
-    let last5DaysTotal = 0;
-    let last5DaysAvg = 0;
-    let daysWithData = 0;
     
     try {
       // Fazer chamada para a API do Google Ads
@@ -192,30 +179,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
           const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
           return acc + cost;
         }, 0);
-        
-        // Filtrar e calcular a média dos últimos 5 dias
-        const last5DaysResults = response.data.results.filter(result => {
-          const date = result.segments?.date;
-          return date && date >= last5DaysStartDate && date <= last5DaysEndDate;
-        });
-        
-        // Agrupar por data para obter o gasto diário
-        const dailySpend = {};
-        last5DaysResults.forEach(result => {
-          const date = result.segments?.date;
-          const cost = result.metrics?.costMicros ? result.metrics.costMicros / 1e6 : 0;
-          
-          if (date) {
-            dailySpend[date] = (dailySpend[date] || 0) + cost;
-          }
-        });
-        
-        // Calcular o total e a média
-        const uniqueDays = Object.keys(dailySpend);
-        daysWithData = uniqueDays.length;
-        
-        last5DaysTotal = uniqueDays.reduce((acc, date) => acc + dailySpend[date], 0);
-        last5DaysAvg = daysWithData > 0 ? last5DaysTotal / daysWithData : 0;
       }
       
       // Obter orçamento diário atual somando os orçamentos das campanhas ativas
@@ -264,9 +227,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       gastoTotal: totalSpent,
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
-      orçamentoDiárioIdeal: idealDailyBudget,
-      gastoMédio5Dias: last5DaysAvg,
-      diasComDados: daysWithData
+      orçamentoDiárioIdeal: idealDailyBudget
     });
     
     // Verificar se já existe uma revisão para este cliente na data atual
@@ -286,7 +247,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       google_total_spent: totalSpent,
       google_account_id: client.google_account_id,
       google_account_name: `Google Ads: ${client.google_account_id}`,
-      google_last_5_days_avg: last5DaysAvg,
       updated_at: new Date().toISOString()
     };
     
