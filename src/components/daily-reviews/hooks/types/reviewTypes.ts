@@ -17,6 +17,8 @@ export interface Review {
   using_custom_budget?: boolean;
   custom_budget_id?: string;
   custom_budget_amount?: number;
+  custom_budget_end_date?: string; // Adicionando data de término do orçamento personalizado
+  idealDailyBudget?: number; // Adicionando orçamento diário ideal calculado
 }
 
 export interface ClientWithReview {
@@ -31,4 +33,12 @@ export interface ClientWithReview {
   needsBudgetAdjustment?: boolean;
   usingCustomBudget?: boolean;
   actualBudgetAmount?: number;
+}
+
+// Adicionar a interface ClientAnalysisResult que está faltando
+export interface ClientAnalysisResult {
+  success: boolean;
+  message: string;
+  client: ClientWithReview;
+  data?: any;
 }

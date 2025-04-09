@@ -1,8 +1,8 @@
-
 import { supabase } from "@/lib/supabase";
-import { getMetaAccessToken } from "../useEdgeFunction";
-import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
-import { ClientWithReview, ClientAnalysisResult } from "../types/reviewTypes";
+import { processErrorDetails } from "@/components/revisao-nova/hooks/processors/errorProcessor";
+import { preparePayload } from "@/components/revisao-nova/hooks/edge-function/payloadUtils";
+import { invokeEdgeFunction } from "@/components/revisao-nova/hooks/edge-function/edgeFunctionService";
+import { ClientAnalysisResult, ClientWithReview } from "../types/reviewTypes";
 import { AppError } from "@/lib/errors";
 import { getActiveCustomBudget, prepareCustomBudgetInfo } from "./customBudgetService";
 
@@ -58,7 +58,7 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   console.log(`Período de análise: ${dateRange.start} até ${dateRange.end}`);
   
   // Chamar função Edge para obter dados do Meta Ads
-  const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
+  const { data, error } = await invokeEdgeFunction("meta-budget-calculator", {
     body: {
       accountId: client.meta_account_id,
       accessToken,
@@ -214,4 +214,3 @@ async function cleanOldReviews(clientId: string, reviewDate: string) {
     }
   }
 }
-
