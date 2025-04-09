@@ -44,6 +44,7 @@ export const GoogleAdsClientReviewCardCompact = ({
   const formattedTotalSpent = formatCurrency(totalSpent || 0);
   const formattedCurrentDaily = formatCurrency(currentDailyBudget || 0);
   const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
+  const formattedLastFiveDaysSpent = formatCurrency(client.lastReview?.google_last_five_days_spent || 0);
 
   // Formatação da data da última revisão
   const formattedLastReviewDate = client.lastReview?.updated_at ? 
@@ -116,6 +117,12 @@ export const GoogleAdsClientReviewCardCompact = ({
               <div className="text-gray-500">Orç. Diário Ideal</div>
               <div className="font-semibold">{formattedIdealDaily}</div>
             </div>
+            {client.lastReview?.google_last_five_days_spent !== undefined && (
+              <div className="col-span-2 bg-gray-50 p-2 rounded">
+                <div className="text-gray-500">Gastos Últimos 5 Dias</div>
+                <div className="font-semibold">{formattedLastFiveDaysSpent}</div>
+              </div>
+            )}
           </div>
         )}
 
@@ -133,6 +140,12 @@ export const GoogleAdsClientReviewCardCompact = ({
               <span className="text-gray-500 mr-1">Atual:</span>
               <span className="font-semibold">{formattedCurrentDaily}</span>
             </div>
+            {client.lastReview?.google_last_five_days_spent !== undefined && (
+              <div>
+                <span className="text-gray-500 mr-1">Últimos 5d:</span>
+                <span className="font-semibold">{formattedLastFiveDaysSpent}</span>
+              </div>
+            )}
           </div>
         )}
 
