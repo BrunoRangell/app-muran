@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { processErrorDetails } from "@/components/revisao-nova/hooks/processors/errorProcessor";
 import { preparePayload } from "@/components/revisao-nova/hooks/edge-function/payloadUtils";
@@ -5,6 +6,36 @@ import { invokeEdgeFunction } from "@/components/revisao-nova/hooks/edge-functio
 import { ClientAnalysisResult, ClientWithReview } from "../types/reviewTypes";
 import { AppError } from "@/lib/errors";
 import { getActiveCustomBudget, prepareCustomBudgetInfo } from "./customBudgetService";
+import { useEdgeFunction } from "../useEdgeFunction";
+
+// Importar função de data do summary/utils 
+import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
+
+// Função para obter token de acesso do Meta
+const getMetaAccessToken = async () => {
+  try {
+    const { data: tokens, error: tokensError } = await supabase
+      .from("api_tokens")
+      .select("value")
+      .eq("name", "meta_access_token")
+      .maybeSingle();
+    
+    if (tokensError) {
+      console.error("Erro ao buscar token Meta Ads:", tokensError);
+      throw new Error("Erro ao buscar token Meta Ads: " + tokensError.message);
+    }
+    
+    if (!tokens?.value) {
+      console.error("Token Meta Ads não encontrado ou está vazio");
+      throw new Error("Token Meta Ads não configurado. Configure o token na página de configurações.");
+    }
+    
+    return tokens.value;
+  } catch (error) {
+    console.error("Erro ao obter token de acesso Meta:", error);
+    return null;
+  }
+};
 
 /**
  * Analisa um cliente específico e salva a revisão no banco de dados
@@ -58,7 +89,7 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
   console.log(`Período de análise: ${dateRange.start} até ${dateRange.end}`);
   
   // Chamar função Edge para obter dados do Meta Ads
-  const { data, error } = await invokeEdgeFunction("meta-budget-calculator", {
+  const response = await invokeEdgeFunction("meta-budget-calculator", {
     body: {
       accountId: client.meta_account_id,
       accessToken,
@@ -67,22 +98,22 @@ export const analyzeClient = async (clientId: string, clientsWithReviews?: Clien
     }
   });
   
-  if (error) {
-    console.error("Erro na função de borda:", error);
+  if (response.error) {
+    console.error("Erro na função de borda:", response.error);
     throw new AppError(
-      `Erro ao analisar cliente: ${error.message}`, 
+      `Erro ao analisar cliente: ${response.error.message}`, 
       "EDGE_FUNCTION_ERROR",
-      { originalError: error, metaAccountId: client.meta_account_id }
+      { originalError: response.error, metaAccountId: client.meta_account_id }
     );
   }
   
-  if (!data) {
+  if (!response.result) {
     throw new Error("Resposta vazia da API");
   }
   
-  console.log("Dados recebidos da API Meta:", data);
+  console.log("Dados recebidos da API Meta:", response.result);
   
-  return await saveClientReviewData(client, data, customBudget);
+  return await saveClientReviewData(client, response.result, customBudget);
 };
 
 /**
@@ -163,9 +194,11 @@ async function saveClientReviewData(client: ClientWithReview, data: any, customB
     console.log("Revisão salva/atualizada com sucesso:", reviewData);
     
     return {
-      clientId: client.id,
-      reviewId: reviewData.id,
-      analysis: {
+      success: true,
+      message: "Análise concluída com sucesso",
+      client: client,
+      data: {
+        reviewId: reviewData.id,
         totalDailyBudget: metaDailyBudgetCurrent,
         totalSpent: metaTotalSpent,
         campaigns: data.campaignDetails || []

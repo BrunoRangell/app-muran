@@ -1,9 +1,11 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { ClientWithReview } from "./types/reviewTypes";
 import { useToast } from "@/hooks/use-toast";
-import { analyzeClient, fetchClientsWithReviews } from "./services/clientReviewService";
+import { fetchClientsWithReviews } from "./services/clientReviewService";
+import { analyzeClient } from "./services/clientAnalysisService";
 import { getCurrentDateInBrasiliaTz } from "../summary/utils";
 
 /**

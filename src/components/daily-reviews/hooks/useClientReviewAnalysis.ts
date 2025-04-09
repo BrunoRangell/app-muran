@@ -4,12 +4,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useClientAnalysis } from "./useClientAnalysis";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchClientsWithReviews } from "./services/clientReviewService";
+import { ClientWithReview } from "./types/reviewTypes";
 
 export const useClientReviewAnalysis = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [filteredClients, setFilteredClients] = useState([]);
-  const [processingClients, setProcessingClients] = useState([]);
+  const [filteredClients, setFilteredClients] = useState<ClientWithReview[]>([]);
+  const [processingClients, setProcessingClients] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   // Importamos o hook useClientAnalysis para analisar o cliente
@@ -20,12 +21,12 @@ export const useClientReviewAnalysis = () => {
     });
     
     // Remover o cliente da lista de processamento
-    setProcessingClients(prev => prev.filter(id => id !== data.clientId));
+    setProcessingClients(prev => prev.filter(id => id !== data.client.id));
     
     // Invalidar consultas para forçar atualização
-    queryClient.invalidateQueries({ queryKey: ["client-detail", data.clientId] });
-    queryClient.invalidateQueries({ queryKey: ["latest-review", data.clientId] });
-    queryClient.invalidateQueries({ queryKey: ["review-history", data.clientId] });
+    queryClient.invalidateQueries({ queryKey: ["client-detail", data.client.id] });
+    queryClient.invalidateQueries({ queryKey: ["latest-review", data.client.id] });
+    queryClient.invalidateQueries({ queryKey: ["review-history", data.client.id] });
     
     // Recarregar a lista de clientes
     loadClients();
@@ -35,8 +36,8 @@ export const useClientReviewAnalysis = () => {
   const loadClients = async () => {
     setIsLoading(true);
     try {
-      const clientsWithReviews = await fetchClientsWithReviews();
-      setFilteredClients(clientsWithReviews);
+      const { clientsData } = await fetchClientsWithReviews();
+      setFilteredClients(clientsData);
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
       toast({

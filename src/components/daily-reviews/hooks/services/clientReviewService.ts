@@ -53,7 +53,7 @@ export const fetchClientsWithReviews = async () => {
       processedClients.push({
         ...client,
         lastReview: null
-      });
+      } as ClientWithReview);
       continue;
     }
     
@@ -61,7 +61,7 @@ export const fetchClientsWithReviews = async () => {
     processedClients.push({
       ...client,
       lastReview: reviewData
-    });
+    } as ClientWithReview);
     
     // Atualizar o timestamp da revisão mais recente global
     if (reviewData) {
