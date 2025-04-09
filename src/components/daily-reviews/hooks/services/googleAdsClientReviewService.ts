@@ -94,58 +94,6 @@ export const fetchClientsWithGoogleReviews = async (): Promise<ClientWithReview[
 };
 
 /**
- * Calcula os gastos dos últimos 5 dias (não incluindo o dia atual)
- */
-const calculateLastFiveDaysSpent = async (
-  customerId: string, 
-  headers: Record<string, string>
-): Promise<number> => {
-  try {
-    // Obter data atual e calcular 5 dias atrás
-    const today = getCurrentDateInBrasiliaTz();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const fiveDaysAgo = new Date(today);
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-
-    // Formatando as datas para YYYY-MM-DD
-    const startDate = fiveDaysAgo.toISOString().split('T')[0];
-    const endDate = yesterday.toISOString().split('T')[0];
-
-    // Consulta para os últimos 5 dias, excluindo o dia atual
-    const query = `
-      SELECT
-          metrics.cost_micros
-      FROM
-          campaign
-      WHERE
-          segments.date BETWEEN '${startDate}' AND '${endDate}'
-    `;
-
-    const response = await axios.post(
-      `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
-      { query },
-      { headers }
-    );
-
-    // Calcular o total gasto somando o custo de todas as campanhas
-    let lastFiveDaysSpent = 0;
-    
-    if (response.data && response.data.results) {
-      lastFiveDaysSpent = response.data.results.reduce((acc, campaign) => {
-        const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
-        return acc + cost;
-      }, 0);
-    }
-
-    return lastFiveDaysSpent;
-  } catch (error) {
-    console.error("Erro ao calcular gastos dos últimos 5 dias:", error);
-    return 0; // Retorna 0 em caso de erro
-  }
-};
-
-/**
  * Realiza a revisão de orçamento diário de um cliente no Google Ads
  * usando dados reais da API
  */
@@ -262,9 +210,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       throw new Error(`Erro na API do Google Ads: ${apiError.response?.data?.error?.message || apiError.message}`);
     }
     
-    // Calcular gastos dos últimos 5 dias
-    const lastFiveDaysSpent = await calculateLastFiveDaysSpent(customerId, headers);
-    
     // Obter orçamento mensal e dias restantes para cálculos
     const monthlyBudget = client.google_ads_budget || 0;
     
@@ -280,7 +225,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       orçamentoMensal: monthlyBudget,
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
-      gastosÚltimos5Dias: lastFiveDaysSpent,
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
       orçamentoDiárioIdeal: idealDailyBudget
@@ -301,7 +245,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const reviewData = {
       google_daily_budget_current: currentDailyBudget,
       google_total_spent: totalSpent,
-      google_last_five_days_spent: lastFiveDaysSpent, // Adicionado o novo campo
       google_account_id: client.google_account_id,
       google_account_name: `Google Ads: ${client.google_account_id}`,
       updated_at: new Date().toISOString()
