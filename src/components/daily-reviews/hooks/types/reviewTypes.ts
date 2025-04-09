@@ -9,6 +9,7 @@ export interface ClientWithReview {
   google_ads_budget?: number;
   lastReview?: ReviewData;
   needsBudgetAdjustment?: boolean;
+  status: string; // Adicionando o campo status que estava faltando
 }
 
 // Tipos relacionados à revisão

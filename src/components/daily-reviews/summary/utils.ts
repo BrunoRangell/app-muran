@@ -6,19 +6,32 @@ import { ptBR } from 'date-fns/locale';
  * Inclui o dia atual na contagem
  */
 export const getRemainingDaysInMonth = (): number => {
-  const now = new Date();
-  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const diff = lastDayOfMonth.getTime() - now.getTime();
-  const days = Math.ceil(diff / (1000 * 3600 * 24));
-  return days + 1;
+  const today = getCurrentDateInBrasiliaTz();
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  return lastDayOfMonth.getDate() - today.getDate() + 1; // +1 para incluir o dia atual
 };
 
 /**
  * Retorna a data atual no fuso horário de Brasília
  */
-export const getCurrentDateInBrasiliaTz = (): Date => {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-};
+export function getCurrentDateInBrasiliaTz(): Date {
+  // Cria uma nova data usando a data atual
+  const date = new Date();
+  
+  // Offset para Brasília (GMT-3)
+  const brasiliaOffset = -3 * 60; // em minutos
+  
+  // Obtém o offset atual do navegador em minutos
+  const currentOffset = date.getTimezoneOffset();
+  
+  // Calcula a diferença em minutos entre o fuso do navegador e Brasília
+  const offsetDiff = currentOffset + brasiliaOffset;
+  
+  // Ajusta a data adicionando a diferença de offset em milissegundos
+  date.setMinutes(date.getMinutes() + offsetDiff);
+  
+  return date;
+}
 
 /**
  * Formata uma data no fuso horário de Brasília com o formato especificado
