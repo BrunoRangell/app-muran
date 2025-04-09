@@ -14,6 +14,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   const [remainingDaysValue, setRemainingDaysValue] = useState<number>(0);
   const [needsBudgetAdjustment, setNeedsBudgetAdjustment] = useState<boolean>(false);
   const [calculationError, setCalculationError] = useState<string | null>(null);
+  const [last5DaysAvg, setLast5DaysAvg] = useState<number>(0);
 
   useEffect(() => {
     const calculateBudget = () => {
@@ -37,6 +38,10 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
         const daily = review.google_daily_budget_current || 0;
         setTotalSpent(spent);
         setCurrentDailyBudget(daily);
+
+        // Obter a média dos últimos 5 dias (se existir na revisão)
+        const avgLast5Days = review.google_last_5_days_avg || 0;
+        setLast5DaysAvg(avgLast5Days);
 
         // Calcular dias restantes no mês
         const remainingDays = getRemainingDaysInMonth();
@@ -80,6 +85,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     isCalculating,
     remainingDaysValue,
     needsBudgetAdjustment,
-    calculationError
+    calculationError,
+    last5DaysAvg
   };
 };

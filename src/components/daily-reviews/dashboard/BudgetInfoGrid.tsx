@@ -12,6 +12,7 @@ interface BudgetInfoGridProps {
   hasReview: boolean;
   actualBudgetAmount?: number;
   isUsingCustomBudget?: boolean;
+  last5DaysAvg?: number;
 }
 
 export const BudgetInfoGrid = ({
@@ -23,7 +24,8 @@ export const BudgetInfoGrid = ({
   calculationError,
   hasReview,
   actualBudgetAmount,
-  isUsingCustomBudget
+  isUsingCustomBudget,
+  last5DaysAvg
 }: BudgetInfoGridProps) => {
   // Determinar qual orçamento exibir (padrão ou personalizado)
   const displayBudget = isUsingCustomBudget && actualBudgetAmount ? actualBudgetAmount : monthlyBudget;
@@ -59,14 +61,23 @@ export const BudgetInfoGrid = ({
         </div>
       </div>
 
-      <div className="bg-gray-50 p-3 rounded-lg">
-        <div className="text-sm text-gray-500 mb-1">Orç. diário ideal</div>
-        <div className="text-base font-semibold">
-          {idealDailyBudget > 0 
-            ? formatCurrency(idealDailyBudget) 
-            : "Não disponível"}
+      {last5DaysAvg !== undefined ? (
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <div className="text-sm text-gray-500 mb-1">Gasto Médio 5 dias</div>
+          <div className="text-base font-semibold">
+            {hasReview ? formatCurrency(last5DaysAvg) : "Não disponível"}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <div className="text-sm text-gray-500 mb-1">Orç. diário ideal</div>
+          <div className="text-base font-semibold">
+            {idealDailyBudget > 0 
+              ? formatCurrency(idealDailyBudget) 
+              : "Não disponível"}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

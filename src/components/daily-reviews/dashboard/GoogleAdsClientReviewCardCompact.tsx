@@ -30,7 +30,8 @@ export const GoogleAdsClientReviewCardCompact = ({
     budgetDifference,
     isCalculating,
     remainingDaysValue,
-    needsBudgetAdjustment
+    needsBudgetAdjustment,
+    last5DaysAvg
   } = useGoogleAdsBudgetCalculation(client);
 
   const handleReviewClick = () => {
@@ -44,6 +45,7 @@ export const GoogleAdsClientReviewCardCompact = ({
   const formattedTotalSpent = formatCurrency(totalSpent || 0);
   const formattedCurrentDaily = formatCurrency(currentDailyBudget || 0);
   const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
+  const formattedLast5DaysAvg = formatCurrency(last5DaysAvg || 0);
 
   // Formatação da data da última revisão
   const formattedLastReviewDate = client.lastReview?.updated_at ? 
@@ -113,8 +115,8 @@ export const GoogleAdsClientReviewCardCompact = ({
               <div className="font-semibold">{formattedCurrentDaily}</div>
             </div>
             <div className="bg-gray-50 p-2 rounded">
-              <div className="text-gray-500">Orç. Diário Ideal</div>
-              <div className="font-semibold">{formattedIdealDaily}</div>
+              <div className="text-gray-500">Gasto Médio 5 dias</div>
+              <div className="font-semibold">{formattedLast5DaysAvg}</div>
             </div>
           </div>
         )}
@@ -130,8 +132,8 @@ export const GoogleAdsClientReviewCardCompact = ({
               <span className="font-semibold">{formattedTotalSpent}</span>
             </div>
             <div>
-              <span className="text-gray-500 mr-1">Atual:</span>
-              <span className="font-semibold">{formattedCurrentDaily}</span>
+              <span className="text-gray-500 mr-1">Média 5d:</span>
+              <span className="font-semibold">{formattedLast5DaysAvg}</span>
             </div>
           </div>
         )}
