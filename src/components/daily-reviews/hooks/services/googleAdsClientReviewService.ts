@@ -5,89 +5,6 @@ import { ClientWithReview } from "../types/reviewTypes";
 import axios from "axios";
 
 /**
- * Calcula o gasto total das campanhas do Google Ads para um período específico
- */
-const calculateGoogleAdsSpentForPeriod = async (
-  customerId: string, 
-  startDate: string, 
-  endDate: string, 
-  headers: any
-): Promise<number> => {
-  try {
-    const query = `
-      SELECT
-          metrics.cost_micros,
-          campaign.id,
-          campaign.name,
-          campaign_budget.amount_micros
-      FROM
-          campaign
-      WHERE
-          segments.date BETWEEN '${startDate}' AND '${endDate}'
-    `;
-    
-    const response = await axios.post(
-      `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
-      { query },
-      { headers }
-    );
-    
-    // Calcular o gasto total somando o custo de todas as campanhas
-    let totalSpent = 0;
-    if (response.data && response.data.results) {
-      totalSpent = response.data.results.reduce((acc, campaign) => {
-        const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
-        return acc + cost;
-      }, 0);
-    }
-    
-    return totalSpent;
-  } catch (error) {
-    console.error(`Erro ao calcular gastos para o período ${startDate} a ${endDate}:`, error);
-    return 0;
-  }
-};
-
-/**
- * Obtém os headers necessários para autenticação na API do Google Ads
- */
-const getGoogleAdsAuthHeaders = async (managerToken?: string): Promise<any> => {
-  // Obter tokens da API do Google Ads
-  const { data: googleTokensData, error: googleTokensError } = await supabase
-    .from("api_tokens")
-    .select("name, value")
-    .or('name.eq.google_ads_access_token,name.eq.google_ads_refresh_token,name.eq.google_ads_client_id,name.eq.google_ads_client_secret,name.eq.google_ads_developer_token,name.eq.google_ads_manager_id');
-  
-  if (googleTokensError) {
-    throw new Error(`Erro ao obter tokens do Google Ads: ${googleTokensError.message}`);
-  }
-  
-  // Converter array de tokens para objeto
-  const tokens: Record<string, string> = {};
-  googleTokensData?.forEach(token => {
-    tokens[token.name] = token.value;
-  });
-  
-  // Verificar se temos todos os tokens necessários
-  if (!tokens.google_ads_access_token || !tokens.google_ads_developer_token) {
-    throw new Error("Tokens do Google Ads não configurados corretamente");
-  }
-  
-  // Configurar headers para a API do Google Ads
-  const headers = {
-    'Content-Type': 'application/json',
-    'developer-token': tokens.google_ads_developer_token,
-    'Authorization': `Bearer ${tokens.google_ads_access_token}`
-  };
-  
-  if (tokens.google_ads_manager_id) {
-    headers['login-customer-id'] = tokens.google_ads_manager_id;
-  }
-  
-  return headers;
-};
-
-/**
  * Busca todos os clientes com suas revisões mais recentes (Google Ads)
  */
 export const fetchClientsWithGoogleReviews = async (): Promise<ClientWithReview[]> => {
@@ -193,63 +110,104 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const today = getCurrentDateInBrasiliaTz();
     const formattedDate = today.toISOString().split('T')[0];
     
-    // Obter headers para autenticação na API
-    const headers = await getGoogleAdsAuthHeaders();
+    // Obter tokens da API do Google Ads
+    const { data: googleTokensData, error: googleTokensError } = await supabase
+      .from("api_tokens")
+      .select("name, value")
+      .or('name.eq.google_ads_access_token,name.eq.google_ads_refresh_token,name.eq.google_ads_client_id,name.eq.google_ads_client_secret,name.eq.google_ads_developer_token,name.eq.google_ads_manager_id');
     
-    // Configurar datas para análise
+    if (googleTokensError) {
+      throw new Error(`Erro ao obter tokens do Google Ads: ${googleTokensError.message}`);
+    }
+    
+    // Converter array de tokens para objeto
+    const tokens: Record<string, string> = {};
+    googleTokensData?.forEach(token => {
+      tokens[token.name] = token.value;
+    });
+    
+    // Verificar se temos todos os tokens necessários
+    if (!tokens.google_ads_access_token || !tokens.google_ads_developer_token) {
+      throw new Error("Tokens do Google Ads não configurados corretamente");
+    }
+    
+    // Configurar headers para a API do Google Ads
+    const headers = {
+      'Content-Type': 'application/json',
+      'developer-token': tokens.google_ads_developer_token,
+      'Authorization': `Bearer ${tokens.google_ads_access_token}`
+    };
+    
+    if (tokens.google_ads_manager_id) {
+      headers['login-customer-id'] = tokens.google_ads_manager_id;
+    }
+    
+    // Construir a query para a API do Google
     const customerId = client.google_account_id;
     
-    // Configurar datas para o mês atual
+    // Obter gasto mensal atual
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const startDate = startOfMonth.toISOString().split('T')[0];
     const endDate = today.toISOString().split('T')[0];
     
-    // Configurar datas para os últimos 5 dias
-    const fiveDaysAgo = new Date(today);
-    fiveDaysAgo.setDate(today.getDate() - 5);
-    const fiveDaysAgoFormatted = fiveDaysAgo.toISOString().split('T')[0];
-    
-    // Calcular gastos do mês atual
-    const totalSpent = await calculateGoogleAdsSpentForPeriod(
-      customerId,
-      startDate,
-      endDate,
-      headers
-    );
-    
-    // Calcular gastos dos últimos 5 dias
-    const lastFiveDaysSpent = await calculateGoogleAdsSpentForPeriod(
-      customerId,
-      fiveDaysAgoFormatted, 
-      endDate,
-      headers
-    );
-    
-    console.log(`Cliente ${client.company_name} - Gasto mensal: ${totalSpent}, Últimos 5 dias: ${lastFiveDaysSpent}`);
-    
-    // Obter orçamento diário atual somando os orçamentos das campanhas ativas
-    const campaignsQuery = `
+    const query = `
       SELECT
-          campaign_budget.amount_micros,
-          campaign.status
+          metrics.cost_micros,
+          campaign.id,
+          campaign.name,
+          campaign_budget.amount_micros
       FROM
           campaign
       WHERE
-          campaign.status = 'ENABLED'
+          segments.date BETWEEN '${startDate}' AND '${endDate}'
     `;
     
-    const campaignsResponse = await axios.post(
-      `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
-      { query: campaignsQuery },
-      { headers }
-    );
-    
+    let totalSpent = 0;
     let currentDailyBudget = 0;
-    if (campaignsResponse.data && campaignsResponse.data.results) {
-      currentDailyBudget = campaignsResponse.data.results.reduce((acc, campaign) => {
-        const budget = campaign.campaignBudget?.amountMicros ? campaign.campaignBudget.amountMicros / 1e6 : 0;
-        return acc + budget;
-      }, 0);
+    
+    try {
+      // Fazer chamada para a API do Google Ads
+      const response = await axios.post(
+        `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
+        { query },
+        { headers }
+      );
+      
+      // Calcular o gasto total somando o custo de todas as campanhas
+      if (response.data && response.data.results) {
+        totalSpent = response.data.results.reduce((acc, campaign) => {
+          const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
+          return acc + cost;
+        }, 0);
+      }
+      
+      // Obter orçamento diário atual somando os orçamentos das campanhas ativas
+      const campaignsQuery = `
+        SELECT
+            campaign_budget.amount_micros,
+            campaign.status
+        FROM
+            campaign
+        WHERE
+            campaign.status = 'ENABLED'
+      `;
+      
+      const campaignsResponse = await axios.post(
+        `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
+        { query: campaignsQuery },
+        { headers }
+      );
+      
+      if (campaignsResponse.data && campaignsResponse.data.results) {
+        currentDailyBudget = campaignsResponse.data.results.reduce((acc, campaign) => {
+          const budget = campaign.campaignBudget?.amountMicros ? campaign.campaignBudget.amountMicros / 1e6 : 0;
+          return acc + budget;
+        }, 0);
+      }
+      
+    } catch (apiError: any) {
+      console.error("Erro na API do Google Ads:", apiError.response?.data || apiError.message);
+      throw new Error(`Erro na API do Google Ads: ${apiError.response?.data?.error?.message || apiError.message}`);
     }
     
     // Obter orçamento mensal e dias restantes para cálculos
@@ -267,7 +225,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       orçamentoMensal: monthlyBudget,
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
-      gastoUltimos5Dias: lastFiveDaysSpent,
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
       orçamentoDiárioIdeal: idealDailyBudget
@@ -288,7 +245,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const reviewData = {
       google_daily_budget_current: currentDailyBudget,
       google_total_spent: totalSpent,
-      google_last_five_days_spent: lastFiveDaysSpent, // Adicionando o novo campo
       google_account_id: client.google_account_id,
       google_account_name: `Google Ads: ${client.google_account_id}`,
       updated_at: new Date().toISOString()
