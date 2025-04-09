@@ -21,7 +21,8 @@ export const fetchClientsWithReviews = async () => {
       id,
       company_name,
       meta_account_id,
-      meta_ads_budget
+      meta_ads_budget,
+      status
     `)
     .eq('status', 'active')
     .order('company_name');
@@ -51,7 +52,8 @@ export const fetchClientsWithReviews = async () => {
       // Continuar com o próximo cliente
       processedClients.push({
         ...client,
-        lastReview: null
+        lastReview: null,
+        status: client.status // Adicionando a propriedade status que estava faltando
       });
       continue;
     }
@@ -59,7 +61,8 @@ export const fetchClientsWithReviews = async () => {
     // Adicionar a revisão mais recente ao cliente
     processedClients.push({
       ...client,
-      lastReview: reviewData
+      lastReview: reviewData,
+      status: client.status // Adicionando a propriedade status que estava faltando
     });
     
     // Atualizar o timestamp da revisão mais recente global
