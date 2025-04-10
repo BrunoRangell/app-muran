@@ -150,18 +150,12 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const startDate = startOfMonth.toISOString().split('T')[0];
     const endDate = today.toISOString().split('T')[0];
     
-    // Calcular data de início para os últimos 5 dias
-    const fiveDaysAgo = new Date(today);
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-    const fiveDaysAgoDate = fiveDaysAgo.toISOString().split('T')[0];
-    
     const query = `
       SELECT
           metrics.cost_micros,
           campaign.id,
           campaign.name,
-          campaign_budget.amount_micros,
-          segments.date
+          campaign_budget.amount_micros
       FROM
           campaign
       WHERE
@@ -169,7 +163,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     `;
     
     let totalSpent = 0;
-    let lastFiveDaysSpent = 0;
     let currentDailyBudget = 0;
     
     try {
@@ -182,19 +175,10 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       
       // Calcular o gasto total somando o custo de todas as campanhas
       if (response.data && response.data.results) {
-        // Processar resultados para calcular gastos
-        response.data.results.forEach(campaign => {
+        totalSpent = response.data.results.reduce((acc, campaign) => {
           const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
-          const date = campaign.segments?.date;
-          
-          // Adicionar ao gasto total
-          totalSpent += cost;
-          
-          // Verificar se está dentro dos últimos 5 dias
-          if (date && date >= fiveDaysAgoDate) {
-            lastFiveDaysSpent += cost;
-          }
-        });
+          return acc + cost;
+        }, 0);
       }
       
       // Obter orçamento diário atual somando os orçamentos das campanhas ativas
@@ -241,7 +225,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       orçamentoMensal: monthlyBudget,
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
-      gastoUltimosCincoDias: lastFiveDaysSpent,
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
       orçamentoDiárioIdeal: idealDailyBudget
@@ -262,7 +245,6 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const reviewData = {
       google_daily_budget_current: currentDailyBudget,
       google_total_spent: totalSpent,
-      google_last_five_days_spent: lastFiveDaysSpent, // Novo campo para gastos dos últimos 5 dias
       google_account_id: client.google_account_id,
       google_account_name: `Google Ads: ${client.google_account_id}`,
       updated_at: new Date().toISOString()

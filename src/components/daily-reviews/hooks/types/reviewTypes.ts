@@ -20,7 +20,6 @@ export interface ReviewData {
   meta_total_spent: number;
   google_daily_budget_current?: number | null;
   google_total_spent?: number;
-  google_last_five_days_spent?: number; // Novo campo para gastos dos últimos 5 dias
   created_at: string;
   updated_at: string;
   idealDailyBudget?: number;
