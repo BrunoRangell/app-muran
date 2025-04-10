@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Loader } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
@@ -110,7 +111,7 @@ export const GoogleAdsClientReviewCardCompact = ({
               <div className="font-semibold">{formattedTotalSpent}</div>
             </div>
             <div className="bg-gray-50 p-2 rounded">
-              <div className="text-gray-500">Custos 5 dias</div>
+              <div className="text-gray-500">Média 5 dias</div>
               <div className="font-semibold">{formattedLastFiveDaysSpent}</div>
             </div>
             <div className="bg-gray-50 p-2 rounded">
@@ -135,7 +136,7 @@ export const GoogleAdsClientReviewCardCompact = ({
               <span className="font-semibold">{formattedTotalSpent}</span>
             </div>
             <div className="flex-1 p-3 border-l">
-              <div className="text-xs text-gray-500">Custos 5 dias</div>
+              <div className="text-xs text-gray-500">Média 5 dias</div>
               <div className="flex items-center">
                 {formattedLastFiveDaysSpent}
               </div>
