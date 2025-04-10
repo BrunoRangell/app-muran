@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
 import { ClientWithReview } from "../types/reviewTypes";
@@ -150,12 +149,22 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const startDate = startOfMonth.toISOString().split('T')[0];
     const endDate = today.toISOString().split('T')[0];
     
+    // Calcular data de início para os últimos 5 dias (excluindo hoje)
+    const fiveDaysAgo = new Date(today);
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+    const yesterdayDate = new Date(today);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    
+    const fiveDaysAgoDate = fiveDaysAgo.toISOString().split('T')[0];
+    const yesterdayFormattedDate = yesterdayDate.toISOString().split('T')[0];
+    
     const query = `
       SELECT
           metrics.cost_micros,
           campaign.id,
           campaign.name,
-          campaign_budget.amount_micros
+          campaign_budget.amount_micros,
+          segments.date
       FROM
           campaign
       WHERE
@@ -163,6 +172,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     `;
     
     let totalSpent = 0;
+    let lastFiveDaysSpent = 0;
     let currentDailyBudget = 0;
     
     try {
@@ -175,11 +185,23 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       
       // Calcular o gasto total somando o custo de todas as campanhas
       if (response.data && response.data.results) {
-        totalSpent = response.data.results.reduce((acc, campaign) => {
+        // Processar resultados para calcular gastos
+        response.data.results.forEach(campaign => {
           const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
-          return acc + cost;
-        }, 0);
+          const date = campaign.segments?.date;
+          
+          // Adicionar ao gasto total
+          totalSpent += cost;
+          
+          // Verificar se está dentro dos últimos 5 dias (excluindo hoje)
+          if (date && date >= fiveDaysAgoDate && date <= yesterdayFormattedDate) {
+            lastFiveDaysSpent += cost;
+          }
+        });
       }
+      
+      // Calcular a média diária dos últimos 5 dias
+      lastFiveDaysSpent = lastFiveDaysSpent / 5;
       
       // Obter orçamento diário atual somando os orçamentos das campanhas ativas
       const campaignsQuery = `
@@ -225,6 +247,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
       orçamentoMensal: monthlyBudget,
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
+      gastoMédiaCincoDias: lastFiveDaysSpent,
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
       orçamentoDiárioIdeal: idealDailyBudget
@@ -245,6 +268,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const reviewData = {
       google_daily_budget_current: currentDailyBudget,
       google_total_spent: totalSpent,
+      google_last_five_days_spent: lastFiveDaysSpent, // Média dos 5 dias anteriores
       google_account_id: client.google_account_id,
       google_account_name: `Google Ads: ${client.google_account_id}`,
       updated_at: new Date().toISOString()

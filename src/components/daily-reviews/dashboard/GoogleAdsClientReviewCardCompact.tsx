@@ -25,6 +25,7 @@ export const GoogleAdsClientReviewCardCompact = ({
     hasReview,
     monthlyBudget,
     totalSpent,
+    lastFiveDaysSpent,
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
@@ -42,6 +43,7 @@ export const GoogleAdsClientReviewCardCompact = ({
   // Formatação de valores
   const formattedMonthlyBudget = formatCurrency(monthlyBudget || 0);
   const formattedTotalSpent = formatCurrency(totalSpent || 0);
+  const formattedLastFiveDaysSpent = formatCurrency(lastFiveDaysSpent || 0);
   const formattedCurrentDaily = formatCurrency(currentDailyBudget || 0);
   const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
 
@@ -109,6 +111,10 @@ export const GoogleAdsClientReviewCardCompact = ({
               <div className="font-semibold">{formattedTotalSpent}</div>
             </div>
             <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Média 5 dias</div>
+              <div className="font-semibold">{formattedLastFiveDaysSpent}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
               <div className="text-gray-500">Orç. Diário Atual</div>
               <div className="font-semibold">{formattedCurrentDaily}</div>
             </div>
@@ -128,6 +134,12 @@ export const GoogleAdsClientReviewCardCompact = ({
             <div>
               <span className="text-gray-500 mr-1">Gasto:</span>
               <span className="font-semibold">{formattedTotalSpent}</span>
+            </div>
+            <div className="flex-1 p-3 border-l">
+              <div className="text-xs text-gray-500">Média 5 dias</div>
+              <div className="flex items-center">
+                {formattedLastFiveDaysSpent}
+              </div>
             </div>
             <div>
               <span className="text-gray-500 mr-1">Atual:</span>
