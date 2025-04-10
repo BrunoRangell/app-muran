@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
 import { ClientWithReview } from "../types/reviewTypes";
@@ -151,12 +150,12 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
     const endDate = today.toISOString().split('T')[0];
     
     // Calcular data de início para os últimos 5 dias (excluindo hoje)
-    const sixDaysAgo = new Date(today);
-    sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+    const fiveDaysAgo = new Date(today);
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
     const yesterdayDate = new Date(today);
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     
-    const sixDaysAgoDate = sixDaysAgo.toISOString().split('T')[0];
+    const fiveDaysAgoDate = fiveDaysAgo.toISOString().split('T')[0];
     const yesterdayFormattedDate = yesterdayDate.toISOString().split('T')[0];
     
     const query = `
@@ -195,7 +194,7 @@ export const reviewGoogleClient = async (client: ClientWithReview): Promise<void
           totalSpent += cost;
           
           // Verificar se está dentro dos últimos 5 dias (excluindo hoje)
-          if (date && date >= sixDaysAgoDate && date <= yesterdayFormattedDate) {
+          if (date && date >= fiveDaysAgoDate && date <= yesterdayFormattedDate) {
             lastFiveDaysSpent += cost;
           }
         });
