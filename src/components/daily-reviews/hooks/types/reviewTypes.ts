@@ -1,4 +1,3 @@
-
 // Tipos relacionados ao cliente
 export interface ClientWithReview {
   id: string;

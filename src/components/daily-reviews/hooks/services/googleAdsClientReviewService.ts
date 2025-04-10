@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
 import { ClientWithReview } from "../types/reviewTypes";

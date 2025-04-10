@@ -383,6 +383,7 @@ export type Database = {
           google_account_id: string | null
           google_account_name: string | null
           google_daily_budget_current: number | null
+          google_last_five_days_spent: number | null
           google_total_spent: number | null
           id: string
           review_date: string
@@ -397,6 +398,7 @@ export type Database = {
           google_account_id?: string | null
           google_account_name?: string | null
           google_daily_budget_current?: number | null
+          google_last_five_days_spent?: number | null
           google_total_spent?: number | null
           id?: string
           review_date?: string
@@ -411,6 +413,7 @@ export type Database = {
           google_account_id?: string | null
           google_account_name?: string | null
           google_daily_budget_current?: number | null
+          google_last_five_days_spent?: number | null
           google_total_spent?: number | null
           id?: string
           review_date?: string
