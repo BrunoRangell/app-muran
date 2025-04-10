@@ -25,6 +25,7 @@ export const GoogleAdsClientReviewCardCompact = ({
     hasReview,
     monthlyBudget,
     totalSpent,
+    lastFiveDaysSpent,
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
@@ -42,6 +43,7 @@ export const GoogleAdsClientReviewCardCompact = ({
   // Formatação de valores
   const formattedMonthlyBudget = formatCurrency(monthlyBudget || 0);
   const formattedTotalSpent = formatCurrency(totalSpent || 0);
+  const formattedLastFiveDaysSpent = formatCurrency(lastFiveDaysSpent || 0);
   const formattedCurrentDaily = formatCurrency(currentDailyBudget || 0);
   const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
 
@@ -107,6 +109,10 @@ export const GoogleAdsClientReviewCardCompact = ({
             <div className="bg-gray-50 p-2 rounded">
               <div className="text-gray-500">Gasto Total</div>
               <div className="font-semibold">{formattedTotalSpent}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Custos 5 dias</div>
+              <div className="font-semibold">{formattedLastFiveDaysSpent}</div>
             </div>
             <div className="bg-gray-50 p-2 rounded">
               <div className="text-gray-500">Orç. Diário Atual</div>
