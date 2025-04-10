@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gift } from "lucide-react";
 import { TeamMember } from "@/types/team";
@@ -40,14 +39,14 @@ export const BirthdayCard = ({ members }: BirthdayCardProps) => {
     if (!birthdayDate) return null;
     
     if (isAfter(birthdayDate, today)) {
-      return differenceInDays(birthdayDate, today);
+      return differenceInDays(birthdayDate, today) + 1;
     }
     const nextYearBirthday = new Date(
       today.getFullYear() + 1,
       parseISO(birthday!).getMonth(),
       parseISO(birthday!).getDate()
     );
-    return differenceInDays(nextYearBirthday, today);
+    return differenceInDays(nextYearBirthday, today) + 1;
   };
 
   const getCurrentMonthBirthdays = () => {
