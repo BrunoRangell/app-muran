@@ -18,8 +18,23 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
     isUsingCustomBudgetInReview
   } = useBudgetFetcher(client, accountId);
   
-  // Usar o orçamento da conta específica
-  const monthlyBudget = account?.budget_amount || 0;
+  // Calcular orçamento total somando todas as contas ou usar o orçamento da conta específica
+  const calculateMonthlyBudget = () => {
+    // Se estamos visualizando uma conta específica
+    if (accountId && account) {
+      return account.budget_amount || 0;
+    }
+    
+    // Se o cliente tem contas configuradas, somar os orçamentos
+    if (client.meta_accounts && client.meta_accounts.length > 0) {
+      return client.meta_accounts.reduce((sum, acc) => sum + (acc.budget_amount || 0), 0);
+    }
+    
+    // Caso contrário, usar o orçamento legado
+    return client.meta_ads_budget || 0;
+  };
+  
+  const monthlyBudget = calculateMonthlyBudget();
   
   // Cálculos de orçamento e recomendações - usando o orçamento personalizado se disponível
   const {

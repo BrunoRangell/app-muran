@@ -31,7 +31,8 @@ export const ClientAltCard = ({
     // Informações sobre orçamento personalizado
     customBudget,
     isUsingCustomBudgetInReview,
-    actualBudgetAmount
+    actualBudgetAmount,
+    accountName
   } = useClientBudgetCalculation(client);
 
   // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa
@@ -76,6 +77,7 @@ export const ClientAltCard = ({
           showRecommendation={showRecommendation}
           needsIncrease={needsIncrease}
           budgetDifference={budgetDifference}
+          accountName={accountName}
         />
       </td>
       <td className="px-6 py-4">
