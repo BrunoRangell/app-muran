@@ -63,3 +63,57 @@ export interface CustomBudget {
   updated_at: string;
   description?: string | null;
 }
+
+export interface MetaAccount {
+  id: string;
+  client_id: string;
+  account_id: string;
+  account_name: string;
+  is_primary: boolean;
+  budget_amount: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoogleAccount {
+  id: string;
+  client_id: string;
+  account_id: string;
+  account_name: string;
+  is_primary: boolean;
+  budget_amount: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientWithReview {
+  id: string;
+  company_name: string;
+  meta_accounts?: MetaAccount[];
+  google_accounts?: GoogleAccount[];
+  status: string;
+  lastReview?: ReviewData;
+  needsBudgetAdjustment?: boolean;
+}
+
+export interface ReviewData {
+  id: number;
+  review_date: string;
+  meta_daily_budget_current: number | null;
+  meta_total_spent: number;
+  google_daily_budget_current?: number | null;
+  google_total_spent?: number;
+  google_last_five_days_spent?: number;
+  created_at: string;
+  updated_at: string;
+  idealDailyBudget?: number;
+  recommendation?: string | null;
+  using_custom_budget?: boolean;
+  custom_budget_id?: string | null;
+  custom_budget_amount?: number | null;
+  custom_budget_end_date?: string | null;
+  client_account_id?: string;
+  account_display_name?: string;
+}

@@ -139,6 +139,94 @@ export type Database = {
           },
         ]
       }
+      client_google_accounts: {
+        Row: {
+          account_id: string
+          account_name: string
+          budget_amount: number
+          client_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          account_name: string
+          budget_amount?: number
+          client_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          account_name?: string
+          budget_amount?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_google_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_meta_accounts: {
+        Row: {
+          account_id: string
+          account_name: string
+          budget_amount: number
+          client_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          account_name: string
+          budget_amount?: number
+          client_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          account_name?: string
+          budget_amount?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_meta_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           acquisition_channel: string | null
@@ -281,6 +369,8 @@ export type Database = {
       }
       daily_budget_reviews: {
         Row: {
+          account_display_name: string | null
+          client_account_id: string | null
           client_id: string | null
           created_at: string | null
           custom_budget_amount: number | null
@@ -295,6 +385,8 @@ export type Database = {
           using_custom_budget: boolean | null
         }
         Insert: {
+          account_display_name?: string | null
+          client_account_id?: string | null
           client_id?: string | null
           created_at?: string | null
           custom_budget_amount?: number | null
@@ -309,6 +401,8 @@ export type Database = {
           using_custom_budget?: boolean | null
         }
         Update: {
+          account_display_name?: string | null
+          client_account_id?: string | null
           client_id?: string | null
           created_at?: string | null
           custom_budget_amount?: number | null
@@ -323,6 +417,13 @@ export type Database = {
           using_custom_budget?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_budget_reviews_client_account_id_fkey"
+            columns: ["client_account_id"]
+            isOneToOne: false
+            referencedRelation: "client_meta_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "daily_budget_reviews_client_id_fkey"
             columns: ["client_id"]
@@ -376,6 +477,8 @@ export type Database = {
       }
       google_ads_reviews: {
         Row: {
+          account_display_name: string | null
+          client_account_id: string | null
           client_id: string
           created_at: string
           custom_budget_amount: number | null
@@ -391,6 +494,8 @@ export type Database = {
           using_custom_budget: boolean | null
         }
         Insert: {
+          account_display_name?: string | null
+          client_account_id?: string | null
           client_id: string
           created_at?: string
           custom_budget_amount?: number | null
@@ -406,6 +511,8 @@ export type Database = {
           using_custom_budget?: boolean | null
         }
         Update: {
+          account_display_name?: string | null
+          client_account_id?: string | null
           client_id?: string
           created_at?: string
           custom_budget_amount?: number | null
@@ -421,6 +528,13 @@ export type Database = {
           using_custom_budget?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "google_ads_reviews_client_account_id_fkey"
+            columns: ["client_account_id"]
+            isOneToOne: false
+            referencedRelation: "client_google_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "google_ads_reviews_client_id_fkey"
             columns: ["client_id"]

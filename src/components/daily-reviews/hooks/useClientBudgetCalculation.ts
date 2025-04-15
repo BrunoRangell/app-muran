@@ -1,22 +1,27 @@
-
 import { useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
 import { useBudgetFetcher } from "./budget/useBudgetFetcher";
 import { useBudgetCalculations } from "./budget/useBudgetCalculations";
 import { useTotalSpentCalculator } from "./budget/useTotalSpentCalculator";
 
-export const useClientBudgetCalculation = (client: ClientWithReview) => {
-  // Buscar dados de orçamento personalizado
+export const useClientBudgetCalculation = (client: ClientWithReview, accountId?: string) => {
+  // Buscar a conta específica se um ID foi fornecido
+  const account = accountId 
+    ? client.meta_accounts?.find(a => a.id === accountId) 
+    : client.meta_accounts?.[0];
+    
   const {
     customBudget,
     isLoadingCustomBudget,
     hasReview,
     isUsingCustomBudgetInReview
-  } = useBudgetFetcher(client);
+  } = useBudgetFetcher(client, accountId);
+  
+  // Usar o orçamento da conta específica
+  const monthlyBudget = account?.budget_amount || 0;
   
   // Cálculos de orçamento e recomendações - usando o orçamento personalizado se disponível
   const {
-    monthlyBudget,
     totalSpent,
     currentDailyBudget,
     idealDailyBudget,
@@ -86,16 +91,13 @@ export const useClientBudgetCalculation = (client: ClientWithReview) => {
     idealDailyBudget,
     budgetDifference,
     remainingDaysValue: remainingDays,
-    // Expor a função de cálculo manual para ser chamada pelos botões "analisar"
-    calculateTotalSpent: () => calculateTotalSpent(client.meta_account_id, customBudget),
-    // Informações sobre orçamento personalizado
+    calculateTotalSpent: () => calculateTotalSpent(account?.account_id || null, customBudget),
     customBudget,
     isLoadingCustomBudget,
     remainingBudget,
-    // Informações adicionais
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
-    // Nova propriedade para ajudar na ordenação
-    needsBudgetAdjustment
+    needsBudgetAdjustment,
+    accountName: account?.account_name
   };
 };
