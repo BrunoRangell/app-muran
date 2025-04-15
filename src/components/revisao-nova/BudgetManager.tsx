@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { 
   Card, 
   CardContent, 
@@ -261,3 +261,5 @@ export const BudgetManager = () => {
     </Card>
   );
 };
+
+export default BudgetManager;
