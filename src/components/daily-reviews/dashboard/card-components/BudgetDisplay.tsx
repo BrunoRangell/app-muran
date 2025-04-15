@@ -19,7 +19,7 @@ export const BudgetDisplay = ({
   accountName
 }: BudgetDisplayProps) => {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2">
       <div className="font-medium">
         {idealDailyBudget > 0 
           ? formatCurrency(idealDailyBudget) 
@@ -27,9 +27,13 @@ export const BudgetDisplay = ({
       </div>
       
       {showRecommendation && (
-        <Badge className={`flex items-center ${needsIncrease ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+        <Badge 
+          className={`flex items-center w-fit ${
+            needsIncrease ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}
+        >
           {accountName && (
-            <span className="mr-1 font-medium">{accountName}:</span>
+            <span className="mr-1 font-medium">CA {accountName}:</span>
           )}
           {needsIncrease ? (
             <TrendingUp size={14} className="mr-1" />
