@@ -22,7 +22,17 @@ interface BudgetValues {
   googleFormattedValue: string; // Valor formatado para exibição do Google Ads
   googleAccountId: string;
   googleRawValue: number;
+  // Campos para conta secundária
+  hasSecondary: boolean;
+  secondaryFormattedValue: string;
+  secondaryAccountId: string;
+  secondaryRawValue: number;
+  secondaryGoogleFormattedValue: string;
+  secondaryGoogleAccountId: string;
+  secondaryGoogleRawValue: number;
 }
+
+type AccountType = 'primary' | 'secondary';
 
 export const useBudgetManager = () => {
   const [budgets, setBudgets] = useState<Record<string, BudgetValues>>({});
@@ -59,7 +69,16 @@ export const useBudgetManager = () => {
     if (!budgets) return formatCurrency(0);
     
     const total = Object.values(budgets).reduce(
-      (sum, budget) => sum + (budget.rawValue || 0), 
+      (sum, budget) => {
+        let clientTotal = budget.rawValue || 0;
+        
+        // Adicionar orçamento secundário se existir
+        if (budget.hasSecondary) {
+          clientTotal += budget.secondaryRawValue || 0;
+        }
+        
+        return sum + clientTotal;
+      }, 
       0
     );
     
@@ -71,7 +90,16 @@ export const useBudgetManager = () => {
     if (!budgets) return formatCurrency(0);
     
     const total = Object.values(budgets).reduce(
-      (sum, budget) => sum + (budget.googleRawValue || 0), 
+      (sum, budget) => {
+        let clientTotal = budget.googleRawValue || 0;
+        
+        // Adicionar orçamento secundário se existir
+        if (budget.hasSecondary) {
+          clientTotal += budget.secondaryGoogleRawValue || 0;
+        }
+        
+        return sum + clientTotal;
+      }, 
       0
     );
     
@@ -99,7 +127,15 @@ export const useBudgetManager = () => {
           rawValue: client.meta_ads_budget || 0,
           googleFormattedValue,
           googleAccountId: client.google_account_id || "",
-          googleRawValue: client.google_ads_budget || 0
+          googleRawValue: client.google_ads_budget || 0,
+          // Inicializar campos de conta secundária
+          hasSecondary: false,
+          secondaryFormattedValue: "",
+          secondaryAccountId: "",
+          secondaryRawValue: 0,
+          secondaryGoogleFormattedValue: "",
+          secondaryGoogleAccountId: "",
+          secondaryGoogleRawValue: 0
         };
       });
       
@@ -110,7 +146,8 @@ export const useBudgetManager = () => {
   // Mutation para salvar orçamentos com feedback melhorado
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
-      const updates = Object.entries(budgets).map(([clientId, values]) => {
+      // Tratar contas primárias primeiro
+      const primaryUpdates = Object.entries(budgets).map(([clientId, values]) => {
         return {
           id: clientId,
           meta_ads_budget: values.rawValue,
@@ -120,8 +157,8 @@ export const useBudgetManager = () => {
         };
       });
       
-      // Realizar atualização em lote
-      for (const update of updates) {
+      // Processar contas primárias
+      for (const update of primaryUpdates) {
         const { error } = await supabase
           .from("clients")
           .update({
@@ -135,6 +172,84 @@ export const useBudgetManager = () => {
         if (error) {
           console.error(`Erro ao atualizar cliente ${update.id}:`, error);
           throw error;
+        }
+      }
+      
+      // Processar contas secundárias - aqui poderíamos usar client_meta_accounts e client_google_accounts
+      const secondaryUpdates = Object.entries(budgets)
+        .filter(([_, values]) => values.hasSecondary)
+        .map(([clientId, values]) => {
+          return {
+            clientId,
+            metaAccount: {
+              client_id: clientId,
+              account_id: values.secondaryAccountId,
+              account_name: "Conta secundária",
+              budget_amount: values.secondaryRawValue,
+              is_primary: false
+            },
+            googleAccount: {
+              client_id: clientId,
+              account_id: values.secondaryGoogleAccountId,
+              account_name: "Conta secundária",
+              budget_amount: values.secondaryGoogleRawValue,
+              is_primary: false
+            }
+          };
+        });
+        
+      // Criar ou atualizar contas secundárias
+      for (const update of secondaryUpdates) {
+        // Verificar se já existe conta Meta secundária
+        if (update.metaAccount.account_id) {
+          const { data: existingMetaAccount } = await supabase
+            .from("client_meta_accounts")
+            .select("id")
+            .eq("client_id", update.clientId)
+            .eq("is_primary", false)
+            .maybeSingle();
+            
+          if (existingMetaAccount) {
+            // Atualizar conta existente
+            await supabase
+              .from("client_meta_accounts")
+              .update({
+                account_id: update.metaAccount.account_id,
+                budget_amount: update.metaAccount.budget_amount
+              })
+              .eq("id", existingMetaAccount.id);
+          } else {
+            // Criar nova conta
+            await supabase
+              .from("client_meta_accounts")
+              .insert(update.metaAccount);
+          }
+        }
+        
+        // Verificar se já existe conta Google secundária
+        if (update.googleAccount.account_id) {
+          const { data: existingGoogleAccount } = await supabase
+            .from("client_google_accounts")
+            .select("id")
+            .eq("client_id", update.clientId)
+            .eq("is_primary", false)
+            .maybeSingle();
+            
+          if (existingGoogleAccount) {
+            // Atualizar conta existente
+            await supabase
+              .from("client_google_accounts")
+              .update({
+                account_id: update.googleAccount.account_id,
+                budget_amount: update.googleAccount.budget_amount
+              })
+              .eq("id", existingGoogleAccount.id);
+          } else {
+            // Criar nova conta
+            await supabase
+              .from("client_google_accounts")
+              .insert(update.googleAccount);
+          }
         }
       }
       
@@ -158,109 +273,185 @@ export const useBudgetManager = () => {
     }
   });
 
+  // Adicionar conta secundária para um cliente
+  const addSecondaryAccount = (clientId: string) => {
+    setBudgets(prev => ({
+      ...prev,
+      [clientId]: {
+        ...prev[clientId],
+        hasSecondary: true
+      }
+    }));
+    
+    toast({
+      title: "Conta secundária adicionada",
+      description: "Preencha os dados da conta secundária e salve as alterações.",
+    });
+  };
+
   // Manipulador para alteração de orçamento Meta - sem limitar entrada do usuário
-  const handleBudgetChange = (clientId: string, value: string) => {
+  const handleBudgetChange = (clientId: string, value: string, accountType: AccountType = 'primary') => {
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        formattedValue: value
+        ...(accountType === 'primary' 
+          ? { formattedValue: value }
+          : { secondaryFormattedValue: value })
       }
     }));
   };
 
   // Manipulador para alteração de orçamento Google - sem limitar entrada do usuário
-  const handleGoogleBudgetChange = (clientId: string, value: string) => {
+  const handleGoogleBudgetChange = (clientId: string, value: string, accountType: AccountType = 'primary') => {
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        googleFormattedValue: value
+        ...(accountType === 'primary' 
+          ? { googleFormattedValue: value }
+          : { secondaryGoogleFormattedValue: value })
       }
     }));
   };
 
   // Manipulador para formatação de valor ao perder o foco
-  const handleBudgetBlur = (clientId: string, type: 'meta' | 'google') => {
+  const handleBudgetBlur = (clientId: string, type: 'meta' | 'google', accountType: AccountType = 'primary') => {
     setBudgets((prev) => {
       const currentBudget = prev[clientId];
       
       if (type === 'meta') {
-        const currentValue = currentBudget?.formattedValue || "";
-        
-        // Se o campo estiver vazio, não formatar
-        if (!currentValue.trim()) {
+        if (accountType === 'primary') {
+          const currentValue = currentBudget?.formattedValue || "";
+          
+          // Se o campo estiver vazio, não formatar
+          if (!currentValue.trim()) {
+            return {
+              ...prev,
+              [clientId]: {
+                ...currentBudget,
+                formattedValue: "",
+                rawValue: 0
+              }
+            };
+          }
+          
+          // Converter para número e depois formatar como moeda
+          const numericValue = parseCurrencyToNumber(currentValue);
+          const formattedValue = formatCurrency(numericValue);
+          
           return {
             ...prev,
             [clientId]: {
               ...currentBudget,
-              formattedValue: "",
-              rawValue: 0
+              formattedValue,
+              rawValue: numericValue
+            }
+          };
+        } else {
+          const currentValue = currentBudget?.secondaryFormattedValue || "";
+          
+          if (!currentValue.trim()) {
+            return {
+              ...prev,
+              [clientId]: {
+                ...currentBudget,
+                secondaryFormattedValue: "",
+                secondaryRawValue: 0
+              }
+            };
+          }
+          
+          const numericValue = parseCurrencyToNumber(currentValue);
+          const formattedValue = formatCurrency(numericValue);
+          
+          return {
+            ...prev,
+            [clientId]: {
+              ...currentBudget,
+              secondaryFormattedValue: formattedValue,
+              secondaryRawValue: numericValue
             }
           };
         }
-        
-        // Converter para número e depois formatar como moeda
-        const numericValue = parseCurrencyToNumber(currentValue);
-        const formattedValue = formatCurrency(numericValue);
-        
-        return {
-          ...prev,
-          [clientId]: {
-            ...currentBudget,
-            formattedValue,
-            rawValue: numericValue
-          }
-        };
       } else {
-        const currentValue = currentBudget?.googleFormattedValue || "";
-        
-        // Se o campo estiver vazio, não formatar
-        if (!currentValue.trim()) {
+        if (accountType === 'primary') {
+          const currentValue = currentBudget?.googleFormattedValue || "";
+          
+          if (!currentValue.trim()) {
+            return {
+              ...prev,
+              [clientId]: {
+                ...currentBudget,
+                googleFormattedValue: "",
+                googleRawValue: 0
+              }
+            };
+          }
+          
+          const numericValue = parseCurrencyToNumber(currentValue);
+          const formattedValue = formatCurrency(numericValue);
+          
           return {
             ...prev,
             [clientId]: {
               ...currentBudget,
-              googleFormattedValue: "",
-              googleRawValue: 0
+              googleFormattedValue: formattedValue,
+              googleRawValue: numericValue
+            }
+          };
+        } else {
+          const currentValue = currentBudget?.secondaryGoogleFormattedValue || "";
+          
+          if (!currentValue.trim()) {
+            return {
+              ...prev,
+              [clientId]: {
+                ...currentBudget,
+                secondaryGoogleFormattedValue: "",
+                secondaryGoogleRawValue: 0
+              }
+            };
+          }
+          
+          const numericValue = parseCurrencyToNumber(currentValue);
+          const formattedValue = formatCurrency(numericValue);
+          
+          return {
+            ...prev,
+            [clientId]: {
+              ...currentBudget,
+              secondaryGoogleFormattedValue: formattedValue,
+              secondaryGoogleRawValue: numericValue
             }
           };
         }
-        
-        // Converter para número e depois formatar como moeda
-        const numericValue = parseCurrencyToNumber(currentValue);
-        const formattedValue = formatCurrency(numericValue);
-        
-        return {
-          ...prev,
-          [clientId]: {
-            ...currentBudget,
-            googleFormattedValue: formattedValue,
-            googleRawValue: numericValue
-          }
-        };
       }
     });
   };
 
   // Manipulador para alteração de ID da conta Meta
-  const handleAccountIdChange = (clientId: string, value: string) => {
+  const handleAccountIdChange = (clientId: string, value: string, accountType: AccountType = 'primary') => {
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        accountId: value
+        ...(accountType === 'primary' 
+          ? { accountId: value }
+          : { secondaryAccountId: value })
       },
     }));
   };
 
   // Manipulador para alteração de ID da conta Google
-  const handleGoogleAccountIdChange = (clientId: string, value: string) => {
+  const handleGoogleAccountIdChange = (clientId: string, value: string, accountType: AccountType = 'primary') => {
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        googleAccountId: value
+        ...(accountType === 'primary' 
+          ? { googleAccountId: value }
+          : { secondaryGoogleAccountId: value })
       },
     }));
   };
@@ -274,18 +465,32 @@ export const useBudgetManager = () => {
       Object.keys(formatted).forEach((clientId) => {
         const currentValues = formatted[clientId];
         
-        // Formatar valores do Meta Ads
+        // Formatar valores da conta primária
         if (currentValues.formattedValue.trim()) {
           const numericValue = parseCurrencyToNumber(currentValues.formattedValue);
           formatted[clientId].formattedValue = formatCurrency(numericValue);
           formatted[clientId].rawValue = numericValue;
         }
         
-        // Formatar valores do Google Ads
         if (currentValues.googleFormattedValue.trim()) {
           const numericValue = parseCurrencyToNumber(currentValues.googleFormattedValue);
           formatted[clientId].googleFormattedValue = formatCurrency(numericValue);
           formatted[clientId].googleRawValue = numericValue;
+        }
+        
+        // Formatar valores da conta secundária se existir
+        if (currentValues.hasSecondary) {
+          if (currentValues.secondaryFormattedValue.trim()) {
+            const numericValue = parseCurrencyToNumber(currentValues.secondaryFormattedValue);
+            formatted[clientId].secondaryFormattedValue = formatCurrency(numericValue);
+            formatted[clientId].secondaryRawValue = numericValue;
+          }
+          
+          if (currentValues.secondaryGoogleFormattedValue.trim()) {
+            const numericValue = parseCurrencyToNumber(currentValues.secondaryGoogleFormattedValue);
+            formatted[clientId].secondaryGoogleFormattedValue = formatCurrency(numericValue);
+            formatted[clientId].secondaryGoogleRawValue = numericValue;
+          }
         }
       });
       
@@ -305,6 +510,7 @@ export const useBudgetManager = () => {
     handleGoogleBudgetChange,
     handleGoogleAccountIdChange,
     handleSave,
+    addSecondaryAccount,
     isSaving: saveBudgetsMutation.isPending,
     totalBudget,
     totalGoogleBudget

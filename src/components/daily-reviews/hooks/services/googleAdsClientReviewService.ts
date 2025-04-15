@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
 import { ClientWithReview, GoogleAccount } from "../types/reviewTypes";
@@ -30,18 +31,30 @@ export const fetchClientsWithGoogleReviews = async (): Promise<ClientWithReview[
     const { data: reviews, error: reviewsError } = await supabase
       .from("google_ads_reviews")
       .select("*")
+      .in("client_id", clients.map(c => c.id))
       .order("review_date", { ascending: false })
       .order("updated_at", { ascending: false });
     
     if (reviewsError) throw new Error("Erro ao buscar revisões: " + reviewsError.message);
     
-    // Criar mapa de revisões mais recentes por conta
+    // Criar mapa de revisões mais recentes por cliente
     const latestReviewsMap = new Map();
+    const reviewsByClientMap = new Map();
     
     if (reviews && reviews.length > 0) {
+      // Agrupar revisões por cliente
       reviews.forEach(review => {
-        const key = `${review.client_id}_${review.client_account_id}`;
-        if (!latestReviewsMap.has(key)) {
+        const clientId = review.client_id;
+        const clientReviews = reviewsByClientMap.get(clientId) || [];
+        clientReviews.push(review);
+        reviewsByClientMap.set(clientId, clientReviews);
+        
+        // Encontrar a revisão mais recente para cada cliente
+        const key = `${review.client_id}`;
+        if (!latestReviewsMap.has(key) || 
+            new Date(review.review_date) > new Date(latestReviewsMap.get(key).review_date) ||
+            (new Date(review.review_date).getTime() === new Date(latestReviewsMap.get(key).review_date).getTime() && 
+             new Date(review.updated_at) > new Date(latestReviewsMap.get(key).updated_at))) {
           latestReviewsMap.set(key, review);
         }
       });
@@ -58,14 +71,32 @@ export const fetchClientsWithGoogleReviews = async (): Promise<ClientWithReview[
     // Mapear clientes com suas contas e revisões
     const clientsWithReviews = clients.map(client => {
       const clientAccounts = accountsByClient.get(client.id) || [];
+      const latestReview = latestReviewsMap.get(client.id);
+      const allClientReviews = reviewsByClientMap.get(client.id) || [];
+      
+      // Se o cliente não tiver contas configuradas, usar dados legados
+      if (clientAccounts.length === 0 && client.google_account_id) {
+        clientAccounts.push({
+          id: 'legacy',
+          client_id: client.id,
+          account_id: client.google_account_id,
+          account_name: 'Conta Principal',
+          budget_amount: client.google_ads_budget || 0,
+          is_primary: true,
+          status: 'active',
+          created_at: '',
+          updated_at: ''
+        });
+      }
       
       // Verificar ajustes necessários para cada conta
       const needsBudgetAdjustment = clientAccounts.some(account => {
-        const review = latestReviewsMap.get(`${client.id}_${account.id}`);
-        if (!review) return false;
+        // Encontrar revisão para esta conta específica
+        const accountReview = allClientReviews.find(r => r.client_account_id === account.id);
+        if (!accountReview) return false;
         
-        const dailyBudget = review.google_daily_budget_current || 0;
-        const spent = review.google_total_spent || 0;
+        const dailyBudget = accountReview.google_daily_budget_current || 0;
+        const spent = accountReview.google_total_spent || 0;
         const monthlyBudget = account.budget_amount;
         
         const today = new Date();
@@ -82,7 +113,8 @@ export const fetchClientsWithGoogleReviews = async (): Promise<ClientWithReview[
       return {
         ...client,
         google_accounts: clientAccounts,
-        lastReview: null, // Será atualizado conforme necessário na UI
+        lastReview: latestReview || null,
+        google_reviews: allClientReviews,
         needsBudgetAdjustment
       };
     });
@@ -141,6 +173,24 @@ export const reviewGoogleClient = async (client: ClientWithReview, accountId?: s
     
     // Revisar cada conta
     for (const account of accountsToReview) {
+      // Verificar se já existe uma revisão para esta conta e data
+      const { data: existingReview, error: existingReviewError } = await supabase
+        .from("google_ads_reviews")
+        .select("id")
+        .eq("client_id", client.id)
+        .eq("client_account_id", account.id)
+        .eq("review_date", formattedDate)
+        .maybeSingle();
+        
+      if (existingReviewError) {
+        console.warn(`Erro ao verificar revisão existente: ${existingReviewError.message}`);
+      }
+      
+      if (existingReview) {
+        console.log(`Já existe uma revisão para o cliente ${client.company_name}, conta ${account.account_name} na data ${formattedDate}`);
+        continue; // Pular para a próxima conta
+      }
+      
       // Construir a query para a API do Google Ads
       const customerId = account.account_id;
       
