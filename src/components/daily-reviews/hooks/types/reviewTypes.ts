@@ -1,3 +1,4 @@
+
 // Tipos relacionados ao cliente
 export interface ClientWithReview {
   id: string;
@@ -7,8 +8,11 @@ export interface ClientWithReview {
   google_account_id?: string | null;
   google_ads_budget?: number;
   lastReview?: ReviewData;
+  google_reviews?: ReviewData[]; // Adicionando suporte para múltiplas revisões Google
   needsBudgetAdjustment?: boolean;
-  status: string; // Adicionando o campo status que estava faltando
+  status: string;
+  google_accounts?: GoogleAccount[];
+  meta_accounts?: MetaAccount[];
 }
 
 // Tipos relacionados à revisão
@@ -19,7 +23,7 @@ export interface ReviewData {
   meta_total_spent: number;
   google_daily_budget_current?: number | null;
   google_total_spent?: number;
-  google_last_five_days_spent?: number; // Novo campo para gastos dos últimos 5 dias
+  google_last_five_days_spent?: number;
   created_at: string;
   updated_at: string;
   idealDailyBudget?: number;
@@ -29,6 +33,10 @@ export interface ReviewData {
   custom_budget_id?: string | null;
   custom_budget_amount?: number | null;
   custom_budget_end_date?: string | null;
+  // Propriedades para conta específica do Google
+  google_account_id?: string | null; // Adicionando ID da conta Google
+  client_account_id?: string;
+  account_display_name?: string;
 }
 
 // Tipos relacionados à análise
@@ -86,34 +94,4 @@ export interface GoogleAccount {
   status: string;
   created_at: string;
   updated_at: string;
-}
-
-export interface ClientWithReview {
-  id: string;
-  company_name: string;
-  meta_accounts?: MetaAccount[];
-  google_accounts?: GoogleAccount[];
-  status: string;
-  lastReview?: ReviewData;
-  needsBudgetAdjustment?: boolean;
-}
-
-export interface ReviewData {
-  id: number;
-  review_date: string;
-  meta_daily_budget_current: number | null;
-  meta_total_spent: number;
-  google_daily_budget_current?: number | null;
-  google_total_spent?: number;
-  google_last_five_days_spent?: number;
-  created_at: string;
-  updated_at: string;
-  idealDailyBudget?: number;
-  recommendation?: string | null;
-  using_custom_budget?: boolean;
-  custom_budget_id?: string | null;
-  custom_budget_amount?: number | null;
-  custom_budget_end_date?: string | null;
-  client_account_id?: string;
-  account_display_name?: string;
 }

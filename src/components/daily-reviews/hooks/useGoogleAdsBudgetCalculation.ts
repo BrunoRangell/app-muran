@@ -27,8 +27,8 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   const totalSpent = useMemo(() => {
     if (!hasReview) return 0;
     
-    // Se tivermos uma revisão específica para uma conta e não uma revisão agregada
-    if (client.lastReview?.google_account_id) {
+    // Se tivermos uma revisão específica para uma conta
+    if (client.lastReview?.client_account_id) {
       return client.lastReview?.google_total_spent || 0;
     }
     
@@ -46,7 +46,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     if (!hasReview) return 0;
     
     // Se tivermos uma revisão específica para uma conta
-    if (client.lastReview?.google_account_id) {
+    if (client.lastReview?.client_account_id) {
       return client.lastReview?.google_last_five_days_spent || 0;
     }
     
@@ -64,7 +64,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     if (!hasReview) return 0;
     
     // Se tivermos uma revisão específica para uma conta
-    if (client.lastReview?.google_account_id) {
+    if (client.lastReview?.client_account_id) {
       return client.lastReview?.google_daily_budget_current || 0;
     }
     
