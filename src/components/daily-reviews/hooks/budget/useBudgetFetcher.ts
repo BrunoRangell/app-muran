@@ -6,7 +6,7 @@ import { ClientWithReview } from "../types/reviewTypes";
 /**
  * Hook para buscar e gerenciar orçamentos personalizados
  */
-export const useBudgetFetcher = (client: ClientWithReview) => {
+export const useBudgetFetcher = (client: ClientWithReview, accountId?: string) => {
   const [customBudget, setCustomBudget] = useState<any | null>(null);
   const [isLoadingCustomBudget, setIsLoadingCustomBudget] = useState(false);
   
