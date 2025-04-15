@@ -64,6 +64,41 @@ export const useBudgetManager = () => {
     staleTime: 5 * 60 * 1000, // Cache por 5 minutos para melhorar performance
   });
 
+  // Buscar contas secundárias
+  const { data: metaAccounts } = useQuery({
+    queryKey: ["client-meta-accounts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_meta_accounts")
+        .select("*")
+        .eq("is_primary", false);
+
+      if (error) {
+        console.error("Erro ao buscar contas Meta secundárias:", error);
+        return [];
+      }
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: googleAccounts } = useQuery({
+    queryKey: ["client-google-accounts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_google_accounts")
+        .select("*")
+        .eq("is_primary", false);
+
+      if (error) {
+        console.error("Erro ao buscar contas Google secundárias:", error);
+        return [];
+      }
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Calcular o total de orçamentos Meta
   const totalBudget = useMemo(() => {
     if (!budgets) return formatCurrency(0);
@@ -139,121 +174,229 @@ export const useBudgetManager = () => {
         };
       });
       
+      // Configurar contas secundárias se existirem
+      if (metaAccounts?.length || googleAccounts?.length) {
+        // Agrupar contas por cliente para facilitar o processamento
+        const metaAccountsByClient = metaAccounts?.reduce((acc, account) => {
+          if (!acc[account.client_id]) {
+            acc[account.client_id] = [];
+          }
+          acc[account.client_id].push(account);
+          return acc;
+        }, {} as Record<string, any[]>) || {};
+
+        const googleAccountsByClient = googleAccounts?.reduce((acc, account) => {
+          if (!acc[account.client_id]) {
+            acc[account.client_id] = [];
+          }
+          acc[account.client_id].push(account);
+          return acc;
+        }, {} as Record<string, any[]>) || {};
+
+        // Adicionar contas secundárias aos clientes
+        Object.keys(initialBudgets).forEach(clientId => {
+          const metaSecondaryAccounts = metaAccountsByClient[clientId] || [];
+          const googleSecondaryAccounts = googleAccountsByClient[clientId] || [];
+          
+          if (metaSecondaryAccounts.length > 0 || googleSecondaryAccounts.length > 0) {
+            const metaAccount = metaSecondaryAccounts[0];
+            const googleAccount = googleSecondaryAccounts[0];
+            
+            initialBudgets[clientId].hasSecondary = true;
+            
+            if (metaAccount) {
+              initialBudgets[clientId].secondaryAccountId = metaAccount.account_id || "";
+              initialBudgets[clientId].secondaryRawValue = metaAccount.budget_amount || 0;
+              initialBudgets[clientId].secondaryFormattedValue = formatCurrency(metaAccount.budget_amount || 0);
+            }
+            
+            if (googleAccount) {
+              initialBudgets[clientId].secondaryGoogleAccountId = googleAccount.account_id || "";
+              initialBudgets[clientId].secondaryGoogleRawValue = googleAccount.budget_amount || 0;
+              initialBudgets[clientId].secondaryGoogleFormattedValue = formatCurrency(googleAccount.budget_amount || 0);
+            }
+          }
+        });
+      }
+      
       setBudgets(initialBudgets);
     }
-  }, [clients]);
+  }, [clients, metaAccounts, googleAccounts]);
 
   // Mutation para salvar orçamentos com feedback melhorado
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
-      // Tratar contas primárias primeiro
-      const primaryUpdates = Object.entries(budgets).map(([clientId, values]) => {
-        return {
-          id: clientId,
-          meta_ads_budget: values.rawValue,
-          meta_account_id: values.accountId || null,
-          google_ads_budget: values.googleRawValue,
-          google_account_id: values.googleAccountId || null
-        };
-      });
-      
-      // Processar contas primárias
-      for (const update of primaryUpdates) {
-        const { error } = await supabase
-          .from("clients")
-          .update({
-            meta_ads_budget: update.meta_ads_budget,
-            meta_account_id: update.meta_account_id,
-            google_ads_budget: update.google_ads_budget,
-            google_account_id: update.google_account_id
-          })
-          .eq("id", update.id);
-
-        if (error) {
-          console.error(`Erro ao atualizar cliente ${update.id}:`, error);
-          throw error;
-        }
-      }
-      
-      // Processar contas secundárias - aqui poderíamos usar client_meta_accounts e client_google_accounts
-      const secondaryUpdates = Object.entries(budgets)
-        .filter(([_, values]) => values.hasSecondary)
-        .map(([clientId, values]) => {
+      try {
+        console.log("Iniciando salvamento de orçamentos e contas...");
+        
+        // 1. Processar contas primárias - atualizar tabela clients
+        const primaryUpdates = Object.entries(budgets).map(([clientId, values]) => {
           return {
-            clientId,
-            metaAccount: {
-              client_id: clientId,
-              account_id: values.secondaryAccountId,
-              account_name: "Conta secundária",
-              budget_amount: values.secondaryRawValue,
-              is_primary: false
-            },
-            googleAccount: {
-              client_id: clientId,
-              account_id: values.secondaryGoogleAccountId,
-              account_name: "Conta secundária",
-              budget_amount: values.secondaryGoogleRawValue,
-              is_primary: false
-            }
+            id: clientId,
+            meta_ads_budget: values.rawValue,
+            meta_account_id: values.accountId || null,
+            google_ads_budget: values.googleRawValue,
+            google_account_id: values.googleAccountId || null
           };
         });
         
-      // Criar ou atualizar contas secundárias
-      for (const update of secondaryUpdates) {
-        // Verificar se já existe conta Meta secundária
-        if (update.metaAccount.account_id) {
-          const { data: existingMetaAccount } = await supabase
-            .from("client_meta_accounts")
-            .select("id")
-            .eq("client_id", update.clientId)
-            .eq("is_primary", false)
-            .maybeSingle();
-            
-          if (existingMetaAccount) {
-            // Atualizar conta existente
-            await supabase
-              .from("client_meta_accounts")
-              .update({
-                account_id: update.metaAccount.account_id,
-                budget_amount: update.metaAccount.budget_amount
-              })
-              .eq("id", existingMetaAccount.id);
-          } else {
-            // Criar nova conta
-            await supabase
-              .from("client_meta_accounts")
-              .insert(update.metaAccount);
+        console.log("Atualizando contas primárias:", primaryUpdates);
+        
+        for (const update of primaryUpdates) {
+          const { error } = await supabase
+            .from("clients")
+            .update({
+              meta_ads_budget: update.meta_ads_budget,
+              meta_account_id: update.meta_account_id,
+              google_ads_budget: update.google_ads_budget,
+              google_account_id: update.google_account_id
+            })
+            .eq("id", update.id);
+  
+          if (error) {
+            console.error(`Erro ao atualizar cliente ${update.id}:`, error);
+            throw error;
           }
         }
         
-        // Verificar se já existe conta Google secundária
-        if (update.googleAccount.account_id) {
-          const { data: existingGoogleAccount } = await supabase
-            .from("client_google_accounts")
-            .select("id")
-            .eq("client_id", update.clientId)
-            .eq("is_primary", false)
-            .maybeSingle();
+        // 2. Processar contas Meta secundárias
+        for (const [clientId, values] of Object.entries(budgets)) {
+          if (values.hasSecondary && values.secondaryAccountId) {
+            // Verificar se já existe conta secundária para este cliente
+            console.log(`Verificando conta Meta secundária para cliente ${clientId}`);
             
-          if (existingGoogleAccount) {
-            // Atualizar conta existente
-            await supabase
-              .from("client_google_accounts")
-              .update({
-                account_id: update.googleAccount.account_id,
-                budget_amount: update.googleAccount.budget_amount
-              })
-              .eq("id", existingGoogleAccount.id);
-          } else {
-            // Criar nova conta
-            await supabase
-              .from("client_google_accounts")
-              .insert(update.googleAccount);
+            const { data: existingMetaAccounts, error: fetchError } = await supabase
+              .from("client_meta_accounts")
+              .select("*")
+              .eq("client_id", clientId)
+              .eq("is_primary", false);
+            
+            if (fetchError) {
+              console.error(`Erro ao buscar contas Meta secundárias do cliente ${clientId}:`, fetchError);
+              throw fetchError;
+            }
+            
+            if (existingMetaAccounts && existingMetaAccounts.length > 0) {
+              // Atualizar conta existente
+              console.log(`Atualizando conta Meta secundária existente:`, {
+                id: existingMetaAccounts[0].id,
+                account_id: values.secondaryAccountId,
+                budget_amount: values.secondaryRawValue
+              });
+              
+              const { error: updateError } = await supabase
+                .from("client_meta_accounts")
+                .update({
+                  account_id: values.secondaryAccountId,
+                  account_name: "Conta secundária",
+                  budget_amount: values.secondaryRawValue,
+                  status: 'active'
+                })
+                .eq("id", existingMetaAccounts[0].id);
+              
+              if (updateError) {
+                console.error(`Erro ao atualizar conta Meta secundária:`, updateError);
+                throw updateError;
+              }
+            } else if (values.secondaryAccountId && values.secondaryRawValue > 0) {
+              // Criar nova conta
+              console.log(`Criando nova conta Meta secundária:`, {
+                client_id: clientId,
+                account_id: values.secondaryAccountId,
+                budget_amount: values.secondaryRawValue
+              });
+              
+              const { error: insertError } = await supabase
+                .from("client_meta_accounts")
+                .insert({
+                  client_id: clientId,
+                  account_id: values.secondaryAccountId,
+                  account_name: "Conta secundária",
+                  budget_amount: values.secondaryRawValue,
+                  is_primary: false,
+                  status: 'active'
+                });
+              
+              if (insertError) {
+                console.error(`Erro ao criar conta Meta secundária:`, insertError);
+                throw insertError;
+              }
+            }
           }
         }
+        
+        // 3. Processar contas Google secundárias
+        for (const [clientId, values] of Object.entries(budgets)) {
+          if (values.hasSecondary && values.secondaryGoogleAccountId) {
+            // Verificar se já existe conta secundária para este cliente
+            console.log(`Verificando conta Google secundária para cliente ${clientId}`);
+            
+            const { data: existingGoogleAccounts, error: fetchError } = await supabase
+              .from("client_google_accounts")
+              .select("*")
+              .eq("client_id", clientId)
+              .eq("is_primary", false);
+            
+            if (fetchError) {
+              console.error(`Erro ao buscar contas Google secundárias do cliente ${clientId}:`, fetchError);
+              throw fetchError;
+            }
+            
+            if (existingGoogleAccounts && existingGoogleAccounts.length > 0) {
+              // Atualizar conta existente
+              console.log(`Atualizando conta Google secundária existente:`, {
+                id: existingGoogleAccounts[0].id,
+                account_id: values.secondaryGoogleAccountId,
+                budget_amount: values.secondaryGoogleRawValue
+              });
+              
+              const { error: updateError } = await supabase
+                .from("client_google_accounts")
+                .update({
+                  account_id: values.secondaryGoogleAccountId,
+                  account_name: "Conta secundária",
+                  budget_amount: values.secondaryGoogleRawValue,
+                  status: 'active'
+                })
+                .eq("id", existingGoogleAccounts[0].id);
+              
+              if (updateError) {
+                console.error(`Erro ao atualizar conta Google secundária:`, updateError);
+                throw updateError;
+              }
+            } else if (values.secondaryGoogleAccountId && values.secondaryGoogleRawValue > 0) {
+              // Criar nova conta
+              console.log(`Criando nova conta Google secundária:`, {
+                client_id: clientId,
+                account_id: values.secondaryGoogleAccountId,
+                budget_amount: values.secondaryGoogleRawValue
+              });
+              
+              const { error: insertError } = await supabase
+                .from("client_google_accounts")
+                .insert({
+                  client_id: clientId,
+                  account_id: values.secondaryGoogleAccountId,
+                  account_name: "Conta secundária",
+                  budget_amount: values.secondaryGoogleRawValue,
+                  is_primary: false,
+                  status: 'active'
+                });
+              
+              if (insertError) {
+                console.error(`Erro ao criar conta Google secundária:`, insertError);
+                throw insertError;
+              }
+            }
+          }
+        }
+        
+        console.log("Salvamento concluído com sucesso!");
+        return true;
+      } catch (error) {
+        console.error("Erro durante o processo de salvamento:", error);
+        throw error;
       }
-      
-      return true;
     },
     meta: {
       onSuccess: () => {
@@ -262,6 +405,8 @@ export const useBudgetManager = () => {
           description: "Orçamentos e contas atualizados com sucesso.",
         });
         queryClient.invalidateQueries({ queryKey: ["clients-active-budgets"] });
+        queryClient.invalidateQueries({ queryKey: ["client-meta-accounts"] });
+        queryClient.invalidateQueries({ queryKey: ["client-google-accounts"] });
       },
       onError: (error: any) => {
         toast({
@@ -497,6 +642,8 @@ export const useBudgetManager = () => {
       return formatted;
     });
     
+    // Iniciar o processo de salvamento
+    console.log("Iniciando salvamento com dados:", budgets);
     saveBudgetsMutation.mutate();
   };
 

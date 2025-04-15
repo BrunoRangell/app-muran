@@ -112,8 +112,8 @@ export const BudgetManager = () => {
                     </TableRow>
                   ) : (
                     filteredClients?.map((client) => (
-                      <>
-                        <TableRow key={client.id} className="hover:bg-gray-50">
+                      <React.Fragment key={client.id}>
+                        <TableRow className="hover:bg-gray-50">
                           <TableCell className="font-medium">{client.company_name}</TableCell>
                           <TableCell>
                             <Input
@@ -211,7 +211,7 @@ export const BudgetManager = () => {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </React.Fragment>
                     ))
                   )}
                 </TableBody>
