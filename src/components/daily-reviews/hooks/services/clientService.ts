@@ -32,6 +32,26 @@ export const fetchClientsWithReviews = async () => {
     throw new Error(`Erro ao buscar clientes: ${error.message}`);
   }
   
+  // Buscar todas as contas Meta dos clientes
+  const { data: metaAccountsData, error: metaError } = await supabase
+    .from('client_meta_accounts')
+    .select('*')
+    .eq('status', 'active');
+    
+  if (metaError) {
+    console.error("Erro ao buscar contas Meta:", metaError);
+    throw new Error(`Erro ao buscar contas Meta: ${metaError.message}`);
+  }
+  
+  // Agrupar contas Meta por cliente
+  const metaAccountsByClient = {};
+  metaAccountsData?.forEach(account => {
+    if (!metaAccountsByClient[account.client_id]) {
+      metaAccountsByClient[account.client_id] = [];
+    }
+    metaAccountsByClient[account.client_id].push(account);
+  });
+  
   // Agora, para cada cliente, buscar apenas a revisão mais recente
   let lastReviewTime: Date | null = null;
   const processedClients = [];
@@ -52,15 +72,17 @@ export const fetchClientsWithReviews = async () => {
       // Continuar com o próximo cliente
       processedClients.push({
         ...client,
-        lastReview: null
+        lastReview: null,
+        meta_accounts: metaAccountsByClient[client.id] || []
       });
       continue;
     }
     
-    // Adicionar a revisão mais recente ao cliente
+    // Adicionar a revisão mais recente e as contas Meta ao cliente
     processedClients.push({
       ...client,
-      lastReview: reviewData
+      lastReview: reviewData,
+      meta_accounts: metaAccountsByClient[client.id] || []
     });
     
     // Atualizar o timestamp da revisão mais recente global
@@ -72,7 +94,7 @@ export const fetchClientsWithReviews = async () => {
     }
   }
   
-  console.log("Clientes processados com revisões:", processedClients?.length);
+  console.log("Clientes processados com revisões e contas Meta:", processedClients?.length);
   
   return { 
     clientsData: processedClients as ClientWithReview[] || [],
