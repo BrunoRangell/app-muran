@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
 import { useBudgetFetcher } from "./budget/useBudgetFetcher";
@@ -6,7 +5,7 @@ import { useBudgetCalculations } from "./budget/useBudgetCalculations";
 import { useTotalSpentCalculator } from "./budget/useTotalSpentCalculator";
 
 export const useClientBudgetCalculation = (client: ClientWithReview, accountId?: string) => {
-  // Buscar a conta específica se um ID foi fornecido
+  // Buscar a conta específica se um ID foi fornecido, caso contrário usar a primeira conta
   const account = accountId 
     ? client.meta_accounts?.find(a => a.id === accountId) 
     : client.meta_accounts?.[0];

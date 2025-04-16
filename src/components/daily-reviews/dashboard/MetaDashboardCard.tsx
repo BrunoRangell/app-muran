@@ -80,14 +80,28 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                 </tr>
               </thead>
               <tbody>
-                {finalFilteredClients.map((client) => (
-                  <ClientAltCard
-                    key={client.id}
-                    client={client}
-                    onReviewClient={reviewClient}
-                    isProcessing={processingClients.includes(client.id)}
-                  />
-                ))}
+                {finalFilteredClients.map((client) => {
+                  if (client.meta_accounts && client.meta_accounts.length > 0) {
+                    return client.meta_accounts.map((account) => (
+                      <ClientAltCard
+                        key={`${client.id}-${account.id}`}
+                        client={client}
+                        onReviewClient={reviewClient}
+                        isProcessing={processingClients.includes(client.id)}
+                        accountId={account.id}
+                      />
+                    ));
+                  }
+                  
+                  return (
+                    <ClientAltCard
+                      key={client.id}
+                      client={client}
+                      onReviewClient={reviewClient}
+                      isProcessing={processingClients.includes(client.id)}
+                    />
+                  );
+                })}
               </tbody>
             </table>
           </div>

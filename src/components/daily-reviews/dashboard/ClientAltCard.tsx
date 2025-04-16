@@ -1,4 +1,3 @@
-
 import { Loader } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
@@ -11,14 +10,15 @@ interface ClientAltCardProps {
   client: ClientWithReview;
   onReviewClient: (clientId: string) => void;
   isProcessing: boolean;
+  accountId?: string;
 }
 
 export const ClientAltCard = ({ 
   client, 
   onReviewClient,
-  isProcessing 
+  isProcessing,
+  accountId
 }: ClientAltCardProps) => {
-  // Usar o hook personalizado para cálculos de orçamento
   const {
     hasReview,
     isCalculating,
@@ -33,7 +33,7 @@ export const ClientAltCard = ({
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
     accountName
-  } = useClientBudgetCalculation(client);
+  } = useClientBudgetCalculation(client, accountId);
 
   // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa
   const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
@@ -47,7 +47,8 @@ export const ClientAltCard = ({
         <ClientInfo 
           client={client} 
           customBudget={customBudget} 
-          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview} 
+          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
+          accountName={accountName}
         />
       </td>
       <td className="px-6 py-4">
