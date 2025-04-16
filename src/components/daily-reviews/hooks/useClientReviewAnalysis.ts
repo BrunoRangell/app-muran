@@ -1,160 +1,149 @@
 
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { useClientAnalysis } from "./useClientAnalysis";
-import { useQueryClient } from "@tanstack/react-query";
-import { fetchClientsWithReviews } from "./services/clientReviewService";
+import { useState, useEffect, useCallback } from 'react';
+import { ClientWithReview } from './types/reviewTypes';
+import { fetchClientsWithReviews } from './services/clientReviewService';
+import { analyzeClient } from './services/clientReviewService';
+import { useToast } from '@/hooks/use-toast';
 
 export const useClientReviewAnalysis = () => {
-  const { toast } = useToast();
+  const [clients, setClients] = useState<ClientWithReview[]>([]);
+  const [filteredClients, setFilteredClients] = useState<ClientWithReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filteredClients, setFilteredClients] = useState([]);
-  const [processingClients, setProcessingClients] = useState([]);
-  const queryClient = useQueryClient();
+  const [isAnalyzingAll, setIsAnalyzingAll] = useState(false);
+  const [processingClients, setProcessingClients] = useState<string[]>([]);
+  const [lastAnalysisTime, setLastAnalysisTime] = useState<Date | null>(null);
+  const { toast } = useToast();
 
-  // Importamos o hook useClientAnalysis para analisar o cliente
-  const { analyzeMutation } = useClientAnalysis((data) => {
-    toast({
-      title: "Análise concluída",
-      description: `Análise do cliente atualizada com sucesso.`,
-    });
-    
-    // Remover o cliente da lista de processamento
-    setProcessingClients(prev => prev.filter(id => id !== data.clientId));
-    
-    // Invalidar consultas para forçar atualização
-    queryClient.invalidateQueries({ queryKey: ["client-detail", data.clientId] });
-    queryClient.invalidateQueries({ queryKey: ["latest-review", data.clientId] });
-    queryClient.invalidateQueries({ queryKey: ["review-history", data.clientId] });
-    
-    // Recarregar a lista de clientes
-    loadClients();
-  });
-  
-  // Carregar os clientes do Supabase
-  const loadClients = async () => {
-    setIsLoading(true);
+  // Carregar clientes
+  const loadClients = useCallback(async () => {
     try {
-      const clientsWithReviews = await fetchClientsWithReviews();
-      setFilteredClients(clientsWithReviews);
+      setIsLoading(true);
+      const { clientsData, lastReviewTime } = await fetchClientsWithReviews();
+      console.log("Clientes carregados:", clientsData.length);
+      
+      // Filtrar apenas clientes com contas Meta configuradas
+      const clientsWithMeta = clientsData.filter(client => 
+        client.meta_account_id || (client.meta_accounts && client.meta_accounts.length > 0)
+      );
+      
+      setClients(clientsWithMeta);
+      setFilteredClients(clientsWithMeta);
+      
+      if (lastReviewTime) {
+        setLastAnalysisTime(new Date(lastReviewTime));
+      }
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
       toast({
         title: "Erro ao carregar clientes",
-        description: "Não foi possível carregar a lista de clientes.",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  };
-  
-  // Função para analisar um cliente
-  const reviewClient = (clientId) => {
-    // Evitar análises simultâneas do mesmo cliente
-    if (processingClients.includes(clientId)) {
-      toast({
-        title: "Análise em andamento",
-        description: "Este cliente já está sendo analisado.",
-      });
-      return;
-    }
-    
-    // Adicionar o cliente à lista de processamento
-    setProcessingClients(prev => [...prev, clientId]);
-    console.log(`Iniciando análise para cliente: ${clientId}`);
-    
-    // Iniciar análise
-    analyzeMutation.mutate(clientId, {
-      onError: (error) => {
-        console.error("Erro na análise do cliente:", error);
-        setProcessingClients(prev => prev.filter(id => id !== clientId));
-        
-        toast({
-          title: "Erro na análise",
-          description: error instanceof Error ? error.message : "Erro desconhecido",
-          variant: "destructive",
-        });
-      }
-    });
-  };
-  
-  // Função para analisar todos os clientes
-  const reviewAllClients = async () => {
-    console.log("Iniciando análise de todos os clientes");
-    
+  }, [toast]);
+
+  // Carregar clientes quando o componente montar
+  useEffect(() => {
+    loadClients();
+  }, [loadClients]);
+
+  // Função para analisar um cliente específico
+  const reviewClient = useCallback(async (clientId: string) => {
     try {
-      // Obter a lista atualizada de clientes
-      const clientsToProcess = filteredClients.filter(client => client.meta_account_id);
+      setProcessingClients(prev => [...prev, clientId]);
       
-      if (clientsToProcess.length === 0) {
+      const result = await analyzeClient(clientId, clients);
+      
+      if (result.success) {
+        toast({
+          title: "Análise concluída",
+          description: "O orçamento do cliente foi analisado com sucesso.",
+        });
+        
+        // Recarregar os clientes para obter os dados atualizados
+        await loadClients();
+      }
+    } catch (error) {
+      console.error("Erro ao analisar cliente:", error);
+      toast({
+        title: "Erro na análise",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingClients(prev => prev.filter(id => id !== clientId));
+    }
+  }, [clients, loadClients, toast]);
+
+  // Função para analisar todos os clientes
+  const reviewAllClients = useCallback(async () => {
+    try {
+      setIsAnalyzingAll(true);
+      
+      // Verificar se há clientes para analisar
+      if (clients.length === 0) {
         toast({
           title: "Nenhum cliente para analisar",
-          description: "Não há clientes com Meta Ads configurado.",
+          description: "Não há clientes com Meta Ads configurados.",
+          variant: "destructive",
         });
         return;
       }
       
-      // Registrar os clientes como em processamento
-      const clientIds = clientsToProcess.map(client => client.id);
-      setProcessingClients(prev => [...new Set([...prev, ...clientIds])]);
+      // Cria uma lista de IDs dos clientes que têm contas Meta
+      const clientIds = clients
+        .filter(client => client.meta_account_id || (client.meta_accounts && client.meta_accounts.length > 0))
+        .map(client => client.id);
       
-      // Iniciar análises em sequência para evitar sobrecarga
-      for (const client of clientsToProcess) {
-        console.log(`Iniciando análise para cliente: ${client.company_name} (${client.id})`);
-        
+      // Analisa cada cliente sequencialmente
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const clientId of clientIds) {
         try {
-          // Usando Promise para poder aguardar cada análise
-          await new Promise((resolve, reject) => {
-            analyzeMutation.mutate(client.id, {
-              onSuccess: () => resolve(null),
-              onError: (error) => {
-                console.error(`Erro na análise do cliente ${client.company_name}:`, error);
-                resolve(null); // Continuar mesmo com erro
-              }
-            });
-          });
-          
-          // Aguardar um curto intervalo entre as análises
-          await new Promise(resolve => setTimeout(resolve, 200));
-          
-        } catch (err) {
-          console.error(`Erro ao analisar cliente ${client.company_name}:`, err);
-          // Continuar com o próximo cliente mesmo em caso de erro
+          setProcessingClients(prev => [...prev, clientId]);
+          await analyzeClient(clientId, clients);
+          successCount++;
+        } catch (error) {
+          console.error(`Erro ao analisar cliente ${clientId}:`, error);
+          errorCount++;
+        } finally {
+          setProcessingClients(prev => prev.filter(id => id !== clientId));
         }
       }
       
-      toast({
-        title: "Análise em lote concluída",
-        description: `Foram processados ${clientsToProcess.length} clientes.`,
-      });
+      // Recarregar clientes
+      await loadClients();
       
+      // Exibir resultado
+      toast({
+        title: `Análise concluída: ${successCount} cliente(s)`,
+        description: errorCount > 0 ? `Ocorreram erros em ${errorCount} cliente(s)` : "Todos os clientes foram analisados com sucesso.",
+        variant: errorCount > 0 ? "destructive" : "default",
+      });
     } catch (error) {
-      console.error("Erro ao processar análise em lote:", error);
+      console.error("Erro na análise em lote:", error);
       toast({
         title: "Erro na análise em lote",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar a análise em lote",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
-      // Recarregar a lista de clientes após o processamento
-      loadClients();
+      setIsAnalyzingAll(false);
     }
-  };
-  
-  // Carregar clientes ao montar o componente
-  useEffect(() => {
-    loadClients();
-  }, []);
-  
+  }, [clients, loadClients, toast]);
+
   return {
+    clients,
     filteredClients,
     isLoading,
+    isAnalyzingAll,
     processingClients,
+    lastAnalysisTime,
     reviewClient,
     reviewAllClients,
-    isRefreshing: analyzeMutation.isPending,
-    isAnalyzing: analyzeMutation.isPending,
-    handleRefreshAnalysis: loadClients
+    loadClients
   };
 };
