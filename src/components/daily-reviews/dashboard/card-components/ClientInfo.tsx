@@ -8,12 +8,14 @@ interface ClientInfoProps {
   client: ClientWithReview;
   customBudget: any | null;
   isUsingCustomBudgetInReview: boolean;
+  accountName?: string;
 }
 
 export const ClientInfo = ({ 
   client, 
   customBudget, 
-  isUsingCustomBudgetInReview 
+  isUsingCustomBudgetInReview,
+  accountName
 }: ClientInfoProps) => {
   const lastReviewDate = client.lastReview?.updated_at;
 
@@ -25,6 +27,12 @@ export const ClientInfo = ({
           <BadgeDollarSign size={16} className="text-[#ff6e00]" />
         )}
       </div>
+      
+      {accountName && (
+        <div className="text-sm text-gray-500">
+          Conta: {accountName}
+        </div>
+      )}
       
       {lastReviewDate && (
         <div className="text-sm text-gray-500">
