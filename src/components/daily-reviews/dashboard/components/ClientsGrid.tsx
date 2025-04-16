@@ -20,7 +20,7 @@ export const ClientsGrid = ({
 }: ClientsGridProps) => {
   return (
     <ScrollArea className="h-[calc(100vh-350px)]">
-      <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 lg:grid-cols-2 gap-4' : 'grid-cols-1 divide-y'}`}>
+      <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'} gap-4`}>
         {clientsWithMetaId.map((client) => (
           <ClientReviewCardCompact
             key={client.id}
