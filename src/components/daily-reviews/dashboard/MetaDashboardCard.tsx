@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
@@ -81,6 +82,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.map((client) => {
+                  // Se o cliente tiver contas cadastradas, renderizar um card para cada
                   if (client.meta_accounts && client.meta_accounts.length > 0) {
                     return client.meta_accounts.map((account) => (
                       <ClientAltCard
@@ -93,6 +95,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                     ));
                   }
                   
+                  // Se o cliente não tiver contas, renderizar um card com a configuração normal
                   return (
                     <ClientAltCard
                       key={client.id}
