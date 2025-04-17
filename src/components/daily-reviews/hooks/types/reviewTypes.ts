@@ -1,11 +1,10 @@
-
 export interface MetaAccount {
   id: string;
   client_id: string;
   account_id: string;
   account_name: string;
-  budget_amount: number;
   is_primary: boolean;
+  budget_amount: number;
   status: string;
   created_at: string;
   updated_at: string;
@@ -16,8 +15,8 @@ export interface GoogleAccount {
   client_id: string;
   account_id: string;
   account_name: string;
-  budget_amount: number;
   is_primary: boolean;
+  budget_amount: number;
   status: string;
   created_at: string;
   updated_at: string;
@@ -65,4 +64,3 @@ export interface ReviewData {
   custom_budget_id?: string | null;
   custom_budget_amount?: number | null;
 }
-
