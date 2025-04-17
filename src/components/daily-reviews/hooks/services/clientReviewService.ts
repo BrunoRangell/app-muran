@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { ClientWithReview } from "../types/reviewTypes";
 
@@ -31,6 +32,8 @@ export const fetchClientsWithReviews = async () => {
     throw new Error(`Erro ao buscar clientes: ${error.message}`);
   }
   
+  console.log(`Encontrados ${clientsData?.length || 0} clientes ativos`);
+  
   // Buscar todas as contas Meta dos clientes
   const { data: metaAccountsData, error: metaError } = await supabase
     .from('client_meta_accounts')
@@ -41,6 +44,8 @@ export const fetchClientsWithReviews = async () => {
     console.error("Erro ao buscar contas Meta:", metaError);
     throw new Error(`Erro ao buscar contas Meta: ${metaError.message}`);
   }
+  
+  console.log(`Encontradas ${metaAccountsData?.length || 0} contas Meta ativas`);
   
   // Agrupar contas Meta por cliente
   const metaAccountsByClient = {};
@@ -94,6 +99,29 @@ export const fetchClientsWithReviews = async () => {
   }
   
   console.log("Clientes processados com revisões e contas Meta:", processedClients?.length);
+  
+  // Verificar alguns clientes para garantir que meta_accounts esteja presente
+  if (processedClients.length > 0) {
+    const clientesComContasSecundarias = processedClients.filter(
+      c => c.meta_accounts && c.meta_accounts.length > 0
+    );
+    
+    console.log(`Clientes com contas secundárias: ${clientesComContasSecundarias.length}`);
+    
+    if (clientesComContasSecundarias.length > 0) {
+      const exemplo = clientesComContasSecundarias[0];
+      console.log("Exemplo de cliente com contas secundárias:", {
+        id: exemplo.id,
+        nome: exemplo.company_name,
+        qtdContas: exemplo.meta_accounts.length,
+        contas: exemplo.meta_accounts.map(a => ({
+          id: a.id,
+          conta: a.account_id,
+          nome: a.account_name
+        }))
+      });
+    }
+  }
   
   return { 
     clientsData: processedClients as ClientWithReview[] || [],

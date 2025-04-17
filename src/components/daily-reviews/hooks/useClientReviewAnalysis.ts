@@ -35,8 +35,29 @@ export const useClientReviewAnalysis = () => {
   const loadClients = async () => {
     setIsLoading(true);
     try {
+      console.log("Iniciando carregamento de clientes com contas secundárias...");
       const result = await fetchClientsWithReviews();
-      setFilteredClients(result.clientsData);
+      console.log("Dados brutos recebidos:", result);
+      
+      // Garantir que todos os clientes tenham meta_accounts definido como array
+      const clientsData = result.clientsData.map(client => ({
+        ...client,
+        meta_accounts: Array.isArray(client.meta_accounts) ? client.meta_accounts : []
+      }));
+      
+      console.log("Clientes processados com meta_accounts:", clientsData.length);
+      // Detalhar alguns clientes para verificar se meta_accounts está presente
+      if (clientsData.length > 0) {
+        const sampleClient = clientsData[0];
+        console.log("Exemplo de cliente processado:", {
+          id: sampleClient.id,
+          nome: sampleClient.company_name,
+          contasMetaQtd: sampleClient.meta_accounts?.length || 0,
+          contasMeta: sampleClient.meta_accounts
+        });
+      }
+      
+      setFilteredClients(clientsData);
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
       toast({

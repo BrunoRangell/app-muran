@@ -26,6 +26,15 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
 
+  console.log("MetaDashboardCard - Clientes filtrados:", finalFilteredClients.length);
+  console.log("MetaDashboardCard - Exemplo de cliente (se disponível):", 
+    finalFilteredClients.length > 0 ? {
+      id: finalFilteredClients[0].id,
+      nome: finalFilteredClients[0].company_name,
+      contasMetaQtd: finalFilteredClients[0].meta_accounts?.length || 0,
+      temContasSecundarias: (finalFilteredClients[0].meta_accounts?.length || 0) > 0
+    } : "Nenhum cliente disponível");
+
   // Função que será chamada para análise em lote
   const handleAnalyzeAll = async () => {
     // Usar a função do hook se disponível, caso contrário usar a propriedade passada
@@ -84,6 +93,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                 {finalFilteredClients.map((client) => {
                   // Se o cliente tiver contas cadastradas, renderizar um card para cada
                   if (client.meta_accounts && client.meta_accounts.length > 0) {
+                    console.log(`Renderizando ${client.meta_accounts.length} contas para o cliente ${client.company_name}`);
                     return client.meta_accounts.map((account) => (
                       <ClientAltCard
                         key={`${client.id}-${account.id}`}
@@ -96,6 +106,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                   }
                   
                   // Se o cliente não tiver contas, renderizar um card com a configuração normal
+                  console.log(`Renderizando card padrão para cliente ${client.company_name} sem contas secundárias`);
                   return (
                     <ClientAltCard
                       key={client.id}
