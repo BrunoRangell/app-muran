@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
+import { useBudgetCalculations } from "./budget/useBudgetCalculations";
 
 export const useClientBudgetCalculation = (client: ClientWithReview, accountId?: string) => {
   const [isCalculating, setIsCalculating] = useState(true);
@@ -13,6 +14,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
   const [currentDailyBudget, setCurrentDailyBudget] = useState(0);
   const [idealDailyBudget, setIdealDailyBudget] = useState(0);
   const [budgetDifference, setBudgetDifference] = useState(0);
+  const [remainingDays, setRemainingDays] = useState(0);
   
   // Estados para orçamento personalizado
   const [customBudget, setCustomBudget] = useState<any>(null);
@@ -96,6 +98,9 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
       const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const daysRemaining = lastDayOfMonth - currentDay + 1;
       
+      // Definir os dias restantes
+      setRemainingDays(daysRemaining);
+      
       // Usar orçamento personalizado ou mensal padrão
       const budgetAmount = isUsingCustomBudget && customBudgetAmount 
         ? customBudgetAmount 
@@ -148,6 +153,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
     customBudget,
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
-    accountName
+    accountName,
+    // Adicionando a propriedade restante
+    remainingDaysValue: remainingDays
   };
 };
