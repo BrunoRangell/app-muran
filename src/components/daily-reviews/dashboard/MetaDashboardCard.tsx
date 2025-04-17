@@ -27,31 +27,17 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
 
   console.log("MetaDashboardCard - Clientes filtrados:", finalFilteredClients.length);
-  console.log("MetaDashboardCard - Exemplo de cliente (se disponível):", 
-    finalFilteredClients.length > 0 ? {
-      id: finalFilteredClients[0].id,
-      nome: finalFilteredClients[0].company_name,
-      contasMetaQtd: finalFilteredClients[0].meta_accounts?.length || 0,
-      temContasSecundarias: (finalFilteredClients[0].meta_accounts?.length || 0) > 0
-    } : "Nenhum cliente disponível");
-    
-  // Log específico para Sorrifácil
-  const sorrifacilClient = finalFilteredClients.find(c => c.company_name === 'Sorrifácil');
-  if (sorrifacilClient) {
-    console.log("*** DIAGNÓSTICO SORRIFÁCIL - MetaDashboardCard:", {
-      id: sorrifacilClient.id,
-      nome: sorrifacilClient.company_name,
-      temContasArray: Array.isArray(sorrifacilClient.meta_accounts),
-      qtdContas: sorrifacilClient.meta_accounts?.length || 0,
-      contas: Array.isArray(sorrifacilClient.meta_accounts) ? 
-        sorrifacilClient.meta_accounts.map(a => ({
-          id: a.id, 
-          nome: a.account_name,
-          accountId: a.account_id
-        })) : 'meta_accounts não é um array'
+  
+  // Log de resumo dos clientes com contas secundárias
+  const clientesComContasSecundarias = finalFilteredClients.filter(c => 
+    c.meta_accounts && Array.isArray(c.meta_accounts) && c.meta_accounts.length > 0
+  );
+  
+  console.log("MetaDashboardCard - Clientes com contas secundárias:", clientesComContasSecundarias.length);
+  if (clientesComContasSecundarias.length > 0) {
+    clientesComContasSecundarias.forEach(c => {
+      console.log(`Cliente ${c.company_name} tem ${c.meta_accounts.length} contas secundárias`);
     });
-  } else {
-    console.log("*** DIAGNÓSTICO SORRIFÁCIL - MetaDashboardCard: Cliente não encontrado nos filtrados");
   }
 
   // Função que será chamada para análise em lote
@@ -110,15 +96,13 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.map((client) => {
-                  // Log específico para renderização do Sorrifácil
-                  if (client.company_name === 'Sorrifácil') {
-                    console.log(`*** DIAGNÓSTICO RENDERIZAÇÃO SORRIFÁCIL: ${client.meta_accounts?.length || 0} contas`, 
-                      client.meta_accounts || 'meta_accounts não definido');
-                  }
+                  // Log específico para verificar as contas de cada cliente durante a renderização
+                  console.log(`Renderizando cliente ${client.company_name}, meta_accounts:`, 
+                    Array.isArray(client.meta_accounts) ? client.meta_accounts.length : 'Não é array');
                   
                   // Se o cliente tiver contas cadastradas, renderizar um card para cada
-                  if (client.meta_accounts && client.meta_accounts.length > 0) {
-                    console.log(`Renderizando ${client.meta_accounts.length} contas para o cliente ${client.company_name}`);
+                  if (Array.isArray(client.meta_accounts) && client.meta_accounts.length > 0) {
+                    console.log(`Renderizando ${client.meta_accounts.length} cards para ${client.company_name}`);
                     return client.meta_accounts.map((account) => (
                       <ClientAltCard
                         key={`${client.id}-${account.id}`}
@@ -131,7 +115,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                   }
                   
                   // Se o cliente não tiver contas, renderizar um card com a configuração normal
-                  console.log(`Renderizando card padrão para cliente ${client.company_name} sem contas secundárias`);
                   return (
                     <ClientAltCard
                       key={client.id}

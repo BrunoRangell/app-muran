@@ -46,29 +46,14 @@ export const useClientReviewAnalysis = () => {
       }));
       
       console.log("Clientes processados com meta_accounts:", clientsData.length);
-      // Detalhar alguns clientes para verificar se meta_accounts está presente
-      if (clientsData.length > 0) {
-        const sampleClient = clientsData[0];
-        console.log("Exemplo de cliente processado:", {
-          id: sampleClient.id,
-          nome: sampleClient.company_name,
-          contasMetaQtd: sampleClient.meta_accounts?.length || 0,
-          contasMeta: sampleClient.meta_accounts
-        });
-      }
       
-      // Verificar especificamente o cliente Sorrifácil
-      const sorrifacilClient = clientsData.find(c => c.company_name === 'Sorrifácil');
-      if (sorrifacilClient) {
-        console.log("*** DIAGNÓSTICO USEANALYSIS - Sorrifácil:", {
-          id: sorrifacilClient.id,
-          temMetaAccounts: !!sorrifacilClient.meta_accounts,
-          tipoMetaAccounts: typeof sorrifacilClient.meta_accounts,
-          isArray: Array.isArray(sorrifacilClient.meta_accounts),
-          quantidade: sorrifacilClient.meta_accounts?.length || 0,
-          contas: sorrifacilClient.meta_accounts
-        });
-      }
+      // Verificar clientes com contas secundárias para depuração
+      const clientesComContas = clientsData.filter(c => c.meta_accounts && c.meta_accounts.length > 0);
+      console.log(`Total de clientes com contas secundárias: ${clientesComContas.length}`);
+      
+      clientesComContas.forEach(client => {
+        console.log(`Cliente: ${client.company_name} - ${client.meta_accounts.length} contas`);
+      });
       
       setFilteredClients(clientsData);
     } catch (error) {
