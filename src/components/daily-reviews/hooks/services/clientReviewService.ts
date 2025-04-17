@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { ClientWithReview } from "../types/reviewTypes";
 
@@ -47,6 +46,24 @@ export const fetchClientsWithReviews = async () => {
   
   console.log(`Encontradas ${metaAccountsData?.length || 0} contas Meta ativas`);
   
+  // Verificar especificamente contas do Sorrifácil
+  const sorrifacilAccounts = metaAccountsData?.filter(
+    acc => clientsData?.find(c => c.company_name === 'Sorrifácil' && c.id === acc.client_id)
+  );
+  
+  if (sorrifacilAccounts && sorrifacilAccounts.length > 0) {
+    console.log(`*** DIAGNÓSTICO: Encontradas ${sorrifacilAccounts.length} contas para Sorrifácil:`, 
+      sorrifacilAccounts.map(acc => ({
+        id: acc.id,
+        accountId: acc.account_id,
+        name: acc.account_name,
+        isPrimary: acc.is_primary
+      }))
+    );
+  } else {
+    console.log(`*** DIAGNÓSTICO: Nenhuma conta Meta encontrada para Sorrifácil`);
+  }
+  
   // Agrupar contas Meta por cliente
   const metaAccountsByClient = {};
   metaAccountsData?.forEach(account => {
@@ -55,6 +72,12 @@ export const fetchClientsWithReviews = async () => {
     }
     metaAccountsByClient[account.client_id].push(account);
   });
+  
+  // Verificar contas agrupadas do Sorrifácil
+  const sorrifacilClient = clientsData?.find(c => c.company_name === 'Sorrifácil');
+  if (sorrifacilClient && metaAccountsByClient[sorrifacilClient.id]) {
+    console.log(`*** DIAGNÓSTICO: Sorrifácil (${sorrifacilClient.id}) tem ${metaAccountsByClient[sorrifacilClient.id].length} contas no objeto metaAccountsByClient`);
+  }
   
   // Agora, para cada cliente, buscar apenas a revisão mais recente
   let lastReviewTime: Date | null = null;
@@ -96,9 +119,30 @@ export const fetchClientsWithReviews = async () => {
         lastReviewTime = reviewDate;
       }
     }
+    
+    // Log específico para o Sorrifácil
+    if (client.company_name === 'Sorrifácil') {
+      console.log(`*** DIAGNÓSTICO: Após processamento, Sorrifácil tem ${metaAccountsByClient[client.id]?.length || 0} contas Meta`);
+    }
   }
   
   console.log("Clientes processados com revisões e contas Meta:", processedClients?.length);
+  
+  // Verificar processamento final do Sorrifácil
+  const processedSorrifacil = processedClients.find(c => c.company_name === 'Sorrifácil');
+  if (processedSorrifacil) {
+    console.log(`*** DIAGNÓSTICO FINAL: Sorrifácil processado:`, {
+      id: processedSorrifacil.id,
+      nome: processedSorrifacil.company_name,
+      contas: Array.isArray(processedSorrifacil.meta_accounts) 
+        ? processedSorrifacil.meta_accounts.map(a => ({
+            id: a.id,
+            conta: a.account_id,
+            nome: a.account_name
+          }))
+        : 'meta_accounts não é um array'
+    });
+  }
   
   // Verificar alguns clientes para garantir que meta_accounts esteja presente
   if (processedClients.length > 0) {

@@ -34,6 +34,25 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
       contasMetaQtd: finalFilteredClients[0].meta_accounts?.length || 0,
       temContasSecundarias: (finalFilteredClients[0].meta_accounts?.length || 0) > 0
     } : "Nenhum cliente disponível");
+    
+  // Log específico para Sorrifácil
+  const sorrifacilClient = finalFilteredClients.find(c => c.company_name === 'Sorrifácil');
+  if (sorrifacilClient) {
+    console.log("*** DIAGNÓSTICO SORRIFÁCIL - MetaDashboardCard:", {
+      id: sorrifacilClient.id,
+      nome: sorrifacilClient.company_name,
+      temContasArray: Array.isArray(sorrifacilClient.meta_accounts),
+      qtdContas: sorrifacilClient.meta_accounts?.length || 0,
+      contas: Array.isArray(sorrifacilClient.meta_accounts) ? 
+        sorrifacilClient.meta_accounts.map(a => ({
+          id: a.id, 
+          nome: a.account_name,
+          accountId: a.account_id
+        })) : 'meta_accounts não é um array'
+    });
+  } else {
+    console.log("*** DIAGNÓSTICO SORRIFÁCIL - MetaDashboardCard: Cliente não encontrado nos filtrados");
+  }
 
   // Função que será chamada para análise em lote
   const handleAnalyzeAll = async () => {
@@ -91,6 +110,12 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.map((client) => {
+                  // Log específico para renderização do Sorrifácil
+                  if (client.company_name === 'Sorrifácil') {
+                    console.log(`*** DIAGNÓSTICO RENDERIZAÇÃO SORRIFÁCIL: ${client.meta_accounts?.length || 0} contas`, 
+                      client.meta_accounts || 'meta_accounts não definido');
+                  }
+                  
                   // Se o cliente tiver contas cadastradas, renderizar um card para cada
                   if (client.meta_accounts && client.meta_accounts.length > 0) {
                     console.log(`Renderizando ${client.meta_accounts.length} contas para o cliente ${client.company_name}`);

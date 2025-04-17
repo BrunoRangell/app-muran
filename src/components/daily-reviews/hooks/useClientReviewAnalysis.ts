@@ -57,6 +57,19 @@ export const useClientReviewAnalysis = () => {
         });
       }
       
+      // Verificar especificamente o cliente Sorrifácil
+      const sorrifacilClient = clientsData.find(c => c.company_name === 'Sorrifácil');
+      if (sorrifacilClient) {
+        console.log("*** DIAGNÓSTICO USEANALYSIS - Sorrifácil:", {
+          id: sorrifacilClient.id,
+          temMetaAccounts: !!sorrifacilClient.meta_accounts,
+          tipoMetaAccounts: typeof sorrifacilClient.meta_accounts,
+          isArray: Array.isArray(sorrifacilClient.meta_accounts),
+          quantidade: sorrifacilClient.meta_accounts?.length || 0,
+          contas: sorrifacilClient.meta_accounts
+        });
+      }
+      
       setFilteredClients(clientsData);
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
