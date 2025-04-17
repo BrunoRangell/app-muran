@@ -35,8 +35,8 @@ export const useClientReviewAnalysis = () => {
   const loadClients = async () => {
     setIsLoading(true);
     try {
-      const clientsWithReviews = await fetchClientsWithReviews();
-      setFilteredClients(clientsWithReviews.clientsData);
+      const result = await fetchClientsWithReviews();
+      setFilteredClients(result.clientsData);
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
       toast({
