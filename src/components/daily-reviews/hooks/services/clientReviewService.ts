@@ -1,3 +1,4 @@
+
 import { supabase } from "@/lib/supabase";
 import { ClientWithReview } from "../types/reviewTypes";
 
@@ -21,8 +22,6 @@ export const fetchClientsWithReviews = async () => {
       company_name,
       meta_account_id,
       meta_ads_budget,
-      google_account_id,
-      google_ads_budget,
       status
     `)
     .eq('status', 'active')
@@ -32,46 +31,6 @@ export const fetchClientsWithReviews = async () => {
     console.error("Erro ao buscar clientes:", error);
     throw new Error(`Erro ao buscar clientes: ${error.message}`);
   }
-  
-  // Buscar todas as contas Meta dos clientes
-  const { data: metaAccountsData, error: metaError } = await supabase
-    .from('client_meta_accounts')
-    .select('*')
-    .eq('status', 'active');
-    
-  if (metaError) {
-    console.error("Erro ao buscar contas Meta:", metaError);
-    throw new Error(`Erro ao buscar contas Meta: ${metaError.message}`);
-  }
-  
-  // Buscar todas as contas Google dos clientes
-  const { data: googleAccountsData, error: googleError } = await supabase
-    .from('client_google_accounts')
-    .select('*')
-    .eq('status', 'active');
-    
-  if (googleError) {
-    console.error("Erro ao buscar contas Google:", googleError);
-    throw new Error(`Erro ao buscar contas Google: ${googleError.message}`);
-  }
-  
-  // Agrupar contas Meta por cliente
-  const metaAccountsByClient = {};
-  metaAccountsData?.forEach(account => {
-    if (!metaAccountsByClient[account.client_id]) {
-      metaAccountsByClient[account.client_id] = [];
-    }
-    metaAccountsByClient[account.client_id].push(account);
-  });
-  
-  // Agrupar contas Google por cliente
-  const googleAccountsByClient = {};
-  googleAccountsData?.forEach(account => {
-    if (!googleAccountsByClient[account.client_id]) {
-      googleAccountsByClient[account.client_id] = [];
-    }
-    googleAccountsByClient[account.client_id].push(account);
-  });
   
   // Agora, para cada cliente, buscar apenas a revisão mais recente
   let lastReviewTime: Date | null = null;
@@ -94,31 +53,16 @@ export const fetchClientsWithReviews = async () => {
       processedClients.push({
         ...client,
         lastReview: null,
-        meta_accounts: metaAccountsByClient[client.id] || [],
-        google_accounts: googleAccountsByClient[client.id] || []
+        status: client.status // Adicionando a propriedade status que estava faltando
       });
       continue;
     }
     
-    // Buscar revisões específicas do Google Ads para este cliente
-    const { data: googleReviewsData, error: googleReviewsError } = await supabase
-      .from('google_ads_reviews')
-      .select('*')
-      .eq('client_id', client.id)
-      .order('review_date', { ascending: false })
-      .limit(5);
-      
-    if (googleReviewsError) {
-      console.error(`Erro ao buscar revisões Google para cliente ${client.company_name}:`, googleReviewsError);
-    }
-    
-    // Adicionar a revisão mais recente, contas Meta e Google ao cliente
+    // Adicionar a revisão mais recente ao cliente
     processedClients.push({
       ...client,
       lastReview: reviewData,
-      meta_accounts: metaAccountsByClient[client.id] || [],
-      google_accounts: googleAccountsByClient[client.id] || [],
-      google_reviews: googleReviewsData || []
+      status: client.status // Adicionando a propriedade status que estava faltando
     });
     
     // Atualizar o timestamp da revisão mais recente global
@@ -130,14 +74,9 @@ export const fetchClientsWithReviews = async () => {
     }
   }
   
-  console.log("Clientes processados com revisões, contas Meta e Google:", processedClients?.length);
-  console.log("Exemplo de meta_accounts no primeiro cliente com conta Meta:", 
-    processedClients.find(c => (c.meta_accounts || []).length > 0)?.meta_accounts);
+  console.log("Clientes processados com revisões:", processedClients?.length);
   
-  return { 
-    clientsData: processedClients || [],
-    lastReviewTime 
-  };
+  return processedClients;
 };
 
 /**

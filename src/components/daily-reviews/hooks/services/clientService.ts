@@ -1,13 +1,103 @@
 
 import { supabase } from "@/lib/supabase";
 import { ClientWithReview } from "../types/reviewTypes";
-import { fetchClientsWithReviews as fetchClientsWithReviewsFromNewService } from "./clientReviewService";
 
 /**
  * Busca todos os clientes com suas respectivas revisões mais recentes
- * @deprecated Use clientReviewService.fetchClientsWithReviews instead
  */
 export const fetchClientsWithReviews = async () => {
-  console.log("Redirecionando para o novo serviço clientReviewService.fetchClientsWithReviews");
-  return fetchClientsWithReviewsFromNewService();
+  console.log("Iniciando fetchClientsWithReviews");
+  // Verificar autenticação antes de fazer a requisição
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    console.error("Sessão não encontrada");
+    throw new Error("Usuário não autenticado");
+  }
+
+  // Primeiro, buscar todos os clientes ativos
+  const { data: clientsData, error } = await supabase
+    .from('clients')
+    .select(`
+      id,
+      company_name,
+      meta_account_id,
+      meta_ads_budget,
+      status
+    `)
+    .eq('status', 'active')
+    .order('company_name');
+    
+  if (error) {
+    console.error("Erro ao buscar clientes:", error);
+    throw new Error(`Erro ao buscar clientes: ${error.message}`);
+  }
+  
+  // Buscar todas as contas Meta dos clientes
+  const { data: metaAccountsData, error: metaError } = await supabase
+    .from('client_meta_accounts')
+    .select('*')
+    .eq('status', 'active');
+    
+  if (metaError) {
+    console.error("Erro ao buscar contas Meta:", metaError);
+    throw new Error(`Erro ao buscar contas Meta: ${metaError.message}`);
+  }
+  
+  // Agrupar contas Meta por cliente
+  const metaAccountsByClient = {};
+  metaAccountsData?.forEach(account => {
+    if (!metaAccountsByClient[account.client_id]) {
+      metaAccountsByClient[account.client_id] = [];
+    }
+    metaAccountsByClient[account.client_id].push(account);
+  });
+  
+  // Agora, para cada cliente, buscar apenas a revisão mais recente
+  let lastReviewTime: Date | null = null;
+  const processedClients = [];
+  
+  for (const client of clientsData || []) {
+    // Buscar apenas a revisão mais recente para este cliente
+    const { data: reviewData, error: reviewError } = await supabase
+      .from('daily_budget_reviews')
+      .select('*')
+      .eq('client_id', client.id)
+      .order('review_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+      
+    if (reviewError) {
+      console.error(`Erro ao buscar revisão para cliente ${client.company_name}:`, reviewError);
+      // Continuar com o próximo cliente
+      processedClients.push({
+        ...client,
+        lastReview: null,
+        meta_accounts: metaAccountsByClient[client.id] || []
+      });
+      continue;
+    }
+    
+    // Adicionar a revisão mais recente e as contas Meta ao cliente
+    processedClients.push({
+      ...client,
+      lastReview: reviewData,
+      meta_accounts: metaAccountsByClient[client.id] || []
+    });
+    
+    // Atualizar o timestamp da revisão mais recente global
+    if (reviewData) {
+      const reviewDate = new Date(reviewData.created_at);
+      if (!lastReviewTime || reviewDate > lastReviewTime) {
+        lastReviewTime = reviewDate;
+      }
+    }
+  }
+  
+  console.log("Clientes processados com revisões e contas Meta:", processedClients?.length);
+  
+  return { 
+    clientsData: processedClients as ClientWithReview[] || [],
+    lastReviewTime 
+  };
 };
