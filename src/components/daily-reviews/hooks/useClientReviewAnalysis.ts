@@ -1,15 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useClientAnalysis } from "./useClientAnalysis";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchClientsWithReviews } from "./services/clientReviewService";
-
-// Definindo a interface para os parâmetros da análise
-interface AnalysisParams {
-  clientId: string;
-  accountId?: string | null;
-}
+import { AnalysisParams } from "./useClientAnalysis";
 
 export const useClientReviewAnalysis = () => {
   const { toast } = useToast();
@@ -19,7 +13,7 @@ export const useClientReviewAnalysis = () => {
   const queryClient = useQueryClient();
 
   // Importamos o hook useClientAnalysis para analisar o cliente
-  const { analyzeMutation } = useClientAnalysis((data: AnalysisParams) => {
+  const { analyzeMutation } = useClientAnalysis((data) => {
     toast({
       title: "Análise concluída",
       description: `Análise do cliente atualizada com sucesso.`,

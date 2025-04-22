@@ -3,11 +3,18 @@ import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
+// Interface para os parâmetros da análise
+export interface AnalysisParams {
+  clientId: string;
+  accountId?: string | null;
+}
+
 export type AnalysisResultType = {
   clientId: string;
   success: boolean;
   data?: any;
   error?: string;
+  accountId?: string | null;
 };
 
 export const useClientAnalysis = (
@@ -17,8 +24,9 @@ export const useClientAnalysis = (
 
   // Mutação para análise de um único cliente
   const analyzeMutation = useMutation({
-    mutationFn: async (clientId: string): Promise<AnalysisResultType> => {
-      console.log("Analisando cliente:", clientId);
+    mutationFn: async (params: AnalysisParams): Promise<AnalysisResultType> => {
+      const { clientId, accountId } = params;
+      console.log("Analisando cliente:", clientId, accountId ? `(conta: ${accountId})` : '');
 
       // Buscar dados do cliente
       const { data: client, error: clientError } = await supabase
@@ -31,7 +39,27 @@ export const useClientAnalysis = (
         throw new Error(`Erro ao buscar cliente: ${clientError.message}`);
       }
 
-      if (!client.meta_account_id) {
+      // Se um accountId for fornecido, verificar se há uma conta específica
+      let metaAccountId = client.meta_account_id;
+      let metaAccountName = `Conta ${client.meta_account_id}`;
+
+      if (accountId) {
+        // Buscar detalhes da conta específica
+        const { data: accountData, error: accountError } = await supabase
+          .from("meta_accounts")
+          .select("*")
+          .eq("id", accountId)
+          .single();
+        
+        if (!accountError && accountData) {
+          metaAccountId = accountData.account_id;
+          metaAccountName = accountData.account_name || `Conta ${accountData.account_id}`;
+        } else {
+          console.warn(`Conta não encontrada (${accountId}), usando conta principal`);
+        }
+      }
+
+      if (!metaAccountId) {
         throw new Error("Cliente não possui Meta Account ID configurado");
       }
 
@@ -54,14 +82,14 @@ export const useClientAnalysis = (
         end: now.toISOString().split("T")[0],
       };
 
-      console.log("Invocando função Edge do Meta Ads para cliente:", client.company_name);
+      console.log("Invocando função Edge do Meta Ads para cliente:", client.company_name, "com conta:", metaAccountId);
 
       // Chamar a função Edge para análise
       const { data, error } = await supabase.functions.invoke(
         "meta-budget-calculator",
         {
           body: {
-            accountId: client.meta_account_id,
+            accountId: metaAccountId,
             accessToken: tokenData.value,
             dateRange,
             fetchSeparateInsights: true,
@@ -116,6 +144,7 @@ export const useClientAnalysis = (
         .select("id")
         .eq("client_id", clientId)
         .eq("review_date", currentDate)
+        .eq("meta_account_id", metaAccountId)
         .maybeSingle();
 
       // Salvar dados da revisão
@@ -137,14 +166,15 @@ export const useClientAnalysis = (
           review_date: currentDate,
           meta_daily_budget_current: metaDailyBudgetCurrent,
           meta_total_spent: metaTotalSpent,
-          meta_account_id: client.meta_account_id,
-          meta_account_name: `Conta ${client.meta_account_id}`,
+          meta_account_id: metaAccountId,
+          meta_account_name: metaAccountName,
           ...customBudgetInfo,
         });
       }
 
       return {
         clientId,
+        accountId,
         success: true,
         data: {
           metaDailyBudgetCurrent,
