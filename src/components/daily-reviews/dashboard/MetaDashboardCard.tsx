@@ -170,7 +170,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                     <ClientAltCard
                       key={client.id}
                       client={client}
-                      onReviewClient={(clientId) => reviewClient(clientId)}
+                      onReviewClient={reviewClient}
                       isProcessing={processingClients.includes(client.id)}
                     />
                   );

@@ -9,7 +9,7 @@ import { ActionButtons } from "./card-components/ActionButtons";
 
 interface ClientAltCardProps {
   client: ClientWithReview;
-  onReviewClient: (clientId: string) => void;
+  onReviewClient: (clientId: string, accountId?: string) => void;
   isProcessing: boolean;
   accountId?: string;
 }
@@ -86,7 +86,7 @@ export const ClientAltCard = ({
         <ActionButtons 
           isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
           customBudget={customBudget}
-          onReviewClient={() => onReviewClient(client.id)}
+          onReviewClient={() => onReviewClient(client.id, accountId)}
           isProcessing={isProcessing}
         />
       </td>

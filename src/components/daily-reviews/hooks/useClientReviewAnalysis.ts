@@ -5,6 +5,12 @@ import { useClientAnalysis } from "./useClientAnalysis";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchClientsWithReviews } from "./services/clientReviewService";
 
+// Definindo a interface para os parâmetros da análise
+interface AnalysisParams {
+  clientId: string;
+  accountId?: string | null;
+}
+
 export const useClientReviewAnalysis = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
@@ -13,14 +19,15 @@ export const useClientReviewAnalysis = () => {
   const queryClient = useQueryClient();
 
   // Importamos o hook useClientAnalysis para analisar o cliente
-  const { analyzeMutation } = useClientAnalysis((data) => {
+  const { analyzeMutation } = useClientAnalysis((data: AnalysisParams) => {
     toast({
       title: "Análise concluída",
       description: `Análise do cliente atualizada com sucesso.`,
     });
     
     // Remover o cliente da lista de processamento
-    setProcessingClients(prev => prev.filter(id => id !== data.clientId));
+    const processingKey = data.accountId ? `${data.clientId}-${data.accountId}` : data.clientId;
+    setProcessingClients(prev => prev.filter(id => id !== processingKey));
     
     // Invalidar consultas para forçar atualização
     queryClient.invalidateQueries({ queryKey: ["client-detail", data.clientId] });
@@ -98,7 +105,7 @@ export const useClientReviewAnalysis = () => {
   };
   
   // Função para analisar um cliente
-  const reviewClient = (clientId, accountId) => {
+  const reviewClient = (clientId: string, accountId?: string) => {
     // Criar uma chave única para o par cliente/conta
     const processingKey = accountId ? `${clientId}-${accountId}` : clientId;
     
