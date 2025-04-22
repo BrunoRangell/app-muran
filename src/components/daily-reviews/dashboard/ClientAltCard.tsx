@@ -9,17 +9,16 @@ import { ActionButtons } from "./card-components/ActionButtons";
 
 interface ClientAltCardProps {
   client: ClientWithReview;
-  onReviewClient: (clientId: string, accountId?: string) => void;
+  onReviewClient: (clientId: string) => void;
   isProcessing: boolean;
-  accountId?: string;
 }
 
 export const ClientAltCard = ({ 
   client, 
   onReviewClient,
-  isProcessing,
-  accountId
+  isProcessing 
 }: ClientAltCardProps) => {
+  // Usar o hook personalizado para cálculos de orçamento
   const {
     hasReview,
     isCalculating,
@@ -34,7 +33,7 @@ export const ClientAltCard = ({
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
     accountName
-  } = useClientBudgetCalculation(client, accountId);
+  } = useClientBudgetCalculation(client);
 
   // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa
   const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
@@ -48,8 +47,7 @@ export const ClientAltCard = ({
         <ClientInfo 
           client={client} 
           customBudget={customBudget} 
-          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
-          accountName={accountName}
+          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview} 
         />
       </td>
       <td className="px-6 py-4">
@@ -86,7 +84,7 @@ export const ClientAltCard = ({
         <ActionButtons 
           isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
           customBudget={customBudget}
-          onReviewClient={() => onReviewClient(client.id, accountId)}
+          onReviewClient={() => onReviewClient(client.id)}
           isProcessing={isProcessing}
         />
       </td>

@@ -1,171 +1,102 @@
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
+import { useBudgetFetcher } from "./budget/useBudgetFetcher";
 import { useBudgetCalculations } from "./budget/useBudgetCalculations";
+import { useTotalSpentCalculator } from "./budget/useTotalSpentCalculator";
 
 export const useClientBudgetCalculation = (client: ClientWithReview, accountId?: string) => {
-  const [isCalculating, setIsCalculating] = useState(true);
-  const [calculationError, setCalculationError] = useState<string | null>(null);
-  const [accountName, setAccountName] = useState<string | null>(null);
+  // Buscar a conta específica se um ID foi fornecido
+  const account = accountId 
+    ? client.meta_accounts?.find(a => a.id === accountId) 
+    : client.meta_accounts?.[0];
+    
+  const {
+    customBudget,
+    isLoadingCustomBudget,
+    hasReview,
+    isUsingCustomBudgetInReview
+  } = useBudgetFetcher(client, accountId);
   
-  // Estados de orçamento
-  const [monthlyBudget, setMonthlyBudget] = useState(0);
-  const [totalSpent, setTotalSpent] = useState(0);
-  const [currentDailyBudget, setCurrentDailyBudget] = useState(0);
-  const [idealDailyBudget, setIdealDailyBudget] = useState(0);
-  const [budgetDifference, setBudgetDifference] = useState(0);
-  const [remainingDays, setRemainingDays] = useState(0);
-  
-  // Estados para orçamento personalizado
-  const [customBudget, setCustomBudget] = useState<any>(null);
-  const [isUsingCustomBudgetInReview, setIsUsingCustomBudgetInReview] = useState(false);
-  const [actualBudgetAmount, setActualBudgetAmount] = useState<number | null>(null);
-  
-  useEffect(() => {
-    calculateBudgets();
-  }, [client, accountId]);
-  
-  const calculateBudgets = () => {
-    try {
-      setIsCalculating(true);
-      setCalculationError(null);
-      
-      // Se não houver cliente, retornar
-      if (!client) {
-        throw new Error("Cliente não fornecido");
-      }
-      
-      console.log(`CÁLCULO ORÇAMENTO [${client.company_name}]:`, {
-        accountId_recebido: accountId, 
-        tem_meta_accounts: Boolean(client.meta_accounts),
-        é_array: Array.isArray(client.meta_accounts),
-        num_contas: Array.isArray(client.meta_accounts) ? client.meta_accounts.length : 'N/A'
-      });
-      
-      // Verificar se temos uma conta específica ou usamos a configuração principal do cliente
-      let selectedAccount = null;
-      let budget = client.meta_ads_budget || 0;
-      
-      // Se um accountId específico foi fornecido, buscar essa conta nas meta_accounts do cliente
-      if (accountId && Array.isArray(client.meta_accounts) && client.meta_accounts.length > 0) {
-        console.log(`BUSCANDO CONTA [${client.company_name}]:`, {
-          accountId_buscando: accountId,
-          contas_disponíveis: client.meta_accounts.map(acc => ({
-            id: acc.id,
-            nome: acc.account_name
-          }))
-        });
-        
-        selectedAccount = client.meta_accounts.find(account => account.id === accountId);
-        
-        if (selectedAccount) {
-          console.log(`CONTA ENCONTRADA [${client.company_name}]:`, {
-            account_name: selectedAccount.account_name,
-            account_id: selectedAccount.id,
-            budget: selectedAccount.budget_amount
-          });
-          budget = selectedAccount.budget_amount || 0;
-          setAccountName(selectedAccount.account_name);
-        } else {
-          console.warn(`CONTA NÃO ENCONTRADA [${client.company_name}]:`, {
-            accountId_buscado: accountId,
-            contas_disponíveis: client.meta_accounts.map(acc => ({
-              id: acc.id,
-              nome: acc.account_name
-            }))
-          });
-        }
-      }
-      
-      setMonthlyBudget(budget);
-      
-      // Verificar se há revisão
-      const hasReview = !!client.lastReview;
-      
-      if (!hasReview) {
-        console.log(`SEM REVISÃO [${client.company_name}]`);
-        setIsCalculating(false);
-        return;
-      }
-      
-      // Verificar orçamento personalizado na revisão
-      const isUsingCustomBudget = client.lastReview?.using_custom_budget || false;
-      const customBudgetAmount = client.lastReview?.custom_budget_amount || null;
-      
-      setIsUsingCustomBudgetInReview(isUsingCustomBudget);
-      
-      if (isUsingCustomBudget && customBudgetAmount) {
-        console.log(`ORÇAMENTO PERSONALIZADO [${client.company_name}]:`, customBudgetAmount);
-        setCustomBudget({
-          valor: customBudgetAmount,
-          inicio: client.lastReview?.custom_budget_start_date,
-          fim: client.lastReview?.custom_budget_end_date,
-          isActive: true
-        });
-        
-        setActualBudgetAmount(customBudgetAmount);
-      } else {
-        setActualBudgetAmount(budget);
-      }
-      
-      // Extrair valores de gasto e orçamento da revisão
-      const totalSpentValue = client.lastReview?.meta_total_spent || 0;
-      const currentDailyBudgetValue = client.lastReview?.meta_daily_budget_current || 0;
-      
-      setTotalSpent(totalSpentValue);
-      setCurrentDailyBudget(currentDailyBudgetValue);
-      
-      // Calcular orçamento diário ideal
-      const now = new Date();
-      const currentDay = now.getDate();
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const daysRemaining = lastDayOfMonth - currentDay + 1;
-      
-      // Definir os dias restantes
-      setRemainingDays(daysRemaining);
-      
-      // Usar orçamento personalizado ou mensal padrão
-      const budgetAmount = isUsingCustomBudget && customBudgetAmount 
-        ? customBudgetAmount 
-        : budget;
-      
-      const remainingBudget = budgetAmount - totalSpentValue;
-      const idealDailyBudgetValue = remainingBudget > 0 && daysRemaining > 0 
-        ? remainingBudget / daysRemaining 
-        : 0;
-      
-      setIdealDailyBudget(idealDailyBudgetValue);
-      
-      // Calcular diferença entre orçamento atual e ideal
-      const differenceValue = idealDailyBudgetValue - currentDailyBudgetValue;
-      setBudgetDifference(differenceValue);
-      
-      // Diagnóstico detalhado para debug
-      console.log(`RESULTADO CÁLCULO [${client.company_name}]:`, {
-        orçamentoUtilizado: isUsingCustomBudget ? 'personalizado' : 'padrão',
-        valor: isUsingCustomBudget ? customBudgetAmount : budget,
-        totalGasto: totalSpentValue,
-        orçamentoRestante: remainingBudget,
-        diasRestantes: daysRemaining,
-        orçamentoDiárioAtual: currentDailyBudgetValue,
-        orçamentoDiárioIdeal: idealDailyBudgetValue,
-        diferença: differenceValue,
-        precisaAjuste: Math.abs(differenceValue) >= 5,
-        accountName: accountName,
-        accountId: accountId
-      });
-      
-    } catch (error) {
-      console.error(`ERRO NO CÁLCULO [${client?.company_name || 'desconhecido'}]:`, error);
-      setCalculationError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsCalculating(false);
+  // Calcular orçamento total somando todas as contas ou usar o orçamento da conta específica
+  const calculateMonthlyBudget = () => {
+    // Se estamos visualizando uma conta específica
+    if (accountId && account) {
+      return account.budget_amount || 0;
     }
+    
+    // Se o cliente tem contas configuradas, somar os orçamentos
+    if (client.meta_accounts && client.meta_accounts.length > 0) {
+      return client.meta_accounts.reduce((sum, acc) => sum + (acc.budget_amount || 0), 0);
+    }
+    
+    // Caso contrário, usar o orçamento legado
+    return client.meta_ads_budget || 0;
   };
   
-  // Flag para verificar se há uma revisão para este cliente
-  const hasReview = !!client?.lastReview;
+  const monthlyBudget = calculateMonthlyBudget();
   
+  // Cálculos de orçamento e recomendações - usando o orçamento personalizado se disponível
+  const {
+    totalSpent,
+    currentDailyBudget,
+    idealDailyBudget,
+    budgetDifference,
+    remainingBudget,
+    remainingDays,
+    actualBudgetAmount,
+    needsBudgetAdjustment
+  } = useBudgetCalculations(client, customBudget, isUsingCustomBudgetInReview, hasReview);
+  
+  // Cálculo manual de total gasto
+  const {
+    calculatedTotalSpent,
+    isCalculating,
+    calculationError,
+    calculateTotalSpent
+  } = useTotalSpentCalculator();
+
+  // Log para diagnóstico
+  useEffect(() => {
+    if (customBudget || isUsingCustomBudgetInReview) {
+      console.log(`Cliente ${client.company_name} - Orçamento Info:`, {
+        isUsingCustomBudgetInReview,
+        customBudget: customBudget ? {
+          valor: customBudget.budget_amount,
+          inicio: customBudget.start_date,
+          fim: customBudget.end_date,
+          isActive: customBudget.is_active
+        } : 'Não encontrado',
+        customBudgetFromReview: client.lastReview?.custom_budget_amount,
+        customBudgetEndDate: client.lastReview?.custom_budget_end_date,
+        diasRestantes: remainingDays,
+        orcamentoRestante: remainingBudget,
+        orcamentoDiarioIdeal: idealDailyBudget,
+        needsBudgetAdjustment,
+        orçamentoDiárioAtual: currentDailyBudget,
+        diferençaOrçamento: budgetDifference
+      });
+    }
+    
+    // Atualizar a propriedade needsBudgetAdjustment no objeto client
+    if (client && needsBudgetAdjustment !== undefined) {
+      client.needsBudgetAdjustment = needsBudgetAdjustment;
+    }
+  }, [
+    customBudget, 
+    client, 
+    client.company_name, 
+    remainingBudget, 
+    idealDailyBudget, 
+    isUsingCustomBudgetInReview, 
+    needsBudgetAdjustment, 
+    remainingDays, 
+    client.lastReview?.custom_budget_amount,
+    client.lastReview?.custom_budget_end_date,
+    currentDailyBudget,
+    budgetDifference
+  ]);
+
   return {
     hasReview,
     isCalculating,
@@ -175,12 +106,14 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
-    // Informações sobre orçamento personalizado
+    remainingDaysValue: remainingDays,
+    calculateTotalSpent: () => calculateTotalSpent(account?.account_id || null, customBudget),
     customBudget,
+    isLoadingCustomBudget,
+    remainingBudget,
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
-    accountName,
-    // Adicionando a propriedade restante
-    remainingDaysValue: remainingDays
+    needsBudgetAdjustment,
+    accountName: account?.account_name
   };
 };

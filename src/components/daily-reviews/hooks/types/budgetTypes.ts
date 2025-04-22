@@ -10,7 +10,6 @@ export interface BudgetInfo {
   remainingDays: number;
   actualBudgetAmount: number;
   needsBudgetAdjustment: boolean;
-  remainingDaysValue?: number; // Adicionada como opcional para compatibilidade
 }
 
 export interface CustomBudgetInfo {
@@ -23,5 +22,6 @@ export interface ClientBudgetCalculationResult extends BudgetInfo, CustomBudgetI
   hasReview: boolean;
   isCalculating: boolean;
   calculationError: string | null;
+  remainingDaysValue: number;
   calculateTotalSpent: () => Promise<number | undefined>;
 }

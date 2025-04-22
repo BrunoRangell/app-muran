@@ -2,18 +2,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
 import { FilterOptions } from "./components/FilterOptions";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
-  onAnalyzeAll?: () => Promise<void>; 
+  onAnalyzeAll?: () => Promise<void>; // Adicionando propriedade onAnalyzeAll como opcional
 }
 
 export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDashboardCardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
-  const [debugMode, setDebugMode] = useState(false);
   
   const { 
     filteredClients, 
@@ -26,76 +25,21 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
 
-  const handleTitleClick = () => {
-    console.log("🚨 MODO DEBUG CLICADO");
-    setDebugMode(prevMode => {
-      const newMode = !prevMode;
-      console.log(`🔍 Modo de debug: ${newMode ? 'ATIVADO ✅' : 'DESATIVADO ❌'}`);
-      return newMode;
-    });
-  };
-
-  useEffect(() => {
-    if (debugMode) {
-      console.log("=== DIAGNÓSTICO DETALHADO ===");
-      console.log("Total de clientes:", filteredClients?.length || 0);
-      console.log("Clientes filtrados por nome:", filteredByName.length);
-      console.log("Clientes finais:", finalFilteredClients.length);
-
-      // Log específico para Sorrifácil
-      const sorrifacilClients = finalFilteredClients.filter(c => c.company_name === "Sorrifácil");
-      console.log("Sorrifácil encontrado:", sorrifacilClients.length);
-      
-      sorrifacilClients.forEach(client => {
-        console.log("Detalhes do Sorrifácil:", {
-          id: client.id,
-          contas: client.meta_accounts?.map(account => ({
-            id: account.id,
-            nome: account.account_name,
-            isPrimary: account.is_primary,
-            status: account.status
-          }))
-        });
-      });
+  // Função que será chamada para análise em lote
+  const handleAnalyzeAll = async () => {
+    // Usar a função do hook se disponível, caso contrário usar a propriedade passada
+    if (reviewAllClients) {
+      await reviewAllClients();
+    } else if (onAnalyzeAll) {
+      await onAnalyzeAll();
     }
-  }, [debugMode, filteredClients, finalFilteredClients]);
-  
-  // Log para verificar renderização de clientes com contas secundárias
-  console.log("=== RENDERIZAÇÃO DO METADASHBOARDCARD ===");
-  console.log("Total de clientes filtrados:", finalFilteredClients.length);
-  
-  const clientesComContasSecundarias = finalFilteredClients.filter(c => 
-    c.meta_accounts && Array.isArray(c.meta_accounts) && c.meta_accounts.length > 0
-  );
-  
-  console.log("Clientes com contas secundárias:", clientesComContasSecundarias.length);
-  
-  // Log específico para Sorrifácil sempre
-  const sorrifacil = finalFilteredClients.find(c => c.company_name === "Sorrifácil");
-  if (sorrifacil) {
-    console.log("SORRIFÁCIL ENCONTRADO NA LISTA FINAL:", {
-      id: sorrifacil.id,
-      contas: Array.isArray(sorrifacil.meta_accounts) ? sorrifacil.meta_accounts.map(a => ({
-        id: a.id,
-        account_id: a.account_id,
-        nome: a.account_name,
-        isPrimary: a.is_primary,
-        status: a.status
-      })) : 'Sem contas',
-      totalContas: Array.isArray(sorrifacil.meta_accounts) ? sorrifacil.meta_accounts.length : 0
-    });
-  } else {
-    console.log("SORRIFÁCIL NÃO ENCONTRADO NA LISTA FINAL");
-  }
+  };
 
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-2 flex flex-row justify-between items-center">
-        <CardTitle 
-          className="text-xl font-bold text-[#321e32] cursor-pointer" 
-          onClick={handleTitleClick}
-        >
-          Revisão de Orçamentos Meta {debugMode && '(Debug Mode)'}
+        <CardTitle className="text-xl font-bold text-[#321e32]">
+          Revisão de Orçamentos Meta
         </CardTitle>
         <div className="text-right">
           {/* Este espaço permanece vazio */}
@@ -136,63 +80,14 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                 </tr>
               </thead>
               <tbody>
-                {finalFilteredClients.map((client) => {
-                  console.log(`RENDERIZAÇÃO DE CLIENTE [${client.company_name}]:`, {
-                    id: client.id,
-                    tem_meta_accounts: Boolean(client.meta_accounts),
-                    é_array: Array.isArray(client.meta_accounts),
-                    num_contas: Array.isArray(client.meta_accounts) ? client.meta_accounts.length : 'N/A'
-                  });
-                  
-                  // Se o cliente tiver contas cadastradas, renderizar um card para cada
-                  if (client.meta_accounts && Array.isArray(client.meta_accounts) && client.meta_accounts.length > 0) {
-                    console.log(`RENDERIZANDO MÚLTIPLOS CARDS [${client.company_name}]:`, {
-                      total_contas: client.meta_accounts.length,
-                      contas: client.meta_accounts.map(acc => ({
-                        id: acc.id,
-                        nome: acc.account_name,
-                        status: acc.status
-                      }))
-                    });
-                    
-                    // Criar uma chave única para verificar o processamento
-                    const getProcessingKey = (clientId, accountId) => accountId ? `${clientId}-${accountId}` : clientId;
-                    
-                    // Importante: não usar filter aqui, apenas mapear todas as contas e depois filtrar resultados vazios
-                    return client.meta_accounts.map((account, index) => {
-                      const processingKey = getProcessingKey(client.id, account.id);
-                      
-                      console.log(`TENTATIVA DE RENDERIZAR CARD #${index+1} PARA [${client.company_name}]:`, {
-                        account_id: account.id,
-                        account_name: account.account_name,
-                        account_status: account.status,
-                        processingKey: processingKey,
-                        isProcessing: processingClients.includes(processingKey)
-                      });
-                      
-                      // Renderizar card mesmo sem verificar se a conta está ativa
-                      return (
-                        <ClientAltCard
-                          key={`${client.id}-${account.id}`}
-                          client={client}
-                          onReviewClient={(clientId) => reviewClient(clientId, account.id)}
-                          isProcessing={processingClients.includes(processingKey)}
-                          accountId={account.id}
-                        />
-                      );
-                    });
-                  }
-                  
-                  // Se o cliente não tiver contas, renderizar um card com a configuração normal
-                  return (
-                    <ClientAltCard
-                      key={client.id}
-                      client={client}
-                      onReviewClient={reviewClient}
-                      isProcessing={processingClients.includes(client.id)}
-                    />
-                  );
-                })}
+                {finalFilteredClients.map((client) => (
+                  <ClientAltCard
+                    key={client.id}
+                    client={client}
+                    onReviewClient={reviewClient}
+                    isProcessing={processingClients.includes(client.id)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>

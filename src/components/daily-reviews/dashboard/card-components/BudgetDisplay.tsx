@@ -1,5 +1,6 @@
 
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 
 interface BudgetDisplayProps {
@@ -15,32 +16,28 @@ export const BudgetDisplay = ({
   showRecommendation, 
   needsIncrease, 
   budgetDifference,
-  accountName 
+  accountName
 }: BudgetDisplayProps) => {
   return (
-    <div>
+    <div className="flex items-center gap-2">
       <div className="font-medium">
-        {formatCurrency(idealDailyBudget)}
+        {idealDailyBudget > 0 
+          ? formatCurrency(idealDailyBudget) 
+          : "Não disponível"}
       </div>
       
       {showRecommendation && (
-        <div className={`text-xs mt-1 flex items-center ${
-          needsIncrease ? 'text-amber-600' : 'text-blue-600'
-        }`}>
-          {needsIncrease ? (
-            <>
-              <ArrowUp size={12} className="mr-1" />
-              Aumentar ({formatCurrency(budgetDifference)})
-              {accountName && <span className="text-gray-500 ml-1">- {accountName}</span>}
-            </>
-          ) : (
-            <>
-              <ArrowDown size={12} className="mr-1" />
-              Diminuir ({formatCurrency(Math.abs(budgetDifference))})
-              {accountName && <span className="text-gray-500 ml-1">- {accountName}</span>}
-            </>
+        <Badge className={`flex items-center ${needsIncrease ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {accountName && (
+            <span className="mr-1 font-medium">{accountName}:</span>
           )}
-        </div>
+          {needsIncrease ? (
+            <TrendingUp size={14} className="mr-1" />
+          ) : (
+            <TrendingDown size={14} className="mr-1" />
+          )}
+          {needsIncrease ? "Aumentar" : "Diminuir"} {formatCurrency(Math.abs(budgetDifference))}
+        </Badge>
       )}
     </div>
   );

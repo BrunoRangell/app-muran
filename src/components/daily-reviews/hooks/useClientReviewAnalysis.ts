@@ -1,9 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useClientAnalysis } from "./useClientAnalysis";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchClientsWithReviews } from "./services/clientReviewService";
-import { AnalysisParams } from "./useClientAnalysis";
 
 export const useClientReviewAnalysis = () => {
   const { toast } = useToast();
@@ -20,8 +20,7 @@ export const useClientReviewAnalysis = () => {
     });
     
     // Remover o cliente da lista de processamento
-    const processingKey = data.accountId ? `${data.clientId}-${data.accountId}` : data.clientId;
-    setProcessingClients(prev => prev.filter(id => id !== processingKey));
+    setProcessingClients(prev => prev.filter(id => id !== data.clientId));
     
     // Invalidar consultas para forçar atualização
     queryClient.invalidateQueries({ queryKey: ["client-detail", data.clientId] });
@@ -36,56 +35,8 @@ export const useClientReviewAnalysis = () => {
   const loadClients = async () => {
     setIsLoading(true);
     try {
-      console.log("Iniciando carregamento de clientes com contas secundárias...");
-      const result = await fetchClientsWithReviews();
-      console.log("Dados brutos recebidos:", result);
-      
-      // Garantir que todos os clientes tenham meta_accounts definido como array
-      const clientsData = result.clientsData.map(client => {
-        // Log detalhado para cada cliente
-        console.log(`DIAGNÓSTICO DETALHADO [${client.company_name}]:`, {
-          id: client.id,
-          meta_accounts_antes: client.meta_accounts,
-          é_array: Array.isArray(client.meta_accounts),
-          comprimento: client.meta_accounts ? client.meta_accounts.length : 0
-        });
-        
-        // Garantir que meta_accounts seja sempre um array
-        const processedClient = {
-          ...client,
-          meta_accounts: Array.isArray(client.meta_accounts) ? client.meta_accounts : []
-        };
-        
-        // Log após processamento
-        console.log(`DIAGNÓSTICO APÓS PROCESSAMENTO [${processedClient.company_name}]:`, {
-          meta_accounts_depois: processedClient.meta_accounts,
-          é_array_depois: Array.isArray(processedClient.meta_accounts),
-          comprimento_depois: processedClient.meta_accounts.length
-        });
-        
-        return processedClient;
-      });
-      
-      console.log("Clientes processados com meta_accounts:", clientsData.length);
-      
-      // Verificar clientes com contas secundárias para depuração
-      const clientesComContas = clientsData.filter(c => c.meta_accounts && c.meta_accounts.length > 0);
-      console.log(`Total de clientes com contas secundárias: ${clientesComContas.length}`);
-      
-      clientesComContas.forEach(client => {
-        console.log(`VERIFICAÇÃO DE CONTAS [${client.company_name}]:`, {
-          id: client.id,
-          total_contas: client.meta_accounts.length,
-          contas: client.meta_accounts.map(acc => ({
-            id: acc.id,
-            account_id: acc.account_id,
-            nome: acc.account_name,
-            isPrimary: acc.is_primary
-          }))
-        });
-      });
-      
-      setFilteredClients(clientsData);
+      const clientsWithReviews = await fetchClientsWithReviews();
+      setFilteredClients(clientsWithReviews);
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
       toast({
@@ -99,12 +50,9 @@ export const useClientReviewAnalysis = () => {
   };
   
   // Função para analisar um cliente
-  const reviewClient = (clientId: string, accountId?: string) => {
-    // Criar uma chave única para o par cliente/conta
-    const processingKey = accountId ? `${clientId}-${accountId}` : clientId;
-    
-    // Evitar análises simultâneas do mesmo cliente/conta
-    if (processingClients.includes(processingKey)) {
+  const reviewClient = (clientId) => {
+    // Evitar análises simultâneas do mesmo cliente
+    if (processingClients.includes(clientId)) {
       toast({
         title: "Análise em andamento",
         description: "Este cliente já está sendo analisado.",
@@ -113,14 +61,14 @@ export const useClientReviewAnalysis = () => {
     }
     
     // Adicionar o cliente à lista de processamento
-    setProcessingClients(prev => [...prev, processingKey]);
-    console.log(`Iniciando análise para cliente: ${clientId}${accountId ? ` (conta: ${accountId})` : ''}`);
+    setProcessingClients(prev => [...prev, clientId]);
+    console.log(`Iniciando análise para cliente: ${clientId}`);
     
     // Iniciar análise
-    analyzeMutation.mutate({ clientId, accountId }, {
+    analyzeMutation.mutate(clientId, {
       onError: (error) => {
         console.error("Erro na análise do cliente:", error);
-        setProcessingClients(prev => prev.filter(id => id !== processingKey));
+        setProcessingClients(prev => prev.filter(id => id !== clientId));
         
         toast({
           title: "Erro na análise",
@@ -147,52 +95,21 @@ export const useClientReviewAnalysis = () => {
         return;
       }
       
-      // Lista para armazenar todos os pares cliente/conta a processar
-      const processingItems = [];
-      
-      // Preparar lista de todos os clientes e suas contas para processar
-      for (const client of clientsToProcess) {
-        if (client.meta_accounts && client.meta_accounts.length > 0) {
-          // Cliente com contas múltiplas - adicionar cada conta
-          client.meta_accounts.forEach(account => {
-            processingItems.push({
-              clientId: client.id,
-              accountId: account.id,
-              processingKey: `${client.id}-${account.id}`
-            });
-          });
-        } else {
-          // Cliente com conta única - usar a configuração principal
-          processingItems.push({
-            clientId: client.id,
-            accountId: null,
-            processingKey: client.id
-          });
-        }
-      }
-      
-      console.log(`Total de itens para processar: ${processingItems.length}`);
-      
-      // Registrar todos os itens como em processamento
-      setProcessingClients(prev => [
-        ...prev,
-        ...processingItems.map(item => item.processingKey)
-      ]);
+      // Registrar os clientes como em processamento
+      const clientIds = clientsToProcess.map(client => client.id);
+      setProcessingClients(prev => [...new Set([...prev, ...clientIds])]);
       
       // Iniciar análises em sequência para evitar sobrecarga
-      for (const item of processingItems) {
-        console.log(`Iniciando análise para: ${item.processingKey}`);
+      for (const client of clientsToProcess) {
+        console.log(`Iniciando análise para cliente: ${client.company_name} (${client.id})`);
         
         try {
           // Usando Promise para poder aguardar cada análise
           await new Promise((resolve, reject) => {
-            analyzeMutation.mutate({ 
-              clientId: item.clientId, 
-              accountId: item.accountId 
-            }, {
+            analyzeMutation.mutate(client.id, {
               onSuccess: () => resolve(null),
               onError: (error) => {
-                console.error(`Erro na análise de ${item.processingKey}:`, error);
+                console.error(`Erro na análise do cliente ${client.company_name}:`, error);
                 resolve(null); // Continuar mesmo com erro
               }
             });
@@ -202,14 +119,14 @@ export const useClientReviewAnalysis = () => {
           await new Promise(resolve => setTimeout(resolve, 200));
           
         } catch (err) {
-          console.error(`Erro ao analisar ${item.processingKey}:`, err);
+          console.error(`Erro ao analisar cliente ${client.company_name}:`, err);
           // Continuar com o próximo cliente mesmo em caso de erro
         }
       }
       
       toast({
         title: "Análise em lote concluída",
-        description: `Foram processados ${processingItems.length} itens.`,
+        description: `Foram processados ${clientsToProcess.length} clientes.`,
       });
       
     } catch (error) {
