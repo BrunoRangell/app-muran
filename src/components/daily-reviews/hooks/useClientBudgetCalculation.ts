@@ -35,7 +35,12 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
         throw new Error("Cliente não fornecido");
       }
       
-      console.log(`Calculando orçamentos para cliente ${client.company_name}${accountId ? ` (conta ID: ${accountId})` : ''}`);
+      console.log(`CÁLCULO ORÇAMENTO [${client.company_name}]:`, {
+        accountId_recebido: accountId, 
+        tem_meta_accounts: Boolean(client.meta_accounts),
+        é_array: Array.isArray(client.meta_accounts),
+        num_contas: Array.isArray(client.meta_accounts) ? client.meta_accounts.length : 'N/A'
+      });
       
       // Verificar se temos uma conta específica ou usamos a configuração principal do cliente
       let selectedAccount = null;
@@ -43,14 +48,32 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
       
       // Se um accountId específico foi fornecido, buscar essa conta nas meta_accounts do cliente
       if (accountId && client.meta_accounts && client.meta_accounts.length > 0) {
+        console.log(`BUSCANDO CONTA [${client.company_name}]:`, {
+          accountId_buscando: accountId,
+          contas_disponíveis: client.meta_accounts.map(acc => ({
+            id: acc.id,
+            nome: acc.account_name
+          }))
+        });
+        
         selectedAccount = client.meta_accounts.find(account => account.id === accountId);
         
         if (selectedAccount) {
-          console.log(`Encontrada conta secundária: ${selectedAccount.account_name} (${selectedAccount.account_id})`);
+          console.log(`CONTA ENCONTRADA [${client.company_name}]:`, {
+            account_name: selectedAccount.account_name,
+            account_id: selectedAccount.account_id,
+            budget: selectedAccount.budget_amount
+          });
           budget = selectedAccount.budget_amount || 0;
           setAccountName(selectedAccount.account_name);
         } else {
-          console.warn(`Conta com ID ${accountId} não encontrada para o cliente ${client.company_name}`);
+          console.warn(`CONTA NÃO ENCONTRADA [${client.company_name}]:`, {
+            accountId_buscado: accountId,
+            contas_disponíveis: client.meta_accounts.map(acc => ({
+              id: acc.id,
+              nome: acc.account_name
+            }))
+          });
         }
       }
       
@@ -60,7 +83,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
       const hasReview = !!client.lastReview;
       
       if (!hasReview) {
-        console.log(`Cliente ${client.company_name} não tem revisão`);
+        console.log(`SEM REVISÃO [${client.company_name}]`);
         setIsCalculating(false);
         return;
       }
@@ -72,7 +95,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
       setIsUsingCustomBudgetInReview(isUsingCustomBudget);
       
       if (isUsingCustomBudget && customBudgetAmount) {
-        console.log(`Usando orçamento personalizado da revisão: ${customBudgetAmount}`);
+        console.log(`ORÇAMENTO PERSONALIZADO [${client.company_name}]:`, customBudgetAmount);
         setCustomBudget({
           valor: customBudgetAmount,
           inicio: client.lastReview?.custom_budget_start_date,
@@ -118,19 +141,21 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
       setBudgetDifference(differenceValue);
       
       // Diagnóstico detalhado para debug
-      console.log(`Diagnóstico de orçamento ${isUsingCustomBudget ? 'personalizado' : 'padrão'} para ${client.company_name}:`, {
-        orçamentoPersonalizado: isUsingCustomBudget ? customBudgetAmount : budget,
+      console.log(`RESULTADO CÁLCULO [${client.company_name}]:`, {
+        orçamentoUtilizado: isUsingCustomBudget ? 'personalizado' : 'padrão',
+        valor: isUsingCustomBudget ? customBudgetAmount : budget,
         totalGasto: totalSpentValue,
         orçamentoRestante: remainingBudget,
         diasRestantes: daysRemaining,
         orçamentoDiárioAtual: currentDailyBudgetValue,
         orçamentoDiárioIdeal: idealDailyBudgetValue,
         diferença: differenceValue,
-        precisaAjuste: Math.abs(differenceValue) >= 5
+        precisaAjuste: Math.abs(differenceValue) >= 5,
+        accountName: accountName
       });
       
     } catch (error) {
-      console.error(`Erro ao calcular orçamentos para ${client.company_name}:`, error);
+      console.error(`ERRO NO CÁLCULO [${client?.company_name || 'desconhecido'}]:`, error);
       setCalculationError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsCalculating(false);

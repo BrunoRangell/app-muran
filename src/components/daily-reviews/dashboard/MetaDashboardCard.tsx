@@ -26,7 +26,13 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
 
-  console.log("MetaDashboardCard - Clientes filtrados:", finalFilteredClients.length);
+  console.log("MetaDashboardCard - DIAGNÓSTICO FILTROS:", {
+    totalClientes: filteredClients?.length || 0,
+    filtradosPorNome: filteredByName.length,
+    filtradosFinais: finalFilteredClients.length,
+    busca: searchQuery,
+    somenteAjustes: showOnlyAdjustments
+  });
   
   // Log de resumo dos clientes com contas secundárias
   const clientesComContasSecundarias = finalFilteredClients.filter(c => 
@@ -36,7 +42,12 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   console.log("MetaDashboardCard - Clientes com contas secundárias:", clientesComContasSecundarias.length);
   if (clientesComContasSecundarias.length > 0) {
     clientesComContasSecundarias.forEach(c => {
-      console.log(`Cliente ${c.company_name} tem ${c.meta_accounts.length} contas secundárias`);
+      console.log(`ESTADO FINAL [${c.company_name}]:`, {
+        id: c.id,
+        meta_accounts: c.meta_accounts,
+        total_contas: c.meta_accounts.length,
+        tem_array: Array.isArray(c.meta_accounts)
+      });
     });
   }
 
@@ -96,22 +107,39 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.map((client) => {
-                  // Log específico para verificar as contas de cada cliente durante a renderização
-                  console.log(`Renderizando cliente ${client.company_name}, meta_accounts:`, 
-                    Array.isArray(client.meta_accounts) ? client.meta_accounts.length : 'Não é array');
+                  console.log(`RENDERIZAÇÃO [${client.company_name}]:`, {
+                    id: client.id,
+                    tem_meta_accounts: Boolean(client.meta_accounts),
+                    é_array: Array.isArray(client.meta_accounts),
+                    num_contas: Array.isArray(client.meta_accounts) ? client.meta_accounts.length : 'N/A'
+                  });
                   
                   // Se o cliente tiver contas cadastradas, renderizar um card para cada
                   if (Array.isArray(client.meta_accounts) && client.meta_accounts.length > 0) {
-                    console.log(`Renderizando ${client.meta_accounts.length} cards para ${client.company_name}`);
-                    return client.meta_accounts.map((account) => (
-                      <ClientAltCard
-                        key={`${client.id}-${account.id}`}
-                        client={client}
-                        onReviewClient={reviewClient}
-                        isProcessing={processingClients.includes(client.id)}
-                        accountId={account.id}
-                      />
-                    ));
+                    console.log(`RENDERIZANDO MÚLTIPLOS CARDS [${client.company_name}]:`, {
+                      total_contas: client.meta_accounts.length,
+                      contas: client.meta_accounts.map(acc => ({
+                        id: acc.id,
+                        nome: acc.account_name
+                      }))
+                    });
+                    
+                    return client.meta_accounts.map((account, index) => {
+                      console.log(`RENDERIZANDO CARD #${index+1} PARA [${client.company_name}]:`, {
+                        account_id: account.id,
+                        account_name: account.account_name
+                      });
+                      
+                      return (
+                        <ClientAltCard
+                          key={`${client.id}-${account.id}`}
+                          client={client}
+                          onReviewClient={reviewClient}
+                          isProcessing={processingClients.includes(client.id)}
+                          accountId={account.id}
+                        />
+                      );
+                    });
                   }
                   
                   // Se o cliente não tiver contas, renderizar um card com a configuração normal

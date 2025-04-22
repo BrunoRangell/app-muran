@@ -40,10 +40,30 @@ export const useClientReviewAnalysis = () => {
       console.log("Dados brutos recebidos:", result);
       
       // Garantir que todos os clientes tenham meta_accounts definido como array
-      const clientsData = result.clientsData.map(client => ({
-        ...client,
-        meta_accounts: Array.isArray(client.meta_accounts) ? client.meta_accounts : []
-      }));
+      const clientsData = result.clientsData.map(client => {
+        // Log detalhado para cada cliente
+        console.log(`DIAGNÓSTICO DETALHADO [${client.company_name}]:`, {
+          id: client.id,
+          meta_accounts_antes: client.meta_accounts,
+          é_array: Array.isArray(client.meta_accounts),
+          comprimento: client.meta_accounts ? client.meta_accounts.length : 0
+        });
+        
+        // Garantir que meta_accounts seja sempre um array
+        const processedClient = {
+          ...client,
+          meta_accounts: Array.isArray(client.meta_accounts) ? client.meta_accounts : []
+        };
+        
+        // Log após processamento
+        console.log(`DIAGNÓSTICO APÓS PROCESSAMENTO [${processedClient.company_name}]:`, {
+          meta_accounts_depois: processedClient.meta_accounts,
+          é_array_depois: Array.isArray(processedClient.meta_accounts),
+          comprimento_depois: processedClient.meta_accounts.length
+        });
+        
+        return processedClient;
+      });
       
       console.log("Clientes processados com meta_accounts:", clientsData.length);
       
@@ -52,7 +72,16 @@ export const useClientReviewAnalysis = () => {
       console.log(`Total de clientes com contas secundárias: ${clientesComContas.length}`);
       
       clientesComContas.forEach(client => {
-        console.log(`Cliente: ${client.company_name} - ${client.meta_accounts.length} contas`);
+        console.log(`VERIFICAÇÃO DE CONTAS [${client.company_name}]:`, {
+          id: client.id,
+          total_contas: client.meta_accounts.length,
+          contas: client.meta_accounts.map(acc => ({
+            id: acc.id,
+            account_id: acc.account_id,
+            nome: acc.account_name,
+            isPrimary: acc.is_primary
+          }))
+        });
       });
       
       setFilteredClients(clientsData);
