@@ -46,7 +46,8 @@ export const ClientReviewDetails = ({ clientId: propClientId, onBack }: ClientRe
   const handleAnalyzeClient = () => {
     if (!clientId) return;
     
-    analyzeMutation.mutate(clientId, {
+    // Atualizado para passar um objeto com clientId em vez de apenas o ID
+    analyzeMutation.mutate({ clientId }, {
       onSuccess: () => {
         toast({
           title: "Análise concluída",
