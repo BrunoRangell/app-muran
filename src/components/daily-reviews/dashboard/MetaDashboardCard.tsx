@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
@@ -27,80 +26,40 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
 
-  // Alterado para aceitar cliques únicos no título para ativar o debug
   const handleTitleClick = () => {
-    console.log("Clique no título detectado!");
+    console.log("🚨 MODO DEBUG CLICADO");
     setDebugMode(prevMode => {
       const newMode = !prevMode;
-      console.log("Modo de debug ativado:", newMode);
+      console.log(`🔍 Modo de debug: ${newMode ? 'ATIVADO ✅' : 'DESATIVADO ❌'}`);
       return newMode;
     });
   };
 
-  // Log detalhado de diagnóstico
   useEffect(() => {
     if (debugMode) {
-      console.log("=== DEBUG MODE ATIVADO ===");
-      console.log("MetaDashboardCard - DIAGNÓSTICO FILTROS:", {
-        totalClientes: filteredClients?.length || 0,
-        filtradosPorNome: filteredByName.length,
-        filtradosFinais: finalFilteredClients.length,
-        busca: searchQuery,
-        somenteAjustes: showOnlyAdjustments
-      });
-      
-      // Diagnóstico detalhado de clientes com contas secundárias
-      const clientesComContasSecundarias = finalFilteredClients.filter(c => 
-        c.meta_accounts && Array.isArray(c.meta_accounts) && c.meta_accounts.length > 0
-      );
-      
-      console.log(`MetaDashboardCard - DEBUG: Clientes com contas secundárias (${clientesComContasSecundarias.length}):`);
-      
-      clientesComContasSecundarias.forEach(c => {
-        console.log(`DEBUG DETALHADO [${c.company_name}]:`, {
-          id: c.id,
-          meta_accounts_existe: Boolean(c.meta_accounts),
-          é_array: Array.isArray(c.meta_accounts),
-          comprimento: Array.isArray(c.meta_accounts) ? c.meta_accounts.length : 'N/A',
-          contas_detalhes: Array.isArray(c.meta_accounts) ? c.meta_accounts.map(a => ({
-            id: a.id,
-            account_id: a.account_id,
-            nome: a.account_name,
-            isPrimary: a.is_primary,
-            status: a.status
-          })) : 'Não é array'
-        });
-      });
-      
-      // Log específico para Sorrifácil
-      const sorrifacil = finalFilteredClients.find(c => c.company_name === "Sorrifácil");
-      if (sorrifacil) {
-        console.log("DEBUG SORRIFÁCIL:", {
-          id: sorrifacil.id,
-          contas: Array.isArray(sorrifacil.meta_accounts) ? sorrifacil.meta_accounts.map(a => ({
-            id: a.id,
-            account_id: a.account_id,
-            nome: a.account_name,
-            isPrimary: a.is_primary,
-            status: a.status
-          })) : 'Tipo de meta_accounts: ' + typeof sorrifacil.meta_accounts,
-          totalContas: Array.isArray(sorrifacil.meta_accounts) ? sorrifacil.meta_accounts.length : 0
-        });
-      } else {
-        console.log("DEBUG: SORRIFÁCIL NÃO ENCONTRADO NA LISTA FINAL");
-      }
-    }
-  }, [debugMode, filteredClients, filteredByName, finalFilteredClients, searchQuery, showOnlyAdjustments]);
-  
-  // Função que será chamada para análise em lote
-  const handleAnalyzeAll = async () => {
-    if (reviewAllClients) {
-      await reviewAllClients();
-    } else if (onAnalyzeAll) {
-      await onAnalyzeAll();
-    }
-  };
+      console.log("=== DIAGNÓSTICO DETALHADO ===");
+      console.log("Total de clientes:", filteredClients?.length || 0);
+      console.log("Clientes filtrados por nome:", filteredByName.length);
+      console.log("Clientes finais:", finalFilteredClients.length);
 
+      // Log específico para Sorrifácil
+      const sorrifacilClients = finalFilteredClients.filter(c => c.company_name === "Sorrifácil");
+      console.log("Sorrifácil encontrado:", sorrifacilClients.length);
+      
+      sorrifacilClients.forEach(client => {
+        console.log("Detalhes do Sorrifácil:", {
+          id: client.id,
+          contas: client.meta_accounts?.map(account => ({
+            id: account.id,
+            nome: account.account_name,
+            isPrimary: account.is_primary,
+            status: account.status
+          }))
+        });
+      });
+    }
+  }, [debugMode, filteredClients, finalFilteredClients]);
+  
   // Log para verificar renderização de clientes com contas secundárias
   console.log("=== RENDERIZAÇÃO DO METADASHBOARDCARD ===");
   console.log("Total de clientes filtrados:", finalFilteredClients.length);
