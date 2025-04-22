@@ -61,6 +61,22 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     }
   };
 
+  // Log para verificar se o cliente Sorrifácil está sendo renderizado corretamente
+  const sorrifacil = finalFilteredClients.find(c => c.company_name === "Sorrifácil");
+  if (sorrifacil) {
+    console.log("SORRIFÁCIL ENCONTRADO NA LISTA FINAL:", {
+      id: sorrifacil.id,
+      contas: sorrifacil.meta_accounts?.map(a => ({
+        id: a.id,
+        nome: a.account_name,
+        isPrimary: a.is_primary
+      })) || 'Sem contas',
+      totalContas: sorrifacil.meta_accounts?.length || 0
+    });
+  } else {
+    console.log("SORRIFÁCIL NÃO ENCONTRADO NA LISTA FINAL");
+  }
+
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-2 flex flex-row justify-between items-center">
@@ -124,18 +140,25 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                       }))
                     });
                     
+                    // Criar uma chave única para verificar o processamento
+                    const getProcessingKey = (clientId, accountId) => accountId ? `${clientId}-${accountId}` : clientId;
+                    
                     return client.meta_accounts.map((account, index) => {
+                      const processingKey = getProcessingKey(client.id, account.id);
+                      
                       console.log(`RENDERIZANDO CARD #${index+1} PARA [${client.company_name}]:`, {
                         account_id: account.id,
-                        account_name: account.account_name
+                        account_name: account.account_name,
+                        processingKey: processingKey,
+                        isProcessing: processingClients.includes(processingKey)
                       });
                       
                       return (
                         <ClientAltCard
                           key={`${client.id}-${account.id}`}
                           client={client}
-                          onReviewClient={reviewClient}
-                          isProcessing={processingClients.includes(client.id)}
+                          onReviewClient={(clientId) => reviewClient(clientId, account.id)}
+                          isProcessing={processingClients.includes(processingKey)}
                           accountId={account.id}
                         />
                       );
@@ -147,7 +170,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                     <ClientAltCard
                       key={client.id}
                       client={client}
-                      onReviewClient={reviewClient}
+                      onReviewClient={(clientId) => reviewClient(clientId)}
                       isProcessing={processingClients.includes(client.id)}
                     />
                   );

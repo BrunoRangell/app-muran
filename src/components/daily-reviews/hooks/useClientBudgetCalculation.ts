@@ -47,7 +47,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
       let budget = client.meta_ads_budget || 0;
       
       // Se um accountId específico foi fornecido, buscar essa conta nas meta_accounts do cliente
-      if (accountId && client.meta_accounts && client.meta_accounts.length > 0) {
+      if (accountId && Array.isArray(client.meta_accounts) && client.meta_accounts.length > 0) {
         console.log(`BUSCANDO CONTA [${client.company_name}]:`, {
           accountId_buscando: accountId,
           contas_disponíveis: client.meta_accounts.map(acc => ({
@@ -61,7 +61,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
         if (selectedAccount) {
           console.log(`CONTA ENCONTRADA [${client.company_name}]:`, {
             account_name: selectedAccount.account_name,
-            account_id: selectedAccount.account_id,
+            account_id: selectedAccount.id,
             budget: selectedAccount.budget_amount
           });
           budget = selectedAccount.budget_amount || 0;
@@ -151,7 +151,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
         orçamentoDiárioIdeal: idealDailyBudgetValue,
         diferença: differenceValue,
         precisaAjuste: Math.abs(differenceValue) >= 5,
-        accountName: accountName
+        accountName: accountName,
+        accountId: accountId
       });
       
     } catch (error) {

@@ -98,9 +98,12 @@ export const useClientReviewAnalysis = () => {
   };
   
   // Função para analisar um cliente
-  const reviewClient = (clientId) => {
-    // Evitar análises simultâneas do mesmo cliente
-    if (processingClients.includes(clientId)) {
+  const reviewClient = (clientId, accountId) => {
+    // Criar uma chave única para o par cliente/conta
+    const processingKey = accountId ? `${clientId}-${accountId}` : clientId;
+    
+    // Evitar análises simultâneas do mesmo cliente/conta
+    if (processingClients.includes(processingKey)) {
       toast({
         title: "Análise em andamento",
         description: "Este cliente já está sendo analisado.",
@@ -109,14 +112,14 @@ export const useClientReviewAnalysis = () => {
     }
     
     // Adicionar o cliente à lista de processamento
-    setProcessingClients(prev => [...prev, clientId]);
-    console.log(`Iniciando análise para cliente: ${clientId}`);
+    setProcessingClients(prev => [...prev, processingKey]);
+    console.log(`Iniciando análise para cliente: ${clientId}${accountId ? ` (conta: ${accountId})` : ''}`);
     
     // Iniciar análise
-    analyzeMutation.mutate(clientId, {
+    analyzeMutation.mutate({ clientId, accountId }, {
       onError: (error) => {
         console.error("Erro na análise do cliente:", error);
-        setProcessingClients(prev => prev.filter(id => id !== clientId));
+        setProcessingClients(prev => prev.filter(id => id !== processingKey));
         
         toast({
           title: "Erro na análise",
@@ -143,21 +146,52 @@ export const useClientReviewAnalysis = () => {
         return;
       }
       
-      // Registrar os clientes como em processamento
-      const clientIds = clientsToProcess.map(client => client.id);
-      setProcessingClients(prev => [...new Set([...prev, ...clientIds])]);
+      // Lista para armazenar todos os pares cliente/conta a processar
+      const processingItems = [];
+      
+      // Preparar lista de todos os clientes e suas contas para processar
+      for (const client of clientsToProcess) {
+        if (client.meta_accounts && client.meta_accounts.length > 0) {
+          // Cliente com contas múltiplas - adicionar cada conta
+          client.meta_accounts.forEach(account => {
+            processingItems.push({
+              clientId: client.id,
+              accountId: account.id,
+              processingKey: `${client.id}-${account.id}`
+            });
+          });
+        } else {
+          // Cliente com conta única - usar a configuração principal
+          processingItems.push({
+            clientId: client.id,
+            accountId: null,
+            processingKey: client.id
+          });
+        }
+      }
+      
+      console.log(`Total de itens para processar: ${processingItems.length}`);
+      
+      // Registrar todos os itens como em processamento
+      setProcessingClients(prev => [
+        ...prev,
+        ...processingItems.map(item => item.processingKey)
+      ]);
       
       // Iniciar análises em sequência para evitar sobrecarga
-      for (const client of clientsToProcess) {
-        console.log(`Iniciando análise para cliente: ${client.company_name} (${client.id})`);
+      for (const item of processingItems) {
+        console.log(`Iniciando análise para: ${item.processingKey}`);
         
         try {
           // Usando Promise para poder aguardar cada análise
           await new Promise((resolve, reject) => {
-            analyzeMutation.mutate(client.id, {
+            analyzeMutation.mutate({ 
+              clientId: item.clientId, 
+              accountId: item.accountId 
+            }, {
               onSuccess: () => resolve(null),
               onError: (error) => {
-                console.error(`Erro na análise do cliente ${client.company_name}:`, error);
+                console.error(`Erro na análise de ${item.processingKey}:`, error);
                 resolve(null); // Continuar mesmo com erro
               }
             });
@@ -167,14 +201,14 @@ export const useClientReviewAnalysis = () => {
           await new Promise(resolve => setTimeout(resolve, 200));
           
         } catch (err) {
-          console.error(`Erro ao analisar cliente ${client.company_name}:`, err);
+          console.error(`Erro ao analisar ${item.processingKey}:`, err);
           // Continuar com o próximo cliente mesmo em caso de erro
         }
       }
       
       toast({
         title: "Análise em lote concluída",
-        description: `Foram processados ${clientsToProcess.length} clientes.`,
+        description: `Foram processados ${processingItems.length} itens.`,
       });
       
     } catch (error) {
