@@ -8,6 +8,7 @@ import { CustomBudgetManager } from "@/components/revisao-nova/CustomBudgetManag
 import { GoogleAdsDashboard } from "@/components/revisao-nova/GoogleAdsDashboard";
 import { useSearchParams } from "react-router-dom";
 import { ApiConfigurationPanel } from "@/components/settings/ApiConfigurationPanel";
+import { MetaDashboardCard } from "@/components/daily-reviews/dashboard/MetaDashboardCard";
 
 export default function RevisaoNova() {
   const [searchParams] = useSearchParams();
@@ -37,7 +38,7 @@ export default function RevisaoNova() {
           </TabsList>
           
           <TabsContent value="dashboard" className="space-y-6">
-            <ReviewsDashboardCard onViewClientDetails={() => {}} />
+            <MetaDashboardCard onViewClientDetails={() => {}} />
           </TabsContent>
           
           <TabsContent value="google-ads" className="space-y-6">

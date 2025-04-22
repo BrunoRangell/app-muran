@@ -27,9 +27,14 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
 
-  // Ativar o modo de debug com triplo clique no título
+  // Alterado para aceitar cliques únicos no título para ativar o debug
   const handleTitleClick = () => {
-    setDebugMode(prev => !prev);
+    console.log("Clique no título detectado!");
+    setDebugMode(prevMode => {
+      const newMode = !prevMode;
+      console.log("Modo de debug ativado:", newMode);
+      return newMode;
+    });
   };
 
   // Log detalhado de diagnóstico
@@ -105,6 +110,24 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   );
   
   console.log("Clientes com contas secundárias:", clientesComContasSecundarias.length);
+  
+  // Log específico para Sorrifácil sempre
+  const sorrifacil = finalFilteredClients.find(c => c.company_name === "Sorrifácil");
+  if (sorrifacil) {
+    console.log("SORRIFÁCIL ENCONTRADO NA LISTA FINAL:", {
+      id: sorrifacil.id,
+      contas: Array.isArray(sorrifacil.meta_accounts) ? sorrifacil.meta_accounts.map(a => ({
+        id: a.id,
+        account_id: a.account_id,
+        nome: a.account_name,
+        isPrimary: a.is_primary,
+        status: a.status
+      })) : 'Sem contas',
+      totalContas: Array.isArray(sorrifacil.meta_accounts) ? sorrifacil.meta_accounts.length : 0
+    });
+  } else {
+    console.log("SORRIFÁCIL NÃO ENCONTRADO NA LISTA FINAL");
+  }
 
   return (
     <Card className="shadow-sm">
@@ -163,7 +186,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                   });
                   
                   // Se o cliente tiver contas cadastradas, renderizar um card para cada
-                  if (Array.isArray(client.meta_accounts) && client.meta_accounts.length > 0) {
+                  if (client.meta_accounts && Array.isArray(client.meta_accounts) && client.meta_accounts.length > 0) {
                     console.log(`RENDERIZANDO MÚLTIPLOS CARDS [${client.company_name}]:`, {
                       total_contas: client.meta_accounts.length,
                       contas: client.meta_accounts.map(acc => ({
@@ -176,28 +199,29 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                     // Criar uma chave única para verificar o processamento
                     const getProcessingKey = (clientId, accountId) => accountId ? `${clientId}-${accountId}` : clientId;
                     
-                    return client.meta_accounts
-                      .filter(account => account.status === 'active') // Garantir que apenas contas ativas sejam exibidas
-                      .map((account, index) => {
-                        const processingKey = getProcessingKey(client.id, account.id);
-                        
-                        console.log(`RENDERIZANDO CARD #${index+1} PARA [${client.company_name}]:`, {
-                          account_id: account.id,
-                          account_name: account.account_name,
-                          processingKey: processingKey,
-                          isProcessing: processingClients.includes(processingKey)
-                        });
-                        
-                        return (
-                          <ClientAltCard
-                            key={`${client.id}-${account.id}`}
-                            client={client}
-                            onReviewClient={(clientId) => reviewClient(clientId, account.id)}
-                            isProcessing={processingClients.includes(processingKey)}
-                            accountId={account.id}
-                          />
-                        );
+                    // Importante: não usar filter aqui, apenas mapear todas as contas e depois filtrar resultados vazios
+                    return client.meta_accounts.map((account, index) => {
+                      const processingKey = getProcessingKey(client.id, account.id);
+                      
+                      console.log(`TENTATIVA DE RENDERIZAR CARD #${index+1} PARA [${client.company_name}]:`, {
+                        account_id: account.id,
+                        account_name: account.account_name,
+                        account_status: account.status,
+                        processingKey: processingKey,
+                        isProcessing: processingClients.includes(processingKey)
                       });
+                      
+                      // Renderizar card mesmo sem verificar se a conta está ativa
+                      return (
+                        <ClientAltCard
+                          key={`${client.id}-${account.id}`}
+                          client={client}
+                          onReviewClient={(clientId) => reviewClient(clientId, account.id)}
+                          isProcessing={processingClients.includes(processingKey)}
+                          accountId={account.id}
+                        />
+                      );
+                    });
                   }
                   
                   // Se o cliente não tiver contas, renderizar um card com a configuração normal
