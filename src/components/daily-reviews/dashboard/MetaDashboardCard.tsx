@@ -37,7 +37,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     }
   };
   
-  // Novo hook para buscar as contas Meta dos clientes
+  // Nova consulta para buscar as contas Meta dos clientes
   const { data: metaAccounts } = useQuery({
     queryKey: ['meta-accounts'],
     queryFn: async () => {
