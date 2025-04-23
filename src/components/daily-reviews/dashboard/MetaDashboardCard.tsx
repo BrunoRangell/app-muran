@@ -8,6 +8,7 @@ import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFi
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { MetaAccount } from "../hooks/types/accountTypes";
+import { useToast } from "@/hooks/use-toast";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -17,6 +18,7 @@ interface MetaDashboardCardProps {
 export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDashboardCardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const { toast } = useToast();
   
   const { 
     filteredClients, 
@@ -47,10 +49,22 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
         .select('*')
         .eq('status', 'active');
         
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar contas Meta:", error);
+        toast({
+          title: "Erro ao buscar contas Meta",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      console.log("Contas Meta recuperadas:", data?.length);
       return data as MetaAccount[];
     }
   });
+
+  console.log("Meta accounts data:", metaAccounts);
 
   return (
     <Card className="shadow-sm">
@@ -98,10 +112,13 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.map((client) => {
-                  // Filtrar todas as contas Meta do cliente atual (podem ser múltiplas)
+                  // Filtrar todas as contas Meta do cliente atual
                   const clientAccounts = metaAccounts?.filter(account => 
                     account.client_id === client.id
                   ) || [];
+                  
+                  // Depuração para ver as contas encontradas para cada cliente
+                  console.log(`Cliente ${client.company_name} (${client.id}): ${clientAccounts.length} contas Meta`);
                   
                   // Se o cliente não tem contas Meta cadastradas, mostrar card padrão com orçamento base do cliente
                   if (clientAccounts.length === 0) {
@@ -118,7 +135,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                   // Renderizar um card para cada conta Meta do cliente (primária e secundárias)
                   return clientAccounts.map((account) => (
                     <ClientAltCard
-                      key={`${client.id}-${account.account_id}`}
+                      key={`${client.id}-${account.id}`}
                       client={client}
                       metaAccount={account}
                       onReviewClient={reviewClient}
