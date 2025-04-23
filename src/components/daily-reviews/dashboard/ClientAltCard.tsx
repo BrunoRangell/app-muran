@@ -6,16 +6,11 @@ import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation"
 import { ClientInfo } from "./card-components/ClientInfo";
 import { BudgetDisplay } from "./card-components/BudgetDisplay";
 import { ActionButtons } from "./card-components/ActionButtons";
+import { MetaAccount } from "../hooks/types/accountTypes";
 
 interface ClientAltCardProps {
   client: ClientWithReview;
-  metaAccount?: {
-    id: string;
-    account_id: string;
-    account_name: string;
-    budget_amount: number;
-    is_primary: boolean;
-  };
+  metaAccount?: MetaAccount;
   onReviewClient: (clientId: string, accountId?: string) => void;
   isProcessing: boolean;
 }
@@ -27,6 +22,7 @@ export const ClientAltCard = ({
   isProcessing 
 }: ClientAltCardProps) => {
   // Usar o hook personalizado para cálculos de orçamento
+  // Passar accountId se existir uma conta Meta específica
   const {
     hasReview,
     isCalculating,
@@ -38,12 +34,20 @@ export const ClientAltCard = ({
     budgetDifference,
     customBudget,
     isUsingCustomBudgetInReview,
-    actualBudgetAmount
-  } = useClientBudgetCalculation(client, metaAccount?.account_id);
+    actualBudgetAmount,
+    accountName,
+    remainingDaysValue
+  } = useClientBudgetCalculation(
+    client, 
+    metaAccount?.account_id
+  );
 
   // Flag para mostrar recomendação de orçamento
   const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
   const needsIncrease = budgetDifference > 0;
+
+  // O orçamento a ser mostrado deve ser o da conta específica se estiver disponível
+  const displayBudget = metaAccount ? metaAccount.budget_amount : actualBudgetAmount || monthlyBudget;
 
   return (
     <tr className={`hover:bg-gray-50 ${
@@ -58,7 +62,7 @@ export const ClientAltCard = ({
         />
       </td>
       <td className="px-6 py-4">
-        <div className="font-medium">{formatCurrency(actualBudgetAmount || monthlyBudget)}</div>
+        <div className="font-medium">{formatCurrency(displayBudget)}</div>
       </td>
       <td className="px-6 py-4">
         {isCalculating ? (
@@ -84,7 +88,7 @@ export const ClientAltCard = ({
           showRecommendation={showRecommendation}
           needsIncrease={needsIncrease}
           budgetDifference={budgetDifference}
-          accountName={metaAccount?.account_name}
+          accountName={accountName || metaAccount?.account_name}
         />
       </td>
       <td className="px-6 py-4">

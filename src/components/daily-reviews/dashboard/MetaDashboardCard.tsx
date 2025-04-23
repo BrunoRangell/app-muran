@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
@@ -6,10 +7,11 @@ import { useState } from "react";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { MetaAccount } from "../hooks/types/accountTypes";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
-  onAnalyzeAll?: () => Promise<void>; // Adicionando propriedade onAnalyzeAll como opcional
+  onAnalyzeAll?: () => Promise<void>;
 }
 
 export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDashboardCardProps) => {
@@ -29,7 +31,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
 
   // Função que será chamada para análise em lote
   const handleAnalyzeAll = async () => {
-    // Usar a função do hook se disponível, caso contrário usar a propriedade passada
     if (reviewAllClients) {
       await reviewAllClients();
     } else if (onAnalyzeAll) {
@@ -37,8 +38,8 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     }
   };
   
-  // Nova consulta para buscar as contas Meta dos clientes
-  const { data: metaAccounts } = useQuery({
+  // Consulta para buscar as contas Meta de todos os clientes ativos
+  const { data: metaAccounts, isLoading: isLoadingAccounts } = useQuery({
     queryKey: ['meta-accounts'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -47,13 +48,14 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
         .eq('status', 'active');
         
       if (error) throw error;
-      return data;
+      return data as MetaAccount[];
     }
   });
 
-  // Função para obter as contas Meta de um cliente
+  // Função para obter as contas Meta de um cliente específico
   const getClientMetaAccounts = (clientId: string) => {
-    return metaAccounts?.filter(account => account.client_id === clientId) || [];
+    if (!metaAccounts) return [];
+    return metaAccounts.filter(account => account.client_id === clientId);
   };
 
   return (
@@ -82,7 +84,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
 
-        {isLoading ? (
+        {isLoading || isLoadingAccounts ? (
           <div className="text-center p-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6e00] mx-auto"></div>
             <p className="mt-2 text-gray-500">Carregando clientes...</p>
@@ -104,7 +106,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                 {finalFilteredClients.map((client) => {
                   const clientAccounts = getClientMetaAccounts(client.id);
                   
-                  // Se o cliente não tem contas Meta cadastradas, mostrar card padrão
+                  // Se o cliente não tem contas Meta cadastradas, mostrar card padrão com orçamento base do cliente
                   if (clientAccounts.length === 0) {
                     return (
                       <ClientAltCard

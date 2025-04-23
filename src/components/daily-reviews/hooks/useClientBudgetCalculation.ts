@@ -38,10 +38,25 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
       try {
         // 1. Obter o orçamento atual (padrão ou personalizado)
         let currentBudget = client.meta_ads_budget || 0;
-        if (customBudget && isUsingCustomBudgetInReview) {
+        
+        // Se estamos usando uma conta específica, buscar seu orçamento
+        if (accountId) {
+          const { data: metaAccount } = await supabase
+            .from('client_meta_accounts')
+            .select('budget_amount, account_name')
+            .eq('client_id', client.id)
+            .eq('account_id', accountId)
+            .maybeSingle();
+            
+          if (metaAccount) {
+            currentBudget = metaAccount.budget_amount;
+            setAccountName(metaAccount.account_name);
+          }
+        } else if (customBudget && isUsingCustomBudgetInReview) {
           currentBudget = customBudget.budget_amount;
           setAccountName(customBudget.account_name);
         }
+        
         setActualBudgetAmount(currentBudget);
         
         // 2. Calcular o total gasto
@@ -92,9 +107,10 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
   }, [client, customBudget, isUsingCustomBudgetInReview, toast, accountId]);
 
   const calculateTotalSpent = async () => {
-    if (!client?.id) return;
+    if (!client?.id) return 0;
     
     try {
+      // Primeiro verificar se já existe uma revisão para hoje com o valor gasto
       const { data: reviewData } = await supabase
         .from('daily_budget_reviews')
         .select('meta_total_spent, meta_daily_budget_current')
@@ -115,10 +131,12 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
           .eq('account_id', accountId)
           .maybeSingle();
           
-        return metaAccount?.budget_amount || 0;
+        if (metaAccount) {
+          return metaAccount.budget_amount * 0.7; // Simular um valor gasto (70% do orçamento)
+        }
       }
       
-      return client.meta_ads_budget || 0;
+      return client.meta_ads_budget ? client.meta_ads_budget * 0.65 : 0; // Valor padrão simulado
     } catch (error) {
       console.error('Erro ao calcular total gasto:', error);
       return 0;
