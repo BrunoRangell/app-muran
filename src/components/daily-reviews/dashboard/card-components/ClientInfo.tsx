@@ -19,6 +19,7 @@ export const ClientInfo = ({
   isUsingCustomBudgetInReview 
 }: ClientInfoProps) => {
   const lastReviewDate = client.lastReview?.updated_at;
+  const isPrimaryAccount = metaAccount?.is_primary;
 
   return (
     <>
@@ -27,6 +28,9 @@ export const ClientInfo = ({
         {metaAccount?.account_name && (
           <span className="text-sm text-gray-500 ml-1">
             ({metaAccount.account_name})
+            {isPrimaryAccount && (
+              <span className="text-xs text-[#ff6e00] ml-1">(Principal)</span>
+            )}
           </span>
         )}
         {customBudget && isUsingCustomBudgetInReview && (

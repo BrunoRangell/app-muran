@@ -38,9 +38,9 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     }
   };
   
-  // Consulta para buscar as contas Meta de todos os clientes ativos
+  // Consulta para buscar TODAS as contas Meta de clientes ativos, incluindo contas primárias e secundárias
   const { data: metaAccounts, isLoading: isLoadingAccounts } = useQuery({
-    queryKey: ['meta-accounts'],
+    queryKey: ['meta-accounts-all'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('client_meta_accounts')
@@ -51,12 +51,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
       return data as MetaAccount[];
     }
   });
-
-  // Função para obter as contas Meta de um cliente específico
-  const getClientMetaAccounts = (clientId: string) => {
-    if (!metaAccounts) return [];
-    return metaAccounts.filter(account => account.client_id === clientId);
-  };
 
   return (
     <Card className="shadow-sm">
@@ -104,7 +98,10 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.map((client) => {
-                  const clientAccounts = getClientMetaAccounts(client.id);
+                  // Filtrar todas as contas Meta do cliente atual (podem ser múltiplas)
+                  const clientAccounts = metaAccounts?.filter(account => 
+                    account.client_id === client.id
+                  ) || [];
                   
                   // Se o cliente não tem contas Meta cadastradas, mostrar card padrão com orçamento base do cliente
                   if (clientAccounts.length === 0) {
@@ -118,10 +115,10 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                     );
                   }
                   
-                  // Renderizar um card para cada conta Meta do cliente
+                  // Renderizar um card para cada conta Meta do cliente (primária e secundárias)
                   return clientAccounts.map((account) => (
                     <ClientAltCard
-                      key={`${client.id}-${account.id}`}
+                      key={`${client.id}-${account.account_id}`}
                       client={client}
                       metaAccount={account}
                       onReviewClient={reviewClient}
