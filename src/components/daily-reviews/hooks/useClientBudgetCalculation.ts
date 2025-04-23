@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -16,6 +17,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
   const [budgetDifference, setBudgetDifference] = useState(0);
   const [actualBudgetAmount, setActualBudgetAmount] = useState(0);
   const [accountName, setAccountName] = useState<string | undefined>(undefined);
+  const [remainingDaysValue, setRemainingDaysValue] = useState(0);
   const { toast } = useToast();
   
   const { 
@@ -53,7 +55,12 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
           setHasReview(true);
           setCurrentDailyBudget(latestReview.meta_daily_budget_current || 0);
           
-          // 4. Calcular o orçamento diário ideal
+          // 4. Calcular o orçamento diário ideal e dias restantes
+          const currentDate = new Date();
+          const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+          const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
+          setRemainingDaysValue(remainingDays);
+          
           const idealBudget = calculateIdealDailyBudget(
             currentBudget,
             new Date(latestReview.review_date)
@@ -131,6 +138,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview, accountId?:
     isUsingCustomBudgetInReview,
     isLoadingCustomBudget,
     actualBudgetAmount,
-    accountName
+    accountName,
+    remainingDaysValue,
+    calculateTotalSpent
   };
 };
