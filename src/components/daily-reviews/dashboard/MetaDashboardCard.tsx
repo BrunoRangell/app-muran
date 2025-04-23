@@ -4,6 +4,8 @@ import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
 import { FilterOptions } from "./components/FilterOptions";
 import { useState } from "react";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -33,6 +35,25 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     } else if (onAnalyzeAll) {
       await onAnalyzeAll();
     }
+  };
+  
+  // Novo hook para buscar as contas Meta dos clientes
+  const { data: metaAccounts } = useQuery({
+    queryKey: ['meta-accounts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_meta_accounts')
+        .select('*')
+        .eq('status', 'active');
+        
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Função para obter as contas Meta de um cliente
+  const getClientMetaAccounts = (clientId: string) => {
+    return metaAccounts?.filter(account => account.client_id === clientId) || [];
   };
 
   return (
@@ -80,14 +101,32 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                 </tr>
               </thead>
               <tbody>
-                {finalFilteredClients.map((client) => (
-                  <ClientAltCard
-                    key={client.id}
-                    client={client}
-                    onReviewClient={reviewClient}
-                    isProcessing={processingClients.includes(client.id)}
-                  />
-                ))}
+                {finalFilteredClients.map((client) => {
+                  const clientAccounts = getClientMetaAccounts(client.id);
+                  
+                  // Se o cliente não tem contas Meta cadastradas, mostrar card padrão
+                  if (clientAccounts.length === 0) {
+                    return (
+                      <ClientAltCard
+                        key={client.id}
+                        client={client}
+                        onReviewClient={reviewClient}
+                        isProcessing={processingClients.includes(client.id)}
+                      />
+                    );
+                  }
+                  
+                  // Renderizar um card para cada conta Meta do cliente
+                  return clientAccounts.map((account) => (
+                    <ClientAltCard
+                      key={`${client.id}-${account.id}`}
+                      client={client}
+                      metaAccount={account}
+                      onReviewClient={reviewClient}
+                      isProcessing={processingClients.includes(client.id)}
+                    />
+                  ));
+                })}
               </tbody>
             </table>
           </div>

@@ -9,12 +9,20 @@ import { ActionButtons } from "./card-components/ActionButtons";
 
 interface ClientAltCardProps {
   client: ClientWithReview;
-  onReviewClient: (clientId: string) => void;
+  metaAccount?: {
+    id: string;
+    account_id: string;
+    account_name: string;
+    budget_amount: number;
+    is_primary: boolean;
+  };
+  onReviewClient: (clientId: string, accountId?: string) => void;
   isProcessing: boolean;
 }
 
 export const ClientAltCard = ({ 
   client, 
+  metaAccount,
   onReviewClient,
   isProcessing 
 }: ClientAltCardProps) => {
@@ -28,14 +36,12 @@ export const ClientAltCard = ({
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
-    // Informações sobre orçamento personalizado
     customBudget,
     isUsingCustomBudgetInReview,
-    actualBudgetAmount,
-    accountName
-  } = useClientBudgetCalculation(client);
+    actualBudgetAmount
+  } = useClientBudgetCalculation(client, metaAccount?.account_id);
 
-  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa
+  // Flag para mostrar recomendação de orçamento
   const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
   const needsIncrease = budgetDifference > 0;
 
@@ -45,9 +51,10 @@ export const ClientAltCard = ({
     }`}>
       <td className="px-6 py-4">
         <ClientInfo 
-          client={client} 
-          customBudget={customBudget} 
-          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview} 
+          client={client}
+          metaAccount={metaAccount}
+          customBudget={customBudget}
+          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
         />
       </td>
       <td className="px-6 py-4">
@@ -77,14 +84,14 @@ export const ClientAltCard = ({
           showRecommendation={showRecommendation}
           needsIncrease={needsIncrease}
           budgetDifference={budgetDifference}
-          accountName={accountName}
+          accountName={metaAccount?.account_name}
         />
       </td>
       <td className="px-6 py-4">
         <ActionButtons 
           isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
           customBudget={customBudget}
-          onReviewClient={() => onReviewClient(client.id)}
+          onReviewClient={() => onReviewClient(client.id, metaAccount?.account_id)}
           isProcessing={isProcessing}
         />
       </td>

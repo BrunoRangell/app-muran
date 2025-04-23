@@ -6,12 +6,18 @@ import { ClientWithReview } from "../../hooks/types/reviewTypes";
 
 interface ClientInfoProps {
   client: ClientWithReview;
+  metaAccount?: {
+    account_id: string;
+    account_name: string;
+    is_primary: boolean;
+  };
   customBudget: any | null;
   isUsingCustomBudgetInReview: boolean;
 }
 
 export const ClientInfo = ({ 
   client, 
+  metaAccount,
   customBudget, 
   isUsingCustomBudgetInReview 
 }: ClientInfoProps) => {
@@ -21,6 +27,11 @@ export const ClientInfo = ({
     <>
       <div className="font-medium text-gray-900 flex items-center gap-1">
         {client.company_name}
+        {!metaAccount?.is_primary && metaAccount?.account_name && (
+          <span className="text-sm text-gray-500">
+            ({metaAccount.account_name})
+          </span>
+        )}
         {customBudget && isUsingCustomBudgetInReview && (
           <BadgeDollarSign size={16} className="text-[#ff6e00]" />
         )}
