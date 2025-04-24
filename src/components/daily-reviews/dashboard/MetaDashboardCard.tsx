@@ -132,8 +132,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                   // Obter as contas Meta do cliente do mapa que criamos
                   const clientAccounts = clientAccountsMap.get(client.id) || [];
                   
-                  console.log(`Cliente ${client.company_name} (${client.id}): ${clientAccounts.length} contas Meta`);
-                  
                   // Se o cliente não tem contas Meta cadastradas no novo sistema,
                   // usar o orçamento e ID da conta da configuração padrão do cliente
                   if (clientAccounts.length === 0) {

@@ -1,163 +1,145 @@
 
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
-import { calculateIdealDailyBudget } from "../summary/utils";
 import { ClientWithReview } from "./types/reviewTypes";
-import { useCustomBudget } from "./useCustomBudget";
+import { supabase } from "@/lib/supabase";
+import { useEdgeFunction } from "./useEdgeFunction";
 
-export const useClientBudgetCalculation = (client: ClientWithReview, accountId?: string) => {
-  const [hasReview, setHasReview] = useState(false);
+export const useClientBudgetCalculation = (client: ClientWithReview, specificAccountId?: string) => {
   const [isCalculating, setIsCalculating] = useState(false);
-  const [calculationError, setCalculationError] = useState<string | null>(null);
-  const [monthlyBudget, setMonthlyBudget] = useState(0);
-  const [totalSpent, setTotalSpent] = useState(0);
-  const [currentDailyBudget, setCurrentDailyBudget] = useState(0);
-  const [idealDailyBudget, setIdealDailyBudget] = useState(0);
-  const [budgetDifference, setBudgetDifference] = useState(0);
-  const [actualBudgetAmount, setActualBudgetAmount] = useState(0);
-  const [accountName, setAccountName] = useState<string | undefined>(undefined);
-  const [remainingDaysValue, setRemainingDaysValue] = useState(0);
-  const { toast } = useToast();
+  const [calculationError, setCalculationError] = useState<Error | null>(null);
+  const [result, setResult] = useState<any>(null);
   
-  const { 
-    customBudget, 
-    isUsingCustomBudgetInReview, 
-    isLoadingCustomBudget 
-  } = useCustomBudget(client.id);
-
+  const edgeFunctionService = useEdgeFunction();
+  
+  // Determinando qual é a conta a ser usada (padrão ou específica)
+  const accountId = specificAccountId || client?.meta_account_id;
+  
+  // Identificar qual revisão usar com base na conta
+  const review = client?.lastReview; // Usa a revisão mais recente por padrão
+  
   useEffect(() => {
-    setMonthlyBudget(client.meta_ads_budget || 0);
-  }, [client.meta_ads_budget]);
-
-  useEffect(() => {
-    const calculateBudget = async () => {
-      setIsCalculating(true);
-      setCalculationError(null);
-      
+    // Resetar estado quando o cliente ou conta mudar
+    setIsCalculating(false);
+    setCalculationError(null);
+    setResult(null);
+    
+    // Realizamos análises básicas de orçamento cliente/específico sem chamar a API
+    const analyzeClientBudget = async () => {
       try {
-        // 1. Obter o orçamento atual (padrão ou personalizado)
-        let currentBudget = client.meta_ads_budget || 0;
+        setIsCalculating(true);
+        setCalculationError(null);
         
-        // Se estamos usando uma conta específica, buscar seu orçamento
-        if (accountId) {
-          const { data: metaAccount } = await supabase
+        // Obter o orçamento mensal baseado na conta específica ou na configuração padrão do cliente
+        let monthlyBudget = client?.meta_ads_budget || 0;
+        let accountName = "Conta Principal";
+        
+        // Se temos um ID de conta específico, buscamos as informações dessa conta
+        if (specificAccountId) {
+          const { data: accountData, error: accountError } = await supabase
             .from('client_meta_accounts')
-            .select('budget_amount, account_name')
+            .select('*')
             .eq('client_id', client.id)
-            .eq('account_id', accountId)
+            .eq('account_id', specificAccountId)
             .maybeSingle();
             
-          if (metaAccount) {
-            currentBudget = metaAccount.budget_amount;
-            setAccountName(metaAccount.account_name);
+          if (!accountError && accountData) {
+            monthlyBudget = accountData.budget_amount;
+            accountName = accountData.account_name;
           }
-        } else if (customBudget && isUsingCustomBudgetInReview) {
-          currentBudget = customBudget.budget_amount;
-          setAccountName(customBudget.account_name);
         }
         
-        setActualBudgetAmount(currentBudget);
+        // Buscar orçamento personalizado ativo (se houver)
+        const today = new Date().toISOString().split('T')[0];
+        const { data: customBudget, error: budgetError } = await supabase
+          .from('meta_custom_budgets')
+          .select('*')
+          .eq('client_id', client.id)
+          .eq('is_active', true)
+          .lte('start_date', today)
+          .gte('end_date', today)
+          .order('created_at', { ascending: false })
+          .maybeSingle();
         
-        // 2. Calcular o total gasto
-        const totalSpentValue = await calculateTotalSpent();
-        setTotalSpent(totalSpentValue || 0);
+        if (budgetError) {
+          console.error("Erro ao buscar orçamento personalizado:", budgetError);
+        }
         
-        // 3. Buscar a revisão mais recente
-        const latestReview = client.lastReview;
+        // Se o cliente tem uma revisão, calcular o orçamento diário ideal
+        let currentDailyBudget = 0;
+        let idealDailyBudget = 0;
+        let totalSpent = 0;
+        let remainingDaysValue = 0;
         
-        if (latestReview) {
-          setHasReview(true);
-          setCurrentDailyBudget(latestReview.meta_daily_budget_current || 0);
+        if (review) {
+          // Usar os valores da revisão
+          currentDailyBudget = review.meta_daily_budget_current || 0;
+          totalSpent = review.meta_total_spent || 0;
           
-          // 4. Calcular o orçamento diário ideal e dias restantes
+          // Verificar se a revisão está usando um orçamento personalizado
+          const isUsingCustomBudgetInReview = review.using_custom_budget || false;
+          
+          // Calcular o orçamento diário ideal (baseado em dias restantes no mês)
           const currentDate = new Date();
           const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-          const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
-          setRemainingDaysValue(remainingDays);
+          remainingDaysValue = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
           
-          const idealBudget = calculateIdealDailyBudget(
-            currentBudget,
-            new Date(latestReview.review_date)
-          );
-          setIdealDailyBudget(idealBudget);
+          // Verificar qual orçamento usar para calcular o orçamento diário ideal
+          let actualBudgetAmount = monthlyBudget;
           
-          // 5. Calcular a diferença de orçamento
-          setBudgetDifference(idealBudget - (latestReview.meta_daily_budget_current || 0));
-        } else {
-          setHasReview(false);
-          setCurrentDailyBudget(0);
-          setIdealDailyBudget(0);
-          setBudgetDifference(0);
+          if (isUsingCustomBudgetInReview && review.custom_budget_amount) {
+            actualBudgetAmount = review.custom_budget_amount;
+          }
+          
+          // Calcular orçamento diário ideal
+          idealDailyBudget = remainingDaysValue > 0
+            ? (actualBudgetAmount - totalSpent) / remainingDaysValue
+            : 0;
+            
+          // Diagnóstico
+          console.info(`Cliente ${client.company_name} - Diagnóstico:`, {
+            hasReview: !!review,
+            hasCustomBudget: customBudget || false,
+            orçamentoMensal: monthlyBudget,
+            orçamentoPersonalizado: customBudget ? customBudget.budget_amount : "Não está usando",
+            orçamentoExibido: actualBudgetAmount,
+            orçamentoDiárioAtual: currentDailyBudget,
+            orçamentoDiárioIdeal: idealDailyBudget,
+            diferençaNecessária: idealDailyBudget - currentDailyBudget,
+            precisaAjuste: Math.abs(idealDailyBudget - currentDailyBudget) >= 5,
+            tipoAjuste: idealDailyBudget > currentDailyBudget ? "Aumentar" : "Diminuir"
+          });
         }
-      } catch (error: any) {
-        console.error("Erro ao calcular orçamento:", error);
-        setCalculationError(error.message || "Erro ao calcular orçamento");
-        toast({
-          title: "Erro ao calcular orçamento",
-          description: error.message || "Ocorreu um erro ao calcular o orçamento",
-          variant: "destructive",
+        
+        // Armazenar o resultado da análise
+        setResult({
+          hasReview: !!review,
+          monthlyBudget,
+          totalSpent,
+          currentDailyBudget,
+          idealDailyBudget,
+          budgetDifference: idealDailyBudget - currentDailyBudget,
+          customBudget,
+          isUsingCustomBudgetInReview: review?.using_custom_budget || false,
+          actualBudgetAmount: review?.custom_budget_amount || monthlyBudget,
+          accountName,
+          remainingDaysValue
         });
+      } catch (error) {
+        console.error("Erro ao calcular orçamento:", error);
+        setCalculationError(error as Error);
       } finally {
         setIsCalculating(false);
       }
     };
     
-    calculateBudget();
-  }, [client, customBudget, isUsingCustomBudgetInReview, toast, accountId]);
-
-  const calculateTotalSpent = async () => {
-    if (!client?.id) return 0;
-    
-    try {
-      // Primeiro verificar se já existe uma revisão para hoje com o valor gasto
-      const { data: reviewData } = await supabase
-        .from('daily_budget_reviews')
-        .select('meta_total_spent, meta_daily_budget_current')
-        .eq('client_id', client.id)
-        .eq('review_date', new Date().toISOString().split('T')[0])
-        .maybeSingle();
-
-      if (reviewData?.meta_total_spent !== null && reviewData?.meta_total_spent !== undefined) {
-        return reviewData.meta_total_spent;
-      }
-      
-      // Se houver um accountId específico, buscar apenas para essa conta
-      if (accountId) {
-        const { data: metaAccount } = await supabase
-          .from('client_meta_accounts')
-          .select('*')
-          .eq('client_id', client.id)
-          .eq('account_id', accountId)
-          .maybeSingle();
-          
-        if (metaAccount) {
-          return metaAccount.budget_amount * 0.7; // Simular um valor gasto (70% do orçamento)
-        }
-      }
-      
-      return client.meta_ads_budget ? client.meta_ads_budget * 0.65 : 0; // Valor padrão simulado
-    } catch (error) {
-      console.error('Erro ao calcular total gasto:', error);
-      return 0;
+    if (client?.id) {
+      analyzeClientBudget();
     }
-  };
-
+  }, [client, accountId, specificAccountId]);
+  
   return {
-    hasReview,
+    ...result,
     isCalculating,
     calculationError,
-    monthlyBudget,
-    totalSpent,
-    currentDailyBudget,
-    idealDailyBudget,
-    budgetDifference,
-    customBudget,
-    isUsingCustomBudgetInReview,
-    isLoadingCustomBudget,
-    actualBudgetAmount,
-    accountName,
-    remainingDaysValue,
-    calculateTotalSpent
   };
 };

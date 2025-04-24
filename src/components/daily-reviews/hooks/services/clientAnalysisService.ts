@@ -1,93 +1,66 @@
 
-import { supabase } from "@/lib/supabase";
+import axios from 'axios';
+import { supabase } from '@/lib/supabase';
+import { useEdgeFunction } from '../useEdgeFunction';
 
-/**
- * Realiza a análise de orçamento de um cliente específico
- */
-export const reviewClient = async (clientId: string, accountId?: string) => {
+export const reviewClient = async (clientId: string, metaAccountId?: string) => {
   try {
-    console.log(`[clientAnalysisService] Iniciando revisão para cliente: ${clientId}${accountId ? ` com conta ${accountId}` : ''}`);
-    
-    // Verificar se o cliente existe
-    const { data: client, error: clientError } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("id", clientId)
-      .single();
-      
-    if (clientError) {
-      console.error("[clientAnalysisService] Erro ao buscar cliente:", clientError);
-      throw new Error(`Erro ao buscar cliente: ${clientError.message}`);
-    }
-    
-    if (!client) {
-      console.error("[clientAnalysisService] Cliente não encontrado:", clientId);
-      throw new Error("Cliente não encontrado");
-    }
-    
-    // Se foi especificado um accountId, buscar detalhes da conta Meta
-    let metaAccount = null;
-    if (accountId) {
-      const { data: accountData, error: accountError } = await supabase
-        .from("client_meta_accounts")
-        .select("*")
-        .eq("client_id", clientId)
-        .eq("account_id", accountId)
+    console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` com conta Meta ${metaAccountId}` : ''}`);
+
+    // Se for fornecido um ID de conta Meta específica, buscar os detalhes dessa conta
+    let metaAccountName: string | undefined;
+    let metaBudgetAmount: number | undefined;
+
+    if (metaAccountId) {
+      const { data: metaAccount, error: metaError } = await supabase
+        .from('client_meta_accounts')
+        .select('account_name, budget_amount')
+        .eq('client_id', clientId)
+        .eq('account_id', metaAccountId)
         .maybeSingle();
-        
-      if (accountError) {
-        console.error("[clientAnalysisService] Erro ao buscar conta Meta:", accountError);
-      } else if (accountData) {
-        metaAccount = accountData;
-        console.log("[clientAnalysisService] Conta Meta encontrada:", metaAccount);
+
+      if (metaError) throw metaError;
+
+      if (metaAccount) {
+        metaAccountName = metaAccount.account_name;
+        metaBudgetAmount = metaAccount.budget_amount;
       }
     }
+
+    // Montar payload da requisição com as informações da conta específica, se fornecida
+    const reviewDate = new Date().toISOString().split('T')[0];
     
-    // Configurar o payload para a função Edge
-    const payload: {
+    interface ReviewPayload {
       clientId: string;
-      metaAccountId: string | null | undefined;
+      metaAccountId?: string;
       reviewDate: string;
       metaAccountName?: string;
       metaBudgetAmount?: number;
-    } = {
-      clientId: client.id,
-      metaAccountId: accountId || client.meta_account_id,
-      reviewDate: new Date().toISOString().split('T')[0]
+    }
+    
+    const payload: ReviewPayload = {
+      clientId,
+      metaAccountId,
+      reviewDate
     };
     
-    // Se tiver detalhes da conta Meta, incluir no payload
-    if (metaAccount) {
-      payload.metaAccountName = metaAccount.account_name;
-      payload.metaBudgetAmount = metaAccount.budget_amount;
+    // Adicionar informações opcionais ao payload, se disponíveis
+    if (metaAccountName) {
+      payload.metaAccountName = metaAccountName;
     }
     
-    console.log("[clientAnalysisService] Enviando payload para função Edge:", payload);
-    
-    // Chamar a função Edge
-    const { data: response, error: edgeFunctionError } = await supabase.functions.invoke(
-      "daily-meta-review",
-      {
-        body: payload
-      }
-    );
-    
-    if (edgeFunctionError) {
-      console.error("[clientAnalysisService] Erro na função Edge:", edgeFunctionError);
-      throw new Error(`Erro ao processar revisão: ${edgeFunctionError.message}`);
+    if (metaBudgetAmount !== undefined) {
+      payload.metaBudgetAmount = metaBudgetAmount;
     }
-    
-    if (!response || response.error) {
-      const errorMessage = response?.error || "Resposta inválida da função Edge";
-      console.error("[clientAnalysisService] Erro na resposta da função Edge:", errorMessage);
-      throw new Error(`Erro ao processar revisão: ${errorMessage}`);
-    }
-    
-    console.log("[clientAnalysisService] Revisão concluída com sucesso:", response);
-    
-    return response;
-  } catch (error: any) {
-    console.error("[clientAnalysisService] Erro na revisão do cliente:", error);
+
+    // Fazer chamada para a edge function
+    const url = `${window.location.origin}/api/daily-meta-review`;
+    const response = await axios.post(url, payload);
+
+    console.log("Resposta da função Edge:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao revisar cliente:", error);
     throw error;
   }
 };
