@@ -1,9 +1,9 @@
 
 import { Badge } from "@/components/ui/badge";
 import { BadgeDollarSign } from "lucide-react";
-import { formatDateInBrasiliaTz } from "../../summary/utils";
-import { ClientWithReview } from "../../hooks/types/reviewTypes";
-import { MetaAccount } from "../../hooks/types/accountTypes";
+import { formatDateInBrasiliaTz } from "@/components/daily-reviews/summary/utils";
+import { ClientWithReview } from "@/components/daily-reviews/hooks/types/reviewTypes";
+import { MetaAccount } from "@/components/daily-reviews/hooks/types/accountTypes";
 
 interface ClientInfoProps {
   client: ClientWithReview;
