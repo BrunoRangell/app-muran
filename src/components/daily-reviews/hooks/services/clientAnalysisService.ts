@@ -1,7 +1,6 @@
 
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
-import { callEdgeFunction } from '../useEdgeFunction';
 
 export const reviewClient = async (clientId: string, metaAccountId?: string) => {
   try {
