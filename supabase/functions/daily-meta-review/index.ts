@@ -126,7 +126,7 @@ serve(async (req: Request) => {
     // Arredondar para duas casas decimais
     const roundedIdealDailyBudget = Math.round(idealDailyBudget * 100) / 100;
     
-    // Verificar se já existe uma revisão atual para este cliente
+    // Verificar se já existe uma revisão atual para este cliente e conta específica
     const { data: existingReview, error: existingReviewError } = await supabase
       .from("daily_budget_reviews")
       .select("*")

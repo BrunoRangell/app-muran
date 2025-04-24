@@ -65,15 +65,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
       return data as MetaAccount[];
     }
   });
-  
-  // Mapa para agrupar contas Meta por clientId para fácil acesso
-  const clientAccountsMap = new Map();
-  metaAccounts?.forEach(account => {
-    if (!clientAccountsMap.has(account.client_id)) {
-      clientAccountsMap.set(account.client_id, []);
-    }
-    clientAccountsMap.get(account.client_id).push(account);
-  });
 
   return (
     <Card className="shadow-sm">
@@ -114,7 +105,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6e00] mx-auto"></div>
             <p className="mt-2 text-gray-500">Carregando clientes...</p>
           </div>
-        ) : finalFilteredClients.length > 0 ? (
+        ) : (
           <div className="overflow-x-auto mt-4">
             <table className="w-full border-collapse">
               <thead className="bg-gray-50">
@@ -128,40 +119,51 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                 </tr>
               </thead>
               <tbody>
-                {finalFilteredClients.map((client) => {
-                  // Obter as contas Meta do cliente do mapa que criamos
-                  const clientAccounts = clientAccountsMap.get(client.id) || [];
-                  
-                  // Se o cliente não tem contas Meta cadastradas no novo sistema,
-                  // usar o orçamento e ID da conta da configuração padrão do cliente
-                  if (clientAccounts.length === 0) {
-                    return (
-                      <ClientAltCard
-                        key={client.id}
-                        client={client}
-                        onReviewClient={reviewClient}
-                        isProcessing={processingClients.includes(client.id)}
-                      />
-                    );
-                  }
-                  
-                  // Renderizar um card para cada conta Meta do cliente
-                  return clientAccounts.map((account) => (
-                    <ClientAltCard
-                      key={`${client.id}-${account.account_id}`}
-                      client={client}
-                      metaAccount={account}
-                      onReviewClient={reviewClient}
-                      isProcessing={processingClients.includes(client.id)}
-                    />
-                  ));
-                })}
+                {finalFilteredClients.length > 0 ? (
+                  <>
+                    {finalFilteredClients.map((client) => {
+                      // Obter as contas Meta do cliente
+                      const clientMetaAccounts = metaAccounts?.filter(account => 
+                        account.client_id === client.id
+                      ) || [];
+                      
+                      // Se o cliente tem contas Meta no novo sistema
+                      if (clientMetaAccounts.length > 0) {
+                        // Renderizar um card para cada conta Meta do cliente
+                        return clientMetaAccounts.map((account) => (
+                          <ClientAltCard
+                            key={`${client.id}-${account.account_id}`}
+                            client={client}
+                            metaAccount={account}
+                            onReviewClient={reviewClient}
+                            isProcessing={processingClients.includes(client.id)}
+                          />
+                        ));
+                      } else if (client.meta_account_id) {
+                        // Caso de fallback - cliente sem contas no novo sistema mas com ID legado
+                        return (
+                          <ClientAltCard
+                            key={client.id}
+                            client={client}
+                            onReviewClient={reviewClient}
+                            isProcessing={processingClients.includes(client.id)}
+                          />
+                        );
+                      }
+                      
+                      // Não mostrar clientes sem nenhuma conta Meta configurada
+                      return null;
+                    })}
+                  </>
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="text-center py-10 text-gray-500">
+                      Nenhum cliente encontrado
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
-          </div>
-        ) : (
-          <div className="text-center p-10">
-            <p className="text-gray-500">Nenhum cliente encontrado</p>
           </div>
         )}
         
