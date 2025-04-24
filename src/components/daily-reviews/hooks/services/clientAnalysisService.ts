@@ -1,6 +1,5 @@
 
 import { supabase } from "@/lib/supabase";
-import { supabaseEdgeFunctionUrl } from "../useEdgeFunction";
 
 /**
  * Realiza a análise de orçamento de um cliente específico
@@ -45,7 +44,13 @@ export const reviewClient = async (clientId: string, accountId?: string) => {
     }
     
     // Configurar o payload para a função Edge
-    const payload = {
+    const payload: {
+      clientId: string;
+      metaAccountId: string | null | undefined;
+      reviewDate: string;
+      metaAccountName?: string;
+      metaBudgetAmount?: number;
+    } = {
       clientId: client.id,
       metaAccountId: accountId || client.meta_account_id,
       reviewDate: new Date().toISOString().split('T')[0]
