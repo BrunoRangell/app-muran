@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
 import { supabase } from "@/lib/supabase";
@@ -7,8 +8,6 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationError, setCalculationError] = useState<Error | null>(null);
   const [result, setResult] = useState<any>(null);
-  
-  const edgeFunctionService = useEdgeFunction();
   
   // Determinando qual é a conta a ser usada (padrão ou específica)
   const accountId = specificAccountId || client?.meta_account_id;
