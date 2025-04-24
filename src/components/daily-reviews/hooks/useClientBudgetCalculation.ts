@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
 import { supabase } from "@/lib/supabase";
-import { useEdgeFunction } from "./useEdgeFunction";
+import { callEdgeFunction } from "./useEdgeFunction";
 
 export const useClientBudgetCalculation = (client: ClientWithReview, specificAccountId?: string) => {
   const [isCalculating, setIsCalculating] = useState(false);
