@@ -28,7 +28,7 @@ export const useClientReviewAnalysis = () => {
     
     try {
       console.log(`Iniciando revisão para cliente ${clientId}${accountId ? ` com conta ${accountId}` : ''}`);
-      await reviewClientService(clientId, accountId);
+      const response = await reviewClientService(clientId, accountId);
       
       toast({
         title: "Revisão concluída",
@@ -38,6 +38,8 @@ export const useClientReviewAnalysis = () => {
       
       // Atualizar os dados após a revisão
       await refetch();
+      
+      return response;
     } catch (error: any) {
       console.error("Erro ao revisar cliente:", error);
       toast({
@@ -45,6 +47,7 @@ export const useClientReviewAnalysis = () => {
         description: error.message || "Ocorreu um erro ao revisar o orçamento",
         variant: "destructive",
       });
+      throw error;
     } finally {
       setProcessingClients((prev) => prev.filter(id => id !== clientId));
     }
