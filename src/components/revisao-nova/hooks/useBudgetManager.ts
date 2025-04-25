@@ -660,6 +660,8 @@ export const useBudgetManager = () => {
     addSecondaryAccount,
     isSaving: saveBudgetsMutation.isPending,
     totalBudget,
-    totalGoogleBudget
+    totalGoogleBudget,
+    metaAccounts,  // Adicionando metaAccounts ao retorno
+    googleAccounts  // Adicionando googleAccounts ao retorno
   };
 };
