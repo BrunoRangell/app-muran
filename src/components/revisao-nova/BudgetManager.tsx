@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+
+import React, { useState } from "react";
 import { 
   Card, 
   CardContent, 
@@ -37,33 +38,13 @@ export const BudgetManager = () => {
     isSaving,
     totalBudget,
     totalGoogleBudget,
-    addSecondaryAccount,
-    metaAccounts,
-    googleAccounts
+    addSecondaryAccount
   } = useBudgetManager();
 
   // Filtrar clientes com base no termo de busca
   const filteredClients = clients?.filter(client => 
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Nova função para listar clientes com contas secundárias
-  const clientsWithSecondaryAccounts = useMemo(() => {
-    if (!clients || !metaAccounts || !googleAccounts) return [];
-    
-    const secondaryClients = clients.filter(client => {
-      const metaSecondary = metaAccounts.some(
-        account => account.client_id === client.id && !account.is_primary
-      );
-      const googleSecondary = googleAccounts.some(
-        account => account.client_id === client.id && !account.is_primary
-      );
-      
-      return metaSecondary || googleSecondary;
-    });
-    
-    return secondaryClients;
-  }, [clients, metaAccounts, googleAccounts]);
 
   const handleHelpClick = () => {
     toast({
@@ -272,26 +253,6 @@ export const BudgetManager = () => {
                     Salvar alterações
                   </>
                 )}
-              </Button>
-            </div>
-
-            {/* Adicionar um botão para mostrar clientes com contas secundárias */}
-            <div className="mt-4 flex justify-end">
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  const clientNames = clientsWithSecondaryAccounts
-                    .map(client => client.company_name)
-                    .join(', ');
-                  
-                  toast({
-                    title: "Clientes com Contas Secundárias",
-                    description: clientNames || "Nenhum cliente encontrado com contas secundárias",
-                    duration: 5000
-                  });
-                }}
-              >
-                Mostrar Clientes com Contas Secundárias
               </Button>
             </div>
           </>
