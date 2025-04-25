@@ -29,11 +29,10 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     reviewClient,
     reviewAllClients 
   } = useClientReviewAnalysis();
-  
+
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
 
-  // Função que será chamada para análise em lote
   const handleAnalyzeAll = async () => {
     if (reviewAllClients) {
       await reviewAllClients();
@@ -42,7 +41,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     }
   };
   
-  // Consulta para buscar TODAS as contas Meta de clientes ativos, incluindo contas primárias e secundárias
+  // Consulta para buscar TODAS as contas Meta ativas
   const { data: metaAccounts, isLoading: isLoadingAccounts, refetch: refetchMetaAccounts } = useQuery({
     queryKey: ['meta-accounts-all'],
     queryFn: async () => {
@@ -61,7 +60,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
         throw error;
       }
 
-      console.log("Contas Meta recuperadas:", data?.length);
       return data as MetaAccount[];
     }
   });
@@ -120,41 +118,35 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.length > 0 ? (
-                  <>
-                    {finalFilteredClients.map((client) => {
-                      // Obter as contas Meta do cliente
-                      const clientMetaAccounts = metaAccounts?.filter(account => 
-                        account.client_id === client.id
-                      ) || [];
-                      
-                      // Se o cliente tem contas Meta no novo sistema
-                      if (clientMetaAccounts.length > 0) {
-                        // Renderizar um card para cada conta Meta do cliente
-                        return clientMetaAccounts.map((account) => (
-                          <ClientAltCard
-                            key={`${client.id}-${account.account_id}`}
-                            client={client}
-                            metaAccount={account}
-                            onReviewClient={reviewClient}
-                            isProcessing={processingClients.includes(client.id)}
-                          />
-                        ));
-                      } else if (client.meta_account_id) {
-                        // Caso de fallback - cliente sem contas no novo sistema mas com ID legado
-                        return (
-                          <ClientAltCard
-                            key={client.id}
-                            client={client}
-                            onReviewClient={reviewClient}
-                            isProcessing={processingClients.includes(client.id)}
-                          />
-                        );
-                      }
-                      
-                      // Não mostrar clientes sem nenhuma conta Meta configurada
-                      return null;
-                    })}
-                  </>
+                  finalFilteredClients.map((client) => {
+                    // Obter todas as contas Meta do cliente atual
+                    const clientMetaAccounts = metaAccounts?.filter(account => 
+                      account.client_id === client.id
+                    ) || [];
+
+                    // Se não houver contas Meta novas, usar a conta legada se existir
+                    if (clientMetaAccounts.length === 0 && client.meta_account_id) {
+                      return (
+                        <ClientAltCard
+                          key={client.id}
+                          client={client}
+                          onReviewClient={reviewClient}
+                          isProcessing={processingClients.includes(client.id)}
+                        />
+                      );
+                    }
+
+                    // Renderizar um card para cada conta Meta do cliente
+                    return clientMetaAccounts.map((account) => (
+                      <ClientAltCard
+                        key={`${client.id}-${account.account_id}`}
+                        client={client}
+                        metaAccount={account}
+                        onReviewClient={reviewClient}
+                        isProcessing={processingClients.includes(client.id)}
+                      />
+                    ));
+                  })
                 ) : (
                   <tr>
                     <td colSpan={6} className="text-center py-10 text-gray-500">
