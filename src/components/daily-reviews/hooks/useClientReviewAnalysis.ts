@@ -14,15 +14,15 @@ export const useClientReviewAnalysis = () => {
   // Função para buscar clientes com revisões
   const fetchClientsWithReviews = async () => {
     console.log("Iniciando fetchClientsWithReviews");
-    // Verificar autenticação antes de fazer a requisição
+    
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) {
       console.error("Sessão não encontrada");
       throw new Error("Usuário não autenticado");
     }
 
-    // Primeiro, buscar todos os clientes ativos
-    const { data: clientsData, error } = await supabase
+    // Buscar todos os clientes ativos
+    const { data: clientsData, error: clientsError } = await supabase
       .from('clients')
       .select(`
         id,
@@ -34,17 +34,28 @@ export const useClientReviewAnalysis = () => {
       .eq('status', 'active')
       .order('company_name');
       
-    if (error) {
-      console.error("Erro ao buscar clientes:", error);
-      throw new Error(`Erro ao buscar clientes: ${error.message}`);
+    if (clientsError) {
+      console.error("Erro ao buscar clientes:", clientsError);
+      throw new Error(`Erro ao buscar clientes: ${clientsError.message}`);
     }
+
+    // Buscar todas as contas Meta ativas
+    const { data: metaAccountsData, error: metaAccountsError } = await supabase
+      .from('client_meta_accounts')
+      .select('*')
+      .eq('status', 'active');
     
-    // Agora, para cada cliente, buscar apenas a revisão mais recente
-    let lastReviewTime: Date | null = null;
+    if (metaAccountsError) {
+      console.error("Erro ao buscar contas Meta:", metaAccountsError);
+      throw new Error(`Erro ao buscar contas Meta: ${metaAccountsError.message}`);
+    }
+
+    // Processar revisões para cada cliente
     const processedClients: ClientWithReview[] = [];
+    let lastReviewTime: Date | null = null;
     
     for (const client of clientsData || []) {
-      // Buscar apenas a revisão mais recente para este cliente
+      // Buscar a revisão mais recente para este cliente
       const { data: reviewData, error: reviewError } = await supabase
         .from('daily_budget_reviews')
         .select('*')
@@ -56,7 +67,6 @@ export const useClientReviewAnalysis = () => {
         
       if (reviewError) {
         console.error(`Erro ao buscar revisão para cliente ${client.company_name}:`, reviewError);
-        // Continuar com o próximo cliente
         processedClients.push({
           ...client,
           lastReview: null
@@ -64,13 +74,11 @@ export const useClientReviewAnalysis = () => {
         continue;
       }
       
-      // Adicionar a revisão mais recente ao cliente
       processedClients.push({
         ...client,
         lastReview: reviewData
       });
       
-      // Atualizar o timestamp da revisão mais recente global
       if (reviewData) {
         const reviewDate = new Date(reviewData.created_at);
         if (!lastReviewTime || reviewDate > lastReviewTime) {
@@ -79,20 +87,8 @@ export const useClientReviewAnalysis = () => {
       }
     }
     
-    console.log("Clientes processados com revisões:", processedClients?.length);
-    
-    // Buscar todas as contas Meta associadas
-    const { data: metaAccountsData, error: metaAccountsError } = await supabase
-      .from('client_meta_accounts')
-      .select('*')
-      .eq('status', 'active');
-    
-    if (metaAccountsError) {
-      console.error("Erro ao buscar contas Meta:", metaAccountsError);
-      // Continuar com os clientes, mas sem as contas Meta
-    } else {
-      console.log("Contas Meta encontradas:", metaAccountsData?.length);
-    }
+    console.log("Clientes processados:", processedClients.length);
+    console.log("Contas Meta encontradas:", metaAccountsData?.length);
     
     return { 
       clientsData: processedClients, 
@@ -128,7 +124,6 @@ export const useClientReviewAnalysis = () => {
         duration: 5000,
       });
       
-      // Atualizar os dados após a revisão
       await refetch();
       
       return response;
@@ -157,17 +152,14 @@ export const useClientReviewAnalysis = () => {
       return;
     }
     
-    // Marcar todos como processando
     setProcessingClients(clientIds);
     
     try {
-      // Processar cada cliente individualmente
       for (const clientId of clientIds) {
         try {
           await reviewClientService(clientId);
         } catch (error) {
           console.error(`Erro ao revisar cliente ${clientId}:`, error);
-          // Continuar com o próximo cliente mesmo se houver erro
         }
       }
       
@@ -177,7 +169,6 @@ export const useClientReviewAnalysis = () => {
         duration: 5000,
       });
       
-      // Atualizar os dados após a revisão em massa
       await refetch();
     } catch (error: any) {
       console.error("Erro durante revisão em massa:", error);
