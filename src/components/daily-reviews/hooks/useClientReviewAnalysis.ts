@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -27,7 +26,6 @@ export const useClientReviewAnalysis = () => {
       .select(`
         id,
         company_name,
-        meta_account_id,
         meta_ads_budget,
         status
       `)
@@ -50,37 +48,40 @@ export const useClientReviewAnalysis = () => {
       throw new Error(`Erro ao buscar contas Meta: ${metaAccountsError.message}`);
     }
 
+    console.log("Contas Meta encontradas:", metaAccountsData);
+
     // Processar revisões para cada cliente
     const processedClients: ClientWithReview[] = [];
     let lastReviewTime: Date | null = null;
     
     for (const client of clientsData || []) {
-      // Buscar a revisão mais recente para este cliente
-      const { data: reviewData, error: reviewError } = await supabase
+      // Buscar todas as revisões mais recentes para este cliente (uma por conta)
+      const { data: reviewsData, error: reviewsError } = await supabase
         .from('daily_budget_reviews')
         .select('*')
         .eq('client_id', client.id)
-        .order('review_date', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('review_date', new Date().toISOString().split('T')[0])
+        .order('created_at', { ascending: false });
         
-      if (reviewError) {
-        console.error(`Erro ao buscar revisão para cliente ${client.company_name}:`, reviewError);
+      if (reviewsError) {
+        console.error(`Erro ao buscar revisões para cliente ${client.company_name}:`, reviewsError);
         processedClients.push({
           ...client,
           lastReview: null
         });
         continue;
       }
+
+      // Usar a revisão mais recente
+      const lastReview = reviewsData?.[0];
       
       processedClients.push({
         ...client,
-        lastReview: reviewData
+        lastReview: lastReview || null
       });
       
-      if (reviewData) {
-        const reviewDate = new Date(reviewData.created_at);
+      if (lastReview) {
+        const reviewDate = new Date(lastReview.created_at);
         if (!lastReviewTime || reviewDate > lastReviewTime) {
           lastReviewTime = reviewDate;
         }
@@ -110,7 +111,7 @@ export const useClientReviewAnalysis = () => {
   const clientsWithReviews = result?.clientsData;
   const lastReviewTime = result?.lastReviewTime;
   const metaAccounts = result?.metaAccountsData || [];
-  
+
   const reviewClient = async (clientId: string, accountId?: string) => {
     setProcessingClients((prev) => [...prev, clientId]);
     

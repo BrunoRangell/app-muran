@@ -91,33 +91,32 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               <tbody>
                 {finalFilteredClients.length > 0 ? (
                   finalFilteredClients.flatMap((client) => {
-                    // Filtrar contas Meta para este cliente
                     const clientMetaAccounts = metaAccounts.filter(
                       account => account.client_id === client.id
                     );
 
-                    // Se não houver contas meta na nova estrutura, usar a conta legada se existir
-                    if (clientMetaAccounts.length === 0 && client.meta_account_id) {
-                      return [
+                    console.log(`Contas Meta para ${client.company_name}:`, clientMetaAccounts);
+
+                    if (clientMetaAccounts.length > 0) {
+                      return clientMetaAccounts.map(account => (
                         <ClientAltCard
-                          key={client.id}
+                          key={`${client.id}-${account.account_id}`}
                           client={client}
+                          metaAccount={account}
                           onReviewClient={reviewClient}
                           isProcessing={processingClients.includes(client.id)}
                         />
-                      ];
+                      ));
                     }
 
-                    // Se houver contas na nova estrutura, renderizar um card para cada conta
-                    return clientMetaAccounts.map(account => (
+                    return [
                       <ClientAltCard
-                        key={`${client.id}-${account.account_id}`}
+                        key={client.id}
                         client={client}
-                        metaAccount={account}
                         onReviewClient={reviewClient}
                         isProcessing={processingClients.includes(client.id)}
                       />
-                    ));
+                    ];
                   })
                 ) : (
                   <tr>
