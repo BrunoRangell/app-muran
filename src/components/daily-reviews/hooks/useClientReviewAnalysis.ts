@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { reviewClient as reviewClientService } from "./services/clientAnalysisService";
 import { ClientWithReview } from "./types/reviewTypes";
 import { useQuery } from "@tanstack/react-query";
+import { MetaAccount } from "./types/accountTypes";
 
 export const useClientReviewAnalysis = () => {
   const { toast } = useToast();
@@ -80,9 +81,23 @@ export const useClientReviewAnalysis = () => {
     
     console.log("Clientes processados com revisões:", processedClients?.length);
     
+    // Buscar todas as contas Meta associadas
+    const { data: metaAccountsData, error: metaAccountsError } = await supabase
+      .from('client_meta_accounts')
+      .select('*')
+      .eq('status', 'active');
+    
+    if (metaAccountsError) {
+      console.error("Erro ao buscar contas Meta:", metaAccountsError);
+      // Continuar com os clientes, mas sem as contas Meta
+    } else {
+      console.log("Contas Meta encontradas:", metaAccountsData?.length);
+    }
+    
     return { 
       clientsData: processedClients, 
-      lastReviewTime 
+      lastReviewTime,
+      metaAccountsData: metaAccountsData as MetaAccount[] || []
     };
   };
   
@@ -98,6 +113,7 @@ export const useClientReviewAnalysis = () => {
   
   const clientsWithReviews = result?.clientsData;
   const lastReviewTime = result?.lastReviewTime;
+  const metaAccounts = result?.metaAccountsData || [];
   
   const reviewClient = async (clientId: string, accountId?: string) => {
     setProcessingClients((prev) => [...prev, clientId]);
@@ -180,6 +196,7 @@ export const useClientReviewAnalysis = () => {
     isLoading, 
     processingClients,
     lastReviewTime,
+    metaAccounts,
     reviewClient,
     reviewAllClients
   };

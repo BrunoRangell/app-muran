@@ -5,10 +5,6 @@ import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
 import { FilterOptions } from "./components/FilterOptions";
 import { useState } from "react";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { MetaAccount } from "../hooks/types/accountTypes";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { RotateCw } from "lucide-react";
 
@@ -20,14 +16,14 @@ interface MetaDashboardCardProps {
 export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDashboardCardProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
-  const { toast } = useToast();
   
   const { 
     filteredClients, 
     isLoading, 
     processingClients, 
     reviewClient,
-    reviewAllClients 
+    reviewAllClients,
+    metaAccounts
   } = useClientReviewAnalysis();
 
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
@@ -40,29 +36,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
       await onAnalyzeAll();
     }
   };
-  
-  // Consulta para buscar TODAS as contas Meta ativas
-  const { data: metaAccounts, isLoading: isLoadingAccounts, refetch: refetchMetaAccounts } = useQuery({
-    queryKey: ['meta-accounts-all'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_meta_accounts')
-        .select('*')
-        .eq('status', 'active');
-        
-      if (error) {
-        console.error("Erro ao buscar contas Meta:", error);
-        toast({
-          title: "Erro ao buscar contas Meta",
-          description: error.message,
-          variant: "destructive",
-        });
-        throw error;
-      }
-
-      return data as MetaAccount[];
-    }
-  });
 
   return (
     <Card className="shadow-sm">
@@ -74,7 +47,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => refetchMetaAccounts()} 
+            onClick={handleAnalyzeAll} 
             className="mr-2"
             title="Atualizar contas Meta"
           >
@@ -98,7 +71,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
 
-        {isLoading || isLoadingAccounts ? (
+        {isLoading ? (
           <div className="text-center p-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6e00] mx-auto"></div>
             <p className="mt-2 text-gray-500">Carregando clientes...</p>
@@ -118,26 +91,26 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.length > 0 ? (
-                  finalFilteredClients.map((client) => {
-                    // Obter todas as contas Meta do cliente atual
-                    const clientMetaAccounts = metaAccounts?.filter(account => 
-                      account.client_id === client.id
-                    ) || [];
+                  finalFilteredClients.flatMap((client) => {
+                    // Filtrar contas Meta para este cliente
+                    const clientMetaAccounts = metaAccounts.filter(
+                      account => account.client_id === client.id
+                    );
 
-                    // Se não houver contas Meta novas, usar a conta legada se existir
+                    // Se não houver contas meta na nova estrutura, usar a conta legada se existir
                     if (clientMetaAccounts.length === 0 && client.meta_account_id) {
-                      return (
+                      return [
                         <ClientAltCard
                           key={client.id}
                           client={client}
                           onReviewClient={reviewClient}
                           isProcessing={processingClients.includes(client.id)}
                         />
-                      );
+                      ];
                     }
 
-                    // Renderizar um card para cada conta Meta do cliente
-                    return clientMetaAccounts.map((account) => (
+                    // Se houver contas na nova estrutura, renderizar um card para cada conta
+                    return clientMetaAccounts.map(account => (
                       <ClientAltCard
                         key={`${client.id}-${account.account_id}`}
                         client={client}
