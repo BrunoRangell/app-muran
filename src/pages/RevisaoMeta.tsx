@@ -7,7 +7,10 @@ export default function RevisaoMeta() {
 
   const handleViewClientDetails = (clientId: string) => {
     setSelectedClientId(clientId);
+    console.log(`Visualizando detalhes do cliente: ${clientId}`);
   };
+
+  console.log("Renderizando página RevisaoMeta");
 
   return (
     <div className="container mx-auto p-4 space-y-6">

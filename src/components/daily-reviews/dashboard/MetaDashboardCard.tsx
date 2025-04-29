@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientAltCard } from "./ClientAltCard";
 import { useClientReviewAnalysis } from "../hooks/useClientReviewAnalysis";
@@ -25,8 +26,30 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     metaAccounts
   } = useClientReviewAnalysis();
 
+  console.log("============ DIAGNÓSTICO RENDERIZAÇÃO METADASHBOARDCARD ============");
+  console.log("1. Todos os clientes recebidos:", filteredClients);
+  console.log("2. Todas as contas Meta:", metaAccounts);
+  
+  // Verificar se há contas da Sorrifácil
+  const sorrifacilClients = filteredClients?.filter(client => 
+    client.company_name.toLowerCase().includes("sorrifacil"));
+  console.log("3. Clientes Sorrifácil encontrados:", sorrifacilClients);
+  
+  // Verificar contas Meta da Sorrifácil
+  const sorrifacilMetaAccounts = sorrifacilClients?.length > 0 
+    ? metaAccounts.filter(account => 
+        sorrifacilClients.some(client => client.id === account.client_id))
+    : [];
+  console.log("4. Contas Meta da Sorrifácil:", sorrifacilMetaAccounts);
+
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
+  console.log("5. Clientes filtrados por nome:", filteredByName);
+  
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
+  console.log("6. Clientes após filtro de ajustes:", finalFilteredClients);
+  
+  // Log detalhado do processo de mapeamento das contas Meta aos clientes
+  console.log("7. Iniciando processo de mapeamento cliente-contas...");
 
   const handleAnalyzeAll = async () => {
     if (reviewAllClients) {
@@ -34,6 +57,28 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     } else if (onAnalyzeAll) {
       await onAnalyzeAll();
     }
+  };
+
+  // Componente temporário para depuração do processo de renderização
+  const DebugClientMapping = () => {
+    if (!finalFilteredClients?.length || !metaAccounts?.length) return null;
+    
+    const mappingDetails = finalFilteredClients.map(client => {
+      const clientMetaAccounts = metaAccounts.filter(
+        account => account.client_id === client.id
+      );
+      
+      return {
+        clientId: client.id,
+        clientName: client.company_name,
+        metaAccountsCount: clientMetaAccounts.length,
+        metaAccounts: clientMetaAccounts
+      };
+    });
+    
+    console.log("8. Mapeamento detalhado de clientes para contas:", mappingDetails);
+    
+    return null; // Componente não renderiza nada na UI
   };
 
   return (
@@ -70,6 +115,9 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
 
+        {/* Componente de depuração */}
+        <DebugClientMapping />
+
         {isLoading ? (
           <div className="text-center p-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6e00] mx-auto"></div>
@@ -90,28 +138,34 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               </thead>
               <tbody>
                 {finalFilteredClients.length > 0 ? (
-                  finalFilteredClients.flatMap((client) => {
+                  finalFilteredClients.flatMap((client, clientIndex) => {
                     const clientMetaAccounts = metaAccounts.filter(
                       account => account.client_id === client.id
                     );
 
-                    console.log(`Contas Meta para ${client.company_name}:`, clientMetaAccounts);
+                    console.log(`9. Cliente ${client.company_name} (${client.id}): ${clientMetaAccounts.length} contas Meta`);
+                    console.log(`   Contas Meta:`, clientMetaAccounts);
 
                     if (clientMetaAccounts.length > 0) {
-                      return clientMetaAccounts.map(account => (
-                        <ClientAltCard
-                          key={`${client.id}-${account.account_id}`}
-                          client={client}
-                          metaAccount={account}
-                          onReviewClient={reviewClient}
-                          isProcessing={processingClients.includes(client.id)}
-                        />
-                      ));
+                      return clientMetaAccounts.map((account, accountIndex) => {
+                        console.log(`   Renderizando card para ${client.company_name} - conta ${account.account_name} (${account.account_id})`);
+                        
+                        return (
+                          <ClientAltCard
+                            key={`${client.id}-${account.account_id}-${accountIndex}`}
+                            client={client}
+                            metaAccount={account}
+                            onReviewClient={reviewClient}
+                            isProcessing={processingClients.includes(client.id)}
+                          />
+                        );
+                      });
                     }
 
+                    console.log(`   Renderizando card padrão para ${client.company_name} sem contas Meta específicas`);
                     return [
                       <ClientAltCard
-                        key={client.id}
+                        key={`${client.id}-default-${clientIndex}`}
                         client={client}
                         onReviewClient={reviewClient}
                         isProcessing={processingClients.includes(client.id)}

@@ -9,6 +9,7 @@ export const fetchClientsWithMetaData = async () => {
     throw new Error("Usuário não autenticado");
   }
 
+  console.log("Buscando clientes ativos...");
   const { data: clientsData, error: clientsError } = await supabase
     .from('clients')
     .select(`
@@ -25,10 +26,12 @@ export const fetchClientsWithMetaData = async () => {
     throw new Error(`Erro ao buscar clientes: ${clientsError.message}`);
   }
 
+  console.log(`Encontrados ${clientsData.length} clientes ativos`);
   return clientsData;
 };
 
 export const fetchMetaAccounts = async () => {
+  console.log("Buscando contas Meta ativas...");
   const { data: metaAccountsData, error: metaAccountsError } = await supabase
     .from('client_meta_accounts')
     .select('*')
@@ -39,10 +42,25 @@ export const fetchMetaAccounts = async () => {
     throw new Error(`Erro ao buscar contas Meta: ${metaAccountsError.message}`);
   }
 
+  console.log(`Encontradas ${metaAccountsData.length} contas Meta ativas`);
+  
+  // Log detalhado para verificar contas da Sorrifácil
+  const sorrifacilAccounts = metaAccountsData.filter(account => {
+    // Encontrar o client_id associado à Sorrifácil
+    return account.account_name?.toLowerCase().includes('sorrifacil') || 
+           account.account_id?.toLowerCase().includes('sorrifacil');
+  });
+  
+  console.log(`Contas Meta da Sorrifácil encontradas: ${sorrifacilAccounts.length}`);
+  if (sorrifacilAccounts.length > 0) {
+    console.log("Detalhes das contas Meta da Sorrifácil:", sorrifacilAccounts);
+  }
+
   return metaAccountsData as MetaAccount[];
 };
 
 export const fetchClientReviews = async (clientId: string) => {
+  console.log(`Buscando revisões para cliente ${clientId}...`);
   const { data: reviewsData, error: reviewsError } = await supabase
     .from('daily_budget_reviews')
     .select('*')
@@ -55,5 +73,6 @@ export const fetchClientReviews = async (clientId: string) => {
     return null;
   }
 
+  console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId}`);
   return reviewsData;
 };
