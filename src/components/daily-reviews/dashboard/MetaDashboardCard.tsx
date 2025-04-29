@@ -20,10 +20,10 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   const { 
     filteredClients, 
     isLoading, 
-    processingClients, 
     reviewClient,
     reviewAllClients,
-    metaAccounts
+    metaAccounts,
+    isProcessingAccount
   } = useClientReviewAnalysis();
 
   console.log("============ DIAGNÓSTICO RENDERIZAÇÃO METADASHBOARDCARD ============");
@@ -57,28 +57,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     } else if (onAnalyzeAll) {
       await onAnalyzeAll();
     }
-  };
-
-  // Componente temporário para depuração do processo de renderização
-  const DebugClientMapping = () => {
-    if (!finalFilteredClients?.length || !metaAccounts?.length) return null;
-    
-    const mappingDetails = finalFilteredClients.map(client => {
-      const clientMetaAccounts = metaAccounts.filter(
-        account => account.client_id === client.id
-      );
-      
-      return {
-        clientId: client.id,
-        clientName: client.company_name,
-        metaAccountsCount: clientMetaAccounts.length,
-        metaAccounts: clientMetaAccounts
-      };
-    });
-    
-    console.log("8. Mapeamento detalhado de clientes para contas:", mappingDetails);
-    
-    return null; // Componente não renderiza nada na UI
   };
 
   return (
@@ -115,9 +93,6 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
           onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
         />
 
-        {/* Componente de depuração */}
-        <DebugClientMapping />
-
         {isLoading ? (
           <div className="text-center p-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6e00] mx-auto"></div>
@@ -139,36 +114,40 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
               <tbody>
                 {finalFilteredClients.length > 0 ? (
                   finalFilteredClients.flatMap((client, clientIndex) => {
+                    // Contas Meta associadas a este cliente
                     const clientMetaAccounts = metaAccounts.filter(
-                      account => account.client_id === client.id
+                      account => account.client_id === client.id && account.status === 'active'
                     );
 
                     console.log(`9. Cliente ${client.company_name} (${client.id}): ${clientMetaAccounts.length} contas Meta`);
                     console.log(`   Contas Meta:`, clientMetaAccounts);
 
+                    // Se o cliente tem contas Meta específicas, criar um card para cada uma
                     if (clientMetaAccounts.length > 0) {
                       return clientMetaAccounts.map((account, accountIndex) => {
-                        console.log(`   Renderizando card para ${client.company_name} - conta ${account.account_name} (${account.account_id})`);
+                        const uniqueKey = `${client.id}-${account.account_id}-${accountIndex}`;
+                        console.log(`   Renderizando card para ${client.company_name} - conta ${account.account_name} (${account.account_id}) com chave ${uniqueKey}`);
                         
                         return (
                           <ClientAltCard
-                            key={`${client.id}-${account.account_id}-${accountIndex}`}
+                            key={uniqueKey}
                             client={client}
                             metaAccount={account}
                             onReviewClient={reviewClient}
-                            isProcessing={processingClients.includes(client.id)}
+                            isProcessing={isProcessingAccount(client.id, account.account_id)}
                           />
                         );
                       });
                     }
 
+                    // Se não tem contas específicas, mostrar um card padrão
                     console.log(`   Renderizando card padrão para ${client.company_name} sem contas Meta específicas`);
                     return [
                       <ClientAltCard
                         key={`${client.id}-default-${clientIndex}`}
                         client={client}
                         onReviewClient={reviewClient}
-                        isProcessing={processingClients.includes(client.id)}
+                        isProcessing={isProcessingAccount(client.id)}
                       />
                     ];
                   })

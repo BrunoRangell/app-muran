@@ -1,12 +1,10 @@
 
-import { Loader } from "lucide-react";
+import { ClientWithReview, MetaAccount } from "../hooks/types/reviewTypes";
 import { formatCurrency } from "@/utils/formatters";
-import { ClientWithReview } from "../hooks/types/reviewTypes";
-import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
-import { ClientInfo } from "./card-components/ClientInfo";
-import { BudgetDisplay } from "./card-components/BudgetDisplay";
-import { ActionButtons } from "./card-components/ActionButtons";
-import { MetaAccount } from "../hooks/types/accountTypes";
+import { CardActions } from "./CardActions";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 
 interface ClientAltCardProps {
   client: ClientWithReview;
@@ -15,89 +13,75 @@ interface ClientAltCardProps {
   isProcessing: boolean;
 }
 
-export const ClientAltCard = ({ 
-  client, 
+export const ClientAltCard = ({
+  client,
   metaAccount,
   onReviewClient,
-  isProcessing 
+  isProcessing
 }: ClientAltCardProps) => {
-  // Usar o hook personalizado para cálculos de orçamento
-  // Passar accountId se existir uma conta Meta específica
-  const {
-    hasReview,
-    isCalculating,
-    calculationError,
-    monthlyBudget,
-    totalSpent,
-    currentDailyBudget,
-    idealDailyBudget,
-    budgetDifference,
-    customBudget,
-    isUsingCustomBudgetInReview,
-    actualBudgetAmount,
-    accountName,
-    remainingDaysValue
-  } = useClientBudgetCalculation(
-    client, 
-    metaAccount?.account_id
-  );
-
-  // Flag para mostrar recomendação de orçamento
-  const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
-  const needsIncrease = budgetDifference > 0;
-
-  // O orçamento a ser mostrado deve ser o da conta específica se estiver disponível
-  const displayBudget = metaAccount ? metaAccount.budget_amount : actualBudgetAmount || monthlyBudget;
-
+  // Se temos uma conta Meta específica
+  const accountId = metaAccount?.account_id;
+  const accountName = metaAccount?.account_name || "Conta Principal";
+  const budgetAmount = metaAccount?.budget_amount || client.meta_ads_budget || 0;
+  
+  const handleReviewClick = () => {
+    onReviewClient(client.id, accountId);
+  };
+  
   return (
-    <tr className={`hover:bg-gray-50 ${
-      showRecommendation ? 'border-l-4 border-l-amber-500' : ''
-    }`}>
-      <td className="px-6 py-4">
-        <ClientInfo 
-          client={client}
-          metaAccount={metaAccount}
-          customBudget={customBudget}
-          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
-        />
-      </td>
-      <td className="px-6 py-4">
-        <div className="font-medium">{formatCurrency(displayBudget)}</div>
-      </td>
-      <td className="px-6 py-4">
-        {isCalculating ? (
-          <span className="text-gray-400 flex items-center">
-            <Loader size={14} className="animate-spin mr-2" /> Calculando...
-          </span>
-        ) : calculationError ? (
-          <span className="text-red-500 text-sm">Erro ao calcular</span>
-        ) : (
-          <div className="font-medium">{formatCurrency(totalSpent)}</div>
-        )}
-      </td>
-      <td className="px-6 py-4">
-        <div className="font-medium">
-          {hasReview && currentDailyBudget 
-            ? formatCurrency(currentDailyBudget) 
-            : "Não disponível"}
+    <tr className="border-b border-gray-200 hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex flex-col">
+          <span className="font-medium text-gray-900">{client.company_name}</span>
+          {accountId ? (
+            <span className="text-xs text-gray-500">
+              {accountName} ({accountId.substring(0, 10)}...)
+            </span>
+          ) : null}
         </div>
       </td>
-      <td className="px-6 py-4">
-        <BudgetDisplay 
-          idealDailyBudget={idealDailyBudget}
-          showRecommendation={showRecommendation}
-          needsIncrease={needsIncrease}
-          budgetDifference={budgetDifference}
-          accountName={accountName || metaAccount?.account_name}
-        />
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-gray-900">{formatCurrency(budgetAmount)}</span>
       </td>
-      <td className="px-6 py-4">
-        <ActionButtons 
-          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
-          customBudget={customBudget}
-          onReviewClient={() => onReviewClient(client.id, metaAccount?.account_id)}
-          isProcessing={isProcessing}
-        />
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-gray-900">
+          {client.lastReview?.meta_total_spent 
+            ? formatCurrency(client.lastReview?.meta_total_spent)
+            : "-"}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-gray-900">
+          {client.lastReview?.meta_daily_budget_current 
+            ? formatCurrency(client.lastReview?.meta_daily_budget_current)
+            : "-"}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-gray-900">-</span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex gap-2">
+          <Link to={`/revisao-meta/${client.id}`}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-gray-300 text-gray-700"
+            >
+              <ExternalLink size={14} className="mr-1" />
+              Detalhes
+            </Button>
+          </Link>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleReviewClick}
+            disabled={isProcessing}
+            className="w-full"
+          >
+            {isProcessing ? "Analisando..." : "Analisar"}
+          </Button>
+        </div>
       </td>
     </tr>
   );

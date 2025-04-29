@@ -9,6 +9,7 @@ import { reviewClient as reviewClientService, reviewAllClients as reviewAllClien
 export const useClientReviewAnalysis = () => {
   const { toast } = useToast();
   const [processingClients, setProcessingClients] = useState<string[]>([]);
+  const [processingAccounts, setProcessingAccounts] = useState<string[]>([]);
 
   const processClientsWithReviews = async () => {
     const clientsData = await fetchClientsWithMetaData();
@@ -53,7 +54,14 @@ export const useClientReviewAnalysis = () => {
   });
   
   const handleReviewClient = async (clientId: string, accountId?: string) => {
-    setProcessingClients((prev) => [...prev, clientId]);
+    // Se temos um accountId específico, marcamos a combinação cliente + conta como em processamento
+    if (accountId) {
+      const accountKey = `${clientId}-${accountId}`;
+      setProcessingAccounts((prev) => [...prev, accountKey]);
+    } else {
+      // Caso contrário, marcamos apenas o cliente como em processamento
+      setProcessingClients((prev) => [...prev, clientId]);
+    }
     
     try {
       await reviewClientService(clientId, accountId);
@@ -75,12 +83,18 @@ export const useClientReviewAnalysis = () => {
       });
       throw error;
     } finally {
-      setProcessingClients((prev) => prev.filter(id => id !== clientId));
+      // Limpamos os status de processamento
+      if (accountId) {
+        const accountKey = `${clientId}-${accountId}`;
+        setProcessingAccounts((prev) => prev.filter(key => key !== accountKey));
+      } else {
+        setProcessingClients((prev) => prev.filter(id => id !== clientId));
+      }
     }
   };
   
   const handleReviewAllClients = async () => {
-    if (!result?.clientsData) {
+    if (!result?.clientsData || !result?.metaAccountsData) {
       toast({
         title: "Nenhum cliente para analisar",
         description: "Não há clientes disponíveis para análise.",
@@ -92,11 +106,31 @@ export const useClientReviewAnalysis = () => {
     const clientIds = result.clientsData.map(client => client.id);
     setProcessingClients(clientIds);
     
+    // Também marque todas as contas como em processamento
+    const accountKeys: string[] = [];
+    result.metaAccountsData.forEach(account => {
+      accountKeys.push(`${account.client_id}-${account.account_id}`);
+    });
+    setProcessingAccounts(accountKeys);
+    
     try {
-      await reviewAllClientsService(result.clientsData, refetch);
+      // Modificar para passar as contas Meta também
+      await reviewAllClientsService(result.clientsData, refetch, result.metaAccountsData);
     } finally {
       setProcessingClients([]);
+      setProcessingAccounts([]);
     }
+  };
+  
+  const isProcessingAccount = (clientId: string, accountId?: string) => {
+    // Se não temos um accountId específico, verificamos se o cliente está em processamento
+    if (!accountId) {
+      return processingClients.includes(clientId);
+    }
+    
+    // Caso contrário, verificamos se a combinação cliente + conta está em processamento
+    const accountKey = `${clientId}-${accountId}`;
+    return processingAccounts.includes(accountKey) || processingClients.includes(clientId);
   };
   
   return { 
@@ -106,6 +140,7 @@ export const useClientReviewAnalysis = () => {
     lastReviewTime: result?.lastReviewTime,
     metaAccounts: result?.metaAccountsData || [],
     reviewClient: handleReviewClient,
-    reviewAllClients: handleReviewAllClients
+    reviewAllClients: handleReviewAllClients,
+    isProcessingAccount
   };
 };
