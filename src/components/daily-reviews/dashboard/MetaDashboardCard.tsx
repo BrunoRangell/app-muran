@@ -27,29 +27,19 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   } = useClientReviewAnalysis();
 
   console.log("============ DIAGNÓSTICO RENDERIZAÇÃO METADASHBOARDCARD ============");
-  console.log("1. Todos os clientes recebidos:", filteredClients);
-  console.log("2. Todas as contas Meta:", metaAccounts);
-  
-  // Verificar se há contas da Sorrifácil
+  console.log("1. Todos os clientes recebidos:", filteredClients?.length);
+  console.log("2. Todas as contas Meta:", metaAccounts?.length);
+
   const sorrifacilClients = filteredClients?.filter(client => 
-    client.company_name.toLowerCase().includes("sorrifacil"));
-  console.log("3. Clientes Sorrifácil encontrados:", sorrifacilClients);
+    client.company_name.toLowerCase().includes("sorrifacil")) || [];
+  console.log("3. Clientes Sorrifácil encontrados:", sorrifacilClients.length);
   
-  // Verificar contas Meta da Sorrifácil
-  const sorrifacilMetaAccounts = sorrifacilClients?.length > 0 
-    ? metaAccounts.filter(account => 
-        sorrifacilClients.some(client => client.id === account.client_id))
-    : [];
-  console.log("4. Contas Meta da Sorrifácil:", sorrifacilMetaAccounts);
+  const sorrifacilMetaAccounts = metaAccounts.filter(account => 
+    sorrifacilClients.some(client => client.id === account.client_id));
+  console.log("4. Contas Meta da Sorrifácil:", sorrifacilMetaAccounts.length, sorrifacilMetaAccounts);
 
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
-  console.log("5. Clientes filtrados por nome:", filteredByName);
-  
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
-  console.log("6. Clientes após filtro de ajustes:", finalFilteredClients);
-  
-  // Log detalhado do processo de mapeamento das contas Meta aos clientes
-  console.log("7. Iniciando processo de mapeamento cliente-contas...");
 
   const handleAnalyzeAll = async () => {
     if (reviewAllClients) {
@@ -57,6 +47,75 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
     } else if (onAnalyzeAll) {
       await onAnalyzeAll();
     }
+  };
+
+  // Função para renderizar os cards de acordo com as contas Meta
+  const renderClientCards = () => {
+    if (!finalFilteredClients || finalFilteredClients.length === 0) {
+      return (
+        <tr>
+          <td colSpan={6} className="text-center py-10 text-gray-500">
+            Nenhum cliente encontrado
+          </td>
+        </tr>
+      );
+    }
+
+    // Agrupar clientes por ID para facilitar o processamento
+    const clientsById = new Map();
+    finalFilteredClients.forEach(client => {
+      if (!clientsById.has(client.id)) {
+        clientsById.set(client.id, client);
+      }
+    });
+
+    const rows: JSX.Element[] = [];
+
+    // Para cada cliente, verificar se tem contas Meta associadas
+    clientsById.forEach((client, clientId) => {
+      // Buscar todas as contas Meta para este cliente
+      const clientMetaAccounts = metaAccounts.filter(
+        account => account.client_id === clientId && account.status === 'active'
+      );
+
+      console.log(`Cliente ${client.company_name} (${clientId}): ${clientMetaAccounts.length} contas Meta`);
+
+      // Se o cliente tem contas Meta específicas, criar um card para cada uma
+      if (clientMetaAccounts.length > 0) {
+        clientMetaAccounts.forEach((account, accountIndex) => {
+          const uniqueKey = `${clientId}-${account.account_id}-${accountIndex}`;
+          console.log(`Renderizando card para ${client.company_name} - conta ${account.account_name} (${account.account_id}) com chave ${uniqueKey}`);
+          
+          // Encontrar a revisão específica desta conta
+          const accountClient = filteredClients?.find(c => 
+            c.id === clientId && c.meta_account_id === account.account_id
+          ) || client;
+
+          rows.push(
+            <ClientAltCard
+              key={uniqueKey}
+              client={accountClient}
+              metaAccount={account}
+              onReviewClient={reviewClient}
+              isProcessing={isProcessingAccount(clientId, account.account_id)}
+            />
+          );
+        });
+      } else {
+        // Se não tem contas específicas, mostrar um card padrão
+        console.log(`Renderizando card padrão para ${client.company_name} sem contas Meta específicas`);
+        rows.push(
+          <ClientAltCard
+            key={`${clientId}-default`}
+            client={client}
+            onReviewClient={reviewClient}
+            isProcessing={isProcessingAccount(clientId)}
+          />
+        );
+      }
+    });
+
+    return rows;
   };
 
   return (
@@ -112,52 +171,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
                 </tr>
               </thead>
               <tbody>
-                {finalFilteredClients.length > 0 ? (
-                  finalFilteredClients.flatMap((client, clientIndex) => {
-                    // Contas Meta associadas a este cliente
-                    const clientMetaAccounts = metaAccounts.filter(
-                      account => account.client_id === client.id && account.status === 'active'
-                    );
-
-                    console.log(`9. Cliente ${client.company_name} (${client.id}): ${clientMetaAccounts.length} contas Meta`);
-                    console.log(`   Contas Meta:`, clientMetaAccounts);
-
-                    // Se o cliente tem contas Meta específicas, criar um card para cada uma
-                    if (clientMetaAccounts.length > 0) {
-                      return clientMetaAccounts.map((account, accountIndex) => {
-                        const uniqueKey = `${client.id}-${account.account_id}-${accountIndex}`;
-                        console.log(`   Renderizando card para ${client.company_name} - conta ${account.account_name} (${account.account_id}) com chave ${uniqueKey}`);
-                        
-                        return (
-                          <ClientAltCard
-                            key={uniqueKey}
-                            client={client}
-                            metaAccount={account}
-                            onReviewClient={reviewClient}
-                            isProcessing={isProcessingAccount(client.id, account.account_id)}
-                          />
-                        );
-                      });
-                    }
-
-                    // Se não tem contas específicas, mostrar um card padrão
-                    console.log(`   Renderizando card padrão para ${client.company_name} sem contas Meta específicas`);
-                    return [
-                      <ClientAltCard
-                        key={`${client.id}-default-${clientIndex}`}
-                        client={client}
-                        onReviewClient={reviewClient}
-                        isProcessing={isProcessingAccount(client.id)}
-                      />
-                    ];
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="text-center py-10 text-gray-500">
-                      Nenhum cliente encontrado
-                    </td>
-                  </tr>
-                )}
+                {renderClientCards()}
               </tbody>
             </table>
           </div>

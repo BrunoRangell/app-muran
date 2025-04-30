@@ -25,6 +25,7 @@ export const reviewClient = async (clientId: string, accountId?: string) => {
       if (metaAccount) {
         metaAccountName = metaAccount.account_name;
         metaBudgetAmount = metaAccount.budget_amount;
+        console.log(`Detalhes da conta Meta encontrados: ${metaAccountName}, orçamento: ${metaBudgetAmount}`);
       }
     }
 
@@ -52,6 +53,7 @@ export const reviewClient = async (clientId: string, accountId?: string) => {
       payload.metaBudgetAmount = metaBudgetAmount;
     }
 
+    console.log("Enviando payload para função Edge:", payload);
     const url = `${window.location.origin}/api/daily-meta-review`;
     const response = await axios.post(url, payload);
 
@@ -68,28 +70,18 @@ export const reviewAllClients = async (clients: any[], onSuccess: () => void, me
   if (metaAccounts && metaAccounts.length > 0) {
     console.log(`Revisando ${metaAccounts.length} contas Meta separadamente`);
     
-    // Agrupar contas por cliente para evitar múltiplas chamadas para o mesmo cliente
-    const clientAccountsMap = new Map<string, string[]>();
-    
+    // Para cada conta Meta, iniciar uma revisão
     for (const account of metaAccounts) {
-      if (!account.client_id || !account.account_id) continue;
-      
-      if (!clientAccountsMap.has(account.client_id)) {
-        clientAccountsMap.set(account.client_id, []);
+      if (!account.client_id || !account.account_id) {
+        console.warn("Conta Meta sem client_id ou account_id válidos:", account);
+        continue;
       }
       
-      clientAccountsMap.get(account.client_id)?.push(account.account_id);
-    }
-    
-    // Para cada cliente, revisar todas as suas contas
-    for (const [clientId, accountIds] of clientAccountsMap.entries()) {
-      for (const accountId of accountIds) {
-        try {
-          console.log(`Revisando cliente ${clientId} com conta Meta ${accountId}`);
-          await reviewClient(clientId, accountId);
-        } catch (error) {
-          console.error(`Erro ao revisar cliente ${clientId} com conta ${accountId}:`, error);
-        }
+      try {
+        console.log(`Revisando cliente ${account.client_id} com conta Meta ${account.account_id}`);
+        await reviewClient(account.client_id, account.account_id);
+      } catch (error) {
+        console.error(`Erro ao revisar cliente ${account.client_id} com conta ${account.account_id}:`, error);
       }
     }
   } else {
@@ -105,7 +97,7 @@ export const reviewAllClients = async (clients: any[], onSuccess: () => void, me
   
   toast({
     title: "Revisão em massa concluída",
-    description: `Foram revisados ${clients.length} clientes.`,
+    description: `Foram revisados ${metaAccounts?.length || clients.length} clientes/contas.`,
     duration: 5000,
   });
 

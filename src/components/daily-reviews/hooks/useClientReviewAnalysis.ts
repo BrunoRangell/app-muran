@@ -19,19 +19,47 @@ export const useClientReviewAnalysis = () => {
     let lastReviewTime: Date | null = null;
     
     for (const client of clientsData) {
-      const reviewsData = await fetchClientReviews(client.id);
-      const lastReview = reviewsData?.[0];
+      // Buscar as contas Meta associadas a este cliente
+      const clientMetaAccounts = metaAccountsData.filter(account => account.client_id === client.id);
       
-      processedClients.push({
-        ...client,
-        meta_account_id: null, // Mantemos para compatibilidade com o tipo
-        lastReview: lastReview || null
-      });
-      
-      if (lastReview) {
-        const reviewDate = new Date(lastReview.created_at);
-        if (!lastReviewTime || reviewDate > lastReviewTime) {
-          lastReviewTime = reviewDate;
+      if (clientMetaAccounts.length > 0) {
+        console.log(`Cliente ${client.company_name} (${client.id}) tem ${clientMetaAccounts.length} contas Meta associadas`);
+        
+        // Para cada conta Meta, buscar suas revisões específicas
+        for (const account of clientMetaAccounts) {
+          const accountReviewsData = await fetchClientReviews(client.id, account.account_id);
+          const accountLastReview = accountReviewsData?.[0];
+          
+          // Criar um cliente processado para cada conta Meta
+          processedClients.push({
+            ...client,
+            meta_account_id: account.account_id, // Usar o ID da conta Meta específica
+            lastReview: accountLastReview || null
+          });
+          
+          if (accountLastReview) {
+            const reviewDate = new Date(accountLastReview.created_at);
+            if (!lastReviewTime || reviewDate > lastReviewTime) {
+              lastReviewTime = reviewDate;
+            }
+          }
+        }
+      } else {
+        // Cliente sem contas Meta específicas, comportamento padrão
+        const reviewsData = await fetchClientReviews(client.id);
+        const lastReview = reviewsData?.[0];
+        
+        processedClients.push({
+          ...client,
+          meta_account_id: null,
+          lastReview: lastReview || null
+        });
+        
+        if (lastReview) {
+          const reviewDate = new Date(lastReview.created_at);
+          if (!lastReviewTime || reviewDate > lastReviewTime) {
+            lastReviewTime = reviewDate;
+          }
         }
       }
     }

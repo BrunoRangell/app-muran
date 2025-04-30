@@ -46,9 +46,10 @@ export const fetchMetaAccounts = async () => {
   
   // Log detalhado para verificar contas da Sorrifácil
   const sorrifacilAccounts = metaAccountsData.filter(account => {
-    // Encontrar o client_id associado à Sorrifácil
-    return account.account_name?.toLowerCase().includes('sorrifacil') || 
-           account.account_id?.toLowerCase().includes('sorrifacil');
+    return account.client_id && (
+      (account.account_name && account.account_name.toLowerCase().includes('sorrifacil')) || 
+      (account.account_id && account.account_id.toLowerCase().includes('sorrifacil'))
+    );
   });
   
   console.log(`Contas Meta da Sorrifácil encontradas: ${sorrifacilAccounts.length}`);
@@ -59,20 +60,39 @@ export const fetchMetaAccounts = async () => {
   return metaAccountsData as MetaAccount[];
 };
 
-export const fetchClientReviews = async (clientId: string) => {
-  console.log(`Buscando revisões para cliente ${clientId}...`);
-  const { data: reviewsData, error: reviewsError } = await supabase
-    .from('daily_budget_reviews')
-    .select('*')
-    .eq('client_id', clientId)
-    .eq('review_date', new Date().toISOString().split('T')[0])
-    .order('created_at', { ascending: false });
-    
-  if (reviewsError) {
-    console.error(`Erro ao buscar revisões para cliente ${clientId}:`, reviewsError);
-    return null;
-  }
+export const fetchClientReviews = async (clientId: string, accountId?: string) => {
+  if (accountId) {
+    console.log(`Buscando revisões para cliente ${clientId} e conta Meta ${accountId}...`);
+    const { data: reviewsData, error: reviewsError } = await supabase
+      .from('daily_budget_reviews')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('meta_account_id', accountId)
+      .eq('review_date', new Date().toISOString().split('T')[0])
+      .order('created_at', { ascending: false });
+      
+    if (reviewsError) {
+      console.error(`Erro ao buscar revisões para cliente ${clientId} e conta ${accountId}:`, reviewsError);
+      return null;
+    }
 
-  console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId}`);
-  return reviewsData;
+    console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId} e conta ${accountId}`);
+    return reviewsData;
+  } else {
+    console.log(`Buscando revisões para cliente ${clientId}...`);
+    const { data: reviewsData, error: reviewsError } = await supabase
+      .from('daily_budget_reviews')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('review_date', new Date().toISOString().split('T')[0])
+      .order('created_at', { ascending: false });
+      
+    if (reviewsError) {
+      console.error(`Erro ao buscar revisões para cliente ${clientId}:`, reviewsError);
+      return null;
+    }
+
+    console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId}`);
+    return reviewsData;
+  }
 };

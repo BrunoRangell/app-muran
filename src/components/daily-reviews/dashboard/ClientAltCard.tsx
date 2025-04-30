@@ -24,6 +24,9 @@ export const ClientAltCard = ({
   const accountName = metaAccount?.account_name || "Conta Principal";
   const budgetAmount = metaAccount?.budget_amount || client.meta_ads_budget || 0;
   
+  // Log para depuração
+  console.log(`Renderizando card para ${client.company_name} - Conta: ${accountName}, ID: ${accountId || 'N/A'}, Revisão: ${client.lastReview ? 'Sim' : 'Não'}`);
+  
   const handleReviewClick = () => {
     onReviewClient(client.id, accountId);
   };
