@@ -18,60 +18,83 @@ export const useClientReviewAnalysis = () => {
     const processedClients: ClientWithReview[] = [];
     let lastReviewTime: Date | null = null;
     
+    // Log para diagnóstico
+    console.log("Processando clientes com contas Meta...");
+    console.log(`Total de clientes: ${clientsData.length}`);
+    console.log(`Total de contas Meta: ${metaAccountsData.length}`);
+    
     for (const client of clientsData) {
       // Buscar as contas Meta associadas a este cliente
-      const clientMetaAccounts = metaAccountsData.filter(account => account.client_id === client.id);
+      const clientMetaAccounts = metaAccountsData.filter(account => 
+        account.client_id === client.id && account.status === 'active'
+      );
       
       // Log para diagnóstico
-      if (client.company_name.includes('Sorrifacil')) {
-        console.log(`Processando Sorrifacil ID=${client.id} com ${clientMetaAccounts.length} contas Meta:`, 
-          clientMetaAccounts.map(a => `${a.account_name} (${a.account_id})`));
-      }
+      console.log(`Cliente ${client.company_name} (${client.id}): ${clientMetaAccounts.length} contas Meta ativas`);
       
       if (clientMetaAccounts.length > 0) {
-        console.log(`Cliente ${client.company_name} (${client.id}) tem ${clientMetaAccounts.length} contas Meta associadas`);
-        
-        // Para cada conta Meta, buscar suas revisões específicas
+        // Cliente com contas Meta específicas
         for (const account of clientMetaAccounts) {
-          const accountReviewsData = await fetchClientReviews(client.id, account.account_id);
-          const accountLastReview = accountReviewsData?.[0];
-          
-          // Log para diagnóstico
-          if (client.company_name.includes('Sorrifacil')) {
-            console.log(`Sorrifacil conta ${account.account_name} (${account.account_id}): ` + 
-              `${accountReviewsData?.length || 0} revisões, última revisão: ${accountLastReview ? 'Sim' : 'Não'}`);
-          }
-          
-          // Sempre criar um cliente processado para cada conta Meta, mesmo sem revisão
-          processedClients.push({
-            ...client,
-            meta_account_id: account.account_id,
-            lastReview: accountLastReview || null
-          });
-          
-          if (accountLastReview) {
-            const reviewDate = new Date(accountLastReview.created_at);
-            if (!lastReviewTime || reviewDate > lastReviewTime) {
-              lastReviewTime = reviewDate;
+          try {
+            // Buscar revisões específicas para esta conta Meta
+            const accountReviewsData = await fetchClientReviews(client.id, account.account_id);
+            const accountLastReview = accountReviewsData?.[0];
+            
+            // Log para diagnóstico
+            console.log(`Conta ${account.account_name} (${account.account_id}): ${accountReviewsData?.length || 0} revisões`);
+            
+            // Criar um cliente processado para cada conta Meta
+            processedClients.push({
+              ...client,
+              meta_account_id: account.account_id,  // Associamos a conta Meta específica
+              lastReview: accountLastReview || null,
+              status: client.status
+            });
+            
+            if (accountLastReview) {
+              const reviewDate = new Date(accountLastReview.created_at);
+              if (!lastReviewTime || reviewDate > lastReviewTime) {
+                lastReviewTime = reviewDate;
+              }
             }
+          } catch (error) {
+            console.error(`Erro ao processar conta Meta ${account.account_id} do cliente ${client.company_name}:`, error);
+            // Mesmo com erro, adicionamos o cliente com a conta Meta, sem revisão
+            processedClients.push({
+              ...client,
+              meta_account_id: account.account_id,
+              lastReview: null,
+              status: client.status
+            });
           }
         }
       } else {
         // Cliente sem contas Meta específicas, comportamento padrão
-        const reviewsData = await fetchClientReviews(client.id);
-        const lastReview = reviewsData?.[0];
-        
-        processedClients.push({
-          ...client,
-          meta_account_id: null,
-          lastReview: lastReview || null
-        });
-        
-        if (lastReview) {
-          const reviewDate = new Date(lastReview.created_at);
-          if (!lastReviewTime || reviewDate > lastReviewTime) {
-            lastReviewTime = reviewDate;
+        try {
+          const reviewsData = await fetchClientReviews(client.id);
+          const lastReview = reviewsData?.[0];
+          
+          processedClients.push({
+            ...client,
+            meta_account_id: null,
+            lastReview: lastReview || null,
+            status: client.status
+          });
+          
+          if (lastReview) {
+            const reviewDate = new Date(lastReview.created_at);
+            if (!lastReviewTime || reviewDate > lastReviewTime) {
+              lastReviewTime = reviewDate;
+            }
           }
+        } catch (error) {
+          console.error(`Erro ao buscar revisões para cliente ${client.company_name}:`, error);
+          processedClients.push({
+            ...client,
+            meta_account_id: null,
+            lastReview: null,
+            status: client.status
+          });
         }
       }
     }
@@ -94,6 +117,9 @@ export const useClientReviewAnalysis = () => {
   });
   
   const handleReviewClient = async (clientId: string, accountId?: string) => {
+    // Log para diagnóstico
+    console.log(`Iniciando revisão para cliente ${clientId}${accountId ? ` e conta ${accountId}` : ''}`);
+    
     // Se temos um accountId específico, marcamos a combinação cliente + conta como em processamento
     if (accountId) {
       const accountKey = `${clientId}-${accountId}`;
@@ -104,7 +130,7 @@ export const useClientReviewAnalysis = () => {
     }
     
     try {
-      await reviewClientService(clientId, accountId);
+      const result = await reviewClientService(clientId, accountId);
       
       toast({
         title: "Revisão concluída",
@@ -112,6 +138,9 @@ export const useClientReviewAnalysis = () => {
         duration: 5000,
       });
       
+      console.log(`Revisão concluída para cliente ${clientId}${accountId ? ` e conta ${accountId}` : ''}:`, result);
+      
+      // Recarregar os dados
       await refetch();
       
     } catch (error: any) {
@@ -121,7 +150,6 @@ export const useClientReviewAnalysis = () => {
         description: error.message || "Ocorreu um erro ao revisar o orçamento",
         variant: "destructive",
       });
-      throw error;
     } finally {
       // Limpamos os status de processamento
       if (accountId) {
@@ -156,6 +184,19 @@ export const useClientReviewAnalysis = () => {
     try {
       // Modificar para passar as contas Meta também
       await reviewAllClientsService(result.clientsData, refetch, result.metaAccountsData);
+      
+      toast({
+        title: "Análise em massa concluída",
+        description: "Todos os clientes foram analisados com sucesso.",
+        variant: "default",
+      });
+    } catch (error: any) {
+      console.error("Erro ao revisar todos os clientes:", error);
+      toast({
+        title: "Erro na análise em massa",
+        description: error.message || "Ocorreu um erro ao revisar todos os clientes",
+        variant: "destructive",
+      });
     } finally {
       setProcessingClients([]);
       setProcessingAccounts([]);

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFiltering";
 import { Button } from "@/components/ui/button";
 import { RotateCw } from "lucide-react";
+import { ClientWithReview, MetaAccount } from "../hooks/types/reviewTypes";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;

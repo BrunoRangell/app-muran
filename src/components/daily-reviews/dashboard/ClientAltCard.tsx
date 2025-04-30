@@ -25,10 +25,22 @@ export const ClientAltCard = ({
   const budgetAmount = metaAccount?.budget_amount || client.meta_ads_budget || 0;
   
   // Log para depuração - exibe informações detalhadas da conta
-  console.log(`Renderizando card para ${client.company_name} - Conta: ${accountName}, ID: ${accountId || 'N/A'}, Revisão: ${client.lastReview ? 'Sim' : 'Não'}`);
+  console.log(`Renderizando card para ${client.company_name} - Conta: ${accountName}, ID: ${accountId || 'N/A'}`);
+  
+  // Buscamos revisão específica para esta conta se existir
+  let specificReview = null;
+  if (client.lastReview && accountId && client.lastReview.meta_account_id === accountId) {
+    specificReview = client.lastReview;
+    console.log(`Encontrada revisão específica para conta ${accountId}:`, specificReview);
+  } else if (!accountId && client.lastReview) {
+    specificReview = client.lastReview;
+  } else {
+    console.log(`Sem revisão para conta ${accountId || 'principal'} do cliente ${client.company_name}`);
+  }
   
   const handleReviewClick = () => {
     onReviewClient(client.id, accountId);
+    console.log(`Analisando cliente ${client.id} com conta ${accountId || 'principal'}`);
   };
   
   return (
@@ -48,15 +60,15 @@ export const ClientAltCard = ({
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className="text-gray-900">
-          {client.lastReview?.meta_total_spent 
-            ? formatCurrency(client.lastReview?.meta_total_spent)
+          {specificReview?.meta_total_spent 
+            ? formatCurrency(specificReview?.meta_total_spent)
             : "-"}
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className="text-gray-900">
-          {client.lastReview?.meta_daily_budget_current 
-            ? formatCurrency(client.lastReview?.meta_daily_budget_current)
+          {specificReview?.meta_daily_budget_current 
+            ? formatCurrency(specificReview?.meta_daily_budget_current)
             : "-"}
         </span>
       </td>
@@ -80,7 +92,7 @@ export const ClientAltCard = ({
             size="sm" 
             onClick={handleReviewClick}
             disabled={isProcessing}
-            className="w-full"
+            className={accountId ? "bg-[#ff6e00] text-white hover:bg-[#e66300]" : ""}
           >
             {isProcessing ? "Analisando..." : "Analisar"}
           </Button>
