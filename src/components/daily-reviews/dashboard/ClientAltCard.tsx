@@ -24,7 +24,7 @@ export const ClientAltCard = ({
   const accountName = metaAccount?.account_name || "Conta Principal";
   const budgetAmount = metaAccount?.budget_amount || client.meta_ads_budget || 0;
   
-  // Log para depuração
+  // Log para depuração - exibe informações detalhadas da conta
   console.log(`Renderizando card para ${client.company_name} - Conta: ${accountName}, ID: ${accountId || 'N/A'}, Revisão: ${client.lastReview ? 'Sim' : 'Não'}`);
   
   const handleReviewClick = () => {
@@ -65,7 +65,7 @@ export const ClientAltCard = ({
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex gap-2">
-          <Link to={`/revisao-meta/${client.id}`}>
+          <Link to={`/revisao-meta/${client.id}${accountId ? `?accountId=${accountId}` : ''}`}>
             <Button 
               variant="outline" 
               size="sm" 

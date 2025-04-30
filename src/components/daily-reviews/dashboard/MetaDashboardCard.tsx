@@ -30,6 +30,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   console.log("1. Todos os clientes recebidos:", filteredClients?.length);
   console.log("2. Todas as contas Meta:", metaAccounts?.length);
 
+  // Log específico para Sorrifácil para diagnóstico
   const sorrifacilClients = filteredClients?.filter(client => 
     client.company_name.toLowerCase().includes("sorrifacil")) || [];
   console.log("3. Clientes Sorrifácil encontrados:", sorrifacilClients.length);
@@ -61,40 +62,43 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
       );
     }
 
-    // Agrupar clientes por ID para facilitar o processamento
-    const clientsById = new Map();
+    const rows: JSX.Element[] = [];
+    
+    // Primeiro, criar um mapa dos clientes por ID para fácil acesso
+    const clientsMap = new Map<string, ClientWithReview>();
     finalFilteredClients.forEach(client => {
-      if (!clientsById.has(client.id)) {
-        clientsById.set(client.id, client);
-      }
+      clientsMap.set(client.id, client);
     });
 
-    const rows: JSX.Element[] = [];
-
-    // Para cada cliente, verificar se tem contas Meta associadas
-    clientsById.forEach((client, clientId) => {
-      // Buscar todas as contas Meta para este cliente
+    // Iterar através de todos os clientes únicos
+    const uniqueClientIds = Array.from(new Set(finalFilteredClients.map(c => c.id)));
+    
+    for (const clientId of uniqueClientIds) {
+      const client = clientsMap.get(clientId);
+      if (!client) continue;
+      
+      // Buscar todas as contas Meta ativas para este cliente
       const clientMetaAccounts = metaAccounts.filter(
         account => account.client_id === clientId && account.status === 'active'
       );
-
-      console.log(`Cliente ${client.company_name} (${clientId}): ${clientMetaAccounts.length} contas Meta`);
-
-      // Se o cliente tem contas Meta específicas, criar um card para cada uma
+      
+      console.log(`Cliente ${client.company_name} (${clientId}): ${clientMetaAccounts.length} contas Meta ativas`);
+      
+      // Se o cliente tem contas Meta ativas, criar um card para cada uma
       if (clientMetaAccounts.length > 0) {
-        clientMetaAccounts.forEach((account, accountIndex) => {
-          const uniqueKey = `${clientId}-${account.account_id}-${accountIndex}`;
-          console.log(`Renderizando card para ${client.company_name} - conta ${account.account_name} (${account.account_id}) com chave ${uniqueKey}`);
+        clientMetaAccounts.forEach((account) => {
+          console.log(`Renderizando card para ${client.company_name} - conta ${account.account_name} (${account.account_id})`);
           
-          // Encontrar a revisão específica desta conta
-          const accountClient = filteredClients?.find(c => 
-            c.id === clientId && c.meta_account_id === account.account_id
-          ) || client;
-
+          // Criamos uma cópia do cliente com informações específicas para esta conta
+          const clientWithAccountInfo = {
+            ...client,
+            // Podemos manter lastReview do cliente ou nulo se não tiver revisão específica para esta conta
+          };
+          
           rows.push(
             <ClientAltCard
-              key={uniqueKey}
-              client={accountClient}
+              key={`${clientId}-${account.account_id}`}
+              client={clientWithAccountInfo}
               metaAccount={account}
               onReviewClient={reviewClient}
               isProcessing={isProcessingAccount(clientId, account.account_id)}
@@ -113,7 +117,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
           />
         );
       }
-    });
+    }
 
     return rows;
   };

@@ -22,6 +22,12 @@ export const useClientReviewAnalysis = () => {
       // Buscar as contas Meta associadas a este cliente
       const clientMetaAccounts = metaAccountsData.filter(account => account.client_id === client.id);
       
+      // Log para diagnóstico
+      if (client.company_name.includes('Sorrifacil')) {
+        console.log(`Processando Sorrifacil ID=${client.id} com ${clientMetaAccounts.length} contas Meta:`, 
+          clientMetaAccounts.map(a => `${a.account_name} (${a.account_id})`));
+      }
+      
       if (clientMetaAccounts.length > 0) {
         console.log(`Cliente ${client.company_name} (${client.id}) tem ${clientMetaAccounts.length} contas Meta associadas`);
         
@@ -30,10 +36,16 @@ export const useClientReviewAnalysis = () => {
           const accountReviewsData = await fetchClientReviews(client.id, account.account_id);
           const accountLastReview = accountReviewsData?.[0];
           
-          // Criar um cliente processado para cada conta Meta
+          // Log para diagnóstico
+          if (client.company_name.includes('Sorrifacil')) {
+            console.log(`Sorrifacil conta ${account.account_name} (${account.account_id}): ` + 
+              `${accountReviewsData?.length || 0} revisões, última revisão: ${accountLastReview ? 'Sim' : 'Não'}`);
+          }
+          
+          // Sempre criar um cliente processado para cada conta Meta, mesmo sem revisão
           processedClients.push({
             ...client,
-            meta_account_id: account.account_id, // Usar o ID da conta Meta específica
+            meta_account_id: account.account_id,
             lastReview: accountLastReview || null
           });
           
