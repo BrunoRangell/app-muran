@@ -64,6 +64,19 @@ export const reviewClient = async (clientId: string, accountId?: string) => {
     try {
       const response = await axios.post(url, payload);
       console.log("Resposta da função Edge:", response.data);
+      
+      // Verificar se a resposta contém um erro
+      if (response.data && response.data.error) {
+        throw new Error(`Erro da função Edge: ${response.data.error}`);
+      }
+      
+      // Verificar se temos o ID da revisão na resposta
+      if (response.data && response.data.reviewId) {
+        console.log(`Revisão criada/atualizada com sucesso. ID: ${response.data.reviewId}`);
+      } else {
+        console.warn("Resposta da função Edge não contém reviewId:", response.data);
+      }
+      
       return response.data;
     } catch (axiosError: any) {
       console.error("Erro na requisição axios:", axiosError);

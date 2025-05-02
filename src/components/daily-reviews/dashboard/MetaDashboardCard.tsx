@@ -8,6 +8,13 @@ import { filterClientsByName, filterClientsByAdjustment } from "./utils/clientFi
 import { Button } from "@/components/ui/button";
 import { RotateCw } from "lucide-react";
 import { ClientWithReview, MetaAccount } from "../hooks/types/reviewTypes";
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface MetaDashboardCardProps {
   onViewClientDetails: (clientId: string) => void;
@@ -65,6 +72,7 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
       );
     }
 
+    // Array para armazenar todas as linhas da tabela
     const rows: JSX.Element[] = [];
     
     // Primeiro, criar um mapa dos clientes por ID para fácil acesso
@@ -89,20 +97,14 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
       
       // Se o cliente tem contas Meta ativas, criar um card para cada uma
       if (clientMetaAccounts.length > 0) {
+        // Importante: iterar sobre todas as contas ativas e criar um card para cada uma
         clientMetaAccounts.forEach((account) => {
           console.log(`Renderizando card para ${client.company_name} - conta ${account.account_name} (${account.account_id})`);
-          
-          // Criamos uma cópia do cliente com informações específicas para esta conta
-          const clientWithAccountInfo = {
-            ...client,
-            // Explicitamente definimos meta_account_id para garantir que é usado
-            meta_account_id: account.account_id,
-          };
           
           rows.push(
             <ClientAltCard
               key={`${clientId}-${account.account_id}`}
-              client={clientWithAccountInfo}
+              client={client}
               metaAccount={account}
               onReviewClient={reviewClient}
               isProcessing={isProcessingAccount(clientId, account.account_id)}

@@ -42,6 +42,18 @@ export const processClientsWithReviews = async () => {
     for (const account of sorrifacilAccounts) {
       const reviewsData = await fetchClientReviews(sorrifacilClient.id, account.account_id);
       console.log(`Conta ${account.account_name} (${account.account_id}): ${reviewsData?.length || 0} revisões`);
+      
+      // Se não houver revisões para esta conta, criar uma revisão inicial
+      if (!reviewsData || reviewsData.length === 0) {
+        console.log(`Criando revisão inicial para conta ${account.account_name} (${account.account_id})`);
+        const initialReview = await createInitialReview(
+          sorrifacilClient.id,
+          account.account_id,
+          account.account_name,
+          account.budget_amount
+        );
+        console.log("Revisão inicial criada:", initialReview);
+      }
     }
   }
   
@@ -61,30 +73,28 @@ export const processClientsWithReviews = async () => {
         try {
           // Buscar revisões específicas para esta conta Meta
           let accountReviewsData = await fetchClientReviews(client.id, account.account_id);
-          let accountLastReview = accountReviewsData?.[0];
           
           // Se não houver revisões para esta conta, criar uma revisão inicial
           if (!accountReviewsData || accountReviewsData.length === 0) {
             console.log(`Sem revisão para conta ${account.account_id}. Criando revisão inicial.`);
-            accountLastReview = await createInitialReview(
+            await createInitialReview(
               client.id,
               account.account_id,
               account.account_name,
               account.budget_amount
             );
             
-            // Se conseguimos criar uma revisão inicial, buscar novamente as revisões
-            if (accountLastReview) {
-              accountReviewsData = await fetchClientReviews(client.id, account.account_id);
-              accountLastReview = accountReviewsData?.[0] || accountLastReview;
-            }
+            // Buscar novamente as revisões após criar
+            accountReviewsData = await fetchClientReviews(client.id, account.account_id);
           }
+          
+          const accountLastReview = accountReviewsData?.[0] || null;
           
           // Log para diagnóstico
           console.log(`Conta ${account.account_name} (${account.account_id}): ${accountReviewsData?.length || 0} revisões`);
           console.log(`Revisão encontrada/criada:`, accountLastReview);
           
-          // Criar um cliente processado para cada conta Meta, independente de ter revisão ou não
+          // Criar um cliente processado para cada conta Meta
           const processedClient: ClientWithReview = {
             ...client,
             meta_account_id: account.account_id,  // Associamos a conta Meta específica

@@ -88,45 +88,50 @@ export const fetchMetaAccounts = async () => {
 export const fetchClientReviews = async (clientId: string, accountId?: string) => {
   const today = new Date().toISOString().split('T')[0];
   
-  if (accountId) {
-    console.log(`Buscando revisões para cliente ${clientId} e conta Meta ${accountId}...`);
-    const { data: reviewsData, error: reviewsError } = await supabase
-      .from('daily_budget_reviews')
-      .select('*')
-      .eq('client_id', clientId)
-      .or(`meta_account_id.eq.${accountId},client_account_id.eq.${accountId}`)
-      .eq('review_date', today)
-      .order('created_at', { ascending: false });
-      
-    if (reviewsError) {
-      console.error(`Erro ao buscar revisões para cliente ${clientId} e conta ${accountId}:`, reviewsError);
-      return null;
-    }
+  try {
+    if (accountId) {
+      console.log(`Buscando revisões para cliente ${clientId} e conta Meta ${accountId}...`);
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('daily_budget_reviews')
+        .select('*')
+        .eq('client_id', clientId)
+        .or(`meta_account_id.eq.${accountId},client_account_id.eq.${accountId}`)
+        .eq('review_date', today)
+        .order('created_at', { ascending: false });
+        
+      if (reviewsError) {
+        console.error(`Erro ao buscar revisões para cliente ${clientId} e conta ${accountId}:`, reviewsError);
+        return null;
+      }
 
-    console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId} e conta ${accountId}`);
-    
-    // Se não encontrou revisões, registrar para diagnóstico
-    if (!reviewsData || reviewsData.length === 0) {
-      console.log(`*** ALERTA: Sem revisões para conta ${accountId} do cliente ${clientId}. Mostrando card sem dados de revisão.`);
-    }
-    
-    return reviewsData;
-  } else {
-    console.log(`Buscando revisões para cliente ${clientId}...`);
-    const { data: reviewsData, error: reviewsError } = await supabase
-      .from('daily_budget_reviews')
-      .select('*')
-      .eq('client_id', clientId)
-      .eq('review_date', today)
-      .order('created_at', { ascending: false });
+      console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId} e conta ${accountId}`);
       
-    if (reviewsError) {
-      console.error(`Erro ao buscar revisões para cliente ${clientId}:`, reviewsError);
-      return null;
-    }
+      // Se não encontrou revisões, registrar para diagnóstico
+      if (!reviewsData || reviewsData.length === 0) {
+        console.log(`*** ALERTA: Sem revisões para conta ${accountId} do cliente ${clientId}. Mostrando card sem dados de revisão.`);
+      }
+      
+      return reviewsData;
+    } else {
+      console.log(`Buscando revisões para cliente ${clientId}...`);
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('daily_budget_reviews')
+        .select('*')
+        .eq('client_id', clientId)
+        .eq('review_date', today)
+        .order('created_at', { ascending: false });
+        
+      if (reviewsError) {
+        console.error(`Erro ao buscar revisões para cliente ${clientId}:`, reviewsError);
+        return null;
+      }
 
-    console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId}`);
-    return reviewsData;
+      console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId}`);
+      return reviewsData;
+    }
+  } catch (error) {
+    console.error(`Erro ao buscar revisões: ${error}`);
+    return null;
   }
 };
 
@@ -154,6 +159,20 @@ export const createInitialReview = async (clientId: string, accountId: string, a
     }
     
     const today = new Date().toISOString().split('T')[0];
+    
+    // Verificar se já existe uma revisão para evitar duplicação
+    const { data: existingReview } = await supabase
+      .from('daily_budget_reviews')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('meta_account_id', accountId)
+      .eq('review_date', today)
+      .maybeSingle();
+      
+    if (existingReview) {
+      console.log(`Revisão já existe para conta ${accountId}, ID: ${existingReview.id}`);
+      return existingReview;
+    }
     
     // Criar uma revisão inicial com valores zerados
     const { data: review, error } = await supabase

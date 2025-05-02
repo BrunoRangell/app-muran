@@ -12,6 +12,7 @@ export default function RevisaoMeta() {
   const [searchParams] = useSearchParams();
   const [diagnosticoVisible, setDiagnosticoVisible] = useState(false);
   const [diagnosticoInfo, setDiagnosticoInfo] = useState<any>(null);
+  const [loadingDiagnostico, setLoadingDiagnostico] = useState(false);
   const accountId = searchParams.get('accountId');
   const { toast } = useToast();
 
@@ -37,6 +38,7 @@ export default function RevisaoMeta() {
 
   const executarDiagnostico = async () => {
     // Buscar informações de diagnóstico sobre a Sorrifácil
+    setLoadingDiagnostico(true);
     try {
       // Buscar o cliente Sorrifácil
       const { data: clientData } = await supabase
@@ -51,6 +53,7 @@ export default function RevisaoMeta() {
           description: "Não foi possível encontrar o cliente 'Sorrifácil'.",
           variant: "destructive"
         });
+        setLoadingDiagnostico(false);
         return;
       }
       
@@ -62,30 +65,154 @@ export default function RevisaoMeta() {
         
       // Buscar revisões atuais
       const today = new Date().toISOString().split('T')[0];
-      const { data: reviewsData } = await supabase
-        .from('daily_budget_reviews')
-        .select('*')
-        .eq('client_id', clientData.id)
-        .eq('review_date', today);
+      
+      // Buscar revisões para cada conta Meta
+      let reviewsData = [];
+      if (metaAccounts && metaAccounts.length > 0) {
+        for (const account of metaAccounts) {
+          const { data: accountReviews } = await supabase
+            .from('daily_budget_reviews')
+            .select('*')
+            .eq('client_id', clientData.id)
+            .or(`meta_account_id.eq.${account.account_id},client_account_id.eq.${account.account_id}`)
+            .eq('review_date', today);
+            
+          if (accountReviews && accountReviews.length > 0) {
+            reviewsData.push({
+              account_id: account.account_id,
+              account_name: account.account_name,
+              reviews: accountReviews
+            });
+          } else {
+            reviewsData.push({
+              account_id: account.account_id,
+              account_name: account.account_name,
+              reviews: [],
+              status: 'Sem revisões'
+            });
+          }
+        }
+      } else {
+        // Buscar todas as revisões para o cliente
+        const { data: allReviews } = await supabase
+          .from('daily_budget_reviews')
+          .select('*')
+          .eq('client_id', clientData.id)
+          .eq('review_date', today);
+          
+        reviewsData = [{
+          account_id: 'principal',
+          account_name: 'Conta Principal',
+          reviews: allReviews || []
+        }];
+      }
         
+      // Criar revisões iniciais faltantes (apenas diagnóstico)
+      const contasSemRevisao = [];
+      for (const account of metaAccounts || []) {
+        const temRevisao = reviewsData.some(r => 
+          r.account_id === account.account_id && r.reviews && r.reviews.length > 0
+        );
+        
+        if (!temRevisao) {
+          contasSemRevisao.push({
+            account_id: account.account_id,
+            account_name: account.account_name
+          });
+        }
+      }
+      
       // Exibir resultados
       setDiagnosticoInfo({
         cliente: clientData,
         contasMeta: metaAccounts,
-        revisoes: reviewsData
+        revisoes: reviewsData,
+        contasSemRevisao
       });
       
       setDiagnosticoVisible(true);
       
       toast({
         title: "Diagnóstico concluído",
-        description: `Cliente: ${clientData.company_name}, Contas Meta: ${metaAccounts?.length || 0}, Revisões: ${reviewsData?.length || 0}.`
+        description: `Cliente: ${clientData.company_name}, Contas Meta: ${metaAccounts?.length || 0}, Revisões por conta: ${reviewsData.length}.`
       });
     } catch (error) {
       console.error("Erro ao executar diagnóstico:", error);
       toast({
         title: "Erro no diagnóstico",
         description: "Erro ao buscar informações de diagnóstico.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingDiagnostico(false);
+    }
+  };
+
+  // Função para criar uma revisão inicial para uma conta sem revisão
+  const criarRevisaoInicial = async (clientId: string, accountId: string, accountName: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Verificar se já existe uma revisão para esta conta
+      const { data: existingReview } = await supabase
+        .from('daily_budget_reviews')
+        .select('id')
+        .eq('client_id', clientId)
+        .or(`meta_account_id.eq.${accountId},client_account_id.eq.${accountId}`)
+        .eq('review_date', today)
+        .maybeSingle();
+        
+      if (existingReview) {
+        toast({
+          title: "Revisão já existe",
+          description: `Já existe uma revisão para a conta ${accountName}.`
+        });
+        return;
+      }
+      
+      // Buscar o orçamento da conta
+      const { data: accountData } = await supabase
+        .from('client_meta_accounts')
+        .select('budget_amount')
+        .eq('client_id', clientId)
+        .eq('account_id', accountId)
+        .maybeSingle();
+      
+      const budgetAmount = accountData?.budget_amount || 0;
+      
+      // Criar revisão inicial
+      const { data, error } = await supabase
+        .from('daily_budget_reviews')
+        .insert({
+          client_id: clientId,
+          meta_account_id: accountId,
+          client_account_id: accountId,
+          meta_account_name: accountName,
+          account_display_name: accountName,
+          review_date: today,
+          meta_daily_budget_current: 0,
+          meta_total_spent: 0,
+          using_custom_budget: false
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Revisão inicial criada",
+        description: `Revisão inicial criada para conta ${accountName}.`
+      });
+      
+      // Atualizar diagnóstico
+      await executarDiagnostico();
+    } catch (error) {
+      console.error("Erro ao criar revisão inicial:", error);
+      toast({
+        title: "Erro ao criar revisão",
+        description: "Não foi possível criar a revisão inicial.",
         variant: "destructive"
       });
     }
@@ -104,9 +231,19 @@ export default function RevisaoMeta() {
             onClick={executarDiagnostico}
             className="flex items-center gap-2"
             title="Diagnóstico Sorrifácil"
+            disabled={loadingDiagnostico}
           >
-            <FileSearch size={16} />
-            Diagnóstico
+            {loadingDiagnostico ? (
+              <>
+                <RefreshCw size={16} className="animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              <>
+                <FileSearch size={16} />
+                Diagnóstico
+              </>
+            )}
           </Button>
           
           <Button 
@@ -140,11 +277,37 @@ export default function RevisaoMeta() {
             </div>
             
             <div className="md:col-span-2">
-              <h4 className="font-medium text-gray-700 mb-1">Revisões Hoje ({diagnosticoInfo.revisoes?.length || 0})</h4>
+              <h4 className="font-medium text-gray-700 mb-1">Revisões por Conta ({diagnosticoInfo.revisoes?.length || 0})</h4>
               <pre className="bg-white p-2 rounded text-xs overflow-auto max-h-40">
                 {JSON.stringify(diagnosticoInfo.revisoes, null, 2)}
               </pre>
             </div>
+            
+            {diagnosticoInfo.contasSemRevisao && diagnosticoInfo.contasSemRevisao.length > 0 && (
+              <div className="md:col-span-2">
+                <h4 className="font-medium text-gray-700 mb-1">Contas sem Revisão ({diagnosticoInfo.contasSemRevisao.length})</h4>
+                <div className="bg-white p-4 rounded border border-amber-200">
+                  {diagnosticoInfo.contasSemRevisao.map((conta: any) => (
+                    <div key={conta.account_id} className="flex justify-between items-center mb-2 last:mb-0">
+                      <div>
+                        <span className="font-medium">{conta.account_name}</span> ({conta.account_id})
+                      </div>
+                      <Button 
+                        size="sm"
+                        onClick={() => criarRevisaoInicial(
+                          diagnosticoInfo.cliente.id,
+                          conta.account_id,
+                          conta.account_name
+                        )}
+                        className="bg-[#ff6e00] text-white hover:bg-[#e66300]"
+                      >
+                        Criar Revisão Inicial
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           
           <Button 
