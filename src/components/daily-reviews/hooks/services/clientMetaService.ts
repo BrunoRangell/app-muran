@@ -44,17 +44,38 @@ export const fetchMetaAccounts = async () => {
 
   console.log(`Encontradas ${metaAccountsData.length} contas Meta ativas`);
   
+  // Verificar e imprimir detalhes de todas as contas Meta para diagnóstico
+  metaAccountsData.forEach(account => {
+    console.log(`Conta Meta: ${account.account_name || 'Sem nome'} (${account.account_id}) - Cliente: ${account.client_id}, Budget: ${account.budget_amount}`);
+  });
+  
   // Log detalhado para verificar contas da Sorrifácil
   const sorrifacilAccounts = metaAccountsData.filter(account => {
     return account.client_id && (
       (account.account_name && account.account_name.toLowerCase().includes('sorrifacil')) || 
-      (account.account_id && account.account_id.toLowerCase().includes('sorrifacil')) ||
       (account.client_id && metaAccountsData.some(a => 
         a.client_id === account.client_id && 
         (a.account_name && a.account_name.toLowerCase().includes('sorrifacil'))
       ))
     );
   });
+  
+  // Também buscar por nome da empresa para garantir
+  const { data: sorrifacilClient } = await supabase
+    .from('clients')
+    .select('id, company_name')
+    .ilike('company_name', '%sorrifacil%')
+    .maybeSingle();
+  
+  if (sorrifacilClient) {
+    const sorrifacilAccounts2 = metaAccountsData.filter(account => 
+      account.client_id === sorrifacilClient.id
+    );
+    
+    console.log(`Cliente Sorrifácil encontrado via nome: ${sorrifacilClient.id}`);
+    console.log(`Contas Meta do cliente Sorrifácil (via nome): ${sorrifacilAccounts2.length}`);
+    console.log("Detalhes das contas Meta Sorrifácil (via nome):", sorrifacilAccounts2);
+  }
   
   console.log(`Contas Meta da Sorrifácil encontradas: ${sorrifacilAccounts.length}`);
   if (sorrifacilAccounts.length > 0) {
@@ -65,6 +86,8 @@ export const fetchMetaAccounts = async () => {
 };
 
 export const fetchClientReviews = async (clientId: string, accountId?: string) => {
+  const today = new Date().toISOString().split('T')[0];
+  
   if (accountId) {
     console.log(`Buscando revisões para cliente ${clientId} e conta Meta ${accountId}...`);
     const { data: reviewsData, error: reviewsError } = await supabase
@@ -72,7 +95,7 @@ export const fetchClientReviews = async (clientId: string, accountId?: string) =
       .select('*')
       .eq('client_id', clientId)
       .or(`meta_account_id.eq.${accountId},client_account_id.eq.${accountId}`)
-      .eq('review_date', new Date().toISOString().split('T')[0])
+      .eq('review_date', today)
       .order('created_at', { ascending: false });
       
     if (reviewsError) {
@@ -81,6 +104,12 @@ export const fetchClientReviews = async (clientId: string, accountId?: string) =
     }
 
     console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId} e conta ${accountId}`);
+    
+    // Se não encontrou revisões, registrar para diagnóstico
+    if (!reviewsData || reviewsData.length === 0) {
+      console.log(`*** ALERTA: Sem revisões para conta ${accountId} do cliente ${clientId}. Mostrando card sem dados de revisão.`);
+    }
+    
     return reviewsData;
   } else {
     console.log(`Buscando revisões para cliente ${clientId}...`);
@@ -88,7 +117,7 @@ export const fetchClientReviews = async (clientId: string, accountId?: string) =
       .from('daily_budget_reviews')
       .select('*')
       .eq('client_id', clientId)
-      .eq('review_date', new Date().toISOString().split('T')[0])
+      .eq('review_date', today)
       .order('created_at', { ascending: false });
       
     if (reviewsError) {
@@ -98,5 +127,60 @@ export const fetchClientReviews = async (clientId: string, accountId?: string) =
 
     console.log(`Encontradas ${reviewsData?.length || 0} revisões para o cliente ${clientId}`);
     return reviewsData;
+  }
+};
+
+// Nova função para criar uma revisão inicial para uma conta sem revisões
+export const createInitialReview = async (clientId: string, accountId: string, accountName?: string, budgetAmount?: number) => {
+  try {
+    console.log(`Criando revisão inicial para conta ${accountId} do cliente ${clientId}`);
+    
+    // Buscar detalhes da conta Meta
+    let metaAccountName = accountName;
+    let metaBudgetAmount = budgetAmount;
+    
+    if (!metaAccountName || metaBudgetAmount === undefined) {
+      const { data: metaAccount } = await supabase
+        .from('client_meta_accounts')
+        .select('account_name, budget_amount')
+        .eq('client_id', clientId)
+        .eq('account_id', accountId)
+        .maybeSingle();
+      
+      if (metaAccount) {
+        metaAccountName = metaAccount.account_name;
+        metaBudgetAmount = metaAccount.budget_amount;
+      }
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Criar uma revisão inicial com valores zerados
+    const { data: review, error } = await supabase
+      .from('daily_budget_reviews')
+      .insert({
+        client_id: clientId,
+        meta_account_id: accountId,
+        client_account_id: accountId,
+        meta_account_name: metaAccountName || 'Conta Meta',
+        account_display_name: metaAccountName || 'Conta Meta',
+        review_date: today,
+        meta_daily_budget_current: 0,
+        meta_total_spent: 0,
+        using_custom_budget: false
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error(`Erro ao criar revisão inicial para conta ${accountId}:`, error);
+      return null;
+    }
+    
+    console.log(`Revisão inicial criada com sucesso para conta ${accountId}:`, review);
+    return review;
+  } catch (error) {
+    console.error(`Erro ao criar revisão inicial:`, error);
+    return null;
   }
 };

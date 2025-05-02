@@ -1,6 +1,6 @@
 
 import { ClientWithReview, MetaAccount } from "../types/reviewTypes";
-import { fetchClientsWithMetaData, fetchMetaAccounts, fetchClientReviews } from "./clientMetaService";
+import { fetchClientsWithMetaData, fetchMetaAccounts, fetchClientReviews, createInitialReview } from "./clientMetaService";
 
 /**
  * Serviço responsável por processar clientes e suas contas Meta
@@ -37,6 +37,12 @@ export const processClientsWithReviews = async () => {
     const sorrifacilAccounts = clientMetaAccountsMap.get(sorrifacilClient.id) || [];
     console.log(`Cliente Sorrifácil (${sorrifacilClient.id}) tem ${sorrifacilAccounts.length} contas Meta:`);
     console.log(sorrifacilAccounts);
+    
+    // Verificar se temos revisões para essas contas
+    for (const account of sorrifacilAccounts) {
+      const reviewsData = await fetchClientReviews(sorrifacilClient.id, account.account_id);
+      console.log(`Conta ${account.account_name} (${account.account_id}): ${reviewsData?.length || 0} revisões`);
+    }
   }
   
   // Processar cada cliente
@@ -54,19 +60,39 @@ export const processClientsWithReviews = async () => {
       for (const account of clientMetaAccounts) {
         try {
           // Buscar revisões específicas para esta conta Meta
-          const accountReviewsData = await fetchClientReviews(client.id, account.account_id);
-          const accountLastReview = accountReviewsData?.[0];
+          let accountReviewsData = await fetchClientReviews(client.id, account.account_id);
+          let accountLastReview = accountReviewsData?.[0];
+          
+          // Se não houver revisões para esta conta, criar uma revisão inicial
+          if (!accountReviewsData || accountReviewsData.length === 0) {
+            console.log(`Sem revisão para conta ${account.account_id}. Criando revisão inicial.`);
+            accountLastReview = await createInitialReview(
+              client.id,
+              account.account_id,
+              account.account_name,
+              account.budget_amount
+            );
+            
+            // Se conseguimos criar uma revisão inicial, buscar novamente as revisões
+            if (accountLastReview) {
+              accountReviewsData = await fetchClientReviews(client.id, account.account_id);
+              accountLastReview = accountReviewsData?.[0] || accountLastReview;
+            }
+          }
           
           // Log para diagnóstico
           console.log(`Conta ${account.account_name} (${account.account_id}): ${accountReviewsData?.length || 0} revisões`);
+          console.log(`Revisão encontrada/criada:`, accountLastReview);
           
           // Criar um cliente processado para cada conta Meta, independente de ter revisão ou não
-          processedClients.push({
+          const processedClient: ClientWithReview = {
             ...client,
             meta_account_id: account.account_id,  // Associamos a conta Meta específica
             lastReview: accountLastReview || null,
             status: client.status
-          });
+          };
+          
+          processedClients.push(processedClient);
           
           if (accountLastReview) {
             const reviewDate = new Date(accountLastReview.created_at);
@@ -123,7 +149,7 @@ export const processClientsWithReviews = async () => {
   
   console.log(`Clientes Sorrifácil processados: ${processedSorrifacil.length}`);
   processedSorrifacil.forEach((c, i) => {
-    console.log(`Sorrifácil #${i + 1} - meta_account_id: ${c.meta_account_id}`);
+    console.log(`Sorrifácil #${i + 1} - meta_account_id: ${c.meta_account_id}, lastReview:`, c.lastReview);
   });
   
   return { 

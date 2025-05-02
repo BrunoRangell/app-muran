@@ -20,7 +20,10 @@ export const reviewClient = async (clientId: string, accountId?: string) => {
         .eq('account_id', accountId)
         .maybeSingle();
 
-      if (metaError) throw metaError;
+      if (metaError) {
+        console.error(`Erro ao buscar conta Meta ${accountId}:`, metaError);
+        throw metaError;
+      }
 
       if (metaAccount) {
         metaAccountName = metaAccount.account_name;
@@ -57,10 +60,26 @@ export const reviewClient = async (clientId: string, accountId?: string) => {
 
     console.log("Enviando payload para função Edge:", payload);
     const url = `${window.location.origin}/api/daily-meta-review`;
-    const response = await axios.post(url, payload);
-
-    console.log("Resposta da função Edge:", response.data);
-    return response.data;
+    
+    try {
+      const response = await axios.post(url, payload);
+      console.log("Resposta da função Edge:", response.data);
+      return response.data;
+    } catch (axiosError: any) {
+      console.error("Erro na requisição axios:", axiosError);
+      
+      // Detalhamento do erro para diagnóstico
+      if (axiosError.response) {
+        console.error("Dados da resposta de erro:", axiosError.response.data);
+        console.error("Status do erro:", axiosError.response.status);
+      } else if (axiosError.request) {
+        console.error("Requisição feita mas sem resposta:", axiosError.request);
+      } else {
+        console.error("Erro ao configurar a requisição:", axiosError.message);
+      }
+      
+      throw axiosError;
+    }
   } catch (error: any) {
     console.error("Erro ao revisar cliente:", error);
     throw error;

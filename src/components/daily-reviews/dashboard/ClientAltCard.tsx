@@ -49,6 +49,9 @@ export const ClientAltCard = ({
     console.log(`Analisando cliente ${client.id} com conta ${accountId || 'principal'}`);
   };
   
+  // Definir se a conta precisa de revisão - agora garantimos que mostramos o card mesmo sem revisão
+  const needsReview = !specificReview;
+  
   return (
     <tr className="border-b border-gray-200 hover:bg-gray-50">
       <td className="px-6 py-4 whitespace-nowrap">
@@ -98,7 +101,7 @@ export const ClientAltCard = ({
             size="sm" 
             onClick={handleReviewClick}
             disabled={isProcessing}
-            className={accountId ? "bg-[#ff6e00] text-white hover:bg-[#e66300]" : ""}
+            className={needsReview ? "bg-[#ff6e00] text-white hover:bg-[#e66300]" : (accountId ? "bg-[#ff6e00] text-white hover:bg-[#e66300]" : "")}
           >
             {isProcessing ? "Analisando..." : (specificReview ? "Atualizar" : "Analisar")}
           </Button>
