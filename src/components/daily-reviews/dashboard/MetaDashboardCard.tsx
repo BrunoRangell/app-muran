@@ -35,10 +35,12 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
   const sorrifacilClients = filteredClients?.filter(client => 
     client.company_name.toLowerCase().includes("sorrifacil")) || [];
   console.log("3. Clientes Sorrifácil encontrados:", sorrifacilClients.length);
+  console.log("   Detalhes dos clientes Sorrifácil:", sorrifacilClients);
   
   const sorrifacilMetaAccounts = metaAccounts.filter(account => 
     sorrifacilClients.some(client => client.id === account.client_id));
-  console.log("4. Contas Meta da Sorrifácil:", sorrifacilMetaAccounts.length, sorrifacilMetaAccounts);
+  console.log("4. Contas Meta da Sorrifácil:", sorrifacilMetaAccounts.length);
+  console.log("   Detalhes das contas Meta da Sorrifácil:", sorrifacilMetaAccounts);
 
   const filteredByName = filteredClients ? filterClientsByName(filteredClients, searchQuery) : [];
   const finalFilteredClients = filterClientsByAdjustment(filteredByName, showOnlyAdjustments);
@@ -93,7 +95,8 @@ export const MetaDashboardCard = ({ onViewClientDetails, onAnalyzeAll }: MetaDas
           // Criamos uma cópia do cliente com informações específicas para esta conta
           const clientWithAccountInfo = {
             ...client,
-            // Podemos manter lastReview do cliente ou nulo se não tiver revisão específica para esta conta
+            // Explicitamente definimos meta_account_id para garantir que é usado
+            meta_account_id: account.account_id,
           };
           
           rows.push(

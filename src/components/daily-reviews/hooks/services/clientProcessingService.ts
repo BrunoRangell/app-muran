@@ -47,6 +47,8 @@ export const processClientsWithReviews = async () => {
     // Log para diagnóstico
     console.log(`Cliente ${client.company_name} (${client.id}): ${clientMetaAccounts.length} contas Meta ativas`);
     
+    // IMPORTANTE: Sempre criar um processedClient para cada conta Meta ativa
+    // Mesmo se o cliente não tiver revisões, precisamos criar entries para as contas Meta
     if (clientMetaAccounts.length > 0) {
       // Cliente com contas Meta específicas
       for (const account of clientMetaAccounts) {
@@ -58,7 +60,7 @@ export const processClientsWithReviews = async () => {
           // Log para diagnóstico
           console.log(`Conta ${account.account_name} (${account.account_id}): ${accountReviewsData?.length || 0} revisões`);
           
-          // Criar um cliente processado para cada conta Meta
+          // Criar um cliente processado para cada conta Meta, independente de ter revisão ou não
           processedClients.push({
             ...client,
             meta_account_id: account.account_id,  // Associamos a conta Meta específica
@@ -120,7 +122,9 @@ export const processClientsWithReviews = async () => {
   );
   
   console.log(`Clientes Sorrifácil processados: ${processedSorrifacil.length}`);
-  console.log(processedSorrifacil);
+  processedSorrifacil.forEach((c, i) => {
+    console.log(`Sorrifácil #${i + 1} - meta_account_id: ${c.meta_account_id}`);
+  });
   
   return { 
     clientsData: processedClients, 

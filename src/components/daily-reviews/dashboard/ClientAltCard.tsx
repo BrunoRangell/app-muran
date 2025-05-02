@@ -30,7 +30,7 @@ export const ClientAltCard = ({
   // Buscamos revisão específica para esta conta se existir
   let specificReview = null;
   if (client.lastReview) {
-    // Verificamos se a revisão corresponde à conta atual (verificando meta_account_id ou client_account_id)
+    // Verificamos se a revisão corresponde à conta atual
     if (accountId && 
         (client.lastReview.meta_account_id === accountId || 
          client.lastReview.client_account_id === accountId)) {
@@ -41,7 +41,7 @@ export const ClientAltCard = ({
       specificReview = client.lastReview;
     }
   } else {
-    console.log(`Sem revisão para conta ${accountId || 'principal'} do cliente ${client.company_name}`);
+    console.log(`Sem revisão para conta ${accountId || 'principal'} do cliente ${client.company_name}. A análise deve ser feita.`);
   }
   
   const handleReviewClick = () => {
@@ -100,7 +100,7 @@ export const ClientAltCard = ({
             disabled={isProcessing}
             className={accountId ? "bg-[#ff6e00] text-white hover:bg-[#e66300]" : ""}
           >
-            {isProcessing ? "Analisando..." : "Analisar"}
+            {isProcessing ? "Analisando..." : (specificReview ? "Atualizar" : "Analisar")}
           </Button>
         </div>
       </td>

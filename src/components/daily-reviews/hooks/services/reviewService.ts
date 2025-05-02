@@ -26,6 +26,8 @@ export const reviewClient = async (clientId: string, accountId?: string) => {
         metaAccountName = metaAccount.account_name;
         metaBudgetAmount = metaAccount.budget_amount;
         console.log(`Detalhes da conta Meta encontrados: ${metaAccountName}, orçamento: ${metaBudgetAmount}`);
+      } else {
+        console.log(`Nenhum detalhe encontrado para conta Meta ${accountId} do cliente ${clientId}`);
       }
     }
 
@@ -59,7 +61,7 @@ export const reviewClient = async (clientId: string, accountId?: string) => {
 
     console.log("Resposta da função Edge:", response.data);
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao revisar cliente:", error);
     throw error;
   }
@@ -70,36 +72,61 @@ export const reviewAllClients = async (clients: any[], onSuccess: () => void, me
   if (metaAccounts && metaAccounts.length > 0) {
     console.log(`Revisando ${metaAccounts.length} contas Meta separadamente`);
     
+    const successfulReviews: string[] = [];
+    const failedReviews: string[] = [];
+    
     // Para cada conta Meta, iniciar uma revisão
     for (const account of metaAccounts) {
       if (!account.client_id || !account.account_id) {
         console.warn("Conta Meta sem client_id ou account_id válidos:", account);
+        failedReviews.push(`Conta inválida: ${account.id || 'desconhecida'}`);
         continue;
       }
       
       try {
-        console.log(`Revisando cliente ${account.client_id} com conta Meta ${account.account_id}`);
+        console.log(`Revisando cliente ${account.client_id} com conta Meta ${account.account_id} (${account.account_name || 'sem nome'})`);
         await reviewClient(account.client_id, account.account_id);
+        successfulReviews.push(`${account.account_name || account.account_id}`);
       } catch (error) {
         console.error(`Erro ao revisar cliente ${account.client_id} com conta ${account.account_id}:`, error);
+        failedReviews.push(`${account.account_name || account.account_id}`);
       }
     }
+    
+    // Detalhes sobre o resultado da operação
+    console.log(`Revisões concluídas: ${successfulReviews.length} contas, falhas: ${failedReviews.length}`);
+    if (failedReviews.length > 0) {
+      console.log("Contas com falhas:", failedReviews);
+    }
+    
+    toast({
+      title: "Revisão em massa concluída",
+      description: `${successfulReviews.length} contas revisadas com sucesso${failedReviews.length > 0 ? `, ${failedReviews.length} falhas` : ''}.`,
+      duration: 5000,
+    });
   } else {
     // Comportamento original: revisar apenas o cliente sem especificar conta
+    console.log(`Revisando ${clients.length} clientes sem especificar contas Meta`);
+    
+    const successfulReviews: string[] = [];
+    const failedReviews: string[] = [];
+    
     for (const client of clients) {
       try {
         await reviewClient(client.id);
+        successfulReviews.push(client.company_name);
       } catch (error) {
         console.error(`Erro ao revisar cliente ${client.id}:`, error);
+        failedReviews.push(client.company_name);
       }
     }
+    
+    toast({
+      title: "Revisão em massa concluída",
+      description: `${successfulReviews.length} clientes revisados com sucesso${failedReviews.length > 0 ? `, ${failedReviews.length} falhas` : ''}.`,
+      duration: 5000,
+    });
   }
-  
-  toast({
-    title: "Revisão em massa concluída",
-    description: `Foram revisados ${metaAccounts?.length || clients.length} clientes/contas.`,
-    duration: 5000,
-  });
 
   onSuccess();
 };
