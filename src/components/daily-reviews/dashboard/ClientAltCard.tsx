@@ -29,7 +29,8 @@ export const ClientAltCard = ({
   
   // Buscamos revisão específica para esta conta se existir
   let specificReview = null;
-  if (client.lastReview && accountId && client.lastReview.meta_account_id === accountId) {
+  if (client.lastReview && accountId && client.lastReview.client_account_id === accountId) {
+    // Corrigido: mudamos de meta_account_id para client_account_id conforme o tipo ReviewData
     specificReview = client.lastReview;
     console.log(`Encontrada revisão específica para conta ${accountId}:`, specificReview);
   } else if (!accountId && client.lastReview) {
