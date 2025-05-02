@@ -126,13 +126,15 @@ serve(async (req: Request) => {
     // Arredondar para duas casas decimais
     const roundedIdealDailyBudget = Math.round(idealDailyBudget * 100) / 100;
     
+    console.log(`Verificando revisão existente para cliente ${clientId} e conta ${accountId || ""} na data ${reviewDate}`);
+    
     // Verificar se já existe uma revisão atual para este cliente e conta específica
     const { data: existingReview, error: existingReviewError } = await supabase
       .from("daily_budget_reviews")
       .select("*")
       .eq("client_id", clientId)
       .eq("review_date", reviewDate)
-      .eq("meta_account_id", accountId || "")
+      .or(`meta_account_id.eq.${accountId || ""},client_account_id.eq.${accountId || ""}`)
       .maybeSingle();
 
     if (existingReviewError && existingReviewError.code !== "PGRST116") {
@@ -142,12 +144,18 @@ serve(async (req: Request) => {
     let reviewId;
     
     if (existingReview) {
+      console.log("Encontrada revisão existente:", existingReview);
+      
       // Atualizar revisão existente
       const { error: updateError } = await supabase
         .from("daily_budget_reviews")
         .update({
           meta_daily_budget_current: roundedIdealDailyBudget,
           meta_total_spent: totalSpent,
+          meta_account_id: accountId || null,  // Garantir que ambos os campos sejam preenchidos
+          client_account_id: accountId || null, // Garantir que ambos os campos sejam preenchidos
+          meta_account_name: accountName,
+          account_display_name: accountName,
           using_custom_budget: usingCustomBudget,
           custom_budget_id: customBudget?.id || null,
           custom_budget_amount: usingCustomBudget ? customBudget?.budget_amount : null,
@@ -162,6 +170,8 @@ serve(async (req: Request) => {
       reviewId = existingReview.id;
       console.log(`Revisão existente atualizada: ${reviewId}`);
     } else {
+      console.log("Criando nova revisão");
+      
       // Criar nova revisão
       const { data: newReview, error: insertError } = await supabase
         .from("daily_budget_reviews")
@@ -170,8 +180,10 @@ serve(async (req: Request) => {
           review_date: reviewDate,
           meta_daily_budget_current: roundedIdealDailyBudget,
           meta_total_spent: totalSpent,
-          meta_account_id: accountId || null,
-          meta_account_name: accountName || null,
+          meta_account_id: accountId || null,  // Garantir que ambos os campos sejam preenchidos
+          client_account_id: accountId || null, // Garantir que ambos os campos sejam preenchidos
+          meta_account_name: accountName,
+          account_display_name: accountName,
           using_custom_budget: usingCustomBudget,
           custom_budget_id: customBudget?.id || null,
           custom_budget_amount: usingCustomBudget ? customBudget?.budget_amount : null,

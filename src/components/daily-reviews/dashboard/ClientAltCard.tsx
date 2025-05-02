@@ -29,12 +29,17 @@ export const ClientAltCard = ({
   
   // Buscamos revisão específica para esta conta se existir
   let specificReview = null;
-  if (client.lastReview && accountId && client.lastReview.client_account_id === accountId) {
-    // Corrigido: mudamos de meta_account_id para client_account_id conforme o tipo ReviewData
-    specificReview = client.lastReview;
-    console.log(`Encontrada revisão específica para conta ${accountId}:`, specificReview);
-  } else if (!accountId && client.lastReview) {
-    specificReview = client.lastReview;
+  if (client.lastReview) {
+    // Verificamos se a revisão corresponde à conta atual (verificando meta_account_id ou client_account_id)
+    if (accountId && 
+        (client.lastReview.meta_account_id === accountId || 
+         client.lastReview.client_account_id === accountId)) {
+      specificReview = client.lastReview;
+      console.log(`Encontrada revisão específica para conta ${accountId}:`, specificReview);
+    } else if (!accountId) {
+      // Se não temos accountId, consideramos que esta é a revisão para a conta principal
+      specificReview = client.lastReview;
+    }
   } else {
     console.log(`Sem revisão para conta ${accountId || 'principal'} do cliente ${client.company_name}`);
   }

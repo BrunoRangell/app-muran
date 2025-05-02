@@ -48,7 +48,11 @@ export const fetchMetaAccounts = async () => {
   const sorrifacilAccounts = metaAccountsData.filter(account => {
     return account.client_id && (
       (account.account_name && account.account_name.toLowerCase().includes('sorrifacil')) || 
-      (account.account_id && account.account_id.toLowerCase().includes('sorrifacil'))
+      (account.account_id && account.account_id.toLowerCase().includes('sorrifacil')) ||
+      (account.client_id && metaAccountsData.some(a => 
+        a.client_id === account.client_id && 
+        (a.account_name && a.account_name.toLowerCase().includes('sorrifacil'))
+      ))
     );
   });
   
@@ -67,7 +71,7 @@ export const fetchClientReviews = async (clientId: string, accountId?: string) =
       .from('daily_budget_reviews')
       .select('*')
       .eq('client_id', clientId)
-      .eq('meta_account_id', accountId)
+      .or(`meta_account_id.eq.${accountId},client_account_id.eq.${accountId}`)
       .eq('review_date', new Date().toISOString().split('T')[0])
       .order('created_at', { ascending: false });
       

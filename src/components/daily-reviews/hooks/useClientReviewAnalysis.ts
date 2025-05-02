@@ -23,11 +23,32 @@ export const useClientReviewAnalysis = () => {
     console.log(`Total de clientes: ${clientsData.length}`);
     console.log(`Total de contas Meta: ${metaAccountsData.length}`);
     
+    // Agrupar contas Meta por cliente para facilitar processamento
+    const clientMetaAccountsMap = new Map<string, MetaAccount[]>();
+    
+    metaAccountsData.forEach(account => {
+      if (!account.client_id) return;
+      
+      const accounts = clientMetaAccountsMap.get(account.client_id) || [];
+      accounts.push(account);
+      clientMetaAccountsMap.set(account.client_id, accounts);
+    });
+    
+    // Log específico para Sorrifácil
+    const sorrifacilClient = clientsData.find(c => 
+      c.company_name.toLowerCase().includes('sorrifacil')
+    );
+    
+    if (sorrifacilClient) {
+      const sorrifacilAccounts = clientMetaAccountsMap.get(sorrifacilClient.id) || [];
+      console.log(`Cliente Sorrifácil (${sorrifacilClient.id}) tem ${sorrifacilAccounts.length} contas Meta:`);
+      console.log(sorrifacilAccounts);
+    }
+    
+    // Processar cada cliente
     for (const client of clientsData) {
       // Buscar as contas Meta associadas a este cliente
-      const clientMetaAccounts = metaAccountsData.filter(account => 
-        account.client_id === client.id && account.status === 'active'
-      );
+      const clientMetaAccounts = clientMetaAccountsMap.get(client.id) || [];
       
       // Log para diagnóstico
       console.log(`Cliente ${client.company_name} (${client.id}): ${clientMetaAccounts.length} contas Meta ativas`);
@@ -98,6 +119,14 @@ export const useClientReviewAnalysis = () => {
         }
       }
     }
+    
+    // Verificação final para Sorrifácil
+    const processedSorrifacil = processedClients.filter(c => 
+      c.company_name.toLowerCase().includes('sorrifacil')
+    );
+    
+    console.log(`Clientes Sorrifácil processados: ${processedSorrifacil.length}`);
+    console.log(processedSorrifacil);
     
     return { 
       clientsData: processedClients, 

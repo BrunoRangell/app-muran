@@ -37,6 +37,8 @@ export interface ReviewData {
   google_account_id?: string | null; // Adicionando ID da conta Google
   client_account_id?: string;
   account_display_name?: string;
+  // Garantindo que ambos os campos estejam presentes para compatibilidade
+  meta_account_id?: string; // Adicionado para compatibilidade com código existente
 }
 
 // Tipos relacionados à análise
