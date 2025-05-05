@@ -28,10 +28,40 @@ export const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
   if (!client.lastReview || !client.meta_account_id) return false;
   
   // Verificar se a diferença de orçamento é significativa (≥ 5)
-  const budgetDiff = Math.abs(
-    (client.lastReview.idealDailyBudget || 0) - 
-    (client.lastReview.meta_daily_budget_current || 0)
-  );
+  const currentBudget = client.lastReview.meta_daily_budget_current || 0;
+  
+  // Calcular o orçamento ideal (se não estiver já calculado)
+  let idealBudget = client.lastReview.idealDailyBudget;
+  
+  if (idealBudget === undefined) {
+    // Se estiver usando orçamento personalizado, usar o valor adequado
+    if (client.lastReview.using_custom_budget && client.lastReview.custom_budget_amount) {
+      // Aqui precisamos calcular o orçamento ideal com base no orçamento personalizado
+      // Usar valores salvos ou fazer o cálculo em tempo real
+      const totalSpent = client.lastReview.meta_total_spent || 0;
+      const budgetAmount = client.lastReview.custom_budget_amount || client.meta_ads_budget || 0;
+      
+      // Cálculo básico (similar ao que seria feito no backend)
+      const today = new Date();
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      const remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
+      
+      idealBudget = remainingDays > 0 ? (budgetAmount - totalSpent) / remainingDays : 0;
+    } else {
+      // Para orçamento regular
+      const totalSpent = client.lastReview.meta_total_spent || 0;
+      const budgetAmount = client.meta_ads_budget || 0;
+      
+      const today = new Date();
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      const remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
+      
+      idealBudget = remainingDays > 0 ? (budgetAmount - totalSpent) / remainingDays : 0;
+    }
+  }
+  
+  const budgetDiff = Math.abs(idealBudget - currentBudget);
+  console.log(`Cliente ${client.company_name}: orçamento atual ${currentBudget}, ideal ${idealBudget}, diferença ${budgetDiff}`);
   
   return budgetDiff >= 5;
 };
@@ -45,13 +75,12 @@ export const filterClientsByAdjustment = (
 ): ClientWithReview[] => {
   if (!showOnlyAdjustments) return clients;
   
-  return clients.filter(client => {
-    const needsAdjustment = client.needsBudgetAdjustment === true || clientNeedsAdjustment(client);
+  const filteredClients = clients.filter(client => {
+    const needsAdjustment = clientNeedsAdjustment(client);
     
     if (needsAdjustment) {
       console.log(`Cliente filtrado que precisa de ajuste: ${client.company_name}`, {
-        needsAdjustment: client.needsBudgetAdjustment,
-        budgetDifference: client.lastReview?.idealDailyBudget 
+        budgetDifference: client.lastReview?.idealDailyBudget !== undefined
           ? Math.abs((client.lastReview.idealDailyBudget || 0) - (client.lastReview.meta_daily_budget_current || 0))
           : "N/A",
         usingCustomBudget: client.lastReview?.using_custom_budget || false
@@ -60,6 +89,9 @@ export const filterClientsByAdjustment = (
     
     return needsAdjustment;
   });
+  
+  console.log(`Clientes filtrados por ajuste: ${filteredClients.length} de ${clients.length}`);
+  return filteredClients;
 };
 
 /**
