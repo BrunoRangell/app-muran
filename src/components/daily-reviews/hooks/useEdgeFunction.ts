@@ -1,7 +1,37 @@
 
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AnalysisResult } from "./types";
 import { AppError } from "@/lib/errors";
+
+/**
+ * Hook para fornecer funcionalidade de chamada à Edge Function
+ */
+export const useEdgeFunction = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  
+  const callFunction = async (clientId: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await callEdgeFunction(clientId);
+      return result;
+    } catch (err) {
+      setError(err as Error);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return {
+    callFunction,
+    isLoading,
+    error
+  };
+};
 
 /**
  * Obtém o token de acesso da Meta ads a partir do banco de dados

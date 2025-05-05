@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { 
   Card, 
   CardContent, 
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Save, Loader, Info } from "lucide-react";
+import { Search, Save, Loader, Info, Plus } from "lucide-react";
 import { useBudgetManager } from "./hooks/useBudgetManager";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,7 +37,8 @@ export const BudgetManager = () => {
     handleSave, 
     isSaving,
     totalBudget,
-    totalGoogleBudget
+    totalGoogleBudget,
+    addSecondaryAccount
   } = useBudgetManager();
 
   // Filtrar clientes com base no termo de busca
@@ -99,56 +100,118 @@ export const BudgetManager = () => {
                     <TableHead className="w-[15%]">Orçamento Meta Ads (R$)</TableHead>
                     <TableHead className="w-[15%]">ID Conta Google Ads</TableHead>
                     <TableHead className="w-[15%]">Orçamento Google Ads (R$)</TableHead>
+                    <TableHead className="w-[15%] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredClients?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-6 text-gray-500">
                         Nenhum cliente encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredClients?.map((client) => (
-                      <TableRow key={client.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">{client.company_name}</TableCell>
-                        <TableCell>
-                          <Input
-                            value={budgets[client.id]?.accountId || ""}
-                            onChange={(e) => handleAccountIdChange(client.id, e.target.value)}
-                            placeholder="ID da conta Meta"
-                            className="bg-white"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="text"
-                            value={budgets[client.id]?.formattedValue || ""}
-                            onChange={(e) => handleBudgetChange(client.id, e.target.value)}
-                            onBlur={() => handleBudgetBlur(client.id, 'meta')}
-                            placeholder="R$ 0,00"
-                            className="text-right bg-white"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={budgets[client.id]?.googleAccountId || ""}
-                            onChange={(e) => handleGoogleAccountIdChange(client.id, e.target.value)}
-                            placeholder="ID da conta Google"
-                            className="bg-white"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="text"
-                            value={budgets[client.id]?.googleFormattedValue || ""}
-                            onChange={(e) => handleGoogleBudgetChange(client.id, e.target.value)}
-                            onBlur={() => handleBudgetBlur(client.id, 'google')}
-                            placeholder="R$ 0,00"
-                            className="text-right bg-white"
-                          />
-                        </TableCell>
-                      </TableRow>
+                      <React.Fragment key={client.id}>
+                        <TableRow className="hover:bg-gray-50">
+                          <TableCell className="font-medium">{client.company_name}</TableCell>
+                          <TableCell>
+                            <Input
+                              value={budgets[client.id]?.accountId || ""}
+                              onChange={(e) => handleAccountIdChange(client.id, e.target.value, 'primary')}
+                              placeholder="ID da conta Meta"
+                              className="bg-white"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="text"
+                              value={budgets[client.id]?.formattedValue || ""}
+                              onChange={(e) => handleBudgetChange(client.id, e.target.value, 'primary')}
+                              onBlur={() => handleBudgetBlur(client.id, 'meta', 'primary')}
+                              placeholder="R$ 0,00"
+                              className="text-right bg-white"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={budgets[client.id]?.googleAccountId || ""}
+                              onChange={(e) => handleGoogleAccountIdChange(client.id, e.target.value, 'primary')}
+                              placeholder="ID da conta Google"
+                              className="bg-white"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="text"
+                              value={budgets[client.id]?.googleFormattedValue || ""}
+                              onChange={(e) => handleGoogleBudgetChange(client.id, e.target.value, 'primary')}
+                              onBlur={() => handleBudgetBlur(client.id, 'google', 'primary')}
+                              placeholder="R$ 0,00"
+                              className="text-right bg-white"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addSecondaryAccount(client.id)}
+                              title="Adicionar Conta Secundária"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        
+                        {/* Conta secundária se existir */}
+                        {budgets[client.id]?.hasSecondary && (
+                          <TableRow className="bg-gray-50/50">
+                            <TableCell className="text-xs text-gray-500 pl-8">
+                              Conta secundária
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={budgets[client.id]?.secondaryAccountId || ""}
+                                onChange={(e) => handleAccountIdChange(client.id, e.target.value, 'secondary')}
+                                placeholder="ID da conta Meta secundária"
+                                className="bg-white"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="text"
+                                value={budgets[client.id]?.secondaryFormattedValue || ""}
+                                onChange={(e) => handleBudgetChange(client.id, e.target.value, 'secondary')}
+                                onBlur={() => handleBudgetBlur(client.id, 'meta', 'secondary')}
+                                placeholder="R$ 0,00"
+                                className="text-right bg-white"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={budgets[client.id]?.secondaryGoogleAccountId || ""}
+                                onChange={(e) => handleGoogleAccountIdChange(client.id, e.target.value, 'secondary')}
+                                placeholder="ID da conta Google secundária"
+                                className="bg-white"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="text"
+                                value={budgets[client.id]?.secondaryGoogleFormattedValue || ""}
+                                onChange={(e) => handleGoogleBudgetChange(client.id, e.target.value, 'secondary')}
+                                onBlur={() => handleBudgetBlur(client.id, 'google', 'secondary')}
+                                placeholder="R$ 0,00"
+                                className="text-right bg-white"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {/* Poderíamos adicionar opção para remover a conta secundária aqui */}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     ))
                   )}
                 </TableBody>
@@ -166,6 +229,7 @@ export const BudgetManager = () => {
                     <TableCell className="text-right font-medium">
                       {totalGoogleBudget}
                     </TableCell>
+                    <TableCell></TableCell>
                   </TableRow>
                 </TableFooter>
               </Table>
@@ -197,3 +261,5 @@ export const BudgetManager = () => {
     </Card>
   );
 };
+
+export default BudgetManager;

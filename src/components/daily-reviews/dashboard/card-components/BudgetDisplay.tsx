@@ -8,13 +8,15 @@ interface BudgetDisplayProps {
   showRecommendation: boolean;
   needsIncrease: boolean;
   budgetDifference: number;
+  accountName?: string;
 }
 
 export const BudgetDisplay = ({ 
   idealDailyBudget, 
   showRecommendation, 
   needsIncrease, 
-  budgetDifference 
+  budgetDifference,
+  accountName
 }: BudgetDisplayProps) => {
   return (
     <div className="flex items-center gap-2">
@@ -26,6 +28,9 @@ export const BudgetDisplay = ({
       
       {showRecommendation && (
         <Badge className={`flex items-center ${needsIncrease ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {accountName && (
+            <span className="mr-1 font-medium">{accountName}:</span>
+          )}
           {needsIncrease ? (
             <TrendingUp size={14} className="mr-1" />
           ) : (

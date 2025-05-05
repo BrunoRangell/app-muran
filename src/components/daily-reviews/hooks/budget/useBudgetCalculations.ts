@@ -11,7 +11,20 @@ export const useBudgetCalculations = (
   isUsingCustomBudgetInReview: boolean,
   hasReview: boolean
 ) => {
-  const monthlyBudget = client.meta_ads_budget || 0;
+  // Calcular orçamento total de todas as contas Meta Ads do cliente
+  const calculateTotalBudget = () => {
+    // Se o cliente não tem contas Meta, usar o valor legado do orçamento do cliente
+    if (!client.meta_accounts || client.meta_accounts.length === 0) {
+      return client.meta_ads_budget || 0;
+    }
+    
+    // Caso contrário, somar os orçamentos de todas as contas Meta
+    return client.meta_accounts.reduce((sum, account) => {
+      return sum + (account.budget_amount || 0);
+    }, 0);
+  };
+  
+  const monthlyBudget = calculateTotalBudget();
   const totalSpentFromDB = hasReview ? (client.lastReview?.meta_total_spent || 0) : 0;
   
   // Usar o valor do banco de dados para o total gasto

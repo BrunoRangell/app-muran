@@ -1,90 +1,114 @@
 
-import { Loader } from "lucide-react";
+import { ClientWithReview, MetaAccount } from "../hooks/types/reviewTypes";
 import { formatCurrency } from "@/utils/formatters";
-import { ClientWithReview } from "../hooks/types/reviewTypes";
-import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
-import { ClientInfo } from "./card-components/ClientInfo";
-import { BudgetDisplay } from "./card-components/BudgetDisplay";
-import { ActionButtons } from "./card-components/ActionButtons";
+import { CardActions } from "./CardActions";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 
 interface ClientAltCardProps {
   client: ClientWithReview;
-  onReviewClient: (clientId: string) => void;
+  metaAccount?: MetaAccount;
+  onReviewClient: (clientId: string, accountId?: string) => void;
   isProcessing: boolean;
 }
 
-export const ClientAltCard = ({ 
-  client, 
+export const ClientAltCard = ({
+  client,
+  metaAccount,
   onReviewClient,
-  isProcessing 
+  isProcessing
 }: ClientAltCardProps) => {
-  // Usar o hook personalizado para cálculos de orçamento
-  const {
-    hasReview,
-    isCalculating,
-    calculationError,
-    monthlyBudget,
-    totalSpent,
-    currentDailyBudget,
-    idealDailyBudget,
-    budgetDifference,
-    // Informações sobre orçamento personalizado
-    customBudget,
-    isUsingCustomBudgetInReview,
-    actualBudgetAmount
-  } = useClientBudgetCalculation(client);
-
-  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão e diferença significativa
-  const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
-  const needsIncrease = budgetDifference > 0;
-
+  // Se temos uma conta Meta específica
+  const accountId = metaAccount?.account_id;
+  const accountName = metaAccount?.account_name || "Conta Principal";
+  const budgetAmount = metaAccount?.budget_amount || client.meta_ads_budget || 0;
+  
+  // Log para depuração - exibe informações detalhadas da conta
+  console.log(`Renderizando card para ${client.company_name} - Conta: ${accountName}, ID: ${accountId || 'N/A'}`);
+  
+  // Buscamos revisão específica para esta conta se existir
+  let specificReview = null;
+  if (client.lastReview) {
+    // Verificamos se a revisão corresponde à conta atual
+    if (accountId && 
+        (client.lastReview.meta_account_id === accountId || 
+         client.lastReview.client_account_id === accountId)) {
+      specificReview = client.lastReview;
+      console.log(`Encontrada revisão específica para conta ${accountId}:`, specificReview);
+    } else if (!accountId) {
+      // Se não temos accountId, consideramos que esta é a revisão para a conta principal
+      specificReview = client.lastReview;
+    }
+  } else {
+    console.log(`Sem revisão para conta ${accountId || 'principal'} do cliente ${client.company_name}. A análise deve ser feita.`);
+  }
+  
+  const handleReviewClick = () => {
+    onReviewClient(client.id, accountId);
+    console.log(`Analisando cliente ${client.id} com conta ${accountId || 'principal'}`);
+  };
+  
+  // SEMPRE mostrar o card, tenha revisão ou não - isso é crucial
+  // Definimos o texto do botão com base na existência de revisão
+  const buttonText = isProcessing ? "Analisando..." : (specificReview ? "Atualizar" : "Analisar");
+  // Definimos se o botão deve ter destaque
+  const needsHighlight = !specificReview || accountId;
+  
   return (
-    <tr className={`hover:bg-gray-50 ${
-      showRecommendation ? 'border-l-4 border-l-amber-500' : ''
-    }`}>
-      <td className="px-6 py-4">
-        <ClientInfo 
-          client={client} 
-          customBudget={customBudget} 
-          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview} 
-        />
-      </td>
-      <td className="px-6 py-4">
-        <div className="font-medium">{formatCurrency(actualBudgetAmount || monthlyBudget)}</div>
-      </td>
-      <td className="px-6 py-4">
-        {isCalculating ? (
-          <span className="text-gray-400 flex items-center">
-            <Loader size={14} className="animate-spin mr-2" /> Calculando...
-          </span>
-        ) : calculationError ? (
-          <span className="text-red-500 text-sm">Erro ao calcular</span>
-        ) : (
-          <div className="font-medium">{formatCurrency(totalSpent)}</div>
-        )}
-      </td>
-      <td className="px-6 py-4">
-        <div className="font-medium">
-          {hasReview && currentDailyBudget 
-            ? formatCurrency(currentDailyBudget) 
-            : "Não disponível"}
+    <tr className="border-b border-gray-200 hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex flex-col">
+          <span className="font-medium text-gray-900">{client.company_name}</span>
+          {accountId ? (
+            <span className="text-xs text-gray-500">
+              {accountName} ({accountId.substring(0, 10)}...)
+            </span>
+          ) : null}
         </div>
       </td>
-      <td className="px-6 py-4">
-        <BudgetDisplay 
-          idealDailyBudget={idealDailyBudget}
-          showRecommendation={showRecommendation}
-          needsIncrease={needsIncrease}
-          budgetDifference={budgetDifference}
-        />
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-gray-900">{formatCurrency(budgetAmount)}</span>
       </td>
-      <td className="px-6 py-4">
-        <ActionButtons 
-          isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
-          customBudget={customBudget}
-          onReviewClient={() => onReviewClient(client.id)}
-          isProcessing={isProcessing}
-        />
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-gray-900">
+          {specificReview?.meta_total_spent 
+            ? formatCurrency(specificReview?.meta_total_spent)
+            : "-"}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-gray-900">
+          {specificReview?.meta_daily_budget_current 
+            ? formatCurrency(specificReview?.meta_daily_budget_current)
+            : "-"}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className="text-gray-900">-</span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex gap-2">
+          <Link to={`/revisao-meta/${client.id}${accountId ? `?accountId=${accountId}` : ''}`}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-gray-300 text-gray-700"
+            >
+              <ExternalLink size={14} className="mr-1" />
+              Detalhes
+            </Button>
+          </Link>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleReviewClick}
+            disabled={isProcessing}
+            className={needsHighlight ? "bg-[#ff6e00] text-white hover:bg-[#e66300]" : ""}
+          >
+            {buttonText}
+          </Button>
+        </div>
       </td>
     </tr>
   );

@@ -12,6 +12,7 @@ interface BudgetInfoGridProps {
   hasReview: boolean;
   actualBudgetAmount?: number;
   isUsingCustomBudget?: boolean;
+  accountName?: string;
 }
 
 export const BudgetInfoGrid = ({
@@ -23,7 +24,8 @@ export const BudgetInfoGrid = ({
   calculationError,
   hasReview,
   actualBudgetAmount,
-  isUsingCustomBudget
+  isUsingCustomBudget,
+  accountName
 }: BudgetInfoGridProps) => {
   // Determinar qual orçamento exibir (padrão ou personalizado)
   const displayBudget = isUsingCustomBudget && actualBudgetAmount ? actualBudgetAmount : monthlyBudget;
@@ -33,6 +35,7 @@ export const BudgetInfoGrid = ({
       <div className="bg-gray-50 p-3 rounded-lg">
         <div className="text-sm text-gray-500 mb-1">
           {isUsingCustomBudget ? "Orçamento Personalizado" : "Orçamento Mensal"}
+          {accountName && <span className="ml-1">({accountName})</span>}
         </div>
         <div className="text-base font-semibold">{formatCurrency(displayBudget)}</div>
       </div>

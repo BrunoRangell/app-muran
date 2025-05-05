@@ -57,6 +57,17 @@ export const GoogleAdsClientReviewCardCompact = ({
     ? 'border-l-4 border-l-muran-primary'
     : '';
 
+  // Verificar se o cliente tem contas Google configuradas
+  const hasGoogleAccounts = client.google_accounts && client.google_accounts.length > 0;
+  
+  // Definir rótulo baseado no número de contas
+  let accountsLabel = "Sem Conta";
+  if (hasGoogleAccounts) {
+    accountsLabel = client.google_accounts.length > 1 
+      ? `${client.google_accounts.length} Contas` 
+      : client.google_accounts[0].account_name || "1 Conta";
+  }
+
   return (
     <Card 
       className={`overflow-hidden hover:shadow-md transition-shadow ${
@@ -73,6 +84,11 @@ export const GoogleAdsClientReviewCardCompact = ({
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
                 {formattedLastReviewDate}
               </span>
+              {hasGoogleAccounts && (
+                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded ml-1">
+                  {accountsLabel}
+                </span>
+              )}
             </div>
           </div>
           
