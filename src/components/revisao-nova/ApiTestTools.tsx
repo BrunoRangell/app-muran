@@ -29,7 +29,7 @@ export function ApiTestTools({
 
   const handleCopyApiUrl = () => {
     if (client?.meta_account_id) {
-      const url = `https://graph.facebook.com/v20.0/act_${client.meta_account_id}/campaigns?fields=status,name,spend,insights{spend}&access_token=TOKEN`;
+      const url = `https://graph.facebook.com/v22.0/act_${client.meta_account_id}/campaigns?fields=status,name,spend,insights{spend}&access_token=TOKEN`;
       navigator.clipboard.writeText(url);
       toast({
         title: "URL copiada",
@@ -105,7 +105,7 @@ export function ApiTestTools({
               <p className="text-sm mb-1">URL para testar no Graph API Explorer:</p>
               <div className="flex items-center gap-2">
                 <code className="bg-gray-100 p-1 text-xs rounded flex-1 overflow-x-auto">
-                  https://graph.facebook.com/v20.0/act_{client.meta_account_id}/campaigns?fields=status,name,spend
+                  https://graph.facebook.com/v22.0/act_{client.meta_account_id}/campaigns?fields=status,name,spend
                 </code>
                 <Button 
                   variant="outline" 

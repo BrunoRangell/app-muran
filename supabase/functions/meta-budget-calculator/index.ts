@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // Configuração de cabeçalhos CORS
@@ -81,7 +82,7 @@ serve(async (req) => {
     
     // Buscar todas as campanhas, sem filtrar por status inicialmente para garantir que todas sejam analisadas
     // Aumentamos o limite para 1000 para buscar mais campanhas de uma vez
-    const campaignsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time,id,effective_status,budget_remaining,lifetime_budget,special_ad_categories&access_token=${accessToken}&limit=1000`;
+    const campaignsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time,id,effective_status,budget_remaining,lifetime_budget,special_ad_categories&access_token=${accessToken}&limit=1000`;
     const campaignsResponse = await fetch(campaignsUrl);
     
     if (!campaignsResponse.ok) {
@@ -127,7 +128,7 @@ serve(async (req) => {
     console.log("Buscando insights de gastos para o período...");
     
     // Construir a URL para buscar insights
-    const insightsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/insights?fields=spend&time_range={"since":"${effectiveDateRange.start}","until":"${effectiveDateRange.end}"}&access_token=${accessToken}`;
+    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend&time_range={"since":"${effectiveDateRange.start}","until":"${effectiveDateRange.end}"}&access_token=${accessToken}`;
     
     console.log("URL de insights:", insightsUrl);
     
@@ -167,7 +168,7 @@ serve(async (req) => {
       let allCampaignInsights = [];
       
       // Construir URL para buscar insights de campanhas
-      const campaignInsightsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/insights?fields=campaign_id,campaign_name,spend&time_range={"since":"${effectiveDateRange.start}","until":"${effectiveDateRange.end}"}&level=campaign&access_token=${accessToken}&limit=500`;
+      const campaignInsightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=campaign_id,campaign_name,spend&time_range={"since":"${effectiveDateRange.start}","until":"${effectiveDateRange.end}"}&level=campaign&access_token=${accessToken}&limit=500`;
       
       console.log("URL de insights de campanhas:", campaignInsightsUrl);
       
@@ -254,7 +255,7 @@ serve(async (req) => {
 
       // Buscar conjuntos de anúncios para a campanha, aumentando o limite para 1000
       let adsets = [];
-      const adsetsUrl = `https://graph.facebook.com/v20.0/${campaign.id}/adsets?fields=daily_budget,status,name,end_time,id,effective_status,lifetime_budget&access_token=${accessToken}&limit=1000`;
+      const adsetsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/adsets?fields=daily_budget,status,name,end_time,id,effective_status,lifetime_budget&access_token=${accessToken}&limit=1000`;
       const adsetsResponse = await fetch(adsetsUrl);
       
       if (!adsetsResponse.ok) {
