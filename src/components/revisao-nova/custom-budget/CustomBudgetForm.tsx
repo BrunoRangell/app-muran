@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarIcon, Loader } from "lucide-react";
+import { CalendarIcon, Loader, Calculator, Info } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
@@ -34,6 +34,12 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
 import { CustomBudgetFormData } from "../hooks/useCustomBudgets";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Schema para validação do formulário
 const customBudgetSchema = z.object({
@@ -70,6 +76,14 @@ interface CustomBudgetFormProps {
 
 type FormData = z.infer<typeof customBudgetSchema>;
 
+const BUDGET_TEMPLATES = [
+  { name: "30 dias: R$ 3.000,00", days: 30, amount: 3000 },
+  { name: "30 dias: R$ 5.000,00", days: 30, amount: 5000 },
+  { name: "30 dias: R$ 10.000,00", days: 30, amount: 10000 },
+  { name: "60 dias: R$ 6.000,00", days: 60, amount: 6000 },
+  { name: "60 dias: R$ 12.000,00", days: 60, amount: 12000 },
+];
+
 export const CustomBudgetForm = ({
   selectedBudget,
   isSubmitting,
@@ -77,6 +91,7 @@ export const CustomBudgetForm = ({
   onCancel,
 }: CustomBudgetFormProps) => {
   const [formattedBudget, setFormattedBudget] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
 
   // Buscar clientes ativos
   const { data: clients, isLoading: isLoadingClients } = useQuery({
@@ -103,6 +118,7 @@ export const CustomBudgetForm = ({
       end_date: new Date(),
       description: "",
     },
+    mode: "onChange", // Validar ao alterar os campos
   });
 
   // Preencher o formulário quando um orçamento for selecionado para edição
@@ -135,6 +151,26 @@ export const CustomBudgetForm = ({
       setFormattedBudget("");
     }
   }, [selectedBudget, form]);
+
+  // Aplicar um template de orçamento
+  const applyTemplate = (templateIndex: string) => {
+    const index = parseInt(templateIndex);
+    
+    if (index >= 0 && index < BUDGET_TEMPLATES.length) {
+      const template = BUDGET_TEMPLATES[index];
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + template.days - 1);
+      
+      form.setValue("budget_amount", template.amount);
+      form.setValue("start_date", startDate);
+      form.setValue("end_date", endDate);
+      
+      setFormattedBudget(formatCurrency(template.amount));
+    }
+    
+    setSelectedTemplate("");
+  };
 
   // Manipulador para o campo de orçamento formatado como moeda
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -247,25 +283,48 @@ export const CustomBudgetForm = ({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="budget_amount"
-            render={() => (
-              <FormItem>
-                <FormLabel>Valor do Orçamento</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="R$ 0,00"
-                    value={formattedBudget}
-                    onChange={handleBudgetChange}
-                    onBlur={handleBudgetBlur}
-                    disabled={isSubmitting}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <FormField
+                control={form.control}
+                name="budget_amount"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Valor do Orçamento</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="R$ 0,00"
+                        value={formattedBudget}
+                        onChange={handleBudgetChange}
+                        onBlur={handleBudgetBlur}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="flex-1">
+              <FormLabel>Modelo de Orçamento</FormLabel>
+              <Select
+                value={selectedTemplate}
+                onValueChange={(value) => applyTemplate(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um modelo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUDGET_TEMPLATES.map((template, index) => (
+                    <SelectItem key={index} value={index.toString()}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -352,13 +411,28 @@ export const CustomBudgetForm = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-md">
-            <div>
-              <span className="text-sm text-gray-500">Duração do período:</span>
+            <div className="flex items-center">
+              <span className="text-sm text-gray-500 mr-2">Duração do período:</span>
               <p className="font-medium">{getDaysInPeriod()} dias</p>
             </div>
-            <div>
-              <span className="text-sm text-gray-500">Orçamento diário estimado:</span>
+            <div className="flex items-center">
+              <span className="text-sm text-gray-500 mr-2">Orçamento diário:</span>
               <p className="font-medium">{formatCurrency(getDailyBudget())}</p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 p-0 ml-1">
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="w-72">
+                    <p className="text-xs">
+                      Este é o valor médio diário. A estimativa considera 
+                      o período total incluindo início e término.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
 

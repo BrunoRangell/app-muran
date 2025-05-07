@@ -1,5 +1,5 @@
 
-import { Search, Edit, Trash2, AlertCircle } from "lucide-react";
+import { Search, Edit, Trash2, AlertCircle, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader } from "lucide-react";
@@ -44,6 +44,7 @@ interface CustomBudgetTableProps {
   onEdit: (budget: CustomBudget) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (id: string, isActive: boolean) => void;
+  onDuplicate: (budget: CustomBudget) => void;
 }
 
 export const CustomBudgetTable = ({
@@ -58,6 +59,7 @@ export const CustomBudgetTable = ({
   onEdit,
   onDelete,
   onToggleStatus,
+  onDuplicate,
 }: CustomBudgetTableProps) => {
   // Função para obter o status do orçamento
   const getBudgetStatus = (budget: CustomBudget) => {
@@ -111,12 +113,12 @@ export const CustomBudgetTable = ({
         <Table>
           <TableHeader className="bg-gray-50">
             <TableRow>
-              <TableHead className="w-[25%]">Cliente</TableHead>
+              <TableHead className="w-[20%]">Cliente</TableHead>
               <TableHead className="w-[15%]">Valor</TableHead>
               <TableHead className="w-[15%]">Período</TableHead>
               <TableHead className="w-[15%]">Status</TableHead>
               <TableHead className="w-[20%]">Descrição</TableHead>
-              <TableHead className="w-[10%] text-right">Ações</TableHead>
+              <TableHead className="w-[15%] text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -174,13 +176,22 @@ export const CustomBudgetTable = ({
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => onDuplicate(budget)}
+                            title="Duplicar orçamento"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => onEdit(budget)}
+                            title="Editar orçamento"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" title="Excluir orçamento">
                                 <Trash2 className="h-4 w-4 text-red-500" />
                               </Button>
                             </AlertDialogTrigger>
