@@ -1,5 +1,5 @@
 
-import { Search, Edit, Trash2, Plus, Copy, Calendar, Toggle } from "lucide-react";
+import { Search, Edit, Trash2, Plus, Copy, Calendar, ToggleLeft, ToggleRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader } from "lucide-react";
