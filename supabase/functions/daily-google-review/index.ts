@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../daily-meta-review/cors.ts";
-import { formatResponse, formatErrorResponse } from "../daily-meta-review/response.ts";
+import { corsHeaders, handleCors } from "./cors.ts";
+import { formatResponse, formatErrorResponse } from "./response.ts";
 
 // Função para processar as revisões do Google Ads
 async function processGoogleReview(req: Request) {
@@ -173,10 +173,9 @@ async function processGoogleReview(req: Request) {
 // Handler principal da função
 serve(async (req: Request) => {
   // Tratar CORS
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: corsHeaders
-    });
+  const corsResponse = handleCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
 
   try {
