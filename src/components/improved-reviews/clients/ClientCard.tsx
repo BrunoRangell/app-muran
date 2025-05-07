@@ -1,13 +1,10 @@
 
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ClientCardInfo } from "./ClientCardInfo";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Building2, ChevronRight, Info } from "lucide-react";
-import { formatCurrency } from "@/utils/formatters";
-import { useBatchOperations } from "../hooks/useBatchOperations";
-import { useToast } from "@/hooks/use-toast";
+import { BarChart, ExternalLink } from "lucide-react";
 import { useState } from "react";
-import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboard/card-components/CompactBudgetRecommendation";
 
 interface ClientCardProps {
   client: any;
@@ -15,140 +12,80 @@ interface ClientCardProps {
 }
 
 export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const { toast } = useToast();
-  const { reviewClient, processingIds } = useBatchOperations({
-    platform: platform as "meta" | "google"
-  });
-  
-  const isProcessing = processingIds.includes(client.id);
-  
-  // Preparar dados para exibição
-  const accountName = client[`${platform}_account_name`] || "Conta Principal";
-  const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
-  const budgetAmount = client.budget_amount || 0;
-  const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
-  const needsAdjustment = client.needsAdjustment;
-  const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
-  
-  // Dados para recomendação baseada na média dos últimos 5 dias
-  const lastFiveDaysAvg = client.lastFiveDaysAvg || 0;
-  const budgetDifferenceAvg = client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0;
-  const needsAdjustmentBasedOnAverage = client.budgetCalculation?.needsAdjustmentBasedOnAverage || false;
-  
-  const handleReviewClick = async () => {
-    try {
-      await reviewClient(client.id, client[`${platform}_account_id`]);
-      toast({
-        title: "Revisão completa",
-        description: `O orçamento de ${client.company_name} foi revisado com sucesso.`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao revisar o cliente",
-        variant: "destructive"
-      });
-    }
-  };
-  
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Extrair nome da conta da plataforma correta
+  const accountName = client[`${platform}_account_name`];
+
   return (
-    <Card className={`overflow-hidden transition-all ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''}`}>
-      <CardHeader className="p-4 pb-0">
+    <Card className={`overflow-hidden ${client.needsAdjustment ? 'border-2 border-amber-300' : ''}`}>
+      <CardHeader className="bg-gray-50 p-4">
         <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <h3 className="font-medium line-clamp-1 flex items-center gap-1">
-              <Building2 className="h-4 w-4 text-[#ff6e00]" />
+          <div>
+            <h3 className="font-medium text-base line-clamp-1" title={client.company_name}>
               {client.company_name}
             </h3>
-            <p className="text-sm text-gray-500">{accountName}</p>
+            {platform === "meta" ? (
+              <p className="text-sm text-gray-500 line-clamp-1" title={client.meta_account_name || "Sem conta"}>
+                {client.meta_account_name || "Sem conta Meta Ads"}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500 line-clamp-1" title={client.google_account_name || "Sem conta"}>
+                {client.google_account_name || "Sem conta Google Ads"}
+              </p>
+            )}
           </div>
-          {needsAdjustment && (
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+          {client.needsAdjustment && (
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200">
+              Ajuste Necessário
+            </Badge>
           )}
         </div>
       </CardHeader>
       
       <CardContent className="p-4">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Gasto</span>
-              <span className="font-medium">{formatCurrency(spentAmount)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Orçamento</span>
-              <span className="font-medium">{formatCurrency(budgetAmount)}</span>
-            </div>
-            <Progress 
-              value={spentPercentage} 
-              className="h-2"
-              indicatorClassName={`${
-                spentPercentage > 90 
-                  ? "bg-red-500" 
-                  : spentPercentage > 70 
-                  ? "bg-amber-500" 
-                  : "bg-emerald-500"
-              }`}
-            />
-            <div className="text-xs text-right text-gray-500">
-              {Math.round(spentPercentage)}% utilizado
-            </div>
-          </div>
-          
-          {/* Recomendações de orçamento em formato compacto */}
-          <CompactBudgetRecommendation 
-            budgetDifference={budgetDifference}
-            budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
-            shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
-            shouldShowAverage={needsAdjustmentBasedOnAverage}
-            lastFiveDaysAverage={lastFiveDaysAvg}
-          />
-          
-          {expanded && client.review && (
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Orçamento diário atual</span>
-                <span className="font-medium">{formatCurrency(client.review[`${platform}_daily_budget_current`] || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Orçamento diário ideal</span>
-                <span className="font-medium">{formatCurrency(client.budgetCalculation?.idealDailyBudget || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Dias restantes</span>
-                <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Média gasto (5 dias)</span>
-                <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
-              </div>
-            </div>
-          )}
-        </div>
+        <ClientCardInfo 
+          platform={platform}
+          dailyBudget={client.dailyBudget || 0}
+          idealBudget={client.idealBudget || 0}
+          totalSpent={client.totalSpent || 0}
+          needsAdjustment={client.needsAdjustment}
+          totalBudget={client.totalBudget || 0}
+          lastFiveDaysAvg={client.lastFiveDaysAvg}
+          accountName={accountName}
+        />
       </CardContent>
       
-      <CardFooter className="p-4 pt-0 flex justify-between">
+      <CardFooter className="flex justify-between p-4 pt-0">
         <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => setExpanded(!expanded)}
+          variant="outline" 
+          size="sm" 
+          onClick={() => setIsExpanded(!isExpanded)}
           className="text-xs"
         >
-          {expanded ? "Menos detalhes" : "Mais detalhes"}
+          <BarChart className="h-3.5 w-3.5 mr-1.5" />
+          {isExpanded ? "Menos detalhes" : "Mais detalhes"}
         </Button>
         
         <Button 
-          variant="default"
+          variant="default" 
           size="sm"
-          className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
-          onClick={handleReviewClick}
-          disabled={isProcessing}
+          className="text-xs bg-muran-primary hover:bg-muran-primary/90"
         >
-          {isProcessing ? "Processando..." : "Revisar"}
-          <ChevronRight className="ml-2 h-4 w-4" />
+          <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+          Ver detalhes
         </Button>
       </CardFooter>
+      
+      {isExpanded && (
+        <div className="px-4 pb-4">
+          <div className="bg-gray-50 p-3 rounded-lg text-sm">
+            <p><strong>Status:</strong> {client.status || "Desconhecido"}</p>
+            <p><strong>ID da conta:</strong> {client[`${platform}_account_id`] || "N/A"}</p>
+            <p><strong>Última revisão:</strong> {client.lastReviewDate || "N/A"}</p>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

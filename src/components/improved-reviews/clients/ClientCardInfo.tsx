@@ -13,6 +13,7 @@ interface ClientCardInfoProps {
   totalBudget: number;
   lastFiveDaysAvg?: number;
   className?: string;
+  accountName?: string;
 }
 
 export const ClientCardInfo = ({
@@ -23,7 +24,8 @@ export const ClientCardInfo = ({
   needsAdjustment,
   totalBudget,
   lastFiveDaysAvg,
-  className = ""
+  className = "",
+  accountName
 }: ClientCardInfoProps) => {
   // Calcular a porcentagem gasta do orçamento
   const spentPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
@@ -96,6 +98,13 @@ export const ClientCardInfo = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
+        )}
+        
+        {accountName && platform === 'meta' && (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">CA:</span>
+            <span className="font-medium">{accountName}</span>
           </div>
         )}
       </div>
