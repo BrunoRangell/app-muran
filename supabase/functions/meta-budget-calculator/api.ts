@@ -1,29 +1,6 @@
 
 import { corsHeaders } from "./cors.ts";
 
-// Função para buscar informações da conta Meta
-export async function fetchAccountInfo(accountId: string, accessToken: string) {
-  console.log(`Buscando informações da conta Meta ${accountId}`);
-  
-  const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name&access_token=${accessToken}`;
-  
-  try {
-    const accountResponse = await fetch(accountUrl);
-    
-    if (!accountResponse.ok) {
-      console.error("Erro ao buscar informações da conta:", await accountResponse.json());
-      return null;
-    }
-    
-    const accountData = await accountResponse.json();
-    console.log("Informações da conta Meta:", accountData.name);
-    return accountData;
-  } catch (error) {
-    console.error(`Erro ao buscar detalhes da conta ${accountId}:`, error);
-    return null;
-  }
-}
-
 // Função para buscar todas as campanhas
 export async function fetchCampaigns(accountId: string, accessToken: string) {
   console.log(`Calculando orçamento diário para a conta ${accountId}`);
