@@ -1,4 +1,3 @@
-
 import { Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
@@ -54,6 +53,7 @@ const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const DailyReviews = lazyWithTimeout(() => import("@/pages/DailyReviews"));
+const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
 const RevisaoNova = lazyWithTimeout(() => import("@/pages/RevisaoNova"));
 
 function App() {
@@ -113,6 +113,7 @@ function App() {
         <Route path="/revisao-meta" element={<RevisaoNova />} />
         <Route path="/financeiro" element={<ManagerFinancial />} />
         <Route path="/tarefas" element={<Tasks />} />
+        <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
