@@ -1,18 +1,14 @@
 
-import { useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, Suspense, ReactNode } from "react";
+import { useState, Suspense } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { LoadingState } from "@/components/ui/loading-state";
 
-interface LayoutProps {
-  children: ReactNode;
-}
-
-export const Layout = ({ children }: LayoutProps) => {
+export const Layout = () => {
   const location = useLocation();
   const isTasksPage = location.pathname === "/tarefas";
   const isMobile = useIsMobile();
@@ -50,9 +46,10 @@ export const Layout = ({ children }: LayoutProps) => {
           ease-in-out
         `}
       >
-        <Suspense fallback={<LoadingState />}>
-          {children}
-        </Suspense>
+        <Suspense 
+          fallback={<LoadingState />}
+          children={<Outlet />} 
+        />
       </main>
     </div>
   );
