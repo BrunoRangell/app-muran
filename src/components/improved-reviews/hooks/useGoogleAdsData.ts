@@ -89,11 +89,15 @@ export function useGoogleAdsData() {
               // Usar a revisão mais recente
               const review = accountReviews.length > 0 ? accountReviews[0] : null;
               
+              // Obter a média de gasto dos últimos 5 dias (se disponível)
+              const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
+              
               // Calcular orçamento recomendado
               const budgetCalc = calculateBudget({
                 monthlyBudget: account.budget_amount || 0,
                 totalSpent: review?.google_total_spent || 0,
-                currentDailyBudget: review?.google_daily_budget_current || 0
+                currentDailyBudget: review?.google_daily_budget_current || 0,
+                lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
               });
               
               return {
@@ -103,8 +107,8 @@ export function useGoogleAdsData() {
                 budget_amount: account.budget_amount,
                 review: review || null,
                 budgetCalculation: budgetCalc,
-                needsAdjustment: budgetCalc.needsBudgetAdjustment,
-                lastFiveDaysAvg: review?.google_last_five_days_spent || 0
+                needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
+                lastFiveDaysAvg: lastFiveDaysAvg
               };
             });
           } else if (client.google_account_id) {
@@ -112,11 +116,15 @@ export function useGoogleAdsData() {
             const clientReviews = reviews ? reviews.filter(r => r.client_id === client.id) : [];
             const review = clientReviews.length > 0 ? clientReviews[0] : null;
             
+            // Obter a média de gasto dos últimos 5 dias (se disponível)
+            const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
+            
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
               monthlyBudget: client.google_ads_budget || 0,
               totalSpent: review?.google_total_spent || 0,
-              currentDailyBudget: review?.google_daily_budget_current || 0
+              currentDailyBudget: review?.google_daily_budget_current || 0,
+              lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
             });
             
             return {
@@ -125,8 +133,8 @@ export function useGoogleAdsData() {
               budget_amount: client.google_ads_budget || 0,
               review: review || null,
               budgetCalculation: budgetCalc,
-              needsAdjustment: budgetCalc.needsBudgetAdjustment,
-              lastFiveDaysAvg: review?.google_last_five_days_spent || 0
+              needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
+              lastFiveDaysAvg: lastFiveDaysAvg
             };
           }
           

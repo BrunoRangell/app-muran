@@ -2,7 +2,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Building2, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, TrendingUp, TrendingDown, Minus, Clock } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,11 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
   const needsAdjustment = client.needsAdjustment;
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
+  
+  // Dados para recomendação baseada na média dos últimos 5 dias
+  const lastFiveDaysAvg = client.lastFiveDaysAvg || 0;
+  const budgetDifferenceAvg = client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0;
+  const needsAdjustmentBasedOnAverage = client.budgetCalculation?.needsAdjustmentBasedOnAverage || false;
   
   const handleReviewClick = async () => {
     try {
@@ -90,7 +95,8 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
             </div>
           </div>
           
-          {needsAdjustment && (
+          {/* Recomendação baseada no orçamento diário atual */}
+          {client.budgetCalculation?.needsBudgetAdjustment && (
             <div className={`flex items-center gap-2 text-sm font-medium p-2 rounded ${
               budgetDifference > 0 
                 ? 'bg-green-50 text-green-700' 
@@ -102,6 +108,18 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
                 <TrendingDown size={16} />
               )}
               Recomendado: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
+            </div>
+          )}
+          
+          {/* Nova recomendação baseada na média dos últimos 5 dias */}
+          {needsAdjustmentBasedOnAverage && (
+            <div className={`flex items-center gap-2 text-sm font-medium p-2 rounded ${
+              budgetDifferenceAvg > 0 
+                ? 'bg-blue-50 text-blue-700' 
+                : 'bg-orange-50 text-orange-700'
+            }`}>
+              <Clock size={16} />
+              Média 5d ({formatCurrency(lastFiveDaysAvg)}): {budgetDifferenceAvg > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifferenceAvg))}
             </div>
           )}
           
@@ -118,6 +136,10 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Dias restantes</span>
                 <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Média gasto (5 dias)</span>
+                <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
               </div>
             </div>
           )}
