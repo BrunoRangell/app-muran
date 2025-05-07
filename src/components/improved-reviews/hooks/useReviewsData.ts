@@ -69,16 +69,21 @@ export const useReviewsData = ({ platformFilter = "all" }: UseReviewsDataProps =
       }
 
       // Associar cada cliente à sua revisão mais recente
-      return filteredClients.map((client): ClientWithReview => {
+      return filteredClients.map((client) => {
         // Encontrar a revisão mais recente para este cliente
         const clientReviews = reviews.filter(review => review.client_id === client.id);
         const lastReview = clientReviews.length > 0 ? clientReviews[0] : null;
 
-        return {
+        // Converter para o tipo ClientWithReview
+        const clientWithReview = {
           ...client,
-          lastReview: lastReview,
-          status: client.status || "active",
-        };
+          lastReview,
+          status: "active" as const,
+          meta_accounts: client.meta_accounts || [],
+          google_accounts: client.google_accounts || []
+        } as unknown as ClientWithReview;
+
+        return clientWithReview;
       });
     },
     refetchInterval: 300000, // 5 minutos
@@ -155,7 +160,7 @@ export const useReviewsData = ({ platformFilter = "all" }: UseReviewsDataProps =
 
   // Métricas e estatísticas
   const metrics = useMemo(() => {
-    if (!data) return { totalClients: 0, clientsWithAdjustments: 0 };
+    if (!data) return { totalClients: 0, clientsWithAdjustments: 0, adjustmentPercentage: 0 };
 
     const clientsWithAdjustments = data.filter(client => calculateNeedsAdjustment(client)).length;
     

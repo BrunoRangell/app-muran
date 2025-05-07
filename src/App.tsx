@@ -3,11 +3,11 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "@/components/ui/toaster";
-import Layout from "./components/layout/Layout";
-import Home from "./pages/Home";
+import { Layout } from "./components/layout/Layout";
 import DailyReviews from "./pages/DailyReviews";
 import RevisaoNova from "./pages/RevisaoNova";
 import ImprovedDailyReviews from "./pages/ImprovedDailyReviews";
+import { Index } from "./pages/Index";
 
 // Criar uma instância do React Query Client
 const queryClient = new QueryClient({
@@ -25,7 +25,7 @@ function App() {
       <Router>
         <Layout>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Index />} />
             <Route path="/daily-reviews" element={<DailyReviews />} />
             <Route path="/revisao-nova" element={<RevisaoNova />} />
             <Route path="/revisao-meta" element={<ImprovedDailyReviews />} />
