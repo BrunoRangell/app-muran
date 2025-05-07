@@ -9,11 +9,17 @@ import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboar
 
 interface ClientCardProps {
   client: ClientWithReview;
-  onReviewClient: (clientId: string, accountId?: string) => void;
-  isProcessing: boolean;
+  onReviewClient?: (clientId: string, accountId?: string) => void;
+  isProcessing?: boolean;
+  platform?: "meta" | "google";
 }
 
-export const ClientCard = ({ client, onReviewClient, isProcessing }: ClientCardProps) => {
+export const ClientCard = ({ 
+  client, 
+  onReviewClient = () => {}, 
+  isProcessing = false,
+  platform = "meta"
+}: ClientCardProps) => {
   const hasReview = Boolean(client.lastReview);
   const monthlyBudget = client.meta_ads_budget || 0;
   
@@ -45,6 +51,7 @@ export const ClientCard = ({ client, onReviewClient, isProcessing }: ClientCardP
             client={client} 
             hasReview={hasReview} 
             accountName={accountName} 
+            platform={platform}
           />
           
           <div className="grid grid-cols-2 gap-4 my-3">

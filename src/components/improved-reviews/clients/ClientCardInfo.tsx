@@ -9,13 +9,15 @@ interface ClientCardInfoProps {
   hasReview: boolean;
   accountName?: string;
   customBudget?: any;
+  platform?: "meta" | "google";
 }
 
 export const ClientCardInfo = ({ 
   client, 
   hasReview, 
   accountName,
-  customBudget 
+  customBudget,
+  platform = "meta"
 }: ClientCardInfoProps) => {
   const isUsingCustomBudgetInReview = Boolean(
     client.lastReview?.using_custom_budget && 
@@ -30,9 +32,15 @@ export const ClientCardInfo = ({
         {client.company_name}
       </div>
       
-      {accountName && (
+      {accountName && platform === "meta" && (
         <div className="text-sm text-gray-500">
           CA: {accountName}
+        </div>
+      )}
+      
+      {accountName && platform === "google" && (
+        <div className="text-sm text-gray-500">
+          {accountName}
         </div>
       )}
       
