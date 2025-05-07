@@ -34,9 +34,19 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     
     // Se temos várias revisões para diferentes contas, precisamos somar
     if (client.google_reviews && client.google_reviews.length > 0) {
-      return client.google_reviews.reduce((sum, review) => {
-        return sum + (review.google_total_spent || 0);
-      }, 0);
+      // Verificar se são revisões do mês atual
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      return client.google_reviews
+        .filter(review => {
+          // Considerar apenas revisões do mês atual
+          const reviewDate = review.review_date ? new Date(review.review_date) : null;
+          return reviewDate && reviewDate >= firstDayOfMonth;
+        })
+        .reduce((sum, review) => {
+          return sum + (review.google_total_spent || 0);
+        }, 0);
     }
     
     return client.lastReview?.google_total_spent || 0;
@@ -52,9 +62,19 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     
     // Se temos várias revisões para diferentes contas, precisamos somar
     if (client.google_reviews && client.google_reviews.length > 0) {
-      return client.google_reviews.reduce((sum, review) => {
-        return sum + (review.google_last_five_days_spent || 0);
-      }, 0);
+      // Verificar se são revisões do mês atual
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      return client.google_reviews
+        .filter(review => {
+          // Considerar apenas revisões do mês atual
+          const reviewDate = review.review_date ? new Date(review.review_date) : null;
+          return reviewDate && reviewDate >= firstDayOfMonth;
+        })
+        .reduce((sum, review) => {
+          return sum + (review.google_last_five_days_spent || 0);
+        }, 0);
     }
     
     return client.lastReview?.google_last_five_days_spent || 0;
@@ -70,9 +90,19 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     
     // Se temos várias revisões para diferentes contas, precisamos somar
     if (client.google_reviews && client.google_reviews.length > 0) {
-      return client.google_reviews.reduce((sum, review) => {
-        return sum + (review.google_daily_budget_current || 0);
-      }, 0);
+      // Verificar se são revisões do mês atual
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      return client.google_reviews
+        .filter(review => {
+          // Considerar apenas revisões do mês atual
+          const reviewDate = review.review_date ? new Date(review.review_date) : null;
+          return reviewDate && reviewDate >= firstDayOfMonth;
+        })
+        .reduce((sum, review) => {
+          return sum + (review.google_daily_budget_current || 0);
+        }, 0);
     }
     
     return client.lastReview?.google_daily_budget_current || 0;

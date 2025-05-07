@@ -25,6 +25,8 @@ export function useGoogleAdsData() {
   } = useQuery({
     queryKey: ["improved-google-reviews"],
     queryFn: async () => {
+      console.log("Buscando dados de clientes e revisões Google Ads...");
+      
       // Buscar clientes ativos
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
@@ -38,6 +40,8 @@ export function useGoogleAdsData() {
         .eq("status", "active");
 
       if (clientsError) throw clientsError;
+      
+      console.log(`Encontrados ${clients?.length || 0} clientes ativos`);
 
       // Buscar contas Google dos clientes
       const { data: googleAccounts, error: accountsError } = await supabase
@@ -46,14 +50,25 @@ export function useGoogleAdsData() {
         .eq("status", "active");
 
       if (accountsError) throw accountsError;
+      
+      console.log(`Encontradas ${googleAccounts?.length || 0} contas Google Ads`);
 
-      // Buscar revisões mais recentes do Google Ads
+      // Buscar revisões mais recentes do Google Ads (apenas do mês atual)
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const firstDayStr = firstDayOfMonth.toISOString().split("T")[0];
+      
+      console.log(`Buscando revisões a partir de ${firstDayStr}`);
+      
       const { data: reviews, error: reviewsError } = await supabase
         .from("google_ads_reviews")
         .select("*")
-        .eq("review_date", new Date().toISOString().split("T")[0]);
+        .gte("review_date", firstDayStr)
+        .order("review_date", { ascending: false });
 
       if (reviewsError) throw reviewsError;
+      
+      console.log(`Encontradas ${reviews?.length || 0} revisões do mês atual`);
 
       // Combinar os dados
       const clientsWithData = clients
@@ -65,15 +80,18 @@ export function useGoogleAdsData() {
           // Se o cliente tiver contas específicas, criar um item para cada conta
           if (accounts.length > 0) {
             return accounts.map(account => {
-              // Encontrar revisão para esta conta
-              const review = reviews && reviews.find(r => 
+              // Encontrar revisões para esta conta (apenas do mês atual)
+              const accountReviews = reviews ? reviews.filter(r => 
                 r.client_id === client.id && 
-                (r.google_account_id === account.account_id || r.client_account_id === account.account_id)
-              );
+                (r.google_account_id === account.account_id || r.client_account_id === account.id)
+              ) : [];
+              
+              // Usar a revisão mais recente
+              const review = accountReviews.length > 0 ? accountReviews[0] : null;
               
               // Calcular orçamento recomendado
               const budgetCalc = calculateBudget({
-                monthlyBudget: account.budget_amount,
+                monthlyBudget: account.budget_amount || 0,
                 totalSpent: review?.google_total_spent || 0,
                 currentDailyBudget: review?.google_daily_budget_current || 0
               });
@@ -85,12 +103,14 @@ export function useGoogleAdsData() {
                 budget_amount: account.budget_amount,
                 review: review || null,
                 budgetCalculation: budgetCalc,
-                needsAdjustment: budgetCalc.needsBudgetAdjustment
+                needsAdjustment: budgetCalc.needsBudgetAdjustment,
+                lastFiveDaysAvg: review?.google_last_five_days_spent || 0
               };
             });
           } else if (client.google_account_id) {
             // Cliente com ID de conta padrão
-            const review = reviews && reviews.find(r => r.client_id === client.id);
+            const clientReviews = reviews ? reviews.filter(r => r.client_id === client.id) : [];
+            const review = clientReviews.length > 0 ? clientReviews[0] : null;
             
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
@@ -105,7 +125,8 @@ export function useGoogleAdsData() {
               budget_amount: client.google_ads_budget || 0,
               review: review || null,
               budgetCalculation: budgetCalc,
-              needsAdjustment: budgetCalc.needsBudgetAdjustment
+              needsAdjustment: budgetCalc.needsBudgetAdjustment,
+              lastFiveDaysAvg: review?.google_last_five_days_spent || 0
             };
           }
           
@@ -121,13 +142,16 @@ export function useGoogleAdsData() {
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.google_total_spent || 0), 0);
       const needingAdjustment = flattenedClients.filter(client => client.needsAdjustment).length;
       
-      setMetrics({
+      const metricsData = {
         totalClients: flattenedClients.length,
         clientsNeedingAdjustment: needingAdjustment,
         totalBudget: totalBudget,
         totalSpent: totalSpent,
         spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
-      });
+      };
+      
+      console.log("Métricas calculadas:", metricsData);
+      setMetrics(metricsData);
 
       return flattenedClients;
     }
