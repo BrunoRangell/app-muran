@@ -1,9 +1,10 @@
 
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { ClientCardInfo } from "./ClientCardInfo";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { AlertTriangle, ChevronRight } from "lucide-react";
+import { formatCurrency } from "@/utils/formatters";
+import { useBatchOperations } from "../hooks/useBatchOperations";
 
 interface ClientRowProps {
   client: any;
@@ -11,54 +12,66 @@ interface ClientRowProps {
 }
 
 export function ClientRow({ client, platform = "meta" }: ClientRowProps) {
-  // Extrair nome da conta da plataforma correta
-  const accountName = client[`${platform}_account_name`];
-
+  const { reviewClient, processingIds } = useBatchOperations({
+    platform: platform as "meta" | "google"
+  });
+  
+  const isProcessing = processingIds.includes(client.id);
+  
+  // Preparar dados para exibição
+  const accountName = client[`${platform}_account_name`] || "Conta Principal";
+  const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
+  const budgetAmount = client.budget_amount || 0;
+  const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
+  const needsAdjustment = client.needsAdjustment;
+  const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
+  
   return (
-    <Card className={`p-4 ${client.needsAdjustment ? 'border-2 border-amber-300' : ''}`}>
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-        <div className="md:col-span-3">
-          <div className="flex flex-col">
-            <h3 className="font-medium">{client.company_name}</h3>
-            {platform === "meta" ? (
-              <p className="text-sm text-gray-500">{client.meta_account_name || "Sem conta Meta Ads"}</p>
-            ) : (
-              <p className="text-sm text-gray-500">{client.google_account_name || "Sem conta Google Ads"}</p>
-            )}
+    <Card className={`overflow-hidden transition-all ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''}`}>
+      <CardContent className="p-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-48">
+            <div className="font-medium line-clamp-1">{client.company_name}</div>
+            <div className="text-xs text-gray-500">{accountName}</div>
           </div>
-        </div>
-        
-        <div className="md:col-span-7">
-          <ClientCardInfo 
-            platform={platform}
-            dailyBudget={client.dailyBudget || 0}
-            idealBudget={client.idealBudget || 0}
-            totalSpent={client.totalSpent || 0}
-            needsAdjustment={client.needsAdjustment}
-            totalBudget={client.totalBudget || 0}
-            lastFiveDaysAvg={client.lastFiveDaysAvg}
-            className="h-full"
-            accountName={accountName}
-          />
-        </div>
-        
-        <div className="md:col-span-2 flex justify-end items-center gap-3">
-          {client.needsAdjustment && (
-            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200 whitespace-nowrap">
-              Ajuste Necessário
-            </Badge>
-          )}
           
-          <Button 
-            variant="default" 
-            size="sm" 
-            className="bg-muran-primary hover:bg-muran-primary/90 whitespace-nowrap"
-          >
-            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-            Ver detalhes
-          </Button>
+          <div className="hidden md:block w-72">
+            <div className="flex justify-between text-sm mb-1">
+              <span>{formatCurrency(spentAmount)} de {formatCurrency(budgetAmount)}</span>
+              <span>{Math.round(spentPercentage)}%</span>
+            </div>
+            <Progress 
+              value={spentPercentage} 
+              className="h-2"
+              indicatorClassName={`${
+                spentPercentage > 90 ? "bg-red-500" : 
+                spentPercentage > 70 ? "bg-amber-500" : 
+                "bg-emerald-500"
+              }`}
+            />
+          </div>
+          
+          {needsAdjustment && (
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <span className="text-sm">
+                {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
+              </span>
+            </div>
+          )}
         </div>
-      </div>
+        
+        <Button
+          variant="default"
+          size="sm"
+          className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
+          onClick={() => reviewClient(client.id, client[`${platform}_account_id`])}
+          disabled={isProcessing}
+        >
+          {isProcessing ? "..." : "Revisar"}
+          <ChevronRight className="ml-1 h-4 w-4" />
+        </Button>
+      </CardContent>
     </Card>
   );
 }
