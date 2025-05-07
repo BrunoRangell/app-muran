@@ -107,12 +107,12 @@ export const useClientDetails = (clientId: string) => {
     setError(null);
     
     try {
-      const result = await callEdgeFunction("daily-google-review", { 
-        clientId 
-      });
+      // Corrigido: passando apenas um argumento (clientId) em vez de dois
+      const result = await callEdgeFunction("daily-google-review", { clientId });
       
       if (!result || !result.success) {
-        throw new Error(result?.error || 'Falha ao revisar o cliente');
+        // Corrigido: acessando message ao invés de error
+        throw new Error(result?.message || 'Falha ao revisar o cliente');
       }
       
       toast({
