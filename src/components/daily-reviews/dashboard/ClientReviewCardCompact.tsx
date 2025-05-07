@@ -12,7 +12,8 @@ import {
   AlertTriangle, 
   MinusCircle, 
   ExternalLink, 
-  BadgeDollarSign 
+  BadgeDollarSign,
+  Clock 
 } from "lucide-react";
 import {
   Tooltip,
@@ -44,18 +45,24 @@ export const ClientReviewCardCompact = ({
     monthlyBudget,
     totalSpent,
     currentDailyBudget,
+    lastFiveDaysAverage,
     idealDailyBudget,
     budgetDifference,
+    budgetDifferenceBasedOnAverage,
     customBudget,
     isUsingCustomBudgetInReview,
     actualBudgetAmount,
-    remainingDaysValue
+    remainingDaysValue,
+    needsBudgetAdjustment,
+    needsAdjustmentBasedOnAverage
   } = useClientBudgetCalculation(client);
 
   // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão existente
   // e diferença significativa (>=5) no contexto do orçamento atual (padrão ou personalizado)
-  const showRecommendation = hasReview && Math.abs(budgetDifference) >= 5;
+  const showRecommendation = hasReview && needsBudgetAdjustment;
+  const showRecommendationAverage = hasReview && needsAdjustmentBasedOnAverage && lastFiveDaysAverage > 0;
   const needsIncrease = budgetDifference > 0;
+  const needsIncreaseAverage = budgetDifferenceBasedOnAverage > 0;
   const lastReviewDate = client.lastReview?.updated_at;
   
   // Verificar se tem orçamento personalizado
@@ -65,7 +72,7 @@ export const ClientReviewCardCompact = ({
   const displayBudget = hasCustomBudget ? actualBudgetAmount : monthlyBudget;
 
   // Log para diagnóstico dos valores de orçamento e ajustes
-  console.log(`Cliente ${client.company_name} - Diagnóstico:`, {
+  console.log(`Cliente ${client.company_name} - Diagnóstico completo:`, {
     hasReview,
     hasCustomBudget,
     orçamentoMensal: monthlyBudget,
@@ -73,16 +80,20 @@ export const ClientReviewCardCompact = ({
     orçamentoExibido: displayBudget,
     orçamentoDiárioAtual: currentDailyBudget,
     orçamentoDiárioIdeal: idealDailyBudget,
-    diferençaNecessária: budgetDifference,
-    precisaAjuste: showRecommendation,
-    tipoAjuste: needsIncrease ? "Aumentar" : "Diminuir"
+    médiaÚltimos5Dias: lastFiveDaysAverage,
+    diferençaOrçamentoAtual: budgetDifference,
+    diferençaMédia5Dias: budgetDifferenceBasedOnAverage,
+    precisaAjusteOrçamentoAtual: needsBudgetAdjustment,
+    precisaAjusteMédia5Dias: needsAdjustmentBasedOnAverage,
+    tipoAjusteOrçamentoAtual: needsIncrease ? "Aumentar" : "Diminuir",
+    tipoAjusteMédia5Dias: needsIncreaseAverage ? "Aumentar" : "Diminuir"
   });
 
   // Determinar classes de estilo com base no status - Apenas destaque para cards que precisam de ajuste
   const cardClasses = `overflow-hidden transition-all ${
     inactive ? 'opacity-60 hover:opacity-80' : ''
   } ${
-    hasReview && !inactive && showRecommendation
+    hasReview && !inactive && (showRecommendation || showRecommendationAverage)
       ? 'border-l-4 border-l-amber-500' 
       : compact ? 'border' : 'border shadow-sm hover:shadow'
   }`;
@@ -132,25 +143,62 @@ export const ClientReviewCardCompact = ({
         </div>
         
         {hasReview && !inactive && (
-          <div className={`p-3 flex items-center border-l ${
-            showRecommendation 
-              ? needsIncrease 
-                ? 'text-green-600' 
-                : 'text-red-600'
-              : 'text-gray-600'
-          }`}>
-            {showRecommendation 
-              ? needsIncrease 
-                ? <TrendingUp size={18} /> 
-                : <TrendingDown size={18} />
-              : <MinusCircle size={18} />
-            }
-            <span className="ml-1 font-medium">
-              {showRecommendation
-                ? `${needsIncrease ? "+" : "-"}${formatCurrency(Math.abs(budgetDifference))}`
-                : "Sem ajuste"
-              }
-            </span>
+          <div className="p-3 flex items-center gap-2 border-l">
+            {showRecommendation && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <div className={`flex items-center ${
+                      needsIncrease 
+                        ? 'text-green-600' 
+                        : 'text-red-600'
+                    }`}>
+                      {needsIncrease 
+                        ? <TrendingUp size={16} /> 
+                        : <TrendingDown size={16} />
+                      }
+                      <span className="ml-1 font-medium">
+                        {formatCurrency(Math.abs(budgetDifference))}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Recomendação baseada no orçamento diário atual</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {showRecommendationAverage && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <div className={`flex items-center ${
+                      needsIncreaseAverage 
+                        ? 'text-blue-600' 
+                        : 'text-orange-600'
+                    }`}>
+                      <Clock size={16} />
+                      <span className="ml-1 font-medium">
+                        {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Recomendação baseada na média dos últimos 5 dias: {formatCurrency(lastFiveDaysAverage)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {!showRecommendation && !showRecommendationAverage && (
+              <div className="text-gray-600 flex items-center">
+                <MinusCircle size={16} />
+                <span className="ml-1 font-medium">
+                  OK
+                </span>
+              </div>
+            )}
           </div>
         )}
         
@@ -260,30 +308,53 @@ export const ClientReviewCardCompact = ({
           </div>
           
           <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Orç. diário ideal</div>
-            <div className="font-medium">{formatCurrency(idealDailyBudget)}</div>
+            <div className="text-xs text-gray-500">Média últimos 5 dias</div>
+            <div className="font-medium">
+              {hasReview && lastFiveDaysAverage > 0 ? formatCurrency(lastFiveDaysAverage) : "-"}
+            </div>
           </div>
         </div>
         
-        {hasReview && !inactive && (
-          <div className={`p-2 rounded flex items-center ${
-            showRecommendation 
-              ? needsIncrease 
-                ? 'bg-green-50 text-green-600' 
-                : 'bg-red-50 text-red-600'
-              : 'bg-gray-50 text-gray-600'
-          }`}>
-            {showRecommendation 
-              ? needsIncrease 
-                ? <TrendingUp size={16} className="mr-1" /> 
-                : <TrendingDown size={16} className="mr-1" />
-              : <MinusCircle size={16} className="mr-1" />
-            }
+        {hasReview && !inactive && (showRecommendation || showRecommendationAverage) && (
+          <div className="space-y-2">
+            {showRecommendation && (
+              <div className={`p-2 rounded flex items-center ${
+                needsIncrease 
+                  ? 'bg-green-50 text-green-600' 
+                  : 'bg-red-50 text-red-600'
+              }`}>
+                {needsIncrease 
+                  ? <TrendingUp size={16} className="mr-1" /> 
+                  : <TrendingDown size={16} className="mr-1" />
+                }
+                <span className="text-sm font-medium">
+                  {needsIncrease ? "Aumentar" : "Diminuir"} {formatCurrency(Math.abs(budgetDifference))}
+                  <span className="text-xs ml-1 opacity-75">(orç. atual)</span>
+                </span>
+              </div>
+            )}
+            
+            {showRecommendationAverage && (
+              <div className={`p-2 rounded flex items-center ${
+                needsIncreaseAverage 
+                  ? 'bg-blue-50 text-blue-600' 
+                  : 'bg-orange-50 text-orange-600'
+              }`}>
+                <Clock size={16} className="mr-1" />
+                <span className="text-sm font-medium">
+                  {needsIncreaseAverage ? "Aumentar" : "Diminuir"} {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
+                  <span className="text-xs ml-1 opacity-75">(média 5 dias)</span>
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {hasReview && !inactive && !showRecommendation && !showRecommendationAverage && (
+          <div className="p-2 rounded flex items-center bg-gray-50 text-gray-600">
+            <MinusCircle size={16} className="mr-1" />
             <span className="text-sm font-medium">
-              {showRecommendation
-                ? `${needsIncrease ? "Aumentar" : "Diminuir"} ${formatCurrency(Math.abs(budgetDifference))}`
-                : "Nenhum ajuste necessário"
-              }
+              Nenhum ajuste necessário
             </span>
           </div>
         )}

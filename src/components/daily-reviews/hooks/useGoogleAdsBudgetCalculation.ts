@@ -125,7 +125,14 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     return idealDailyBudget - currentDailyBudget;
   }, [hasReview, idealDailyBudget, currentDailyBudget]);
   
-  // Determinar se o orçamento precisa de ajuste
+  // Calcular a diferença entre a média dos últimos 5 dias e o ideal
+  const budgetDifferenceBasedOnAverage = useMemo(() => {
+    if (!hasReview || lastFiveDaysSpent === 0) return 0;
+    
+    return idealDailyBudget - lastFiveDaysSpent;
+  }, [hasReview, idealDailyBudget, lastFiveDaysSpent]);
+  
+  // Determinar se o orçamento precisa de ajuste baseado no orçamento atual
   const needsBudgetAdjustment = useMemo(() => {
     if (!hasReview || currentDailyBudget === 0) return false;
     
@@ -136,6 +143,17 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     return absoluteDifference >= 5 && percentageDifference >= 0.05;
   }, [hasReview, budgetDifference, currentDailyBudget]);
   
+  // Determinar se o orçamento precisa de ajuste baseado na média de gasto
+  const needsAdjustmentBasedOnAverage = useMemo(() => {
+    if (!hasReview || lastFiveDaysSpent === 0) return false;
+    
+    // Verifica se a diferença é maior que 5 reais ou 5% da média
+    const absoluteDifference = Math.abs(budgetDifferenceBasedOnAverage);
+    const percentageDifference = lastFiveDaysSpent > 0 ? absoluteDifference / lastFiveDaysSpent : 0;
+    
+    return absoluteDifference >= 5 && percentageDifference >= 0.05;
+  }, [hasReview, budgetDifferenceBasedOnAverage, lastFiveDaysSpent]);
+  
   return {
     hasReview,
     isCalculating: false,
@@ -145,7 +163,9 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
+    budgetDifferenceBasedOnAverage,
     remainingDaysValue: remainingDays,
-    needsBudgetAdjustment
+    needsBudgetAdjustment,
+    needsAdjustmentBasedOnAverage
   };
 };

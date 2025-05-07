@@ -8,7 +8,8 @@ import {
   TrendingUp, 
   Calendar,
   MinusCircle,
-  Info
+  Info,
+  Clock
 } from "lucide-react";
 import { ReviewHistoryTable } from "./ReviewHistoryTable";
 import { formatDateInBrasiliaTz } from "../summary/utils";
@@ -24,11 +25,14 @@ interface ClientDetailsContentProps {
   latestReview: any;
   reviewHistory: any[] | null;
   recommendation: string | null;
+  recommendationAverage: string | null;
   idealDailyBudget: number;
   suggestedBudgetChange: number;
+  suggestedBudgetChangeAverage: number;
+  lastFiveDaysAverage: number;
   isLoadingHistory: boolean;
   onRefresh: () => void;
-  // Novos parâmetros para mostrar detalhes do cálculo
+  // Parâmetros para mostrar detalhes do cálculo
   remainingDays?: number;
   remainingBudget?: number;
   monthlyBudget?: number;
@@ -40,8 +44,11 @@ export const ClientDetailsContent = ({
   latestReview,
   reviewHistory,
   recommendation,
+  recommendationAverage,
   idealDailyBudget,
   suggestedBudgetChange,
+  suggestedBudgetChangeAverage,
+  lastFiveDaysAverage,
   isLoadingHistory,
   onRefresh,
   remainingDays,
@@ -58,25 +65,36 @@ export const ClientDetailsContent = ({
     );
   };
 
-  const getRecommendationIcon = () => {
-    if (!recommendation) return <MinusCircle className="text-gray-500" size={18} />;
+  const getRecommendationIcon = (rec: string | null) => {
+    if (!rec) return <MinusCircle className="text-gray-500" size={18} />;
     
-    if (recommendation.includes("Aumentar")) {
+    if (rec.includes("Aumentar")) {
       return <TrendingUp className="text-green-500" size={18} />;
-    } else if (recommendation.includes("Diminuir")) {
+    } else if (rec.includes("Diminuir")) {
       return <TrendingDown className="text-red-500" size={18} />;
     } else {
       return <MinusCircle className="text-gray-500" size={18} />;
     }
   };
 
-  const getRecommendationColorClass = () => {
-    if (!recommendation) return "text-gray-600";
+  const getRecommendationColorClass = (rec: string | null) => {
+    if (!rec) return "text-gray-600";
     
-    if (recommendation.includes("Aumentar")) {
+    if (rec.includes("Aumentar")) {
       return "text-green-600";
-    } else if (recommendation.includes("Diminuir")) {
+    } else if (rec.includes("Diminuir")) {
       return "text-red-600";
+    }
+    return "text-gray-600";
+  };
+
+  const getAverageRecommendationColorClass = (rec: string | null) => {
+    if (!rec) return "text-gray-600";
+    
+    if (rec.includes("Aumentar")) {
+      return "text-blue-600";
+    } else if (rec.includes("Diminuir")) {
+      return "text-orange-600";
     }
     return "text-gray-600";
   };
@@ -98,10 +116,41 @@ export const ClientDetailsContent = ({
             
             <div className="mt-3">
               <div className="text-sm font-medium mb-1">Recomendação:</div>
-              <div className={`flex items-center gap-1 ${getRecommendationColorClass()} font-medium`}>
-                {getRecommendationIcon()}
+              <div className={`flex items-center gap-1 ${getRecommendationColorClass(recommendation)} font-medium`}>
+                {getRecommendationIcon(recommendation)}
                 {recommendation || "Nenhum ajuste necessário"}
+                {recommendation && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <span className="text-gray-500 cursor-help ml-1 text-xs">ⓘ</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Baseado no orçamento diário atual configurado nas campanhas</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
+              
+              {lastFiveDaysAverage > 0 && (
+                <div className={`flex items-center gap-1 mt-2 ${getAverageRecommendationColorClass(recommendationAverage)} font-medium`}>
+                  <Clock className={recommendationAverage?.includes("Aumentar") ? "text-blue-500" : recommendationAverage?.includes("Diminuir") ? "text-orange-500" : "text-gray-500"} size={18} />
+                  {recommendationAverage || "Nenhum ajuste necessário"}
+                  {recommendationAverage && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <span className="text-gray-500 cursor-help ml-1 text-xs">ⓘ</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Baseado na média de gasto dos últimos 5 dias: {formatCurrency(lastFiveDaysAverage)}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -124,11 +173,20 @@ export const ClientDetailsContent = ({
             <div className="mt-3">
               <div className="text-sm font-medium mb-1">Orç. diário atual:</div>
               <div className="text-xl font-semibold">
-                {latestReview?.meta_daily_budget_current 
-                  ? formatCurrency(latestReview.meta_daily_budget_current)
+                {latestReview?.google_daily_budget_current 
+                  ? formatCurrency(latestReview.google_daily_budget_current)
                   : "Não configurado"}
               </div>
             </div>
+
+            {lastFiveDaysAverage > 0 && (
+              <div className="mt-3">
+                <div className="text-sm font-medium mb-1">Média últimos 5 dias:</div>
+                <div className="text-xl font-semibold">
+                  {formatCurrency(lastFiveDaysAverage)}
+                </div>
+              </div>
+            )}
 
             {totalSpent !== undefined && (
               <div className="mt-3">
@@ -180,7 +238,7 @@ export const ClientDetailsContent = ({
             
             {suggestedBudgetChange !== 0 && (
               <div className="mt-3">
-                <div className="text-sm font-medium mb-1">Ajuste Sugerido:</div>
+                <div className="text-sm font-medium mb-1">Ajuste Sugerido (orç. atual):</div>
                 <div className={`flex items-center gap-1 text-lg font-semibold ${suggestedBudgetChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {suggestedBudgetChange > 0 ? (
                     <TrendingUp size={16} />
@@ -188,7 +246,22 @@ export const ClientDetailsContent = ({
                     <TrendingDown size={16} />
                   )}
                   {suggestedBudgetChange > 0 ? '+' : ''}
-                  {formatCurrency(suggestedBudgetChange)}
+                  {formatCurrency(Math.abs(suggestedBudgetChange))}
+                </div>
+              </div>
+            )}
+
+            {lastFiveDaysAverage > 0 && suggestedBudgetChangeAverage !== 0 && (
+              <div className="mt-3">
+                <div className="text-sm font-medium mb-1">Ajuste Sugerido (média 5 dias):</div>
+                <div className={`flex items-center gap-1 text-lg font-semibold ${suggestedBudgetChangeAverage > 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                  {suggestedBudgetChangeAverage > 0 ? (
+                    <Clock size={16} className="text-blue-500" />
+                  ) : (
+                    <Clock size={16} className="text-orange-500" />
+                  )}
+                  {suggestedBudgetChangeAverage > 0 ? '+' : ''}
+                  {formatCurrency(Math.abs(suggestedBudgetChangeAverage))}
                 </div>
               </div>
             )}

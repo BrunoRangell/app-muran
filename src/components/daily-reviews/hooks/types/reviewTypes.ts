@@ -46,6 +46,7 @@ export interface GoogleReview {
   meta_daily_budget_current?: number;
   meta_total_spent?: number;
   idealDailyBudget?: number;
+  custom_budget_start_date?: string;
 }
 
 export interface ClientWithReview {

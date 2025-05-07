@@ -103,11 +103,22 @@ export const useBudgetCalculations = (
     ? client.lastReview.google_daily_budget_current
     : 0;
 
-  // Gerar recomendação com base nos orçamentos
+  // Obter a média de gasto dos últimos 5 dias
+  const lastFiveDaysAverage = hasReview && client.lastReview?.google_last_five_days_spent !== null
+    ? client.lastReview.google_last_five_days_spent
+    : 0;
+
+  // Gerar recomendação com base no orçamento diário atual
   const budgetDifference = idealDailyBudget - currentDailyBudget;
+  
+  // Gerar recomendação com base na média de gasto dos últimos 5 dias
+  const budgetDifferenceBasedOnAverage = idealDailyBudget - lastFiveDaysAverage;
   
   // Verificar se o cliente precisa de ajuste de orçamento significativo (diferença absoluta >= 5)
   const needsBudgetAdjustment = hasReview && Math.abs(budgetDifference) >= 5;
+  
+  // Verificar se o cliente precisa de ajuste baseado na média dos últimos 5 dias
+  const needsAdjustmentBasedOnAverage = hasReview && Math.abs(budgetDifferenceBasedOnAverage) >= 5;
   
   // Log para diagnóstico
   if (isUsingCustomBudgetInReview || customBudget) {
@@ -117,9 +128,12 @@ export const useBudgetCalculations = (
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
       orçamentoDiárioAtual: currentDailyBudget,
+      médiaÚltimos5Dias: lastFiveDaysAverage,
       orçamentoDiárioIdeal: idealDailyBudget,
-      diferença: budgetDifference,
-      precisaAjuste: needsBudgetAdjustment
+      diferençaOrçamentoAtual: budgetDifference,
+      diferençaMédia5Dias: budgetDifferenceBasedOnAverage,
+      precisaAjusteOrçamentoAtual: needsBudgetAdjustment,
+      precisaAjusteMédia5Dias: needsAdjustmentBasedOnAverage
     });
   }
   
@@ -127,11 +141,14 @@ export const useBudgetCalculations = (
     monthlyBudget,
     totalSpent,
     currentDailyBudget,
+    lastFiveDaysAverage,
     idealDailyBudget,
     budgetDifference,
+    budgetDifferenceBasedOnAverage,
     remainingBudget,
     remainingDays,
     actualBudgetAmount,
-    needsBudgetAdjustment
+    needsBudgetAdjustment,
+    needsAdjustmentBasedOnAverage
   };
 };

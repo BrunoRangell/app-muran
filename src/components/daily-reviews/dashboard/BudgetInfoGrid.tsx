@@ -1,18 +1,17 @@
 
 import { formatCurrency } from "@/utils/formatters";
-import { Loader } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DollarSign, Calendar, ArrowTrendingUp, Clock } from "lucide-react";
 
 interface BudgetInfoGridProps {
   monthlyBudget: number;
   totalSpent: number;
   currentDailyBudget: number;
   idealDailyBudget: number;
+  lastFiveDaysAverage?: number;
   isCalculating: boolean;
-  calculationError: string | null;
+  calculationError: Error | null;
   hasReview: boolean;
-  actualBudgetAmount?: number;
-  isUsingCustomBudget?: boolean;
-  accountName?: string;
 }
 
 export const BudgetInfoGrid = ({
@@ -20,54 +19,88 @@ export const BudgetInfoGrid = ({
   totalSpent,
   currentDailyBudget,
   idealDailyBudget,
+  lastFiveDaysAverage = 0,
   isCalculating,
   calculationError,
-  hasReview,
-  actualBudgetAmount,
-  isUsingCustomBudget,
-  accountName
+  hasReview
 }: BudgetInfoGridProps) => {
-  // Determinar qual orçamento exibir (padrão ou personalizado)
-  const displayBudget = isUsingCustomBudget && actualBudgetAmount ? actualBudgetAmount : monthlyBudget;
-  
+  // Calcular porcentagem de gasto
+  const spentPercentage = monthlyBudget > 0 
+    ? Math.round((totalSpent / monthlyBudget) * 100)
+    : 0;
+
+  if (isCalculating) {
+    return (
+      <div className="grid grid-cols-2 gap-3 mt-3">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+    );
+  }
+
+  if (calculationError) {
+    return (
+      <div className="mt-3 p-3 bg-red-50 text-red-700 rounded-lg">
+        Erro ao calcular orçamentos
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-4 mb-3">
-      <div className="bg-gray-50 p-3 rounded-lg">
-        <div className="text-sm text-gray-500 mb-1">
-          {isUsingCustomBudget ? "Orçamento Personalizado" : "Orçamento Mensal"}
-          {accountName && <span className="ml-1">({accountName})</span>}
+    <div className="grid grid-cols-2 gap-3 mt-3">
+      <div className="bg-gray-50 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium mb-1">
+          <Calendar size={16} />
+          Orçamento Mensal
         </div>
-        <div className="text-base font-semibold">{formatCurrency(displayBudget)}</div>
-      </div>
-
-      <div className="bg-gray-50 p-3 rounded-lg">
-        <div className="text-sm text-gray-500 mb-1">Custo Total (mês)</div>
-        <div className="text-base font-semibold relative">
-          {isCalculating ? (
-            <span className="text-gray-400">Calculando...</span>
-          ) : calculationError ? (
-            <span className="text-red-500 text-sm">Erro ao calcular</span>
-          ) : (
-            formatCurrency(totalSpent)
-          )}
+        <div className="text-lg font-semibold">
+          {formatCurrency(monthlyBudget)}
+        </div>
+        <div className="text-xs mt-1 text-gray-500">
+          Gasto: {formatCurrency(totalSpent)} ({spentPercentage}%)
         </div>
       </div>
-
-      <div className="bg-gray-50 p-3 rounded-lg">
-        <div className="text-sm text-gray-500 mb-1">Orç. diário atual</div>
-        <div className="text-base font-semibold">
-          {hasReview && currentDailyBudget 
-            ? formatCurrency(currentDailyBudget) 
-            : "Não disponível"}
+      
+      <div className="bg-gray-50 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium mb-1">
+          <DollarSign size={16} />
+          Orçamento Diário Atual
+        </div>
+        <div className="text-lg font-semibold">
+          {hasReview ? formatCurrency(currentDailyBudget) : 'Não configurado'}
+        </div>
+        {hasReview && (
+          <div className="text-xs mt-1 text-gray-500">
+            Campanhas ativas
+          </div>
+        )}
+      </div>
+      
+      <div className="bg-gray-50 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium mb-1">
+          <ArrowTrendingUp size={16} />
+          Orçamento Diário Ideal
+        </div>
+        <div className="text-lg font-semibold">
+          {formatCurrency(idealDailyBudget)}
+        </div>
+        <div className="text-xs mt-1 text-gray-500">
+          Baseado no orçamento restante
         </div>
       </div>
-
-      <div className="bg-gray-50 p-3 rounded-lg">
-        <div className="text-sm text-gray-500 mb-1">Orç. diário ideal</div>
-        <div className="text-base font-semibold">
-          {idealDailyBudget > 0 
-            ? formatCurrency(idealDailyBudget) 
-            : "Não disponível"}
+      
+      <div className="bg-gray-50 rounded-lg p-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium mb-1">
+          <Clock size={16} />
+          Média últimos 5 dias
+        </div>
+        <div className="text-lg font-semibold">
+          {hasReview && lastFiveDaysAverage > 0 ? formatCurrency(lastFiveDaysAverage) : 'Não disponível'}
+        </div>
+        <div className="text-xs mt-1 text-gray-500">
+          Gasto médio diário real
         </div>
       </div>
     </div>
