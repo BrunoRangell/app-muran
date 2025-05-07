@@ -72,6 +72,7 @@ export const ClientReviewCard = ({
           shouldShowAverage={showRecommendationAverage}
           hasReview={hasReview}
           lastFiveDaysAverage={lastFiveDaysAverage}
+          compact={true} // Usar versão compacta
         />
 
         <CalculationError error={calculationError} />

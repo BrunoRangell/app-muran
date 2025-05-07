@@ -2,12 +2,12 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Building2, ChevronRight, TrendingUp, TrendingDown, Info } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboard/card-components/CompactBudgetRecommendation";
 
 interface ClientCardProps {
   client: any;
@@ -96,55 +96,14 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
             </div>
           </div>
           
-          {/* Recomendação baseada no orçamento diário atual */}
-          {client.budgetCalculation?.needsBudgetAdjustment && (
-            <div className={`flex items-center gap-2 text-sm font-medium p-2 rounded ${
-              budgetDifference > 0 
-                ? 'bg-green-50 text-green-700' 
-                : 'bg-red-50 text-red-700'
-            }`}>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger className="flex items-center gap-2 w-full">
-                    {budgetDifference > 0 ? (
-                      <TrendingUp size={16} className="text-green-500" />
-                    ) : (
-                      <TrendingDown size={16} className="text-red-500" />
-                    )}
-                    <span>Recomendado (orç. diário): {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}</span>
-                  </TooltipTrigger>
-                  <TooltipContent className="p-2 max-w-xs">
-                    <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
-          
-          {/* Recomendação baseada na média dos últimos 5 dias */}
-          {needsAdjustmentBasedOnAverage && (
-            <div className={`flex items-center gap-2 text-sm font-medium p-2 rounded ${
-              budgetDifferenceAvg > 0 
-                ? 'bg-green-50 text-green-700' 
-                : 'bg-red-50 text-red-700'
-            }`}>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger className="flex items-center gap-2 w-full">
-                    {budgetDifferenceAvg > 0 ? (
-                      <TrendingUp size={16} className="text-green-500" />
-                    ) : (
-                      <TrendingDown size={16} className="text-red-500" />
-                    )}
-                    <span>Recomendado (últ. 5 dias): {budgetDifferenceAvg > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifferenceAvg))}</span>
-                  </TooltipTrigger>
-                  <TooltipContent className="p-2 max-w-xs">
-                    <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAvg)}).</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
+          {/* Recomendações de orçamento em formato compacto */}
+          <CompactBudgetRecommendation 
+            budgetDifference={budgetDifference}
+            budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
+            shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
+            shouldShowAverage={needsAdjustmentBasedOnAverage}
+            lastFiveDaysAverage={lastFiveDaysAvg}
+          />
           
           {expanded && client.review && (
             <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">

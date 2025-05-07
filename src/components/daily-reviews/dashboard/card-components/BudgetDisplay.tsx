@@ -46,12 +46,13 @@ export const BudgetDisplay = ({
                   {accountName && (
                     <span className="mr-1 font-medium">{accountName}:</span>
                   )}
+                  <span className="mr-1 text-xs">Orç:</span>
                   {needsIncrease ? (
                     <TrendingUp size={14} className="mr-1" />
                   ) : (
                     <TrendingDown size={14} className="mr-1" />
                   )}
-                  {needsIncrease ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}
+                  {needsIncrease ? "+" : ""}{formatCurrency(Math.abs(budgetDifference))}
                   <Info size={10} className="ml-1 text-gray-500" />
                 </Badge>
               </TooltipTrigger>
@@ -73,7 +74,7 @@ export const BudgetDisplay = ({
                   ) : (
                     <TrendingDown size={14} className="mr-1" />
                   )}
-                  {needsIncreaseAverage ? "+" : "-"}{formatCurrency(Math.abs(budgetDifferenceAverage))}
+                  {needsIncreaseAverage ? "+" : ""}{formatCurrency(Math.abs(budgetDifferenceAverage))}
                   <Info size={10} className="ml-1 text-gray-500" />
                 </Badge>
               </TooltipTrigger>

@@ -2,6 +2,7 @@
 import { formatCurrency } from "@/utils/formatters";
 import { MinusCircle, TrendingDown, TrendingUp, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CompactBudgetRecommendation } from "./card-components/CompactBudgetRecommendation";
 
 interface BudgetRecommendationProps {
   budgetDifference: number;
@@ -10,6 +11,7 @@ interface BudgetRecommendationProps {
   shouldShowAverage?: boolean;
   hasReview: boolean;
   lastFiveDaysAverage?: number;
+  compact?: boolean;
 }
 
 export const BudgetRecommendation = ({ 
@@ -18,9 +20,23 @@ export const BudgetRecommendation = ({
   shouldShow,
   shouldShowAverage = false,
   hasReview,
-  lastFiveDaysAverage = 0
+  lastFiveDaysAverage = 0,
+  compact = false
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
+
+  // Se modo compacto estiver ativado, renderizar a versão compacta
+  if (compact) {
+    return (
+      <CompactBudgetRecommendation
+        budgetDifference={budgetDifference}
+        budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
+        shouldShow={shouldShow}
+        shouldShowAverage={shouldShowAverage}
+        lastFiveDaysAverage={lastFiveDaysAverage}
+      />
+    );
+  }
 
   const hasAnyRecommendation = shouldShow || shouldShowAverage;
   
