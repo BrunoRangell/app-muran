@@ -8,13 +8,16 @@ export function parseCurrencyToNumber(value: string): number {
 }
 
 // Função para formatar um número como moeda (R$ 1.000,00)
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number | string): string {
+  // Se for string, converter para número primeiro
+  const numValue = typeof value === 'string' ? parseCurrencyToNumber(value) : value;
+  
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(value);
+  }).format(numValue);
 }
 
 // Função para formatar uma data como string no formato brasileiro
@@ -38,4 +41,21 @@ export function formatPercentage(value: number): string {
 // Função para formatar números com separadores de milhar
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat('pt-BR').format(value);
+}
+
+// Função para formatar número de telefone no padrão brasileiro
+export function formatPhoneNumber(value: string): string {
+  // Remove tudo que não for dígito
+  const digits = value.replace(/\D/g, '');
+  
+  // Aplica a formatação de acordo com a quantidade de dígitos
+  if (digits.length <= 2) {
+    return digits;
+  } else if (digits.length <= 6) {
+    return `(${digits.substring(0, 2)}) ${digits.substring(2)}`;
+  } else if (digits.length <= 10) {
+    return `(${digits.substring(0, 2)}) ${digits.substring(2, 6)}-${digits.substring(6)}`;
+  } else {
+    return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7, 11)}`;
+  }
 }

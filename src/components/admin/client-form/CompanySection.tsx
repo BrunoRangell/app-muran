@@ -31,11 +31,11 @@ export const CompanySection = ({ form }: CompanySectionProps) => {
       return;
     }
 
-    const formattedValue = formatCurrency(value);
+    const numericValue = parseCurrencyToNumber(value);
+    const formattedValue = formatCurrency(numericValue);
     setInputValue(formattedValue);
     
-    // Converte para número e salva no formulário
-    const numericValue = parseCurrencyToNumber(formattedValue);
+    // Salva o valor numérico no formulário
     form.setValue('contractValue', numericValue);
   };
 
