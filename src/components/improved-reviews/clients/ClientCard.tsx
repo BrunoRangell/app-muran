@@ -24,7 +24,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const isProcessing = processingIds.includes(client.id);
   
   // Preparar dados para exibição
-  const accountName = client[`${platform}_account_display_name`] || client[`${platform}_account_name`] || "Conta de anúncios";
+  const accountName = client[`${platform}_account_name`] || "Conta Principal";
   const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
   const budgetAmount = client.budget_amount || 0;
   const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
@@ -61,7 +61,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
               <Building2 className="h-4 w-4 text-[#ff6e00]" />
               {client.company_name}
             </h3>
-            <p className="text-sm text-gray-500">Conta de anúncios: {accountName}</p>
+            <p className="text-sm text-gray-500">{accountName}</p>
           </div>
           {needsAdjustment && (
             <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -103,7 +103,6 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
             shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
             shouldShowAverage={needsAdjustmentBasedOnAverage}
             lastFiveDaysAverage={lastFiveDaysAvg}
-            accountName={accountName}
           />
           
           {expanded && client.review && (

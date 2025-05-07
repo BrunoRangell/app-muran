@@ -44,7 +44,7 @@ export const BudgetDisplay = ({
               <TooltipTrigger>
                 <Badge className={`flex items-center ${needsIncrease ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                   {accountName && (
-                    <span className="mr-1 font-medium text-xs">{accountName}:</span>
+                    <span className="mr-1 font-medium">{accountName}:</span>
                   )}
                   <span className="mr-1 text-xs">Orç:</span>
                   {needsIncrease ? (
@@ -68,9 +68,6 @@ export const BudgetDisplay = ({
             <Tooltip>
               <TooltipTrigger>
                 <Badge className={`flex items-center ${needsIncreaseAverage ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {accountName && (
-                    <span className="mr-1 font-medium text-xs">{accountName}:</span>
-                  )}
                   <span className="mr-1 text-xs">5d:</span>
                   {needsIncreaseAverage ? (
                     <TrendingUp size={14} className="mr-1" />

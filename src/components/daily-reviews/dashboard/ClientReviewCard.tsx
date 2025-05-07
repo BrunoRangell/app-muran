@@ -44,9 +44,6 @@ export const ClientReviewCard = ({
 
   // Determinar se o card deve ter destaque (se houver qualquer recomendação)
   const shouldHighlight = showRecommendation || showRecommendationAverage;
-  
-  // Obter o nome da conta para exibição - corrigindo as propriedades
-  const accountName = client.lastReview?.account_display_name || "Conta de anúncios";
 
   return (
     <Card className={`overflow-hidden border ${shouldHighlight ? 'border-l-4 border-l-amber-500' : ''}`}>
@@ -76,7 +73,6 @@ export const ClientReviewCard = ({
           hasReview={hasReview}
           lastFiveDaysAverage={lastFiveDaysAverage}
           compact={true} // Usar versão compacta
-          accountName={accountName}
         />
 
         <CalculationError error={calculationError} />
