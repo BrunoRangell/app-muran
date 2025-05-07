@@ -21,6 +21,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const { reviewAllClients, isProcessing } = useBatchOperations({
     platform: "google",
     onComplete: () => {
+      console.log("Revisão em lote do Google Ads concluída. Atualizando dados...");
       refreshData();
       if (onRefreshCompleted) onRefreshCompleted();
     }
@@ -43,12 +44,14 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
 
   // Handle refresh
   const handleRefresh = async () => {
+    console.log("Atualizando dados do Google Ads...");
     await refreshData();
     if (onRefreshCompleted) onRefreshCompleted();
   };
 
   // Handle batch review
   const handleBatchReview = () => {
+    console.log("Iniciando revisão em lote do Google Ads...");
     if (data && data.length > 0) {
       reviewAllClients(data);
     }

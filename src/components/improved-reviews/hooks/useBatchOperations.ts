@@ -45,26 +45,29 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       }
       
       // Definir endpoint baseado na plataforma
-      const url = `${window.location.origin}/api/${config.platform === "meta" ? "daily-meta-review" : "daily-google-review"}`;
+      const endpoint = config.platform === "meta" ? 
+        "daily-meta-review" : 
+        "daily-google-review";
       
       // Construir payload
       const payload = {
         clientId,
         reviewDate,
-        [`${config.platform}AccountId`]: accountId || client[`${config.platform}_account_id`]
+        [config.platform === "meta" ? "metaAccountId" : "googleAccountId"]: accountId || 
+          (config.platform === "meta" ? client.meta_account_id : client.google_account_id)
       };
       
-      // Fazer chamada para a função Edge
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      // Fazer chamada direta para a função Edge
+      const { data, error } = await supabase.functions.invoke(endpoint, {
+        body: payload
       });
       
-      const result = await response.json();
+      if (error) {
+        throw new Error(`Erro ao processar revisão: ${error.message}`);
+      }
       
-      if (!result.success) {
-        throw new Error(result.error || "Erro ao processar revisão");
+      if (data && data.error) {
+        throw new Error(data.error || "Erro ao processar revisão");
       }
       
       toast({
@@ -72,8 +75,9 @@ export function useBatchOperations(config: BatchOperationsConfig) {
         description: `Cliente ${client.company_name} revisado com sucesso.`,
       });
       
-      return result;
+      return data;
     } catch (error: any) {
+      console.error("Erro ao revisar cliente:", error);
       toast({
         title: "Erro na revisão",
         description: error.message || "Ocorreu um erro ao revisar o cliente",
@@ -108,9 +112,9 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       for (const client of clients) {
         try {
           await reviewClient(client.id, client[`${config.platform}_account_id`] || undefined);
-          successfulReviews.push(client.company_name);
+          successfulReviews.push(client.company_name || client.id);
         } catch (error) {
-          failedReviews.push(client.company_name);
+          failedReviews.push(client.company_name || client.id);
           console.error(`Erro ao revisar cliente ${client.id}:`, error);
         }
         

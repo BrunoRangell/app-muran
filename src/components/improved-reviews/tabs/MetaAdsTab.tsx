@@ -8,7 +8,6 @@ import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface MetaAdsTabProps {
   onRefreshCompleted?: () => void;
@@ -22,6 +21,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const { reviewAllClients, isProcessing } = useBatchOperations({
     platform: "meta",
     onComplete: () => {
+      console.log("Revisão em lote do Meta Ads concluída. Atualizando dados...");
       refreshData();
       if (onRefreshCompleted) onRefreshCompleted();
     }
@@ -44,12 +44,14 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
 
   // Handle refresh
   const handleRefresh = async () => {
+    console.log("Atualizando dados do Meta Ads...");
     await refreshData();
     if (onRefreshCompleted) onRefreshCompleted();
   };
 
   // Handle batch review
   const handleBatchReview = () => {
+    console.log("Iniciando revisão em lote do Meta Ads...");
     if (data && data.length > 0) {
       reviewAllClients(data);
     }
@@ -93,6 +95,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         viewMode={viewMode}
         searchQuery={searchQuery}
         showOnlyAdjustments={showOnlyAdjustments}
+        platform="meta"
       />
     </div>
   );
