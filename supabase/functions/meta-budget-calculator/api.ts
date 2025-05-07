@@ -172,3 +172,41 @@ export async function fetchAdSets(campaignId: string, accessToken: string) {
     return { success: false, data: [] };
   }
 }
+
+// Nova função para buscar informações da conta Meta
+export async function fetchAccountInfo(accountId: string, accessToken: string) {
+  try {
+    console.log(`Buscando informações da conta Meta ${accountId}`);
+    
+    // Buscar nome da conta usando a API Graph do Meta
+    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name&access_token=${accessToken}`;
+    
+    const accountResponse = await fetch(accountUrl);
+    
+    if (!accountResponse.ok) {
+      const errorData = await accountResponse.json();
+      console.error("Erro ao buscar informações da conta Meta:", errorData);
+      return {
+        success: false,
+        error: `Erro ao buscar informações da conta: ${JSON.stringify(errorData)}`
+      };
+    }
+    
+    const accountData = await accountResponse.json();
+    console.log("Informações da conta Meta:", JSON.stringify(accountData));
+    
+    return {
+      success: true,
+      data: {
+        accountName: accountData.name,
+        accountId: accountData.id
+      }
+    };
+  } catch (error) {
+    console.error("Erro ao buscar informações da conta Meta:", error);
+    return {
+      success: false,
+      error: `Erro ao buscar informações da conta: ${error.message}`
+    };
+  }
+}

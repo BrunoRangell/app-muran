@@ -10,6 +10,7 @@ interface CompactBudgetRecommendationProps {
   shouldShow: boolean;
   shouldShowAverage?: boolean;
   lastFiveDaysAverage?: number;
+  accountName?: string;
 }
 
 export const CompactBudgetRecommendation = ({ 
@@ -17,7 +18,8 @@ export const CompactBudgetRecommendation = ({
   budgetDifferenceBasedOnAverage = 0,
   shouldShow,
   shouldShowAverage = false,
-  lastFiveDaysAverage = 0
+  lastFiveDaysAverage = 0,
+  accountName
 }: CompactBudgetRecommendationProps) => {
   const hasAnyRecommendation = shouldShow || shouldShowAverage;
   
@@ -36,6 +38,9 @@ export const CompactBudgetRecommendation = ({
                   ? 'bg-green-100 text-green-800' 
                   : 'bg-red-100 text-red-800'
               }`}>
+                {accountName && (
+                  <span className="mr-1 text-xs font-medium">{accountName}:</span>
+                )}
                 <span className="mr-1 text-xs">Orç:</span>
                 {budgetDifference > 0 ? (
                   <TrendingUp size={14} className="mr-1" />
@@ -62,6 +67,9 @@ export const CompactBudgetRecommendation = ({
                   ? 'bg-green-100 text-green-800' 
                   : 'bg-red-100 text-red-800'
               }`}>
+                {accountName && (
+                  <span className="mr-1 text-xs font-medium">{accountName}:</span>
+                )}
                 <span className="mr-1 text-xs">5d:</span>
                 {budgetDifferenceBasedOnAverage > 0 ? (
                   <TrendingUp size={14} className="mr-1" />
