@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { validateRequest, processDateRange } from "./validators.ts";
-import { fetchCampaigns, fetchCampaignInsights, fetchAdSets } from "./api.ts";
+import { fetchCampaigns, fetchCampaignInsights, fetchAdSets, fetchAccountInfo } from "./api.ts";
 import { calculateDailyBudgets, processCampaign } from "./budget.ts";
 import { formatResponse } from "./response.ts";
 
@@ -29,6 +29,11 @@ serve(async (req) => {
       return validationError;
     }
 
+    // Buscar informações da conta Meta
+    const accountInfo = await fetchAccountInfo(accountId, accessToken);
+    const accountName = accountInfo?.name || `Conta ${accountId}`;
+    console.log(`Nome da conta: ${accountName}`);
+    
     // Processar intervalo de datas
     const { effectiveDateRange, daysDiff } = processDateRange(dateRange);
     console.log(`Período de análise: ${effectiveDateRange.start} a ${effectiveDateRange.end}`);
@@ -62,6 +67,7 @@ serve(async (req) => {
 
     // Formatar resposta com os resultados calculados
     return formatResponse({
+      accountName,
       totalDailyBudget: budgetResult.totalDailyBudget,
       totalSpent: insightsResult.totalSpent,
       campaignDetails: budgetResult.campaignDetails,

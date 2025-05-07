@@ -1,86 +1,105 @@
-
 import { ClientCard } from "./ClientCard";
-import { ClientRow } from "./ClientRow";
-import { ClientsTable } from "./ClientsTable";
-import { EmptyState } from "../common/EmptyState";
-import { useMemo } from "react";
+import { ClientTableRow } from "./ClientTableRow";
+import { ClientListItem } from "./ClientListItem";
 
 interface ClientsListProps {
-  data: any[] | undefined;
-  viewMode: string;
+  data: any[];
+  viewMode: "cards" | "table" | "list";
   searchQuery: string;
   showOnlyAdjustments: boolean;
-  platform?: "meta" | "google";
+  platform: "meta" | "google";
 }
 
-export function ClientsList({
-  data,
-  viewMode,
-  searchQuery,
+export function ClientsList({ 
+  data, 
+  viewMode, 
+  searchQuery, 
   showOnlyAdjustments,
-  platform = "meta"
+  platform
 }: ClientsListProps) {
-  // Filtrar os dados com base na pesquisa e nos filtros
-  const filteredData = useMemo(() => {
-    if (!data) return [];
+  // Filtrar clientes por texto de pesquisa
+  const filteredData = data?.filter(client => {
+    const matchesSearch = client.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (client.meta_account_name && client.meta_account_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (client.google_account_name && client.google_account_name.toLowerCase().includes(searchQuery.toLowerCase()));
+                         
+    const matchesAdjustment = showOnlyAdjustments ? client.needsAdjustment : true;
     
-    return data.filter(client => {
-      // Filtro de texto
-      const matchesSearch = 
-        searchQuery === "" || 
-        client.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (client[`${platform}_account_name`] && 
-          client[`${platform}_account_name`].toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      // Filtro de apenas ajustes necessários
-      const matchesAdjustment = !showOnlyAdjustments || client.needsAdjustment;
-      
-      return matchesSearch && matchesAdjustment;
-    });
-  }, [data, searchQuery, showOnlyAdjustments, platform]);
-  
-  // Ordenar clientes (prioridade para os que precisam de ajuste)
-  const sortedClients = useMemo(() => {
-    return [...filteredData].sort((a, b) => {
-      // Primeiro critério: necessidade de ajuste (os que precisam ficam primeiro)
-      if (a.needsAdjustment !== b.needsAdjustment) {
-        return a.needsAdjustment ? -1 : 1;
-      }
-      // Segundo critério: ordem alfabética
-      return a.company_name.localeCompare(b.company_name);
-    });
-  }, [filteredData]);
+    return matchesSearch && matchesAdjustment;
+  }) || [];
 
-  if (!sortedClients || sortedClients.length === 0) {
+  if (!data || data.length === 0) {
     return (
-      <EmptyState
-        title="Nenhum cliente encontrado"
-        description={searchQuery ? "Tente ajustar sua busca ou filtros" : "Nenhum cliente disponível para revisão"}
-      />
-    );
-  }
-
-  // Renderizar com base no modo de visualização selecionado
-  if (viewMode === "table") {
-    return <ClientsTable data={sortedClients} platform={platform} />;
-  }
-  
-  if (viewMode === "list") {
-    return (
-      <div className="space-y-2">
-        {sortedClients.map((client) => (
-          <ClientRow key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} />
-        ))}
+      <div className="text-center p-8 border rounded-lg bg-gray-50">
+        <p className="text-lg text-gray-500">Nenhum cliente disponível para revisão.</p>
       </div>
     );
   }
-  
-  // Modo padrão: cards
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {sortedClients.map((client) => (
-        <ClientCard key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} />
+
+  if (filteredData.length === 0) {
+    return (
+      <div className="text-center p-8 border rounded-lg bg-gray-50">
+        <p className="text-lg text-gray-500">
+          Nenhum cliente corresponde aos critérios de filtro.
+        </p>
+      </div>
+    );
+  }
+
+  const renderCards = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {filteredData.map((client) => (
+        <ClientCard 
+          key={`${client.id}-${client[`${platform}_account_id`]}-card`} 
+          client={client} 
+          platform={platform}
+        />
       ))}
+    </div>
+  );
+
+  const renderTable = () => (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-2 text-left text-gray-500 text-sm font-medium">Cliente</th>
+            <th className="px-4 py-2 text-left text-gray-500 text-sm font-medium">Orçamento</th>
+            <th className="px-4 py-2 text-left text-gray-500 text-sm font-medium">Gasto</th>
+            <th className="px-4 py-2 text-left text-gray-500 text-sm font-medium">Ajuste</th>
+            <th className="px-4 py-2 text-left text-gray-500 text-sm font-medium">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredData.map((client) => (
+            <ClientTableRow 
+              key={`${client.id}-${client[`${platform}_account_id`]}-row`} 
+              client={client}
+              platform={platform}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderList = () => (
+    <div className="space-y-2">
+      {filteredData.map((client) => (
+        <ClientListItem 
+          key={`${client.id}-${client[`${platform}_account_id`]}-list`} 
+          client={client}
+          platform={platform}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      {viewMode === "cards" && renderCards()}
+      {viewMode === "table" && renderTable()}
+      {viewMode === "list" && renderList()}
     </div>
   );
 }

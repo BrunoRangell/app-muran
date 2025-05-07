@@ -24,7 +24,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const isProcessing = processingIds.includes(client.id);
   
   // Preparar dados para exibição
-  const accountName = client[`${platform}_account_name`] || "Conta Principal";
+  const accountName = client.meta_account_name || client.google_account_name || "Conta Principal";
   const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
   const budgetAmount = client.budget_amount || 0;
   const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;

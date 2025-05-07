@@ -13,6 +13,7 @@ interface ClientCardInfoProps {
   totalBudget: number;
   lastFiveDaysAvg?: number;
   className?: string;
+  accountName?: string;
 }
 
 export const ClientCardInfo = ({
@@ -23,6 +24,7 @@ export const ClientCardInfo = ({
   needsAdjustment,
   totalBudget,
   lastFiveDaysAvg,
+  accountName = "",
   className = ""
 }: ClientCardInfoProps) => {
   // Calcular a porcentagem gasta do orçamento
@@ -41,6 +43,11 @@ export const ClientCardInfo = ({
   const formattedTotalSpent = formatCurrency(totalSpent);
   const formattedTotalBudget = formatCurrency(totalBudget);
   const formattedLastFiveDaysAvg = lastFiveDaysAvg ? formatCurrency(lastFiveDaysAvg) : "N/A";
+
+  // Formatar nome da conta para display (apenas para Meta)
+  const displayAccountName = platform === "meta" && accountName 
+    ? `CA: ${accountName}` 
+    : accountName;
 
   return (
     <div className={`grid grid-cols-2 gap-2 text-sm ${className}`}>
