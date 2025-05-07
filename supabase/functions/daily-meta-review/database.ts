@@ -20,6 +20,7 @@ export interface CustomBudget {
   budget_amount: number;
   start_date: string;
   end_date: string;
+  account_id: string | null;
 }
 
 export interface ReviewData {
@@ -85,23 +86,80 @@ export async function fetchMetaAccountDetails(
 export async function fetchActiveCustomBudget(
   supabase: any, 
   clientId: string,
-  today: string
+  today: string,
+  accountId?: string | null,
+  platform: string = 'meta'
 ): Promise<CustomBudget | null> {
-  console.log(`Buscando orçamento personalizado ativo para cliente ${clientId}`);
+  console.log(`Buscando orçamento personalizado ativo para cliente ${clientId}${accountId ? ` e conta ${accountId}` : ''}`);
   
-  const { data: customBudget, error: customBudgetError } = await supabase
-    .from("meta_custom_budgets")
+  let query = supabase
+    .from("custom_budgets")
     .select("*")
     .eq("client_id", clientId)
     .eq("is_active", true)
+    .eq("platform", platform)
     .lte("start_date", today)
-    .gte("end_date", today)
+    .gte("end_date", today);
+  
+  // Se foi fornecido um accountId, procurar primeiro orçamentos específicos para essa conta,
+  // ou orçamentos gerais (sem account_id especificado)
+  if (accountId) {
+    // Primeiro, tentar encontrar um orçamento específico para esta conta
+    const { data: specificBudget, error: specificError } = await supabase
+      .from("custom_budgets")
+      .select("*")
+      .eq("client_id", clientId)
+      .eq("account_id", accountId)
+      .eq("is_active", true)
+      .eq("platform", platform)
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .order("created_at", { ascending: false })
+      .maybeSingle();
+    
+    if (!specificError && specificBudget) {
+      console.log(`Encontrado orçamento personalizado específico para a conta: ${specificBudget.id}`);
+      return specificBudget;
+    }
+    
+    // Se não encontrar específico, procurar por orçamentos gerais (sem account_id)
+    const { data: generalBudget, error: generalError } = await supabase
+      .from("custom_budgets")
+      .select("*")
+      .eq("client_id", clientId)
+      .is("account_id", null)
+      .eq("is_active", true)
+      .eq("platform", platform)
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .order("created_at", { ascending: false })
+      .maybeSingle();
+    
+    if (!generalError && generalBudget) {
+      console.log(`Encontrado orçamento personalizado geral para o cliente: ${generalBudget.id}`);
+      return generalBudget;
+    }
+    
+    console.log("Nenhum orçamento personalizado encontrado para esta conta ou cliente");
+    return null;
+  }
+  
+  // Sem accountId específico, apenas buscar orçamentos gerais
+  query = query.is("account_id", null);
+  
+  const { data: customBudget, error: customBudgetError } = await query
     .order("created_at", { ascending: false })
     .maybeSingle();
 
   if (customBudgetError) {
     console.error(`Erro ao buscar orçamento personalizado: ${customBudgetError.message}`);
     return null;
+  }
+
+  if (customBudget) {
+    console.log(`Encontrado orçamento personalizado: ${customBudget.id}`);
+  } else {
+    console.log("Nenhum orçamento personalizado encontrado");
   }
 
   return customBudget;

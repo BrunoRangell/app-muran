@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
 import { supabase } from "@/lib/supabase";
 import { callEdgeFunction } from "./useEdgeFunction";
+import { getActiveCustomBudget } from "./services/customBudgetService";
 
 export const useClientBudgetCalculation = (client: ClientWithReview, specificAccountId?: string) => {
   const [isCalculating, setIsCalculating] = useState(false);
@@ -47,20 +48,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
         }
         
         // Buscar orçamento personalizado ativo (se houver)
-        const today = new Date().toISOString().split('T')[0];
-        const { data: customBudget, error: budgetError } = await supabase
-          .from('meta_custom_budgets')
-          .select('*')
-          .eq('client_id', client.id)
-          .eq('is_active', true)
-          .lte('start_date', today)
-          .gte('end_date', today)
-          .order('created_at', { ascending: false })
-          .maybeSingle();
-        
-        if (budgetError) {
-          console.error("Erro ao buscar orçamento personalizado:", budgetError);
-        }
+        // Inclui lógica para considerar orçamentos específicos de conta
+        const customBudget = await getActiveCustomBudget(client.id, accountId, 'meta');
         
         // Se o cliente tem uma revisão, calcular o orçamento diário ideal
         let currentDailyBudget = 0;
@@ -70,8 +59,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
         
         if (review) {
           // Usar os valores da revisão
-          currentDailyBudget = review.google_daily_budget_current || 0;
-          totalSpent = review.google_total_spent || 0;
+          currentDailyBudget = review.meta_daily_budget_current || 0;
+          totalSpent = review.meta_total_spent || 0;
           
           // Verificar se a revisão está usando um orçamento personalizado
           const isUsingCustomBudgetInReview = review.using_custom_budget || false;
@@ -81,11 +70,24 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
           const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
           remainingDaysValue = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
           
-          // Verificar qual orçamento usar para calcular o orçamento diário ideal
+          // Determinar qual orçamento usar para calcular o orçamento diário ideal
+          // Prioridade:
+          // 1. Orçamento personalizado específico para a conta
+          // 2. Orçamento personalizado geral do cliente
+          // 3. Orçamento padrão da conta
+          // 4. Orçamento padrão do cliente
           let actualBudgetAmount = monthlyBudget;
+          let usingCustomBudget = false;
           
-          if (isUsingCustomBudgetInReview && review.custom_budget_amount) {
+          // Verificar se temos um orçamento personalizado ativo hoje
+          if (customBudget) {
+            actualBudgetAmount = customBudget.budget_amount;
+            usingCustomBudget = true;
+          } 
+          // Se não, verificar se a revisão está usando um orçamento personalizado
+          else if (isUsingCustomBudgetInReview && review.custom_budget_amount) {
             actualBudgetAmount = review.custom_budget_amount;
+            usingCustomBudget = true;
           }
           
           // Calcular orçamento diário ideal
@@ -94,7 +96,7 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
             : 0;
             
           // Diagnóstico
-          console.info(`Cliente ${client.company_name} - Diagnóstico:`, {
+          console.info(`Cliente ${client.company_name} - Diagnóstico Meta:`, {
             hasReview: !!review,
             hasCustomBudget: customBudget || false,
             orçamentoMensal: monthlyBudget,
@@ -104,7 +106,9 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
             orçamentoDiárioIdeal: idealDailyBudget,
             diferençaNecessária: idealDailyBudget - currentDailyBudget,
             precisaAjuste: Math.abs(idealDailyBudget - currentDailyBudget) >= 5,
-            tipoAjuste: idealDailyBudget > currentDailyBudget ? "Aumentar" : "Diminuir"
+            tipoAjuste: idealDailyBudget > currentDailyBudget ? "Aumentar" : "Diminuir",
+            contaEspecífica: specificAccountId ? "Sim" : "Não",
+            orçamentoPersonalizadoEspecífico: customBudget?.account_id ? "Sim" : "Não"
           });
         }
         
@@ -117,10 +121,14 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
           idealDailyBudget,
           budgetDifference: idealDailyBudget - currentDailyBudget,
           customBudget,
-          isUsingCustomBudgetInReview: review?.using_custom_budget || false,
-          actualBudgetAmount: review?.custom_budget_amount || monthlyBudget,
+          isUsingCustomBudgetInReview: customBudget ? true : (review?.using_custom_budget || false),
+          isLoadingCustomBudget: false,
+          actualBudgetAmount: customBudget ? customBudget.budget_amount : (review?.custom_budget_amount || monthlyBudget),
           accountName,
-          remainingDaysValue
+          remainingDaysValue,
+          needsBudgetAdjustment: Math.abs(idealDailyBudget - currentDailyBudget) >= 5,
+          // Função auxiliar para calcular gasto total
+          calculateTotalSpent: async () => totalSpent
         });
       } catch (error) {
         console.error("Erro ao calcular orçamento:", error);

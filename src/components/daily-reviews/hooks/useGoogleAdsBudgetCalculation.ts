@@ -1,13 +1,55 @@
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ClientWithReview, GoogleAccount } from "./types/reviewTypes";
+import { getActiveCustomBudget } from "./services/customBudgetService";
 
-export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
+export const useGoogleAdsBudgetCalculation = (client: ClientWithReview, specificAccountId?: string) => {
   // Verificar se o cliente tem uma revisão
   const hasReview = !!client.lastReview;
   
+  const [customBudget, setCustomBudget] = useState<any>(null);
+  const [isLoadingCustomBudget, setIsLoadingCustomBudget] = useState(false);
+  
+  // Buscar orçamento personalizado ativo
+  useEffect(() => {
+    const fetchCustomBudget = async () => {
+      if (!client?.id) return;
+      
+      setIsLoadingCustomBudget(true);
+      try {
+        const budget = await getActiveCustomBudget(
+          client.id, 
+          specificAccountId || null,
+          'google'
+        );
+        setCustomBudget(budget);
+      } catch (error) {
+        console.error("Erro ao buscar orçamento personalizado Google:", error);
+      } finally {
+        setIsLoadingCustomBudget(false);
+      }
+    };
+    
+    fetchCustomBudget();
+  }, [client?.id, specificAccountId]);
+  
   // Calcular o orçamento total do Google Ads somando todas as contas
   const calculateTotalGoogleBudget = () => {
+    // Se temos um orçamento personalizado, usá-lo
+    if (customBudget) {
+      return customBudget.budget_amount;
+    }
+    
+    // Se for uma conta específica, usar o orçamento dessa conta
+    if (specificAccountId && client.google_accounts) {
+      const specificAccount = client.google_accounts.find(
+        account => account.account_id === specificAccountId
+      );
+      if (specificAccount) {
+        return specificAccount.budget_amount || 0;
+      }
+    }
+    
     // Se não tiver contas Google configuradas, usar o valor legado
     if (!client.google_accounts || client.google_accounts.length === 0) {
       return client.google_ads_budget || 0;
@@ -28,7 +70,15 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     if (!hasReview) return 0;
     
     // Se tivermos uma revisão específica para uma conta
-    if (client.lastReview?.client_account_id) {
+    if (specificAccountId && client.google_reviews) {
+      const specificReview = client.google_reviews.find(
+        review => review.google_account_id === specificAccountId
+      );
+      
+      if (specificReview) {
+        return specificReview.google_total_spent || 0;
+      }
+    } else if (client.lastReview?.client_account_id) {
       return client.lastReview?.google_total_spent || 0;
     }
     
@@ -50,13 +100,21 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     }
     
     return client.lastReview?.google_total_spent || 0;
-  }, [hasReview, client.lastReview, client.google_reviews]);
+  }, [hasReview, client.lastReview, client.google_reviews, specificAccountId]);
   
   const lastFiveDaysSpent = useMemo(() => {
     if (!hasReview) return 0;
     
     // Se tivermos uma revisão específica para uma conta
-    if (client.lastReview?.client_account_id) {
+    if (specificAccountId && client.google_reviews) {
+      const specificReview = client.google_reviews.find(
+        review => review.google_account_id === specificAccountId
+      );
+      
+      if (specificReview) {
+        return specificReview.google_last_five_days_spent || 0;
+      }
+    } else if (client.lastReview?.client_account_id) {
       return client.lastReview?.google_last_five_days_spent || 0;
     }
     
@@ -78,13 +136,21 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     }
     
     return client.lastReview?.google_last_five_days_spent || 0;
-  }, [hasReview, client.lastReview, client.google_reviews]);
+  }, [hasReview, client.lastReview, client.google_reviews, specificAccountId]);
   
   const currentDailyBudget = useMemo(() => {
     if (!hasReview) return 0;
     
     // Se tivermos uma revisão específica para uma conta
-    if (client.lastReview?.client_account_id) {
+    if (specificAccountId && client.google_reviews) {
+      const specificReview = client.google_reviews.find(
+        review => review.google_account_id === specificAccountId
+      );
+      
+      if (specificReview) {
+        return specificReview.google_daily_budget_current || 0;
+      }
+    } else if (client.lastReview?.client_account_id) {
       return client.lastReview?.google_daily_budget_current || 0;
     }
     
@@ -106,7 +172,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     }
     
     return client.lastReview?.google_daily_budget_current || 0;
-  }, [hasReview, client.lastReview, client.google_reviews]);
+  }, [hasReview, client.lastReview, client.google_reviews, specificAccountId]);
   
   // Calcular orçamento diário ideal
   const currentDate = new Date();
@@ -155,6 +221,8 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     return absoluteDifference >= 5 && percentageDifference >= 0.05;
   }, [hasReview, budgetDifferenceBasedOnAverage, lastFiveDaysSpent]);
   
+  const calculateTotalSpent = async () => totalSpent;
+  
   return {
     hasReview,
     isCalculating: false,
@@ -168,6 +236,11 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     remainingDaysValue: remainingDays,
     remainingBudget,
     needsBudgetAdjustment,
-    needsAdjustmentBasedOnAverage
+    needsAdjustmentBasedOnAverage,
+    customBudget,
+    isLoadingCustomBudget,
+    isUsingCustomBudgetInReview: !!customBudget,
+    actualBudgetAmount: customBudget ? customBudget.budget_amount : monthlyBudget,
+    calculateTotalSpent
   };
 };

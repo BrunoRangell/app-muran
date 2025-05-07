@@ -67,6 +67,7 @@ const customBudgetSchema = z.object({
   platform: z.enum(['meta', 'google'], {
     required_error: "Selecione uma plataforma",
   }),
+  account_id: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   is_recurring: z.boolean().default(false),
   recurrence_pattern: z.string().nullable().optional(),
@@ -93,6 +94,7 @@ interface CustomBudgetFormProps {
 
 type FormData = z.infer<typeof customBudgetSchema>;
 
+// Modelos de orçamento
 const BUDGET_TEMPLATES = [
   // Meta templates
   { name: "Meta: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'meta' as const },
@@ -106,6 +108,7 @@ const BUDGET_TEMPLATES = [
   { name: "Google: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'google' as const },
 ];
 
+// Padrões de recorrência
 const RECURRENCE_PATTERNS = [
   { value: "weekly", label: "Semanal" },
   { value: "biweekly", label: "Quinzenal" },
@@ -122,6 +125,7 @@ export const CustomBudgetForm = ({
   const [formattedBudget, setFormattedBudget] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
+  const [clientAccounts, setClientAccounts] = useState<any[]>([]);
 
   // Buscar clientes ativos
   const { data: clients, isLoading: isLoadingClients } = useQuery({
@@ -147,12 +151,61 @@ export const CustomBudgetForm = ({
       start_date: new Date(),
       end_date: new Date(),
       platform: 'meta',
+      account_id: null,
       description: "",
       is_recurring: false,
       recurrence_pattern: null,
     },
     mode: "onChange", // Validar ao alterar os campos
   });
+
+  // Buscar contas do cliente quando a plataforma ou o cliente mudar
+  const clientId = form.watch("client_id");
+  const platform = form.watch("platform");
+  
+  useEffect(() => {
+    const fetchClientAccounts = async () => {
+      if (!clientId) {
+        setClientAccounts([]);
+        return;
+      }
+      
+      try {
+        let query;
+        if (platform === 'meta') {
+          query = supabase
+            .from('client_meta_accounts')
+            .select('account_id, account_name, budget_amount')
+            .eq('client_id', clientId)
+            .eq('status', 'active');
+        } else {
+          query = supabase
+            .from('client_google_accounts')
+            .select('account_id, account_name, budget_amount')
+            .eq('client_id', clientId)
+            .eq('status', 'active');
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error(`Erro ao buscar contas de ${platform}:`, error);
+          return;
+        }
+        
+        setClientAccounts(data || []);
+        
+        // Se estiver editando e não houver conta selecionada, limpar o campo account_id
+        if (selectedBudget && !data?.some(acc => acc.account_id === selectedBudget.accountId)) {
+          form.setValue("account_id", null);
+        }
+      } catch (err) {
+        console.error(`Erro ao buscar contas de ${platform}:`, err);
+      }
+    };
+    
+    fetchClientAccounts();
+  }, [clientId, platform, selectedBudget]);
 
   // Preencher o formulário quando um orçamento for selecionado para edição
   useEffect(() => {
@@ -173,6 +226,7 @@ export const CustomBudgetForm = ({
         platform: (selectedBudget.platform === 'meta' || selectedBudget.platform === 'google') 
           ? selectedBudget.platform 
           : 'meta',
+        account_id: selectedBudget.accountId || null,
         description: selectedBudget.description,
         is_recurring: selectedBudget.isRecurring || false,
         recurrence_pattern: selectedBudget.recurrencePattern || null,
@@ -185,6 +239,7 @@ export const CustomBudgetForm = ({
         start_date: new Date(),
         end_date: new Date(),
         platform: 'meta',
+        account_id: null,
         description: "",
         is_recurring: false,
         recurrence_pattern: null,
@@ -244,7 +299,6 @@ export const CustomBudgetForm = ({
   const startDate = form.watch("start_date");
   const endDate = form.watch("end_date");
   const budgetAmount = form.watch("budget_amount");
-  const platform = form.watch("platform");
 
   const getDaysInPeriod = () => {
     if (startDate && endDate) {
@@ -279,6 +333,7 @@ export const CustomBudgetForm = ({
         startDate: formatDateToYYYYMMDD(data.start_date),
         endDate: formatDateToYYYYMMDD(data.end_date),
         platform: data.platform,
+        accountId: data.account_id || undefined,
         description: data.description || "",
         isRecurring: data.is_recurring,
         recurrencePattern: data.is_recurring ? data.recurrence_pattern : undefined
@@ -375,6 +430,54 @@ export const CustomBudgetForm = ({
               )}
             />
           </div>
+          
+          {/* Novo campo para seleção de conta específica */}
+          {clientAccounts.length > 0 && (
+            <FormField
+              control={form.control}
+              name="account_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center">
+                    Conta Específica
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 ml-1.5 text-gray-400" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p>Opcional. Se não selecionar uma conta específica, o orçamento será aplicado ao cliente como um todo.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </FormLabel>
+                  <Select
+                    disabled={isSubmitting || clientAccounts.length === 0}
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma conta específica (opcional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Todas as contas (geral)</SelectItem>
+                      {clientAccounts.map((account) => (
+                        <SelectItem key={account.account_id} value={account.account_id}>
+                          {account.account_name} ({formatCurrency(account.budget_amount)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {field.value ? "Este orçamento será específico para a conta selecionada" : "Este orçamento será aplicado a todas as contas do cliente"}
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">

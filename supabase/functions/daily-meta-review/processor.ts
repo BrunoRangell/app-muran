@@ -31,6 +31,7 @@ interface ReviewResult {
   totalSpent?: number;
   budgetAmount?: number;
   usingCustomBudget?: boolean;
+  customBudgetId?: string | null;
   error?: string;
 }
 
@@ -99,13 +100,16 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
 
     // Verificar se existe orçamento personalizado ativo
     const today = new Date().toISOString().split("T")[0];
-    const customBudget = await fetchActiveCustomBudget(supabase, clientId, today);
+    // Ao buscar o orçamento personalizado, verificamos se há um específico para esta conta
+    // ou um geral para o cliente
+    const customBudget = await fetchActiveCustomBudget(supabase, clientId, today, accountId, 'meta');
 
     const usingCustomBudget = !!customBudget;
     
-    // Se estiver usando orçamento personalizado e não uma conta específica
-    if (usingCustomBudget && !metaAccountId) {
+    // Se estiver usando orçamento personalizado, usar seu valor
+    if (usingCustomBudget) {
       budgetAmount = customBudget?.budget_amount || budgetAmount;
+      console.log(`Usando orçamento personalizado: ${budgetAmount} (ID: ${customBudget?.id})`);
     }
 
     console.log(`Usando orçamento personalizado: ${usingCustomBudget}`);
@@ -164,6 +168,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       totalSpent,
       budgetAmount,
       usingCustomBudget,
+      customBudgetId: customBudget?.id || null,
     };
   } catch (error) {
     console.error("Erro na função Edge:", error.message);
