@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MetaAdsTab } from "@/components/improved-reviews/tabs/MetaAdsTab";
 import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
 import { SettingsTab } from "@/components/improved-reviews/tabs/SettingsTab";
+import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
 import { useSearchParams } from "react-router-dom";
 
@@ -45,6 +46,7 @@ export default function ImprovedDailyReviews() {
           <TabsList className="mb-4">
             <TabsTrigger value="dashboard">Meta Ads</TabsTrigger>
             <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
+            <TabsTrigger value="budgets">Orçamentos</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
           
@@ -62,6 +64,10 @@ export default function ImprovedDailyReviews() {
               onRefresh={handleRefresh} 
             />
             <GoogleAdsTab onRefreshCompleted={handleRefresh} />
+          </TabsContent>
+
+          <TabsContent value="budgets" className="space-y-6">
+            <BudgetManagerTab />
           </TabsContent>
           
           <TabsContent value="settings">
