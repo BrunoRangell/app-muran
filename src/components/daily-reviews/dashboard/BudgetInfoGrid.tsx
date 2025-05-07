@@ -1,7 +1,6 @@
-
 import { formatCurrency } from "@/utils/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, Calendar, ArrowTrendingUp, Clock } from "lucide-react";
+import { DollarSign, Calendar, TrendingUp, Clock } from "lucide-react";
 
 interface BudgetInfoGridProps {
   monthlyBudget: number;
@@ -80,7 +79,7 @@ export const BudgetInfoGrid = ({
       
       <div className="bg-gray-50 rounded-lg p-3">
         <div className="flex items-center gap-2 text-sm text-gray-600 font-medium mb-1">
-          <ArrowTrendingUp size={16} />
+          <TrendingUp size={16} />
           Orçamento Diário Ideal
         </div>
         <div className="text-lg font-semibold">

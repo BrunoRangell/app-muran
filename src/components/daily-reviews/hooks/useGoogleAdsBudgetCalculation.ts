@@ -114,6 +114,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
   
   const remainingBudget = Math.max(monthlyBudget - totalSpent, 0);
+  
   const idealDailyBudget = useMemo(() => {
     return remainingDays > 0 ? remainingBudget / remainingDays : 0;
   }, [remainingBudget, remainingDays]);
@@ -165,6 +166,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     budgetDifference,
     budgetDifferenceBasedOnAverage,
     remainingDaysValue: remainingDays,
+    remainingBudget,
     needsBudgetAdjustment,
     needsAdjustmentBasedOnAverage
   };
