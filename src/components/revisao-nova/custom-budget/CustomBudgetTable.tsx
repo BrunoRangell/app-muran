@@ -63,7 +63,7 @@ export const CustomBudgetTable = ({
 }: CustomBudgetTableProps) => {
   // Função para obter o status do orçamento
   const getBudgetStatus = (budget: CustomBudget) => {
-    if (!budget.is_active) {
+    if (!budget.isActive) {
       return { label: "Inativo", variant: "outline" as const };
     }
     if (isCurrentlyActive(budget)) {
@@ -153,18 +153,18 @@ export const CustomBudgetTable = ({
                       <TableCell>
                         {getPlatformBadge(budget.platform)}
                       </TableCell>
-                      <TableCell>{formatBudget(budget.budget_amount)}</TableCell>
+                      <TableCell>{formatBudget(budget.budgetAmount)}</TableCell>
                       <TableCell>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="cursor-help">
-                                {formatDate(budget.start_date)} - {formatDate(budget.end_date)}
+                                {formatDate(budget.startDate)} - {formatDate(budget.endDate)}
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="text-xs">
-                                {calculatePeriodDuration(budget.start_date, budget.end_date)} dias
+                                {calculatePeriodDuration(budget.startDate, budget.endDate)} dias
                               </p>
                             </TooltipContent>
                           </Tooltip>
@@ -173,7 +173,7 @@ export const CustomBudgetTable = ({
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Switch
-                            checked={budget.is_active}
+                            checked={budget.isActive}
                             onCheckedChange={(checked) => 
                               onToggleStatus(budget.id, checked)
                             }
@@ -184,10 +184,10 @@ export const CustomBudgetTable = ({
                         </div>
                       </TableCell>
                       <TableCell>
-                        {budget.is_recurring ? (
+                        {budget.isRecurring ? (
                           <div className="flex items-center gap-1">
                             <RefreshCw className="h-3 w-3" />
-                            <span className="text-xs">{getRecurrenceLabel(budget.recurrence_pattern)}</span>
+                            <span className="text-xs">{getRecurrenceLabel(budget.recurrencePattern)}</span>
                           </div>
                         ) : "-"}
                       </TableCell>

@@ -53,7 +53,7 @@ export const CustomBudgetCards = ({
 }: CustomBudgetCardsProps) => {
   // Função para obter o status do orçamento
   const getBudgetStatus = (budget: CustomBudget) => {
-    if (!budget.is_active) {
+    if (!budget.isActive) {
       return { label: "Inativo", variant: "outline" as const };
     }
     if (isCurrentlyActive(budget)) {
@@ -131,16 +131,16 @@ export const CustomBudgetCards = ({
                         <Badge className={getPlatformColor(budget.platform)}>
                           {budget.platform === 'meta' ? 'Meta' : 'Google'}
                         </Badge>
-                        {budget.is_recurring && (
+                        {budget.isRecurring && (
                           <Badge variant="outline" className="border-purple-500 text-purple-700">
                             Recorrente
                           </Badge>
                         )}
                       </div>
                       <CardDescription className="text-xs mt-1 flex items-center">
-                        {formatDate(budget.start_date)} - {formatDate(budget.end_date)}
+                        {formatDate(budget.startDate)} - {formatDate(budget.endDate)}
                         <span className="ml-2 text-xs text-gray-500">
-                          ({calculatePeriodDuration(budget.start_date, budget.end_date)} dias)
+                          ({calculatePeriodDuration(budget.startDate, budget.endDate)} dias)
                         </span>
                       </CardDescription>
                     </div>
@@ -153,21 +153,21 @@ export const CustomBudgetCards = ({
                   <div className="flex flex-col space-y-1">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-500">Orçamento:</span>
-                      <span className="text-lg font-semibold">{formatBudget(budget.budget_amount)}</span>
+                      <span className="text-lg font-semibold">{formatBudget(budget.budgetAmount)}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-500">Diário (aprox.):</span>
                       <span className="text-sm">
-                        {formatBudget(budget.budget_amount / calculatePeriodDuration(budget.start_date, budget.end_date))}
+                        {formatBudget(budget.budgetAmount / calculatePeriodDuration(budget.startDate, budget.endDate))}
                       </span>
                     </div>
-                    {budget.is_recurring && budget.recurrence_pattern && (
+                    {budget.isRecurring && budget.recurrencePattern && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-gray-500">Recorrência:</span>
                         <span className="text-sm">
-                          {budget.recurrence_pattern === 'weekly' ? 'Semanal' : 
-                           budget.recurrence_pattern === 'biweekly' ? 'Quinzenal' : 
-                           budget.recurrence_pattern === 'monthly' ? 'Mensal' : 'Personalizado'}
+                          {budget.recurrencePattern === 'weekly' ? 'Semanal' : 
+                           budget.recurrencePattern === 'biweekly' ? 'Quinzenal' : 
+                           budget.recurrencePattern === 'monthly' ? 'Mensal' : 'Personalizado'}
                         </span>
                       </div>
                     )}
@@ -182,7 +182,7 @@ export const CustomBudgetCards = ({
                   <div className="flex items-center">
                     <span className="text-xs mr-2">Ativo</span>
                     <Switch
-                      checked={budget.is_active}
+                      checked={budget.isActive}
                       onCheckedChange={(checked) => onToggleStatus(budget.id, checked)}
                     />
                   </div>
