@@ -107,8 +107,8 @@ export const useClientDetails = (clientId: string) => {
     setError(null);
     
     try {
-      // Corrigido: passando apenas um argumento (clientId) em vez de dois
-      const result = await callEdgeFunction("daily-google-review", { clientId });
+      // Corrigido: passando clientId como parâmetro único (conforme a assinatura da função)
+      const result = await callEdgeFunction(clientId);
       
       if (!result || !result.success) {
         // Corrigido: acessando message ao invés de error
