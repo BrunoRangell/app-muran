@@ -367,6 +367,59 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_budgets: {
+        Row: {
+          budget_amount: number
+          client_id: string
+          created_at: string
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          is_recurring: boolean
+          platform: string
+          recurrence_pattern: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          budget_amount?: number
+          client_id: string
+          created_at?: string
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          is_recurring?: boolean
+          platform?: string
+          recurrence_pattern?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          budget_amount?: number
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          is_recurring?: boolean
+          platform?: string
+          recurrence_pattern?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_budgets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_budget_reviews: {
         Row: {
           account_display_name: string | null

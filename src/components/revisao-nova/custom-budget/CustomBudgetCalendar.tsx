@@ -1,11 +1,18 @@
 
-import { useState, useEffect } from "react";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Loader } from "lucide-react";
-import { ClientWithBudgets, CustomBudget } from "../hooks/useCustomBudgets";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
+import React, { useMemo, useState } from "react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, addDays, isSameDay, subMonths, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardFooter, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Loader, ChevronLeft, ChevronRight, Edit } from "lucide-react";
+import { ClientWithBudgets, CustomBudget } from "../hooks/useCustomBudgets";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CustomBudgetCalendarProps {
   filteredClients?: ClientWithBudgets[];
@@ -14,105 +21,137 @@ interface CustomBudgetCalendarProps {
   onEdit: (budget: CustomBudget) => void;
 }
 
-interface CalendarBudgetEvent {
-  id: string;
-  clientName: string;
-  budget: CustomBudget;
-  type: "start" | "end" | "active";
-}
-
 export const CustomBudgetCalendar = ({
   filteredClients,
   isLoading,
   formatBudget,
-  onEdit,
+  onEdit
 }: CustomBudgetCalendarProps) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [calendarEvents, setCalendarEvents] = useState<Record<string, CalendarBudgetEvent[]>>({});
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  
+  // Calcular dias do mês atual
+  const firstDayOfMonth = startOfMonth(currentMonth);
+  const lastDayOfMonth = endOfMonth(currentMonth);
+  const daysInMonth = eachDayOfInterval({ start: firstDayOfMonth, end: lastDayOfMonth });
+  
+  // Obter todos os orçamentos em formato plano
+  const allBudgets = useMemo(() => {
+    if (!filteredClients) return [];
+    
+    return filteredClients.flatMap(client => 
+      client.customBudgets.map(budget => ({
+        ...budget,
+        client_name: client.company_name
+      }))
+    );
+  }, [filteredClients]);
+
+  // Agrupar orçamentos por dia para exibição no calendário
+  const budgetsByDay = useMemo(() => {
+    const map = new Map();
+    
+    daysInMonth.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const budgetsForDay = allBudgets.filter(budget => {
+        const startDate = new Date(budget.start_date);
+        const endDate = new Date(budget.end_date);
+        return day >= startDate && day <= endDate && budget.is_active;
+      });
+      
+      map.set(dateStr, budgetsForDay);
+    });
+    
+    return map;
+  }, [daysInMonth, allBudgets]);
   
   // Navegar entre meses
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   
-  // Preparar os dias do mês atual
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  // Organizar orçamentos por dia
-  useEffect(() => {
-    if (!filteredClients) return;
+  // Orçamentos para o dia selecionado
+  const selectedDayBudgets = useMemo(() => {
+    if (!selectedDate) return [];
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    return budgetsByDay.get(dateStr) || [];
+  }, [selectedDate, budgetsByDay]);
+  
+  // Renderizar a célula do dia
+  const renderDayCell = (day: Date) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const budgets = budgetsByDay.get(dateStr) || [];
+    const isToday = isSameDay(day, new Date());
+    const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
     
-    const events: Record<string, CalendarBudgetEvent[]> = {};
+    // Determinar as cores de plataforma para a borda
+    const hasMeta = budgets.some(b => b.platform === 'meta');
+    const hasGoogle = budgets.some(b => b.platform === 'google');
     
-    // Inicializar todos os dias do mês
-    daysInMonth.forEach(day => {
-      const dateKey = format(day, "yyyy-MM-dd");
-      events[dateKey] = [];
-    });
-
-    // Adicionar orçamentos aos dias apropriados
-    filteredClients.forEach(client => {
-      if (client.customBudgets && client.customBudgets.length > 0) {
-        client.customBudgets.forEach(budget => {
-          if (!budget.is_active) return;
-          
-          const startDate = new Date(`${budget.start_date}T12:00:00`);
-          const endDate = new Date(`${budget.end_date}T12:00:00`);
-          
-          // Verificar se o orçamento está ativo no mês atual
-          const hasOverlap = 
-            (startDate <= monthEnd && endDate >= monthStart) ||
-            (startDate >= monthStart && startDate <= monthEnd) ||
-            (endDate >= monthStart && endDate <= monthEnd);
-            
-          if (hasOverlap) {
-            // Adicionar evento de início do orçamento
-            const startDateKey = format(startDate, "yyyy-MM-dd");
-            if (events[startDateKey]) {
-              events[startDateKey].push({
-                id: `start-${budget.id}`,
-                clientName: client.company_name,
-                budget,
-                type: "start"
-              });
-            }
-            
-            // Adicionar evento de término do orçamento
-            const endDateKey = format(endDate, "yyyy-MM-dd");
-            if (events[endDateKey]) {
-              events[endDateKey].push({
-                id: `end-${budget.id}`,
-                clientName: client.company_name,
-                budget,
-                type: "end"
-              });
-            }
-            
-            // Adicionar dias ativos entre início e fim
-            daysInMonth.forEach(day => {
-              const dateKey = format(day, "yyyy-MM-dd");
-              if (events[dateKey] && 
-                  day >= startDate && 
-                  day <= endDate && 
-                  !isSameDay(day, startDate) && 
-                  !isSameDay(day, endDate)) {
-                events[dateKey].push({
-                  id: `active-${budget.id}-${dateKey}`,
-                  clientName: client.company_name,
-                  budget,
-                  type: "active"
-                });
-              }
-            });
-          }
-        });
-      }
-    });
+    let borderClass = '';
+    if (hasMeta && hasGoogle) {
+      borderClass = 'border-l-purple-500'; // Roxo para ambos
+    } else if (hasMeta) {
+      borderClass = 'border-l-blue-500'; // Azul para Meta
+    } else if (hasGoogle) {
+      borderClass = 'border-l-red-500'; // Vermelho para Google
+    }
     
-    setCalendarEvents(events);
-  }, [filteredClients, daysInMonth, monthStart, monthEnd]);
-
+    return (
+      <div
+        key={dateStr}
+        className={`
+          h-24 border p-1 overflow-hidden cursor-pointer transition-all
+          ${isToday ? 'bg-muran-primary/5' : ''}
+          ${isSelected ? 'ring-2 ring-muran-primary ring-offset-1' : ''}
+          ${budgets.length > 0 ? `border-l-4 ${borderClass}` : ''}
+        `}
+        onClick={() => setSelectedDate(day)}
+      >
+        <div className="flex justify-between items-start">
+          <span className={`
+            text-sm font-medium p-1 rounded-full h-6 w-6 flex items-center justify-center
+            ${isToday ? 'bg-muran-primary text-white' : ''}
+          `}>
+            {format(day, 'd')}
+          </span>
+          {budgets.length > 0 && (
+            <Badge variant="outline" className="text-xs">
+              {budgets.length}
+            </Badge>
+          )}
+        </div>
+        
+        <div className="mt-1 space-y-1">
+          {budgets.slice(0, 2).map((budget, i) => (
+            <Tooltip key={budget.id} delayDuration={300}>
+              <TooltipTrigger asChild>
+                <div 
+                  className={`
+                    text-xs truncate px-1 py-0.5 rounded
+                    ${budget.platform === 'meta' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}
+                  `}
+                >
+                  {budget.client_name}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <div className="text-xs">
+                  <p className="font-bold">{budget.client_name}</p>
+                  <p>{formatBudget(budget.budget_amount)}</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+          {budgets.length > 2 && (
+            <div className="text-xs text-muted-foreground pl-1">
+              +{budgets.length - 2} mais
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+  
   if (isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -122,47 +161,18 @@ export const CustomBudgetCalendar = ({
     );
   }
 
-  // Renderizar evento de orçamento
-  const renderBudgetEvent = (event: CalendarBudgetEvent) => {
-    const eventClasses = {
-      start: "bg-green-100 text-green-800 border-l-4 border-green-500",
-      end: "bg-orange-100 text-orange-800 border-l-4 border-orange-500",
-      active: "bg-blue-50 text-blue-800"
-    };
-
-    const eventLabels = {
-      start: "Início",
-      end: "Término",
-      active: "Ativo"
-    };
-
-    return (
-      <div 
-        key={event.id}
-        className={`p-1 my-1 text-xs rounded cursor-pointer hover:opacity-80 ${eventClasses[event.type]}`}
-        onClick={() => onEdit(event.budget)}
-      >
-        <div className="font-medium truncate">{event.clientName}</div>
-        <div className="flex justify-between">
-          <span>{eventLabels[event.type]}</span>
-          <span>{formatBudget(event.budget.budget_amount)}</span>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">
-          {format(currentDate, "MMMM yyyy", { locale: ptBR })}
+          {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
         </h3>
-        <div className="flex items-center space-x-2">
+        <div className="flex space-x-2">
           <Button variant="outline" size="icon" onClick={prevMonth}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={() => setCurrentDate(new Date())}>
-            <CalendarIcon className="h-4 w-4" />
+          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(new Date())}>
+            Hoje
           </Button>
           <Button variant="outline" size="icon" onClick={nextMonth}>
             <ChevronRight className="h-4 w-4" />
@@ -170,56 +180,66 @@ export const CustomBudgetCalendar = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
-        {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
-          <div 
-            key={day} 
-            className="text-center font-medium p-2 bg-gray-100 rounded"
-          >
+      <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
+          <div key={day} className="bg-gray-100 text-center py-2 font-medium">
             {day}
           </div>
         ))}
         
-        {/* Espaços vazios para o início do mês */}
-        {Array.from({ length: monthStart.getDay() }).map((_, index) => (
-          <div key={`empty-start-${index}`} className="bg-gray-50 rounded min-h-[120px]" />
-        ))}
+        {Array(firstDayOfMonth.getDay())
+          .fill(null)
+          .map((_, index) => (
+            <div key={`empty-${index}`} className="bg-white opacity-50" />
+          ))}
         
-        {/* Dias do mês */}
-        {daysInMonth.map(day => {
-          const dateKey = format(day, "yyyy-MM-dd");
-          const isToday = isSameDay(day, new Date());
-          const events = calendarEvents[dateKey] || [];
-          
-          return (
-            <Card 
-              key={dateKey} 
-              className={`min-h-[120px] ${isToday ? "border-2 border-muran-primary" : ""}`}
-            >
-              <CardContent className="p-1">
-                <div className="flex justify-between items-center mb-1 p-1">
-                  <span className={`text-sm font-medium ${isToday ? "text-muran-primary" : ""}`}>
-                    {format(day, "d")}
-                  </span>
-                  {events.length > 0 && (
-                    <span className="text-xs bg-gray-200 rounded-full px-2 py-0.5">
-                      {events.length}
-                    </span>
-                  )}
-                </div>
-                <div className="max-h-[90px] overflow-y-auto">
-                  {events.map(renderBudgetEvent)}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        
-        {/* Espaços vazios para o final do mês */}
-        {Array.from({ length: 6 - monthEnd.getDay() }).map((_, index) => (
-          <div key={`empty-end-${index}`} className="bg-gray-50 rounded min-h-[120px]" />
+        {daysInMonth.map(day => (
+          <div key={day.toISOString()} className="bg-white">
+            {renderDayCell(day)}
+          </div>
         ))}
       </div>
+
+      {selectedDate && (
+        <Card className="mt-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">
+              Orçamentos para {format(selectedDate, 'dd/MM/yyyy')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {selectedDayBudgets.length === 0 ? (
+              <p className="text-sm text-gray-500">Nenhum orçamento ativo para este dia.</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedDayBudgets.map(budget => (
+                  <div key={budget.id} className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{budget.client_name}</span>
+                        <Badge className={budget.platform === 'meta' ? 'bg-blue-500' : 'bg-red-500'}>
+                          {budget.platform === 'meta' ? 'Meta' : 'Google'}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {format(new Date(budget.start_date), 'dd/MM/yyyy')} - {format(new Date(budget.end_date), 'dd/MM/yyyy')}
+                      </div>
+                      <div className="text-sm font-medium">{formatBudget(budget.budget_amount)}</div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => onEdit(budget)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

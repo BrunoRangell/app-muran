@@ -65,6 +65,11 @@ export const CustomBudgetCards = ({
     return { label: "Encerrado", variant: "secondary" as const };
   };
 
+  // Função para obter a cor de acordo com a plataforma
+  const getPlatformColor = (platform: string) => {
+    return platform === 'meta' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800';
+  };
+
   // Função para calcular a duração do período em dias
   const calculatePeriodDuration = (startDate: string, endDate: string): number => {
     const start = new Date(`${startDate}T12:00:00`);
@@ -110,14 +115,29 @@ export const CustomBudgetCards = ({
         {filteredClients.map((client) => (
           client.customBudgets && client.customBudgets.length > 0 ? (
             client.customBudgets.map((budget) => (
-              <Card key={budget.id} className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+              <Card 
+                key={budget.id} 
+                className={`overflow-hidden hover:shadow-md transition-shadow duration-200 border-l-4 ${
+                  budget.platform === 'meta' ? 'border-l-blue-500' : 'border-l-red-500'
+                }`}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-base font-medium">
-                        {client.company_name}
-                      </CardTitle>
-                      <CardDescription className="text-xs mt-1">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-base font-medium">
+                          {client.company_name}
+                        </CardTitle>
+                        <Badge className={getPlatformColor(budget.platform)}>
+                          {budget.platform === 'meta' ? 'Meta' : 'Google'}
+                        </Badge>
+                        {budget.is_recurring && (
+                          <Badge variant="outline" className="border-purple-500 text-purple-700">
+                            Recorrente
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription className="text-xs mt-1 flex items-center">
                         {formatDate(budget.start_date)} - {formatDate(budget.end_date)}
                         <span className="ml-2 text-xs text-gray-500">
                           ({calculatePeriodDuration(budget.start_date, budget.end_date)} dias)
@@ -141,6 +161,16 @@ export const CustomBudgetCards = ({
                         {formatBudget(budget.budget_amount / calculatePeriodDuration(budget.start_date, budget.end_date))}
                       </span>
                     </div>
+                    {budget.is_recurring && budget.recurrence_pattern && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-500">Recorrência:</span>
+                        <span className="text-sm">
+                          {budget.recurrence_pattern === 'weekly' ? 'Semanal' : 
+                           budget.recurrence_pattern === 'biweekly' ? 'Quinzenal' : 
+                           budget.recurrence_pattern === 'monthly' ? 'Mensal' : 'Personalizado'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {budget.description && (
                     <div className="mt-3 p-2 bg-gray-50 rounded text-sm">

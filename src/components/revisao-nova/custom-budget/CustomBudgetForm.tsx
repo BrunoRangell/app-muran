@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarIcon, Loader, Calculator, Info } from "lucide-react";
+import { CalendarIcon, Loader, Calculator, Info, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
@@ -40,6 +40,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge"; 
 
 // Schema para validação do formulário
 const customBudgetSchema = z.object({
@@ -58,12 +64,23 @@ const customBudgetSchema = z.object({
     (date) => date instanceof Date && !isNaN(date.getTime()),
     { message: "Data inválida" }
   ),
+  platform: z.enum(['meta', 'google'], {
+    required_error: "Selecione uma plataforma",
+  }),
   description: z.string().nullable().optional(),
+  is_recurring: z.boolean().default(false),
+  recurrence_pattern: z.string().nullable().optional(),
 }).refine(
   (data) => data.end_date >= data.start_date,
   {
     message: "A data de término deve ser igual ou posterior à data de início",
     path: ["end_date"],
+  }
+).refine(
+  (data) => !data.is_recurring || (data.is_recurring && data.recurrence_pattern),
+  {
+    message: "Selecione um padrão de recorrência para orçamentos recorrentes",
+    path: ["recurrence_pattern"],
   }
 );
 
@@ -77,11 +94,23 @@ interface CustomBudgetFormProps {
 type FormData = z.infer<typeof customBudgetSchema>;
 
 const BUDGET_TEMPLATES = [
-  { name: "30 dias: R$ 3.000,00", days: 30, amount: 3000 },
-  { name: "30 dias: R$ 5.000,00", days: 30, amount: 5000 },
-  { name: "30 dias: R$ 10.000,00", days: 30, amount: 10000 },
-  { name: "60 dias: R$ 6.000,00", days: 60, amount: 6000 },
-  { name: "60 dias: R$ 12.000,00", days: 60, amount: 12000 },
+  // Meta templates
+  { name: "Meta: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'meta' },
+  { name: "Meta: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'meta' },
+  { name: "Meta: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'meta' },
+  { name: "Meta: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'meta' },
+  // Google templates
+  { name: "Google: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'google' },
+  { name: "Google: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'google' },
+  { name: "Google: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'google' },
+  { name: "Google: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'google' },
+];
+
+const RECURRENCE_PATTERNS = [
+  { value: "weekly", label: "Semanal" },
+  { value: "biweekly", label: "Quinzenal" },
+  { value: "monthly", label: "Mensal" },
+  { value: "custom", label: "Personalizado" },
 ];
 
 export const CustomBudgetForm = ({
@@ -92,6 +121,7 @@ export const CustomBudgetForm = ({
 }: CustomBudgetFormProps) => {
   const [formattedBudget, setFormattedBudget] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
 
   // Buscar clientes ativos
   const { data: clients, isLoading: isLoadingClients } = useQuery({
@@ -116,7 +146,10 @@ export const CustomBudgetForm = ({
       budget_amount: 0,
       start_date: new Date(),
       end_date: new Date(),
+      platform: 'meta',
       description: "",
+      is_recurring: false,
+      recurrence_pattern: null,
     },
     mode: "onChange", // Validar ao alterar os campos
   });
@@ -129,15 +162,17 @@ export const CustomBudgetForm = ({
       const startDate = new Date(selectedBudget.startDate + 'T12:00:00');
       const endDate = new Date(selectedBudget.endDate + 'T12:00:00');
       
-      console.log('Datas originais:', selectedBudget.startDate, selectedBudget.endDate);
-      console.log('Datas corrigidas para form:', startDate, endDate);
+      setShowRecurrenceOptions(!!selectedBudget.isRecurring);
       
       form.reset({
         client_id: selectedBudget.clientId,
         budget_amount: selectedBudget.budgetAmount,
         start_date: startDate,
         end_date: endDate,
+        platform: selectedBudget.platform || 'meta',
         description: selectedBudget.description,
+        is_recurring: selectedBudget.isRecurring || false,
+        recurrence_pattern: selectedBudget.recurrencePattern || null,
       });
       setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
     } else {
@@ -146,11 +181,21 @@ export const CustomBudgetForm = ({
         budget_amount: 0,
         start_date: new Date(),
         end_date: new Date(),
+        platform: 'meta',
         description: "",
+        is_recurring: false,
+        recurrence_pattern: null,
       });
       setFormattedBudget("");
+      setShowRecurrenceOptions(false);
     }
   }, [selectedBudget, form]);
+
+  // Monitorar mudanças no is_recurring para atualizar o estado de exibição
+  const isRecurring = form.watch("is_recurring");
+  useEffect(() => {
+    setShowRecurrenceOptions(isRecurring);
+  }, [isRecurring]);
 
   // Aplicar um template de orçamento
   const applyTemplate = (templateIndex: string) => {
@@ -165,6 +210,7 @@ export const CustomBudgetForm = ({
       form.setValue("budget_amount", template.amount);
       form.setValue("start_date", startDate);
       form.setValue("end_date", endDate);
+      form.setValue("platform", template.platform);
       
       setFormattedBudget(formatCurrency(template.amount));
     }
@@ -195,6 +241,7 @@ export const CustomBudgetForm = ({
   const startDate = form.watch("start_date");
   const endDate = form.watch("end_date");
   const budgetAmount = form.watch("budget_amount");
+  const platform = form.watch("platform");
 
   const getDaysInPeriod = () => {
     if (startDate && endDate) {
@@ -223,21 +270,26 @@ export const CustomBudgetForm = ({
         return `${year}-${month}-${day}`;
       };
 
-      console.log('Dados do formulário antes de enviar:', data);
-
       const formData: CustomBudgetFormData = {
         clientId: data.client_id,
         budgetAmount: data.budget_amount,
         startDate: formatDateToYYYYMMDD(data.start_date),
         endDate: formatDateToYYYYMMDD(data.end_date),
+        platform: data.platform,
         description: data.description || "",
+        isRecurring: data.is_recurring,
+        recurrencePattern: data.is_recurring ? data.recurrence_pattern : undefined
       };
 
-      console.log('Dados formatados para envio:', formData);
       onSubmit(formData);
     } catch (error) {
       console.error('Erro ao processar formulário:', error);
     }
+  };
+
+  // Função para filtrar templates baseado na plataforma selecionada
+  const getFilteredTemplates = () => {
+    return BUDGET_TEMPLATES.filter(template => template.platform === platform);
   };
 
   // Exibir um indicador de carregamento enquanto os clientes estão sendo carregados
@@ -254,34 +306,72 @@ export const CustomBudgetForm = ({
     <div className="max-w-2xl mx-auto">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="client_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cliente</FormLabel>
-                <Select
-                  disabled={isSubmitting}
-                  onValueChange={field.onChange}
-                  value={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um cliente" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {clients?.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.company_name}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="client_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cliente</FormLabel>
+                  <Select
+                    disabled={isSubmitting}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {clients?.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.company_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="platform"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plataforma</FormLabel>
+                  <Select
+                    disabled={isSubmitting}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma plataforma" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="meta">
+                        <div className="flex items-center">
+                          <Badge className="mr-2 bg-blue-500">Meta</Badge>
+                          <span>Meta Ads</span>
+                        </div>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                      <SelectItem value="google">
+                        <div className="flex items-center">
+                          <Badge className="mr-2 bg-red-500">Google</Badge>
+                          <span>Google Ads</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
@@ -316,11 +406,19 @@ export const CustomBudgetForm = ({
                   <SelectValue placeholder="Selecione um modelo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BUDGET_TEMPLATES.map((template, index) => (
-                    <SelectItem key={index} value={index.toString()}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
+                  {getFilteredTemplates().map((template, index) => {
+                    // Encontrar o índice real no array completo
+                    const realIndex = BUDGET_TEMPLATES.findIndex(t => 
+                      t.platform === template.platform && 
+                      t.days === template.days && 
+                      t.amount === template.amount
+                    );
+                    return (
+                      <SelectItem key={realIndex} value={realIndex.toString()}>
+                        {template.name}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -435,6 +533,66 @@ export const CustomBudgetForm = ({
               </TooltipProvider>
             </div>
           </div>
+
+          <Card className="shadow-none border">
+            <CardContent className="p-4 space-y-4">
+              <FormField
+                control={form.control}
+                name="is_recurring"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Orçamento Recorrente</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Ative para configurar um orçamento que se repete regularmente
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {showRecurrenceOptions && (
+                <FormField
+                  control={form.control}
+                  name="recurrence_pattern"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Padrão de Recorrência</FormLabel>
+                      <Select
+                        disabled={isSubmitting}
+                        onValueChange={field.onChange}
+                        value={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o padrão de recorrência" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {RECURRENCE_PATTERNS.map((pattern) => (
+                            <SelectItem key={pattern.value} value={pattern.value}>
+                              <div className="flex items-center">
+                                <RefreshCw className="h-4 w-4 mr-2" />
+                                {pattern.label}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </CardContent>
+          </Card>
 
           <FormField
             control={form.control}

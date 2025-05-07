@@ -12,9 +12,11 @@ export interface CustomBudget {
   start_date: string;
   end_date: string;
   description: string | null;
+  platform: 'meta' | 'google';
   created_at: string;
-  status: 'active' | 'completed' | 'cancelled';
   is_active: boolean;
+  is_recurring: boolean;
+  recurrence_pattern: string | null;
   client_name?: string;
 }
 
@@ -29,16 +31,20 @@ export interface CustomBudgetFormData {
   budgetAmount: number;
   startDate: string;
   endDate: string;
+  platform: 'meta' | 'google';
   description: string;
+  isRecurring?: boolean;
+  recurrencePattern?: string;
 }
 
 interface UseCustomBudgetsOptions {
   sortBy?: string;
   statusFilter?: string;
+  platformFilter?: string;
 }
 
 export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
-  const { sortBy = "client_name", statusFilter = "all" } = options;
+  const { sortBy = "client_name", statusFilter = "all", platformFilter = "all" } = options;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
@@ -52,7 +58,7 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     queryKey: ["custom-budgets"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .select(`
           *,
           clients (
@@ -98,6 +104,11 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     
     let filtered = [...customBudgets];
     
+    // Aplicar filtro por plataforma
+    if (platformFilter !== "all") {
+      filtered = filtered.filter(budget => budget.platform === platformFilter);
+    }
+    
     // Aplicar filtro por status
     if (statusFilter !== "all") {
       const today = new Date();
@@ -116,6 +127,8 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
             return !budget.is_active;
           case "expired":
             return budget.is_active && endDate < today;
+          case "recurring":
+            return budget.is_recurring;
           default:
             return true;
         }
@@ -133,8 +146,14 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
           return a.budget_amount - b.budget_amount;
         case "start_date_desc":
           return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+        case "start_date_asc":
+          return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+        case "end_date_desc":
+          return new Date(b.end_date).getTime() - new Date(a.end_date).getTime();
         case "end_date_asc":
           return new Date(a.end_date).getTime() - new Date(b.end_date).getTime();
+        case "platform":
+          return a.platform.localeCompare(b.platform);
         default:
           return 0;
       }
@@ -156,7 +175,7 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       company_name: client.company_name,
       customBudgets: filteredBudgets
     };
-  }).filter(client => statusFilter === "all" || client.customBudgets.length > 0) : [];
+  }).filter(client => (statusFilter === "all" && platformFilter === "all") || client.customBudgets.length > 0) : [];
 
   // Criar novo orçamento personalizado
   const addCustomBudgetMutation = useMutation({
@@ -171,16 +190,18 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
 
       console.log("Enviando dados para criação:", formData);
 
-      // Remova o campo status do objeto de inserção, já que ele não existe na tabela
       const { data, error } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .insert({
           client_id: formData.clientId,
           budget_amount: formData.budgetAmount,
           start_date: formData.startDate,
           end_date: formData.endDate,
+          platform: formData.platform,
           description: formData.description || null,
-          is_active: true  // Remova o campo status e use apenas is_active
+          is_active: true,
+          is_recurring: formData.isRecurring || false,
+          recurrence_pattern: formData.recurrencePattern || null
         })
         .select()
         .single();
@@ -228,12 +249,15 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       console.log("Enviando dados para atualização:", { id, ...formData });
 
       const { data, error } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .update({
           budget_amount: formData.budgetAmount,
           start_date: formData.startDate,
           end_date: formData.endDate,
+          platform: formData.platform,
           description: formData.description || null,
+          is_recurring: formData.isRecurring || false,
+          recurrence_pattern: formData.recurrencePattern || null
         })
         .eq('id', id)
         .select()
@@ -272,14 +296,17 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
   const duplicateBudgetMutation = useMutation({
     mutationFn: async (budget: CustomBudget) => {
       const { data, error } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .insert({
           client_id: budget.client_id,
           budget_amount: budget.budget_amount,
           start_date: budget.start_date,
           end_date: budget.end_date,
+          platform: budget.platform,
           description: budget.description ? `${budget.description} (cópia)` : '(cópia)',
-          is_active: true
+          is_active: true,
+          is_recurring: budget.is_recurring,
+          recurrence_pattern: budget.recurrence_pattern
         })
         .select()
         .single();
@@ -311,7 +338,7 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
   const deleteCustomBudgetMutation = useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .delete()
         .eq('id', id)
         .select()
@@ -344,7 +371,7 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
   const toggleBudgetStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
       const { data, error } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .update({
           is_active: isActive
         })
@@ -397,6 +424,10 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       errors.endDate = "Informe a data de término";
     }
 
+    if (!formData.platform) {
+      errors.platform = "Selecione uma plataforma";
+    }
+
     // Validar intervalo de datas
     if (formData.startDate && formData.endDate) {
       const startDate = new Date(formData.startDate);
@@ -407,6 +438,11 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       if (!result.valid) {
         errors.dateRange = result.message;
       }
+    }
+
+    // Validar padrão de recorrência
+    if (formData.isRecurring && !formData.recurrencePattern) {
+      errors.recurrencePattern = "Selecione um padrão de recorrência";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -455,26 +491,35 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       const client = clients?.find(c => c.id === budget.client_id);
       return {
         cliente: client?.company_name || budget.client_id,
+        plataforma: budget.platform === 'meta' ? 'Meta Ads' : 'Google Ads',
         valor: budget.budget_amount,
         data_inicio: formatDate(budget.start_date),
         data_fim: formatDate(budget.end_date),
         status: budget.is_active ? "Ativo" : "Inativo",
+        recorrente: budget.is_recurring ? "Sim" : "Não",
+        padrao_recorrencia: budget.recurrence_pattern || "N/A",
         descricao: budget.description || ""
       };
     });
     
     // Criar cabeçalhos
-    const headers = ["Cliente", "Valor (R$)", "Data Início", "Data Fim", "Status", "Descrição"];
+    const headers = [
+      "Cliente", "Plataforma", "Valor (R$)", "Data Início", 
+      "Data Fim", "Status", "Recorrente", "Padrão de Recorrência", "Descrição"
+    ];
     
     // Converter para formato CSV
     const csvContent = [
       headers.join(','),
       ...csvData.map(row => [
         `"${row.cliente}"`, 
+        `"${row.plataforma}"`,
         row.valor, 
         `"${row.data_inicio}"`, 
         `"${row.data_fim}"`,
         `"${row.status}"`,
+        `"${row.recorrente}"`,
+        `"${row.padrao_recorrencia}"`,
         `"${row.descricao}"`
       ].join(','))
     ].join('\n');
@@ -559,13 +604,14 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
   };
 
   // Obter orçamentos ativos para um cliente específico
-  const getActiveBudgetsForClient = (clientId: string) => {
+  const getActiveBudgetsForClient = (clientId: string, platform?: 'meta' | 'google') => {
     if (!customBudgets) return [];
     
     return customBudgets.filter((budget: CustomBudget) => 
       budget.client_id === clientId && 
       budget.is_active &&
-      isCurrentlyActive(budget)
+      isCurrentlyActive(budget) &&
+      (platform ? budget.platform === platform : true)
     );
   };
 
@@ -576,6 +622,54 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  // Obter estatísticas de orçamentos
+  const getBudgetStats = () => {
+    if (!customBudgets) {
+      return {
+        total: 0,
+        active: 0,
+        scheduled: 0,
+        expired: 0,
+        meta: 0, 
+        google: 0
+      };
+    }
+
+    const stats = {
+      total: customBudgets.length,
+      active: 0,
+      scheduled: 0,
+      expired: 0,
+      meta: 0,
+      google: 0
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    customBudgets.forEach(budget => {
+      // Contar por plataforma
+      if (budget.platform === 'meta') stats.meta++;
+      else if (budget.platform === 'google') stats.google++;
+
+      // Contar por status
+      if (!budget.is_active) return;
+
+      const startDate = new Date(budget.start_date);
+      const endDate = new Date(budget.end_date);
+
+      if (startDate <= today && endDate >= today) {
+        stats.active++;
+      } else if (startDate > today) {
+        stats.scheduled++;
+      } else if (endDate < today) {
+        stats.expired++;
+      }
+    });
+
+    return stats;
   };
 
   return {
@@ -602,6 +696,7 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     isFutureBudget,
     getActiveBudgetsForClient,
     exportToCSV,
+    getBudgetStats,
     // Adicionando as mutações necessárias
     addCustomBudgetMutation,
     updateCustomBudgetMutation,
