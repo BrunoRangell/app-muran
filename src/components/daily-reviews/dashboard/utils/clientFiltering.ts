@@ -28,7 +28,7 @@ export const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
   if (!client.lastReview || !client.meta_account_id) return false;
   
   // Verificar se a diferença de orçamento é significativa (≥ 5)
-  const currentBudget = client.lastReview.meta_daily_budget_current || 0;
+  const currentBudget = client.lastReview.google_daily_budget_current || 0;
   
   // Calcular o orçamento ideal (se não estiver já calculado)
   let idealBudget = client.lastReview.idealDailyBudget;
@@ -38,7 +38,7 @@ export const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
     if (client.lastReview.using_custom_budget && client.lastReview.custom_budget_amount) {
       // Aqui precisamos calcular o orçamento ideal com base no orçamento personalizado
       // Usar valores salvos ou fazer o cálculo em tempo real
-      const totalSpent = client.lastReview.meta_total_spent || 0;
+      const totalSpent = client.lastReview.google_total_spent || 0;
       const budgetAmount = client.lastReview.custom_budget_amount || client.meta_ads_budget || 0;
       
       // Cálculo básico (similar ao que seria feito no backend)
@@ -49,7 +49,7 @@ export const clientNeedsAdjustment = (client: ClientWithReview): boolean => {
       idealBudget = remainingDays > 0 ? (budgetAmount - totalSpent) / remainingDays : 0;
     } else {
       // Para orçamento regular
-      const totalSpent = client.lastReview.meta_total_spent || 0;
+      const totalSpent = client.lastReview.google_total_spent || 0;
       const budgetAmount = client.meta_ads_budget || 0;
       
       const today = new Date();
@@ -81,7 +81,7 @@ export const filterClientsByAdjustment = (
     if (needsAdjustment) {
       console.log(`Cliente filtrado que precisa de ajuste: ${client.company_name}`, {
         budgetDifference: client.lastReview?.idealDailyBudget !== undefined
-          ? Math.abs((client.lastReview.idealDailyBudget || 0) - (client.lastReview.meta_daily_budget_current || 0))
+          ? Math.abs((client.lastReview.idealDailyBudget || 0) - (client.lastReview.google_daily_budget_current || 0))
           : "N/A",
         usingCustomBudget: client.lastReview?.using_custom_budget || false
       });
@@ -102,7 +102,7 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
   if (!client.lastReview || !client.meta_account_id) return 0;
   
   // Obtém valores da revisão
-  const currentDailyBudget = client.lastReview?.meta_daily_budget_current || 0;
+  const currentDailyBudget = client.lastReview?.google_daily_budget_current || 0;
   
   // Se estiver usando orçamento personalizado, usa APENAS os valores do orçamento personalizado
   if (client.lastReview?.using_custom_budget) {
@@ -129,7 +129,7 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
       const diffTime = Math.abs(endDate.getTime() - today.getTime());
       const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       
-      const totalSpent = client.lastReview.meta_total_spent || 0;
+      const totalSpent = client.lastReview.google_total_spent || 0;
       const remainingBudget = customBudgetAmount - totalSpent;
       
       // Se não houver dias restantes ou orçamento restante negativo, retorna 0
@@ -157,7 +157,7 @@ export const calculateBudgetAdjustment = (client: ClientWithReview): number => {
     const daysRemaining = daysInMonth - dayOfMonth + 1;
     
     const monthlyBudget = client.meta_ads_budget || 0;
-    const totalSpent = client.lastReview.meta_total_spent || 0;
+    const totalSpent = client.lastReview.google_total_spent || 0;
     const remaining = monthlyBudget - totalSpent;
     const idealDailyBudget = daysRemaining > 0 ? remaining / daysRemaining : 0;
     

@@ -25,7 +25,7 @@ export const useBudgetCalculations = (
   };
   
   const monthlyBudget = calculateTotalBudget();
-  const totalSpentFromDB = hasReview ? (client.lastReview?.meta_total_spent || 0) : 0;
+  const totalSpentFromDB = hasReview ? (client.lastReview?.google_total_spent || 0) : 0;
   
   // Usar o valor do banco de dados para o total gasto
   const totalSpent = totalSpentFromDB;
@@ -99,8 +99,8 @@ export const useBudgetCalculations = (
   const actualBudgetAmount = getBudgetAmount();
   
   // Verificar se o cliente tem valor de orçamento diário atual
-  const currentDailyBudget = hasReview && client.lastReview?.meta_daily_budget_current !== null
-    ? client.lastReview.meta_daily_budget_current
+  const currentDailyBudget = hasReview && client.lastReview?.google_daily_budget_current !== null
+    ? client.lastReview.google_daily_budget_current
     : 0;
 
   // Gerar recomendação com base nos orçamentos
