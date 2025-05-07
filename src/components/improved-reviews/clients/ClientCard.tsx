@@ -1,154 +1,102 @@
 
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Building2, ChevronRight, Info } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
-import { useBatchOperations } from "../hooks/useBatchOperations";
-import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { ClientWithReview } from "@/components/daily-reviews/hooks/types/reviewTypes";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, AlertTriangle } from "lucide-react";
+import { ClientCardInfo } from "./ClientCardInfo";
 import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboard/card-components/CompactBudgetRecommendation";
 
 interface ClientCardProps {
-  client: any;
-  platform?: "meta" | "google";
+  client: ClientWithReview;
+  onReviewClient: (clientId: string, accountId?: string) => void;
+  isProcessing: boolean;
 }
 
-export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const { toast } = useToast();
-  const { reviewClient, processingIds } = useBatchOperations({
-    platform: platform as "meta" | "google"
-  });
+export const ClientCard = ({ client, onReviewClient, isProcessing }: ClientCardProps) => {
+  const hasReview = Boolean(client.lastReview);
+  const monthlyBudget = client.meta_ads_budget || 0;
   
-  const isProcessing = processingIds.includes(client.id);
+  // Cálculos de orçamento
+  const totalSpent = client.lastReview?.meta_total_spent || 0;
+  const currentDailyBudget = client.lastReview?.meta_daily_budget_current || 0;
   
-  // Preparar dados para exibição
-  const accountName = client[`${platform}_account_name`] || "Conta Principal";
-  const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
-  const budgetAmount = client.budget_amount || 0;
-  const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
-  const needsAdjustment = client.needsAdjustment;
-  const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
+  // Calcular o orçamento diário ideal baseado no orçamento mensal restante
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const currentDate = new Date().getDate();
+  const remainingDays = daysInMonth - currentDate + 1; // +1 para incluir o dia atual
   
-  // Dados para recomendação baseada na média dos últimos 5 dias
-  const lastFiveDaysAvg = client.lastFiveDaysAvg || 0;
-  const budgetDifferenceAvg = client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0;
-  const needsAdjustmentBasedOnAverage = client.budgetCalculation?.needsAdjustmentBasedOnAverage || false;
+  const remainingBudget = Math.max(0, monthlyBudget - totalSpent);
+  const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
   
-  const handleReviewClick = async () => {
-    try {
-      await reviewClient(client.id, client[`${platform}_account_id`]);
-      toast({
-        title: "Revisão completa",
-        description: `O orçamento de ${client.company_name} foi revisado com sucesso.`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao revisar o cliente",
-        variant: "destructive"
-      });
-    }
-  };
+  // Calcular se o ajuste de orçamento é necessário
+  const budgetDifference = idealDailyBudget - currentDailyBudget;
+  const significantDifference = Math.abs(budgetDifference) > (idealDailyBudget * 0.05); // Diferença maior que 5%
+  const needsAdjustment = hasReview && currentDailyBudget > 0 && idealDailyBudget > 0 && significantDifference;
   
+  // Nome da conta Meta (vindo do lastReview)
+  const accountName = client.lastReview?.account_display_name || "Conta Meta";
+
   return (
-    <Card className={`overflow-hidden transition-all ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''}`}>
-      <CardHeader className="p-4 pb-0">
-        <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <h3 className="font-medium line-clamp-1 flex items-center gap-1">
-              <Building2 className="h-4 w-4 text-[#ff6e00]" />
-              {client.company_name}
-            </h3>
-            <p className="text-sm text-gray-500">{accountName}</p>
-          </div>
-          {needsAdjustment && (
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-          )}
-        </div>
-      </CardHeader>
-      
+    <Card className={`border ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''}`}>
       <CardContent className="p-4">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Gasto</span>
-              <span className="font-medium">{formatCurrency(spentAmount)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Orçamento</span>
-              <span className="font-medium">{formatCurrency(budgetAmount)}</span>
-            </div>
-            <Progress 
-              value={spentPercentage} 
-              className="h-2"
-              indicatorClassName={`${
-                spentPercentage > 90 
-                  ? "bg-red-500" 
-                  : spentPercentage > 70 
-                  ? "bg-amber-500" 
-                  : "bg-emerald-500"
-              }`}
-            />
-            <div className="text-xs text-right text-gray-500">
-              {Math.round(spentPercentage)}% utilizado
-            </div>
-          </div>
-          
-          {/* Recomendações de orçamento em formato compacto */}
-          <CompactBudgetRecommendation 
-            budgetDifference={budgetDifference}
-            budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
-            shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
-            shouldShowAverage={needsAdjustmentBasedOnAverage}
-            lastFiveDaysAverage={lastFiveDaysAvg}
+        <div className="flex flex-col">
+          <ClientCardInfo 
+            client={client} 
+            hasReview={hasReview} 
+            accountName={accountName} 
           />
           
-          {expanded && client.review && (
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Orçamento diário atual</span>
-                <span className="font-medium">{formatCurrency(client.review[`${platform}_daily_budget_current`] || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Orçamento diário ideal</span>
-                <span className="font-medium">{formatCurrency(client.budgetCalculation?.idealDailyBudget || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Dias restantes</span>
-                <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Média gasto (5 dias)</span>
-                <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
-              </div>
+          <div className="grid grid-cols-2 gap-4 my-3">
+            <div>
+              <p className="text-sm text-gray-600">Orçamento</p>
+              <p className="font-semibold">{formatCurrency(monthlyBudget)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Gasto</p>
+              <p className="font-semibold">{formatCurrency(totalSpent)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Atual</p>
+              <p className="font-semibold">{formatCurrency(currentDailyBudget)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Recomendado</p>
+              <p className="font-semibold">{formatCurrency(idealDailyBudget)}</p>
+            </div>
+          </div>
+          
+          {needsAdjustment && (
+            <CompactBudgetRecommendation
+              budgetDifference={budgetDifference}
+              shouldShow={true}
+            />
+          )}
+          
+          {!hasReview && (
+            <div className="flex items-center gap-2 text-sm text-amber-600 mt-2">
+              <AlertTriangle size={16} />
+              <span>Nenhuma revisão recente</span>
             </div>
           )}
+          
+          <Button 
+            onClick={() => onReviewClient(client.id)}
+            disabled={isProcessing}
+            variant="outline"
+            className="w-full mt-4"
+          >
+            {isProcessing ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              "Analisar Conta"
+            )}
+          </Button>
         </div>
       </CardContent>
-      
-      <CardFooter className="p-4 pt-0 flex justify-between">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => setExpanded(!expanded)}
-          className="text-xs"
-        >
-          {expanded ? "Menos detalhes" : "Mais detalhes"}
-        </Button>
-        
-        <Button 
-          variant="default"
-          size="sm"
-          className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
-          onClick={handleReviewClick}
-          disabled={isProcessing}
-        >
-          {isProcessing ? "Processando..." : "Revisar"}
-          <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
-      </CardFooter>
     </Card>
   );
-}
+};
