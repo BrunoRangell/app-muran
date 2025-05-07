@@ -12,6 +12,7 @@ interface BudgetRecommendationProps {
   hasReview: boolean;
   lastFiveDaysAverage?: number;
   compact?: boolean;
+  accountName?: string;
 }
 
 export const BudgetRecommendation = ({ 
@@ -21,7 +22,8 @@ export const BudgetRecommendation = ({
   shouldShowAverage = false,
   hasReview,
   lastFiveDaysAverage = 0,
-  compact = false
+  compact = false,
+  accountName
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
 
@@ -34,6 +36,7 @@ export const BudgetRecommendation = ({
         shouldShow={shouldShow}
         shouldShowAverage={shouldShowAverage}
         lastFiveDaysAverage={lastFiveDaysAverage}
+        accountName={accountName}
       />
     );
   }
