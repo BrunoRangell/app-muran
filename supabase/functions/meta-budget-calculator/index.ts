@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { validateRequest, processDateRange } from "./validators.ts";
-import { fetchCampaigns, fetchCampaignInsights, fetchAdSets, fetchAccountInfo } from "./api.ts";
+import { fetchCampaigns, fetchCampaignInsights, fetchAdSets } from "./api.ts";
 import { calculateDailyBudgets, processCampaign } from "./budget.ts";
 import { formatResponse } from "./response.ts";
 
@@ -29,10 +29,6 @@ serve(async (req) => {
       return validationError;
     }
 
-    // Buscar informações da conta (nome)
-    const accountInfo = await fetchAccountInfo(accountId, accessToken);
-    const accountName = accountInfo.success ? accountInfo.data.name : `Conta ${accountId}`;
-    
     // Processar intervalo de datas
     const { effectiveDateRange, daysDiff } = processDateRange(dateRange);
     console.log(`Período de análise: ${effectiveDateRange.start} a ${effectiveDateRange.end}`);
@@ -64,12 +60,11 @@ serve(async (req) => {
       daysDiff
     );
 
-    // Formatar resposta com os resultados calculados e adicionar o nome da conta
+    // Formatar resposta com os resultados calculados
     return formatResponse({
       totalDailyBudget: budgetResult.totalDailyBudget,
       totalSpent: insightsResult.totalSpent,
       campaignDetails: budgetResult.campaignDetails,
-      accountName: accountName,  // Adicionar o nome da conta à resposta
       diagnostics: {
         totalCampaigns: campaigns.data.length,
         includedItems: budgetResult.campaignDetails.length,
