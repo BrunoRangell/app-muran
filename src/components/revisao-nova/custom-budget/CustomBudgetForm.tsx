@@ -95,15 +95,15 @@ type FormData = z.infer<typeof customBudgetSchema>;
 
 const BUDGET_TEMPLATES = [
   // Meta templates
-  { name: "Meta: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'meta' },
-  { name: "Meta: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'meta' },
-  { name: "Meta: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'meta' },
-  { name: "Meta: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'meta' },
+  { name: "Meta: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'meta' as const },
+  { name: "Meta: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'meta' as const },
+  { name: "Meta: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'meta' as const },
+  { name: "Meta: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'meta' as const },
   // Google templates
-  { name: "Google: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'google' },
-  { name: "Google: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'google' },
-  { name: "Google: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'google' },
-  { name: "Google: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'google' },
+  { name: "Google: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'google' as const },
+  { name: "Google: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'google' as const },
+  { name: "Google: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'google' as const },
+  { name: "Google: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'google' as const },
 ];
 
 const RECURRENCE_PATTERNS = [
@@ -169,7 +169,10 @@ export const CustomBudgetForm = ({
         budget_amount: selectedBudget.budgetAmount,
         start_date: startDate,
         end_date: endDate,
-        platform: selectedBudget.platform || 'meta',
+        // Corrigindo o erro: garantindo que o valor de platform é sempre 'meta' ou 'google'
+        platform: (selectedBudget.platform === 'meta' || selectedBudget.platform === 'google') 
+          ? selectedBudget.platform 
+          : 'meta',
         description: selectedBudget.description,
         is_recurring: selectedBudget.isRecurring || false,
         recurrence_pattern: selectedBudget.recurrencePattern || null,
@@ -210,7 +213,7 @@ export const CustomBudgetForm = ({
       form.setValue("budget_amount", template.amount);
       form.setValue("start_date", startDate);
       form.setValue("end_date", endDate);
-      form.setValue("platform", template.platform);
+      form.setValue("platform", template.platform); // Agora isso é seguro, pois definimos o tipo literal
       
       setFormattedBudget(formatCurrency(template.amount));
     }
