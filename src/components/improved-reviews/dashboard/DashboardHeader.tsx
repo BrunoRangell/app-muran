@@ -17,7 +17,7 @@ export function DashboardHeader({
   isLoading = false
 }: DashboardHeaderProps = {}) {
   return (
-    <Card className="p-4 flex justify-between items-center bg-gradient-to-r from-[#321e32] to-[#321e32]/90 text-white rounded-xl">
+    <Card className="p-4 flex justify-between items-center bg-gradient-to-r from-[#321e32] to-[#321e32]/90 text-white rounded-xl shadow-md">
       <div className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <BarChart3 className="text-[#ff6e00]" size={20} />
@@ -38,7 +38,7 @@ export function DashboardHeader({
         <Button 
           variant="ghost" 
           size="sm" 
-          className="text-white hover:text-white hover:bg-white/10"
+          className="text-white hover:text-white hover:bg-white/10 transition-colors"
           onClick={onRefresh}
           disabled={isLoading}
         >

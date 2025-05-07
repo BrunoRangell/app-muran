@@ -103,27 +103,35 @@ export function useBatchOperations(config: BatchOperationsConfig) {
     const successfulReviews: string[] = [];
     const failedReviews: string[] = [];
     
-    for (const client of clients) {
-      try {
-        await reviewClient(client.id, client[`${config.platform}_account_id`] || undefined);
-        successfulReviews.push(client.company_name);
-      } catch (error) {
-        failedReviews.push(client.company_name);
-        console.error(`Erro ao revisar cliente ${client.id}:`, error);
+    // Crie um atraso para mostrar o progresso da operação
+    const processWithDelay = async () => {
+      for (const client of clients) {
+        try {
+          await reviewClient(client.id, client[`${config.platform}_account_id`] || undefined);
+          successfulReviews.push(client.company_name);
+        } catch (error) {
+          failedReviews.push(client.company_name);
+          console.error(`Erro ao revisar cliente ${client.id}:`, error);
+        }
+        
+        // Pequeno atraso para melhorar a experiência visual
+        await new Promise(r => setTimeout(r, 300));
       }
-    }
+      
+      setIsProcessing(false);
+      setProcessingIds([]);
+      
+      toast({
+        title: "Revisão em massa concluída",
+        description: `${successfulReviews.length} clientes revisados com sucesso${failedReviews.length > 0 ? `, ${failedReviews.length} falhas` : ''}.`,
+      });
+      
+      if (config.onComplete) {
+        config.onComplete();
+      }
+    };
     
-    setIsProcessing(false);
-    setProcessingIds([]);
-    
-    toast({
-      title: "Revisão em massa concluída",
-      description: `${successfulReviews.length} clientes revisados com sucesso${failedReviews.length > 0 ? `, ${failedReviews.length} falhas` : ''}.`,
-    });
-    
-    if (config.onComplete) {
-      config.onComplete();
-    }
+    processWithDelay();
   };
 
   return {

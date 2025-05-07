@@ -15,6 +15,7 @@ interface FilterBarProps {
   onViewModeChange: (mode: "cards" | "table" | "list") => void;
   onFilterChange: (showAdjustments: boolean) => void;
   onRefresh?: () => void;
+  isRefreshing?: boolean;
   platform?: "meta" | "google";
 }
 
@@ -26,10 +27,11 @@ export function FilterBar({
   onViewModeChange,
   onFilterChange,
   onRefresh,
+  isRefreshing = false,
   platform = "meta"
 }: FilterBarProps) {
   return (
-    <Card>
+    <Card className="shadow-sm">
       <CardContent className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="relative flex-1">
@@ -72,9 +74,10 @@ export function FilterBar({
                 variant="outline"
                 size="sm"
                 onClick={onRefresh}
+                disabled={isRefreshing}
                 className="flex items-center gap-1"
               >
-                <RefreshCcw className="h-4 w-4" />
+                <RefreshCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden md:inline">Atualizar</span>
               </Button>
             )}
