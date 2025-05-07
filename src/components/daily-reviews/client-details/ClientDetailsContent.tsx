@@ -8,8 +8,7 @@ import {
   TrendingUp, 
   Calendar,
   MinusCircle,
-  Info,
-  Clock
+  Info
 } from "lucide-react";
 import { ReviewHistoryTable } from "./ReviewHistoryTable";
 import { formatDateInBrasiliaTz } from "../summary/utils";
@@ -88,17 +87,6 @@ export const ClientDetailsContent = ({
     return "text-gray-600";
   };
 
-  const getAverageRecommendationColorClass = (rec: string | null) => {
-    if (!rec) return "text-gray-600";
-    
-    if (rec.includes("Aumentar")) {
-      return "text-blue-600";
-    } else if (rec.includes("Diminuir")) {
-      return "text-orange-600";
-    }
-    return "text-gray-600";
-  };
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -123,28 +111,28 @@ export const ClientDetailsContent = ({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger>
-                        <span className="text-gray-500 cursor-help ml-1 text-xs">ⓘ</span>
+                        <Info size={14} className="text-gray-500 cursor-help ml-1" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Baseado no orçamento diário atual configurado nas campanhas</p>
+                        <p>Recomendação baseada no orçamento diário atual configurado nas campanhas.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 )}
               </div>
               
-              {lastFiveDaysAverage > 0 && (
-                <div className={`flex items-center gap-1 mt-2 ${getAverageRecommendationColorClass(recommendationAverage)} font-medium`}>
-                  <Clock className={recommendationAverage?.includes("Aumentar") ? "text-blue-500" : recommendationAverage?.includes("Diminuir") ? "text-orange-500" : "text-gray-500"} size={18} />
+              {lastFiveDaysAverage > 0 && recommendationAverage && (
+                <div className={`flex items-center gap-1 mt-2 ${getRecommendationColorClass(recommendationAverage)} font-medium`}>
+                  {getRecommendationIcon(recommendationAverage)}
                   {recommendationAverage || "Nenhum ajuste necessário"}
                   {recommendationAverage && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
-                          <span className="text-gray-500 cursor-help ml-1 text-xs">ⓘ</span>
+                          <Info size={14} className="text-gray-500 cursor-help ml-1" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Baseado na média de gasto dos últimos 5 dias: {formatCurrency(lastFiveDaysAverage)}</p>
+                          <p>Recomendação baseada na média de gasto dos últimos 5 dias: {formatCurrency(lastFiveDaysAverage)}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -238,7 +226,7 @@ export const ClientDetailsContent = ({
             
             {suggestedBudgetChange !== 0 && (
               <div className="mt-3">
-                <div className="text-sm font-medium mb-1">Ajuste Sugerido (orç. atual):</div>
+                <div className="text-sm font-medium mb-1">Ajuste Sugerido (orç. diário):</div>
                 <div className={`flex items-center gap-1 text-lg font-semibold ${suggestedBudgetChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {suggestedBudgetChange > 0 ? (
                     <TrendingUp size={16} />
@@ -253,12 +241,12 @@ export const ClientDetailsContent = ({
 
             {lastFiveDaysAverage > 0 && suggestedBudgetChangeAverage !== 0 && (
               <div className="mt-3">
-                <div className="text-sm font-medium mb-1">Ajuste Sugerido (média 5 dias):</div>
-                <div className={`flex items-center gap-1 text-lg font-semibold ${suggestedBudgetChangeAverage > 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                <div className="text-sm font-medium mb-1">Ajuste Sugerido (últ. 5 dias):</div>
+                <div className={`flex items-center gap-1 text-lg font-semibold ${suggestedBudgetChangeAverage > 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {suggestedBudgetChangeAverage > 0 ? (
-                    <Clock size={16} className="text-blue-500" />
+                    <TrendingUp size={16} />
                   ) : (
-                    <Clock size={16} className="text-orange-500" />
+                    <TrendingDown size={16} />
                   )}
                   {suggestedBudgetChangeAverage > 0 ? '+' : ''}
                   {formatCurrency(Math.abs(suggestedBudgetChangeAverage))}

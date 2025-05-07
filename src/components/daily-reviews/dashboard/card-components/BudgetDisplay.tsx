@@ -1,6 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -52,10 +52,11 @@ export const BudgetDisplay = ({
                     <TrendingDown size={14} className="mr-1" />
                   )}
                   {needsIncrease ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}
+                  <Info size={10} className="ml-1 text-gray-500" />
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Recomendação baseada no orçamento diário atual</p>
+                <p>Recomendação baseada no orçamento diário atual configurado nas campanhas.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -65,13 +66,19 @@ export const BudgetDisplay = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>
-                <Badge className={`flex items-center ${needsIncreaseAverage ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
-                  <Clock size={14} className="mr-1" />
+                <Badge className={`flex items-center ${needsIncreaseAverage ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <span className="mr-1 text-xs">5d:</span>
+                  {needsIncreaseAverage ? (
+                    <TrendingUp size={14} className="mr-1" />
+                  ) : (
+                    <TrendingDown size={14} className="mr-1" />
+                  )}
                   {needsIncreaseAverage ? "+" : "-"}{formatCurrency(Math.abs(budgetDifferenceAverage))}
+                  <Info size={10} className="ml-1 text-gray-500" />
                 </Badge>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Recomendação baseada na média de gasto dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)})</p>
+                <p>Recomendação baseada na média de gasto dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

@@ -2,11 +2,12 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Building2, ChevronRight, TrendingUp, TrendingDown, Minus, Clock } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, TrendingUp, TrendingDown, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ClientCardProps {
   client: any;
@@ -102,24 +103,46 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
                 ? 'bg-green-50 text-green-700' 
                 : 'bg-red-50 text-red-700'
             }`}>
-              {budgetDifference > 0 ? (
-                <TrendingUp size={16} />
-              ) : (
-                <TrendingDown size={16} />
-              )}
-              Recomendado: {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger className="flex items-center gap-2 w-full">
+                    {budgetDifference > 0 ? (
+                      <TrendingUp size={16} className="text-green-500" />
+                    ) : (
+                      <TrendingDown size={16} className="text-red-500" />
+                    )}
+                    <span>Recomendado (orç. diário): {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}</span>
+                  </TooltipTrigger>
+                  <TooltipContent className="p-2 max-w-xs">
+                    <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
           
-          {/* Nova recomendação baseada na média dos últimos 5 dias */}
+          {/* Recomendação baseada na média dos últimos 5 dias */}
           {needsAdjustmentBasedOnAverage && (
             <div className={`flex items-center gap-2 text-sm font-medium p-2 rounded ${
               budgetDifferenceAvg > 0 
-                ? 'bg-blue-50 text-blue-700' 
-                : 'bg-orange-50 text-orange-700'
+                ? 'bg-green-50 text-green-700' 
+                : 'bg-red-50 text-red-700'
             }`}>
-              <Clock size={16} />
-              Média 5d ({formatCurrency(lastFiveDaysAvg)}): {budgetDifferenceAvg > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifferenceAvg))}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger className="flex items-center gap-2 w-full">
+                    {budgetDifferenceAvg > 0 ? (
+                      <TrendingUp size={16} className="text-green-500" />
+                    ) : (
+                      <TrendingDown size={16} className="text-red-500" />
+                    )}
+                    <span>Recomendado (últ. 5 dias): {budgetDifferenceAvg > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifferenceAvg))}</span>
+                  </TooltipTrigger>
+                  <TooltipContent className="p-2 max-w-xs">
+                    <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAvg)}).</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
           
