@@ -2,7 +2,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, BadgeDollarSign, Building2, ChevronRight, Info } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
@@ -27,12 +27,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   // Preparar dados para exibição
   const accountName = client[`${platform}_account_name`] || "Conta Principal";
   const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
-  
-  // Usar o orçamento personalizado se estiver disponível
-  const isUsingCustomBudget = client.using_custom_budget || false;
-  const customBudgetAmount = client.custom_budget_amount || 0;
-  const budgetAmount = isUsingCustomBudget ? customBudgetAmount : (client.budget_amount || 0);
-  
+  const budgetAmount = client.budget_amount || 0;
   const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
   const needsAdjustment = client.needsAdjustment;
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
@@ -42,7 +37,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const budgetDifferenceAvg = platform === "google" ? (client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0) : 0;
   const needsAdjustmentBasedOnAverage = platform === "google" ? (client.budgetCalculation?.needsAdjustmentBasedOnAverage || false) : false;
   
-  console.log(`[DEBUG] ClientCard - Cliente: ${client.company_name}, Platform: ${platform}, isUsingCustomBudget: ${isUsingCustomBudget}, customBudgetAmount: ${customBudgetAmount}, budgetAmount: ${budgetAmount}`);
+  console.log(`[DEBUG] ClientCard - Cliente: ${client.company_name}, Platform: ${platform}, lastFiveDaysAvg: ${lastFiveDaysAvg}, budgetDifferenceAvg: ${budgetDifferenceAvg}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
   
   const handleReviewClick = async () => {
     try {
@@ -61,16 +56,13 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   };
   
   return (
-    <Card className={`overflow-hidden transition-all ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''} ${isUsingCustomBudget ? 'border-l-4 border-l-[#ff6e00]' : ''}`}>
+    <Card className={`overflow-hidden transition-all ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''}`}>
       <CardHeader className="p-4 pb-0">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
             <h3 className="font-medium line-clamp-1 flex items-center gap-1">
               <Building2 className="h-4 w-4 text-[#ff6e00]" />
               {client.company_name}
-              {isUsingCustomBudget && (
-                <BadgeDollarSign size={14} className="text-[#ff6e00] ml-1" />
-              )}
             </h3>
             <p className="text-sm text-gray-500">{accountName}</p>
           </div>
@@ -88,15 +80,8 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
               <span className="font-medium">{formatCurrency(spentAmount)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">
-                Orçamento
-                {isUsingCustomBudget && (
-                  <span className="text-xs text-[#ff6e00] ml-1">(personalizado)</span>
-                )}
-              </span>
-              <span className={`font-medium ${isUsingCustomBudget ? "text-[#ff6e00]" : ""}`}>
-                {formatCurrency(budgetAmount)}
-              </span>
+              <span className="text-gray-500">Orçamento</span>
+              <span className="font-medium">{formatCurrency(budgetAmount)}</span>
             </div>
             <Progress 
               value={spentPercentage} 
@@ -122,8 +107,6 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
             shouldShowAverage={platform === "google" ? needsAdjustmentBasedOnAverage : false}
             lastFiveDaysAverage={platform === "google" ? lastFiveDaysAvg : undefined}
             platform={platform}
-            usingCustomBudget={isUsingCustomBudget}
-            customBudgetAmount={customBudgetAmount}
           />
           
           {expanded && client.review && (
@@ -140,12 +123,6 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
                 <span className="text-gray-500">Dias restantes</span>
                 <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
               </div>
-              {isUsingCustomBudget && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Usando orçamento personalizado</span>
-                  <span className="font-medium text-[#ff6e00]">Sim</span>
-                </div>
-              )}
               {platform === "google" && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Média gasto (5 dias)</span>

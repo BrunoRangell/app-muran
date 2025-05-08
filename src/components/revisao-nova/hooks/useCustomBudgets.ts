@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -16,7 +17,6 @@ export interface CustomBudget {
   is_active: boolean;
   is_recurring: boolean;
   recurrence_pattern: string | null;
-  account_id: string | null;
   client_name?: string;
 }
 
@@ -28,7 +28,6 @@ export interface ClientWithBudgets {
 
 export interface CustomBudgetFormData {
   clientId: string;
-  accountId?: string;
   budgetAmount: number;
   startDate: string;
   endDate: string;
@@ -195,7 +194,6 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
         .from("custom_budgets")
         .insert({
           client_id: formData.clientId,
-          account_id: formData.accountId || null,
           budget_amount: formData.budgetAmount,
           start_date: formData.startDate,
           end_date: formData.endDate,
@@ -258,7 +256,6 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
           end_date: formData.endDate,
           platform: formData.platform,
           description: formData.description || null,
-          account_id: formData.accountId || null,
           is_recurring: formData.isRecurring || false,
           recurrence_pattern: formData.recurrencePattern || null
         })

@@ -1,108 +1,88 @@
 
-import { useState } from 'react';
-import { formatCurrency } from '@/utils/formatters';
-import { getCurrentDateInBrasiliaTz } from '@/components/daily-reviews/summary/utils';
-import { getDaysInMonth } from 'date-fns';
+import { useMemo } from "react";
 
-interface BudgetCalculationParams {
+type BudgetInput = {
   monthlyBudget: number;
   totalSpent: number;
   currentDailyBudget: number;
-  lastFiveDaysAverage?: number; // Média de gasto dos últimos 5 dias (opcional, para Google Ads)
-}
+  lastFiveDaysAverage?: number;
+};
 
-interface BudgetCalculationResult {
-  remainingBudget: number;
-  remainingDays: number;
+type BudgetCalculation = {
   idealDailyBudget: number;
   budgetDifference: number;
-  needsBudgetAdjustment: boolean;
-  
-  // Campos específicos para Google Ads
-  lastFiveDaysAverage?: number;
-  idealDailyBudgetBasedOnAverage?: number;
   budgetDifferenceBasedOnAverage?: number;
+  remainingDays: number;
+  remainingBudget: number;
+  needsBudgetAdjustment: boolean;
   needsAdjustmentBasedOnAverage?: boolean;
-}
+  spentPercentage: number;
+};
 
 export function useBudgetCalculator() {
-  const calculateBudget = ({
-    monthlyBudget,
-    totalSpent,
-    currentDailyBudget,
-    lastFiveDaysAverage
-  }: BudgetCalculationParams): BudgetCalculationResult => {
-    try {
-      // Log para debug simplificado (evitando logs excessivos)
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`Calculando orçamento: mensal=${formatCurrency(monthlyBudget)}, gasto=${formatCurrency(totalSpent)}, diário=${formatCurrency(currentDailyBudget)}`);
-      }
+  const calculateBudget = useMemo(() => {
+    return (input: BudgetInput): BudgetCalculation => {
+      const today = new Date();
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      const remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
       
-      // Obter data atual e calcular dias restantes no mês
-      const today = getCurrentDateInBrasiliaTz();
-      const daysInMonth = getDaysInMonth(today);
-      const currentDay = today.getDate();
-      // Incluir o dia atual na contagem de dias restantes
-      const remainingDays = daysInMonth - currentDay + 1;
+      // Orçamento restante para o mês (nunca negativo)
+      const remainingBudget = Math.max(0, input.monthlyBudget - input.totalSpent);
       
-      // Calcular orçamento restante
-      const remainingBudget = Math.max(0, monthlyBudget - totalSpent);
+      // Calcular porcentagem gasta do orçamento
+      const spentPercentage = input.monthlyBudget > 0 
+        ? (input.totalSpent / input.monthlyBudget) * 100 
+        : 0;
       
-      // Calcular orçamento diário ideal baseado no orçamento restante
+      // Calcular orçamento diário ideal
       const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
       
-      // Diferença entre orçamento diário ideal e atual
-      const budgetDifference = Math.round((idealDailyBudget - currentDailyBudget) * 100) / 100;
+      // Arredondar para 2 casas decimais
+      const roundedIdealDailyBudget = Math.round(idealDailyBudget * 100) / 100;
       
-      // Determinar se precisa de ajuste (limiar de 5.00)
-      const needsBudgetAdjustment = Math.abs(budgetDifference) > 5;
+      // Diferença entre o orçamento diário atual e o ideal
+      const budgetDifference = input.currentDailyBudget > 0 
+        ? roundedIdealDailyBudget - input.currentDailyBudget
+        : 0;
       
-      // Resultado básico da calculadora de orçamento
-      const result: BudgetCalculationResult = {
-        remainingBudget,
-        remainingDays,
-        idealDailyBudget,
-        budgetDifference,
-        needsBudgetAdjustment
-      };
+      // Determinar se precisa de ajuste (apenas diferença absoluta de 5 reais ou mais)
+      const absoluteDifference = Math.abs(budgetDifference);
       
-      // Cálculos adicionais específicos para Google Ads, baseados na média dos últimos 5 dias
-      if (lastFiveDaysAverage !== undefined && lastFiveDaysAverage > 0) {
-        // Calcular quanto tempo o orçamento restante duraria com o gasto médio atual
-        const daysRemainingWithCurrentSpending = remainingBudget / lastFiveDaysAverage;
+      // MODIFICADO: Agora considera apenas a diferença absoluta >= R$5
+      const needsBudgetAdjustment = 
+        input.currentDailyBudget > 0 && // só considera se tem orçamento atual
+        absoluteDifference >= 5; // apenas diferença absoluta de 5 reais ou mais
+      
+      // Inicializar valores opcionais
+      let budgetDifferenceBasedOnAverage;
+      let needsAdjustmentBasedOnAverage;
+      
+      // Calcular a diferença baseada na média dos últimos 5 dias somente se fornecida
+      // e se o valor for maior que zero (evitar mostrar recomendação quando não há dados)
+      if (input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0) {
+        budgetDifferenceBasedOnAverage = roundedIdealDailyBudget - input.lastFiveDaysAverage;
         
-        // Calcular se o orçamento diário precisa ser ajustado com base na média de gasto
-        const idealDailyBudgetBasedOnAverage = 
-          daysRemainingWithCurrentSpending < remainingDays 
-            ? lastFiveDaysAverage * (remainingDays / daysRemainingWithCurrentSpending) 
-            : lastFiveDaysAverage;
+        // Determinar se precisa de ajuste baseado na média (apenas diferença absoluta de 5 reais ou mais)
+        const absoluteDifferenceAverage = Math.abs(budgetDifferenceBasedOnAverage);
         
-        // Diferença entre orçamento baseado em média e orçamento diário atual
-        const budgetDifferenceBasedOnAverage = Math.round((idealDailyBudgetBasedOnAverage - currentDailyBudget) * 100) / 100;
-        
-        // Determinar se precisa de ajuste baseado na média (limiar de 5.00)
-        const needsAdjustmentBasedOnAverage = Math.abs(budgetDifferenceBasedOnAverage) > 5;
-        
-        // Adicionar dados específicos do Google Ads ao resultado
-        result.lastFiveDaysAverage = lastFiveDaysAverage;
-        result.idealDailyBudgetBasedOnAverage = idealDailyBudgetBasedOnAverage;
-        result.budgetDifferenceBasedOnAverage = budgetDifferenceBasedOnAverage;
-        result.needsAdjustmentBasedOnAverage = needsAdjustmentBasedOnAverage;
+        // MODIFICADO: Agora considera apenas a diferença absoluta >= R$5
+        needsAdjustmentBasedOnAverage = absoluteDifferenceAverage >= 5;
       }
       
-      return result;
-    } catch (error) {
-      console.error("Erro no cálculo de orçamento:", error);
-      // Retornar valores padrão em caso de erro
+      console.log(`[DEBUG] Budget Calculator - lastFiveDaysAverage: ${input.lastFiveDaysAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
+      
       return {
-        remainingBudget: 0,
-        remainingDays: 0,
-        idealDailyBudget: 0,
-        budgetDifference: 0,
-        needsBudgetAdjustment: false
+        idealDailyBudget: roundedIdealDailyBudget,
+        budgetDifference,
+        budgetDifferenceBasedOnAverage,
+        remainingDays,
+        remainingBudget,
+        needsBudgetAdjustment,
+        needsAdjustmentBasedOnAverage,
+        spentPercentage
       };
-    }
-  };
+    };
+  }, []);
   
   return { calculateBudget };
 }

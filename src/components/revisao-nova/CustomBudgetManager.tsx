@@ -95,13 +95,10 @@ export const CustomBudgetManager = ({ viewMode = "list" }: CustomBudgetManagerPr
   const convertBudgetToFormData = (budget: any): CustomBudgetFormData => {
     return {
       clientId: budget.client_id,
-      accountId: budget.account_id || undefined,
       budgetAmount: budget.budget_amount,
       startDate: budget.start_date,
       endDate: budget.end_date,
-      platform: (budget.platform === 'meta' || budget.platform === 'google') 
-        ? budget.platform 
-        : 'meta',
+      platform: budget.platform || 'meta',
       description: budget.description || "",
       isRecurring: budget.is_recurring || false,
       recurrencePattern: budget.recurrence_pattern || null

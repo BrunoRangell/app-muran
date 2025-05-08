@@ -1,165 +1,156 @@
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { findActiveCustomBudget, prepareCustomBudgetInfo } from "./useCustomBudgetFinder";
+import { supabase } from "@/lib/supabase";
 
 interface BatchOperationsProps {
   platform: "meta" | "google";
   onComplete?: () => void;
 }
 
-export function useBatchOperations({ platform, onComplete }: BatchOperationsProps) {
+export function useBatchOperations({ platform, onComplete }: BatchOperationsProps = { platform: "meta" }) {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAccounts, setProcessingAccounts] = useState<Record<string, boolean>>({});
+  // Adicionando o estado processingIds para corrigir o erro
   const [processingIds, setProcessingIds] = useState<string[]>([]);
-  const [processingAccounts, setProcessingAccounts] = useState<{clientId: string, accountId: string}[]>([]);
   const { toast } = useToast();
 
-  // Função para verificar se uma conta específica está sendo processada
-  const isProcessingAccount = (clientId: string, accountId?: string) => {
-    if (!accountId) return false;
-    return processingAccounts.some(item => 
-      item.clientId === clientId && item.accountId === accountId
-    );
-  };
-
-  // Função para revisar um cliente específico
-  const reviewClient = async (clientId: string, accountId?: string | null) => {
+  // Função para revisar um único cliente
+  const reviewClient = async (clientId: string, metaAccountId?: string) => {
+    const accountKey = `${clientId}-${metaAccountId || "default"}`;
+    
     try {
-      console.log(`Iniciando revisão para cliente ${clientId} (${platform})`);
+      setProcessingAccounts((prev) => ({ ...prev, [accountKey]: true }));
+      // Adicionar o ID à lista de processamento
+      setProcessingIds((prev) => [...prev, clientId]);
+
+      console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` (conta ${metaAccountId})` : ''}`);
       
-      // Adicionar à lista de IDs em processamento
-      setProcessingIds(prev => [...prev, clientId]);
-      if (accountId) {
-        setProcessingAccounts(prev => [...prev, {clientId, accountId}]);
+      // Obter token do Meta Ads
+      const { data: tokenData, error: tokenError } = await supabase
+        .from("api_tokens")
+        .select("value")
+        .eq("name", "meta_access_token")
+        .maybeSingle();
+      
+      if (tokenError) {
+        throw new Error("Erro ao buscar token Meta Ads: " + tokenError.message);
+      }
+      
+      if (!tokenData?.value) {
+        throw new Error("Token Meta Ads não configurado");
       }
 
-      // Buscar orçamento personalizado ativo se existir
-      const customBudget = accountId ? 
-        await findActiveCustomBudget(clientId, accountId, platform) : 
-        await findActiveCustomBudget(clientId, undefined, platform);
-      
-      // Preparar informações do orçamento personalizado
-      const customBudgetInfo = prepareCustomBudgetInfo(customBudget);
-      
-      // Construir payload para a função de revisão
+      // Construir payload para função Edge
       const payload = {
-        client_id: clientId,
-        account_id: accountId || undefined,
-        ...customBudgetInfo
+        clientId,
+        accessToken: tokenData.value,
+        reviewDate: new Date().toISOString().split("T")[0]
       };
-      
-      console.log(`Payload para revisão:`, payload);
-      
-      // Chamar função Edge
-      const { error } = await supabase.functions.invoke(
-        platform === "meta" ? "daily-meta-review" : "daily-google-review", 
-        {
-          body: payload
-        }
-      );
+
+      // Adicionar accountId específico se fornecido
+      if (metaAccountId) {
+        payload["metaAccountId"] = metaAccountId;
+      }
+
+      // Chamar função Edge apropriada para a plataforma
+      const functionName = platform === "meta" ? "daily-meta-review" : "daily-google-review";
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: payload
+      });
 
       if (error) {
-        throw new Error(`Erro ao revisar o cliente: ${error.message}`);
+        throw new Error(`Erro na função Edge: ${error.message}`);
       }
 
-      console.log(`Revisão concluída para cliente ${clientId}`);
-      
-      // Chamar callback de conclusão se fornecido
-      if (onComplete) onComplete();
-
+      console.log(`Revisão concluída com sucesso:`, data);
       return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error(`Erro ao revisar cliente ${clientId}:`, error);
       toast({
         title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao revisar o cliente",
-        variant: "destructive"
+        description: error.message || "Ocorreu um erro ao processar a revisão",
+        variant: "destructive",
       });
-      throw error;
+      return false;
     } finally {
-      // Remover da lista de IDs em processamento
-      setProcessingIds(prev => prev.filter(id => id !== clientId));
-      if (accountId) {
-        setProcessingAccounts(prev => 
-          prev.filter(item => !(item.clientId === clientId && item.accountId === accountId))
-        );
-      }
+      setProcessingAccounts((prev) => ({ ...prev, [accountKey]: false }));
+      // Remover o ID da lista de processamento
+      setProcessingIds((prev) => prev.filter(id => id !== clientId));
     }
   };
 
-  // Função para revisar todos os clientes
+  // Função para verificar se um cliente/conta está sendo processado
+  const isProcessingAccount = (clientId: string, accountId?: string) => {
+    const key = `${clientId}-${accountId || "default"}`;
+    return !!processingAccounts[key];
+  };
+
+  // Função para revisar todos os clientes em lote
   const reviewAllClients = async (clients: any[]) => {
     try {
-      console.log(`Iniciando revisão em lote para ${clients.length} clientes (${platform})`);
+      setIsProcessing(true);
       
-      // Adicionar todos os IDs de clientes à lista de processamento
-      const clientIds = clients.map(client => client.id);
-      setProcessingIds(prev => [...prev, ...clientIds]);
-
-      // Processar cada cliente
-      for (const client of clients) {
-        const accountId = client[`${platform}_account_id`];
-        if (accountId) {
-          setProcessingAccounts(prev => [...prev, {clientId: client.id, accountId}]);
-        }
-        
-        // Buscar orçamento personalizado ativo se existir
-        const customBudget = accountId ? 
-          await findActiveCustomBudget(client.id, accountId, platform) : 
-          await findActiveCustomBudget(client.id, undefined, platform);
-        
-        // Preparar informações do orçamento personalizado
-        const customBudgetInfo = prepareCustomBudgetInfo(customBudget);
-        
-        // Construir payload para a função de revisão
-        const payload = {
-          client_id: client.id,
-          account_id: accountId || undefined,
-          ...customBudgetInfo
-        };
-        
-        // Chamar função Edge
-        await supabase.functions.invoke(
-          platform === "meta" ? "daily-meta-review" : "daily-google-review", 
-          {
-            body: payload
-          }
-        );
-        
-        // Remover conta específica da lista de processamento
-        if (accountId) {
-          setProcessingAccounts(prev => 
-            prev.filter(item => !(item.clientId === client.id && item.accountId === accountId))
-          );
-        }
-      }
-
-      console.log(`Revisão em lote concluída para ${clients.length} clientes`);
+      const uniqueClientsWithAccounts = new Map();
       
-      // Chamar callback de conclusão se fornecido
-      if (onComplete) onComplete();
-
-      return true;
-    } catch (error: any) {
-      console.error(`Erro na revisão em lote:`, error);
-      toast({
-        title: "Erro na revisão em lote",
-        description: error.message || "Ocorreu um erro ao revisar os clientes",
-        variant: "destructive"
+      // Organizar clientes por ID e contas Meta
+      clients.forEach(client => {
+        const clientId = client.id;
+        
+        if (client.meta_account_id) {
+          // Se o cliente tem uma conta Meta específica
+          const key = `${clientId}-${client.meta_account_id}`;
+          uniqueClientsWithAccounts.set(key, {
+            clientId,
+            metaAccountId: client.meta_account_id
+          });
+        } else {
+          // Cliente sem conta específica
+          const key = `${clientId}-default`;
+          uniqueClientsWithAccounts.set(key, { clientId });
+        }
       });
-      throw error;
+      
+      console.log(`Processando ${uniqueClientsWithAccounts.size} clientes/contas em lote`);
+      
+      // Processamento sequencial para evitar sobrecarga
+      const results = [];
+      for (const client of uniqueClientsWithAccounts.values()) {
+        const result = await reviewClient(client.clientId, client.metaAccountId);
+        results.push(result);
+        
+        // Pequeno delay entre requisições
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      const successCount = results.filter(Boolean).length;
+      
+      toast({
+        title: "Revisão em lote concluída",
+        description: `${successCount} de ${uniqueClientsWithAccounts.size} contas processadas com sucesso`,
+        variant: successCount === uniqueClientsWithAccounts.size ? "default" : "destructive",
+      });
+      
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error) {
+      console.error("Erro no processamento em lote:", error);
+      toast({
+        title: "Erro no processamento em lote",
+        description: error.message || "Ocorreu um erro ao processar a revisão em lote",
+        variant: "destructive",
+      });
     } finally {
-      // Limpar lista de IDs em processamento
-      setProcessingIds([]);
-      setProcessingAccounts([]);
+      setIsProcessing(false);
     }
   };
 
   return {
-    processingIds,
-    isProcessing: processingIds.length > 0,
-    isProcessingAccount,
     reviewClient,
-    reviewAllClients
+    reviewAllClients,
+    isProcessing,
+    isProcessingAccount,
+    processingIds, // Expondo a propriedade processingIds
   };
 }

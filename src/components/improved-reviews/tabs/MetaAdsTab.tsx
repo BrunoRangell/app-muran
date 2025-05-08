@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
 import { MetricsPanel } from "../dashboard/MetricsPanel";
@@ -8,57 +8,16 @@ import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { AlertTriangle } from "lucide-react";
-import { useTabVisibility } from "../hooks/useTabVisibility";
 
 interface MetaAdsTabProps {
   onRefreshCompleted?: () => void;
   isActive?: boolean;
 }
 
-// Chave para armazenamento local do estado do filtro
-const FILTER_STATE_KEY = "meta_ads_filters_state";
-
 export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
-  
-  // Usar o hook de visibilidade da aba
-  useTabVisibility({
-    isActive,
-    onBecomeVisible: () => {
-      console.log("Tab Meta Ads se tornou visível!");
-    }
-  });
-  
-  // Recuperar estado de filtros do localStorage ao inicializar
-  useEffect(() => {
-    try {
-      const savedFilters = localStorage.getItem(FILTER_STATE_KEY);
-      if (savedFilters) {
-        const parsedFilters = JSON.parse(savedFilters);
-        setSearchQuery(parsedFilters.searchQuery || "");
-        setViewMode(parsedFilters.viewMode || "cards");
-        setShowOnlyAdjustments(parsedFilters.showOnlyAdjustments || false);
-      }
-    } catch (err) {
-      console.error("Erro ao recuperar estado dos filtros:", err);
-    }
-  }, []);
-
-  // Salvar estado dos filtros no localStorage quando mudar
-  useEffect(() => {
-    try {
-      localStorage.setItem(FILTER_STATE_KEY, JSON.stringify({
-        searchQuery,
-        viewMode,
-        showOnlyAdjustments
-      }));
-    } catch (err) {
-      console.error("Erro ao salvar estado dos filtros:", err);
-    }
-  }, [searchQuery, viewMode, showOnlyAdjustments]);
-  
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
   const { reviewAllClients, isProcessing } = useBatchOperations({
     platform: "meta",
@@ -130,7 +89,6 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
         onFilterChange={handleFilterChange}
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
-        platform="meta"
       />
       
       <ClientsList 
