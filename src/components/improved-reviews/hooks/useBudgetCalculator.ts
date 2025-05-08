@@ -33,9 +33,10 @@ export function useBudgetCalculator() {
     lastFiveDaysAverage
   }: BudgetCalculationParams): BudgetCalculationResult => {
     try {
-      // Log para debug
-      console.log(`Calculando orçamento: orçamento mensal = ${formatCurrency(monthlyBudget)}, gasto = ${formatCurrency(totalSpent)}, orçamento diário atual = ${formatCurrency(currentDailyBudget)}, média 5 dias = ${lastFiveDaysAverage ? formatCurrency(lastFiveDaysAverage) : 'N/A'}`);
-      console.log(`Está usando orçamento personalizado? ${monthlyBudget !== 0 ? 'Sim, com valor: ' + formatCurrency(monthlyBudget) : 'Não'}`);
+      // Log para debug simplificado (evitando logs excessivos)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`Calculando orçamento: mensal=${formatCurrency(monthlyBudget)}, gasto=${formatCurrency(totalSpent)}, diário=${formatCurrency(currentDailyBudget)}`);
+      }
       
       // Obter data atual e calcular dias restantes no mês
       const today = getCurrentDateInBrasiliaTz();
@@ -89,7 +90,6 @@ export function useBudgetCalculator() {
         result.needsAdjustmentBasedOnAverage = needsAdjustmentBasedOnAverage;
       }
       
-      console.log("Resultado do cálculo de orçamento:", result);
       return result;
     } catch (error) {
       console.error("Erro no cálculo de orçamento:", error);

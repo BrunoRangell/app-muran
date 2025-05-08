@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
 import { MetricsPanel } from "../dashboard/MetricsPanel";
@@ -20,6 +20,8 @@ interface GoogleAdsTabProps {
 
 // Chave para armazenamento local do estado do filtro
 const FILTER_STATE_KEY = "google_ads_filters_state";
+// Tempo mínimo entre notificações de atualizações (5 segundos)
+const MIN_NOTIFICATION_INTERVAL = 5000;
 
 export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsTabProps = {}) {
   // Estado para controle da UI
@@ -28,6 +30,8 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const lastNotificationTime = useRef<number>(0);
+  const realtimeChannelRef = useRef<any>(null);
   
   // Recuperar estado de filtros do localStorage ao inicializar
   useEffect(() => {
@@ -62,9 +66,21 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
           filter: 'platform=eq.google' 
         },
         (payload) => {
+          const now = Date.now();
+          
+          // Verificar se já passou tempo suficiente desde a última notificação
+          if (now - lastNotificationTime.current < MIN_NOTIFICATION_INTERVAL) {
+            console.log('GoogleAdsTab: Ignorando notificação de mudança (muito frequente)');
+            return;
+          }
+          
           console.log('GoogleAdsTab: Detectada mudança em orçamentos personalizados:', payload);
-          // Invalidar o cache do React Query para forçar uma nova consulta
-          queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+          lastNotificationTime.current = now;
+          
+          // Atualizar data para forçar React Query a refetchear
+          setLastCustomBudgetUpdate(new Date());
+          
+          // Notificar usuário
           toast({
             title: "Orçamentos atualizados",
             description: "Os orçamentos personalizados do Google Ads foram atualizados.",
@@ -75,13 +91,19 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
       .subscribe((status) => {
         console.log("Status da inscrição do canal realtime:", status);
       });
+      
+    // Armazenar referência ao canal
+    realtimeChannelRef.current = channel;
 
     // Limpar inscrição ao desmontar
     return () => {
       console.log("Removendo monitoramento de orçamentos personalizados na aba Google Ads");
-      supabase.removeChannel(channel);
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
     };
-  }, [isActive, queryClient, toast]);
+  }, [isActive, toast]);
 
   // Salvar estado dos filtros no localStorage quando mudar
   useEffect(() => {
@@ -96,17 +118,26 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
     }
   }, [searchQuery, viewMode, showOnlyAdjustments]);
 
-  // Usar o hook de visibilidade da aba
+  // Usar o hook de visibilidade da aba com debounce
   useTabVisibility({
     isActive,
     onBecomeVisible: () => {
       console.log("Tab GoogleAds se tornou visível!");
-      // Ao se tornar visível, forçar atualização dos dados
+      // Ao se tornar visível, forçar atualização dos dados apenas se não tiver atualizado recentemente
       queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
-    }
+    },
+    debounceTime: 10000 // 10 segundos para evitar atualizações muito frequentes
   });
 
-  const { data, isLoading, error, metrics, refreshData, isFetching } = useGoogleAdsData();
+  const { 
+    data, 
+    isLoading, 
+    error, 
+    metrics, 
+    refreshData, 
+    isFetching, 
+    setLastCustomBudgetUpdate 
+  } = useGoogleAdsData();
   
   const { reviewAllClients, isProcessing, processingIds } = useBatchOperations({
     platform: "google",
@@ -136,12 +167,17 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
   const handleRefresh = async () => {
     console.log("Atualizando dados do Google Ads...");
     try {
-      await refreshData();
+      const result = await refreshData();
+      if (result.error) {
+        throw result.error;
+      }
+      
       toast({
         title: "Dados atualizados",
         description: "Os dados do Google Ads foram atualizados com sucesso.",
         duration: 3000,
       });
+      
       if (onRefreshCompleted) onRefreshCompleted();
     } catch (err) {
       console.error("Erro ao atualizar dados:", err);
