@@ -141,7 +141,8 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     const absoluteDifference = Math.abs(budgetDifference);
     const percentageDifference = absoluteDifference / currentDailyBudget;
     
-    return absoluteDifference >= 5 && percentageDifference >= 0.05;
+    // Alterado para usar OU (||) em vez de E (&&)
+    return absoluteDifference >= 5 || percentageDifference >= 0.05;
   }, [hasReview, budgetDifference, currentDailyBudget]);
   
   // Determinar se o orçamento precisa de ajuste baseado na média de gasto
@@ -152,7 +153,8 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     const absoluteDifference = Math.abs(budgetDifferenceBasedOnAverage);
     const percentageDifference = lastFiveDaysSpent > 0 ? absoluteDifference / lastFiveDaysSpent : 0;
     
-    return absoluteDifference >= 5 && percentageDifference >= 0.05;
+    // Alterado para usar OU (||) em vez de E (&&)
+    return absoluteDifference >= 5 || percentageDifference >= 0.05;
   }, [hasReview, budgetDifferenceBasedOnAverage, lastFiveDaysSpent]);
   
   return {

@@ -7,6 +7,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { CompactBudgetRecommendation } from "./card-components/CompactBudgetRecommendation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { BudgetRecommendation } from "./BudgetRecommendation";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -60,7 +61,7 @@ export const GoogleAdsClientReviewCardCompact = ({
     "Sem revisão";
 
   // Determinar se o card deve ter destaque
-  const cardBorderClass = needsBudgetAdjustment
+  const cardBorderClass = needsBudgetAdjustment || needsAdjustmentBasedOnAverage
     ? 'border-l-4 border-l-muran-primary'
     : '';
 
@@ -186,15 +187,27 @@ export const GoogleAdsClientReviewCardCompact = ({
           </div>
         )}
 
-        <CompactBudgetRecommendation
-          budgetDifference={budgetDifference || 0}
-          budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
-          shouldShow={!!needsBudgetAdjustment}
-          shouldShowAverage={!!needsAdjustmentBasedOnAverage}
-          lastFiveDaysAverage={lastFiveDaysSpent}
-          platform="google"
-          usingRealData={usingRealData}
-        />
+        {compact ? (
+          <CompactBudgetRecommendation
+            budgetDifference={budgetDifference || 0}
+            budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
+            shouldShow={!!needsBudgetAdjustment}
+            shouldShowAverage={!!needsAdjustmentBasedOnAverage}
+            lastFiveDaysAverage={lastFiveDaysSpent}
+            platform="google"
+            usingRealData={usingRealData}
+          />
+        ) : (
+          <BudgetRecommendation
+            budgetDifference={budgetDifference || 0}
+            budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
+            shouldShow={!!needsBudgetAdjustment}
+            shouldShowAverage={!!needsAdjustmentBasedOnAverage}
+            hasReview={hasReview}
+            lastFiveDaysAverage={lastFiveDaysSpent}
+            platform="google"
+          />
+        )}
       </div>
     </Card>
   );

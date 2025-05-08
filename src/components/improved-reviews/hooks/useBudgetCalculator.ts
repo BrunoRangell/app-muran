@@ -53,8 +53,8 @@ export function useBudgetCalculator() {
         
       const needsBudgetAdjustment = 
         input.currentDailyBudget > 0 && // só considera se tem orçamento atual
-        ((absoluteDifference >= 5) || // diferença absoluta de 5 reais
-        (percentageDifference >= 0.05 && absoluteDifference >= 1)); // ou 5% com pelo menos 1 real de diferença
+        (absoluteDifference >= 5 || // diferença absoluta de 5 reais (alterado para OR)
+         (percentageDifference >= 0.05 && absoluteDifference >= 1)); // ou 5% com pelo menos 1 real de diferença
       
       // Inicializar valores opcionais
       let budgetDifferenceBasedOnAverage;
@@ -72,7 +72,7 @@ export function useBudgetCalculator() {
           : 0;
           
         needsAdjustmentBasedOnAverage = 
-          (absoluteDifferenceAverage >= 5) || // diferença absoluta de 5 reais
+          absoluteDifferenceAverage >= 5 || // diferença absoluta de 5 reais (alterado para OR)
           (percentageDifferenceAverage >= 0.05 && absoluteDifferenceAverage >= 1); // ou 5% com pelo menos 1 real de diferença
       }
       
