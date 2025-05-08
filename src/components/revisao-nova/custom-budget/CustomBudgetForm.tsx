@@ -182,29 +182,61 @@ export const CustomBudgetForm = ({
   // Preencher o formulário quando um orçamento for selecionado para edição
   useEffect(() => {
     if (selectedBudget) {
-      // Corrigindo o problema da data: converter as strings para objetos Date
-      // sem alterar o fuso horário
-      const startDate = new Date(selectedBudget.startDate + 'T12:00:00');
-      const endDate = new Date(selectedBudget.endDate + 'T12:00:00');
-      
-      setShowRecurrenceOptions(!!selectedBudget.isRecurring);
-      setSelectedClientId(selectedBudget.clientId);
-      
-      form.reset({
-        client_id: selectedBudget.clientId,
-        account_id: selectedBudget.accountId,
-        budget_amount: selectedBudget.budgetAmount,
-        start_date: startDate,
-        end_date: endDate,
-        // Corrigindo o erro: garantindo que o valor de platform é sempre 'meta' ou 'google'
-        platform: (selectedBudget.platform === 'meta' || selectedBudget.platform === 'google') 
-          ? selectedBudget.platform 
-          : 'meta',
-        description: selectedBudget.description,
-        is_recurring: selectedBudget.isRecurring || false,
-        recurrence_pattern: selectedBudget.recurrencePattern || null,
-      });
-      setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
+      try {
+        // Garantir que as strings de data são válidas antes de criar objetos Date
+        const validateAndParseDate = (dateStr: string): Date => {
+          // Validar o formato da data
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            console.error(`Formato de data inválido: ${dateStr}`);
+            return new Date(); // Fallback para data atual
+          }
+          
+          const date = new Date(dateStr + 'T12:00:00');
+          
+          // Verificar se a data resultante é válida
+          if (isNaN(date.getTime())) {
+            console.error(`Data inválida após parsing: ${dateStr}`);
+            return new Date(); // Fallback para data atual
+          }
+          
+          return date;
+        };
+        
+        const startDate = validateAndParseDate(selectedBudget.startDate);
+        const endDate = validateAndParseDate(selectedBudget.endDate);
+        
+        setShowRecurrenceOptions(!!selectedBudget.isRecurring);
+        setSelectedClientId(selectedBudget.clientId);
+        
+        form.reset({
+          client_id: selectedBudget.clientId,
+          account_id: selectedBudget.accountId,
+          budget_amount: selectedBudget.budgetAmount,
+          start_date: startDate,
+          end_date: endDate,
+          platform: (selectedBudget.platform === 'meta' || selectedBudget.platform === 'google') 
+            ? selectedBudget.platform 
+            : 'meta',
+          description: selectedBudget.description,
+          is_recurring: selectedBudget.isRecurring || false,
+          recurrence_pattern: selectedBudget.recurrencePattern || null,
+        });
+        setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
+      } catch (error) {
+        console.error("Erro ao carregar dados do orçamento:", error);
+        // Em caso de erro, inicializar com valores padrão
+        form.reset({
+          client_id: "",
+          account_id: undefined,
+          budget_amount: 0,
+          start_date: new Date(),
+          end_date: new Date(),
+          platform: 'meta',
+          description: "",
+          is_recurring: false,
+          recurrence_pattern: null,
+        });
+      }
     } else {
       form.reset({
         client_id: "",
@@ -280,6 +312,11 @@ export const CustomBudgetForm = ({
 
   const getDaysInPeriod = () => {
     if (startDate && endDate) {
+      // Verificar se as datas são válidas antes de calcular a diferença
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.error("Datas inválidas ao calcular período:", { startDate, endDate });
+        return 0;
+      }
       // +1 para incluir o dia inicial e final na contagem
       return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     }
@@ -294,11 +331,31 @@ export const CustomBudgetForm = ({
     return 0;
   };
 
+  // Função auxiliar para formatar datas com segurança
+  const safeFormatDate = (date: Date | null | undefined, defaultText: string = "Selecione uma data"): string => {
+    try {
+      if (!date || isNaN(date.getTime())) {
+        return defaultText;
+      }
+      return format(date, "dd/MM/yyyy", { locale: ptBR });
+    } catch (error) {
+      console.error("Erro ao formatar data:", error, date);
+      return defaultText;
+    }
+  };
+
   // Manipulador de submissão do formulário
   const handleFormSubmit = (data: FormData) => {
     try {
       // Garantir que as datas sejam formatadas no formato YYYY-MM-DD sem ajuste de fuso horário
       const formatDateToYYYYMMDD = (date: Date) => {
+        // Verificar se a data é válida
+        if (!date || isNaN(date.getTime())) {
+          console.error("Data inválida ao formatar para YYYY-MM-DD:", date);
+          const today = new Date();
+          return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        }
+        
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -485,7 +542,7 @@ export const CustomBudgetForm = ({
                           disabled={isSubmitting}
                         >
                           {field.value ? (
-                            format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                            safeFormatDate(field.value)
                           ) : (
                             <span>Selecione uma data</span>
                           )}
@@ -526,7 +583,7 @@ export const CustomBudgetForm = ({
                           disabled={isSubmitting}
                         >
                           {field.value ? (
-                            format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                            safeFormatDate(field.value)
                           ) : (
                             <span>Selecione uma data</span>
                           )}
