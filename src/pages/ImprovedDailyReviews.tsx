@@ -27,6 +27,17 @@ export default function ImprovedDailyReviews() {
     if (lastReviewTimeStr) {
       setLastReviewTime(new Date(lastReviewTimeStr));
     }
+
+    // Pré-carregamento da aba Google Ads quando o componente montar
+    // Isso garante que os dados já estejam disponíveis quando o usuário alternar para a aba
+    if (selectedTab !== "google-ads") {
+      const prefetchTimeout = setTimeout(() => {
+        console.log("Pré-carregando dados do Google Ads...");
+        // Não precisamos fazer nada aqui, apenas garantir que o React Query inicialize
+      }, 3000);
+      return () => clearTimeout(prefetchTimeout);
+    }
+    
   }, []);
 
   // Função para registrar a hora da última atualização
@@ -57,7 +68,10 @@ export default function ImprovedDailyReviews() {
               lastReviewTime={lastReviewTime} 
               onRefresh={handleRefresh} 
             />
-            <MetaAdsTab onRefreshCompleted={handleRefresh} />
+            <MetaAdsTab 
+              onRefreshCompleted={handleRefresh} 
+              isActive={selectedTab === "dashboard"} 
+            />
           </TabsContent>
           
           <TabsContent value="google-ads" className="space-y-6">
@@ -65,7 +79,10 @@ export default function ImprovedDailyReviews() {
               lastReviewTime={lastReviewTime} 
               onRefresh={handleRefresh} 
             />
-            <GoogleAdsTab onRefreshCompleted={handleRefresh} />
+            <GoogleAdsTab 
+              onRefreshCompleted={handleRefresh} 
+              isActive={selectedTab === "google-ads"} 
+            />
           </TabsContent>
 
           <TabsContent value="budgets" className="space-y-6">

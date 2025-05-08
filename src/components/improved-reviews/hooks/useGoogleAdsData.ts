@@ -18,6 +18,10 @@ export interface GoogleAdsClientData {
   usingRealData?: boolean;
 }
 
+// Chave para armazenamento local dos dados e métricas do Google Ads
+const GOOGLE_ADS_DATA_KEY = "google_ads_data_cache";
+const GOOGLE_ADS_METRICS_KEY = "google_ads_metrics_cache";
+
 export function useGoogleAdsData() {
   const [metrics, setMetrics] = useState<ClientMetrics>({
     totalClients: 0,
@@ -26,15 +30,32 @@ export function useGoogleAdsData() {
     totalSpent: 0,
     spentPercentage: 0
   });
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const { calculateBudget } = useBudgetCalculator();
+
+  // Carregar dados do localStorage quando o componente montar
+  useEffect(() => {
+    try {
+      const savedMetrics = localStorage.getItem(GOOGLE_ADS_METRICS_KEY);
+      if (savedMetrics) {
+        setMetrics(JSON.parse(savedMetrics));
+      }
+    } catch (err) {
+      console.error("Erro ao carregar métricas do cache:", err);
+    }
+
+    // Marcar que a carga inicial foi concluída após este useEffect
+    setIsInitialLoad(false);
+  }, []);
 
   // Fetch clients with their Google accounts and reviews
   const { 
     data, 
     isLoading, 
     error, 
-    refetch 
+    refetch,
+    isFetching,
   } = useQuery({
     queryKey: ["improved-google-reviews"],
     queryFn: async () => {
@@ -197,18 +218,53 @@ export function useGoogleAdsData() {
       
       console.log("Métricas calculadas:", metricsData);
       setMetrics(metricsData);
+      
+      // Salvar métricas e dados no localStorage para persistência
+      try {
+        localStorage.setItem(GOOGLE_ADS_METRICS_KEY, JSON.stringify(metricsData));
+        localStorage.setItem(GOOGLE_ADS_DATA_KEY, JSON.stringify(flattenedClients));
+      } catch (err) {
+        console.error("Erro ao salvar dados no cache:", err);
+      }
 
       return flattenedClients;
     },
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnMount: false, // Não refetch automático ao montar
+    staleTime: 10 * 60 * 1000, // 10 minutos (mais agressivo)
+    cacheTime: 60 * 60 * 1000, // 1 hora
+    initialData: () => {
+      // Tentar recuperar dados do localStorage ao inicializar
+      try {
+        const savedData = localStorage.getItem(GOOGLE_ADS_DATA_KEY);
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          console.log("Carregando dados do Google Ads do cache local", parsedData.length);
+          return parsedData;
+        }
+      } catch (err) {
+        console.error("Erro ao recuperar dados do cache:", err);
+      }
+      return undefined;
+    },
   });
+
+  // Função para forçar uma atualização completa dos dados
+  const refreshData = async () => {
+    console.log("Forçando atualização dos dados do Google Ads...");
+    return refetch({ cancelRefetch: true });
+  };
+
+  // Calculando um estado de carregamento combinado que considera tanto o carregamento inicial
+  // quanto o refetching para garantir que a UI não seja renderizada prematuramente
+  const isLoadingCombined = isInitialLoad || isLoading || (isFetching && !data);
 
   return {
     data,
-    isLoading,
+    isLoading: isLoadingCombined,
+    isFetching,
     error,
     metrics,
-    refreshData: refetch
+    refreshData
   };
 }
