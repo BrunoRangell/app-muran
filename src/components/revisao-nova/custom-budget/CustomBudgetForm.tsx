@@ -52,6 +52,7 @@ const customBudgetSchema = z.object({
   client_id: z.string({
     required_error: "Selecione um cliente",
   }),
+  account_id: z.string().optional(),
   budget_amount: z.number({
     required_error: "Informe o valor do orçamento",
   }).positive("O valor deve ser maior que zero"),
@@ -93,19 +94,6 @@ interface CustomBudgetFormProps {
 
 type FormData = z.infer<typeof customBudgetSchema>;
 
-const BUDGET_TEMPLATES = [
-  // Meta templates
-  { name: "Meta: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'meta' as const },
-  { name: "Meta: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'meta' as const },
-  { name: "Meta: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'meta' as const },
-  { name: "Meta: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'meta' as const },
-  // Google templates
-  { name: "Google: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'google' as const },
-  { name: "Google: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'google' as const },
-  { name: "Google: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'google' as const },
-  { name: "Google: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'google' as const },
-];
-
 const RECURRENCE_PATTERNS = [
   { value: "weekly", label: "Semanal" },
   { value: "biweekly", label: "Quinzenal" },
@@ -120,8 +108,8 @@ export const CustomBudgetForm = ({
   onCancel,
 }: CustomBudgetFormProps) => {
   const [formattedBudget, setFormattedBudget] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
 
   // Buscar clientes ativos
   const { data: clients, isLoading: isLoadingClients } = useQuery({
@@ -138,11 +126,48 @@ export const CustomBudgetForm = ({
     },
   });
 
+  // Buscar contas Google do cliente selecionado
+  const { data: googleAccounts, isLoading: isLoadingGoogleAccounts } = useQuery({
+    queryKey: ["client-google-accounts", selectedClientId, "google"],
+    queryFn: async () => {
+      if (!selectedClientId) return [];
+      
+      const { data, error } = await supabase
+        .from("client_google_accounts")
+        .select("id, account_id, account_name")
+        .eq("client_id", selectedClientId)
+        .eq("status", "active");
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedClientId,
+  });
+
+  // Buscar contas Meta do cliente selecionado
+  const { data: metaAccounts, isLoading: isLoadingMetaAccounts } = useQuery({
+    queryKey: ["client-meta-accounts", selectedClientId, "meta"],
+    queryFn: async () => {
+      if (!selectedClientId) return [];
+      
+      const { data, error } = await supabase
+        .from("client_meta_accounts")
+        .select("id, account_id, account_name")
+        .eq("client_id", selectedClientId)
+        .eq("status", "active");
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedClientId,
+  });
+
   // Configurar o formulário com react-hook-form e zod
   const form = useForm<FormData>({
     resolver: zodResolver(customBudgetSchema),
     defaultValues: {
       client_id: "",
+      account_id: undefined,
       budget_amount: 0,
       start_date: new Date(),
       end_date: new Date(),
@@ -163,9 +188,11 @@ export const CustomBudgetForm = ({
       const endDate = new Date(selectedBudget.endDate + 'T12:00:00');
       
       setShowRecurrenceOptions(!!selectedBudget.isRecurring);
+      setSelectedClientId(selectedBudget.clientId);
       
       form.reset({
         client_id: selectedBudget.clientId,
+        account_id: selectedBudget.accountId,
         budget_amount: selectedBudget.budgetAmount,
         start_date: startDate,
         end_date: endDate,
@@ -181,6 +208,7 @@ export const CustomBudgetForm = ({
     } else {
       form.reset({
         client_id: "",
+        account_id: undefined,
         budget_amount: 0,
         start_date: new Date(),
         end_date: new Date(),
@@ -191,35 +219,28 @@ export const CustomBudgetForm = ({
       });
       setFormattedBudget("");
       setShowRecurrenceOptions(false);
+      setSelectedClientId("");
     }
   }, [selectedBudget, form]);
+
+  // Monitorar mudanças no client_id para atualizar o selectedClientId
+  const clientId = form.watch("client_id");
+  useEffect(() => {
+    setSelectedClientId(clientId);
+  }, [clientId]);
+
+  // Monitorar mudanças na plataforma para resetar o account_id quando necessário
+  const platform = form.watch("platform");
+  useEffect(() => {
+    // Quando mudar a plataforma, resetamos o account_id
+    form.setValue("account_id", undefined);
+  }, [platform, form]);
 
   // Monitorar mudanças no is_recurring para atualizar o estado de exibição
   const isRecurring = form.watch("is_recurring");
   useEffect(() => {
     setShowRecurrenceOptions(isRecurring);
   }, [isRecurring]);
-
-  // Aplicar um template de orçamento
-  const applyTemplate = (templateIndex: string) => {
-    const index = parseInt(templateIndex);
-    
-    if (index >= 0 && index < BUDGET_TEMPLATES.length) {
-      const template = BUDGET_TEMPLATES[index];
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + template.days - 1);
-      
-      form.setValue("budget_amount", template.amount);
-      form.setValue("start_date", startDate);
-      form.setValue("end_date", endDate);
-      form.setValue("platform", template.platform); // Agora isso é seguro, pois definimos o tipo literal
-      
-      setFormattedBudget(formatCurrency(template.amount));
-    }
-    
-    setSelectedTemplate("");
-  };
 
   // Manipulador para o campo de orçamento formatado como moeda
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,11 +261,22 @@ export const CustomBudgetForm = ({
     }
   };
 
+  // Obter contas disponíveis baseado na plataforma selecionada
+  const getAvailableAccounts = () => {
+    if (platform === 'google') {
+      return googleAccounts || [];
+    } else {
+      return metaAccounts || [];
+    }
+  };
+
+  // Verificar se o cliente tem múltiplas contas na plataforma selecionada
+  const hasMultipleAccounts = getAvailableAccounts().length > 0;
+
   // Calcular o número de dias no período e o valor diário
   const startDate = form.watch("start_date");
   const endDate = form.watch("end_date");
   const budgetAmount = form.watch("budget_amount");
-  const platform = form.watch("platform");
 
   const getDaysInPeriod = () => {
     if (startDate && endDate) {
@@ -275,6 +307,7 @@ export const CustomBudgetForm = ({
 
       const formData: CustomBudgetFormData = {
         clientId: data.client_id,
+        accountId: data.account_id,
         budgetAmount: data.budget_amount,
         startDate: formatDateToYYYYMMDD(data.start_date),
         endDate: formatDateToYYYYMMDD(data.end_date),
@@ -288,11 +321,6 @@ export const CustomBudgetForm = ({
     } catch (error) {
       console.error('Erro ao processar formulário:', error);
     }
-  };
-
-  // Função para filtrar templates baseado na plataforma selecionada
-  const getFilteredTemplates = () => {
-    return BUDGET_TEMPLATES.filter(template => template.platform === platform);
   };
 
   // Exibir um indicador de carregamento enquanto os clientes estão sendo carregados
@@ -318,7 +346,11 @@ export const CustomBudgetForm = ({
                   <FormLabel>Cliente</FormLabel>
                   <Select
                     disabled={isSubmitting}
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Resetar o account_id quando mudar de cliente
+                      form.setValue("account_id", undefined);
+                    }}
                     value={field.value}
                   >
                     <FormControl>
@@ -376,6 +408,41 @@ export const CustomBudgetForm = ({
             />
           </div>
 
+          {/* Mostrar seleção de conta apenas quando o cliente tiver contas disponíveis na plataforma selecionada */}
+          {hasMultipleAccounts && (
+            <FormField
+              control={form.control}
+              name="account_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Conta de {platform === 'meta' ? 'Meta' : 'Google'} Ads
+                  </FormLabel>
+                  <Select
+                    disabled={isSubmitting}
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={`Selecione uma conta de ${platform === 'meta' ? 'Meta' : 'Google'} Ads`} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Conta Principal (Todas)</SelectItem>
+                      {getAvailableAccounts().map((account) => (
+                        <SelectItem key={account.id} value={account.account_id}>
+                          {account.account_name || account.account_id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <FormField
@@ -397,33 +464,6 @@ export const CustomBudgetForm = ({
                   </FormItem>
                 )}
               />
-            </div>
-
-            <div className="flex-1">
-              <FormLabel>Modelo de Orçamento</FormLabel>
-              <Select
-                value={selectedTemplate}
-                onValueChange={(value) => applyTemplate(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um modelo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getFilteredTemplates().map((template, index) => {
-                    // Encontrar o índice real no array completo
-                    const realIndex = BUDGET_TEMPLATES.findIndex(t => 
-                      t.platform === template.platform && 
-                      t.days === template.days && 
-                      t.amount === template.amount
-                    );
-                    return (
-                      <SelectItem key={realIndex} value={realIndex.toString()}>
-                        {template.name}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
