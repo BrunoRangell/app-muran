@@ -63,7 +63,8 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     console.log(`Iniciando revisão para cliente ${clientId} com conta Meta ${metaAccountId || "padrão"}`);
 
     // Verificar se o clientId foi fornecido
-    if (!clientId) {
+    const clientIdError = validateRequest(clientId);
+    if (clientIdError) {
       return {
         success: false,
         reviewId: null,
@@ -98,12 +99,12 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
 
     // Verificar se existe orçamento personalizado ativo
     const today = new Date().toISOString().split("T")[0];
-    const customBudget = await fetchActiveCustomBudget(supabase, clientId, today, accountId);
+    const customBudget = await fetchActiveCustomBudget(supabase, clientId, today);
 
     const usingCustomBudget = !!customBudget;
     
     // Se estiver usando orçamento personalizado e não uma conta específica
-    if (usingCustomBudget) {
+    if (usingCustomBudget && !metaAccountId) {
       budgetAmount = customBudget?.budget_amount || budgetAmount;
     }
 
@@ -173,4 +174,27 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       error: error.message
     };
   }
+}
+
+// Função de validação da requisição
+function validateRequest(req: Request | string): Response | null {
+  if (typeof req === 'string') {
+    // Estamos validando o clientId
+    if (!req) {
+      return new Response(
+        JSON.stringify({ error: "ID do cliente é obrigatório" }),
+        { status: 400 }
+      );
+    }
+  } else {
+    // Estamos validando a requisição HTTP
+    if (req.method !== 'POST' && req.method !== 'OPTIONS') {
+      return new Response(
+        JSON.stringify({ error: "Método não permitido" }),
+        { status: 405 }
+      );
+    }
+  }
+  
+  return null;
 }

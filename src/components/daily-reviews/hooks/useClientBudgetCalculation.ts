@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
 import { supabase } from "@/lib/supabase";
 import { callEdgeFunction } from "./useEdgeFunction";
-import { getActiveCustomBudget } from "./services/customBudgetService";
 
 export const useClientBudgetCalculation = (client: ClientWithReview, specificAccountId?: string) => {
   const [isCalculating, setIsCalculating] = useState(false);
@@ -48,7 +47,20 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
         }
         
         // Buscar orçamento personalizado ativo (se houver)
-        const customBudget = await getActiveCustomBudget(client.id, accountId);
+        const today = new Date().toISOString().split('T')[0];
+        const { data: customBudget, error: budgetError } = await supabase
+          .from('meta_custom_budgets')
+          .select('*')
+          .eq('client_id', client.id)
+          .eq('is_active', true)
+          .lte('start_date', today)
+          .gte('end_date', today)
+          .order('created_at', { ascending: false })
+          .maybeSingle();
+        
+        if (budgetError) {
+          console.error("Erro ao buscar orçamento personalizado:", budgetError);
+        }
         
         // Se o cliente tem uma revisão, calcular o orçamento diário ideal
         let currentDailyBudget = 0;

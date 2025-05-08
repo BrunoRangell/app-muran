@@ -6,7 +6,7 @@ export function CustomBudgetTab() {
   return (
     <div className="space-y-6">
       <TooltipProvider>
-        <CustomBudgetManager />
+        <CustomBudgetManager viewMode="cards" />
       </TooltipProvider>
     </div>
   );

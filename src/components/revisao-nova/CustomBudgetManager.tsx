@@ -1,50 +1,57 @@
 
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import {
+import { useState, useEffect } from "react";
+import { 
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from "@/components/ui/card";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Loader2, Plus, RefreshCcw, Download } from "lucide-react";
-import { CustomBudget, useCustomBudgets, ClientWithBudgets, CustomBudgetFormData } from "./hooks/useCustomBudgets";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CustomBudgetTable } from "./custom-budget/CustomBudgetTable";
 import { CustomBudgetCards } from "./custom-budget/CustomBudgetCards";
 import { CustomBudgetCalendar } from "./custom-budget/CustomBudgetCalendar";
 import { CustomBudgetForm } from "./custom-budget/CustomBudgetForm";
+import { useCustomBudgets, CustomBudgetFormData } from "./hooks/useCustomBudgets";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { PlusCircle, CalendarIcon, DownloadIcon, FileBarChart, ChevronDown, Search, BarChart3, Calendar, Grid, List } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface CustomBudgetManagerProps {
-  viewMode?: string;
+  viewMode?: "list" | "cards" | "calendar";
 }
 
-export function CustomBudgetManager({ viewMode = "table" }: CustomBudgetManagerProps) {
-  // Estado local
-  const [selectedTab, setSelectedTab] = useState<string>(viewMode);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
-  const [budgetToDelete, setBudgetToDelete] = useState<CustomBudget | null>(null);
+export const CustomBudgetManager = ({ viewMode = "list" }: CustomBudgetManagerProps) => {
+  const [selectedTab, setSelectedTab] = useState<string>("active");
+  const [sortBy, setSortBy] = useState<string>("client_name");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [displayMode, setDisplayMode] = useState<"list" | "cards" | "calendar">(viewMode);
+  const queryClient = useQueryClient();
 
-  // Usar o hook customizado - removendo o parâmetro sortBy que não existe na interface
   const {
-    isLoading,
-    error,
-    refetch,
-    activeClients,
     filteredClients,
+    isLoading,
     searchTerm,
     setSearchTerm,
     selectedBudget,
@@ -60,263 +67,323 @@ export function CustomBudgetManager({ viewMode = "table" }: CustomBudgetManagerP
     isFutureBudget,
     exportToCSV,
     getBudgetStats
-  } = useCustomBudgets();
+  } = useCustomBudgets({ sortBy, statusFilter, platformFilter });
 
-  // Funções para gerenciar os orçamentos
-  const handleAddBudget = () => {
-    setSelectedBudget(null);
-    setIsFormDialogOpen(true);
-  };
-
-  const handleEditBudget = (budget: CustomBudget) => {
-    setSelectedBudget(budget);
-    setIsFormDialogOpen(true);
-  };
-
-  const handleViewBudget = (budget: CustomBudget) => {
-    setSelectedBudget(budget);
-    // Aqui poderíamos mostrar uma visualização detalhada do orçamento
-  };
-
-  const handleSaveBudget = (budgetData: CustomBudgetFormData) => {
-    if (selectedBudget) {
-      updateCustomBudgetMutation.mutate({
-        id: selectedBudget.id,
-        client_id: budgetData.clientId,
-        budget_amount: budgetData.budgetAmount,
-        start_date: budgetData.startDate,
-        end_date: budgetData.endDate,
-        isActive: true,
-        description: budgetData.description,
-        platform: budgetData.platform,
-        account_id: budgetData.accountId
-      });
-    } else {
-      addCustomBudgetMutation.mutate({
-        client_id: budgetData.clientId,
-        budget_amount: budgetData.budgetAmount,
-        start_date: budgetData.startDate,
-        end_date: budgetData.endDate,
-        isActive: true,
-        description: budgetData.description,
-        platform: budgetData.platform,
-        account_id: budgetData.accountId
-      } as Omit<CustomBudget, 'id' | 'created_at' | 'updated_at'>);
+  // Monitorar estado das mutações para atualizar dados quando necessário
+  useEffect(() => {
+    // Verificar se alguma mutação foi bem-sucedida para atualizar os dados
+    if (addCustomBudgetMutation.isSuccess || 
+        updateCustomBudgetMutation.isSuccess || 
+        deleteCustomBudgetMutation.isSuccess || 
+        toggleBudgetStatusMutation.isSuccess ||
+        duplicateBudgetMutation.isSuccess) {
+      // Invalidar consultas para recarregar os dados atualizados
+      queryClient.invalidateQueries({ queryKey: ["custom-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
     }
-    setIsFormDialogOpen(false);
+  }, [
+    queryClient,
+    addCustomBudgetMutation.isSuccess, 
+    updateCustomBudgetMutation.isSuccess, 
+    deleteCustomBudgetMutation.isSuccess, 
+    toggleBudgetStatusMutation.isSuccess,
+    duplicateBudgetMutation.isSuccess
+  ]);
+
+  // Função para converter o formato do orçamento para o formato esperado pelo form
+  const convertBudgetToFormData = (budget: any): CustomBudgetFormData => {
+    return {
+      clientId: budget.client_id,
+      budgetAmount: budget.budget_amount,
+      startDate: budget.start_date,
+      endDate: budget.end_date,
+      platform: budget.platform || 'meta',
+      description: budget.description || "",
+      isRecurring: budget.is_recurring || false,
+      recurrencePattern: budget.recurrence_pattern || null
+    };
   };
 
-  const handleDeleteBudget = (budget: CustomBudget) => {
-    setBudgetToDelete(budget);
-    setIsDeleteDialogOpen(true);
-  };
+  // Obter estatísticas de orçamentos
+  const budgetStats = getBudgetStats();
 
-  const confirmDeleteBudget = () => {
-    if (budgetToDelete) {
-      deleteCustomBudgetMutation.mutate(budgetToDelete.id);
+  // Renderizar o conteúdo com base no modo de visualização
+  const renderContent = () => {
+    if (displayMode === "calendar") {
+      return (
+        <CustomBudgetCalendar
+          filteredClients={filteredClients}
+          isLoading={isLoading}
+          formatBudget={formatBudget}
+          onEdit={(budget) => {
+            setSelectedBudget(budget);
+            setSelectedTab("form");
+          }}
+        />
+      );
     }
-    setIsDeleteDialogOpen(false);
-    setBudgetToDelete(null);
-  };
-
-  const handleToggleBudgetStatus = (budget: CustomBudget, newStatus: boolean) => {
-    toggleBudgetStatusMutation.mutate({ id: budget.id, isActive: newStatus });
-  };
-
-  const handleDuplicateBudget = (budget: CustomBudget) => {
-    duplicateBudgetMutation.mutate(budget);
-  };
-
-  // Estatísticas dos orçamentos
-  const stats = getBudgetStats();
-
-  // Verificar carregamento e erro
-  if (isLoading) {
+    
+    if (displayMode === "cards") {
+      return (
+        <CustomBudgetCards
+          filteredClients={filteredClients}
+          isLoading={isLoading}
+          formatDate={formatDate}
+          formatBudget={formatBudget}
+          isCurrentlyActive={isCurrentlyActive}
+          isFutureBudget={isFutureBudget}
+          onEdit={(budget) => {
+            setSelectedBudget(budget);
+            setSelectedTab("form");
+          }}
+          onDelete={(id) => deleteCustomBudgetMutation.mutate(id)}
+          onToggleStatus={(id, isActive) => 
+            toggleBudgetStatusMutation.mutate({ id, isActive })
+          }
+          onDuplicate={(budget) => duplicateBudgetMutation.mutate(budget)}
+        />
+      );
+    }
+    
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <CustomBudgetTable
+        filteredClients={filteredClients}
+        isLoading={isLoading}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        formatDate={formatDate}
+        formatBudget={formatBudget}
+        isCurrentlyActive={isCurrentlyActive}
+        isFutureBudget={isFutureBudget}
+        onEdit={(budget) => {
+          setSelectedBudget(budget);
+          setSelectedTab("form");
+        }}
+        onDelete={(id) => deleteCustomBudgetMutation.mutate(id)}
+        onToggleStatus={(id, isActive) => 
+          toggleBudgetStatusMutation.mutate({ id, isActive })
+        }
+        onDuplicate={(budget) => duplicateBudgetMutation.mutate(budget)}
+      />
     );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 text-red-500">
-        Ocorreu um erro ao carregar os orçamentos: {error.message}
-      </div>
-    );
-  }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Orçamentos Personalizados</h2>
-          <p className="text-muted-foreground">
-            Gerencie orçamentos personalizados para clientes específicos e períodos especiais.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Atualizar
-          </Button>
-          <Button variant="outline" onClick={exportToCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-          <Button onClick={handleAddBudget} className="bg-[#ff6e00] hover:bg-[#e66300] text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Orçamento
-          </Button>
-        </div>
-      </div>
-
-      {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Total de Orçamentos</CardTitle>
-            <CardDescription>Todos os orçamentos cadastrados</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.totalBudgets}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Orçamentos Ativos</CardTitle>
-            <CardDescription>Orçamentos no período atual</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.activeBudgets}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Clientes com Orçamentos</CardTitle>
-            <CardDescription>Clientes usando orçamento personalizado</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.clientsWithBudget}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Valor Total</CardTitle>
-            <CardDescription>Soma de todos os orçamentos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">
-              {formatBudget(stats.totalAmount)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs para diferentes visualizações */}
-      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList>
-          <TabsTrigger value="table">Tabela</TabsTrigger>
-          <TabsTrigger value="cards">Cards</TabsTrigger>
-          <TabsTrigger value="calendar">Calendário</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="table">
-          <CustomBudgetTable
-            clientsWithBudgets={filteredClients as ClientWithBudgets[]}
-            onEdit={handleEditBudget}
-            onDelete={handleDeleteBudget}
-            onToggleStatus={handleToggleBudgetStatus}
-            onDuplicate={handleDuplicateBudget}
-            onView={handleViewBudget}
-            formatDate={formatDate}
-            formatBudget={formatBudget}
-            isCurrentlyActive={isCurrentlyActive}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-          />
-        </TabsContent>
-        
-        <TabsContent value="cards">
-          <CustomBudgetCards
-            clientsWithBudgets={filteredClients as ClientWithBudgets[]}
-            onEdit={handleEditBudget}
-            onDelete={handleDeleteBudget}
-            onToggleStatus={handleToggleBudgetStatus}
-            onDuplicate={handleDuplicateBudget}
-            onView={handleViewBudget}
-            formatDate={formatDate}
-            formatBudget={formatBudget}
-            isCurrentlyActive={isCurrentlyActive}
-          />
-        </TabsContent>
-        
-        <TabsContent value="calendar">
-          <CustomBudgetCalendar
-            clientsWithBudgets={filteredClients as ClientWithBudgets[]}
-            onSelectBudget={handleViewBudget}
-          />
-        </TabsContent>
-      </Tabs>
-
-      {/* Diálogo de confirmação para exclusão */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir este orçamento personalizado?
-              {budgetToDelete && (
-                <p className="font-medium mt-2">
-                  {formatBudget(budgetToDelete.budget_amount)} - Período: {formatDate(budgetToDelete.start_date)} a {formatDate(budgetToDelete.end_date)}
-                </p>
-              )}
-              <p className="text-red-500 mt-2">Esta ação não pode ser desfeita.</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteBudget}
-              className="bg-red-500 hover:bg-red-600 text-white"
+    <Card className="w-full shadow-md">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+          <CardTitle className="text-xl text-muran-dark">
+            Orçamentos Personalizados
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => exportToCSV()}
+              className="flex items-center gap-2"
             >
-              {deleteCustomBudgetMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Excluir"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <DownloadIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Exportar</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setSelectedBudget(null);
+                setSelectedTab("form");
+              }}
+              className="flex items-center gap-2 bg-muran-primary text-white hover:bg-muran-primary/80"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Novo Orçamento</span>
+            </Button>
+          </div>
+        </div>
+        <CardDescription className="mt-1">
+          Configure orçamentos com períodos personalizados para Meta e Google Ads
+        </CardDescription>
 
-      {/* Diálogo para formulário de criação/edição */}
-      <AlertDialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
-        <AlertDialogContent className="max-w-md sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+        {/* Estatísticas de orçamento */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
+          <Card className="bg-gray-50 border-none">
+            <CardContent className="p-4 flex flex-col items-center">
+              <span className="text-sm text-gray-500">Total</span>
+              <span className="text-xl font-bold">{budgetStats.total}</span>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-50 border-none">
+            <CardContent className="p-4 flex flex-col items-center">
+              <span className="text-sm text-gray-500">Ativos</span>
+              <span className="text-xl font-bold text-green-600">{budgetStats.active}</span>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-50 border-none">
+            <CardContent className="p-4 flex flex-col items-center">
+              <span className="text-sm text-gray-500">Agendados</span>
+              <span className="text-xl font-bold text-blue-600">{budgetStats.scheduled}</span>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-50 border-none">
+            <CardContent className="p-4 flex flex-col items-center">
+              <span className="text-sm text-gray-500">Meta Ads</span>
+              <span className="text-xl font-bold text-blue-600">{budgetStats.meta}</span>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-50 border-none">
+            <CardContent className="p-4 flex flex-col items-center">
+              <span className="text-sm text-gray-500">Google Ads</span>
+              <span className="text-xl font-bold text-red-600">{budgetStats.google}</span>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar cliente..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Plataforma" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas plataformas</SelectItem>
+                <SelectItem value="meta">
+                  <div className="flex items-center">
+                    <Badge className="mr-2 bg-blue-500">Meta</Badge>
+                    Meta Ads
+                  </div>
+                </SelectItem>
+                <SelectItem value="google">
+                  <div className="flex items-center">
+                    <Badge className="mr-2 bg-red-500">Google</Badge>
+                    Google Ads
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos status</SelectItem>
+                <SelectItem value="active">Ativos</SelectItem>
+                <SelectItem value="scheduled">Agendados</SelectItem>
+                <SelectItem value="inactive">Inativos</SelectItem>
+                <SelectItem value="expired">Expirados</SelectItem>
+                <SelectItem value="recurring">Recorrentes</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Ordenar
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSortBy("client_name")}>
+                  Nome do cliente
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("budget_amount_desc")}>
+                  Maior orçamento
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("budget_amount_asc")}>
+                  Menor orçamento
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("start_date_desc")}>
+                  Data de início (recente)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("end_date_asc")}>
+                  Próximos a expirar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("platform")}>
+                  Plataforma
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          
+          <div className="flex items-center border rounded-md">
+            <Button 
+              variant={displayMode === "list" ? "secondary" : "ghost"} 
+              size="sm" 
+              className="rounded-none rounded-l-md"
+              onClick={() => setDisplayMode("list")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant={displayMode === "cards" ? "secondary" : "ghost"} 
+              size="sm" 
+              className="rounded-none"
+              onClick={() => setDisplayMode("cards")}
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant={displayMode === "calendar" ? "secondary" : "ghost"} 
+              size="sm" 
+              className="rounded-none rounded-r-md"
+              onClick={() => setDisplayMode("calendar")}
+            >
+              <Calendar className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="active">Orçamentos</TabsTrigger>
+            <TabsTrigger value="form">
               {selectedBudget ? "Editar Orçamento" : "Novo Orçamento"}
-            </AlertDialogTitle>
-          </AlertDialogHeader>
-          <CustomBudgetForm
-            selectedBudget={selectedBudget ? 
-              {
-                clientId: selectedBudget.client_id,
-                budgetAmount: selectedBudget.budget_amount,
-                startDate: selectedBudget.start_date,
-                endDate: selectedBudget.end_date,
-                platform: selectedBudget.platform as 'meta' | 'google',
-                description: selectedBudget.description,
-                accountId: selectedBudget.account_id
-              } : undefined}
-            isSubmitting={addCustomBudgetMutation.isPending || updateCustomBudgetMutation.isPending}
-            onSubmit={handleSaveBudget}
-            onCancel={() => setIsFormDialogOpen(false)}
-            clients={activeClients}
-          />
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="space-y-4">
+            {renderContent()}
+          </TabsContent>
+
+          <TabsContent value="form">
+            <CustomBudgetForm
+              selectedBudget={selectedBudget ? convertBudgetToFormData(selectedBudget) : null}
+              isSubmitting={
+                addCustomBudgetMutation.isPending || 
+                updateCustomBudgetMutation.isPending
+              }
+              onSubmit={(formData: CustomBudgetFormData) => {
+                if (selectedBudget) {
+                  updateCustomBudgetMutation.mutate({
+                    id: selectedBudget.id,
+                    ...formData
+                  });
+                } else {
+                  addCustomBudgetMutation.mutate(formData);
+                }
+                setSelectedBudget(null);
+                setSelectedTab("active");
+              }}
+              onCancel={() => {
+                setSelectedBudget(null);
+                setSelectedTab("active");
+              }}
+            />
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
-}
+};

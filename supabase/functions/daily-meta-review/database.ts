@@ -1,199 +1,225 @@
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 
-// Criar cliente Supabase para Edge Function
+// Tipos para operações de banco de dados
+export interface ClientData {
+  id: string;
+  company_name: string;
+  meta_account_id: string | null;
+  meta_ads_budget: number;
+}
+
+export interface MetaAccount {
+  account_id: string;
+  account_name: string;
+  budget_amount: number;
+}
+
+export interface CustomBudget {
+  id: string;
+  budget_amount: number;
+  start_date: string;
+  end_date: string;
+}
+
+export interface ReviewData {
+  meta_daily_budget_current: number;
+  meta_total_spent: number;
+  meta_account_id: string | null;
+  client_account_id: string | null;
+  meta_account_name: string;
+  account_display_name: string;
+  using_custom_budget: boolean;
+  custom_budget_id: string | null;
+  custom_budget_amount: number | null;
+}
+
+// Criação do cliente Supabase
 export function createSupabaseClient() {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Faltam variáveis de ambiente SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY");
-  }
-  
-  return createClient(supabaseUrl, supabaseKey);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  return createClient(supabaseUrl, supabaseServiceKey);
 }
 
 // Buscar dados do cliente
-export async function fetchClientData(supabase: any, clientId: string) {
+export async function fetchClientData(supabase: any, clientId: string): Promise<ClientData> {
   console.log(`Buscando dados para cliente ${clientId}`);
   
-  const { data, error } = await supabase
+  const { data: client, error: clientError } = await supabase
     .from("clients")
-    .select("company_name, meta_account_id, meta_ads_budget")
+    .select("*")
     .eq("id", clientId)
     .single();
-    
-  if (error) {
-    throw new Error(`Erro ao buscar dados do cliente: ${error.message}`);
+
+  if (clientError) {
+    throw new Error(`Erro ao buscar cliente: ${clientError.message}`);
   }
-  
-  if (!data) {
-    throw new Error(`Cliente não encontrado: ${clientId}`);
-  }
-  
-  return data;
+
+  return client;
 }
 
 // Buscar detalhes da conta Meta específica
-export async function fetchMetaAccountDetails(supabase: any, clientId: string, accountId: string) {
+export async function fetchMetaAccountDetails(
+  supabase: any, 
+  clientId: string, 
+  accountId: string
+): Promise<MetaAccount | null> {
   console.log(`Buscando detalhes de conta Meta específica: ${accountId} para cliente ${clientId}`);
   
-  const { data, error } = await supabase
+  const { data: metaAccount, error: accountError } = await supabase
     .from("client_meta_accounts")
-    .select("account_name, budget_amount")
+    .select("*")
     .eq("client_id", clientId)
     .eq("account_id", accountId)
-    .single();
-    
-  if (error && error.code !== 'PGRST116') {
-    throw new Error(`Erro ao buscar detalhes da conta Meta: ${error.message}`);
+    .maybeSingle();
+
+  if (accountError) {
+    console.error(`Erro ao buscar conta Meta: ${accountError.message}`);
+    return null;
   }
-  
-  return data;
+
+  return metaAccount;
 }
 
 // Buscar orçamento personalizado ativo
-export async function fetchActiveCustomBudget(supabase: any, clientId: string, date: string, accountId?: string | null) {
-  console.log(`Buscando orçamento personalizado ativo para cliente ${clientId} e conta ${accountId}`);
+export async function fetchActiveCustomBudget(
+  supabase: any, 
+  clientId: string,
+  today: string
+): Promise<CustomBudget | null> {
+  console.log(`Buscando orçamento personalizado ativo para cliente ${clientId}`);
   
-  const query = supabase
-    .from("custom_budgets")
+  const { data: customBudget, error: customBudgetError } = await supabase
+    .from("meta_custom_budgets")
     .select("*")
     .eq("client_id", clientId)
     .eq("is_active", true)
-    .lte("start_date", date)
-    .gte("end_date", date);
-    
-  // Se accountId estiver definido, filtrar por ele também
-  if (accountId) {
-    query.eq("account_id", accountId);
-  }
-  
-  const { data, error } = await query.maybeSingle();
-  
-  if (error) {
-    throw new Error(`Erro ao buscar orçamento personalizado: ${error.message}`);
-  }
-  
-  return data;
-}
+    .lte("start_date", today)
+    .gte("end_date", today)
+    .order("created_at", { ascending: false })
+    .maybeSingle();
 
-// Verificar se já existe uma revisão
-export async function checkExistingReview(supabase: any, clientId: string, accountId: string | null, reviewDate: string) {
-  console.log(`Verificando revisão existente para cliente ${clientId} e conta ${accountId} na data ${reviewDate}`);
-  
-  try {
-    const query = supabase
-      .from("daily_budget_reviews")
-      .select("*")
-      .eq("client_id", clientId)
-      .eq("review_date", reviewDate);
-      
-    // Se accountId estiver definido, filtrar por ele também
-    if (accountId) {
-      query.eq("meta_account_id", accountId);
-    }
-    
-    const { data, error } = await query.maybeSingle();
-    
-    if (error) {
-      console.error(`Erro ao verificar revisão existente: ${error.message}`);
-      return null;
-    }
-    
-    return data;
-  } catch (error) {
-    console.error(`Erro ao verificar revisão existente: ${error.message}`);
+  if (customBudgetError) {
+    console.error(`Erro ao buscar orçamento personalizado: ${customBudgetError.message}`);
     return null;
   }
+
+  return customBudget;
+}
+
+// Verificar revisão existente
+export async function checkExistingReview(
+  supabase: any, 
+  clientId: string, 
+  accountId: string | null, 
+  reviewDate: string
+) {
+  console.log(`Verificando revisão existente para cliente ${clientId} e conta ${accountId || ""} na data ${reviewDate}`);
+  
+  const { data: existingReview, error: existingReviewError } = await supabase
+    .from("daily_budget_reviews")
+    .select("*")
+    .eq("client_id", clientId)
+    .eq("review_date", reviewDate)
+    .or(`meta_account_id.eq.${accountId || ""},client_account_id.eq.${accountId || ""}`)
+    .maybeSingle();
+
+  if (existingReviewError && existingReviewError.code !== "PGRST116") {
+    console.error(`Erro ao verificar revisão existente: ${existingReviewError.message}`);
+  }
+
+  return existingReview;
 }
 
 // Atualizar revisão existente
-export async function updateExistingReview(supabase: any, reviewId: number, reviewData: any) {
-  console.log("Criando nova revisão");
+export async function updateExistingReview(
+  supabase: any, 
+  reviewId: number, 
+  reviewData: ReviewData
+): Promise<void> {
+  console.log(`Atualizando revisão existente: ${reviewId}`);
   
-  try {
-    const { error } = await supabase
-      .from("daily_budget_reviews")
-      .update(reviewData)
-      .eq("id", reviewId);
-      
-    if (error) {
-      throw new Error(`Erro ao atualizar revisão: ${error.message}`);
-    }
-  } catch (error) {
-    console.error(`Erro ao atualizar revisão: ${error.message}`);
-    throw new Error(`Erro ao atualizar revisão: ${error.message}`);
+  const { error: updateError } = await supabase
+    .from("daily_budget_reviews")
+    .update({
+      ...reviewData,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", reviewId);
+
+  if (updateError) {
+    throw new Error(`Erro ao atualizar revisão: ${updateError.message}`);
   }
 }
 
 // Criar nova revisão
-export async function createNewReview(supabase: any, clientId: string, reviewDate: string, reviewData: any) {
+export async function createNewReview(
+  supabase: any, 
+  clientId: string,
+  reviewDate: string,
+  reviewData: ReviewData
+): Promise<number> {
   console.log("Criando nova revisão");
   
-  try {
-    const { data, error } = await supabase
-      .from("daily_budget_reviews")
-      .insert({
-        client_id: clientId,
-        review_date: reviewDate,
-        ...reviewData
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      throw new Error(`Erro ao inserir nova revisão: ${error.message}`);
-    }
-    
-    return data.id;
-  } catch (error) {
-    console.error(`Erro ao inserir nova revisão: ${error.message}`);
-    throw new Error(`Erro ao inserir nova revisão: ${error.message}`);
-  }
-}
+  const { data: newReview, error: insertError } = await supabase
+    .from("daily_budget_reviews")
+    .insert({
+      ...reviewData,
+      client_id: clientId,
+      review_date: reviewDate
+    })
+    .select()
+    .single();
 
-// Atualizar estado atual da revisão do cliente
-export async function updateClientCurrentReview(supabase: any, clientId: string, reviewDate: string, reviewData: any) {
-  // Primeiro verificar se já existe um registro
-  const { data: existingData, error: fetchError } = await supabase
-    .from("client_current_reviews")
-    .select("id")
-    .eq("client_id", clientId)
-    .eq("review_date", reviewDate)
-    .maybeSingle();
-    
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    console.error(`Erro ao verificar revisão atual: ${fetchError.message}`);
-    return;
+  if (insertError) {
+    throw new Error(`Erro ao inserir nova revisão: ${insertError.message}`);
   }
   
-  try {
-    if (existingData) {
-      // Atualizar registro existente
-      const { error } = await supabase
-        .from("client_current_reviews")
-        .update(reviewData)
-        .eq("id", existingData.id);
-        
-      if (error) {
-        throw new Error(`Erro ao atualizar estado atual: ${error.message}`);
-      }
-    } else {
-      // Criar novo registro
-      const { error } = await supabase
-        .from("client_current_reviews")
-        .insert({
-          client_id: clientId,
-          review_date: reviewDate,
-          ...reviewData
-        });
-        
-      if (error) {
-        throw new Error(`Erro ao criar estado atual: ${error.message}`);
-      }
+  return newReview.id;
+}
+
+// Atualizar ou criar revisão atual do cliente
+export async function updateClientCurrentReview(
+  supabase: any, 
+  clientId: string, 
+  reviewDate: string,
+  reviewData: ReviewData
+): Promise<void> {
+  // Verificar se já existe revisão atual para este cliente
+  const { data: currentReview, error: currentReviewError } = await supabase
+    .from("client_current_reviews")
+    .select("*")
+    .eq("client_id", clientId)
+    .maybeSingle();
+
+  if (currentReviewError && currentReviewError.code !== "PGRST116") {
+    console.error(`Erro ao verificar revisão atual: ${currentReviewError.message}`);
+  }
+
+  const currentReviewData = {
+    client_id: clientId,
+    review_date: reviewDate,
+    ...reviewData
+  };
+
+  if (currentReview) {
+    // Atualizar revisão atual
+    const { error: updateCurrentError } = await supabase
+      .from("client_current_reviews")
+      .update(currentReviewData)
+      .eq("id", currentReview.id);
+
+    if (updateCurrentError) {
+      console.error(`Erro ao atualizar revisão atual: ${updateCurrentError.message}`);
     }
-  } catch (error) {
-    console.error(`Erro ao atualizar estado atual: ${error.message}`);
+  } else {
+    // Inserir nova revisão atual
+    const { error: insertCurrentError } = await supabase
+      .from("client_current_reviews")
+      .insert(currentReviewData);
+
+    if (insertCurrentError) {
+      console.error(`Erro ao inserir revisão atual: ${insertCurrentError.message}`);
+    }
   }
 }

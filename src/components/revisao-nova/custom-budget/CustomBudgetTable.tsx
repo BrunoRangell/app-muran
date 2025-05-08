@@ -1,229 +1,265 @@
 
-import { useState } from "react";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Search, Edit, Trash2, AlertCircle, Copy, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Loader } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ClientWithBudgets, CustomBudget } from "../hooks/useCustomBudgets";
 import {
-  Copy,
-  Edit,
-  Eye,
-  MoreHorizontal,
-  Power,
-  PowerOff,
-  Search,
-  Trash
-} from "lucide-react";
-import { CustomBudget, ClientWithBudgets } from "../hooks/useCustomBudgets";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 interface CustomBudgetTableProps {
-  clientsWithBudgets: ClientWithBudgets[];
-  onEdit: (budget: CustomBudget) => void;
-  onDelete: (budget: CustomBudget) => void;
-  onToggleStatus: (budget: CustomBudget, newStatus: boolean) => void;
-  onDuplicate: (budget: CustomBudget) => void;
-  onView: (budget: CustomBudget) => void;
-  formatDate: (date: string) => string;
-  formatBudget: (amount: number) => string;
-  isCurrentlyActive: (budget: CustomBudget) => boolean;
+  filteredClients?: ClientWithBudgets[];
+  isLoading: boolean;
   searchTerm: string;
-  onSearchChange: (value: string) => void;
+  setSearchTerm: (term: string) => void;
+  formatDate: (date: string) => string;
+  formatBudget: (value: number) => string;
+  isCurrentlyActive: (budget: CustomBudget) => boolean;
+  isFutureBudget: (budget: CustomBudget) => boolean;
+  onEdit: (budget: CustomBudget) => void;
+  onDelete: (id: string) => void;
+  onToggleStatus: (id: string, isActive: boolean) => void;
+  onDuplicate: (budget: CustomBudget) => void;
 }
 
-export function CustomBudgetTable({
-  clientsWithBudgets,
+export const CustomBudgetTable = ({
+  filteredClients,
+  isLoading,
+  searchTerm,
+  setSearchTerm,
+  formatDate,
+  formatBudget,
+  isCurrentlyActive,
+  isFutureBudget,
   onEdit,
   onDelete,
   onToggleStatus,
   onDuplicate,
-  onView,
-  formatDate,
-  formatBudget,
-  isCurrentlyActive,
-  searchTerm,
-  onSearchChange
-}: CustomBudgetTableProps) {
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+}: CustomBudgetTableProps) => {
+  // Função para obter o status do orçamento
+  const getBudgetStatus = (budget: CustomBudget) => {
+    if (!budget.is_active) {
+      return { label: "Inativo", variant: "outline" as const };
+    }
+    if (isCurrentlyActive(budget)) {
+      return { label: "Ativo", variant: "default" as const }; 
+    }
+    if (isFutureBudget(budget)) {
+      return { label: "Agendado", variant: "secondary" as const };
+    }
+    return { label: "Encerrado", variant: "secondary" as const };
+  };
 
-  const handleSelect = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedRows([...selectedRows, id]);
-    } else {
-      setSelectedRows(selectedRows.filter(rowId => rowId !== id));
+  // Função para calcular a duração do período em dias (corrigida)
+  const calculatePeriodDuration = (startDate: string, endDate: string): number => {
+    // As datas estão no formato ISO YYYY-MM-DD
+    const start = new Date(`${startDate}T12:00:00`);
+    const end = new Date(`${endDate}T12:00:00`);
+    
+    // Cálculo da diferença em dias (incluindo o último dia)
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    
+    return diffDays;
+  };
+
+  // Função para obter a badge de plataforma
+  const getPlatformBadge = (platform: string) => {
+    if (platform === 'meta') {
+      return <Badge className="bg-blue-500">Meta</Badge>;
+    }
+    return <Badge className="bg-red-500">Google</Badge>;
+  };
+
+  // Função para obter a badge de recorrência
+  const getRecurrenceLabel = (pattern: string | null) => {
+    if (!pattern) return '';
+    
+    switch(pattern) {
+      case 'weekly': return 'Semanal';
+      case 'biweekly': return 'Quinzenal';
+      case 'monthly': return 'Mensal';
+      default: return 'Personalizado';
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <Loader className="animate-spin h-6 w-6 mr-2 text-muran-primary" />
+        <span>Carregando orçamentos...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center space-x-2">
-        <div className="relative max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar por nome do cliente..."
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 max-w-xs"
-          />
-        </div>
-      </div>
-
-      <div className="border rounded-md">
+      <div className="rounded-md border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-gray-50">
             <TableRow>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={selectedRows.length > 0}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      // Selecionar todos os orçamentos visíveis
-                      const allIds = clientsWithBudgets.flatMap(cwb => 
-                        cwb.budgets.map(budget => budget.id)
-                      );
-                      setSelectedRows(allIds);
-                    } else {
-                      setSelectedRows([]);
-                    }
-                  }}
-                />
-              </TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Valor</TableHead>
-              <TableHead>Período</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Conta</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="w-[15%]">Cliente</TableHead>
+              <TableHead className="w-[10%]">Plataforma</TableHead>
+              <TableHead className="w-[13%]">Valor</TableHead>
+              <TableHead className="w-[13%]">Período</TableHead>
+              <TableHead className="w-[10%]">Status</TableHead>
+              <TableHead className="w-[10%]">Recorrência</TableHead>
+              <TableHead className="w-[14%]">Descrição</TableHead>
+              <TableHead className="w-[15%] text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clientsWithBudgets.length === 0 ? (
+            {!filteredClients || filteredClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                  Nenhum orçamento personalizado encontrado
+                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  {searchTerm
+                    ? `Nenhum cliente encontrado com o termo "${searchTerm}"`
+                    : "Nenhum orçamento personalizado configurado"}
                 </TableCell>
               </TableRow>
             ) : (
-              clientsWithBudgets.flatMap(({ client, budgets }) =>
-                budgets.map((budget) => (
-                  <TableRow key={budget.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedRows.includes(budget.id)}
-                        onCheckedChange={(checked) => handleSelect(budget.id, !!checked)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{client.company_name}</TableCell>
-                    <TableCell>{formatBudget(budget.budget_amount)}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span>{formatDate(budget.start_date)}</span>
-                        <span className="text-gray-500 text-sm">até {formatDate(budget.end_date)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge
-                              variant={
-                                budget.isActive
-                                  ? isCurrentlyActive(budget)
-                                    ? "success"
-                                    : "secondary"
-                                  : "outline"
-                              }
-                              className="cursor-pointer"
-                              onClick={() => onToggleStatus(budget, !budget.isActive)}
-                            >
-                              {budget.isActive
-                                ? isCurrentlyActive(budget)
-                                  ? "Ativo"
-                                  : "Pendente"
-                                : "Inativo"}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {budget.isActive
-                              ? isCurrentlyActive(budget)
-                                ? "Orçamento ativo e no período válido"
-                                : "Orçamento ativo mas fora do período atual"
-                              : "Orçamento inativo"}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                    <TableCell>
-                      {budget.account_id ? (
-                        <Badge variant="secondary">Conta específica</Badge>
-                      ) : (
-                        <Badge variant="outline">Geral</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
+              filteredClients.map((client) => (
+                client.customBudgets && client.customBudgets.length > 0 ? (
+                  client.customBudgets.map((budget) => (
+                    <TableRow key={budget.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">
+                        {client.company_name}
+                      </TableCell>
+                      <TableCell>
+                        {getPlatformBadge(budget.platform)}
+                      </TableCell>
+                      <TableCell>{formatBudget(budget.budget_amount)}</TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help">
+                                {formatDate(budget.start_date)} - {formatDate(budget.end_date)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">
+                                {calculatePeriodDuration(budget.start_date, budget.end_date)} dias
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={budget.is_active}
+                            onCheckedChange={(checked) => 
+                              onToggleStatus(budget.id, checked)
+                            }
+                          />
+                          <Badge variant={getBudgetStatus(budget).variant}>
+                            {getBudgetStatus(budget).label}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {budget.is_recurring ? (
+                          <div className="flex items-center gap-1">
+                            <RefreshCw className="h-3 w-3" />
+                            <span className="text-xs">{getRecurrenceLabel(budget.recurrence_pattern)}</span>
+                          </div>
+                        ) : "-"}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {budget.description || "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onDuplicate(budget)}
+                            title="Duplicar orçamento"
+                          >
+                            <Copy className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => onView(budget)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            <span>Ver detalhes</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onEdit(budget)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Editar</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onDuplicate(budget)}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            <span>Duplicar</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => onToggleStatus(budget, !budget.isActive)}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEdit(budget)}
+                            title="Editar orçamento"
                           >
-                            {budget.isActive ? (
-                              <>
-                                <PowerOff className="mr-2 h-4 w-4" />
-                                <span>Desativar</span>
-                              </>
-                            ) : (
-                              <>
-                                <Power className="mr-2 h-4 w-4" />
-                                <span>Ativar</span>
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => onDelete(budget)}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            <span>Excluir</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" title="Excluir orçamento">
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Excluir orçamento
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir este orçamento? Esta
+                                  ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => onDelete(budget.id)}
+                                  className="bg-red-500 hover:bg-red-600"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : null
+              ))
             )}
           </TableBody>
         </Table>
       </div>
+
+      {filteredClients && filteredClients.length > 0 && 
+       filteredClients.every(client => client.customBudgets.length === 0) && (
+        <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-md">
+          <AlertCircle className="h-10 w-10 text-muran-primary mb-2" />
+          <h3 className="text-lg font-medium mb-1">Nenhum orçamento configurado</h3>
+          <p className="text-gray-500 text-center">
+            Os clientes foram encontrados, mas nenhum possui orçamentos personalizados.
+          </p>
+        </div>
+      )}
     </div>
   );
-}
+};
