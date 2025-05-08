@@ -40,6 +40,7 @@ export interface GoogleReview {
   custom_budget_amount?: number;
   custom_budget_id?: string;
   custom_budget_end_date?: string;
+  usingRealData?: boolean; // Adicionado para indicar se os dados são reais ou simulados
   
   // Adicionando campos compatíveis para evitar erros no código existente
   meta_account_id?: string;
