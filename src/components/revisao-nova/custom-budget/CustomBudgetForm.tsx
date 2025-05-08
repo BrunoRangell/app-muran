@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CalendarIcon, Loader, Calculator, Info, RefreshCw } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -93,18 +93,26 @@ interface CustomBudgetFormProps {
 
 type FormData = z.infer<typeof customBudgetSchema>;
 
-const BUDGET_TEMPLATES = [
-  // Meta templates
-  { name: "Meta: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'meta' as const },
-  { name: "Meta: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'meta' as const },
-  { name: "Meta: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'meta' as const },
-  { name: "Meta: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'meta' as const },
-  // Google templates
-  { name: "Google: 30 dias - R$ 3.000", days: 30, amount: 3000, platform: 'google' as const },
-  { name: "Google: 30 dias - R$ 5.000", days: 30, amount: 5000, platform: 'google' as const },
-  { name: "Google: 15 dias - R$ 2.500", days: 15, amount: 2500, platform: 'google' as const },
-  { name: "Google: 7 dias - R$ 1.000", days: 7, amount: 1000, platform: 'google' as const },
-];
+// Função auxiliar para verificar se uma data é válida e formatá-la de forma segura
+const formatSafeDate = (date: Date | string | null | undefined, defaultFormat: string = 'dd/MM/yyyy'): string => {
+  if (!date) return '';
+  
+  // Se for uma string de data, tentar converter para objeto Date
+  const dateObject = typeof date === 'string' ? new Date(date + 'T12:00:00Z') : date;
+  
+  // Verificar se a data é válida antes de formatar
+  if (!(dateObject instanceof Date) || !isValid(dateObject)) {
+    console.warn('Data inválida detectada:', date);
+    return '';
+  }
+  
+  try {
+    return format(dateObject, defaultFormat, { locale: ptBR });
+  } catch (error) {
+    console.error('Erro ao formatar data:', error, 'Data original:', date);
+    return '';
+  }
+};
 
 const RECURRENCE_PATTERNS = [
   { value: "weekly", label: "Semanal" },
@@ -120,7 +128,6 @@ export const CustomBudgetForm = ({
   onCancel,
 }: CustomBudgetFormProps) => {
   const [formattedBudget, setFormattedBudget] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
 
   // Buscar clientes ativos
@@ -157,27 +164,81 @@ export const CustomBudgetForm = ({
   // Preencher o formulário quando um orçamento for selecionado para edição
   useEffect(() => {
     if (selectedBudget) {
-      // Corrigindo o problema da data: converter as strings para objetos Date
-      // sem alterar o fuso horário
-      const startDate = new Date(selectedBudget.startDate + 'T12:00:00');
-      const endDate = new Date(selectedBudget.endDate + 'T12:00:00');
-      
-      setShowRecurrenceOptions(!!selectedBudget.isRecurring);
-      
-      form.reset({
-        client_id: selectedBudget.clientId,
-        budget_amount: selectedBudget.budgetAmount,
-        start_date: startDate,
-        end_date: endDate,
-        // Corrigindo o erro: garantindo que o valor de platform é sempre 'meta' ou 'google'
-        platform: (selectedBudget.platform === 'meta' || selectedBudget.platform === 'google') 
-          ? selectedBudget.platform 
-          : 'meta',
-        description: selectedBudget.description,
-        is_recurring: selectedBudget.isRecurring || false,
-        recurrence_pattern: selectedBudget.recurrencePattern || null,
-      });
-      setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
+      try {
+        // Log para debug
+        console.log('Dados do orçamento selecionado:', selectedBudget);
+        
+        // Corrigindo o problema da data: converter as strings para objetos Date
+        // sem alterar o fuso horário
+        let startDate: Date | null = null;
+        let endDate: Date | null = null;
+        
+        try {
+          // Garantir que temos uma string de data válida antes de construir o objeto Date
+          if (selectedBudget.startDate && typeof selectedBudget.startDate === 'string') {
+            startDate = new Date(`${selectedBudget.startDate}T12:00:00Z`);
+            // Verificar se a data é válida
+            if (isNaN(startDate.getTime())) {
+              console.warn('Data de início inválida:', selectedBudget.startDate);
+              startDate = new Date(); // Fallback para a data atual
+            }
+          } else {
+            startDate = new Date();
+          }
+          
+          if (selectedBudget.endDate && typeof selectedBudget.endDate === 'string') {
+            endDate = new Date(`${selectedBudget.endDate}T12:00:00Z`);
+            // Verificar se a data é válida
+            if (isNaN(endDate.getTime())) {
+              console.warn('Data de término inválida:', selectedBudget.endDate);
+              endDate = new Date(); // Fallback para a data atual
+            }
+          } else {
+            endDate = new Date();
+          }
+        } catch (error) {
+          console.error('Erro ao processar datas:', error);
+          // Use datas atuais como fallback
+          startDate = new Date();
+          endDate = new Date();
+        }
+        
+        setShowRecurrenceOptions(!!selectedBudget.isRecurring);
+        
+        // Log para verificar as datas processadas
+        console.log('Datas processadas:', { 
+          startDate: startDate?.toISOString(), 
+          endDate: endDate?.toISOString() 
+        });
+        
+        form.reset({
+          client_id: selectedBudget.clientId,
+          budget_amount: selectedBudget.budgetAmount,
+          start_date: startDate,
+          end_date: endDate,
+          // Corrigindo o erro: garantindo que o valor de platform é sempre 'meta' ou 'google'
+          platform: (selectedBudget.platform === 'meta' || selectedBudget.platform === 'google') 
+            ? selectedBudget.platform 
+            : 'meta',
+          description: selectedBudget.description,
+          is_recurring: selectedBudget.isRecurring || false,
+          recurrence_pattern: selectedBudget.recurrencePattern || null,
+        });
+        setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
+      } catch (error) {
+        console.error('Erro ao processar orçamento selecionado:', error);
+        // Reset para valores padrão em caso de erro
+        form.reset({
+          client_id: "",
+          budget_amount: 0,
+          start_date: new Date(),
+          end_date: new Date(),
+          platform: 'meta',
+          description: "",
+          is_recurring: false,
+          recurrence_pattern: null,
+        });
+      }
     } else {
       form.reset({
         client_id: "",
@@ -199,27 +260,6 @@ export const CustomBudgetForm = ({
   useEffect(() => {
     setShowRecurrenceOptions(isRecurring);
   }, [isRecurring]);
-
-  // Aplicar um template de orçamento
-  const applyTemplate = (templateIndex: string) => {
-    const index = parseInt(templateIndex);
-    
-    if (index >= 0 && index < BUDGET_TEMPLATES.length) {
-      const template = BUDGET_TEMPLATES[index];
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + template.days - 1);
-      
-      form.setValue("budget_amount", template.amount);
-      form.setValue("start_date", startDate);
-      form.setValue("end_date", endDate);
-      form.setValue("platform", template.platform); // Agora isso é seguro, pois definimos o tipo literal
-      
-      setFormattedBudget(formatCurrency(template.amount));
-    }
-    
-    setSelectedTemplate("");
-  };
 
   // Manipulador para o campo de orçamento formatado como moeda
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -247,7 +287,7 @@ export const CustomBudgetForm = ({
   const platform = form.watch("platform");
 
   const getDaysInPeriod = () => {
-    if (startDate && endDate) {
+    if (startDate && endDate && isValid(startDate) && isValid(endDate)) {
       // +1 para incluir o dia inicial e final na contagem
       return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     }
@@ -267,6 +307,10 @@ export const CustomBudgetForm = ({
     try {
       // Garantir que as datas sejam formatadas no formato YYYY-MM-DD sem ajuste de fuso horário
       const formatDateToYYYYMMDD = (date: Date) => {
+        if (!isValid(date)) {
+          console.error('Tentativa de formatar data inválida:', date);
+          return new Date().toISOString().split('T')[0]; // Fallback para hoje
+        }
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -288,11 +332,6 @@ export const CustomBudgetForm = ({
     } catch (error) {
       console.error('Erro ao processar formulário:', error);
     }
-  };
-
-  // Função para filtrar templates baseado na plataforma selecionada
-  const getFilteredTemplates = () => {
-    return BUDGET_TEMPLATES.filter(template => template.platform === platform);
   };
 
   // Exibir um indicador de carregamento enquanto os clientes estão sendo carregados
@@ -376,55 +415,26 @@ export const CustomBudgetForm = ({
             />
           </div>
 
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <FormField
-                control={form.control}
-                name="budget_amount"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Valor do Orçamento</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="R$ 0,00"
-                        value={formattedBudget}
-                        onChange={handleBudgetChange}
-                        onBlur={handleBudgetBlur}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="flex-1">
-              <FormLabel>Modelo de Orçamento</FormLabel>
-              <Select
-                value={selectedTemplate}
-                onValueChange={(value) => applyTemplate(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um modelo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getFilteredTemplates().map((template, index) => {
-                    // Encontrar o índice real no array completo
-                    const realIndex = BUDGET_TEMPLATES.findIndex(t => 
-                      t.platform === template.platform && 
-                      t.days === template.days && 
-                      t.amount === template.amount
-                    );
-                    return (
-                      <SelectItem key={realIndex} value={realIndex.toString()}>
-                        {template.name}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex-1">
+            <FormField
+              control={form.control}
+              name="budget_amount"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Valor do Orçamento</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="R$ 0,00"
+                      value={formattedBudget}
+                      onChange={handleBudgetChange}
+                      onBlur={handleBudgetBlur}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -444,8 +454,8 @@ export const CustomBudgetForm = ({
                           }`}
                           disabled={isSubmitting}
                         >
-                          {field.value ? (
-                            format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                          {field.value && isValid(field.value) ? (
+                            formatSafeDate(field.value, 'dd/MM/yyyy')
                           ) : (
                             <span>Selecione uma data</span>
                           )}
@@ -457,10 +467,15 @@ export const CustomBudgetForm = ({
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          if (date) {
+                            field.onChange(date);
+                          }
+                        }}
                         disabled={isSubmitting}
                         locale={ptBR}
                         initialFocus
+                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
@@ -485,8 +500,8 @@ export const CustomBudgetForm = ({
                           }`}
                           disabled={isSubmitting}
                         >
-                          {field.value ? (
-                            format(field.value, "dd/MM/yyyy", { locale: ptBR })
+                          {field.value && isValid(field.value) ? (
+                            formatSafeDate(field.value, 'dd/MM/yyyy')
                           ) : (
                             <span>Selecione uma data</span>
                           )}
@@ -498,10 +513,15 @@ export const CustomBudgetForm = ({
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          if (date) {
+                            field.onChange(date);
+                          }
+                        }}
                         disabled={isSubmitting}
                         locale={ptBR}
                         initialFocus
+                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
