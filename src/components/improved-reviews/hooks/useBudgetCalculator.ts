@@ -76,6 +76,8 @@ export function useBudgetCalculator() {
           (percentageDifferenceAverage >= 0.05 && absoluteDifferenceAverage >= 1); // ou 5% com pelo menos 1 real de diferença
       }
       
+      console.log(`[DEBUG] Budget Calculator - lastFiveDaysAverage: ${input.lastFiveDaysAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
+      
       return {
         idealDailyBudget: roundedIdealDailyBudget,
         budgetDifference,

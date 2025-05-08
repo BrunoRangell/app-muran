@@ -111,6 +111,7 @@ export function useGoogleAdsData() {
               
               // Obter a média de gasto dos últimos 5 dias (se disponível)
               const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
+              console.log(`[DEBUG] Cliente ${client.company_name}, Conta ${account.account_name} - Média 5 dias: ${lastFiveDaysAvg}`);
               
               // Calcular orçamento recomendado
               const budgetCalc = calculateBudget({
@@ -120,6 +121,9 @@ export function useGoogleAdsData() {
                 lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
               });
               
+              // Verificar se precisa de ajuste (baseado em orçamento diário OU na média dos últimos 5 dias)
+              const needsAnyAdjustment = budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage;
+              
               return {
                 ...client,
                 google_account_id: account.account_id,
@@ -127,7 +131,7 @@ export function useGoogleAdsData() {
                 budget_amount: account.budget_amount,
                 review: review || null,
                 budgetCalculation: budgetCalc,
-                needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
+                needsAdjustment: needsAnyAdjustment,
                 lastFiveDaysAvg: lastFiveDaysAvg,
                 usingRealData
               };
@@ -146,6 +150,7 @@ export function useGoogleAdsData() {
             
             // Obter a média de gasto dos últimos 5 dias (se disponível)
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
+            console.log(`[DEBUG] Cliente ${client.company_name}, Conta principal - Média 5 dias: ${lastFiveDaysAvg}`);
             
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
@@ -155,13 +160,16 @@ export function useGoogleAdsData() {
               lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
             });
             
+            // Verificar se precisa de ajuste (baseado em orçamento diário OU na média dos últimos 5 dias)
+            const needsAnyAdjustment = budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage;
+            
             return {
               ...client,
               google_account_name: "Conta Principal",
               budget_amount: client.google_ads_budget || 0,
               review: review || null,
               budgetCalculation: budgetCalc,
-              needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
+              needsAdjustment: needsAnyAdjustment,
               lastFiveDaysAvg: lastFiveDaysAvg,
               usingRealData
             };

@@ -37,6 +37,8 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const budgetDifferenceAvg = platform === "google" ? (client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0) : 0;
   const needsAdjustmentBasedOnAverage = platform === "google" ? (client.budgetCalculation?.needsAdjustmentBasedOnAverage || false) : false;
   
+  console.log(`[DEBUG] ClientCard - Cliente: ${client.company_name}, Platform: ${platform}, lastFiveDaysAvg: ${lastFiveDaysAvg}, budgetDifferenceAvg: ${budgetDifferenceAvg}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
+  
   const handleReviewClick = async () => {
     try {
       await reviewClient(client.id, client[`${platform}_account_id`]);
@@ -101,9 +103,10 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
           <CompactBudgetRecommendation 
             budgetDifference={budgetDifference}
             budgetDifferenceBasedOnAverage={platform === "google" ? budgetDifferenceAvg : undefined}
-            shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
+            shouldShow={client.budgetCalculation?.needsBudgetAdjustment || false}
             shouldShowAverage={platform === "google" ? needsAdjustmentBasedOnAverage : false}
             lastFiveDaysAverage={platform === "google" ? lastFiveDaysAvg : undefined}
+            platform={platform}
           />
           
           {expanded && client.review && (

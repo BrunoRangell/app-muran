@@ -156,6 +156,8 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     // Alterado para usar OU (||) em vez de E (&&)
     return absoluteDifference >= 5 || percentageDifference >= 0.05;
   }, [hasReview, budgetDifferenceBasedOnAverage, lastFiveDaysSpent]);
+
+  console.log(`[DEBUG] Cliente: ${client.company_name} - lastFiveDaysSpent: ${lastFiveDaysSpent}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
   
   return {
     hasReview,
