@@ -36,7 +36,8 @@ export function ClientsTable({ data, platform = "meta" }: ClientsTableProps) {
             </TableHeader>
             <TableBody>
               {data.map((client) => {
-                const isProcessing = processingIds.includes(client.id);
+                const isProcessing = processingIds.includes(client.id) || 
+                  isProcessingAccount(client.id, client[`${platform}_account_id`]);
                 const accountName = client[`${platform}_account_name`] || "Conta Principal";
                 const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
                 const budgetAmount = client.budget_amount || 0;

@@ -12,6 +12,7 @@ interface BudgetRecommendationProps {
   hasReview: boolean;
   lastFiveDaysAverage?: number;
   compact?: boolean;
+  platform?: "meta" | "google";
 }
 
 export const BudgetRecommendation = ({ 
@@ -21,7 +22,8 @@ export const BudgetRecommendation = ({
   shouldShowAverage = false,
   hasReview,
   lastFiveDaysAverage = 0,
-  compact = false
+  compact = false,
+  platform = "meta"
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
 
@@ -30,15 +32,16 @@ export const BudgetRecommendation = ({
     return (
       <CompactBudgetRecommendation
         budgetDifference={budgetDifference}
-        budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
+        budgetDifferenceBasedOnAverage={platform === "google" ? budgetDifferenceBasedOnAverage : undefined}
         shouldShow={shouldShow}
-        shouldShowAverage={shouldShowAverage}
-        lastFiveDaysAverage={lastFiveDaysAverage}
+        shouldShowAverage={platform === "google" ? shouldShowAverage : false}
+        lastFiveDaysAverage={platform === "google" ? lastFiveDaysAverage : undefined}
       />
     );
   }
 
-  const hasAnyRecommendation = shouldShow || shouldShowAverage;
+  const shouldShowAverageForPlatform = shouldShowAverage && platform === "google";
+  const hasAnyRecommendation = shouldShow || shouldShowAverageForPlatform;
   
   if (!hasAnyRecommendation) {
     return (
@@ -86,7 +89,7 @@ export const BudgetRecommendation = ({
         </div>
       )}
 
-      {shouldShowAverage && (
+      {shouldShowAverageForPlatform && (
         <div className={`p-3 rounded-lg ${
           budgetDifferenceBasedOnAverage > 0 
             ? 'bg-green-50 border-l-4 border-l-green-500' 

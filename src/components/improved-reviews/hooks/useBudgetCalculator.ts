@@ -5,17 +5,17 @@ type BudgetInput = {
   monthlyBudget: number;
   totalSpent: number;
   currentDailyBudget: number;
-  lastFiveDaysAverage?: number; // Adicionado campo para média dos últimos 5 dias
+  lastFiveDaysAverage?: number;
 };
 
 type BudgetCalculation = {
   idealDailyBudget: number;
   budgetDifference: number;
-  budgetDifferenceBasedOnAverage?: number; // Nova propriedade para diferença baseada na média
+  budgetDifferenceBasedOnAverage?: number;
   remainingDays: number;
   remainingBudget: number;
   needsBudgetAdjustment: boolean;
-  needsAdjustmentBasedOnAverage?: boolean; // Nova propriedade para indicar se precisa ajuste baseado na média
+  needsAdjustmentBasedOnAverage?: boolean;
   spentPercentage: number;
 };
 
@@ -43,10 +43,23 @@ export function useBudgetCalculator() {
       // Diferença entre o orçamento diário atual e o ideal
       const budgetDifference = roundedIdealDailyBudget - input.currentDailyBudget;
       
-      // Diferença baseada na média dos últimos 5 dias (se disponível)
+      // Determinar se precisa de ajuste (diferença de 5 reais ou 5%)
+      const absoluteDifference = Math.abs(budgetDifference);
+      const percentageDifference = input.currentDailyBudget > 0 
+        ? absoluteDifference / input.currentDailyBudget 
+        : 0;
+        
+      const needsBudgetAdjustment = 
+        input.currentDailyBudget > 0 && // só considera se tem orçamento atual
+        ((absoluteDifference >= 5) || // diferença absoluta de 5 reais
+        (percentageDifference >= 0.05 && absoluteDifference >= 1)); // ou 5% com pelo menos 1 real de diferença
+      
+      // Inicializar valores opcionais
       let budgetDifferenceBasedOnAverage;
       let needsAdjustmentBasedOnAverage;
       
+      // Calcular a diferença baseada na média dos últimos 5 dias somente se fornecida
+      // (usado apenas para Google Ads, não para Meta Ads)
       if (input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0) {
         budgetDifferenceBasedOnAverage = roundedIdealDailyBudget - input.lastFiveDaysAverage;
         
@@ -60,17 +73,6 @@ export function useBudgetCalculator() {
           (absoluteDifferenceAverage >= 5) || // diferença absoluta de 5 reais
           (percentageDifferenceAverage >= 0.05 && absoluteDifferenceAverage >= 1); // ou 5% com pelo menos 1 real de diferença
       }
-      
-      // Determinar se precisa de ajuste (diferença de 5 reais ou 5%)
-      const absoluteDifference = Math.abs(budgetDifference);
-      const percentageDifference = input.currentDailyBudget > 0 
-        ? absoluteDifference / input.currentDailyBudget 
-        : 0;
-        
-      const needsBudgetAdjustment = 
-        input.currentDailyBudget > 0 && // só considera se tem orçamento atual
-        ((absoluteDifference >= 5) || // diferença absoluta de 5 reais
-        (percentageDifference >= 0.05 && absoluteDifference >= 1)); // ou 5% com pelo menos 1 real de diferença
       
       return {
         idealDailyBudget: roundedIdealDailyBudget,

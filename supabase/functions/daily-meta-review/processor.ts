@@ -31,6 +31,7 @@ interface ReviewResult {
   idealDailyBudget?: number;
   totalSpent?: number;
   budgetAmount?: number;
+  dailyBudgetCurrent?: number;
   usingCustomBudget?: boolean;
   error?: string;
 }
@@ -132,6 +133,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
 
     // Buscar dados reais da API do Meta Ads
     let totalSpent = 0;
+    let dailyBudgetCurrent = 0;
     let apiDataFetched = false;
     
     try {
@@ -140,12 +142,13 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
         
         const metaAdsData = await fetchMetaAdsData(accountId, validAccessToken);
         
-        if (metaAdsData && metaAdsData.totalSpent !== undefined) {
+        if (metaAdsData) {
           totalSpent = metaAdsData.totalSpent;
+          dailyBudgetCurrent = metaAdsData.dailyBudgetCurrent;
           apiDataFetched = true;
-          console.log(`Dados obtidos com sucesso da API: Gasto total = ${totalSpent}`);
+          console.log(`Dados obtidos com sucesso da API: Gasto total = ${totalSpent}, Orçamento diário atual = ${dailyBudgetCurrent}`);
         } else {
-          console.warn("Dados da API retornaram valor de gasto indefinido");
+          console.warn("Dados da API retornaram valores indefinidos");
         }
       } else {
         console.warn("ID da conta Meta ou token de acesso não disponíveis para buscar dados reais");
@@ -159,6 +162,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     if (!apiDataFetched) {
       console.warn("Utilizando simulação de 65% como fallback devido a erro na API");
       totalSpent = budgetAmount * 0.65; // Simulação: 65% do orçamento mensal foi gasto como fallback
+      dailyBudgetCurrent = 0; // Sem valor de orçamento diário em caso de falha
     }
 
     // Calcular orçamento diário ideal
@@ -171,7 +175,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     
     // Preparar dados para a revisão
     const reviewData = {
-      meta_daily_budget_current: roundedIdealDailyBudget,
+      meta_daily_budget_current: dailyBudgetCurrent,
       meta_total_spent: totalSpent,
       meta_account_id: accountId || null,
       client_account_id: accountId || null,
@@ -213,6 +217,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       accountId,
       accountName,
       idealDailyBudget: roundedIdealDailyBudget,
+      dailyBudgetCurrent,
       totalSpent,
       budgetAmount,
       usingCustomBudget,

@@ -53,7 +53,7 @@ export const CompactBudgetRecommendation = ({
         </TooltipProvider>
       )}
       
-      {shouldShowAverage && (
+      {shouldShowAverage && budgetDifferenceBasedOnAverage !== undefined && lastFiveDaysAverage > 0 && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger>

@@ -32,10 +32,10 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const needsAdjustment = client.needsAdjustment;
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
   
-  // Dados para recomendação baseada na média dos últimos 5 dias
-  const lastFiveDaysAvg = client.lastFiveDaysAvg || 0;
-  const budgetDifferenceAvg = client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0;
-  const needsAdjustmentBasedOnAverage = client.budgetCalculation?.needsAdjustmentBasedOnAverage || false;
+  // Dados para recomendação baseada na média dos últimos 5 dias (apenas para Google)
+  const lastFiveDaysAvg = platform === "google" ? (client.lastFiveDaysAvg || 0) : 0;
+  const budgetDifferenceAvg = platform === "google" ? (client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0) : 0;
+  const needsAdjustmentBasedOnAverage = platform === "google" ? (client.budgetCalculation?.needsAdjustmentBasedOnAverage || false) : false;
   
   const handleReviewClick = async () => {
     try {
@@ -100,10 +100,10 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
           {/* Recomendações de orçamento em formato compacto */}
           <CompactBudgetRecommendation 
             budgetDifference={budgetDifference}
-            budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
+            budgetDifferenceBasedOnAverage={platform === "google" ? budgetDifferenceAvg : undefined}
             shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
-            shouldShowAverage={needsAdjustmentBasedOnAverage}
-            lastFiveDaysAverage={lastFiveDaysAvg}
+            shouldShowAverage={platform === "google" ? needsAdjustmentBasedOnAverage : false}
+            lastFiveDaysAverage={platform === "google" ? lastFiveDaysAvg : undefined}
           />
           
           {expanded && client.review && (
@@ -120,10 +120,12 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
                 <span className="text-gray-500">Dias restantes</span>
                 <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Média gasto (5 dias)</span>
-                <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
-              </div>
+              {platform === "google" && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Média gasto (5 dias)</span>
+                  <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
