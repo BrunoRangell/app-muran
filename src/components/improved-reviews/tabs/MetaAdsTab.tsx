@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
 import { MetricsPanel } from "../dashboard/MetricsPanel";
@@ -32,7 +32,7 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
   });
   
   // Recuperar estado de filtros do localStorage ao inicializar
-  useState(() => {
+  useEffect(() => {
     try {
       const savedFilters = localStorage.getItem(FILTER_STATE_KEY);
       if (savedFilters) {
@@ -44,10 +44,10 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
     } catch (err) {
       console.error("Erro ao recuperar estado dos filtros:", err);
     }
-  });
+  }, []);
 
   // Salvar estado dos filtros no localStorage quando mudar
-  useState(() => {
+  useEffect(() => {
     try {
       localStorage.setItem(FILTER_STATE_KEY, JSON.stringify({
         searchQuery,
