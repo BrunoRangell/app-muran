@@ -11,9 +11,10 @@ import { AlertTriangle } from "lucide-react";
 
 interface MetaAdsTabProps {
   onRefreshCompleted?: () => void;
+  isActive?: boolean;
 }
 
-export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
+export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);

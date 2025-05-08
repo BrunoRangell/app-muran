@@ -10,7 +10,7 @@ import {
   Loader2
 } from "lucide-react";
 import { ClientMetrics } from "../hooks/useUnifiedReviewsData";
-import { formatCurrency } from "../utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
 
 interface MetricsPanelProps {
   metrics: ClientMetrics;

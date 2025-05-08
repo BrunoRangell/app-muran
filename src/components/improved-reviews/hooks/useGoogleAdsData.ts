@@ -232,7 +232,7 @@ export function useGoogleAdsData() {
     refetchOnWindowFocus: false,
     refetchOnMount: false, // Não refetch automático ao montar
     staleTime: 10 * 60 * 1000, // 10 minutos (mais agressivo)
-    cacheTime: 60 * 60 * 1000, // 1 hora
+    gcTime: 60 * 60 * 1000, // 1 hora (equivalente ao antigo cacheTime)
     initialData: () => {
       // Tentar recuperar dados do localStorage ao inicializar
       try {
