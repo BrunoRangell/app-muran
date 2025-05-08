@@ -37,14 +37,14 @@ export function CustomBudgetCalendar({ clientsWithBudgets, onSelectBudget }: Cus
   };
   
   // Função para renderizar conteúdo de cada dia do calendário
-  const renderDay = (day: Date) => {
-    const budgetsForDay = getBudgetForDate(day);
+  const renderDay = (dayDate: Date) => {
+    const budgetsForDay = getBudgetForDate(dayDate);
     const hasActiveBudgets = budgetsForDay.length > 0;
     
     return (
       <div className="relative w-full h-full">
         <div className="flex justify-center items-center h-full">
-          {day.getDate()}
+          {dayDate.getDate()}
         </div>
         {hasActiveBudgets && (
           <div className="absolute bottom-0 left-0 right-0 flex justify-center">
@@ -82,7 +82,7 @@ export function CustomBudgetCalendar({ clientsWithBudgets, onSelectBudget }: Cus
           onMonthChange={setCurrentMonth}
           className="rounded-md border"
           components={{
-            Day: ({ day }) => renderDay(day),
+            Day: ({ date }) => renderDay(date),
           }}
         />
         

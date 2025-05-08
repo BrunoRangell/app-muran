@@ -21,22 +21,25 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Loader2, Plus, RefreshCcw, Download } from "lucide-react";
-import { CustomBudget, useCustomBudgets } from "./hooks/useCustomBudgets";
+import { CustomBudget, useCustomBudgets, ClientWithBudgets, CustomBudgetFormData } from "./hooks/useCustomBudgets";
 import { CustomBudgetTable } from "./custom-budget/CustomBudgetTable";
 import { CustomBudgetCards } from "./custom-budget/CustomBudgetCards";
 import { CustomBudgetCalendar } from "./custom-budget/CustomBudgetCalendar";
 import { CustomBudgetForm } from "./custom-budget/CustomBudgetForm";
 
-export function CustomBudgetManager() {
+interface CustomBudgetManagerProps {
+  viewMode?: string;
+}
+
+export function CustomBudgetManager({ viewMode = "table" }: CustomBudgetManagerProps) {
   // Estado local
-  const [viewMode, setViewMode] = useState<string>("table");
+  const [selectedTab, setSelectedTab] = useState<string>(viewMode);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [budgetToDelete, setBudgetToDelete] = useState<CustomBudget | null>(null);
 
   // Usar o hook customizado
   const {
-    budgets,
     isLoading,
     error,
     refetch,
@@ -75,14 +78,28 @@ export function CustomBudgetManager() {
     // Aqui poderíamos mostrar uma visualização detalhada do orçamento
   };
 
-  const handleSaveBudget = (budgetData: Partial<CustomBudget>) => {
+  const handleSaveBudget = (budgetData: CustomBudgetFormData) => {
     if (selectedBudget) {
       updateCustomBudgetMutation.mutate({
-        ...budgetData,
-        id: selectedBudget.id
+        id: selectedBudget.id,
+        client_id: budgetData.clientId,
+        budget_amount: budgetData.budgetAmount,
+        start_date: budgetData.startDate,
+        end_date: budgetData.endDate,
+        isActive: true,
+        description: budgetData.description,
+        platform: budgetData.platform
       });
     } else {
-      addCustomBudgetMutation.mutate(budgetData as Omit<CustomBudget, 'id' | 'created_at' | 'updated_at'>);
+      addCustomBudgetMutation.mutate({
+        client_id: budgetData.clientId,
+        budget_amount: budgetData.budgetAmount,
+        start_date: budgetData.startDate,
+        end_date: budgetData.endDate,
+        isActive: true,
+        description: budgetData.description,
+        platform: budgetData.platform
+      } as Omit<CustomBudget, 'id' | 'created_at' | 'updated_at'>);
     }
     setIsFormDialogOpen(false);
   };
@@ -196,7 +213,7 @@ export function CustomBudgetManager() {
       </div>
 
       {/* Tabs para diferentes visualizações */}
-      <Tabs value={viewMode} onValueChange={setViewMode}>
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList>
           <TabsTrigger value="table">Tabela</TabsTrigger>
           <TabsTrigger value="cards">Cards</TabsTrigger>
@@ -205,7 +222,7 @@ export function CustomBudgetManager() {
         
         <TabsContent value="table">
           <CustomBudgetTable
-            clientsWithBudgets={filteredClients}
+            clientsWithBudgets={filteredClients as ClientWithBudgets[]}
             onEdit={handleEditBudget}
             onDelete={handleDeleteBudget}
             onToggleStatus={handleToggleBudgetStatus}
@@ -221,7 +238,7 @@ export function CustomBudgetManager() {
         
         <TabsContent value="cards">
           <CustomBudgetCards
-            clientsWithBudgets={filteredClients}
+            clientsWithBudgets={filteredClients as ClientWithBudgets[]}
             onEdit={handleEditBudget}
             onDelete={handleDeleteBudget}
             onToggleStatus={handleToggleBudgetStatus}
@@ -235,7 +252,7 @@ export function CustomBudgetManager() {
         
         <TabsContent value="calendar">
           <CustomBudgetCalendar
-            clientsWithBudgets={filteredClients}
+            clientsWithBudgets={filteredClients as ClientWithBudgets[]}
             onSelectBudget={handleViewBudget}
           />
         </TabsContent>
@@ -281,11 +298,20 @@ export function CustomBudgetManager() {
             </AlertDialogTitle>
           </AlertDialogHeader>
           <CustomBudgetForm
-            budget={selectedBudget}
-            onSave={handleSaveBudget}
+            selectedBudget={selectedBudget ? 
+              {
+                clientId: selectedBudget.client_id,
+                budgetAmount: selectedBudget.budget_amount,
+                startDate: selectedBudget.start_date,
+                endDate: selectedBudget.end_date,
+                platform: selectedBudget.platform as 'meta' | 'google',
+                description: selectedBudget.description
+              } : null
+            }
+            isSubmitting={addCustomBudgetMutation.isPending || updateCustomBudgetMutation.isPending}
+            onSubmit={handleSaveBudget}
             onCancel={() => setIsFormDialogOpen(false)}
             clients={activeClients}
-            isLoading={addCustomBudgetMutation.isPending || updateCustomBudgetMutation.isPending}
           />
         </AlertDialogContent>
       </AlertDialog>

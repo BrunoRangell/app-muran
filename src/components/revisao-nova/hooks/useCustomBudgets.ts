@@ -30,12 +30,24 @@ export interface ClientWithBudgets {
   budgets: CustomBudget[];
 }
 
+export interface CustomBudgetFormData {
+  clientId: string;
+  budgetAmount: number;
+  startDate: string;
+  endDate: string;
+  platform: 'meta' | 'google';
+  description?: string;
+  isRecurring?: boolean;
+  recurrencePattern?: string | null;
+}
+
 export interface UseCustomBudgetsParams {
   clientId?: string;
   platform?: string;
   includeFuture?: boolean;
   includeExpired?: boolean;
   filterActive?: boolean;
+  sortBy?: string;
 }
 
 // Hook principal para gerenciar orçamentos personalizados
@@ -44,7 +56,8 @@ export const useCustomBudgets = ({
   platform = "meta",
   includeFuture = true,
   includeExpired = false,
-  filterActive = false
+  filterActive = false,
+  sortBy = "date"
 }: UseCustomBudgetsParams = {}) => {
   const [selectedBudget, setSelectedBudget] = useState<CustomBudget | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -439,16 +452,19 @@ export const useCustomBudgets = ({
     error,
     refetch,
     activeClients,
+    filteredClients: clientsWithBudgets.filter((clientWithBudget) => {
+      if (!searchTerm) return true;
+      return clientWithBudget.client.company_name.toLowerCase().includes(searchTerm.toLowerCase());
+    }),
+    searchTerm,
+    setSearchTerm,
+    selectedBudget,
+    setSelectedBudget,
     isAdding: addCustomBudgetMutation.isPending,
     isUpdating: updateCustomBudgetMutation.isPending,
     isDeleting: deleteCustomBudgetMutation.isPending,
     isTogglingStatus: toggleBudgetStatusMutation.isPending,
     isDuplicating: duplicateBudgetMutation.isPending,
-    selectedBudget,
-    filteredClients,
-    searchTerm,
-    setSearchTerm,
-    setSelectedBudget,
     addCustomBudgetMutation,
     updateCustomBudgetMutation,
     deleteCustomBudgetMutation,

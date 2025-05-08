@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -71,7 +70,7 @@ export function CustomBudgetTable({
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           className="max-w-xs"
-          prefix={<Search className="w-4 h-4 text-gray-400" />}
+          startAdornment={<Search className="w-4 h-4 text-gray-400" />}
         />
       </div>
 
@@ -137,7 +136,7 @@ export function CustomBudgetTable({
                                 budget.isActive
                                   ? isCurrentlyActive(budget)
                                     ? "success"
-                                    : "warning"
+                                    : "secondary"
                                   : "outline"
                               }
                               className="cursor-pointer"

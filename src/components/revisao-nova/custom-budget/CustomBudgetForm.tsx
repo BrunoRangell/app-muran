@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -89,6 +88,7 @@ interface CustomBudgetFormProps {
   isSubmitting: boolean;
   onSubmit: (data: CustomBudgetFormData) => void;
   onCancel: () => void;
+  clients: { id: string; company_name: string }[];
 }
 
 type FormData = z.infer<typeof customBudgetSchema>;
@@ -118,13 +118,14 @@ export const CustomBudgetForm = ({
   isSubmitting,
   onSubmit,
   onCancel,
+  clients,
 }: CustomBudgetFormProps) => {
   const [formattedBudget, setFormattedBudget] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
 
   // Buscar clientes ativos
-  const { data: clients, isLoading: isLoadingClients } = useQuery({
+  const { data: clientsData, isLoading: isLoadingClients } = useQuery({
     queryKey: ["active-clients-for-budget"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -327,7 +328,7 @@ export const CustomBudgetForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {clients?.map((client) => (
+                      {clientsData?.map((client) => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.company_name}
                         </SelectItem>

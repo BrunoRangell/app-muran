@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   Card,
@@ -77,7 +76,7 @@ export function CustomBudgetCards({
                           budget.isActive
                             ? isCurrentlyActive(budget)
                               ? "success"
-                              : "warning"
+                              : "secondary"
                             : "outline"
                         }
                         className="cursor-pointer"
