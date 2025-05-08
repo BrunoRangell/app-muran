@@ -7,10 +7,11 @@ import { useGoogleAdsData } from "../hooks/useGoogleAdsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, AlertCircle } from "lucide-react";
 import { useTabVisibility } from "../hooks/useTabVisibility";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface GoogleAdsTabProps {
   onRefreshCompleted?: () => void;
@@ -26,6 +27,7 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   // Recuperar estado de filtros do localStorage ao inicializar
   useEffect(() => {
@@ -63,16 +65,23 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
           console.log('GoogleAdsTab: Detectada mudança em orçamentos personalizados:', payload);
           // Invalidar o cache do React Query para forçar uma nova consulta
           queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+          toast({
+            title: "Orçamentos atualizados",
+            description: "Os orçamentos personalizados do Google Ads foram atualizados.",
+            duration: 3000,
+          });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Status da inscrição do canal realtime:", status);
+      });
 
     // Limpar inscrição ao desmontar
     return () => {
       console.log("Removendo monitoramento de orçamentos personalizados na aba Google Ads");
       supabase.removeChannel(channel);
     };
-  }, [isActive, queryClient]);
+  }, [isActive, queryClient, toast]);
 
   // Salvar estado dos filtros no localStorage quando mudar
   useEffect(() => {
@@ -126,8 +135,22 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
   // Handle refresh
   const handleRefresh = async () => {
     console.log("Atualizando dados do Google Ads...");
-    await refreshData();
-    if (onRefreshCompleted) onRefreshCompleted();
+    try {
+      await refreshData();
+      toast({
+        title: "Dados atualizados",
+        description: "Os dados do Google Ads foram atualizados com sucesso.",
+        duration: 3000,
+      });
+      if (onRefreshCompleted) onRefreshCompleted();
+    } catch (err) {
+      console.error("Erro ao atualizar dados:", err);
+      toast({
+        title: "Erro na atualização",
+        description: "Ocorreu um erro ao atualizar os dados do Google Ads.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle batch review
@@ -135,12 +158,18 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
     console.log("Iniciando revisão em lote do Google Ads...");
     if (data && data.length > 0) {
       reviewAllClients(data);
+    } else {
+      toast({
+        title: "Sem clientes para revisar",
+        description: "Não há clientes disponíveis para revisão em lote.",
+        variant: "destructive",
+      });
     }
   };
 
   // Renderização condicional baseada no estado de carregamento
   if (isLoading) {
-    return <ImprovedLoadingState />;
+    return <ImprovedLoadingState message="Carregando dados do Google Ads..." />;
   }
 
   if (error) {
@@ -149,6 +178,10 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
         title="Erro ao carregar dados"
         description={`Ocorreu um erro ao carregar os dados: ${error.message}`}
         icon={<AlertTriangle className="h-16 w-16 text-red-500 mb-4" />}
+        action={{
+          label: "Tentar novamente",
+          onClick: () => refreshData()
+        }}
       />
     );
   }
@@ -178,7 +211,7 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
       />
       
       {isFetching && !data ? (
-        <ImprovedLoadingState />
+        <ImprovedLoadingState message="Atualizando dados do Google Ads..." />
       ) : (
         <ClientsList 
           data={data}
