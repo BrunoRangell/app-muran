@@ -12,11 +12,12 @@ interface ClientRowProps {
 }
 
 export function ClientRow({ client, platform = "meta" }: ClientRowProps) {
-  const { reviewClient, processingIds } = useBatchOperations({
+  const { reviewClient, processingIds, isProcessingAccount } = useBatchOperations({
     platform: platform as "meta" | "google"
   });
   
-  const isProcessing = processingIds.includes(client.id);
+  const isProcessing = processingIds.includes(client.id) || 
+    isProcessingAccount(client.id, client[`${platform}_account_id`]);
   
   // Preparar dados para exibição
   const accountName = client[`${platform}_account_name`] || "Conta Principal";

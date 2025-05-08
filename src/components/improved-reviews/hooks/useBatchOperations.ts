@@ -11,6 +11,8 @@ interface BatchOperationsProps {
 export function useBatchOperations({ platform, onComplete }: BatchOperationsProps = { platform: "meta" }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAccounts, setProcessingAccounts] = useState<Record<string, boolean>>({});
+  // Adicionando o estado processingIds para corrigir o erro
+  const [processingIds, setProcessingIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Função para revisar um único cliente
@@ -19,6 +21,8 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
     
     try {
       setProcessingAccounts((prev) => ({ ...prev, [accountKey]: true }));
+      // Adicionar o ID à lista de processamento
+      setProcessingIds((prev) => [...prev, clientId]);
 
       console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` (conta ${metaAccountId})` : ''}`);
       
@@ -71,6 +75,8 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
       return false;
     } finally {
       setProcessingAccounts((prev) => ({ ...prev, [accountKey]: false }));
+      // Remover o ID da lista de processamento
+      setProcessingIds((prev) => prev.filter(id => id !== clientId));
     }
   };
 
@@ -122,7 +128,7 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
       toast({
         title: "Revisão em lote concluída",
         description: `${successCount} de ${uniqueClientsWithAccounts.size} contas processadas com sucesso`,
-        variant: successCount === uniqueClientsWithAccounts.size ? "default" : "warning",
+        variant: successCount === uniqueClientsWithAccounts.size ? "default" : "destructive",
       });
       
       if (onComplete) {
@@ -145,5 +151,6 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
     reviewAllClients,
     isProcessing,
     isProcessingAccount,
+    processingIds, // Expondo a propriedade processingIds
   };
 }

@@ -12,7 +12,7 @@ interface ClientsTableProps {
 }
 
 export function ClientsTable({ data, platform = "meta" }: ClientsTableProps) {
-  const { reviewClient, processingIds } = useBatchOperations({
+  const { reviewClient, processingIds, isProcessingAccount } = useBatchOperations({
     platform: platform as "meta" | "google"
   });
   
