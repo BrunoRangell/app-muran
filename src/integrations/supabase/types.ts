@@ -369,6 +369,7 @@ export type Database = {
       }
       custom_budgets: {
         Row: {
+          account_id: string | null
           budget_amount: number
           client_id: string
           created_at: string
@@ -383,6 +384,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_id?: string | null
           budget_amount?: number
           client_id: string
           created_at?: string
@@ -397,6 +399,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_id?: string | null
           budget_amount?: number
           client_id?: string
           created_at?: string

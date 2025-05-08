@@ -20,6 +20,9 @@ export interface CustomBudget {
   budget_amount: number;
   start_date: string;
   end_date: string;
+  is_active: boolean;
+  platform: string;
+  account_id: string | null;
 }
 
 export interface ReviewData {
@@ -85,15 +88,41 @@ export async function fetchMetaAccountDetails(
 export async function fetchActiveCustomBudget(
   supabase: any, 
   clientId: string,
-  today: string
+  today: string,
+  accountId?: string | null
 ): Promise<CustomBudget | null> {
-  console.log(`Buscando orçamento personalizado ativo para cliente ${clientId}`);
+  console.log(`Buscando orçamento personalizado ativo para cliente ${clientId} ${accountId ? `e conta ${accountId}` : ''}`);
   
+  // Primeiro tentamos encontrar um orçamento específico para a conta (se fornecida)
+  if (accountId) {
+    const { data: accountSpecificBudget, error: specificBudgetError } = await supabase
+      .from("custom_budgets")
+      .select("*")
+      .eq("client_id", clientId)
+      .eq("is_active", true)
+      .eq("platform", "meta")
+      .eq("account_id", accountId)
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .order("created_at", { ascending: false })
+      .maybeSingle();
+    
+    if (specificBudgetError) {
+      console.error(`Erro ao buscar orçamento personalizado específico: ${specificBudgetError.message}`);
+    } else if (accountSpecificBudget) {
+      console.log(`Encontrado orçamento personalizado específico para a conta ${accountId}`);
+      return accountSpecificBudget;
+    }
+  }
+  
+  // Se não encontrar um específico, ou se accountId não for fornecido, busca um orçamento geral do cliente
   const { data: customBudget, error: customBudgetError } = await supabase
-    .from("meta_custom_budgets")
+    .from("custom_budgets")
     .select("*")
     .eq("client_id", clientId)
     .eq("is_active", true)
+    .eq("platform", "meta")
+    .is("account_id", null)
     .lte("start_date", today)
     .gte("end_date", today)
     .order("created_at", { ascending: false })
