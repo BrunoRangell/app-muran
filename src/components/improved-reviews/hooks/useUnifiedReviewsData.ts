@@ -61,6 +61,18 @@ export function useUnifiedReviewsData() {
 
       if (reviewsError) throw reviewsError;
 
+      // Buscar orçamentos personalizados ativos
+      const { data: customBudgets, error: customBudgetsError } = await supabase
+        .from("custom_budgets")
+        .select("*")
+        .eq("platform", "meta")
+        .eq("is_active", true)
+        .lte("start_date", new Date().toISOString().split('T')[0])
+        .gte("end_date", new Date().toISOString().split('T')[0]);
+
+      if (customBudgetsError) console.error("Erro ao buscar orçamentos personalizados:", customBudgetsError);
+      const activeCustomBudgets = customBudgets || [];
+
       // Combinar os dados
       const clientsWithData = clients.map(client => {
         // Encontrar contas do cliente
@@ -75,9 +87,18 @@ export function useUnifiedReviewsData() {
               (r.meta_account_id === account.account_id || r.client_account_id === account.account_id)
             );
             
+            // Encontrar orçamento personalizado para esta conta
+            const customBudget = activeCustomBudgets.find(
+              budget => budget.client_id === client.id && 
+              (budget.account_id === account.account_id || !budget.account_id)
+            );
+
+            // Usar orçamento personalizado se disponível
+            const monthlyBudget = customBudget ? customBudget.budget_amount : account.budget_amount;
+            
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
-              monthlyBudget: account.budget_amount,
+              monthlyBudget: monthlyBudget,
               totalSpent: review?.meta_total_spent || 0,
               currentDailyBudget: review?.meta_daily_budget_current || 0
             });
@@ -87,6 +108,9 @@ export function useUnifiedReviewsData() {
               meta_account_id: account.account_id,
               meta_account_name: account.account_name,
               budget_amount: account.budget_amount,
+              custom_budget: customBudget || null,
+              custom_budget_amount: customBudget?.budget_amount,
+              using_custom_budget: !!customBudget,
               review: review || null,
               budgetCalculation: budgetCalc,
               needsAdjustment: budgetCalc.needsBudgetAdjustment
@@ -96,9 +120,17 @@ export function useUnifiedReviewsData() {
           // Cliente sem contas específicas, usar valores padrão
           const review = reviews.find(r => r.client_id === client.id);
           
+          // Encontrar orçamento personalizado para o cliente (sem conta específica)
+          const customBudget = activeCustomBudgets.find(
+            budget => budget.client_id === client.id && !budget.account_id
+          );
+
+          // Usar orçamento personalizado se disponível
+          const monthlyBudget = customBudget ? customBudget.budget_amount : client.meta_ads_budget;
+          
           // Calcular orçamento recomendado
           const budgetCalc = calculateBudget({
-            monthlyBudget: client.meta_ads_budget,
+            monthlyBudget: monthlyBudget,
             totalSpent: review?.meta_total_spent || 0,
             currentDailyBudget: review?.meta_daily_budget_current || 0
           });
@@ -108,6 +140,9 @@ export function useUnifiedReviewsData() {
             meta_account_id: null,
             meta_account_name: "Conta Principal",
             budget_amount: client.meta_ads_budget,
+            custom_budget: customBudget || null,
+            custom_budget_amount: customBudget?.budget_amount,
+            using_custom_budget: !!customBudget,
             review: review || null,
             budgetCalculation: budgetCalc,
             needsAdjustment: budgetCalc.needsBudgetAdjustment
@@ -119,7 +154,13 @@ export function useUnifiedReviewsData() {
       const flattenedClients = clientsWithData.flat();
       
       // Calcular métricas
-      const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
+      const totalBudget = flattenedClients.reduce((sum, client) => {
+        // Usar orçamento personalizado se disponível, senão usar orçamento padrão
+        const budgetToUse = client.using_custom_budget ? 
+          client.custom_budget_amount : client.budget_amount;
+        return sum + (budgetToUse || 0);
+      }, 0);
+      
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.meta_total_spent || 0), 0);
       const needingAdjustment = flattenedClients.filter(client => client.needsAdjustment).length;
       

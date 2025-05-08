@@ -1,6 +1,6 @@
 
 import { formatCurrency } from "@/utils/formatters";
-import { MinusCircle, TrendingDown, TrendingUp, Info } from "lucide-react";
+import { MinusCircle, TrendingDown, TrendingUp, Info, Stars } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CompactBudgetRecommendation } from "./card-components/CompactBudgetRecommendation";
 
@@ -13,6 +13,9 @@ interface BudgetRecommendationProps {
   lastFiveDaysAverage?: number;
   compact?: boolean;
   platform?: "meta" | "google";
+  usingCustomBudget?: boolean;
+  customBudgetAmount?: number;
+  usingRealData?: boolean;
 }
 
 export const BudgetRecommendation = ({ 
@@ -23,7 +26,10 @@ export const BudgetRecommendation = ({
   hasReview,
   lastFiveDaysAverage = 0,
   compact = false,
-  platform = "meta"
+  platform = "meta",
+  usingCustomBudget = false,
+  customBudgetAmount,
+  usingRealData = true
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
 
@@ -36,6 +42,10 @@ export const BudgetRecommendation = ({
         shouldShow={shouldShow}
         shouldShowAverage={platform === "google" ? shouldShowAverage : false}
         lastFiveDaysAverage={platform === "google" ? lastFiveDaysAverage : undefined}
+        platform={platform}
+        usingRealData={usingRealData}
+        usingCustomBudget={usingCustomBudget}
+        customBudgetAmount={customBudgetAmount}
       />
     );
   }
@@ -43,19 +53,38 @@ export const BudgetRecommendation = ({
   const shouldShowAverageForPlatform = shouldShowAverage && platform === "google";
   const hasAnyRecommendation = shouldShow || shouldShowAverageForPlatform;
   
-  if (!hasAnyRecommendation) {
-    return (
-      <div className="mt-2 p-3 rounded-lg bg-gray-50 border-l-4 border-l-gray-500">
-        <div className="flex items-center gap-2 font-medium text-gray-700">
-          <MinusCircle size={18} className="text-gray-500" />
-          Recomendação: Nenhum ajuste necessário
-        </div>
-      </div>
-    );
-  }
-  
   return (
     <div className="mt-2 space-y-2">
+      {usingCustomBudget && (
+        <div className="p-3 rounded-lg bg-purple-50 border-l-4 border-l-purple-500">
+          <div className="flex items-center gap-2 font-medium text-purple-700">
+            <Stars size={18} className="text-purple-500" />
+            <span>
+              Usando orçamento personalizado: {formatCurrency(customBudgetAmount || 0)}
+            </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info size={14} className="text-gray-500 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="p-3 max-w-xs">
+                  <p>Este cliente está usando um orçamento personalizado que substitui o orçamento padrão.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+      )}
+      
+      {!hasAnyRecommendation && (
+        <div className="mt-2 p-3 rounded-lg bg-gray-50 border-l-4 border-l-gray-500">
+          <div className="flex items-center gap-2 font-medium text-gray-700">
+            <MinusCircle size={18} className="text-gray-500" />
+            Recomendação: Nenhum ajuste necessário
+          </div>
+        </div>
+      )}
+      
       {shouldShow && (
         <div className={`p-3 rounded-lg ${
           budgetDifference > 0 

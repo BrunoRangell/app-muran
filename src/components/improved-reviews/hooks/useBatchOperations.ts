@@ -11,7 +11,6 @@ interface BatchOperationsProps {
 export function useBatchOperations({ platform, onComplete }: BatchOperationsProps = { platform: "meta" }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAccounts, setProcessingAccounts] = useState<Record<string, boolean>>({});
-  // Adicionando o estado processingIds para corrigir o erro
   const [processingIds, setProcessingIds] = useState<string[]>([]);
   const { toast } = useToast();
 
@@ -21,7 +20,6 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
     
     try {
       setProcessingAccounts((prev) => ({ ...prev, [accountKey]: true }));
-      // Adicionar o ID à lista de processamento
       setProcessingIds((prev) => [...prev, clientId]);
 
       console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` (conta ${metaAccountId})` : ''}`);
@@ -53,6 +51,27 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
         payload["metaAccountId"] = metaAccountId;
       }
 
+      // Verificar se há orçamento personalizado ativo para este cliente/conta
+      const { data: customBudget, error: customBudgetError } = await supabase
+        .from("custom_budgets")
+        .select("*")
+        .eq("client_id", clientId)
+        .eq("platform", platform)
+        .eq("is_active", true)
+        .lte("start_date", new Date().toISOString().split("T")[0])
+        .gte("end_date", new Date().toISOString().split("T")[0])
+        .order("created_at", { ascending: false })
+        .maybeSingle();
+
+      // Se encontrou um orçamento personalizado, adicionar ao payload
+      if (customBudget && !customBudgetError) {
+        payload["using_custom_budget"] = true;
+        payload["custom_budget_id"] = customBudget.id;
+        payload["custom_budget_amount"] = customBudget.budget_amount;
+        
+        console.log(`Usando orçamento personalizado: ${customBudget.budget_amount} para cliente ${clientId}`);
+      }
+
       // Chamar função Edge apropriada para a plataforma
       const functionName = platform === "meta" ? "daily-meta-review" : "daily-google-review";
       const { data, error } = await supabase.functions.invoke(functionName, {
@@ -75,7 +94,6 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
       return false;
     } finally {
       setProcessingAccounts((prev) => ({ ...prev, [accountKey]: false }));
-      // Remover o ID da lista de processamento
       setProcessingIds((prev) => prev.filter(id => id !== clientId));
     }
   };
@@ -93,21 +111,33 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
       
       const uniqueClientsWithAccounts = new Map();
       
-      // Organizar clientes por ID e contas Meta
+      // Organizar clientes por ID e contas
       clients.forEach(client => {
         const clientId = client.id;
+        let accountId = null;
         
-        if (client.meta_account_id) {
-          // Se o cliente tem uma conta Meta específica
-          const key = `${clientId}-${client.meta_account_id}`;
+        // Determinar qual ID de conta usar com base na plataforma
+        if (platform === "meta" && client.meta_account_id) {
+          accountId = client.meta_account_id;
+        } else if (platform === "google" && client.google_account_id) {
+          accountId = client.google_account_id;
+        }
+        
+        if (accountId) {
+          // Se o cliente tem uma conta específica
+          const key = `${clientId}-${accountId}`;
           uniqueClientsWithAccounts.set(key, {
             clientId,
-            metaAccountId: client.meta_account_id
+            accountId,
+            customBudget: client.custom_budget
           });
         } else {
           // Cliente sem conta específica
           const key = `${clientId}-default`;
-          uniqueClientsWithAccounts.set(key, { clientId });
+          uniqueClientsWithAccounts.set(key, { 
+            clientId,
+            customBudget: client.custom_budget
+          });
         }
       });
       
@@ -116,7 +146,7 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
       // Processamento sequencial para evitar sobrecarga
       const results = [];
       for (const client of uniqueClientsWithAccounts.values()) {
-        const result = await reviewClient(client.clientId, client.metaAccountId);
+        const result = await reviewClient(client.clientId, client.accountId);
         results.push(result);
         
         // Pequeno delay entre requisições
@@ -151,6 +181,6 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
     reviewAllClients,
     isProcessing,
     isProcessingAccount,
-    processingIds, // Expondo a propriedade processingIds
+    processingIds,
   };
 }
