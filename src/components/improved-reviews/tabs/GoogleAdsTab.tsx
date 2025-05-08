@@ -168,17 +168,21 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
     console.log("Atualizando dados do Google Ads...");
     try {
       const result = await refreshData();
-      if (result.error) {
+      
+      // Verificar se o resultado tem a propriedade data, o que indica sucesso
+      if (result && 'data' in result) {
+        toast({
+          title: "Dados atualizados",
+          description: "Os dados do Google Ads foram atualizados com sucesso.",
+          duration: 3000,
+        });
+        
+        if (onRefreshCompleted) onRefreshCompleted();
+      } 
+      // Se o resultado tem a propriedade error, tratar como erro
+      else if (result && 'error' in result) {
         throw result.error;
       }
-      
-      toast({
-        title: "Dados atualizados",
-        description: "Os dados do Google Ads foram atualizados com sucesso.",
-        duration: 3000,
-      });
-      
-      if (onRefreshCompleted) onRefreshCompleted();
     } catch (err) {
       console.error("Erro ao atualizar dados:", err);
       toast({

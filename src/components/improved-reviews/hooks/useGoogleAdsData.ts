@@ -304,12 +304,18 @@ export function useGoogleAdsData() {
     // Verificar se já passou tempo suficiente desde a última atualização
     if (now - lastRefreshTimestamp.current < MIN_REFRESH_INTERVAL) {
       console.log(`Ignorando atualização - última foi há ${now - lastRefreshTimestamp.current}ms (mínimo: ${MIN_REFRESH_INTERVAL}ms)`);
-      return { data: data };
+      return { data };
     }
     
     console.log("Forçando atualização dos dados do Google Ads...");
     lastRefreshTimestamp.current = now;
-    return refetch({ cancelRefetch: true });
+    try {
+      const result = await refetch({ cancelRefetch: true });
+      return result;
+    } catch (error) {
+      console.error("Erro durante atualização dos dados:", error);
+      return { error };
+    }
   };
 
   // Calculando um estado de carregamento combinado que considera tanto o carregamento inicial
