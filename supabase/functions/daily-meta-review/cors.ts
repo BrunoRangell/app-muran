@@ -4,16 +4,17 @@ export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Max-Age': '86400',
 };
 
-// Handler para requisições CORS preflight
-export function handleCors(req: Request) {
+// Função para lidar com requisições CORS preflight
+export function handleCors(req: Request): Response | null {
+  // Verificar se é uma requisição OPTIONS (preflight)
   if (req.method === 'OPTIONS') {
     return new Response(null, {
-      status: 204,
-      headers: new Headers(corsHeaders),
+      headers: corsHeaders,
+      status: 204
     });
   }
+  
   return null;
 }

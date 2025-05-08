@@ -474,13 +474,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "daily_budget_reviews_client_account_id_fkey"
-            columns: ["client_account_id"]
-            isOneToOne: false
-            referencedRelation: "client_meta_accounts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "daily_budget_reviews_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false

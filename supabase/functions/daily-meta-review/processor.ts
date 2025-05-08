@@ -63,8 +63,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     console.log(`Iniciando revisão para cliente ${clientId} com conta Meta ${metaAccountId || "padrão"}`);
 
     // Verificar se o clientId foi fornecido
-    const clientIdError = validateRequest(clientId);
-    if (clientIdError) {
+    if (!clientId) {
       return {
         success: false,
         reviewId: null,
