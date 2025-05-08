@@ -5,6 +5,19 @@ import { supabase } from "@/lib/supabase";
 import { useBudgetCalculator } from "./useBudgetCalculator";
 import { ClientMetrics } from "./useUnifiedReviewsData";
 
+export interface GoogleAdsClientData {
+  id: string;
+  company_name: string;
+  google_account_id: string;
+  google_account_name: string;
+  budget_amount: number;
+  review: any;
+  budgetCalculation: any;
+  needsAdjustment: boolean;
+  lastFiveDaysAvg: number;
+  usingRealData?: boolean;
+}
+
 export function useGoogleAdsData() {
   const [metrics, setMetrics] = useState<ClientMetrics>({
     totalClients: 0,
@@ -64,7 +77,8 @@ export function useGoogleAdsData() {
         .from("google_ads_reviews")
         .select("*")
         .gte("review_date", firstDayStr)
-        .order("review_date", { ascending: false });
+        .order("review_date", { ascending: false })
+        .order("updated_at", { ascending: false });
 
       if (reviewsError) throw reviewsError;
       
@@ -80,14 +94,20 @@ export function useGoogleAdsData() {
           // Se o cliente tiver contas específicas, criar um item para cada conta
           if (accounts.length > 0) {
             return accounts.map(account => {
-              // Encontrar revisões para esta conta (apenas do mês atual)
+              // Encontrar revisões para esta conta específica (cliente + conta)
               const accountReviews = reviews ? reviews.filter(r => 
                 r.client_id === client.id && 
-                (r.google_account_id === account.account_id || r.client_account_id === account.id)
+                (
+                  (r.google_account_id === account.account_id) ||
+                  (r.client_account_id === account.id)
+                )
               ) : [];
               
-              // Usar a revisão mais recente
+              // Usar a revisão mais recente para esta conta
               const review = accountReviews.length > 0 ? accountReviews[0] : null;
+              
+              // Verificar se os dados são reais ou simulados
+              const usingRealData = review?.usingRealData !== false; // Se não especificado, assumir verdadeiro
               
               // Obter a média de gasto dos últimos 5 dias (se disponível)
               const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
@@ -103,18 +123,26 @@ export function useGoogleAdsData() {
               return {
                 ...client,
                 google_account_id: account.account_id,
-                google_account_name: account.account_name,
+                google_account_name: account.account_name || "Conta Google",
                 budget_amount: account.budget_amount,
                 review: review || null,
                 budgetCalculation: budgetCalc,
                 needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
-                lastFiveDaysAvg: lastFiveDaysAvg
+                lastFiveDaysAvg: lastFiveDaysAvg,
+                usingRealData
               };
             });
           } else if (client.google_account_id) {
             // Cliente com ID de conta padrão
-            const clientReviews = reviews ? reviews.filter(r => r.client_id === client.id) : [];
+            const clientReviews = reviews ? reviews.filter(r => 
+              r.client_id === client.id && 
+              r.google_account_id === client.google_account_id
+            ) : [];
+            
             const review = clientReviews.length > 0 ? clientReviews[0] : null;
+            
+            // Verificar se os dados são reais ou simulados
+            const usingRealData = review?.usingRealData !== false; // Se não especificado, assumir verdadeiro
             
             // Obter a média de gasto dos últimos 5 dias (se disponível)
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
@@ -134,7 +162,8 @@ export function useGoogleAdsData() {
               review: review || null,
               budgetCalculation: budgetCalc,
               needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
-              lastFiveDaysAvg: lastFiveDaysAvg
+              lastFiveDaysAvg: lastFiveDaysAvg,
+              usingRealData
             };
           }
           
@@ -162,7 +191,9 @@ export function useGoogleAdsData() {
       setMetrics(metricsData);
 
       return flattenedClients;
-    }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
   return {

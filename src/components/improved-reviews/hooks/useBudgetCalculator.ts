@@ -41,7 +41,9 @@ export function useBudgetCalculator() {
       const roundedIdealDailyBudget = Math.round(idealDailyBudget * 100) / 100;
       
       // Diferença entre o orçamento diário atual e o ideal
-      const budgetDifference = roundedIdealDailyBudget - input.currentDailyBudget;
+      const budgetDifference = input.currentDailyBudget > 0 
+        ? roundedIdealDailyBudget - input.currentDailyBudget
+        : 0;
       
       // Determinar se precisa de ajuste (diferença de 5 reais ou 5%)
       const absoluteDifference = Math.abs(budgetDifference);

@@ -1,6 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Info } from "lucide-react";
+import { TrendingUp, TrendingDown, Info, CloudOff } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -11,6 +11,7 @@ interface CompactBudgetRecommendationProps {
   shouldShowAverage?: boolean;
   lastFiveDaysAverage?: number;
   platform?: 'google' | 'meta';
+  usingRealData?: boolean;
 }
 
 export const CompactBudgetRecommendation = ({ 
@@ -19,7 +20,8 @@ export const CompactBudgetRecommendation = ({
   shouldShow,
   shouldShowAverage = false,
   lastFiveDaysAverage = 0,
-  platform = 'meta'
+  platform = 'meta',
+  usingRealData = true
 }: CompactBudgetRecommendationProps) => {
   const hasAnyRecommendation = shouldShow || shouldShowAverage;
   
@@ -36,6 +38,23 @@ export const CompactBudgetRecommendation = ({
   
   return (
     <div className="flex flex-wrap gap-1 mt-1">
+      {!usingRealData && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <Badge className="flex items-center bg-amber-100 text-amber-800">
+                <CloudOff size={10} className="mr-1" />
+                <span className="text-xs">Dados simulados</span>
+                <Info size={10} className="ml-1 text-amber-600" />
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Não foi possível obter dados reais da API. Estes valores são estimados ou recuperados de dados históricos.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    
       {shouldShow && (
         <TooltipProvider>
           <Tooltip>

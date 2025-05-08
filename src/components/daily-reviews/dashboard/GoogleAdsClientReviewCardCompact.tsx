@@ -1,11 +1,12 @@
 
 import { Card } from "@/components/ui/card";
-import { Loader } from "lucide-react";
+import { Loader, CloudOff } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "../summary/utils";
 import { CompactBudgetRecommendation } from "./card-components/CompactBudgetRecommendation";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -36,6 +37,9 @@ export const GoogleAdsClientReviewCardCompact = ({
     needsBudgetAdjustment,
     needsAdjustmentBasedOnAverage
   } = useGoogleAdsBudgetCalculation(client);
+
+  // Verificar se os dados são reais ou simulados
+  const usingRealData = client?.lastReview?.usingRealData !== false;
 
   const handleReviewClick = () => {
     if (!isProcessing && !inactive) {
@@ -83,14 +87,29 @@ export const GoogleAdsClientReviewCardCompact = ({
             <h3 className="font-semibold text-gray-800 text-sm line-clamp-1 mb-1">
               {client.company_name}
             </h3>
-            <div className="flex items-center">
+            <div className="flex items-center flex-wrap gap-1">
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
                 {formattedLastReviewDate}
               </span>
               {hasGoogleAccounts && (
-                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded ml-1">
+                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">
                   {accountsLabel}
                 </span>
+              )}
+              {!usingRealData && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded flex items-center">
+                        <CloudOff className="h-3 w-3 mr-1" />
+                        Simulado
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Dados estimados ou históricos. Não foi possível obter dados reais da API.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           </div>
@@ -174,6 +193,7 @@ export const GoogleAdsClientReviewCardCompact = ({
           shouldShowAverage={!!needsAdjustmentBasedOnAverage}
           lastFiveDaysAverage={lastFiveDaysSpent}
           platform="google"
+          usingRealData={usingRealData}
         />
       </div>
     </Card>
