@@ -3,147 +3,147 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 
-type BatchOperationsConfig = {
-  onComplete?: () => void;
+interface BatchOperationsProps {
   platform: "meta" | "google";
-};
+  onComplete?: () => void;
+}
 
-export function useBatchOperations(config: BatchOperationsConfig) {
+export function useBatchOperations({ platform, onComplete }: BatchOperationsProps = { platform: "meta" }) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingIds, setProcessingIds] = useState<string[]>([]);
-  const [progress, setProgress] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [processingAccounts, setProcessingAccounts] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
-  // Iniciar processamento de um cliente específico
-  const startClientProcessing = (clientId: string) => {
-    setProcessingIds(prev => [...prev, clientId]);
-  };
-
-  // Finalizar processamento de um cliente específico  
-  const finishClientProcessing = (clientId: string) => {
-    setProcessingIds(prev => prev.filter(id => id !== clientId));
-    setProgress(prev => prev + 1);
-  };
-
-  // Revisar um cliente específico
-  const reviewClient = async (clientId: string, accountId?: string) => {
-    startClientProcessing(clientId);
+  // Função para revisar um único cliente
+  const reviewClient = async (clientId: string, metaAccountId?: string) => {
+    const accountKey = `${clientId}-${metaAccountId || "default"}`;
     
     try {
-      const reviewDate = new Date().toISOString().split("T")[0];
+      setProcessingAccounts((prev) => ({ ...prev, [accountKey]: true }));
+
+      console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` (conta ${metaAccountId})` : ''}`);
       
-      // Obter detalhes do cliente
-      const { data: client } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("id", clientId)
-        .single();
+      // Obter token do Meta Ads
+      const { data: tokenData, error: tokenError } = await supabase
+        .from("api_tokens")
+        .select("value")
+        .eq("name", "meta_access_token")
+        .maybeSingle();
       
-      if (!client) {
-        throw new Error("Cliente não encontrado");
+      if (tokenError) {
+        throw new Error("Erro ao buscar token Meta Ads: " + tokenError.message);
       }
       
-      // Definir endpoint baseado na plataforma
-      const endpoint = config.platform === "meta" ? 
-        "daily-meta-review" : 
-        "daily-google-review";
-      
-      // Construir payload
+      if (!tokenData?.value) {
+        throw new Error("Token Meta Ads não configurado");
+      }
+
+      // Construir payload para função Edge
       const payload = {
         clientId,
-        reviewDate,
-        [config.platform === "meta" ? "metaAccountId" : "googleAccountId"]: accountId || 
-          (config.platform === "meta" ? client.meta_account_id : client.google_account_id)
+        accessToken: tokenData.value,
+        reviewDate: new Date().toISOString().split("T")[0]
       };
-      
-      // Fazer chamada direta para a função Edge
-      const { data, error } = await supabase.functions.invoke(endpoint, {
+
+      // Adicionar accountId específico se fornecido
+      if (metaAccountId) {
+        payload["metaAccountId"] = metaAccountId;
+      }
+
+      // Chamar função Edge apropriada para a plataforma
+      const functionName = platform === "meta" ? "daily-meta-review" : "daily-google-review";
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: payload
       });
-      
+
       if (error) {
-        throw new Error(`Erro ao processar revisão: ${error.message}`);
+        throw new Error(`Erro na função Edge: ${error.message}`);
       }
-      
-      if (data && data.error) {
-        throw new Error(data.error || "Erro ao processar revisão");
-      }
-      
-      toast({
-        title: "Revisão concluída",
-        description: `Cliente ${client.company_name} revisado com sucesso.`,
-      });
-      
-      return data;
-    } catch (error: any) {
-      console.error("Erro ao revisar cliente:", error);
+
+      console.log(`Revisão concluída com sucesso:`, data);
+      return true;
+    } catch (error) {
+      console.error(`Erro ao revisar cliente ${clientId}:`, error);
       toast({
         title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao revisar o cliente",
+        description: error.message || "Ocorreu um erro ao processar a revisão",
         variant: "destructive",
       });
-      throw error;
+      return false;
     } finally {
-      finishClientProcessing(clientId);
+      setProcessingAccounts((prev) => ({ ...prev, [accountKey]: false }));
     }
   };
-  
-  // Revisar todos os clientes
+
+  // Função para verificar se um cliente/conta está sendo processado
+  const isProcessingAccount = (clientId: string, accountId?: string) => {
+    const key = `${clientId}-${accountId || "default"}`;
+    return !!processingAccounts[key];
+  };
+
+  // Função para revisar todos os clientes em lote
   const reviewAllClients = async (clients: any[]) => {
-    if (!clients?.length) {
-      toast({
-        title: "Sem clientes para analisar",
-        description: "Não há clientes disponíveis para análise.",
-      });
-      return;
-    }
-    
-    setIsProcessing(true);
-    setProgress(0);
-    setTotal(clients.length);
-    setProcessingIds(clients.map(client => client.id));
-    
-    const successfulReviews: string[] = [];
-    const failedReviews: string[] = [];
-    
-    // Crie um atraso para mostrar o progresso da operação
-    const processWithDelay = async () => {
-      for (const client of clients) {
-        try {
-          await reviewClient(client.id, client[`${config.platform}_account_id`] || undefined);
-          successfulReviews.push(client.company_name || client.id);
-        } catch (error) {
-          failedReviews.push(client.company_name || client.id);
-          console.error(`Erro ao revisar cliente ${client.id}:`, error);
-        }
+    try {
+      setIsProcessing(true);
+      
+      const uniqueClientsWithAccounts = new Map();
+      
+      // Organizar clientes por ID e contas Meta
+      clients.forEach(client => {
+        const clientId = client.id;
         
-        // Pequeno atraso para melhorar a experiência visual
-        await new Promise(r => setTimeout(r, 300));
-      }
-      
-      setIsProcessing(false);
-      setProcessingIds([]);
-      
-      toast({
-        title: "Revisão em massa concluída",
-        description: `${successfulReviews.length} clientes revisados com sucesso${failedReviews.length > 0 ? `, ${failedReviews.length} falhas` : ''}.`,
+        if (client.meta_account_id) {
+          // Se o cliente tem uma conta Meta específica
+          const key = `${clientId}-${client.meta_account_id}`;
+          uniqueClientsWithAccounts.set(key, {
+            clientId,
+            metaAccountId: client.meta_account_id
+          });
+        } else {
+          // Cliente sem conta específica
+          const key = `${clientId}-default`;
+          uniqueClientsWithAccounts.set(key, { clientId });
+        }
       });
       
-      if (config.onComplete) {
-        config.onComplete();
+      console.log(`Processando ${uniqueClientsWithAccounts.size} clientes/contas em lote`);
+      
+      // Processamento sequencial para evitar sobrecarga
+      const results = [];
+      for (const client of uniqueClientsWithAccounts.values()) {
+        const result = await reviewClient(client.clientId, client.metaAccountId);
+        results.push(result);
+        
+        // Pequeno delay entre requisições
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
-    };
-    
-    processWithDelay();
+      
+      const successCount = results.filter(Boolean).length;
+      
+      toast({
+        title: "Revisão em lote concluída",
+        description: `${successCount} de ${uniqueClientsWithAccounts.size} contas processadas com sucesso`,
+        variant: successCount === uniqueClientsWithAccounts.size ? "default" : "warning",
+      });
+      
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error) {
+      console.error("Erro no processamento em lote:", error);
+      toast({
+        title: "Erro no processamento em lote",
+        description: error.message || "Ocorreu um erro ao processar a revisão em lote",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return {
     reviewClient,
     reviewAllClients,
     isProcessing,
-    processingIds,
-    progress,
-    total
+    isProcessingAccount,
   };
 }

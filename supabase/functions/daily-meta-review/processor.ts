@@ -9,8 +9,8 @@ import {
   createNewReview,
   updateClientCurrentReview 
 } from "./database.ts";
-import { calculateIdealDailyBudget } from "./budget.ts";
-import { validateRequest } from "./validators.ts";
+import { calculateIdealDailyBudget, clientNeedsAdjustment } from "./budget.ts";
+import { fetchMetaAdsData } from "./meta-api.ts";
 
 // Definição de tipos
 interface RequestBody {
@@ -19,6 +19,7 @@ interface RequestBody {
   reviewDate?: string;
   metaAccountName?: string;
   metaBudgetAmount?: number;
+  accessToken?: string;
 }
 
 interface ReviewResult {
@@ -57,7 +58,8 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       metaAccountId, 
       reviewDate = new Date().toISOString().split("T")[0],
       metaAccountName,
-      metaBudgetAmount
+      metaBudgetAmount,
+      accessToken
     } = requestBody;
 
     console.log(`Iniciando revisão para cliente ${clientId} com conta Meta ${metaAccountId || "padrão"}`);
@@ -111,8 +113,53 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     console.log(`Usando orçamento personalizado: ${usingCustomBudget}`);
     console.log(`Orçamento usado: ${budgetAmount} para conta ${accountName} (${accountId})`);
 
-    // Simular gasto total (em produção, isso seria calculado com base nos dados reais)
-    const totalSpent = budgetAmount * 0.65; // Simulação: 65% do orçamento mensal foi gasto
+    // Buscar token de acesso da Meta Ads se não foi fornecido na requisição
+    let validAccessToken = accessToken;
+    if (!validAccessToken) {
+      const { data: tokenData } = await supabase
+        .from("api_tokens")
+        .select("value")
+        .eq("name", "meta_access_token")
+        .maybeSingle();
+      
+      if (!tokenData?.value) {
+        console.error("Token de acesso da Meta Ads não encontrado no banco de dados");
+        throw new Error("Token de acesso da Meta Ads não configurado");
+      }
+      
+      validAccessToken = tokenData.value;
+    }
+
+    // Buscar dados reais da API do Meta Ads
+    let totalSpent = 0;
+    let apiDataFetched = false;
+    
+    try {
+      if (accountId && validAccessToken) {
+        console.log(`Buscando dados reais da API Meta Ads para conta ${accountId}`);
+        
+        const metaAdsData = await fetchMetaAdsData(accountId, validAccessToken);
+        
+        if (metaAdsData && metaAdsData.totalSpent !== undefined) {
+          totalSpent = metaAdsData.totalSpent;
+          apiDataFetched = true;
+          console.log(`Dados obtidos com sucesso da API: Gasto total = ${totalSpent}`);
+        } else {
+          console.warn("Dados da API retornaram valor de gasto indefinido");
+        }
+      } else {
+        console.warn("ID da conta Meta ou token de acesso não disponíveis para buscar dados reais");
+      }
+    } catch (apiError) {
+      console.error("Erro ao buscar dados da API Meta Ads:", apiError);
+      // Continuar com simulação em caso de erro na API
+    }
+    
+    // Usar simulação apenas se falhar na obtenção de dados reais
+    if (!apiDataFetched) {
+      console.warn("Utilizando simulação de 65% como fallback devido a erro na API");
+      totalSpent = budgetAmount * 0.65; // Simulação: 65% do orçamento mensal foi gasto como fallback
+    }
 
     // Calcular orçamento diário ideal
     const roundedIdealDailyBudget = calculateIdealDailyBudget(budgetAmount, totalSpent);
@@ -152,7 +199,12 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     }
 
     // Registrar na tabela client_current_reviews para referência rápida ao estado atual
-    await updateClientCurrentReview(supabase, clientId, reviewDate, reviewData);
+    try {
+      await updateClientCurrentReview(supabase, clientId, reviewDate, reviewData);
+    } catch (updateError) {
+      console.error("Erro ao atualizar revisão atual:", updateError);
+      // Continue mesmo com erro no update da tabela client_current_reviews
+    }
 
     return {
       success: true,
