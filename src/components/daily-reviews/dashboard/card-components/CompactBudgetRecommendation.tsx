@@ -36,7 +36,7 @@ export const CompactBudgetRecommendation = ({
                                    lastFiveDaysAverage > 0 &&
                                    platform === 'google';
                                    
-  console.log(`[DEBUG] CompactBudgetRecommendation - platform: ${platform}, shouldShowAverage: ${shouldShowAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, lastFiveDaysAverage: ${lastFiveDaysAverage}, showAverageRecommendation: ${showAverageRecommendation}, usingCustomBudget: ${usingCustomBudget}`);
+  console.log(`[DEBUG] CompactBudgetRecommendation - platform: ${platform}, shouldShowAverage: ${shouldShowAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, lastFiveDaysAverage: ${lastFiveDaysAverage}, showAverageRecommendation: ${showAverageRecommendation}, usingCustomBudget: ${usingCustomBudget}, customBudgetAmount: ${customBudgetAmount}`);
   
   if (!hasAnyRecommendation && !usingCustomBudget) {
     return null;
