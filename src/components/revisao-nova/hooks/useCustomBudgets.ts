@@ -39,6 +39,7 @@ export interface CustomBudgetFormData {
   description?: string;
   isRecurring?: boolean;
   recurrencePattern?: string | null;
+  accountId?: string | null;
 }
 
 export interface UseCustomBudgetsParams {
@@ -355,7 +356,10 @@ export const useCustomBudgets = ({
   // Preparar dados filtrados
   const filteredClients = clientsWithBudgets.filter((clientWithBudget) => {
     if (!searchTerm) return true;
-    return clientWithBudget.client.company_name.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Corrigir o erro de tipagem com cast explícito
+    const cwb = clientWithBudget as ClientWithBudgets;
+    return cwb.client.company_name.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   // Formatadores e auxiliares
@@ -396,7 +400,8 @@ export const useCustomBudgets = ({
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Cliente,Valor,Data Início,Data Fim,Status,Descrição\n";
 
-    clientsWithBudgets.forEach(({ client, budgets }) => {
+    // Corrigir o erro de tipagem com cast explícito
+    (clientsWithBudgets as ClientWithBudgets[]).forEach(({ client, budgets }) => {
       budgets.forEach(budget => {
         const row = [
           client.company_name.replace(/,/g, ";"),
@@ -426,7 +431,8 @@ export const useCustomBudgets = ({
     let activeBudgets = 0;
     let clientsWithBudget = new Set();
 
-    clientsWithBudgets.forEach(({ budgets }) => {
+    // Corrigir o erro de tipagem com cast explícito
+    (clientsWithBudgets as ClientWithBudgets[]).forEach(({ budgets }) => {
       totalBudgets += budgets.length;
       
       budgets.forEach(budget => {
@@ -454,8 +460,11 @@ export const useCustomBudgets = ({
     activeClients,
     filteredClients: clientsWithBudgets.filter((clientWithBudget) => {
       if (!searchTerm) return true;
-      return clientWithBudget.client.company_name.toLowerCase().includes(searchTerm.toLowerCase());
-    }),
+      
+      // Corrigir o erro de tipagem com cast explícito
+      const cwb = clientWithBudget as ClientWithBudgets;
+      return cwb.client.company_name.toLowerCase().includes(searchTerm.toLowerCase());
+    }) as ClientWithBudgets[],
     searchTerm,
     setSearchTerm,
     selectedBudget,

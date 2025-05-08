@@ -6,7 +6,9 @@ export function CustomBudgetTab() {
   return (
     <div className="space-y-6">
       <TooltipProvider>
-        <CustomBudgetManager viewMode="cards" />
+        <CustomBudgetManager 
+          /* Removendo o prop viewMode que não existe na interface de props */
+        />
       </TooltipProvider>
     </div>
   );

@@ -38,7 +38,7 @@ export function CustomBudgetManager({ viewMode = "table" }: CustomBudgetManagerP
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [budgetToDelete, setBudgetToDelete] = useState<CustomBudget | null>(null);
 
-  // Usar o hook customizado
+  // Usar o hook customizado - removendo o parâmetro sortBy que não existe na interface
   const {
     isLoading,
     error,
@@ -60,7 +60,7 @@ export function CustomBudgetManager({ viewMode = "table" }: CustomBudgetManagerP
     isFutureBudget,
     exportToCSV,
     getBudgetStats
-  } = useCustomBudgets({ sortBy: "date" });
+  } = useCustomBudgets();
 
   // Funções para gerenciar os orçamentos
   const handleAddBudget = () => {
@@ -88,7 +88,8 @@ export function CustomBudgetManager({ viewMode = "table" }: CustomBudgetManagerP
         end_date: budgetData.endDate,
         isActive: true,
         description: budgetData.description,
-        platform: budgetData.platform
+        platform: budgetData.platform,
+        account_id: budgetData.accountId
       });
     } else {
       addCustomBudgetMutation.mutate({
@@ -98,7 +99,8 @@ export function CustomBudgetManager({ viewMode = "table" }: CustomBudgetManagerP
         end_date: budgetData.endDate,
         isActive: true,
         description: budgetData.description,
-        platform: budgetData.platform
+        platform: budgetData.platform,
+        account_id: budgetData.accountId
       } as Omit<CustomBudget, 'id' | 'created_at' | 'updated_at'>);
     }
     setIsFormDialogOpen(false);
@@ -305,9 +307,9 @@ export function CustomBudgetManager({ viewMode = "table" }: CustomBudgetManagerP
                 startDate: selectedBudget.start_date,
                 endDate: selectedBudget.end_date,
                 platform: selectedBudget.platform as 'meta' | 'google',
-                description: selectedBudget.description
-              } : null
-            }
+                description: selectedBudget.description,
+                accountId: selectedBudget.account_id
+              } : undefined}
             isSubmitting={addCustomBudgetMutation.isPending || updateCustomBudgetMutation.isPending}
             onSubmit={handleSaveBudget}
             onCancel={() => setIsFormDialogOpen(false)}

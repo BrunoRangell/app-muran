@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -65,13 +66,15 @@ export function CustomBudgetTable({
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
-        <Input
-          placeholder="Buscar por nome do cliente..."
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="max-w-xs"
-          startAdornment={<Search className="w-4 h-4 text-gray-400" />}
-        />
+        <div className="relative max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Buscar por nome do cliente..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9 max-w-xs"
+          />
+        </div>
       </div>
 
       <div className="border rounded-md">
