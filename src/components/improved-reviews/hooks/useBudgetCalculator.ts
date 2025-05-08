@@ -34,6 +34,7 @@ export function useBudgetCalculator() {
   }: BudgetCalculationParams): BudgetCalculationResult => {
     // Log para debug
     console.log(`Calculando orçamento: orçamento mensal = ${formatCurrency(monthlyBudget)}, gasto = ${formatCurrency(totalSpent)}, orçamento diário atual = ${formatCurrency(currentDailyBudget)}, média 5 dias = ${lastFiveDaysAverage ? formatCurrency(lastFiveDaysAverage) : 'N/A'}`);
+    console.log(`Está usando orçamento personalizado? ${monthlyBudget !== 0 ? 'Sim, com valor: ' + formatCurrency(monthlyBudget) : 'Não'}`);
     
     // Obter data atual e calcular dias restantes no mês
     const today = getCurrentDateInBrasiliaTz();

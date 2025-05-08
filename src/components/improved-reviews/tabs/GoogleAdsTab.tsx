@@ -9,6 +9,8 @@ import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { AlertTriangle } from "lucide-react";
 import { useTabVisibility } from "../hooks/useTabVisibility";
+import { supabase } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface GoogleAdsTabProps {
   onRefreshCompleted?: () => void;
@@ -23,6 +25,7 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const queryClient = useQueryClient();
   
   // Recuperar estado de filtros do localStorage ao inicializar
   useEffect(() => {
@@ -38,6 +41,38 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
       console.error("Erro ao recuperar estado dos filtros:", err);
     }
   }, []);
+
+  // Monitorar mudanças na tabela custom_budgets para Google Ads
+  useEffect(() => {
+    if (!isActive) return; // Só monitorar quando a aba estiver ativa
+
+    console.log("Configurando monitoramento de orçamentos personalizados na aba Google Ads");
+    
+    // Inscrever no canal realtime para a tabela custom_budgets
+    const channel = supabase
+      .channel('google_ads_tab_custom_budgets')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'custom_budgets',
+          filter: 'platform=eq.google' 
+        },
+        (payload) => {
+          console.log('GoogleAdsTab: Detectada mudança em orçamentos personalizados:', payload);
+          // Invalidar o cache do React Query para forçar uma nova consulta
+          queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+        }
+      )
+      .subscribe();
+
+    // Limpar inscrição ao desmontar
+    return () => {
+      console.log("Removendo monitoramento de orçamentos personalizados na aba Google Ads");
+      supabase.removeChannel(channel);
+    };
+  }, [isActive, queryClient]);
 
   // Salvar estado dos filtros no localStorage quando mudar
   useEffect(() => {
@@ -57,6 +92,8 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
     isActive,
     onBecomeVisible: () => {
       console.log("Tab GoogleAds se tornou visível!");
+      // Ao se tornar visível, forçar atualização dos dados
+      queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
     }
   });
 

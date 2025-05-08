@@ -34,8 +34,38 @@ export function useGoogleAdsData() {
     spentPercentage: 0
   });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [lastCustomBudgetUpdate, setLastCustomBudgetUpdate] = useState<Date | null>(null);
 
   const { calculateBudget } = useBudgetCalculator();
+
+  // Monitorar mudanças na tabela custom_budgets para Google Ads
+  useEffect(() => {
+    // Inscrever no canal realtime para a tabela custom_budgets
+    const channel = supabase
+      .channel('custom_budgets_changes')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'custom_budgets',
+          filter: 'platform=eq.google' 
+        },
+        (payload) => {
+          console.log('Detectada mudança em orçamentos personalizados do Google:', payload);
+          // Atualizar o timestamp da última atualização de orçamentos
+          setLastCustomBudgetUpdate(new Date());
+          // Forçar atualização de dados
+          refreshData();
+        }
+      )
+      .subscribe();
+
+    // Limpar inscrição ao desmontar
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Carregar dados do localStorage quando o componente montar
   useEffect(() => {
@@ -60,7 +90,7 @@ export function useGoogleAdsData() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ["improved-google-reviews"],
+    queryKey: ["improved-google-reviews", lastCustomBudgetUpdate], // Incluir o timestamp como dependência
     queryFn: async () => {
       console.log("Buscando dados de clientes e revisões Google Ads...");
       
@@ -276,8 +306,8 @@ export function useGoogleAdsData() {
       return flattenedClients;
     },
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Não refetch automático ao montar
-    staleTime: 10 * 60 * 1000, // 10 minutos (mais agressivo)
+    refetchOnMount: true, // Ativar refetch ao montar
+    staleTime: 0, // Sempre considerar os dados como obsoletos
     gcTime: 60 * 60 * 1000, // 1 hora (equivalente ao antigo cacheTime)
     initialData: () => {
       // Tentar recuperar dados do localStorage ao inicializar
