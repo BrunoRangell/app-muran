@@ -59,7 +59,7 @@ export function useBudgetCalculator() {
       let needsAdjustmentBasedOnAverage;
       
       // Calcular a diferença baseada na média dos últimos 5 dias somente se fornecida
-      // (usado apenas para Google Ads, não para Meta Ads)
+      // e se o valor for maior que zero (evitar mostrar recomendação quando não há dados)
       if (input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0) {
         budgetDifferenceBasedOnAverage = roundedIdealDailyBudget - input.lastFiveDaysAverage;
         

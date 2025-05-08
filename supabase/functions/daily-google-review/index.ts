@@ -79,7 +79,7 @@ async function processGoogleReview(req: Request) {
     const existingReviews = await existingReviewResponse.json();
     let reviewId;
     
-    // Obter tokens da API do Google Ads
+    // Obter tokens da API do Google Ads com tratamento de erros melhorado
     const googleTokensResponse = await fetch(
       `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_developer_token)&select=name,value`, {
       headers: {
@@ -100,14 +100,65 @@ async function processGoogleReview(req: Request) {
       googleTokens[token.name] = token.value;
     });
     
+    // Verificar se os tokens necessários estão disponíveis
     if (!googleTokens.google_ads_access_token || !googleTokens.google_ads_developer_token) {
       throw new Error("Tokens do Google Ads não configurados corretamente");
+    }
+    
+    // Tentar atualizar o token de acesso se tivermos um refresh token
+    if (googleTokens.google_ads_refresh_token && 
+        googleTokens.google_ads_client_id && 
+        googleTokens.google_ads_client_secret) {
+      try {
+        console.log("Tentando atualizar o token de acesso do Google Ads...");
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: new URLSearchParams({
+            client_id: googleTokens.google_ads_client_id,
+            client_secret: googleTokens.google_ads_client_secret,
+            refresh_token: googleTokens.google_ads_refresh_token,
+            grant_type: "refresh_token"
+          })
+        });
+        
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          if (refreshData.access_token) {
+            console.log("Token de acesso atualizado com sucesso");
+            googleTokens.google_ads_access_token = refreshData.access_token;
+            
+            // Atualizar o token no banco de dados
+            await fetch(
+              `${supabaseUrl}/rest/v1/api_tokens?name=eq.google_ads_access_token`, {
+              method: "PATCH",
+              headers: {
+                "apikey": supabaseKey,
+                "Authorization": `Bearer ${supabaseKey}`,
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+              },
+              body: JSON.stringify({
+                value: refreshData.access_token,
+                updated_at: new Date().toISOString()
+              })
+            });
+          }
+        } else {
+          console.error("Erro ao atualizar token:", await refreshResponse.text());
+        }
+      } catch (refreshError) {
+        console.error("Erro ao tentar atualizar o token:", refreshError);
+      }
     }
     
     // Configurar valores padrão caso não consigamos obter dados reais da API
     let totalSpent = 0;
     let lastFiveDaysSpent = 0;
     let currentDailyBudget = 0;
+    let usingRealData = false;
     
     try {
       // Configurar headers para a API do Google Ads
@@ -132,7 +183,7 @@ async function processGoogleReview(req: Request) {
       const fiveDaysAgoDate = fiveDaysAgo.toISOString().split('T')[0];
       const yesterdayFormattedDate = yesterdayDate.toISOString().split('T')[0];
       
-      // Query para obter gastos do mês atual
+      // Query para obter gastos do mês atual com campos adicionais
       const query = `
         SELECT
             metrics.cost_micros,
@@ -159,15 +210,28 @@ async function processGoogleReview(req: Request) {
       );
       
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Erro na API do Google Ads:", errorData);
-        throw new Error(`Erro na API do Google Ads: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("Erro na API do Google Ads:", errorText);
+        let errorJson;
+        try {
+          errorJson = JSON.parse(errorText);
+        } catch (e) {
+          errorJson = { error: { message: errorText } };
+        }
+        throw new Error(`Erro na API do Google Ads: ${response.statusText} - ${errorJson?.error?.message || errorText}`);
       }
       
       const data = await response.json();
+      usingRealData = true;
+      
+      // Armazenar dados por data para calcular gastos diários precisos
+      const costsByDate = {};
+      let uniqueDatesCount = 0;
+      let last5DaysCount = 0;
+      let last5DaysTotal = 0;
       
       // Calcular o gasto total somando o custo de todas as campanhas
-      if (data && data.results) {
+      if (data && data.results && data.results.length > 0) {
         // Processar resultados para calcular gastos
         data.results.forEach((campaign: any) => {
           const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
@@ -176,22 +240,45 @@ async function processGoogleReview(req: Request) {
           // Adicionar ao gasto total
           totalSpent += cost;
           
-          // Verificar se está dentro dos últimos 5 dias (excluindo hoje)
-          if (date && date >= fiveDaysAgoDate && date <= yesterdayFormattedDate) {
-            lastFiveDaysSpent += cost;
+          // Agrupar gastos por data
+          if (date) {
+            if (!costsByDate[date]) {
+              costsByDate[date] = 0;
+              uniqueDatesCount++;
+            }
+            costsByDate[date] += cost;
+            
+            // Verificar se está dentro dos últimos 5 dias (excluindo hoje)
+            if (date >= fiveDaysAgoDate && date <= yesterdayFormattedDate) {
+              last5DaysTotal += cost;
+              
+              // Contar dias únicos nos últimos 5 dias
+              if (!costsByDate[`last5_${date}`]) {
+                costsByDate[`last5_${date}`] = true;
+                last5DaysCount++;
+              }
+            }
           }
         });
+        
+        console.log(`Dados reais obtidos da API: ${data.results.length} resultados`);
+        console.log(`Gasto total real: ${totalSpent}`);
+        console.log(`Datas únicas: ${uniqueDatesCount}`);
+      } else {
+        console.warn("Nenhum resultado retornado da API do Google Ads");
       }
       
       // Calcular a média diária dos últimos 5 dias
-      lastFiveDaysSpent = lastFiveDaysSpent / 5;
+      lastFiveDaysSpent = last5DaysCount > 0 ? last5DaysTotal / last5DaysCount : 0;
+      console.log(`Média dos últimos 5 dias (${last5DaysCount} dias): ${lastFiveDaysSpent}`);
       
       // Obter orçamento diário atual somando os orçamentos das campanhas ativas
       const campaignsQuery = `
         SELECT
-            campaign_budget.amount_micros,
+            campaign.id,
+            campaign.name,
             campaign.status,
-            campaign.name
+            campaign_budget.amount_micros
         FROM
             campaign
         WHERE
@@ -213,29 +300,44 @@ async function processGoogleReview(req: Request) {
         const campaignsData = await campaignsResponse.json();
         
         if (campaignsData && campaignsData.results) {
+          console.log(`Encontradas ${campaignsData.results.length} campanhas ativas`);
           currentDailyBudget = campaignsData.results.reduce((acc: number, campaign: any) => {
             const budget = campaign.campaignBudget?.amountMicros ? campaign.campaignBudget.amountMicros / 1e6 : 0;
             console.log(`Campanha: ${campaign.campaign?.name}, Status: ${campaign.campaign?.status}, Orçamento: ${budget}`);
             return acc + budget;
           }, 0);
+          
+          console.log(`Orçamento diário atual (soma das campanhas ativas): ${currentDailyBudget}`);
+        } else {
+          console.log("Nenhuma campanha ativa encontrada");
         }
       } else {
-        console.error("Erro ao obter orçamentos das campanhas:", await campaignsResponse.text());
+        const errorText = await campaignsResponse.text();
+        console.error("Erro ao obter orçamentos das campanhas:", errorText);
       }
       
-    } catch (apiError) {
+    } catch (apiError: any) {
       console.error("Erro ao acessar API do Google Ads:", apiError);
       
-      // Em caso de erro na API, usaremos valores simulados (apenas como fallback)
-      totalSpent = budgetAmount * 0.62; // 62% do orçamento gasto (simulação para fallback)
-      lastFiveDaysSpent = totalSpent / 15; // simulação simplificada para fallback
-      
-      // Logs para debug
-      console.log("Usando valores simulados devido a erro na API:");
-      console.log(`Orçamento total: ${budgetAmount}, Gasto total simulado: ${totalSpent}`);
+      // Verificar se devemos usar valores simulados apenas como último recurso
+      if (!usingRealData) {
+        console.warn("Usando valores simulados como fallback devido ao erro na API");
+        
+        // Usar valores menos aleatórios para manter consistência
+        const simulation_percentage = 0.62;  // 62% do orçamento gasto (simulação)
+        totalSpent = Math.round(budgetAmount * simulation_percentage * 100) / 100;
+        lastFiveDaysSpent = Math.round((totalSpent / 15) * 100) / 100; // média simplificada
+        
+        console.log("Valores simulados:", {
+          orçamento: budgetAmount,
+          porcentagem_simulada: simulation_percentage,
+          gasto_total: totalSpent,
+          média_5_dias: lastFiveDaysSpent
+        });
+      }
     }
     
-    // Calcular orçamento diário ideal baseado em dados reais
+    // Calcular orçamento diário ideal baseado nos dados
     const currentDate = new Date();
     const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
@@ -266,7 +368,8 @@ async function processGoogleReview(req: Request) {
       gastoMédiaCincoDias: lastFiveDaysSpent,
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
-      orçamentoDiárioIdeal: roundedIdealDailyBudget
+      orçamentoDiárioIdeal: roundedIdealDailyBudget,
+      usandoDadosReais: usingRealData
     });
     
     // Atualizar ou criar revisão
@@ -329,7 +432,8 @@ async function processGoogleReview(req: Request) {
       idealDailyBudget: roundedIdealDailyBudget,
       currentDailyBudget,
       totalSpent,
-      lastFiveDaysSpent
+      lastFiveDaysSpent,
+      usingRealData
     };
   } catch (error) {
     console.error("Erro na função Edge do Google Ads:", error.message);

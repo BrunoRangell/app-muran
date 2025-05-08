@@ -5,6 +5,7 @@ import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "../summary/utils";
+import { CompactBudgetRecommendation } from "./card-components/CompactBudgetRecommendation";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -29,9 +30,11 @@ export const GoogleAdsClientReviewCardCompact = ({
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
+    budgetDifferenceBasedOnAverage,
     isCalculating,
     remainingDaysValue,
-    needsBudgetAdjustment
+    needsBudgetAdjustment,
+    needsAdjustmentBasedOnAverage
   } = useGoogleAdsBudgetCalculation(client);
 
   const handleReviewClick = () => {
@@ -164,16 +167,14 @@ export const GoogleAdsClientReviewCardCompact = ({
           </div>
         )}
 
-        {needsBudgetAdjustment && budgetDifference && (
-          <div className="mt-2 text-xs p-2 rounded flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-muran-primary"></div>
-            <span className="font-medium">
-              {budgetDifference > 0 ? 
-                `Aumentar orçamento diário em ${formatCurrency(Math.abs(budgetDifference))}` : 
-                `Diminuir orçamento diário em ${formatCurrency(Math.abs(budgetDifference))}`}
-            </span>
-          </div>
-        )}
+        <CompactBudgetRecommendation
+          budgetDifference={budgetDifference || 0}
+          budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
+          shouldShow={!!needsBudgetAdjustment}
+          shouldShowAverage={!!needsAdjustmentBasedOnAverage}
+          lastFiveDaysAverage={lastFiveDaysSpent}
+          platform="google"
+        />
       </div>
     </Card>
   );

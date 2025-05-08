@@ -10,6 +10,7 @@ interface CompactBudgetRecommendationProps {
   shouldShow: boolean;
   shouldShowAverage?: boolean;
   lastFiveDaysAverage?: number;
+  platform?: 'google' | 'meta';
 }
 
 export const CompactBudgetRecommendation = ({ 
@@ -17,9 +18,17 @@ export const CompactBudgetRecommendation = ({
   budgetDifferenceBasedOnAverage = 0,
   shouldShow,
   shouldShowAverage = false,
-  lastFiveDaysAverage = 0
+  lastFiveDaysAverage = 0,
+  platform = 'meta'
 }: CompactBudgetRecommendationProps) => {
   const hasAnyRecommendation = shouldShow || shouldShowAverage;
+  
+  // Determinar se deve mostrar recomendação baseada na média dos últimos 5 dias
+  // Apenas para Google Ads e se houver valor
+  const showAverageRecommendation = shouldShowAverage && 
+                                   budgetDifferenceBasedOnAverage !== undefined && 
+                                   lastFiveDaysAverage > 0 &&
+                                   platform === 'google';
   
   if (!hasAnyRecommendation) {
     return null;
@@ -53,7 +62,7 @@ export const CompactBudgetRecommendation = ({
         </TooltipProvider>
       )}
       
-      {shouldShowAverage && budgetDifferenceBasedOnAverage !== undefined && lastFiveDaysAverage > 0 && (
+      {showAverageRecommendation && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger>
