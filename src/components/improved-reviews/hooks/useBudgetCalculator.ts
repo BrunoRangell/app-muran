@@ -45,16 +45,13 @@ export function useBudgetCalculator() {
         ? roundedIdealDailyBudget - input.currentDailyBudget
         : 0;
       
-      // Determinar se precisa de ajuste (diferença de 5 reais ou 5%)
+      // Determinar se precisa de ajuste (apenas diferença absoluta de 5 reais ou mais)
       const absoluteDifference = Math.abs(budgetDifference);
-      const percentageDifference = input.currentDailyBudget > 0 
-        ? absoluteDifference / input.currentDailyBudget 
-        : 0;
-        
+      
+      // MODIFICADO: Agora considera apenas a diferença absoluta >= R$5
       const needsBudgetAdjustment = 
         input.currentDailyBudget > 0 && // só considera se tem orçamento atual
-        (absoluteDifference >= 5 || // diferença absoluta de 5 reais (alterado para OR)
-         (percentageDifference >= 0.05 && absoluteDifference >= 1)); // ou 5% com pelo menos 1 real de diferença
+        absoluteDifference >= 5; // apenas diferença absoluta de 5 reais ou mais
       
       // Inicializar valores opcionais
       let budgetDifferenceBasedOnAverage;
@@ -65,15 +62,11 @@ export function useBudgetCalculator() {
       if (input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0) {
         budgetDifferenceBasedOnAverage = roundedIdealDailyBudget - input.lastFiveDaysAverage;
         
-        // Determinar se precisa de ajuste baseado na média (diferença de 5 reais ou 5%)
+        // Determinar se precisa de ajuste baseado na média (apenas diferença absoluta de 5 reais ou mais)
         const absoluteDifferenceAverage = Math.abs(budgetDifferenceBasedOnAverage);
-        const percentageDifferenceAverage = input.lastFiveDaysAverage > 0 
-          ? absoluteDifferenceAverage / input.lastFiveDaysAverage 
-          : 0;
-          
-        needsAdjustmentBasedOnAverage = 
-          absoluteDifferenceAverage >= 5 || // diferença absoluta de 5 reais (alterado para OR)
-          (percentageDifferenceAverage >= 0.05 && absoluteDifferenceAverage >= 1); // ou 5% com pelo menos 1 real de diferença
+        
+        // MODIFICADO: Agora considera apenas a diferença absoluta >= R$5
+        needsAdjustmentBasedOnAverage = absoluteDifferenceAverage >= 5;
       }
       
       console.log(`[DEBUG] Budget Calculator - lastFiveDaysAverage: ${input.lastFiveDaysAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);

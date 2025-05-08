@@ -93,6 +93,10 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
             ? (actualBudgetAmount - totalSpent) / remainingDaysValue
             : 0;
             
+          // MODIFICADO: Agora usando apenas a diferença absoluta >= R$5
+          const budgetDifference = idealDailyBudget - currentDailyBudget;
+          const needsAdjustment = Math.abs(budgetDifference) >= 5;
+            
           // Diagnóstico
           console.info(`Cliente ${client.company_name} - Diagnóstico:`, {
             hasReview: !!review,
@@ -102,8 +106,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
             orçamentoExibido: actualBudgetAmount,
             orçamentoDiárioAtual: currentDailyBudget,
             orçamentoDiárioIdeal: idealDailyBudget,
-            diferençaNecessária: idealDailyBudget - currentDailyBudget,
-            precisaAjuste: Math.abs(idealDailyBudget - currentDailyBudget) >= 5,
+            diferençaNecessária: budgetDifference,
+            precisaAjuste: needsAdjustment,
             tipoAjuste: idealDailyBudget > currentDailyBudget ? "Aumentar" : "Diminuir"
           });
         }
