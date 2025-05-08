@@ -486,9 +486,9 @@ export const CustomBudgetForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Conta Principal (Todas)</SelectItem>
+                      <SelectItem value="todas">Conta Principal (Todas)</SelectItem>
                       {getAvailableAccounts().map((account) => (
-                        <SelectItem key={account.id} value={account.account_id}>
+                        <SelectItem key={account.id} value={account.account_id || `conta-${account.id}`}>
                           {account.account_name || account.account_id}
                         </SelectItem>
                       ))}
