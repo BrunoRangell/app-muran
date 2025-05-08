@@ -1,88 +1,19 @@
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { CalendarIcon, Loader, Calculator, Info, RefreshCw } from "lucide-react";
-import { format, isValid } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
+import { Form } from "@/components/ui/form";
+import { Loader } from "lucide-react";
 import { CustomBudgetFormData } from "../hooks/useCustomBudgets";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge"; 
-
-// Schema para validação do formulário
-const customBudgetSchema = z.object({
-  client_id: z.string({
-    required_error: "Selecione um cliente",
-  }),
-  budget_amount: z.number({
-    required_error: "Informe o valor do orçamento",
-  }).positive("O valor deve ser maior que zero"),
-  start_date: z.date({
-    required_error: "Informe a data de início",
-  }),
-  end_date: z.date({
-    required_error: "Informe a data de término",
-  }).refine(
-    (date) => date instanceof Date && !isNaN(date.getTime()),
-    { message: "Data inválida" }
-  ),
-  platform: z.enum(['meta', 'google'], {
-    required_error: "Selecione uma plataforma",
-  }),
-  description: z.string().nullable().optional(),
-  is_recurring: z.boolean().default(false),
-  recurrence_pattern: z.string().nullable().optional(),
-}).refine(
-  (data) => data.end_date >= data.start_date,
-  {
-    message: "A data de término deve ser igual ou posterior à data de início",
-    path: ["end_date"],
-  }
-).refine(
-  (data) => !data.is_recurring || (data.is_recurring && data.recurrence_pattern),
-  {
-    message: "Selecione um padrão de recorrência para orçamentos recorrentes",
-    path: ["recurrence_pattern"],
-  }
-);
+import { useBudgetForm } from "./form/useBudgetForm";
+import { ClientSelectField } from "./form/ClientSelectField";
+import { PlatformSelectField } from "./form/PlatformSelectField";
+import { BudgetAmountField } from "./form/BudgetAmountField";
+import { DateField } from "./form/DateField";
+import { BudgetStatsCard } from "./form/BudgetStatsCard";
+import { RecurrenceSection } from "./form/RecurrenceSection";
+import { DescriptionField } from "./form/DescriptionField";
+import { FormActions } from "./form/FormActions";
 
 interface CustomBudgetFormProps {
   selectedBudget: CustomBudgetFormData | null;
@@ -91,45 +22,12 @@ interface CustomBudgetFormProps {
   onCancel: () => void;
 }
 
-type FormData = z.infer<typeof customBudgetSchema>;
-
-// Função auxiliar para verificar se uma data é válida e formatá-la de forma segura
-const formatSafeDate = (date: Date | string | null | undefined, defaultFormat: string = 'dd/MM/yyyy'): string => {
-  if (!date) return '';
-  
-  // Se for uma string de data, tentar converter para objeto Date
-  const dateObject = typeof date === 'string' ? new Date(date + 'T12:00:00Z') : date;
-  
-  // Verificar se a data é válida antes de formatar
-  if (!(dateObject instanceof Date) || !isValid(dateObject)) {
-    console.warn('Data inválida detectada:', date);
-    return '';
-  }
-  
-  try {
-    return format(dateObject, defaultFormat, { locale: ptBR });
-  } catch (error) {
-    console.error('Erro ao formatar data:', error, 'Data original:', date);
-    return '';
-  }
-};
-
-const RECURRENCE_PATTERNS = [
-  { value: "weekly", label: "Semanal" },
-  { value: "biweekly", label: "Quinzenal" },
-  { value: "monthly", label: "Mensal" },
-  { value: "custom", label: "Personalizado" },
-];
-
 export const CustomBudgetForm = ({
   selectedBudget,
   isSubmitting,
   onSubmit,
   onCancel,
 }: CustomBudgetFormProps) => {
-  const [formattedBudget, setFormattedBudget] = useState("");
-  const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
-
   // Buscar clientes ativos
   const { data: clients, isLoading: isLoadingClients } = useQuery({
     queryKey: ["active-clients-for-budget"],
@@ -145,194 +43,17 @@ export const CustomBudgetForm = ({
     },
   });
 
-  // Configurar o formulário com react-hook-form e zod
-  const form = useForm<FormData>({
-    resolver: zodResolver(customBudgetSchema),
-    defaultValues: {
-      client_id: "",
-      budget_amount: 0,
-      start_date: new Date(),
-      end_date: new Date(),
-      platform: 'meta',
-      description: "",
-      is_recurring: false,
-      recurrence_pattern: null,
-    },
-    mode: "onChange", // Validar ao alterar os campos
+  const {
+    form,
+    showRecurrenceOptions,
+    formattedBudget,
+    getDaysInPeriod,
+    getDailyBudget,
+    handleFormSubmit
+  } = useBudgetForm({
+    selectedBudget,
+    onSubmit
   });
-
-  // Preencher o formulário quando um orçamento for selecionado para edição
-  useEffect(() => {
-    if (selectedBudget) {
-      try {
-        // Log para debug
-        console.log('Dados do orçamento selecionado:', selectedBudget);
-        
-        // Corrigindo o problema da data: converter as strings para objetos Date
-        // sem alterar o fuso horário
-        let startDate: Date | null = null;
-        let endDate: Date | null = null;
-        
-        try {
-          // Garantir que temos uma string de data válida antes de construir o objeto Date
-          if (selectedBudget.startDate && typeof selectedBudget.startDate === 'string') {
-            startDate = new Date(`${selectedBudget.startDate}T12:00:00Z`);
-            // Verificar se a data é válida
-            if (isNaN(startDate.getTime())) {
-              console.warn('Data de início inválida:', selectedBudget.startDate);
-              startDate = new Date(); // Fallback para a data atual
-            }
-          } else {
-            startDate = new Date();
-          }
-          
-          if (selectedBudget.endDate && typeof selectedBudget.endDate === 'string') {
-            endDate = new Date(`${selectedBudget.endDate}T12:00:00Z`);
-            // Verificar se a data é válida
-            if (isNaN(endDate.getTime())) {
-              console.warn('Data de término inválida:', selectedBudget.endDate);
-              endDate = new Date(); // Fallback para a data atual
-            }
-          } else {
-            endDate = new Date();
-          }
-        } catch (error) {
-          console.error('Erro ao processar datas:', error);
-          // Use datas atuais como fallback
-          startDate = new Date();
-          endDate = new Date();
-        }
-        
-        setShowRecurrenceOptions(!!selectedBudget.isRecurring);
-        
-        // Log para verificar as datas processadas
-        console.log('Datas processadas:', { 
-          startDate: startDate?.toISOString(), 
-          endDate: endDate?.toISOString() 
-        });
-        
-        form.reset({
-          client_id: selectedBudget.clientId,
-          budget_amount: selectedBudget.budgetAmount,
-          start_date: startDate,
-          end_date: endDate,
-          // Corrigindo o erro: garantindo que o valor de platform é sempre 'meta' ou 'google'
-          platform: (selectedBudget.platform === 'meta' || selectedBudget.platform === 'google') 
-            ? selectedBudget.platform 
-            : 'meta',
-          description: selectedBudget.description,
-          is_recurring: selectedBudget.isRecurring || false,
-          recurrence_pattern: selectedBudget.recurrencePattern || null,
-        });
-        setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
-      } catch (error) {
-        console.error('Erro ao processar orçamento selecionado:', error);
-        // Reset para valores padrão em caso de erro
-        form.reset({
-          client_id: "",
-          budget_amount: 0,
-          start_date: new Date(),
-          end_date: new Date(),
-          platform: 'meta',
-          description: "",
-          is_recurring: false,
-          recurrence_pattern: null,
-        });
-      }
-    } else {
-      form.reset({
-        client_id: "",
-        budget_amount: 0,
-        start_date: new Date(),
-        end_date: new Date(),
-        platform: 'meta',
-        description: "",
-        is_recurring: false,
-        recurrence_pattern: null,
-      });
-      setFormattedBudget("");
-      setShowRecurrenceOptions(false);
-    }
-  }, [selectedBudget, form]);
-
-  // Monitorar mudanças no is_recurring para atualizar o estado de exibição
-  const isRecurring = form.watch("is_recurring");
-  useEffect(() => {
-    setShowRecurrenceOptions(isRecurring);
-  }, [isRecurring]);
-
-  // Manipulador para o campo de orçamento formatado como moeda
-  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setFormattedBudget(value);
-    
-    // Atualizar o valor no formulário apenas se for um número válido
-    const numericValue = parseCurrencyToNumber(value);
-    if (!isNaN(numericValue)) {
-      form.setValue("budget_amount", numericValue);
-    }
-  };
-
-  const handleBudgetBlur = () => {
-    const numericValue = parseCurrencyToNumber(formattedBudget);
-    if (!isNaN(numericValue)) {
-      setFormattedBudget(formatCurrency(numericValue));
-    }
-  };
-
-  // Calcular o número de dias no período e o valor diário
-  const startDate = form.watch("start_date");
-  const endDate = form.watch("end_date");
-  const budgetAmount = form.watch("budget_amount");
-  const platform = form.watch("platform");
-
-  const getDaysInPeriod = () => {
-    if (startDate && endDate && isValid(startDate) && isValid(endDate)) {
-      // +1 para incluir o dia inicial e final na contagem
-      return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    }
-    return 0;
-  };
-
-  const getDailyBudget = () => {
-    const days = getDaysInPeriod();
-    if (days > 0 && budgetAmount) {
-      return budgetAmount / days;
-    }
-    return 0;
-  };
-
-  // Manipulador de submissão do formulário
-  const handleFormSubmit = (data: FormData) => {
-    try {
-      // Garantir que as datas sejam formatadas no formato YYYY-MM-DD sem ajuste de fuso horário
-      const formatDateToYYYYMMDD = (date: Date) => {
-        if (!isValid(date)) {
-          console.error('Tentativa de formatar data inválida:', date);
-          return new Date().toISOString().split('T')[0]; // Fallback para hoje
-        }
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-
-      const formData: CustomBudgetFormData = {
-        clientId: data.client_id,
-        budgetAmount: data.budget_amount,
-        startDate: formatDateToYYYYMMDD(data.start_date),
-        endDate: formatDateToYYYYMMDD(data.end_date),
-        platform: data.platform,
-        description: data.description || "",
-        isRecurring: data.is_recurring,
-        recurrencePattern: data.is_recurring ? data.recurrence_pattern : undefined
-      };
-
-      onSubmit(formData);
-    } catch (error) {
-      console.error('Erro ao processar formulário:', error);
-    }
-  };
 
   // Exibir um indicador de carregamento enquanto os clientes estão sendo carregados
   if (isLoadingClients) {
@@ -349,318 +70,61 @@ export const CustomBudgetForm = ({
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="client_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cliente</FormLabel>
-                  <Select
-                    disabled={isSubmitting}
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um cliente" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {clients?.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.company_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <ClientSelectField 
+              form={form} 
+              clients={clients} 
+              isSubmitting={isSubmitting} 
             />
-
-            <FormField
-              control={form.control}
-              name="platform"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Plataforma</FormLabel>
-                  <Select
-                    disabled={isSubmitting}
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma plataforma" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="meta">
-                        <div className="flex items-center">
-                          <Badge className="mr-2 bg-blue-500">Meta</Badge>
-                          <span>Meta Ads</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="google">
-                        <div className="flex items-center">
-                          <Badge className="mr-2 bg-red-500">Google</Badge>
-                          <span>Google Ads</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <PlatformSelectField 
+              form={form} 
+              isSubmitting={isSubmitting} 
             />
           </div>
 
           <div className="flex-1">
-            <FormField
-              control={form.control}
-              name="budget_amount"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Valor do Orçamento</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="R$ 0,00"
-                      value={formattedBudget}
-                      onChange={handleBudgetChange}
-                      onBlur={handleBudgetBlur}
-                      disabled={isSubmitting}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <BudgetAmountField 
+              form={form} 
+              isSubmitting={isSubmitting}
+              initialFormattedValue={formattedBudget}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
+            <DateField
+              form={form}
               name="start_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data de Início</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={`w-full pl-3 text-left font-normal ${
-                            !field.value ? "text-muted-foreground" : ""
-                          }`}
-                          disabled={isSubmitting}
-                        >
-                          {field.value && isValid(field.value) ? (
-                            formatSafeDate(field.value, 'dd/MM/yyyy')
-                          ) : (
-                            <span>Selecione uma data</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          if (date) {
-                            field.onChange(date);
-                          }
-                        }}
-                        disabled={isSubmitting}
-                        locale={ptBR}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Data de Início"
+              isSubmitting={isSubmitting}
             />
-
-            <FormField
-              control={form.control}
+            <DateField
+              form={form}
               name="end_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data de Término</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={`w-full pl-3 text-left font-normal ${
-                            !field.value ? "text-muted-foreground" : ""
-                          }`}
-                          disabled={isSubmitting}
-                        >
-                          {field.value && isValid(field.value) ? (
-                            formatSafeDate(field.value, 'dd/MM/yyyy')
-                          ) : (
-                            <span>Selecione uma data</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={(date) => {
-                          if (date) {
-                            field.onChange(date);
-                          }
-                        }}
-                        disabled={isSubmitting}
-                        locale={ptBR}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Data de Término"
+              isSubmitting={isSubmitting}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-md">
-            <div className="flex items-center">
-              <span className="text-sm text-gray-500 mr-2">Duração do período:</span>
-              <p className="font-medium">{getDaysInPeriod()} dias</p>
-            </div>
-            <div className="flex items-center">
-              <span className="text-sm text-gray-500 mr-2">Orçamento diário:</span>
-              <p className="font-medium">{formatCurrency(getDailyBudget())}</p>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 p-0 ml-1">
-                      <Info className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="w-72">
-                    <p className="text-xs">
-                      Este é o valor médio diário. A estimativa considera 
-                      o período total incluindo início e término.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-
-          <Card className="shadow-none border">
-            <CardContent className="p-4 space-y-4">
-              <FormField
-                control={form.control}
-                name="is_recurring"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Orçamento Recorrente</FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Ative para configurar um orçamento que se repete regularmente
-                      </p>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {showRecurrenceOptions && (
-                <FormField
-                  control={form.control}
-                  name="recurrence_pattern"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Padrão de Recorrência</FormLabel>
-                      <Select
-                        disabled={isSubmitting}
-                        onValueChange={field.onChange}
-                        value={field.value || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o padrão de recorrência" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {RECURRENCE_PATTERNS.map((pattern) => (
-                            <SelectItem key={pattern.value} value={pattern.value}>
-                              <div className="flex items-center">
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                {pattern.label}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </CardContent>
-          </Card>
-
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descrição (opcional)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Adicione informações ou observações sobre este orçamento"
-                    {...field}
-                    value={field.value || ""}
-                    disabled={isSubmitting}
-                    className="resize-none"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+          <BudgetStatsCard
+            daysInPeriod={getDaysInPeriod()}
+            dailyBudget={getDailyBudget()}
           />
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              className="bg-muran-primary hover:bg-muran-primary/90"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                selectedBudget ? "Atualizar Orçamento" : "Adicionar Orçamento"
-              )}
-            </Button>
-          </div>
+          <RecurrenceSection
+            form={form}
+            isSubmitting={isSubmitting}
+            showRecurrenceOptions={showRecurrenceOptions}
+          />
+
+          <DescriptionField
+            form={form}
+            isSubmitting={isSubmitting}
+          />
+
+          <FormActions
+            isSubmitting={isSubmitting}
+            onCancel={onCancel}
+            isEditing={!!selectedBudget}
+          />
         </form>
       </Form>
     </div>
