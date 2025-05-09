@@ -149,6 +149,11 @@ export async function updateClientCurrentReview(supabase, clientId, reviewDate, 
   try {
     console.log(`Atualizando revisão atual para cliente ${clientId}`);
     
+    // Remover propriedade que não existe na tabela
+    const cleanedData = { ...data };
+    // Remover a propriedade account_display_name que está causando o erro
+    delete cleanedData.account_display_name;
+    
     // Primeiro verificar se já existe uma revisão atual para este cliente
     const { data: existingReview, error: checkError } = await supabase
       .from("client_current_reviews")
@@ -167,7 +172,7 @@ export async function updateClientCurrentReview(supabase, clientId, reviewDate, 
         .from("client_current_reviews")
         .update({
           review_date: reviewDate,
-          ...data,
+          ...cleanedData,
           updated_at: new Date().toISOString()
         })
         .eq("id", existingReview.id);
@@ -184,7 +189,7 @@ export async function updateClientCurrentReview(supabase, clientId, reviewDate, 
         .insert({
           client_id: clientId,
           review_date: reviewDate,
-          ...data
+          ...cleanedData
         });
       
       if (insertError) {

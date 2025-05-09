@@ -11,8 +11,8 @@ interface BatchOperationsProps {
 export function useBatchOperations({ platform, onComplete }: BatchOperationsProps = { platform: "meta" }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAccounts, setProcessingAccounts] = useState<Record<string, boolean>>({});
-  // Adicionando o estado processingIds para corrigir o erro
   const [processingIds, setProcessingIds] = useState<string[]>([]);
+  const [lastError, setLastError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Função para revisar um único cliente
@@ -21,8 +21,8 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
     
     try {
       setProcessingAccounts((prev) => ({ ...prev, [accountKey]: true }));
-      // Adicionar o ID à lista de processamento
       setProcessingIds((prev) => [...prev, clientId]);
+      setLastError(null);
 
       console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` (conta ${metaAccountId})` : ''}`);
       
@@ -45,7 +45,8 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
       const payload = {
         clientId,
         accessToken: tokenData.value,
-        reviewDate: new Date().toISOString().split("T")[0]
+        reviewDate: new Date().toISOString().split("T")[0],
+        _timestamp: Date.now() // Evitar cache
       };
 
       // Adicionar accountId específico se fornecido
@@ -55,27 +56,48 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
 
       // Chamar função Edge apropriada para a plataforma
       const functionName = platform === "meta" ? "daily-meta-review" : "daily-google-review";
+      
+      console.log(`Enviando requisição para função Edge ${functionName}`);
+      
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: payload
       });
 
       if (error) {
-        throw new Error(`Erro na função Edge: ${error.message}`);
+        console.error(`Erro na função Edge ${functionName}:`, error);
+        throw new Error(`Erro na função Edge: ${error.message || "Erro desconhecido"}`);
+      }
+
+      if (!data) {
+        throw new Error("A função Edge retornou dados vazios");
+      }
+      
+      if (data.error) {
+        throw new Error(`Erro no processamento: ${data.error}`);
       }
 
       console.log(`Revisão concluída com sucesso:`, data);
+      
+      toast({
+        title: "Revisão concluída",
+        description: `Cliente ${clientId} revisado com sucesso`,
+      });
+      
       return true;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+      setLastError(errorMessage);
       console.error(`Erro ao revisar cliente ${clientId}:`, error);
+      
       toast({
         title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao processar a revisão",
+        description: errorMessage,
         variant: "destructive",
       });
+      
       return false;
     } finally {
       setProcessingAccounts((prev) => ({ ...prev, [accountKey]: false }));
-      // Remover o ID da lista de processamento
       setProcessingIds((prev) => prev.filter(id => id !== clientId));
     }
   };
@@ -87,58 +109,106 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
   };
 
   // Função para revisar todos os clientes em lote
-  const reviewAllClients = async (clients: any[]) => {
+  const reviewAllClients = async (clients: any[], metaAccountsData?: MetaAccount[]) => {
     try {
       setIsProcessing(true);
+      setLastError(null);
       
-      const uniqueClientsWithAccounts = new Map();
-      
-      // Organizar clientes por ID e contas Meta
-      clients.forEach(client => {
-        const clientId = client.id;
+      // Se temos contas Meta específicas, revisá-las individualmente
+      if (metaAccountsData && metaAccountsData.length > 0) {
+        const uniqueClientsWithAccounts = new Map();
         
-        if (client.meta_account_id) {
-          // Se o cliente tem uma conta Meta específica
-          const key = `${clientId}-${client.meta_account_id}`;
-          uniqueClientsWithAccounts.set(key, {
-            clientId,
-            metaAccountId: client.meta_account_id
+        // Organizar clientes por ID e contas Meta
+        metaAccountsData.forEach(account => {
+          if (account.client_id && account.account_id) {
+            const key = `${account.client_id}-${account.account_id}`;
+            uniqueClientsWithAccounts.set(key, {
+              clientId: account.client_id,
+              metaAccountId: account.account_id,
+              accountName: account.account_name || account.account_id
+            });
+          }
+        });
+        
+        console.log(`Processando ${uniqueClientsWithAccounts.size} contas Meta em lote`);
+        
+        if (uniqueClientsWithAccounts.size === 0) {
+          toast({
+            title: "Nenhuma conta para revisar",
+            description: "Não foram encontradas contas Meta para revisar",
+            variant: "default",
           });
-        } else {
-          // Cliente sem conta específica
-          const key = `${clientId}-default`;
-          uniqueClientsWithAccounts.set(key, { clientId });
+          return;
         }
-      });
-      
-      console.log(`Processando ${uniqueClientsWithAccounts.size} clientes/contas em lote`);
-      
-      // Processamento sequencial para evitar sobrecarga
-      const results = [];
-      for (const client of uniqueClientsWithAccounts.values()) {
-        const result = await reviewClient(client.clientId, client.metaAccountId);
-        results.push(result);
         
-        // Pequeno delay entre requisições
-        await new Promise(resolve => setTimeout(resolve, 300));
+        let successCount = 0;
+        let failureCount = 0;
+        
+        // Processamento sequencial para evitar sobrecarga
+        for (const client of uniqueClientsWithAccounts.values()) {
+          const result = await reviewClient(client.clientId, client.metaAccountId);
+          if (result) {
+            successCount++;
+          } else {
+            failureCount++;
+          }
+          
+          // Pequeno delay entre requisições
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        toast({
+          title: "Revisão em lote concluída",
+          description: `${successCount} de ${uniqueClientsWithAccounts.size} contas processadas com sucesso${failureCount > 0 ? `, ${failureCount} falhas` : ''}`,
+          variant: successCount === uniqueClientsWithAccounts.size ? "default" : "destructive",
+        });
+      } else {
+        // Revisão baseada apenas nos clientes (sem contas específicas)
+        console.log(`Processando ${clients.length} clientes em lote`);
+        
+        if (clients.length === 0) {
+          toast({
+            title: "Nenhum cliente para revisar",
+            description: "Não foram encontrados clientes para revisar",
+            variant: "default",
+          });
+          return;
+        }
+        
+        let successCount = 0;
+        let failureCount = 0;
+        
+        for (const client of clients) {
+          if (!client.id) continue;
+          
+          const result = await reviewClient(client.id, client.meta_account_id);
+          if (result) {
+            successCount++;
+          } else {
+            failureCount++;
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        toast({
+          title: "Revisão em lote concluída",
+          description: `${successCount} de ${clients.length} clientes processados com sucesso${failureCount > 0 ? `, ${failureCount} falhas` : ''}`,
+          variant: successCount === clients.length ? "default" : "destructive",
+        });
       }
-      
-      const successCount = results.filter(Boolean).length;
-      
-      toast({
-        title: "Revisão em lote concluída",
-        description: `${successCount} de ${uniqueClientsWithAccounts.size} contas processadas com sucesso`,
-        variant: successCount === uniqueClientsWithAccounts.size ? "default" : "destructive",
-      });
       
       if (onComplete) {
         onComplete();
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+      setLastError(errorMessage);
       console.error("Erro no processamento em lote:", error);
+      
       toast({
         title: "Erro no processamento em lote",
-        description: error.message || "Ocorreu um erro ao processar a revisão em lote",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -151,6 +221,19 @@ export function useBatchOperations({ platform, onComplete }: BatchOperationsProp
     reviewAllClients,
     isProcessing,
     isProcessingAccount,
-    processingIds, // Expondo a propriedade processingIds
+    processingIds,
+    lastError,
+    clearError: () => setLastError(null)
   };
+}
+
+// Interface para MetaAccount
+interface MetaAccount {
+  id: string;
+  client_id: string;
+  account_id: string;
+  account_name?: string;
+  budget_amount?: number;
+  is_primary?: boolean;
+  status?: string;
 }
