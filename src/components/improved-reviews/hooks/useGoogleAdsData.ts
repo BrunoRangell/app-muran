@@ -104,6 +104,21 @@ export function useGoogleAdsData() {
       if (reviewsError) throw reviewsError;
       
       console.log(`Encontradas ${reviews?.length || 0} revisões do mês atual`);
+      
+      // Buscar orçamentos personalizados ativos
+      const { data: customBudgets, error: budgetsError } = await supabase
+        .from("custom_budgets")
+        .select("*")
+        .eq("platform", "google")
+        .eq("is_active", true)
+        .lte("start_date", currentDate.toISOString().split("T")[0])
+        .gte("end_date", currentDate.toISOString().split("T")[0]);
+        
+      if (budgetsError) {
+        console.error("Erro ao buscar orçamentos personalizados:", budgetsError);
+      } else {
+        console.log(`Encontrados ${customBudgets?.length || 0} orçamentos personalizados ativos`);
+      }
 
       // Combinar os dados
       const clientsWithData = clients
@@ -111,6 +126,12 @@ export function useGoogleAdsData() {
         .map(client => {
           // Encontrar contas do cliente
           const accounts = googleAccounts ? googleAccounts.filter(account => account.client_id === client.id) : [];
+          
+          // Encontrar orçamentos personalizados para este cliente
+          const clientBudgets = customBudgets?.filter(budget => 
+            budget.client_id === client.id && 
+            budget.platform === "google"
+          ) || [];
           
           // Se o cliente tiver contas específicas, criar um item para cada conta
           if (accounts.length > 0) {
@@ -127,6 +148,11 @@ export function useGoogleAdsData() {
               // Usar a revisão mais recente para esta conta
               const review = accountReviews.length > 0 ? accountReviews[0] : null;
               
+              // Encontrar orçamento personalizado para esta conta específica
+              const accountBudget = clientBudgets?.find(budget => 
+                (!budget.account_id || budget.account_id === account.account_id)
+              );
+              
               // Verificar se os dados são reais ou simulados
               const usingRealData = review?.usingRealData !== false; // Se não especificado, assumir verdadeiro
               
@@ -134,12 +160,20 @@ export function useGoogleAdsData() {
               const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
               console.log(`[DEBUG] Cliente ${client.company_name}, Conta ${account.account_name} - Média 5 dias: ${lastFiveDaysAvg}`);
               
+              // Verificar se está usando orçamento personalizado
+              const usingCustomBudget = review?.using_custom_budget || false;
+              const effectiveBudget = usingCustomBudget && review?.custom_budget_amount ? 
+                review.custom_budget_amount : account.budget_amount;
+              
               // Calcular orçamento recomendado
               const budgetCalc = calculateBudget({
                 monthlyBudget: account.budget_amount || 0,
                 totalSpent: review?.google_total_spent || 0,
                 currentDailyBudget: review?.google_daily_budget_current || 0,
-                lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
+                lastFiveDaysAverage: lastFiveDaysAvg,
+                customBudgetAmount: review?.custom_budget_amount,
+                customBudgetEndDate: review?.custom_budget_end_date,
+                usingCustomBudget: usingCustomBudget
               });
               
               // Verificar se precisa de ajuste (baseado em orçamento diário OU na média dos últimos 5 dias)
@@ -149,12 +183,13 @@ export function useGoogleAdsData() {
                 ...client,
                 google_account_id: account.account_id,
                 google_account_name: account.account_name || "Conta Google",
-                budget_amount: account.budget_amount,
+                budget_amount: effectiveBudget,
                 review: review || null,
                 budgetCalculation: budgetCalc,
                 needsAdjustment: needsAnyAdjustment,
                 lastFiveDaysAvg: lastFiveDaysAvg,
-                usingRealData
+                usingRealData,
+                customBudget: accountBudget || null
               };
             });
           } else if (client.google_account_id) {
@@ -166,6 +201,12 @@ export function useGoogleAdsData() {
             
             const review = clientReviews.length > 0 ? clientReviews[0] : null;
             
+            // Encontrar orçamento personalizado para este cliente
+            const clientBudget = clientBudgets?.find(budget => 
+              budget.client_id === client.id &&
+              (!budget.account_id || budget.account_id === client.google_account_id)
+            );
+            
             // Verificar se os dados são reais ou simulados
             const usingRealData = review?.usingRealData !== false; // Se não especificado, assumir verdadeiro
             
@@ -173,12 +214,20 @@ export function useGoogleAdsData() {
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
             console.log(`[DEBUG] Cliente ${client.company_name}, Conta principal - Média 5 dias: ${lastFiveDaysAvg}`);
             
+            // Verificar se está usando orçamento personalizado
+            const usingCustomBudget = review?.using_custom_budget || false;
+            const effectiveBudget = usingCustomBudget && review?.custom_budget_amount ? 
+              review.custom_budget_amount : client.google_ads_budget;
+            
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
               monthlyBudget: client.google_ads_budget || 0,
               totalSpent: review?.google_total_spent || 0,
               currentDailyBudget: review?.google_daily_budget_current || 0,
-              lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
+              lastFiveDaysAverage: lastFiveDaysAvg,
+              customBudgetAmount: review?.custom_budget_amount,
+              customBudgetEndDate: review?.custom_budget_end_date,
+              usingCustomBudget: usingCustomBudget
             });
             
             // Verificar se precisa de ajuste (baseado em orçamento diário OU na média dos últimos 5 dias)
@@ -187,12 +236,13 @@ export function useGoogleAdsData() {
             return {
               ...client,
               google_account_name: "Conta Principal",
-              budget_amount: client.google_ads_budget || 0,
+              budget_amount: effectiveBudget,
               review: review || null,
               budgetCalculation: budgetCalc,
               needsAdjustment: needsAnyAdjustment,
               lastFiveDaysAvg: lastFiveDaysAvg,
-              usingRealData
+              usingRealData,
+              customBudget: clientBudget || null
             };
           }
           

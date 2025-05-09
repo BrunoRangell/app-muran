@@ -1,4 +1,3 @@
-
 import { 
   createSupabaseClient,
   fetchClientData, 
@@ -100,9 +99,36 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       }
     }
 
-    // Verificar se existe orçamento personalizado ativo
+    // Verificar se existe orçamento personalizado ativo (primeiro na tabela unificada)
     const today = new Date().toISOString().split("T")[0];
-    const customBudget = await fetchActiveCustomBudget(supabase, clientId, today);
+    let customBudget = null;
+    
+    try {
+      // Tentar buscar na tabela unificada primeiro
+      const { data: unifiedBudget, error: unifiedError } = await supabase
+        .from("custom_budgets")
+        .select("*")
+        .eq("client_id", clientId)
+        .eq("platform", "meta")
+        .eq("is_active", true)
+        .lte("start_date", today)
+        .gte("end_date", today)
+        .maybeSingle();
+      
+      if (!unifiedError && unifiedBudget) {
+        customBudget = unifiedBudget;
+        console.log("Orçamento personalizado encontrado na tabela unificada:", customBudget);
+      } else {
+        // Fallback para tabela antiga
+        const { data: legacyBudget } = await fetchActiveCustomBudget(supabase, clientId, today);
+        if (legacyBudget) {
+          customBudget = legacyBudget;
+          console.log("Orçamento personalizado encontrado na tabela legacy:", customBudget);
+        }
+      }
+    } catch (budgetError) {
+      console.error("Erro ao buscar orçamento personalizado:", budgetError);
+    }
 
     const usingCustomBudget = !!customBudget;
     
@@ -184,6 +210,8 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       using_custom_budget: usingCustomBudget,
       custom_budget_id: customBudget?.id || null,
       custom_budget_amount: usingCustomBudget ? customBudget?.budget_amount : null,
+      custom_budget_start_date: usingCustomBudget ? customBudget?.start_date : null,
+      custom_budget_end_date: usingCustomBudget ? customBudget?.end_date : null,
     };
     
     if (existingReview) {

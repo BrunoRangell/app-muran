@@ -23,6 +23,21 @@ export interface MetaAccount {
   updated_at: string;
 }
 
+export interface CustomBudget {
+  id: string;
+  client_id: string;
+  platform: string;
+  budget_amount: number;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  is_recurring: boolean;
+  account_id?: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GoogleReview {
   id: string;
   client_id: string;
@@ -40,6 +55,7 @@ export interface GoogleReview {
   custom_budget_amount?: number;
   custom_budget_id?: string;
   custom_budget_end_date?: string;
+  custom_budget_start_date?: string;
   usingRealData?: boolean; // Adicionado para indicar se os dados são reais ou simulados
   
   // Adicionando campos compatíveis para evitar erros no código existente
@@ -47,7 +63,7 @@ export interface GoogleReview {
   meta_daily_budget_current?: number;
   meta_total_spent?: number;
   idealDailyBudget?: number;
-  custom_budget_start_date?: string;
+  needsBudgetAdjustment?: boolean;
 }
 
 export interface ClientWithReview {
@@ -61,8 +77,9 @@ export interface ClientWithReview {
   meta_account_id?: string;
   meta_ads_budget?: number;
   google_accounts?: GoogleAccount[];
-  meta_accounts?: MetaAccount[]; // Adicionado para compatibilidade
+  meta_accounts?: MetaAccount[]; 
   lastReview?: GoogleReview | null;
   google_reviews?: GoogleReview[];
   needsBudgetAdjustment?: boolean;
+  customBudget?: CustomBudget | null;
 }

@@ -6,6 +6,9 @@ type BudgetInput = {
   totalSpent: number;
   currentDailyBudget: number;
   lastFiveDaysAverage?: number;
+  customBudgetAmount?: number;
+  customBudgetEndDate?: string;
+  usingCustomBudget?: boolean;
 };
 
 type BudgetCalculation = {
@@ -23,15 +26,31 @@ export function useBudgetCalculator() {
   const calculateBudget = useMemo(() => {
     return (input: BudgetInput): BudgetCalculation => {
       const today = new Date();
-      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      
+      // Se temos um orçamento personalizado com data de término, usar essa data
+      let lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      let effectiveBudget = input.monthlyBudget;
+      
+      // Verificar se estamos usando orçamento personalizado
+      if (input.usingCustomBudget && input.customBudgetAmount && input.customBudgetEndDate) {
+        // Usar o valor do orçamento personalizado
+        effectiveBudget = input.customBudgetAmount;
+        
+        // Usar a data de término do orçamento personalizado
+        const endDate = new Date(input.customBudgetEndDate);
+        if (endDate > today) {
+          lastDayOfMonth = endDate;
+        }
+      }
+      
       const remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
       
       // Orçamento restante para o mês (nunca negativo)
-      const remainingBudget = Math.max(0, input.monthlyBudget - input.totalSpent);
+      const remainingBudget = Math.max(0, effectiveBudget - input.totalSpent);
       
       // Calcular porcentagem gasta do orçamento
-      const spentPercentage = input.monthlyBudget > 0 
-        ? (input.totalSpent / input.monthlyBudget) * 100 
+      const spentPercentage = effectiveBudget > 0 
+        ? (input.totalSpent / effectiveBudget) * 100 
         : 0;
       
       // Calcular orçamento diário ideal
@@ -68,8 +87,6 @@ export function useBudgetCalculator() {
         // MODIFICADO: Agora considera apenas a diferença absoluta >= R$5
         needsAdjustmentBasedOnAverage = absoluteDifferenceAverage >= 5;
       }
-      
-      console.log(`[DEBUG] Budget Calculator - lastFiveDaysAverage: ${input.lastFiveDaysAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
       
       return {
         idealDailyBudget: roundedIdealDailyBudget,
