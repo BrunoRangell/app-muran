@@ -12,6 +12,7 @@ interface FilterBarProps {
   onFilterChange: (showAdjustments: boolean) => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  platform?: string; // Adicionada a propriedade platform como opcional
 }
 
 export function FilterBar({
@@ -22,7 +23,8 @@ export function FilterBar({
   onViewModeChange,
   onFilterChange,
   onRefresh,
-  isRefreshing = false
+  isRefreshing = false,
+  platform
 }: FilterBarProps) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 border border-gray-100">
@@ -30,7 +32,7 @@ export function FilterBar({
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <input
           type="text"
-          placeholder="Buscar cliente..."
+          placeholder={`Buscar ${platform === 'google' ? 'campanha' : 'cliente'}...`}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-10 pr-4 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-[#ff6e00] focus:border-transparent"
@@ -47,7 +49,7 @@ export function FilterBar({
             className="rounded-sm border-gray-300 text-[#ff6e00] focus:ring-[#ff6e00]"
           />
           <label htmlFor="showOnlyAdjustments" className="text-sm text-gray-700">
-            Apenas clientes com ajustes
+            Apenas {platform === 'google' ? 'campanhas' : 'clientes'} com ajustes
           </label>
         </div>
         

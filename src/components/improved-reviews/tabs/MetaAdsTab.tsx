@@ -86,7 +86,6 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
   const handleBatchReview = () => {
     console.log("Iniciando revisão em lote do Meta Ads...");
     if (data && data.length > 0) {
-      // Removida a verificação de metrics.metaAccountsData
       reviewAllClients(data);
     } else {
       toast({
@@ -176,6 +175,7 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
         onFilterChange={handleFilterChange}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
+        platform="meta"
       />
       
       <ClientsList 
