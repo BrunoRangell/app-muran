@@ -13,6 +13,7 @@ interface BudgetRecommendationProps {
   lastFiveDaysAverage?: number;
   compact?: boolean;
   platform?: "meta" | "google";
+  usingCustomBudget?: boolean;
 }
 
 export const BudgetRecommendation = ({ 
@@ -23,7 +24,8 @@ export const BudgetRecommendation = ({
   hasReview,
   lastFiveDaysAverage = 0,
   compact = false,
-  platform = "meta"
+  platform = "meta",
+  usingCustomBudget = false
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
 
@@ -36,6 +38,7 @@ export const BudgetRecommendation = ({
         shouldShow={shouldShow}
         shouldShowAverage={platform === "google" ? shouldShowAverage : false}
         lastFiveDaysAverage={platform === "google" ? lastFiveDaysAverage : undefined}
+        usingCustomBudget={usingCustomBudget}
       />
     );
   }
@@ -50,6 +53,11 @@ export const BudgetRecommendation = ({
           <MinusCircle size={18} className="text-gray-500" />
           Recomendação: Nenhum ajuste necessário
         </div>
+        {usingCustomBudget && (
+          <div className="mt-1 text-xs text-gray-500">
+            Usando orçamento personalizado para cálculo
+          </div>
+        )}
       </div>
     );
   }
@@ -82,6 +90,9 @@ export const BudgetRecommendation = ({
                 </TooltipTrigger>
                 <TooltipContent className="p-3 max-w-xs">
                   <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
+                  {usingCustomBudget && (
+                    <p className="mt-1 text-[#ff6e00]">Usando orçamento personalizado para este cálculo.</p>
+                  )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -115,6 +126,9 @@ export const BudgetRecommendation = ({
                 </TooltipTrigger>
                 <TooltipContent className="p-3 max-w-xs">
                   <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
+                  {usingCustomBudget && (
+                    <p className="mt-1 text-[#ff6e00]">Usando orçamento personalizado para este cálculo.</p>
+                  )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

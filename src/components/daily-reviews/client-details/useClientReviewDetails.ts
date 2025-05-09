@@ -69,7 +69,9 @@ export const useClientReviewDetails = (clientId: string) => {
         
         console.log("Valores convertidos:", {
           meta_total_spent: data.meta_total_spent,
-          meta_daily_budget_current: data.meta_daily_budget_current
+          meta_daily_budget_current: data.meta_daily_budget_current,
+          using_custom_budget: data.using_custom_budget,
+          custom_budget_amount: data.custom_budget_amount
         });
       }
       
@@ -122,7 +124,10 @@ export const useClientReviewDetails = (clientId: string) => {
   } = useClientBudgetRecommendation(
     client?.meta_ads_budget,
     latestReview?.meta_total_spent,
-    latestReview?.meta_daily_budget_current
+    latestReview?.meta_daily_budget_current,
+    latestReview?.custom_budget_amount,
+    latestReview?.custom_budget_end_date,
+    latestReview?.using_custom_budget
   );
 
   const isLoading = isLoadingClient || isLoadingReview;
@@ -142,7 +147,10 @@ export const useClientReviewDetails = (clientId: string) => {
     // Detalhes do cálculo
     remainingDays,
     remainingBudget,
-    monthlyBudget: client?.meta_ads_budget,
-    totalSpent: latestReview?.meta_total_spent
+    monthlyBudget: latestReview?.using_custom_budget ? 
+      latestReview?.custom_budget_amount : 
+      client?.meta_ads_budget,
+    totalSpent: latestReview?.meta_total_spent,
+    usingCustomBudget: latestReview?.using_custom_budget || false
   };
 };
