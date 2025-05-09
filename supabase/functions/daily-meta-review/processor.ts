@@ -1,6 +1,6 @@
 
 import { getSupabaseClient } from "./database.ts";
-import { BadRequestResponse, InternalErrorResponse } from "./response.ts";
+import { BadRequestResponse, InternalErrorResponse, formatResponse } from "./response.ts";
 import { validateReviewRequest } from "./validators.ts";
 import { fetchMetaAccountsData } from "./meta-api.ts";
 import { calculateDailyBudgetSplit } from "./budget.ts";
@@ -204,7 +204,7 @@ export async function processReviewRequest(req: Request): Promise<any> {
     }
     
     // 8. Retornar o resultado
-    return {
+    return formatResponse({
       success: true,
       result: result,
       meta: {
@@ -216,10 +216,10 @@ export async function processReviewRequest(req: Request): Promise<any> {
         usingCustomBudget: !!customBudgetToUse,
         customBudgetInfo: customBudgetToUse || null
       }
-    };
+    });
     
   } catch (error) {
     console.error("Erro no processamento da revisão:", error);
-    return InternalErrorResponse(`Erro interno: ${error.message}`);
+    return InternalErrorResponse(`Erro interno: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

@@ -33,3 +33,13 @@ export function formatErrorResponse(message: string, status = 500) {
     }
   );
 }
+
+// Função específica para erros de requisição inválida (400)
+export function BadRequestResponse(message: string) {
+  return formatErrorResponse(message, 400);
+}
+
+// Função específica para erros internos do servidor (500)
+export function InternalErrorResponse(message: string) {
+  return formatErrorResponse(message, 500);
+}
