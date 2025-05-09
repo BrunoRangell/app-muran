@@ -1,7 +1,7 @@
 
 import { formatCurrency } from "@/utils/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, Calendar, TrendingUp, Clock, Note } from "lucide-react";
+import { DollarSign, Calendar, TrendingUp, Clock, FileText } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface BudgetInfoGridProps {
