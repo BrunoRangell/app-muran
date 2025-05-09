@@ -430,9 +430,7 @@ export type Database = {
           client_id: string | null
           created_at: string | null
           custom_budget_amount: number | null
-          custom_budget_end_date: string | null
           custom_budget_id: string | null
-          custom_budget_start_date: string | null
           id: number
           meta_account_id: string | null
           meta_account_name: string | null
@@ -448,9 +446,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           custom_budget_amount?: number | null
-          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
-          custom_budget_start_date?: string | null
           id?: number
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -466,9 +462,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           custom_budget_amount?: number | null
-          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
-          custom_budget_start_date?: string | null
           id?: number
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -537,9 +531,7 @@ export type Database = {
           client_id: string
           created_at: string
           custom_budget_amount: number | null
-          custom_budget_end_date: string | null
           custom_budget_id: string | null
-          custom_budget_start_date: string | null
           google_account_id: string | null
           google_account_name: string | null
           google_daily_budget_current: number | null
@@ -556,9 +548,7 @@ export type Database = {
           client_id: string
           created_at?: string
           custom_budget_amount?: number | null
-          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
-          custom_budget_start_date?: string | null
           google_account_id?: string | null
           google_account_name?: string | null
           google_daily_budget_current?: number | null
@@ -575,9 +565,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           custom_budget_amount?: number | null
-          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
-          custom_budget_start_date?: string | null
           google_account_id?: string | null
           google_account_name?: string | null
           google_daily_budget_current?: number | null

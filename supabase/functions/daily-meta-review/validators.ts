@@ -13,23 +13,6 @@ export function validateRequest(clientId: string) {
   return null;
 }
 
-// Função para validar a requisição de revisão
-export function validateReviewRequest(request: any): string | null {
-  if (!request) {
-    return "Requisição inválida ou vazia";
-  }
-  
-  if (!request.clientId) {
-    return "ID do cliente não fornecido";
-  }
-  
-  if (!request.accessToken) {
-    return "Token de acesso Meta não fornecido";
-  }
-  
-  return null;
-}
-
 // Função para processar o intervalo de datas
 export function processDateRange(dateRange?: { start: string; end: string }) {
   // Se não foi fornecido dateRange, usar o mês atual

@@ -1,8 +1,6 @@
-
 import { formatCurrency } from "@/utils/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, Calendar, TrendingUp, Clock, FileText } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DollarSign, Calendar, TrendingUp, Clock } from "lucide-react";
 
 interface BudgetInfoGridProps {
   monthlyBudget: number;
@@ -13,8 +11,6 @@ interface BudgetInfoGridProps {
   isCalculating: boolean;
   calculationError: Error | null;
   hasReview: boolean;
-  usingCustomBudget?: boolean;
-  customBudgetEndDate?: string;
 }
 
 export const BudgetInfoGrid = ({
@@ -25,9 +21,7 @@ export const BudgetInfoGrid = ({
   lastFiveDaysAverage = 0,
   isCalculating,
   calculationError,
-  hasReview,
-  usingCustomBudget = false,
-  customBudgetEndDate
+  hasReview
 }: BudgetInfoGridProps) => {
   // Calcular porcentagem de gasto
   const spentPercentage = monthlyBudget > 0 
@@ -53,42 +47,12 @@ export const BudgetInfoGrid = ({
     );
   }
 
-  // Formatação de data para exibição
-  const formatEndDate = (dateString?: string) => {
-    if (!dateString) return "";
-    
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    
-    return `${day}/${month}`;
-  };
-  
-  // Data de término formatada
-  const formattedEndDate = formatEndDate(customBudgetEndDate);
-
   return (
     <div className="grid grid-cols-2 gap-3 mt-3">
       <div className="bg-gray-50 rounded-lg p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-sm text-gray-600 font-medium mb-1">
-            <Calendar size={16} />
-            {usingCustomBudget ? "Orçamento Personalizado" : "Orçamento Mensal"}
-          </div>
-          {usingCustomBudget && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <span className="text-xs bg-[#ff6e00] text-white px-1.5 py-0.5 rounded-sm">
-                    Até {formattedEndDate}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Este é um orçamento personalizado com término em {formattedEndDate}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium mb-1">
+          <Calendar size={16} />
+          Orçamento Mensal
         </div>
         <div className="text-lg font-semibold">
           {formatCurrency(monthlyBudget)}

@@ -6,19 +6,8 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   // Verificar se o cliente tem uma revisão
   const hasReview = !!client.lastReview;
   
-  // Verificar se está usando orçamento personalizado
-  const usingCustomBudget = useMemo(() => {
-    return client.lastReview?.using_custom_budget || false;
-  }, [client.lastReview]);
-
   // Calcular o orçamento total do Google Ads somando todas as contas
   const calculateTotalGoogleBudget = () => {
-    // Se estiver usando orçamento personalizado, retornar o valor personalizado
-    if (hasReview && usingCustomBudget && client.lastReview?.custom_budget_amount) {
-      console.log(`[DEBUG] Cliente ${client.company_name} usando orçamento personalizado: ${client.lastReview.custom_budget_amount}`);
-      return client.lastReview.custom_budget_amount;
-    }
-    
     // Se não tiver contas Google configuradas, usar o valor legado
     if (!client.google_accounts || client.google_accounts.length === 0) {
       return client.google_ads_budget || 0;
@@ -120,25 +109,9 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   }, [hasReview, client.lastReview, client.google_reviews]);
   
   // Calcular orçamento diário ideal
-  let currentDate = new Date();
-  let lastDayOfMonth: Date;
-  let remainingDays: number;
-  
-  // Se estiver usando orçamento personalizado com datas definidas, calcular dias restantes até a data final
-  if (hasReview && usingCustomBudget && client.lastReview?.custom_budget_end_date) {
-    const endDateStr = client.lastReview.custom_budget_end_date;
-    lastDayOfMonth = new Date(endDateStr);
-    
-    // Calcular diferença em dias
-    const diffTime = lastDayOfMonth.getTime() - currentDate.getTime();
-    remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    console.log(`[DEBUG] Cliente ${client.company_name} - Usando orçamento personalizado com data final ${endDateStr}, ${remainingDays} dias restantes`);
-  } else {
-    // Cálculo padrão para fim do mês
-    lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
-  }
+  const currentDate = new Date();
+  const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
   
   const remainingBudget = Math.max(monthlyBudget - totalSpent, 0);
   
@@ -180,7 +153,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     return absoluteDifference >= 5;
   }, [hasReview, budgetDifferenceBasedOnAverage, lastFiveDaysSpent]);
 
-  console.log(`[DEBUG] Cliente: ${client.company_name} - lastFiveDaysSpent: ${lastFiveDaysSpent}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}, usingCustomBudget: ${usingCustomBudget}`);
+  console.log(`[DEBUG] Cliente: ${client.company_name} - lastFiveDaysSpent: ${lastFiveDaysSpent}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
   
   return {
     hasReview,
@@ -195,7 +168,6 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     remainingDaysValue: remainingDays,
     remainingBudget,
     needsBudgetAdjustment,
-    needsAdjustmentBasedOnAverage,
-    usingCustomBudget
+    needsAdjustmentBasedOnAverage
   };
 };
