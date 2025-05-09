@@ -140,6 +140,7 @@ export function useUnifiedReviewsData() {
     isLoading,
     error,
     metrics,
-    refreshData: refetch
+    refreshData: refetch,
+    isRefreshing: false // Adicionado isRefreshing para compatibilidade com a interface
   };
 }

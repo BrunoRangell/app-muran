@@ -8,7 +8,7 @@ import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/card";
+import { Button } from "@/components/ui/button"; // Corrigido: importado de button, não de card
 import { toast } from "@/hooks/use-toast";
 
 interface MetaAdsTabProps {
@@ -20,7 +20,8 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
-  const { data, isLoading, error, metrics, refreshData, isRefreshing } = useUnifiedReviewsData();
+  const [isRefreshing, setIsRefreshing] = useState(false); // Adicionado estado para controlar o refresh
+  const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
   const { reviewAllClients, isProcessing, lastError } = useBatchOperations({
     platform: "meta",
     onComplete: () => {
@@ -61,6 +62,7 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
   // Handle refresh
   const handleRefresh = async () => {
     console.log("Atualizando dados do Meta Ads...");
+    setIsRefreshing(true);
     try {
       await refreshData();
       if (onRefreshCompleted) onRefreshCompleted();
@@ -75,14 +77,17 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
         description: "Ocorreu um erro ao atualizar os dados. Por favor, tente novamente.",
         variant: "destructive"
       });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   // Handle batch review
   const handleBatchReview = () => {
     console.log("Iniciando revisão em lote do Meta Ads...");
-    if (data && data.length > 0 && metrics?.metaAccountsData?.length > 0) {
-      reviewAllClients(data, metrics.metaAccountsData);
+    if (data && data.length > 0) {
+      // Removida a verificação de metrics.metaAccountsData
+      reviewAllClients(data);
     } else {
       toast({
         title: "Sem dados para revisão",
