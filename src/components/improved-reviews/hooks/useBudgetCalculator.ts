@@ -6,6 +6,10 @@ type BudgetInput = {
   totalSpent: number;
   currentDailyBudget: number;
   lastFiveDaysAverage?: number;
+  customBudgetAmount?: number | null;
+  customBudgetStartDate?: string | null;
+  customBudgetEndDate?: string | null;
+  isUsingCustomBudget?: boolean;
 };
 
 type BudgetCalculation = {
@@ -17,21 +21,49 @@ type BudgetCalculation = {
   needsBudgetAdjustment: boolean;
   needsAdjustmentBasedOnAverage?: boolean;
   spentPercentage: number;
+  isUsingCustomBudget: boolean;
+  customBudgetDetails?: {
+    amount: number;
+    startDate?: string;
+    endDate?: string;
+  } | null;
 };
 
 export function useBudgetCalculator() {
   const calculateBudget = useMemo(() => {
     return (input: BudgetInput): BudgetCalculation => {
       const today = new Date();
-      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      const remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
+      
+      // Determinar se está usando orçamento personalizado
+      const isUsingCustomBudget = input.isUsingCustomBudget || !!input.customBudgetAmount;
+      
+      // Se estiver usando orçamento personalizado, calcular dias restantes com base no período específico
+      let remainingDays = 0;
+      if (isUsingCustomBudget && input.customBudgetEndDate) {
+        const endDate = new Date(input.customBudgetEndDate);
+        // Calcular diferença de dias entre hoje e a data final (+1 para incluir o dia atual)
+        const timeDiff = endDate.getTime() - today.getTime();
+        remainingDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+        
+        // Garantir que temos pelo menos 1 dia
+        remainingDays = Math.max(1, remainingDays);
+      } else {
+        // Se não for orçamento personalizado, usar dias restantes do mês
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
+      }
+      
+      // Determinar o orçamento a ser usado (personalizado ou mensal)
+      const effectiveBudget = isUsingCustomBudget && input.customBudgetAmount 
+        ? input.customBudgetAmount 
+        : input.monthlyBudget;
       
       // Orçamento restante para o mês (nunca negativo)
-      const remainingBudget = Math.max(0, input.monthlyBudget - input.totalSpent);
+      const remainingBudget = Math.max(0, effectiveBudget - input.totalSpent);
       
       // Calcular porcentagem gasta do orçamento
-      const spentPercentage = input.monthlyBudget > 0 
-        ? (input.totalSpent / input.monthlyBudget) * 100 
+      const spentPercentage = effectiveBudget > 0 
+        ? (input.totalSpent / effectiveBudget) * 100 
         : 0;
       
       // Calcular orçamento diário ideal
@@ -48,7 +80,7 @@ export function useBudgetCalculator() {
       // Determinar se precisa de ajuste (apenas diferença absoluta de 5 reais ou mais)
       const absoluteDifference = Math.abs(budgetDifference);
       
-      // MODIFICADO: Agora considera apenas a diferença absoluta >= R$5
+      // Apenas diferença absoluta >= R$5 determina necessidade de ajuste
       const needsBudgetAdjustment = 
         input.currentDailyBudget > 0 && // só considera se tem orçamento atual
         absoluteDifference >= 5; // apenas diferença absoluta de 5 reais ou mais
@@ -65,11 +97,18 @@ export function useBudgetCalculator() {
         // Determinar se precisa de ajuste baseado na média (apenas diferença absoluta de 5 reais ou mais)
         const absoluteDifferenceAverage = Math.abs(budgetDifferenceBasedOnAverage);
         
-        // MODIFICADO: Agora considera apenas a diferença absoluta >= R$5
+        // Apenas diferença absoluta >= R$5 determina necessidade de ajuste
         needsAdjustmentBasedOnAverage = absoluteDifferenceAverage >= 5;
       }
       
-      console.log(`[DEBUG] Budget Calculator - lastFiveDaysAverage: ${input.lastFiveDaysAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
+      // Construir detalhes do orçamento personalizado se aplicável
+      const customBudgetDetails = isUsingCustomBudget ? {
+        amount: input.customBudgetAmount || 0,
+        startDate: input.customBudgetStartDate || undefined,
+        endDate: input.customBudgetEndDate || undefined
+      } : null;
+      
+      console.log(`[DEBUG] Budget Calculator - Custom Budget: ${isUsingCustomBudget}, Amount: ${input.customBudgetAmount}, Dias restantes: ${remainingDays}, Orçamento diário ideal: ${roundedIdealDailyBudget}`);
       
       return {
         idealDailyBudget: roundedIdealDailyBudget,
@@ -79,7 +118,9 @@ export function useBudgetCalculator() {
         remainingBudget,
         needsBudgetAdjustment,
         needsAdjustmentBasedOnAverage,
-        spentPercentage
+        spentPercentage,
+        isUsingCustomBudget,
+        customBudgetDetails
       };
     };
   }, []);

@@ -1,160 +1,158 @@
 
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import React from "react";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { ClientWithReview } from "@/components/daily-reviews/hooks/types/reviewTypes";
+import { Badge } from "@/components/ui/badge";
+import { BadgeDollarSign, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Building2, ChevronRight, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { useBatchOperations } from "../hooks/useBatchOperations";
-import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboard/card-components/CompactBudgetRecommendation";
 
 interface ClientCardProps {
-  client: any;
+  client: ClientWithReview;
+  onReview?: (clientId: string) => void;
+  isProcessing?: boolean;
   platform?: "meta" | "google";
 }
 
-export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const { toast } = useToast();
-  const { reviewClient, processingIds, isProcessingAccount } = useBatchOperations({
-    platform: platform as "meta" | "google"
-  });
+export function ClientCard({ 
+  client, 
+  onReview, 
+  isProcessing = false,
+  platform = "meta" 
+}: ClientCardProps) {
+  const lastReview = client.lastReview;
+  const hasReview = !!lastReview;
   
-  const isProcessing = processingIds.includes(client.id) || 
-    isProcessingAccount(client.id, client[`${platform}_account_id`]);
+  // Determinar se o cliente está usando orçamento personalizado
+  const isUsingCustomBudget = hasReview && lastReview?.using_custom_budget;
+  const customBudgetAmount = hasReview && lastReview?.custom_budget_amount;
   
-  // Preparar dados para exibição
-  const accountName = client[`${platform}_account_name`] || "Conta Principal";
-  const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
-  const budgetAmount = client.budget_amount || 0;
-  const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
-  const needsAdjustment = client.needsAdjustment;
-  const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
+  // Determinar valores para exibição
+  const metaAccountName = platform === 'meta' 
+    ? (lastReview?.meta_account_name || client.meta_account_id || "Conta principal") 
+    : (lastReview?.google_account_name || client.google_account_id || "Conta principal");
   
-  // Dados para recomendação baseada na média dos últimos 5 dias (apenas para Google)
-  const lastFiveDaysAvg = platform === "google" ? (client.lastFiveDaysAvg || 0) : 0;
-  const budgetDifferenceAvg = platform === "google" ? (client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0) : 0;
-  const needsAdjustmentBasedOnAverage = platform === "google" ? (client.budgetCalculation?.needsAdjustmentBasedOnAverage || false) : false;
+  const totalSpent = hasReview 
+    ? (platform === 'meta' ? lastReview.meta_total_spent : lastReview.google_total_spent) 
+    : 0;
   
-  console.log(`[DEBUG] ClientCard - Cliente: ${client.company_name}, Platform: ${platform}, lastFiveDaysAvg: ${lastFiveDaysAvg}, budgetDifferenceAvg: ${budgetDifferenceAvg}, needsAdjustmentBasedOnAverage: ${needsAdjustmentBasedOnAverage}`);
+  const currentBudget = hasReview 
+    ? (platform === 'meta' ? lastReview.meta_daily_budget_current : lastReview.google_daily_budget_current) 
+    : 0;
   
-  const handleReviewClick = async () => {
-    try {
-      await reviewClient(client.id, client[`${platform}_account_id`]);
-      toast({
-        title: "Revisão completa",
-        description: `O orçamento de ${client.company_name} foi revisado com sucesso.`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao revisar o cliente",
-        variant: "destructive"
-      });
-    }
+  const monthlyBudget = platform === 'meta' 
+    ? (isUsingCustomBudget && customBudgetAmount ? customBudgetAmount : client.meta_ads_budget) 
+    : client.google_ads_budget;
+  
+  // Calcular porcentagem de gasto
+  const spentPercentage = monthlyBudget > 0 ? Math.round((totalSpent / monthlyBudget) * 100) : 0;
+  
+  // Determinar cor da barra de progresso
+  const getProgressColor = (percentage: number) => {
+    if (percentage < 70) return "bg-green-500";
+    if (percentage < 90) return "bg-yellow-500";
+    return "bg-red-500";
   };
   
+  // Verificar se o cliente precisa de ajuste (diferença > 5 reais)
+  const needsAdjustment = hasReview && lastReview?.needsBudgetAdjustment;
+  
   return (
-    <Card className={`overflow-hidden transition-all ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''}`}>
-      <CardHeader className="p-4 pb-0">
-        <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <h3 className="font-medium line-clamp-1 flex items-center gap-1">
-              <Building2 className="h-4 w-4 text-[#ff6e00]" />
-              {client.company_name}
-            </h3>
-            <p className="text-sm text-gray-500">{accountName}</p>
-          </div>
-          {needsAdjustment && (
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-          )}
-        </div>
-      </CardHeader>
-      
+    <Card className={`overflow-hidden border ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''}`}>
       <CardContent className="p-4">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Gasto</span>
-              <span className="font-medium">{formatCurrency(spentAmount)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Orçamento</span>
-              <span className="font-medium">{formatCurrency(budgetAmount)}</span>
-            </div>
-            <Progress 
-              value={spentPercentage} 
-              className="h-2"
-              indicatorClassName={`${
-                spentPercentage > 90 
-                  ? "bg-red-500" 
-                  : spentPercentage > 70 
-                  ? "bg-amber-500" 
-                  : "bg-emerald-500"
-              }`}
-            />
-            <div className="text-xs text-right text-gray-500">
-              {Math.round(spentPercentage)}% utilizado
-            </div>
-          </div>
-          
-          {/* Recomendações de orçamento em formato compacto */}
-          <CompactBudgetRecommendation 
-            budgetDifference={budgetDifference}
-            budgetDifferenceBasedOnAverage={platform === "google" ? budgetDifferenceAvg : undefined}
-            shouldShow={client.budgetCalculation?.needsBudgetAdjustment || false}
-            shouldShowAverage={platform === "google" ? needsAdjustmentBasedOnAverage : false}
-            lastFiveDaysAverage={platform === "google" ? lastFiveDaysAvg : undefined}
-            platform={platform}
-          />
-          
-          {expanded && client.review && (
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Orçamento diário atual</span>
-                <span className="font-medium">{formatCurrency(client.review[`${platform}_daily_budget_current`] || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Orçamento diário ideal</span>
-                <span className="font-medium">{formatCurrency(client.budgetCalculation?.idealDailyBudget || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Dias restantes</span>
-                <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
-              </div>
-              {platform === "google" && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Média gasto (5 dias)</span>
-                  <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
-                </div>
+        <div className="mb-4">
+          <div className="flex items-center justify-between">
+            <div className="font-medium text-gray-900 flex items-center gap-1">
+              {client.company_name}
+              {isUsingCustomBudget && (
+                <BadgeDollarSign size={16} className="text-[#ff6e00]" />
               )}
             </div>
+            {hasReview && needsAdjustment && (
+              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-none">
+                Necessita ajuste
+              </Badge>
+            )}
+          </div>
+          <div className="text-sm text-gray-500">{metaAccountName}</div>
+          
+          {isUsingCustomBudget && customBudgetAmount && (
+            <div className="mt-1">
+              <Badge className="bg-[#ff6e00]/10 text-[#ff6e00] hover:bg-[#ff6e00]/20 border-none">
+                Orçamento personalizado: {formatCurrency(customBudgetAmount)}
+              </Badge>
+            </div>
           )}
         </div>
-      </CardContent>
-      
-      <CardFooter className="p-4 pt-0 flex justify-between">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => setExpanded(!expanded)}
-          className="text-xs"
-        >
-          {expanded ? "Menos detalhes" : "Mais detalhes"}
-        </Button>
         
-        <Button 
-          variant="default"
-          size="sm"
-          className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
-          onClick={handleReviewClick}
-          disabled={isProcessing}
-        >
-          {isProcessing ? "Processando..." : "Revisar"}
-          <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
-      </CardFooter>
+        {hasReview ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <p className="text-xs text-gray-500">Gasto Atual</p>
+                <p className="text-lg font-medium">{formatCurrency(totalSpent)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Orçamento Mensal</p>
+                <p className="text-lg font-medium">{formatCurrency(monthlyBudget)}</p>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <div className="flex justify-between text-xs mb-1">
+                <span>Progresso</span>
+                <span>{spentPercentage}%</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full ${getProgressColor(spentPercentage)}`} 
+                  style={{ width: `${Math.min(spentPercentage, 100)}%` }}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="bg-gray-50 p-2 rounded-md">
+                <p className="text-xs text-gray-500">Orçamento Diário</p>
+                <p className="font-medium">{formatCurrency(currentBudget)}</p>
+              </div>
+              <div className="bg-gray-50 p-2 rounded-md">
+                <p className="text-xs text-gray-500">Revisado</p>
+                <p className="font-medium">
+                  {new Date(lastReview.updated_at).toLocaleDateString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-6">
+            <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
+            <p className="text-sm text-gray-500 text-center">
+              Sem dados de revisão disponíveis
+            </p>
+          </div>
+        )}
+      </CardContent>
+
+      {onReview && (
+        <CardFooter className="p-0">
+          <Button
+            onClick={() => onReview(client.id)}
+            disabled={isProcessing}
+            className="w-full rounded-t-none bg-gray-50 hover:bg-gray-100 text-gray-700 border-t"
+            variant="ghost"
+          >
+            {isProcessing && processingIds?.includes(client.id) ? (
+              <>Analisando...</>
+            ) : (
+              <>Revisar</>
+            )}
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 }

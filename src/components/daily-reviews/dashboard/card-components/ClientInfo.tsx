@@ -20,6 +20,18 @@ export const ClientInfo = ({
 }: ClientInfoProps) => {
   const lastReviewDate = client.lastReview?.updated_at;
   const isPrimaryAccount = metaAccount?.is_primary;
+  
+  // Verificar se há um orçamento personalizado ativo
+  const hasCustomBudget = !!customBudget || isUsingCustomBudgetInReview;
+  
+  // Obter datas do orçamento personalizado
+  const customBudgetDates = customBudget ? {
+    start: new Date(customBudget.start_date).toLocaleDateString('pt-BR'),
+    end: new Date(customBudget.end_date).toLocaleDateString('pt-BR')
+  } : (client.lastReview?.custom_budget_start_date && client.lastReview?.custom_budget_end_date) ? {
+    start: new Date(client.lastReview.custom_budget_start_date).toLocaleDateString('pt-BR'),
+    end: new Date(client.lastReview.custom_budget_end_date).toLocaleDateString('pt-BR')
+  } : null;
 
   return (
     <>
@@ -33,7 +45,7 @@ export const ClientInfo = ({
             )}
           </span>
         )}
-        {customBudget && isUsingCustomBudgetInReview && (
+        {hasCustomBudget && (
           <BadgeDollarSign size={16} className="text-[#ff6e00]" />
         )}
       </div>
@@ -44,10 +56,15 @@ export const ClientInfo = ({
         </div>
       )}
       
-      {customBudget && isUsingCustomBudgetInReview && (
+      {hasCustomBudget && (
         <div className="mt-1">
           <Badge className="bg-[#ff6e00]/10 text-[#ff6e00] hover:bg-[#ff6e00]/20 border-none">
             Orçamento personalizado ativo
+            {customBudgetDates && (
+              <span className="ml-1 text-xs">
+                ({customBudgetDates.start} - {customBudgetDates.end})
+              </span>
+            )}
           </Badge>
         </div>
       )}

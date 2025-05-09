@@ -33,6 +33,7 @@ interface ReviewResult {
   budgetAmount?: number;
   dailyBudgetCurrent?: number;
   usingCustomBudget?: boolean;
+  customBudgetData?: any;
   error?: string;
 }
 
@@ -101,8 +102,42 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     }
 
     // Verificar se existe orçamento personalizado ativo
+    // Primeiro tentar na tabela custom_budgets (unificada)
     const today = new Date().toISOString().split("T")[0];
-    const customBudget = await fetchActiveCustomBudget(supabase, clientId, today);
+    let customBudget = null;
+    
+    // Buscar na tabela unificada
+    const { data: unifiedCustomBudget, error: unifiedError } = await supabase
+      .from("custom_budgets")
+      .select("*")
+      .eq("client_id", clientId)
+      .eq("is_active", true)
+      .eq("platform", "meta")
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .order("created_at", { ascending: false })
+      .maybeSingle();
+    
+    if (!unifiedError && unifiedCustomBudget) {
+      customBudget = unifiedCustomBudget;
+      console.log("Orçamento personalizado encontrado na tabela custom_budgets:", customBudget);
+    } else {
+      // Tentar na tabela legada
+      const { data: legacyCustomBudget, error: legacyError } = await supabase
+        .from("meta_custom_budgets")
+        .select("*")
+        .eq("client_id", clientId)
+        .eq("is_active", true)
+        .lte("start_date", today)
+        .gte("end_date", today)
+        .order("created_at", { ascending: false })
+        .maybeSingle();
+      
+      if (!legacyError && legacyCustomBudget) {
+        customBudget = legacyCustomBudget;
+        console.log("Orçamento personalizado encontrado na tabela meta_custom_budgets:", customBudget);
+      }
+    }
 
     const usingCustomBudget = !!customBudget;
     
@@ -135,6 +170,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     let totalSpent = 0;
     let dailyBudgetCurrent = 0;
     let apiDataFetched = false;
+    let lastFiveDaysAverage = 0;
     
     try {
       if (accountId && validAccessToken) {
@@ -145,8 +181,9 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
         if (metaAdsData) {
           totalSpent = metaAdsData.totalSpent;
           dailyBudgetCurrent = metaAdsData.dailyBudgetCurrent;
+          lastFiveDaysAverage = metaAdsData.lastFiveDaysAverage || 0;
           apiDataFetched = true;
-          console.log(`Dados obtidos com sucesso da API: Gasto total = ${totalSpent}, Orçamento diário atual = ${dailyBudgetCurrent}`);
+          console.log(`Dados obtidos com sucesso da API: Gasto total = ${totalSpent}, Orçamento diário atual = ${dailyBudgetCurrent}, Média 5 dias = ${lastFiveDaysAverage}`);
         } else {
           console.warn("Dados da API retornaram valores indefinidos");
         }
@@ -184,6 +221,9 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       using_custom_budget: usingCustomBudget,
       custom_budget_id: customBudget?.id || null,
       custom_budget_amount: usingCustomBudget ? customBudget?.budget_amount : null,
+      custom_budget_start_date: customBudget?.start_date || null,
+      custom_budget_end_date: customBudget?.end_date || null,
+      google_last_five_days_spent: lastFiveDaysAverage // Usar o mesmo campo para manter compatibilidade
     };
     
     if (existingReview) {
@@ -221,6 +261,12 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       totalSpent,
       budgetAmount,
       usingCustomBudget,
+      customBudgetData: usingCustomBudget ? {
+        id: customBudget.id,
+        amount: customBudget.budget_amount,
+        startDate: customBudget.start_date,
+        endDate: customBudget.end_date
+      } : null,
     };
   } catch (error) {
     console.error("Erro na função Edge:", error.message);
