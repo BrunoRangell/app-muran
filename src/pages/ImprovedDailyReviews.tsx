@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MetaAdsTab } from "@/components/improved-reviews/tabs/MetaAdsTab";
-import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
+import { MetaAdsTab } from "@/components/ads-management/meta/MetaAdsTab";
+import { GoogleAdsTab } from "@/components/ads-management/google/GoogleAdsTab";
 import { SettingsTab } from "@/components/improved-reviews/tabs/SettingsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
