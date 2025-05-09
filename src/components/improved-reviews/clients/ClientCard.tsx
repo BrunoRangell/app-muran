@@ -11,7 +11,7 @@ interface ClientCardProps {
   client: ClientWithReview;
   onReview?: (clientId: string) => void;
   isProcessing?: boolean;
-  platform?: "meta" | "google";
+  platform?: "meta" | "google" 
 }
 
 export function ClientCard({ 
@@ -28,7 +28,7 @@ export function ClientCard({
   const customBudgetAmount = hasReview && lastReview?.custom_budget_amount;
   
   // Determinar valores para exibição
-  const metaAccountName = platform === 'meta' 
+  const accountName = platform === 'meta' 
     ? (lastReview?.meta_account_name || client.meta_account_id || "Conta principal") 
     : (lastReview?.google_account_name || client.google_account_id || "Conta principal");
   
@@ -55,7 +55,7 @@ export function ClientCard({
   };
   
   // Verificar se o cliente precisa de ajuste (diferença > 5 reais)
-  const needsAdjustment = hasReview && lastReview?.needsBudgetAdjustment;
+  const needsAdjustment = client.needsBudgetAdjustment;
   
   return (
     <Card className={`overflow-hidden border ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''}`}>
@@ -74,7 +74,7 @@ export function ClientCard({
               </Badge>
             )}
           </div>
-          <div className="text-sm text-gray-500">{metaAccountName}</div>
+          <div className="text-sm text-gray-500">{accountName}</div>
           
           {isUsingCustomBudget && customBudgetAmount && (
             <div className="mt-1">
@@ -145,7 +145,7 @@ export function ClientCard({
             className="w-full rounded-t-none bg-gray-50 hover:bg-gray-100 text-gray-700 border-t"
             variant="ghost"
           >
-            {isProcessing && processingIds?.includes(client.id) ? (
+            {isProcessing ? (
               <>Analisando...</>
             ) : (
               <>Revisar</>

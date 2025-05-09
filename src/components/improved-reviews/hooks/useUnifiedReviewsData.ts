@@ -4,33 +4,33 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useBudgetCalculator } from "./useBudgetCalculator";
 
-export type ClientMetrics = {
-  totalClients: number;
-  clientsNeedingAdjustment: number;
-  totalBudget: number;
-  totalSpent: number;
-  spentPercentage: number;
+export type UnifiedMetrics = {
+  totalItems: number;
+  reviewedItems: number;
+  increases: number;
+  decreases: number;
+  issues: number;
 };
 
-export function useUnifiedReviewsData() {
-  const [metrics, setMetrics] = useState<ClientMetrics>({
-    totalClients: 0,
-    clientsNeedingAdjustment: 0,
-    totalBudget: 0,
-    totalSpent: 0,
-    spentPercentage: 0
+export function useUnifiedReviewsData(platform: "meta" | "google" = "meta") {
+  const [metrics, setMetrics] = useState<UnifiedMetrics>({
+    totalItems: 0,
+    reviewedItems: 0,
+    increases: 0,
+    decreases: 0,
+    issues: 0
   });
 
   const { calculateBudget } = useBudgetCalculator();
 
-  // Fetch clients with their Meta accounts and reviews
+  // Fetch clients with their accounts and reviews
   const { 
     data, 
     isLoading, 
     error, 
     refetch 
   } = useQuery({
-    queryKey: ["improved-meta-reviews"],
+    queryKey: [`improved-${platform}-reviews`],
     queryFn: async () => {
       // Buscar clientes ativos
       const { data: clients, error: clientsError } = await supabase
@@ -39,23 +39,30 @@ export function useUnifiedReviewsData() {
           id,
           company_name,
           meta_ads_budget,
+          google_ads_budget,
           status
         `)
         .eq("status", "active");
 
       if (clientsError) throw clientsError;
-
-      // Buscar contas Meta dos clientes
-      const { data: metaAccounts, error: accountsError } = await supabase
-        .from("client_meta_accounts")
+      
+      // Determinar qual campo de orçamento usar baseado na plataforma
+      const budgetField = platform === "meta" ? "meta_ads_budget" : "google_ads_budget";
+      const accountIdField = platform === "meta" ? "meta_account_id" : "google_account_id";
+      
+      // Buscar contas da plataforma correspondente
+      const accountsTable = platform === "meta" ? "client_meta_accounts" : "client_google_accounts";
+      const { data: accounts, error: accountsError } = await supabase
+        .from(accountsTable)
         .select("*")
         .eq("status", "active");
 
       if (accountsError) throw accountsError;
 
       // Buscar revisões mais recentes
+      const reviewsTable = platform === "meta" ? "daily_budget_reviews" : "google_ads_reviews";
       const { data: reviews, error: reviewsError } = await supabase
-        .from("daily_budget_reviews")
+        .from(reviewsTable)
         .select("*")
         .eq("review_date", new Date().toISOString().split("T")[0]);
 
@@ -64,32 +71,40 @@ export function useUnifiedReviewsData() {
       // Combinar os dados
       const clientsWithData = clients.map(client => {
         // Encontrar contas do cliente
-        const accounts = metaAccounts.filter(account => account.client_id === client.id);
+        const clientAccounts = accounts.filter(account => account.client_id === client.id);
         
         // Se o cliente tiver contas específicas, criar um item para cada conta
-        if (accounts.length > 0) {
-          return accounts.map(account => {
+        if (clientAccounts.length > 0) {
+          return clientAccounts.map(account => {
             // Encontrar revisão para esta conta
+            const accountIdToMatch = platform === "meta" ? "meta_account_id" : "google_account_id";
             const review = reviews.find(r => 
               r.client_id === client.id && 
-              (r.meta_account_id === account.account_id || r.client_account_id === account.account_id)
+              (r[accountIdToMatch] === account.account_id || r.client_account_id === account.account_id)
             );
             
             // Calcular orçamento recomendado
+            const dailyBudgetField = platform === "meta" ? "meta_daily_budget_current" : "google_daily_budget_current";
+            const spentField = platform === "meta" ? "meta_total_spent" : "google_total_spent";
+            
             const budgetCalc = calculateBudget({
               monthlyBudget: account.budget_amount,
-              totalSpent: review?.meta_total_spent || 0,
-              currentDailyBudget: review?.meta_daily_budget_current || 0
+              totalSpent: review?.[spentField] || 0,
+              currentDailyBudget: review?.[dailyBudgetField] || 0,
+              customBudgetAmount: review?.custom_budget_amount,
+              isUsingCustomBudget: review?.using_custom_budget,
+              customBudgetStartDate: review?.custom_budget_start_date,
+              customBudgetEndDate: review?.custom_budget_end_date
             });
             
             return {
               ...client,
-              meta_account_id: account.account_id,
-              meta_account_name: account.account_name,
+              [accountIdField]: account.account_id,
+              account_name: account.account_name,
               budget_amount: account.budget_amount,
-              review: review || null,
+              lastReview: review || null,
               budgetCalculation: budgetCalc,
-              needsAdjustment: budgetCalc.needsBudgetAdjustment
+              needsBudgetAdjustment: budgetCalc.needsBudgetAdjustment
             };
           });
         } else {
@@ -97,20 +112,25 @@ export function useUnifiedReviewsData() {
           const review = reviews.find(r => r.client_id === client.id);
           
           // Calcular orçamento recomendado
+          const dailyBudgetField = platform === "meta" ? "meta_daily_budget_current" : "google_daily_budget_current";
+          const spentField = platform === "meta" ? "meta_total_spent" : "google_total_spent";
+          
           const budgetCalc = calculateBudget({
-            monthlyBudget: client.meta_ads_budget,
-            totalSpent: review?.meta_total_spent || 0,
-            currentDailyBudget: review?.meta_daily_budget_current || 0
+            monthlyBudget: client[budgetField],
+            totalSpent: review?.[spentField] || 0,
+            currentDailyBudget: review?.[dailyBudgetField] || 0,
+            customBudgetAmount: review?.custom_budget_amount,
+            isUsingCustomBudget: review?.using_custom_budget
           });
           
           return {
             ...client,
-            meta_account_id: null,
-            meta_account_name: "Conta Principal",
-            budget_amount: client.meta_ads_budget,
-            review: review || null,
+            [accountIdField]: null,
+            account_name: platform === "meta" ? "Conta Meta Principal" : "Conta Google Principal",
+            budget_amount: client[budgetField],
+            lastReview: review || null,
             budgetCalculation: budgetCalc,
-            needsAdjustment: budgetCalc.needsBudgetAdjustment
+            needsBudgetAdjustment: budgetCalc.needsBudgetAdjustment
           };
         }
       });
@@ -120,15 +140,26 @@ export function useUnifiedReviewsData() {
       
       // Calcular métricas
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
-      const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.meta_total_spent || 0), 0);
-      const needingAdjustment = flattenedClients.filter(client => client.needsAdjustment).length;
+      const totalSpent = flattenedClients.reduce((sum, client) => {
+        const spentField = platform === "meta" ? "meta_total_spent" : "google_total_spent";
+        return sum + (client.lastReview?.[spentField] || 0);
+      }, 0);
+      const needingAdjustment = flattenedClients.filter(client => client.needsBudgetAdjustment).length;
+      const increases = flattenedClients.filter(client => {
+        const budgetCalc = client.budgetCalculation;
+        return budgetCalc && budgetCalc.budgetDifference > 0 && budgetCalc.needsBudgetAdjustment;
+      }).length;
+      const decreases = flattenedClients.filter(client => {
+        const budgetCalc = client.budgetCalculation;
+        return budgetCalc && budgetCalc.budgetDifference < 0 && budgetCalc.needsBudgetAdjustment;
+      }).length;
       
       setMetrics({
-        totalClients: flattenedClients.length,
-        clientsNeedingAdjustment: needingAdjustment,
-        totalBudget: totalBudget,
-        totalSpent: totalSpent,
-        spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
+        totalItems: flattenedClients.length,
+        reviewedItems: flattenedClients.filter(client => client.lastReview).length,
+        increases,
+        decreases,
+        issues: needingAdjustment
       });
 
       return flattenedClients;
