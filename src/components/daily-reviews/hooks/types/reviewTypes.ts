@@ -40,15 +40,14 @@ export interface GoogleReview {
   custom_budget_amount?: number;
   custom_budget_id?: string;
   custom_budget_end_date?: string;
-  custom_budget_start_date?: string;
   usingRealData?: boolean; // Adicionado para indicar se os dados são reais ou simulados
   
   // Adicionando campos compatíveis para evitar erros no código existente
   meta_account_id?: string;
-  meta_account_name?: string;
   meta_daily_budget_current?: number;
   meta_total_spent?: number;
   idealDailyBudget?: number;
+  custom_budget_start_date?: string;
 }
 
 export interface ClientWithReview {
@@ -66,6 +65,4 @@ export interface ClientWithReview {
   lastReview?: GoogleReview | null;
   google_reviews?: GoogleReview[];
   needsBudgetAdjustment?: boolean;
-  budgetCalculation?: any; // Campo para cálculos de orçamento
-  account_name?: string; // Campo para nome da conta
 }
