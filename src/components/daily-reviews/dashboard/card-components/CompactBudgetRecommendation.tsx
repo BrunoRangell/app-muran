@@ -12,6 +12,7 @@ interface CompactBudgetRecommendationProps {
   lastFiveDaysAverage?: number;
   platform?: 'google' | 'meta';
   usingRealData?: boolean;
+  usingCustomBudget?: boolean;
 }
 
 export const CompactBudgetRecommendation = ({ 
@@ -21,7 +22,8 @@ export const CompactBudgetRecommendation = ({
   shouldShowAverage = false,
   lastFiveDaysAverage = 0,
   platform = 'meta',
-  usingRealData = true
+  usingRealData = true,
+  usingCustomBudget = false
 }: CompactBudgetRecommendationProps) => {
   const hasAnyRecommendation = shouldShow || shouldShowAverage;
   
@@ -78,6 +80,9 @@ export const CompactBudgetRecommendation = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
+              {usingCustomBudget && (
+                <p className="mt-1 text-[#ff6e00]">Usando orçamento personalizado para este cálculo.</p>
+              )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -104,6 +109,9 @@ export const CompactBudgetRecommendation = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
+              {usingCustomBudget && (
+                <p className="mt-1 text-[#ff6e00]">Usando orçamento personalizado para este cálculo.</p>
+              )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

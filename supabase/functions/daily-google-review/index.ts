@@ -32,6 +32,8 @@ serve(async (req) => {
     // Verificar se existe orçamento personalizado ativo
     const today = new Date().toISOString().split('T')[0];
     
+    console.log(`Verificando orçamentos personalizados para cliente ${clientId} na data ${today}`);
+    
     const { data: customBudget, error: customBudgetError } = await supabase
       .from("custom_budgets")
       .select("*")
@@ -52,10 +54,10 @@ serve(async (req) => {
     let customBudgetToUse = null;
     if (customBudget) {
       if (googleAccountId && customBudget.account_id && customBudget.account_id !== googleAccountId) {
-        console.log("Orçamento personalizado existe mas é para outra conta");
+        console.log(`Orçamento personalizado existe mas é para outra conta (orç: ${customBudget.account_id}, atual: ${googleAccountId})`);
       } else {
         customBudgetToUse = customBudget;
-        console.log("Aplicando orçamento personalizado:", JSON.stringify(customBudgetToUse));
+        console.log(`Aplicando orçamento personalizado: ${JSON.stringify(customBudgetToUse)}`);
       }
     }
 
@@ -72,12 +74,14 @@ serve(async (req) => {
     
     // Adicionar dados do orçamento personalizado, se disponível
     if (customBudgetToUse) {
+      console.log(`Adicionando informações de orçamento personalizado ao payload: ${customBudgetToUse.budget_amount}`);
       payload.using_custom_budget = true;
       payload.custom_budget_id = customBudgetToUse.id;
       payload.custom_budget_amount = customBudgetToUse.budget_amount;
       payload.custom_budget_start_date = customBudgetToUse.start_date;
       payload.custom_budget_end_date = customBudgetToUse.end_date;
     } else {
+      console.log("Nenhum orçamento personalizado aplicável encontrado");
       payload.using_custom_budget = false;
     }
 
@@ -94,6 +98,7 @@ serve(async (req) => {
     
     // Se já existe, atualizar
     if (existingReview?.id) {
+      console.log(`Revisão existente atualizada: ${existingReview.id}`);
       const { data: updatedReview, error: updateError } = await supabase
         .from("google_ads_reviews")
         .update(payload)
@@ -101,6 +106,7 @@ serve(async (req) => {
         .select();
         
       if (updateError) {
+        console.error(`Erro ao atualizar revisão: ${updateError.message}`);
         return formatErrorResponse(`Erro ao atualizar revisão: ${updateError.message}`, 500);
       }
       
@@ -108,17 +114,40 @@ serve(async (req) => {
     } 
     // Caso contrário, inserir novo
     else {
+      console.log(`Criando nova revisão para cliente ${clientId}`);
       const { data: newReview, error: insertError } = await supabase
         .from("google_ads_reviews")
         .insert(payload)
         .select();
         
       if (insertError) {
+        console.error(`Erro ao inserir revisão: ${insertError.message}`);
         return formatErrorResponse(`Erro ao inserir revisão: ${insertError.message}`, 500);
       }
       
       result = { review: newReview[0], updated: false };
     }
+    
+    // Calcular valores para debug
+    const monthlyBudget = customBudgetToUse ? customBudgetToUse.budget_amount : null;
+    const now = new Date();
+    const lastDay = customBudgetToUse ? 
+      new Date(customBudgetToUse.end_date) : 
+      new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const remainingDays = Math.ceil((lastDay.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const remainingBudget = monthlyBudget && totalSpent ? monthlyBudget - totalSpent : null;
+    const idealDailyBudget = remainingBudget && remainingDays > 0 ? remainingBudget / remainingDays : null;
+    
+    console.log("Dados calculados para revisão:", {
+      orçamentoMensal: monthlyBudget,
+      orçamentoDiárioAtual: dailyBudget,
+      gastoTotal: totalSpent,
+      gastoMédiaCincoDias: lastFiveDaysSpent,
+      orçamentoRestante: remainingBudget,
+      diasRestantes: remainingDays,
+      orçamentoDiárioIdeal: idealDailyBudget,
+      usandoDadosReais: true
+    });
     
     // Atualizar também a tabela de revisões atuais (client_current_reviews)
     const currentReviewPayload = {

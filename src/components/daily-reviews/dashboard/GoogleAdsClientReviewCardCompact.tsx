@@ -36,7 +36,8 @@ export const GoogleAdsClientReviewCardCompact = ({
     isCalculating,
     remainingDaysValue,
     needsBudgetAdjustment,
-    needsAdjustmentBasedOnAverage
+    needsAdjustmentBasedOnAverage,
+    usingCustomBudget
   } = useGoogleAdsBudgetCalculation(client);
 
   // Verificar se os dados são reais ou simulados
@@ -95,6 +96,11 @@ export const GoogleAdsClientReviewCardCompact = ({
               {hasGoogleAccounts && (
                 <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">
                   {accountsLabel}
+                </span>
+              )}
+              {usingCustomBudget && (
+                <span className="text-xs bg-[#ff6e00] bg-opacity-10 text-[#ff6e00] px-2 py-0.5 rounded">
+                  Orç. Personalizado
                 </span>
               )}
               {!usingRealData && (
@@ -196,6 +202,7 @@ export const GoogleAdsClientReviewCardCompact = ({
             lastFiveDaysAverage={lastFiveDaysSpent}
             platform="google"
             usingRealData={usingRealData}
+            usingCustomBudget={usingCustomBudget}
           />
         ) : (
           <BudgetRecommendation
@@ -206,6 +213,7 @@ export const GoogleAdsClientReviewCardCompact = ({
             hasReview={hasReview}
             lastFiveDaysAverage={lastFiveDaysSpent}
             platform="google"
+            usingCustomBudget={usingCustomBudget}
           />
         )}
       </div>

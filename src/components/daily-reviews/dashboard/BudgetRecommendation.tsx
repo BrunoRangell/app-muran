@@ -38,6 +38,7 @@ export const BudgetRecommendation = ({
         shouldShow={shouldShow}
         shouldShowAverage={platform === "google" ? shouldShowAverage : false}
         lastFiveDaysAverage={platform === "google" ? lastFiveDaysAverage : undefined}
+        platform={platform}
         usingCustomBudget={usingCustomBudget}
       />
     );
