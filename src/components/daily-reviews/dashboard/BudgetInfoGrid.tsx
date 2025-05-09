@@ -1,3 +1,4 @@
+
 import { formatCurrency } from "@/utils/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DollarSign, Calendar, TrendingUp, Clock } from "lucide-react";
