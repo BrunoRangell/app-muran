@@ -7,9 +7,25 @@ import { useUnifiedReviewsData } from "../hooks/useUnifiedReviewsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
-import { AlertTriangle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button"; // Corrigido: importado de button, não de card
+import { AlertTriangle, RefreshCw, AlertCircle, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { 
+  Card,
+  CardContent, 
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
 
 interface MetaAdsTabProps {
   onRefreshCompleted?: () => void;
@@ -20,16 +36,41 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false); // Adicionado estado para controlar o refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [showProcessingDetails, setShowProcessingDetails] = useState(false);
+  
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
-  const { reviewAllClients, isProcessing, lastError } = useBatchOperations({
+  
+  const { 
+    reviewAllClients, 
+    isProcessing, 
+    lastError, 
+    processingIds,
+    successfulReviews,
+    failedReviews,
+    resetProcessingState
+  } = useBatchOperations({
     platform: "meta",
     onComplete: () => {
       console.log("Revisão em lote do Meta Ads concluída. Atualizando dados...");
       refreshData();
+      setProcessingProgress(100);
       if (onRefreshCompleted) onRefreshCompleted();
     }
   });
+
+  // Acompanhar progresso do processamento em lote
+  useEffect(() => {
+    if (isProcessing && data) {
+      const total = data.length;
+      const processed = successfulReviews.length + failedReviews.length;
+      const progress = total > 0 ? Math.round((processed / total) * 100) : 0;
+      setProcessingProgress(progress);
+    } else if (!isProcessing) {
+      setProcessingProgress(0);
+    }
+  }, [isProcessing, successfulReviews.length, failedReviews.length, data]);
 
   // Diagnóstico de dados quando a aba se torna ativa
   useEffect(() => {
@@ -63,6 +104,7 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
   const handleRefresh = async () => {
     console.log("Atualizando dados do Meta Ads...");
     setIsRefreshing(true);
+    resetProcessingState();
     try {
       await refreshData();
       if (onRefreshCompleted) onRefreshCompleted();
@@ -85,6 +127,9 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
   // Handle batch review
   const handleBatchReview = () => {
     console.log("Iniciando revisão em lote do Meta Ads...");
+    resetProcessingState();
+    setShowProcessingDetails(true);
+    
     if (data && data.length > 0) {
       reviewAllClients(data);
     } else {
@@ -96,8 +141,136 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
     }
   };
 
-  // Se há erro com o último erro de operação em lote
+  // Verificar se há erro com o último erro de operação em lote
   const displayError = error || lastError;
+
+  // Renderizar painel de processamento
+  const renderProcessingPanel = () => {
+    if (!isProcessing && successfulReviews.length === 0 && failedReviews.length === 0) {
+      return null;
+    }
+
+    return (
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isProcessing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin text-[#ff6e00]" />
+                  <span>Processamento em andamento</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Processamento concluído</span>
+                </>
+              )}
+            </div>
+            <Badge 
+              variant={failedReviews.length > 0 ? "destructive" : "outline"}
+              className="ml-2"
+            >
+              {successfulReviews.length} sucesso{successfulReviews.length !== 1 ? 's' : ''}
+              {failedReviews.length > 0 ? ` / ${failedReviews.length} falha${failedReviews.length !== 1 ? 's' : ''}` : ''}
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            {isProcessing 
+              ? "Analisando contas Meta. Este processo pode levar alguns minutos..."
+              : "Processamento concluído. Veja os resultados abaixo."}
+          </CardDescription>
+          {isProcessing && (
+            <Progress value={processingProgress} className="mt-2" />
+          )}
+        </CardHeader>
+        
+        {(failedReviews.length > 0 || successfulReviews.length > 0) && (
+          <CardContent>
+            <Accordion 
+              type="single" 
+              collapsible 
+              defaultValue={failedReviews.length > 0 ? "erros" : undefined}
+            >
+              {failedReviews.length > 0 && (
+                <AccordionItem value="erros">
+                  <AccordionTrigger className="text-red-500 font-medium">
+                    <div className="flex items-center">
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Contas com erro ({failedReviews.length})
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-2">
+                      {failedReviews.map((failure) => (
+                        <div 
+                          key={failure.id} 
+                          className="rounded-md border border-red-200 bg-red-50 p-3"
+                        >
+                          <p className="font-medium">{failure.name}</p>
+                          <p className="text-sm text-red-700">{failure.error}</p>
+                          {failure.details?.suggestion && (
+                            <p className="text-sm mt-1 text-gray-700">
+                              {failure.details.suggestion}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              
+              {successfulReviews.length > 0 && (
+                <AccordionItem value="sucessos">
+                  <AccordionTrigger className="text-green-600 font-medium">
+                    <div className="flex items-center">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Contas processadas com sucesso ({successfulReviews.length})
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {successfulReviews.map((id) => (
+                        <Badge key={id} variant="outline" className="inline-block">
+                          {id}
+                        </Badge>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+            </Accordion>
+          </CardContent>
+        )}
+        
+        <CardFooter>
+          <div className="flex gap-2 justify-end w-full">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                resetProcessingState();
+                setShowProcessingDetails(false);
+              }}
+            >
+              Fechar
+            </Button>
+            {!isProcessing && (
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-[#ff6e00] hover:bg-[#e66300]"
+                onClick={handleBatchReview}
+              >
+                Tentar novamente
+              </Button>
+            )}
+          </div>
+        </CardFooter>
+      </Card>
+    );
+  };
 
   // Quando não há dados disponíveis, mostra estado vazio específico
   if (!isLoading && (!data || data.length === 0) && !displayError) {
@@ -165,6 +338,9 @@ export function MetaAdsTab({ onRefreshCompleted, isActive = true }: MetaAdsTabPr
         onBatchReview={handleBatchReview}
         isProcessing={isProcessing}
       />
+      
+      {(showProcessingDetails || isProcessing || successfulReviews.length > 0 || failedReviews.length > 0) && 
+        renderProcessingPanel()}
       
       <FilterBar 
         searchQuery={searchQuery}

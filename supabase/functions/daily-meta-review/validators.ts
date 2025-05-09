@@ -19,11 +19,16 @@ export function validateReviewRequest(request: any): string | null {
     return "Requisição inválida ou vazia";
   }
   
-  if (!request.clientId) {
+  // Verificar se é uma requisição de ping/teste
+  if (request.method === 'ping' || request.test === true) {
+    return null; // Requisições de teste são válidas sem outros parâmetros
+  }
+  
+  if (!request.clientId && !request.scheduled) {
     return "ID do cliente não fornecido";
   }
   
-  if (!request.accessToken) {
+  if (!request.accessToken && !request.scheduled) {
     return "Token de acesso Meta não fornecido";
   }
   

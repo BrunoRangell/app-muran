@@ -13,17 +13,48 @@ export async function fetchMetaAccountsData(accountId: string, accessToken: stri
       };
     }
     
+    // Verificar formato do ID da conta - pode ser com ou sem prefixo 'act_'
+    const formattedAccountId = accountId.startsWith('act_') ? accountId : `act_${accountId}`;
+    
     const baseUrl = "https://graph.facebook.com/v18.0";
     
     // Buscar informações básicas da conta
     const accountUrl = `${baseUrl}/${accountId}?access_token=${accessToken}&fields=name,account_id,funding_source_details`;
     console.log("Realizando requisição para obter detalhes da conta...");
     
-    const accountResponse = await fetch(accountUrl);
+    let accountResponse;
+    try {
+      accountResponse = await fetch(accountUrl, { 
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+    } catch (fetchError) {
+      console.error("Erro de rede ao buscar conta Meta:", fetchError);
+      return { 
+        success: false, 
+        response: InternalErrorResponse(`Erro de conectividade na API do Meta: ${fetchError.message}`) 
+      };
+    }
     
     if (!accountResponse.ok) {
       const errorText = await accountResponse.text();
       console.error("Erro na resposta da API do Meta:", errorText);
+      
+      // Verificar tipo de erro para fornecer feedback mais específico
+      if (errorText.includes("Object with ID") && errorText.includes("does not exist")) {
+        return { 
+          success: false, 
+          response: BadRequestResponse(`Conta Meta ID ${accountId} não encontrada ou não existe: ${errorText}`) 
+        };
+      }
+      
+      if (errorText.includes("permissions")) {
+        return { 
+          success: false, 
+          response: BadRequestResponse(`Sem permissão para acessar a conta Meta ID ${accountId}: ${errorText}`) 
+        };
+      }
+      
       return { 
         success: false, 
         response: BadRequestResponse(`Erro na API do Meta: ${errorText}`) 
@@ -33,10 +64,19 @@ export async function fetchMetaAccountsData(accountId: string, accessToken: stri
     const accountData = await accountResponse.json();
     
     // Buscar campanhas ativas e seus orçamentos
-    const campaignsUrl = `${baseUrl}/act_${accountId}/campaigns?access_token=${accessToken}&fields=name,daily_budget,budget_remaining,lifetime_budget,spent_amount,status&effective_status=['ACTIVE']&limit=100`;
+    const campaignsUrl = `${baseUrl}/${formattedAccountId}/campaigns?access_token=${accessToken}&fields=name,daily_budget,budget_remaining,lifetime_budget,spent_amount,status&effective_status=['ACTIVE']&limit=100`;
     console.log("Buscando campanhas ativas...");
     
-    const campaignsResponse = await fetch(campaignsUrl);
+    let campaignsResponse;
+    try {
+      campaignsResponse = await fetch(campaignsUrl);
+    } catch (fetchError) {
+      console.error("Erro de rede ao buscar campanhas:", fetchError);
+      return { 
+        success: false, 
+        response: InternalErrorResponse(`Erro de conectividade ao buscar campanhas: ${fetchError.message}`) 
+      };
+    }
     
     if (!campaignsResponse.ok) {
       const errorText = await campaignsResponse.text();
@@ -50,17 +90,25 @@ export async function fetchMetaAccountsData(accountId: string, accessToken: stri
     const campaignsData = await campaignsResponse.json();
     
     // Buscar insights para gastos
-    const insightsUrl = `${baseUrl}/act_${accountId}/insights?access_token=${accessToken}&fields=spend&time_range[since]=2023-01-01&time_range[until]=${new Date().toISOString().split('T')[0]}&time_increment=1`;
+    const today = new Date().toISOString().split('T')[0];
+    const startDate = new Date();
+    startDate.setDate(1); // Primeiro dia do mês atual
+    const insightsUrl = `${baseUrl}/${formattedAccountId}/insights?access_token=${accessToken}&fields=spend&time_range[since]=${startDate.toISOString().split('T')[0]}&time_range[until]=${today}&time_increment=1`;
     console.log("Buscando insights de gastos...");
     
-    const insightsResponse = await fetch(insightsUrl);
-    
     let insights = [];
-    if (insightsResponse.ok) {
-      const insightsData = await insightsResponse.json();
-      insights = insightsData.data || [];
-    } else {
-      console.warn("Aviso: Não foi possível obter insights detalhados de gastos");
+    try {
+      const insightsResponse = await fetch(insightsUrl);
+      
+      if (insightsResponse.ok) {
+        const insightsData = await insightsResponse.json();
+        insights = insightsData.data || [];
+      } else {
+        console.warn("Aviso: Não foi possível obter insights detalhados de gastos");
+      }
+    } catch (insightsError) {
+      // Apenas log, não falhar toda a operação se insights falhar
+      console.warn("Erro ao buscar insights, continuando sem dados de insights:", insightsError);
     }
     
     // Calcular orçamento diário total das campanhas ativas
