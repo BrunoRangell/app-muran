@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -34,7 +33,7 @@ export interface CustomBudgetFormData {
   platform: 'meta' | 'google';
   description: string;
   isRecurring?: boolean;
-  recurrencePattern?: string;
+  recurrencePattern?: string | null;
 }
 
 interface UseCustomBudgetsOptions {
@@ -190,6 +189,19 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
 
       console.log("Enviando dados para criação:", formData);
 
+      // Adicionando logs detalhados para depuração
+      console.log("Dados do orçamento a serem criados:", {
+        client_id: formData.clientId,
+        budget_amount: formData.budgetAmount,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        platform: formData.platform,
+        description: formData.description || null,
+        is_active: true,
+        is_recurring: formData.isRecurring || false,
+        recurrence_pattern: formData.recurrencePattern || null
+      });
+
       const { data, error } = await supabase
         .from("custom_budgets")
         .insert({
@@ -247,6 +259,12 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       }
 
       console.log("Enviando dados para atualização:", { id, ...formData });
+
+      // Verificar se o ID é válido
+      if (!id) {
+        console.error("ID inválido para atualização:", id);
+        throw new Error("ID inválido para atualização");
+      }
 
       const { data, error } = await supabase
         .from("custom_budgets")

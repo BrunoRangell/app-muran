@@ -70,16 +70,24 @@ export function useBudgetTabManager({
   };
 
   const handleFormSubmit = (formData: CustomBudgetFormData) => {
+    console.log("Formulário submetido:", formData);
+    
     if (selectedBudget) {
+      console.log("Atualizando orçamento existente:", selectedBudget.id);
       updateCustomBudgetMutation.mutate({
         id: selectedBudget.id,
         ...formData
       });
     } else {
+      console.log("Criando novo orçamento");
       addCustomBudgetMutation.mutate(formData);
     }
-    setSelectedBudget(null);
-    setSelectedTab("active");
+    
+    // Limpar a seleção e voltar para a aba ativa apenas após a conclusão bem-sucedida
+    if (!addCustomBudgetMutation.isPending && !updateCustomBudgetMutation.isPending) {
+      setSelectedBudget(null);
+      setSelectedTab("active");
+    }
   };
 
   const handleFormCancel = () => {

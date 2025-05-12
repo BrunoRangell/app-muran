@@ -1,11 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { customBudgetSchema } from "./BudgetFormSchema";
 import { CustomBudgetFormData } from "../../hooks/useCustomBudgets";
-import { formatCurrency } from "@/utils/formatters";
-import { customBudgetSchema, FormData } from "./BudgetFormSchema";
-import { formatDateToYYYYMMDD } from "./DateFormatUtils";
 
 interface UseBudgetFormProps {
   selectedBudget: CustomBudgetFormData | null;
@@ -13,173 +11,111 @@ interface UseBudgetFormProps {
 }
 
 export function useBudgetForm({ selectedBudget, onSubmit }: UseBudgetFormProps) {
-  const [formattedBudget, setFormattedBudget] = useState("");
   const [showRecurrenceOptions, setShowRecurrenceOptions] = useState(false);
+  const [formattedBudget, setFormattedBudget] = useState<string>("");
 
-  // Configurar o formulário com react-hook-form e zod
-  const form = useForm<FormData>({
+  // Inicializar formulário com valores padrão ou do orçamento selecionado
+  const form = useForm({
     resolver: zodResolver(customBudgetSchema),
-    defaultValues: {
+    defaultValues: selectedBudget ? {
+      client_id: selectedBudget.clientId,
+      budget_amount: selectedBudget.budgetAmount,
+      start_date: selectedBudget.startDate ? new Date(selectedBudget.startDate) : undefined,
+      end_date: selectedBudget.endDate ? new Date(selectedBudget.endDate) : undefined,
+      platform: selectedBudget.platform || 'meta',
+      description: selectedBudget.description || "",
+      is_recurring: selectedBudget.isRecurring || false,
+      recurrence_pattern: selectedBudget.recurrencePattern || null,
+    } : {
       client_id: "",
       budget_amount: 0,
       start_date: new Date(),
-      end_date: new Date(),
+      end_date: new Date(new Date().setDate(new Date().getDate() + 30)), // Padrão para 30 dias
       platform: 'meta',
       description: "",
       is_recurring: false,
       recurrence_pattern: null,
-    },
-    mode: "onChange", // Validar ao alterar os campos
+    }
   });
 
-  // Preencher o formulário quando um orçamento for selecionado para edição
+  // Observar mudanças no campo de recorrência
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      if (value.is_recurring !== undefined) {
+        setShowRecurrenceOptions(value.is_recurring);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form.watch]);
+
+  // Formatar orçamento para exibição no formulário
   useEffect(() => {
     if (selectedBudget) {
-      try {
-        // Log para debug
-        console.log('Dados do orçamento selecionado:', selectedBudget);
-        
-        // Corrigindo o problema da data: converter as strings para objetos Date
-        // sem alterar o fuso horário
-        let startDate: Date | null = null;
-        let endDate: Date | null = null;
-        
-        try {
-          // Garantir que temos uma string de data válida antes de construir o objeto Date
-          if (selectedBudget.startDate && typeof selectedBudget.startDate === 'string') {
-            startDate = new Date(`${selectedBudget.startDate}T12:00:00Z`);
-            // Verificar se a data é válida
-            if (isNaN(startDate.getTime())) {
-              console.warn('Data de início inválida:', selectedBudget.startDate);
-              startDate = new Date(); // Fallback para a data atual
-            }
-          } else {
-            startDate = new Date();
-          }
-          
-          if (selectedBudget.endDate && typeof selectedBudget.endDate === 'string') {
-            endDate = new Date(`${selectedBudget.endDate}T12:00:00Z`);
-            // Verificar se a data é válida
-            if (isNaN(endDate.getTime())) {
-              console.warn('Data de término inválida:', selectedBudget.endDate);
-              endDate = new Date(); // Fallback para a data atual
-            }
-          } else {
-            endDate = new Date();
-          }
-        } catch (error) {
-          console.error('Erro ao processar datas:', error);
-          // Use datas atuais como fallback
-          startDate = new Date();
-          endDate = new Date();
-        }
-        
-        setShowRecurrenceOptions(!!selectedBudget.isRecurring);
-        
-        // Log para verificar as datas processadas
-        console.log('Datas processadas:', { 
-          startDate: startDate?.toISOString(), 
-          endDate: endDate?.toISOString() 
-        });
-        
-        form.reset({
-          client_id: selectedBudget.clientId,
-          budget_amount: selectedBudget.budgetAmount,
-          start_date: startDate,
-          end_date: endDate,
-          // Corrigindo o erro: garantindo que o valor de platform é sempre 'meta' ou 'google'
-          platform: (selectedBudget.platform === 'meta' || selectedBudget.platform === 'google') 
-            ? selectedBudget.platform 
-            : 'meta',
-          description: selectedBudget.description,
-          is_recurring: selectedBudget.isRecurring || false,
-          recurrence_pattern: selectedBudget.recurrencePattern || null,
-        });
-        setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
-      } catch (error) {
-        console.error('Erro ao processar orçamento selecionado:', error);
-        // Reset para valores padrão em caso de erro
-        form.reset({
-          client_id: "",
-          budget_amount: 0,
-          start_date: new Date(),
-          end_date: new Date(),
-          platform: 'meta',
-          description: "",
-          is_recurring: false,
-          recurrence_pattern: null,
-        });
-      }
-    } else {
-      form.reset({
-        client_id: "",
-        budget_amount: 0,
-        start_date: new Date(),
-        end_date: new Date(),
-        platform: 'meta',
-        description: "",
-        is_recurring: false,
-        recurrence_pattern: null,
-      });
-      setFormattedBudget("");
-      setShowRecurrenceOptions(false);
-    }
-  }, [selectedBudget, form]);
-
-  // Monitorar mudanças no is_recurring para atualizar o estado de exibição
-  const isRecurring = form.watch("is_recurring");
-  useEffect(() => {
-    setShowRecurrenceOptions(isRecurring);
-  }, [isRecurring]);
-
-  // Calcular o número de dias no período e o valor diário
-  const startDate = form.watch("start_date");
-  const endDate = form.watch("end_date");
-  const budgetAmount = form.watch("budget_amount");
-
-  const getDaysInPeriod = () => {
-    if (startDate && endDate && startDate instanceof Date && endDate instanceof Date) {
-      // +1 para incluir o dia inicial e final na contagem
-      return Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-    }
-    return 0;
-  };
-
-  const getDailyBudget = () => {
-    const days = getDaysInPeriod();
-    if (days > 0 && budgetAmount) {
-      return budgetAmount / days;
-    }
-    return 0;
-  };
-
-  // Manipulador de submissão do formulário
-  const handleFormSubmit = (data: FormData) => {
-    try {
-      const formData: CustomBudgetFormData = {
-        clientId: data.client_id,
-        budgetAmount: data.budget_amount,
-        startDate: formatDateToYYYYMMDD(data.start_date),
-        endDate: formatDateToYYYYMMDD(data.end_date),
-        platform: data.platform,
-        description: data.description || "",
-        isRecurring: data.is_recurring,
-        recurrencePattern: data.is_recurring ? data.recurrence_pattern : undefined
+      const formatValue = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', { 
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2 
+        }).format(value);
       };
-
-      onSubmit(formData);
-    } catch (error) {
-      console.error('Erro ao processar formulário:', error);
+      
+      setFormattedBudget(formatValue(selectedBudget.budgetAmount));
     }
+  }, [selectedBudget]);
+
+  // Calcular dias no período
+  const getDaysInPeriod = () => {
+    const startDate = form.getValues('start_date');
+    const endDate = form.getValues('end_date');
+    
+    if (!startDate || !endDate) return 0;
+    
+    // Adicionar um dia porque queremos incluir ambas as datas
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  // Calcular orçamento diário
+  const getDailyBudget = () => {
+    const budgetAmount = form.getValues('budget_amount');
+    const days = getDaysInPeriod();
+    
+    if (!budgetAmount || !days || days === 0) return 0;
+    
+    return budgetAmount / days;
+  };
+
+  // Função para submeter o formulário
+  const handleFormSubmit = async (data: any) => {
+    console.log("Dados do formulário a serem submetidos:", data);
+    
+    // Converter datas para string no formato YYYY-MM-DD
+    const formatDate = (date: Date) => {
+      return date.toISOString().split('T')[0];
+    };
+
+    // Preparar dados para enviar ao backend
+    const formData: CustomBudgetFormData = {
+      clientId: data.client_id,
+      budgetAmount: Number(data.budget_amount),
+      startDate: formatDate(data.start_date),
+      endDate: formatDate(data.end_date),
+      platform: data.platform,
+      description: data.description || "",
+      isRecurring: data.is_recurring || false,
+      recurrencePattern: data.is_recurring ? data.recurrence_pattern : null
+    };
+
+    console.log("Dados formatados para submissão:", formData);
+    onSubmit(formData);
   };
 
   return {
     form,
     showRecurrenceOptions,
     formattedBudget,
-    setFormattedBudget,
     getDaysInPeriod,
     getDailyBudget,
-    handleFormSubmit,
+    handleFormSubmit
   };
 }
