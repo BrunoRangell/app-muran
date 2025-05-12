@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { customBudgetSchema } from "./BudgetFormSchema";
+import { customBudgetSchema, FormData } from "./BudgetFormSchema";
 import { CustomBudgetFormData } from "../../hooks/useCustomBudgets";
 
 interface UseBudgetFormProps {
@@ -15,14 +15,14 @@ export function useBudgetForm({ selectedBudget, onSubmit }: UseBudgetFormProps) 
   const [formattedBudget, setFormattedBudget] = useState<string>("");
 
   // Inicializar formulário com valores padrão ou do orçamento selecionado
-  const form = useForm({
+  const form = useForm<FormData>({
     resolver: zodResolver(customBudgetSchema),
     defaultValues: selectedBudget ? {
       client_id: selectedBudget.clientId,
       budget_amount: selectedBudget.budgetAmount,
       start_date: selectedBudget.startDate ? new Date(selectedBudget.startDate) : undefined,
       end_date: selectedBudget.endDate ? new Date(selectedBudget.endDate) : undefined,
-      platform: selectedBudget.platform || 'meta',
+      platform: selectedBudget.platform as "meta" | "google" || "meta",
       description: selectedBudget.description || "",
       is_recurring: selectedBudget.isRecurring || false,
       recurrence_pattern: selectedBudget.recurrencePattern || null,
@@ -31,7 +31,7 @@ export function useBudgetForm({ selectedBudget, onSubmit }: UseBudgetFormProps) 
       budget_amount: 0,
       start_date: new Date(),
       end_date: new Date(new Date().setDate(new Date().getDate() + 30)), // Padrão para 30 dias
-      platform: 'meta',
+      platform: "meta",
       description: "",
       is_recurring: false,
       recurrence_pattern: null,
@@ -86,7 +86,7 @@ export function useBudgetForm({ selectedBudget, onSubmit }: UseBudgetFormProps) 
   };
 
   // Função para submeter o formulário
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (data: FormData) => {
     console.log("Dados do formulário a serem submetidos:", data);
     
     // Converter datas para string no formato YYYY-MM-DD

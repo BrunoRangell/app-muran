@@ -83,10 +83,12 @@ export function useBudgetTabManager({
       addCustomBudgetMutation.mutate(formData);
     }
     
-    // Limpar a seleção e voltar para a aba ativa apenas após a conclusão bem-sucedida
+    // Se a mutação foi bem-sucedida, mudamos de tab
     if (!addCustomBudgetMutation.isPending && !updateCustomBudgetMutation.isPending) {
-      setSelectedBudget(null);
-      setSelectedTab("active");
+      if (addCustomBudgetMutation.isSuccess || updateCustomBudgetMutation.isSuccess) {
+        setSelectedBudget(null);
+        setSelectedTab("active");
+      }
     }
   };
 
