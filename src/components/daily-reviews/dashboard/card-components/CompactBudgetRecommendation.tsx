@@ -12,6 +12,7 @@ interface CompactBudgetRecommendationProps {
   lastFiveDaysAverage?: number;
   platform?: 'google' | 'meta';
   usingRealData?: boolean;
+  usingCustomBudget?: boolean;
 }
 
 export const CompactBudgetRecommendation = ({ 
@@ -21,7 +22,8 @@ export const CompactBudgetRecommendation = ({
   shouldShowAverage = false,
   lastFiveDaysAverage = 0,
   platform = 'meta',
-  usingRealData = true
+  usingRealData = true,
+  usingCustomBudget = false
 }: CompactBudgetRecommendationProps) => {
   const hasAnyRecommendation = shouldShow || shouldShowAverage;
   
@@ -31,8 +33,6 @@ export const CompactBudgetRecommendation = ({
                                    budgetDifferenceBasedOnAverage !== undefined && 
                                    lastFiveDaysAverage > 0 &&
                                    platform === 'google';
-                                   
-  console.log(`[DEBUG] CompactBudgetRecommendation - platform: ${platform}, shouldShowAverage: ${shouldShowAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, lastFiveDaysAverage: ${lastFiveDaysAverage}, showAverageRecommendation: ${showAverageRecommendation}`);
   
   if (!hasAnyRecommendation) {
     return null;
@@ -52,6 +52,22 @@ export const CompactBudgetRecommendation = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>Não foi possível obter dados reais da API. Estes valores são estimados ou recuperados de dados históricos.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+      
+      {usingCustomBudget && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <Badge className="flex items-center bg-[#ff6e00]/10 text-[#ff6e00]">
+                <span className="text-xs">Orçamento personalizado</span>
+                <Info size={10} className="ml-1" />
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Recomendação baseada no orçamento personalizado configurado para este cliente.</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
