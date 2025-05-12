@@ -44,9 +44,9 @@ export const useMetaReviewService = () => {
         throw new Error(`Erro na preparação da requisição: ${serializeError.message}`);
       }
 
-      // Definir timeout mais curto para detecção rápida de problemas
+      // Definir timeout mais longo para dar tempo à função Edge
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout ao esperar resposta da função Edge (10s)")), 10000);
+        setTimeout(() => reject(new Error("Timeout ao esperar resposta da função Edge (15s)")), 15000);
       });
 
       const responsePromise = supabase.functions.invoke("daily-meta-review", {
@@ -128,7 +128,7 @@ export const useMetaReviewService = () => {
           suggestions: [
             "Verifique se a função Edge está online e respondendo",
             "Verifique se há problemas de rede ou firewall bloqueando a conexão",
-            "Tente aumentar o timeout da requisição se o processamento for lento"
+            "A função pode estar sobrecarregada, tente novamente mais tarde"
           ]
         };
       }
@@ -156,6 +156,12 @@ export const useMetaReviewService = () => {
       } catch (logError) {
         console.error("Erro ao registrar falha no log:", logError);
       }
+      
+      toast({
+        title: "Erro na comunicação",
+        description: errorMessage,
+        variant: "destructive",
+      });
       
       return {
         result: null,
