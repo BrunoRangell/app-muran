@@ -34,7 +34,7 @@ export default function ClientDetails() {
             <CardTitle className="text-red-600">Erro ao carregar dados</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>{error?.message || "Cliente não encontrado"}</p>
+            <p>{error ? (typeof error === 'string' ? error : error.message) : "Cliente não encontrado"}</p>
           </CardContent>
         </Card>
       </div>

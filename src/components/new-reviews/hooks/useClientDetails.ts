@@ -4,10 +4,17 @@ import axios from "axios";
 import { toast } from "sonner";
 import { getMetaToken } from "@/lib/metaAuth";
 
+interface Client {
+  id: string;
+  company_name: string;
+  meta_ads_budget?: number;
+  status: string;
+}
+
 export function useClientDetails(clientId: string | undefined) {
-  const [client, setClient] = useState<any>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | string | null>(null);
   
   useEffect(() => {
     if (!clientId) {
