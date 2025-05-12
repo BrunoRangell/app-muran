@@ -1,50 +1,90 @@
 
+// Implementação do serviço de autenticação com Meta
 import { supabase } from "./supabase";
 
-/**
- * Obtém um token de acesso Meta válido
- */
-export async function getMetaAccessToken(): Promise<string | null> {
+export async function getMetaToken() {
+  const { data, error } = await supabase.from("meta_ads_tokens").select("*").single();
+
+  if (error) throw error;
+  if (!data) throw new Error("Token não encontrado");
+
+  // Verifica se o token expirou
+  const currentTime = Math.floor(Date.now() / 1000);
+  const expirationTime = parseInt(data.expires_at);
+  
+  if (currentTime >= expirationTime) {
+    const refreshedToken = await refreshToken(data.refresh_token);
+    return refreshedToken;
+  }
+
+  return data.access_token;
+}
+
+async function refreshToken(refreshToken: string) {
   try {
-    // Verificar se há um token em localStorage e se ainda é válido
-    const storedToken = localStorage.getItem("meta_access_token");
-    const expiresAt = localStorage.getItem("meta_token_expires_at");
+    // Aqui implementaríamos a lógica para renovar o token usando o refresh_token
+    // Como isso depende da API específica do Meta, usaremos uma implementação simplificada
     
-    // Se o token existe e não expirou, retornar
-    if (storedToken && expiresAt) {
-      const expiryTime = parseInt(expiresAt, 10);
-      const now = Math.floor(Date.now() / 1000);
-      
-      // Se o token ainda é válido (com 5 minutos de margem)
-      if (expiryTime > now + 300) {
-        return storedToken;
-      }
-    }
+    const response = await fetch("https://graph.facebook.com/v18.0/oauth/access_token", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      // Na implementação real, você enviaria o refreshToken como parte dos parâmetros
+    });
     
-    // Caso contrário, solicitar um novo token
-    const { data, error } = await supabase.functions.invoke("get-meta-access-token", {});
+    const data = await response.json();
     
-    if (error) {
-      console.error("Erro ao obter token de acesso Meta:", error);
-      return null;
-    }
+    // Armazenar o novo token no banco de dados
+    const accessToken = data.access_token;
+    const expiresInSeconds = data.expires_in;
+    const expiresAtTimestamp = Math.floor(Date.now() / 1000) + expiresInSeconds;
     
-    if (!data?.access_token) {
-      console.error("Token de acesso Meta não retornado");
-      return null;
-    }
+    await supabase.from("meta_ads_tokens").update({
+      access_token: accessToken,
+      expires_at: expiresAtTimestamp.toString(),
+    }).eq("id", 1);
     
-    // Armazenar o novo token e expiração
-    localStorage.setItem("meta_access_token", data.access_token);
-    
-    // Calcular e armazenar a expiração (em segundos desde o epoch)
-    const expiresIn = data.expires_in || 3600; // Padrão: 1 hora
-    const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
-    localStorage.setItem("meta_token_expires_at", expiresAt.toString());
-    
-    return data.access_token;
+    return accessToken;
   } catch (error) {
-    console.error("Erro ao processar token de acesso Meta:", error);
-    return null;
+    console.error("Erro ao renovar token:", error);
+    throw new Error("Falha ao renovar token do Meta");
+  }
+}
+
+export async function exchangeCodeForToken(authorizationCode: string) {
+  try {
+    // Implementação simplificada da troca de código por token
+    const response = await fetch("https://graph.facebook.com/v18.0/oauth/access_token", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      // Na implementação real, você enviaria o authorizationCode como parte dos parâmetros
+    });
+    
+    const data = await response.json();
+    
+    // Armazenar o token no banco de dados
+    const accessToken = data.access_token;
+    const refreshToken = data.refresh_token;
+    const expiresInSeconds = data.expires_in;
+    const expiresAtTimestamp = Math.floor(Date.now() / 1000) + expiresInSeconds;
+    
+    await supabase.from("meta_ads_tokens").upsert({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAtTimestamp.toString(),
+      id: 1,
+    });
+    
+    return {
+      accessToken,
+      refreshToken,
+      expiresAt: expiresAtTimestamp,
+    };
+  } catch (error) {
+    console.error("Erro na troca de código por token:", error);
+    throw new Error("Falha na autenticação com Meta");
   }
 }

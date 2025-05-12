@@ -1,94 +1,73 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useSearchParams } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetaAdsTab } from "@/components/new-reviews/tabs/MetaAdsTab";
 import { GoogleAdsTab } from "@/components/new-reviews/tabs/GoogleAdsTab";
 import { BudgetsTab } from "@/components/new-reviews/tabs/BudgetsTab";
 import { CustomBudgetsTab } from "@/components/new-reviews/tabs/CustomBudgetsTab";
 import { SettingsTab } from "@/components/new-reviews/tabs/SettingsTab";
-import { DashboardHeader } from "@/components/new-reviews/dashboard/DashboardHeader";
 
 export default function NewDailyReviews() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const [selectedTab, setSelectedTab] = useState<string>(tabParam || "meta-ads");
-  const [lastReviewTime, setLastReviewTime] = useState<Date | undefined>(undefined);
-  
-  // Atualizar a URL quando a tab mudar
-  const handleTabChange = (value: string) => {
-    setSelectedTab(value);
-    setSearchParams({ tab: value });
-  };
+  const [activeTab, setActiveTab] = useState("meta");
 
-  // Ao inicializar o componente, verificar se há uma última revisão salva
-  useEffect(() => {
-    const lastReviewTimeStr = localStorage.getItem("last_review_time");
-    if (lastReviewTimeStr) {
-      setLastReviewTime(new Date(lastReviewTimeStr));
-    }
-  }, []);
-
-  // Função para registrar a hora da última atualização
-  const handleRefresh = () => {
-    const now = new Date();
-    localStorage.setItem("last_review_time", now.toISOString());
-    setLastReviewTime(now);
-  };
-  
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <h1 className="text-2xl md:text-3xl font-bold text-[#321e32]">
-        Revisão Diária
-      </h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-[#321e32]">Nova Revisão Diária</h1>
+        <p className="text-gray-500 mt-1">
+          Gerencie revisões diárias de campanhas e orçamentos personalizados
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        <Tabs value={selectedTab} onValueChange={handleTabChange}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="meta-ads">Meta Ads</TabsTrigger>
-            <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
-            <TabsTrigger value="budgets">Orçamentos</TabsTrigger>
-            <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
-            <TabsTrigger value="settings">Configurações</TabsTrigger>
+      <Tabs
+        defaultValue="meta"
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full"
+      >
+        <div className="border-b">
+          <TabsList className="bg-transparent border-b-0 w-full justify-start gap-4">
+            <TabsTrigger value="meta" className="data-[state=active]:border-b-2 data-[state=active]:border-[#ff6e00] rounded-none">
+              Meta Ads
+            </TabsTrigger>
+            <TabsTrigger value="google" className="data-[state=active]:border-b-2 data-[state=active]:border-[#ff6e00] rounded-none">
+              Google Ads
+            </TabsTrigger>
+            <TabsTrigger value="budgets" className="data-[state=active]:border-b-2 data-[state=active]:border-[#ff6e00] rounded-none">
+              Orçamentos
+            </TabsTrigger>
+            <TabsTrigger value="custom-budgets" className="data-[state=active]:border-b-2 data-[state=active]:border-[#ff6e00] rounded-none">
+              Orçamentos Personalizados
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="data-[state=active]:border-b-2 data-[state=active]:border-[#ff6e00] rounded-none">
+              Configurações
+            </TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="meta-ads" className="space-y-6">
-            <DashboardHeader 
-              lastReviewTime={lastReviewTime} 
-              onRefresh={handleRefresh} 
-              platform="meta"
-            />
-            <MetaAdsTab 
-              onRefreshCompleted={handleRefresh} 
-              isActive={selectedTab === "meta-ads"} 
-            />
+        </div>
+        
+        <div className="mt-6">
+          <TabsContent value="meta" className="m-0">
+            <MetaAdsTab />
           </TabsContent>
           
-          <TabsContent value="google-ads" className="space-y-6">
-            <DashboardHeader 
-              lastReviewTime={lastReviewTime} 
-              onRefresh={handleRefresh}
-              platform="google"
-            />
-            <GoogleAdsTab 
-              onRefreshCompleted={handleRefresh} 
-              isActive={selectedTab === "google-ads"} 
-            />
+          <TabsContent value="google" className="m-0">
+            <GoogleAdsTab />
           </TabsContent>
-
-          <TabsContent value="budgets" className="space-y-6">
+          
+          <TabsContent value="budgets" className="m-0">
             <BudgetsTab />
           </TabsContent>
           
-          <TabsContent value="custom-budgets" className="space-y-6">
+          <TabsContent value="custom-budgets" className="m-0">
             <CustomBudgetsTab />
           </TabsContent>
           
-          <TabsContent value="settings">
+          <TabsContent value="settings" className="m-0">
             <SettingsTab />
           </TabsContent>
-        </Tabs>
-      </div>
+        </div>
+      </Tabs>
     </div>
   );
 }

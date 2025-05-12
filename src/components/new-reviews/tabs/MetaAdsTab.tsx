@@ -1,79 +1,35 @@
-
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ClientCard } from "../components/ClientCard";
-import { useClientReviews } from "../hooks/useClientReviews";
-import { useBatchOperations } from "../hooks/useBatchOperations";
-import { ClientsList } from "../components/ClientsList";
-import { FilterBar } from "../components/FilterBar";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { LoadingView } from "@/components/daily-reviews/dashboard/components/LoadingView";
+import { EmptyStateView } from "@/components/daily-reviews/dashboard/components/EmptyStateView";
 
-interface MetaAdsTabProps {
-  onRefreshCompleted?: () => void;
-  isActive: boolean;
-}
-
-export function MetaAdsTab({ onRefreshCompleted, isActive }: MetaAdsTabProps) {
-  const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+export function MetaAdsTab() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [clients, setClients] = useState<any[]>([]);
   
-  const {
-    clients,
-    isLoading,
-    refetch,
-    searchQuery,
-    setSearchQuery,
-    showOnlyAdjustments,
-    setShowOnlyAdjustments,
-    showOnlyWithAccounts,
-    setShowOnlyWithAccounts
-  } = useClientReviews('meta');
+  // Este componente será expandido posteriormente com a funcionalidade completa
   
-  const { 
-    batchAnalyze,
-    isProcessingBatch,
-    processingIds,
-    analyzeClient
-  } = useBatchOperations('meta', () => {
-    refetch();
-    if (onRefreshCompleted) onRefreshCompleted();
-  });
+  if (isLoading) {
+    return <LoadingView />;
+  }
   
-  const handleViewDetails = (clientId: string) => {
-    navigate(`/cliente/${clientId}`);
-  };
-  
-  // Se não está ativa, não renderizar o conteúdo completo
-  if (!isActive) {
-    return <div className="hidden">Aba Meta Ads</div>;
+  if (clients.length === 0) {
+    return (
+      <EmptyStateView message="Nenhum cliente Meta Ads encontrado. Adicione clientes ou ajuste seus filtros." />
+    );
   }
   
   return (
-    <div className="space-y-6">
-      {/* Barra de filtros e controles */}
-      <FilterBar 
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        showOnlyAdjustments={showOnlyAdjustments}
-        setShowOnlyAdjustments={setShowOnlyAdjustments}
-        showOnlyWithAccounts={showOnlyWithAccounts}
-        setShowOnlyWithAccounts={setShowOnlyWithAccounts}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        onAnalyzeAll={() => batchAnalyze(clients?.map(c => c.id) || [])}
-        isProcessingBatch={isProcessingBatch}
-        clientCount={clients?.length || 0}
-      />
-      
-      {/* Lista de clientes */}
-      <ClientsList
-        clients={clients || []}
-        isLoading={isLoading}
-        processingIds={processingIds}
-        onReviewClient={analyzeClient}
-        onViewDetails={handleViewDetails}
-        viewMode={viewMode}
-        platform="meta"
-      />
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Meta Ads</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-gray-500">
+          Este módulo permitirá gerenciar revisões diárias de campanhas de Meta Ads.
+          Funcionalidade em desenvolvimento.
+        </p>
+      </CardContent>
+    </Card>
   );
 }

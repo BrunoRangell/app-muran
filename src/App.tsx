@@ -1,8 +1,8 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import Layout from "@/components/Layout";
-import Dashboard from "@/pages/Dashboard";
+import { Layout } from "@/components/layout/Layout";
+import Dashboard from "@/pages/Index";
 import ImprovedDailyReviews from "@/pages/ImprovedDailyReviews";
 import NewDailyReviews from "@/pages/NewDailyReviews"; // Nova página
 import ClientDetails from "@/components/new-reviews/pages/ClientDetails"; // Nova página de detalhes
