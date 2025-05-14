@@ -7,12 +7,14 @@ import { SettingsTab } from "@/components/improved-reviews/tabs/SettingsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
+import { useSearchParams } from "react-router-dom";
 
 export default function ImprovedDailyReviews() {
-  // Obter o parâmetro tab da URL ao carregar a página
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Obter o parâmetro tab da URL ou usar "meta-ads" como padrão
   const getTabFromUrl = () => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("tab") || "meta-ads";
+    return searchParams.get("tab") || "meta-ads";
   };
   
   const [selectedTab, setSelectedTab] = useState<string>(getTabFromUrl());
@@ -24,25 +26,20 @@ export default function ImprovedDailyReviews() {
     if (lastReviewTimeStr) {
       setLastReviewTime(new Date(lastReviewTimeStr));
     }
-    
-    // Verificar a URL inicial e ajustar se necessário
-    const initialTab = getTabFromUrl();
-    if (initialTab !== selectedTab) {
-      setSelectedTab(initialTab);
-    }
   }, []);
 
-  // Função para atualizar a URL sem recarregar a página
-  const updateUrlWithoutReload = (tab: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", tab);
-    window.history.pushState({ path: url.toString() }, "", url.toString());
-  };
+  // Efeito para sincronizar o estado das abas com a URL
+  useEffect(() => {
+    const currentTab = getTabFromUrl();
+    if (currentTab !== selectedTab) {
+      setSelectedTab(currentTab);
+    }
+  }, [searchParams]);
   
-  // Função para lidar com a mudança de aba
+  // Função para atualizar a URL sem recarregar a página usando o hook do React Router
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
-    updateUrlWithoutReload(value);
+    setSearchParams({ tab: value }, { replace: true });
   };
 
   // Função para registrar a hora da última atualização
