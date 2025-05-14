@@ -15,7 +15,7 @@ interface NavItemProps {
   isActive?: boolean;
   isPending?: boolean;
   isDisabled?: boolean;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void; // Corrigido o tipo para aceitar o evento do mouse
 }
 
 function NavItem({
