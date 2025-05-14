@@ -7,17 +7,27 @@ import { SettingsTab } from "@/components/improved-reviews/tabs/SettingsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
-import { useSearchParams } from "react-router-dom";
 
 export default function ImprovedDailyReviews() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Obter o parâmetro tab da URL ou usar "meta-ads" como padrão
-  const getTabFromUrl = () => {
-    return searchParams.get("tab") || "meta-ads";
+  // Função para obter a aba da URL hash ou do localStorage
+  const getInitialTab = () => {
+    // Primeiro tenta obter da hash da URL
+    const hashTab = window.location.hash.replace('#', '');
+    if (hashTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets', 'settings'].includes(hashTab)) {
+      return hashTab;
+    }
+    
+    // Se não encontrar na hash, tenta obter do localStorage
+    const savedTab = localStorage.getItem("selected_tab");
+    if (savedTab) {
+      return savedTab;
+    }
+    
+    // Padrão é "meta-ads"
+    return "meta-ads";
   };
   
-  const [selectedTab, setSelectedTab] = useState<string>(getTabFromUrl());
+  const [selectedTab, setSelectedTab] = useState<string>(getInitialTab());
   const [lastReviewTime, setLastReviewTime] = useState<Date | undefined>(undefined);
   
   // Ao inicializar o componente, verificar se há uma última revisão salva
@@ -26,20 +36,38 @@ export default function ImprovedDailyReviews() {
     if (lastReviewTimeStr) {
       setLastReviewTime(new Date(lastReviewTimeStr));
     }
-  }, []);
-
-  // Efeito para sincronizar o estado das abas com a URL
-  useEffect(() => {
-    const currentTab = getTabFromUrl();
-    if (currentTab !== selectedTab) {
-      setSelectedTab(currentTab);
+    
+    // Inicializa a hash da URL se ela não existir
+    if (!window.location.hash) {
+      window.location.hash = selectedTab;
     }
-  }, [searchParams]);
+  }, []);
   
-  // Função para atualizar a URL sem recarregar a página usando o hook do React Router
+  // Efeito para sincronizar mudanças na hash da URL
+  useEffect(() => {
+    const handleHashChange = () => {
+      const newTab = window.location.hash.replace('#', '');
+      if (newTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets', 'settings'].includes(newTab)) {
+        setSelectedTab(newTab);
+      }
+    };
+    
+    // Adiciona listener para mudanças na hash
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Cleanup listener quando o componente for desmontado
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+  
+  // Função para alterar a aba selecionada
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
-    setSearchParams({ tab: value }, { replace: true });
+    localStorage.setItem("selected_tab", value);
+    
+    // Atualiza a hash da URL sem recarregar a página
+    window.location.hash = value;
   };
 
   // Função para registrar a hora da última atualização
