@@ -367,6 +367,62 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_budgets: {
+        Row: {
+          account_id: string | null
+          budget_amount: number
+          client_id: string
+          created_at: string
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          is_recurring: boolean
+          platform: string
+          recurrence_pattern: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          budget_amount?: number
+          client_id: string
+          created_at?: string
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          is_recurring?: boolean
+          platform?: string
+          recurrence_pattern?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          budget_amount?: number
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          is_recurring?: boolean
+          platform?: string
+          recurrence_pattern?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_budgets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_budget_reviews: {
         Row: {
           account_display_name: string | null
@@ -374,7 +430,9 @@ export type Database = {
           client_id: string | null
           created_at: string | null
           custom_budget_amount: number | null
+          custom_budget_end_date: string | null
           custom_budget_id: string | null
+          custom_budget_start_date: string | null
           id: number
           meta_account_id: string | null
           meta_account_name: string | null
@@ -390,7 +448,9 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           custom_budget_amount?: number | null
+          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
+          custom_budget_start_date?: string | null
           id?: number
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -406,7 +466,9 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           custom_budget_amount?: number | null
+          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
+          custom_budget_start_date?: string | null
           id?: number
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -417,13 +479,6 @@ export type Database = {
           using_custom_budget?: boolean | null
         }
         Relationships: [
-          {
-            foreignKeyName: "daily_budget_reviews_client_account_id_fkey"
-            columns: ["client_account_id"]
-            isOneToOne: false
-            referencedRelation: "client_meta_accounts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "daily_budget_reviews_client_id_fkey"
             columns: ["client_id"]
@@ -482,7 +537,9 @@ export type Database = {
           client_id: string
           created_at: string
           custom_budget_amount: number | null
+          custom_budget_end_date: string | null
           custom_budget_id: string | null
+          custom_budget_start_date: string | null
           google_account_id: string | null
           google_account_name: string | null
           google_daily_budget_current: number | null
@@ -499,7 +556,9 @@ export type Database = {
           client_id: string
           created_at?: string
           custom_budget_amount?: number | null
+          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
+          custom_budget_start_date?: string | null
           google_account_id?: string | null
           google_account_name?: string | null
           google_daily_budget_current?: number | null
@@ -516,7 +575,9 @@ export type Database = {
           client_id?: string
           created_at?: string
           custom_budget_amount?: number | null
+          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
+          custom_budget_start_date?: string | null
           google_account_id?: string | null
           google_account_name?: string | null
           google_daily_budget_current?: number | null
