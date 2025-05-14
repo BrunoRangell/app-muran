@@ -6,8 +6,8 @@ type BudgetInput = {
   totalSpent: number;
   currentDailyBudget: number;
   lastFiveDaysAverage?: number;
-  customBudgetAmount?: number | null;
-  customBudgetEndDate?: string | null;
+  customBudgetAmount?: number;
+  customBudgetEndDate?: string;
   usingCustomBudget?: boolean;
 };
 
@@ -20,8 +20,6 @@ type BudgetCalculation = {
   needsBudgetAdjustment: boolean;
   needsAdjustmentBasedOnAverage?: boolean;
   spentPercentage: number;
-  usingCustomBudget: boolean;
-  actualBudgetAmount: number;
 };
 
 export function useBudgetCalculator() {
@@ -29,17 +27,12 @@ export function useBudgetCalculator() {
     return (input: BudgetInput): BudgetCalculation => {
       const today = new Date();
       
-      // Verificar se estamos usando orçamento personalizado
-      const isUsingCustomBudget = !!input.usingCustomBudget && 
-                                 !!input.customBudgetAmount && 
-                                 !!input.customBudgetEndDate;
-      
       // Se temos um orçamento personalizado com data de término, usar essa data
       let lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       let effectiveBudget = input.monthlyBudget;
       
       // Verificar se estamos usando orçamento personalizado
-      if (isUsingCustomBudget && input.customBudgetAmount && input.customBudgetEndDate) {
+      if (input.usingCustomBudget && input.customBudgetAmount && input.customBudgetEndDate) {
         // Usar o valor do orçamento personalizado
         effectiveBudget = input.customBudgetAmount;
         
@@ -50,7 +43,7 @@ export function useBudgetCalculator() {
         }
       }
       
-      const remainingDays = Math.max(1, lastDayOfMonth.getDate() - today.getDate() + 1);
+      const remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
       
       // Orçamento restante para o mês (nunca negativo)
       const remainingBudget = Math.max(0, effectiveBudget - input.totalSpent);
@@ -103,9 +96,7 @@ export function useBudgetCalculator() {
         remainingBudget,
         needsBudgetAdjustment,
         needsAdjustmentBasedOnAverage,
-        spentPercentage,
-        usingCustomBudget: isUsingCustomBudget,
-        actualBudgetAmount: effectiveBudget
+        spentPercentage
       };
     };
   }, []);

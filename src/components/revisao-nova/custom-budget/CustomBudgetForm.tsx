@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Form } from "@/components/ui/form";
 import { Loader } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
 import { CustomBudgetFormData } from "../hooks/useCustomBudgets";
 import { useBudgetForm } from "./form/useBudgetForm";
 import { ClientSelectField } from "./form/ClientSelectField";
@@ -29,8 +28,6 @@ export const CustomBudgetForm = ({
   onSubmit,
   onCancel,
 }: CustomBudgetFormProps) => {
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  
   // Buscar clientes ativos
   const { data: clients, isLoading: isLoadingClients } = useQuery({
     queryKey: ["active-clients-for-budget"],
@@ -55,21 +52,7 @@ export const CustomBudgetForm = ({
     handleFormSubmit
   } = useBudgetForm({
     selectedBudget,
-    onSubmit: (data) => {
-      try {
-        console.log("Formulário sendo submetido com dados:", data);
-        setSubmitError(null);
-        onSubmit(data);
-      } catch (error) {
-        console.error("Erro ao submeter formulário:", error);
-        setSubmitError("Erro ao submeter formulário. Por favor, tente novamente.");
-        toast({
-          title: "Erro ao salvar",
-          description: "Houve um problema ao salvar o orçamento. Por favor, tente novamente.",
-          variant: "destructive"
-        });
-      }
-    }
+    onSubmit
   });
 
   // Exibir um indicador de carregamento enquanto os clientes estão sendo carregados
@@ -86,12 +69,6 @@ export const CustomBudgetForm = ({
     <div className="max-w-2xl mx-auto">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-          {submitError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md mb-4">
-              {submitError}
-            </div>
-          )}
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ClientSelectField 
               form={form} 

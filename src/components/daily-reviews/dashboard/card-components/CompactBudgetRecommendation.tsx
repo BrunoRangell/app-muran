@@ -1,6 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Info, CloudOff, Wallet } from "lucide-react";
+import { TrendingUp, TrendingDown, Info, CloudOff } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -12,7 +12,6 @@ interface CompactBudgetRecommendationProps {
   lastFiveDaysAverage?: number;
   platform?: 'google' | 'meta';
   usingRealData?: boolean;
-  usingCustomBudget?: boolean;
 }
 
 export const CompactBudgetRecommendation = ({ 
@@ -22,8 +21,7 @@ export const CompactBudgetRecommendation = ({
   shouldShowAverage = false,
   lastFiveDaysAverage = 0,
   platform = 'meta',
-  usingRealData = true,
-  usingCustomBudget = false
+  usingRealData = true
 }: CompactBudgetRecommendationProps) => {
   const hasAnyRecommendation = shouldShow || shouldShowAverage;
   
@@ -33,6 +31,8 @@ export const CompactBudgetRecommendation = ({
                                    budgetDifferenceBasedOnAverage !== undefined && 
                                    lastFiveDaysAverage > 0 &&
                                    platform === 'google';
+                                   
+  console.log(`[DEBUG] CompactBudgetRecommendation - platform: ${platform}, shouldShowAverage: ${shouldShowAverage}, budgetDifferenceBasedOnAverage: ${budgetDifferenceBasedOnAverage}, lastFiveDaysAverage: ${lastFiveDaysAverage}, showAverageRecommendation: ${showAverageRecommendation}`);
   
   if (!hasAnyRecommendation) {
     return null;
@@ -40,23 +40,6 @@ export const CompactBudgetRecommendation = ({
   
   return (
     <div className="flex flex-wrap gap-1 mt-1">
-      {usingCustomBudget && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
-              <Badge className="flex items-center bg-[#ff6e00] text-white">
-                <Wallet size={10} className="mr-1" />
-                <span className="text-xs">Orç. Personalizado</span>
-                <Info size={10} className="ml-1 text-white" />
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Este cliente está usando um orçamento personalizado que pode ter uma duração diferente do mês atual.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-
       {!usingRealData && (
         <TooltipProvider>
           <Tooltip>
@@ -95,9 +78,6 @@ export const CompactBudgetRecommendation = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
-              {usingCustomBudget && (
-                <p className="mt-1 text-[#ff6e00] font-semibold">Usando orçamento personalizado para este cálculo.</p>
-              )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -124,9 +104,6 @@ export const CompactBudgetRecommendation = ({
             </TooltipTrigger>
             <TooltipContent>
               <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
-              {usingCustomBudget && (
-                <p className="mt-1 text-[#ff6e00] font-semibold">Usando orçamento personalizado para este cálculo.</p>
-              )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

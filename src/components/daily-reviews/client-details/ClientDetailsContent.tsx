@@ -191,47 +191,87 @@ export const ClientDetailsContent = ({
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <DollarSign className="text-muran-primary" size={18} />
-              Recomendação de Orçamento
+              Orçamento Sugerido
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info size={16} className="text-gray-400 hover:text-gray-600 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md p-4">
+                    <div className="space-y-2">
+                      <p className="font-semibold">Cálculo do orçamento diário ideal:</p>
+                      <div className="text-sm space-y-1">
+                        <p>Orçamento mensal: {formatCurrency(monthlyBudget || 0)}</p>
+                        <p>Total gasto no mês até agora: {formatCurrency(totalSpent || 0)}</p>
+                        <p>Orçamento restante: {formatCurrency(remainingBudget || 0)}</p>
+                        <p>Dias restantes no mês: {remainingDays || 0}</p>
+                        <p className="font-medium">Fórmula: Orçamento restante ÷ Dias restantes</p>
+                        <p className="font-medium">
+                          {formatCurrency(remainingBudget || 0)} ÷ {remainingDays || 0} = {formatCurrency(idealDailyBudget)}
+                        </p>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div>
-              <div className="text-sm font-medium mb-1">Orçamento diário ideal:</div>
+              <div className="text-sm font-medium mb-1">Orç. diário ideal:</div>
               <div className="text-xl font-semibold">
                 {formatCurrency(idealDailyBudget)}
               </div>
             </div>
             
-            <div className="mt-3">
-              <div className="text-sm font-medium mb-1">Dias restantes:</div>
-              <div className="text-xl font-semibold">
-                {remainingDays || "-"}
+            {suggestedBudgetChange !== 0 && (
+              <div className="mt-3">
+                <div className="text-sm font-medium mb-1">Ajuste Sugerido (orç. diário):</div>
+                <div className={`flex items-center gap-1 text-lg font-semibold ${suggestedBudgetChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {suggestedBudgetChange > 0 ? (
+                    <TrendingUp size={16} />
+                  ) : (
+                    <TrendingDown size={16} />
+                  )}
+                  {suggestedBudgetChange > 0 ? '+' : ''}
+                  {formatCurrency(Math.abs(suggestedBudgetChange))}
+                </div>
               </div>
-            </div>
-            
-            <div className="mt-3">
-              <div className="text-sm font-medium mb-1">Orçamento restante:</div>
-              <div className="text-xl font-semibold">
-                {remainingBudget !== undefined ? formatCurrency(remainingBudget) : "-"}
+            )}
+
+            {lastFiveDaysAverage > 0 && suggestedBudgetChangeAverage !== 0 && (
+              <div className="mt-3">
+                <div className="text-sm font-medium mb-1">Ajuste Sugerido (últ. 5 dias):</div>
+                <div className={`flex items-center gap-1 text-lg font-semibold ${suggestedBudgetChangeAverage > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {suggestedBudgetChangeAverage > 0 ? (
+                    <TrendingUp size={16} />
+                  ) : (
+                    <TrendingDown size={16} />
+                  )}
+                  {suggestedBudgetChangeAverage > 0 ? '+' : ''}
+                  {formatCurrency(Math.abs(suggestedBudgetChangeAverage))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {remainingDays !== undefined && remainingBudget !== undefined && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-md text-sm">
+                <p className="font-medium mb-1">Detalhes do cálculo:</p>
+                <p>Orçamento restante: {formatCurrency(remainingBudget)}</p>
+                <p>Dias restantes: {remainingDays}</p>
+                <p className="mt-1 font-medium">
+                  {formatCurrency(remainingBudget)} ÷ {remainingDays} = {formatCurrency(idealDailyBudget)}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-      
-      {reviewHistory && reviewHistory.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Histórico de Revisões</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ReviewHistoryTable 
-              reviewHistory={reviewHistory} 
-              isLoading={isLoadingHistory} 
-            />
-          </CardContent>
-        </Card>
-      )}
+
+      <ReviewHistoryTable 
+        isLoading={isLoadingHistory} 
+        reviewHistory={reviewHistory} 
+      />
     </div>
   );
 };

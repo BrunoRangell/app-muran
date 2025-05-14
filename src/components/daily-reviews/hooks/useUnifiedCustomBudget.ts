@@ -30,9 +30,7 @@ export const useUnifiedCustomBudget = ({
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0];
       
-      console.log(`[useUnifiedCustomBudget] Buscando orçamento personalizado para cliente ${clientId}, plataforma ${platform}`);
-      
-      // Buscar na tabela unificada custom_budgets
+      // Primeiro, tentar buscar na tabela unificada
       const { data, error } = await supabase
         .from('custom_budgets')
         .select('*')
@@ -44,12 +42,10 @@ export const useUnifiedCustomBudget = ({
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error(`[useUnifiedCustomBudget] Erro ao buscar orçamentos na tabela unificada: ${error.message}`);
+        console.error(`Erro ao buscar orçamentos na tabela unificada: ${error.message}`);
         
         // Fallback para a tabela antiga (meta_custom_budgets) se a plataforma for meta
         if (platform === 'meta') {
-          console.log('[useUnifiedCustomBudget] Tentando fallback para tabela meta_custom_budgets');
-          
           const { data: legacyData, error: legacyError } = await supabase
             .from('meta_custom_budgets')
             .select('*')
@@ -59,14 +55,9 @@ export const useUnifiedCustomBudget = ({
             .gte('end_date', today)
             .order('created_at', { ascending: false });
             
-          if (legacyError) {
-            console.error(`[useUnifiedCustomBudget] Erro no fallback: ${legacyError.message}`);
-            throw legacyError;
-          }
+          if (legacyError) throw legacyError;
           
           if (legacyData && legacyData.length > 0) {
-            console.log(`[useUnifiedCustomBudget] Encontrado orçamento no fallback: ${JSON.stringify(legacyData[0])}`);
-            
             // Converter para o formato unificado
             return {
               ...legacyData[0],
@@ -78,46 +69,20 @@ export const useUnifiedCustomBudget = ({
         return null;
       }
       
-      // Se temos dados, filtrar por ID da conta se fornecido
-      if (data && data.length > 0) {
-        console.log(`[useUnifiedCustomBudget] Encontrados ${data.length} orçamentos personalizados`);
+      // Filtrar por ID da conta se fornecido
+      let filteredData = data;
+      if (accountId && data && data.length > 0) {
+        filteredData = data.filter(budget => 
+          !budget.account_id || budget.account_id === accountId
+        );
         
-        let filteredData = data;
-        
-        if (accountId) {
-          console.log(`[useUnifiedCustomBudget] Filtrando por account_id: ${accountId}`);
-          
-          // Primeiro, procurar por orçamentos específicos para a conta
-          const accountSpecificBudgets = data.filter(budget => 
-            budget.account_id === accountId
-          );
-          
-          if (accountSpecificBudgets.length > 0) {
-            console.log(`[useUnifiedCustomBudget] Encontrado orçamento específico para a conta ${accountId}`);
-            filteredData = accountSpecificBudgets;
-          } else {
-            // Se não encontrou orçamento específico, procurar por orçamentos globais (sem account_id)
-            console.log(`[useUnifiedCustomBudget] Procurando por orçamentos globais`);
-            const globalBudgets = data.filter(budget => !budget.account_id);
-            
-            if (globalBudgets.length > 0) {
-              console.log(`[useUnifiedCustomBudget] Encontrado orçamento global`);
-              filteredData = globalBudgets;
-            }
-          }
+        // Se não encontrou orçamento específico para a conta, verificar se há orçamento global
+        if (filteredData.length === 0) {
+          filteredData = data.filter(budget => !budget.account_id);
         }
-        
-        // Ordenar por data de criação (mais recente primeiro) e pegar o primeiro
-        const selectedBudget = filteredData.sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )[0];
-        
-        console.log(`[useUnifiedCustomBudget] Orçamento selecionado: ${JSON.stringify(selectedBudget)}`);
-        return selectedBudget;
       }
       
-      console.log(`[useUnifiedCustomBudget] Nenhum orçamento personalizado encontrado`);
-      return null;
+      return filteredData && filteredData.length > 0 ? filteredData[0] : null;
     },
     enabled: !!clientId
   });
@@ -126,26 +91,19 @@ export const useUnifiedCustomBudget = ({
   useEffect(() => {
     const checkCurrentReview = async () => {
       if (customBudget) {
-        console.log(`[useUnifiedCustomBudget] Verificando se a revisão atual usa orçamento personalizado`);
-        
-        const today = new Date().toISOString().split('T')[0];
-        
         const { data, error } = await supabase
           .from(reviewTable)
-          .select('using_custom_budget, custom_budget_id')
+          .select('using_custom_budget')
           .eq('client_id', clientId)
-          .eq('review_date', today)
+          .eq('review_date', new Date().toISOString().split('T')[0])
           .maybeSingle();
           
         if (error) {
-          console.error(`[useUnifiedCustomBudget] Erro ao verificar revisão atual: ${error.message}`);
+          console.error(`Erro ao verificar revisão atual: ${error.message}`);
           return;
         }
         
-        const isUsingCustom = data?.using_custom_budget || false;
-        console.log(`[useUnifiedCustomBudget] Revisão atual ${isUsingCustom ? 'está' : 'não está'} usando orçamento personalizado`);
-        
-        setIsUsingCustomBudgetInReview(isUsingCustom);
+        setIsUsingCustomBudgetInReview(data?.using_custom_budget || false);
       }
     };
     

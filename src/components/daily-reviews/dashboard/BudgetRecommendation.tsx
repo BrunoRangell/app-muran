@@ -1,6 +1,6 @@
 
 import { formatCurrency } from "@/utils/formatters";
-import { MinusCircle, TrendingDown, TrendingUp, Info, Wallet } from "lucide-react";
+import { MinusCircle, TrendingDown, TrendingUp, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CompactBudgetRecommendation } from "./card-components/CompactBudgetRecommendation";
 
@@ -14,7 +14,6 @@ interface BudgetRecommendationProps {
   compact?: boolean;
   platform?: "meta" | "google";
   usingCustomBudget?: boolean;
-  usingRealData?: boolean;
 }
 
 export const BudgetRecommendation = ({ 
@@ -26,8 +25,7 @@ export const BudgetRecommendation = ({
   lastFiveDaysAverage = 0,
   compact = false,
   platform = "meta",
-  usingCustomBudget = false,
-  usingRealData = true
+  usingCustomBudget = false
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
 
@@ -40,9 +38,7 @@ export const BudgetRecommendation = ({
         shouldShow={shouldShow}
         shouldShowAverage={platform === "google" ? shouldShowAverage : false}
         lastFiveDaysAverage={platform === "google" ? lastFiveDaysAverage : undefined}
-        platform={platform}
         usingCustomBudget={usingCustomBudget}
-        usingRealData={usingRealData}
       />
     );
   }
@@ -58,14 +54,8 @@ export const BudgetRecommendation = ({
           Recomendação: Nenhum ajuste necessário
         </div>
         {usingCustomBudget && (
-          <div className="mt-1 flex items-center gap-1 text-xs text-[#ff6e00]">
-            <Wallet size={14} className="text-[#ff6e00]" />
+          <div className="mt-1 text-xs text-gray-500">
             Usando orçamento personalizado para cálculo
-          </div>
-        )}
-        {!usingRealData && (
-          <div className="mt-1 flex items-center gap-1 text-xs text-amber-600">
-            Usando dados simulados para cálculo
           </div>
         )}
       </div>
@@ -74,13 +64,6 @@ export const BudgetRecommendation = ({
   
   return (
     <div className="mt-2 space-y-2">
-      {usingCustomBudget && (
-        <div className="p-2 rounded-lg bg-[#ff6e00]/10 border-l-4 border-l-[#ff6e00] flex items-center">
-          <Wallet size={18} className="text-[#ff6e00] mr-2" />
-          <span className="font-medium text-[#ff6e00]">Usando orçamento personalizado para cálculo</span>
-        </div>
-      )}
-      
       {shouldShow && (
         <div className={`p-3 rounded-lg ${
           budgetDifference > 0 
