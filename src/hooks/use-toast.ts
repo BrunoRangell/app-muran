@@ -1,29 +1,29 @@
 
 import { 
-  Toast, 
+  Toast as ToastPrimitive, 
   ToastActionElement, 
   ToastProps 
-} from "@/components/ui/toast"
+} from "@/components/ui/toast";
 
 import {
   useToast as useToastOriginal
-} from "@/components/ui/use-toast"
+} from "@radix-ui/react-toast";
 
-export type ToasterToast = Toast & {
+export type ToasterToast = {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
-}
+} & ToastProps;
 
 export const useToast = () => {
-  const { toast, ...rest } = useToastOriginal()
+  const { toast, ...rest } = useToastOriginal();
   
   return {
     toast,
     ...rest,
-  }
-}
+  };
+};
 
-export { toast } from "@/components/ui/use-toast"
-export type { ToastProps }
+export { toast } from "@radix-ui/react-toast";
+export type { ToastProps };

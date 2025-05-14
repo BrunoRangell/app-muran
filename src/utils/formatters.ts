@@ -1,4 +1,5 @@
 
+
 /**
  * Formata um valor numérico para moeda (BRL)
  */
@@ -40,3 +41,42 @@ export const formatPercent = (value: number | null | undefined, decimals: number
   
   return `${value.toFixed(decimals)}%`;
 };
+
+/**
+ * Converte string de moeda para número
+ */
+export const parseCurrencyToNumber = (value: string | number): number => {
+  if (typeof value === 'number') return value;
+  
+  // Remove todos os caracteres não numéricos exceto vírgula e ponto
+  const numericString = value.replace(/[^\d.,]/g, '');
+  
+  // Substitui vírgula por ponto para conversão correta
+  const normalized = numericString.replace(',', '.');
+  
+  return parseFloat(normalized) || 0;
+};
+
+/**
+ * Formata número de telefone para formato brasileiro
+ */
+export const formatPhoneNumber = (phone: string): string => {
+  // Remove todos os caracteres não numéricos
+  const numericOnly = phone.replace(/\D/g, '');
+  
+  if (numericOnly.length <= 2) {
+    return numericOnly;
+  } else if (numericOnly.length <= 6) {
+    return `(${numericOnly.slice(0, 2)}) ${numericOnly.slice(2)}`;
+  } else if (numericOnly.length <= 10) {
+    return `(${numericOnly.slice(0, 2)}) ${numericOnly.slice(2, 6)}-${numericOnly.slice(6)}`;
+  } else {
+    return `(${numericOnly.slice(0, 2)}) ${numericOnly.slice(2, 7)}-${numericOnly.slice(7, 11)}`;
+  }
+};
+
+/**
+ * Alias para manter compatibilidade com código existente
+ */
+export const formatPercentage = formatPercent;
+
