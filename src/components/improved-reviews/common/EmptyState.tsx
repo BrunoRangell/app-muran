@@ -1,6 +1,6 @@
 
-import { Button } from "@/components/ui/button";
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
+import { AlertCircle } from "lucide-react";
 
 interface EmptyStateProps {
   title: string;
@@ -9,27 +9,20 @@ interface EmptyStateProps {
   actionButton?: ReactNode;
 }
 
-export function EmptyState({ 
+export const EmptyState = ({ 
   title, 
   description, 
-  icon, 
+  icon = <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />,
   actionButton 
-}: EmptyStateProps) {
+}: EmptyStateProps) => {
   return (
-    <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg border border-gray-100 shadow-sm min-h-[250px]">
-      {icon && <div className="mb-4">{icon}</div>}
-      
-      <h3 className="text-xl font-medium text-gray-800">{title}</h3>
-      
-      <p className="text-gray-600 mt-2 text-center max-w-md">
-        {description}
-      </p>
-      
-      {actionButton && (
-        <div className="mt-6">
-          {actionButton}
-        </div>
-      )}
+    <div className="bg-white p-8 rounded-md shadow-sm border border-gray-100 flex flex-col items-center justify-center my-8">
+      <div className="text-center space-y-4 max-w-lg">
+        {icon}
+        <h2 className="text-lg font-medium text-gray-800">{title}</h2>
+        <p className="text-gray-600">{description}</p>
+        {actionButton}
+      </div>
     </div>
   );
-}
+};
