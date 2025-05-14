@@ -54,7 +54,6 @@ const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
-const AdvancedDailyReviewV2 = lazyWithTimeout(() => import("@/pages/AdvancedDailyReviewV2"));
 
 function App() {
   return (
@@ -102,11 +101,8 @@ function App() {
             </PrivateRoute>
           }
         />
-        {/* Página atual de revisão diária */}
+        {/* Página principal de revisão diária */}
         <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
-        
-        {/* Nova versão da revisão diária */}
-        <Route path="/revisao-diaria-avancada-v2" element={<AdvancedDailyReviewV2 />} />
         
         {/* Redirecionamentos das páginas antigas */}
         <Route path="/revisoes-diarias" element={<Navigate to="/revisao-diaria-avancada" replace />} />
