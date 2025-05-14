@@ -1,9 +1,11 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card,
   CardContent,
-  CardHeader
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from "@/components/ui/card";
 import {
   Tabs,
@@ -11,88 +13,94 @@ import {
   TabsList,
   TabsTrigger
 } from "@/components/ui/tabs";
+import { CustomBudgetTable } from "./custom-budget/CustomBudgetTable";
 import { CustomBudgetForm } from "./custom-budget/CustomBudgetForm";
-import { useCustomBudgets } from "./hooks/useCustomBudgets";
-import { BudgetManagerHeader } from "./custom-budget/manager/BudgetManagerHeader";
-import { FilterControls } from "./custom-budget/manager/FilterControls";
-import { BudgetContent } from "./custom-budget/manager/BudgetContent";
-import { useBudgetTabManager } from "./custom-budget/manager/useBudgetTabManager";
-import { useViewModeControls } from "./custom-budget/manager/useViewModeControls";
+import { useCustomBudgets, CustomBudgetFormData } from "./hooks/useCustomBudgets";
+import { useQueryClient } from "@tanstack/react-query";
 
-interface CustomBudgetManagerProps {
-  viewMode?: "list" | "cards" | "calendar";
-}
+export const CustomBudgetManager = () => {
+  const [selectedTab, setSelectedTab] = useState<string>("active");
+  const queryClient = useQueryClient();
 
-export const CustomBudgetManager = ({ viewMode = "list" }: CustomBudgetManagerProps) => {
-  const [searchTerm, setSearchTerm] = useState<string>("");
-
-  // Hooks personalizados para controlar a UI
-  const viewControls = useViewModeControls({ initialViewMode: viewMode });
-  
-  // Hook para gerenciar consultas e operações de dados
   const {
     filteredClients,
     isLoading,
+    searchTerm,
+    setSearchTerm,
+    selectedBudget,
+    setSelectedBudget,
     addCustomBudgetMutation,
     updateCustomBudgetMutation,
     deleteCustomBudgetMutation,
     toggleBudgetStatusMutation,
-    duplicateBudgetMutation,
     formatDate,
     formatBudget,
     isCurrentlyActive,
-    isFutureBudget,
-    exportToCSV,
-    getBudgetStats
-  } = useCustomBudgets({ 
-    sortBy: viewControls.sortBy, 
-    statusFilter: viewControls.statusFilter, 
-    platformFilter: viewControls.platformFilter 
-  });
-  
-  // Hook para gerenciar abas e a lógica do formulário
-  const tabManager = useBudgetTabManager({
-    addCustomBudgetMutation,
-    updateCustomBudgetMutation,
-    deleteCustomBudgetMutation,
-    toggleBudgetStatusMutation,
-    duplicateBudgetMutation
-  });
+    isFutureBudget
+  } = useCustomBudgets();
+
+  // Monitorar estado das mutações para atualizar dados quando necessário
+  useEffect(() => {
+    // Verificar se alguma mutação foi bem-sucedida para atualizar os dados
+    if (addCustomBudgetMutation.isSuccess || 
+        updateCustomBudgetMutation.isSuccess || 
+        deleteCustomBudgetMutation.isSuccess || 
+        toggleBudgetStatusMutation.isSuccess) {
+      // Invalidar consultas para recarregar os dados atualizados
+      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+    }
+  }, [
+    queryClient,
+    addCustomBudgetMutation.isSuccess, 
+    updateCustomBudgetMutation.isSuccess, 
+    deleteCustomBudgetMutation.isSuccess, 
+    toggleBudgetStatusMutation.isSuccess
+  ]);
+
+  // Função para converter o formato do orçamento para o formato esperado pelo form
+  const convertBudgetToFormData = (budget: any): CustomBudgetFormData => {
+    return {
+      clientId: budget.client_id,
+      budgetAmount: budget.budget_amount,
+      startDate: budget.start_date,
+      endDate: budget.end_date,
+      description: budget.description || ""
+    };
+  };
+
+  // Função para converter do formato do form para o formato do banco de dados
+  const convertFormDataToBudget = (formData: CustomBudgetFormData) => {
+    return {
+      client_id: formData.clientId,
+      budget_amount: formData.budgetAmount,
+      start_date: formData.startDate,
+      end_date: formData.endDate,
+      description: formData.description || null
+    };
+  };
 
   return (
     <Card className="w-full shadow-md">
       <CardHeader className="pb-3">
-        <BudgetManagerHeader 
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          getBudgetStats={getBudgetStats}
-          exportToCSV={exportToCSV}
-          onAddNewBudget={tabManager.handleAddNewBudget}
-        />
-
-        <FilterControls 
-          platformFilter={viewControls.platformFilter}
-          setPlatformFilter={viewControls.setPlatformFilter}
-          statusFilter={viewControls.statusFilter}
-          setStatusFilter={viewControls.setStatusFilter}
-          setSortBy={viewControls.setSortBy}
-          displayMode={viewControls.displayMode}
-          setDisplayMode={viewControls.setDisplayMode}
-        />
+        <CardTitle className="text-xl text-muran-dark">
+          Orçamentos Personalizados Meta Ads
+        </CardTitle>
+        <CardDescription className="mt-1">
+          Configure orçamentos com períodos personalizados para cada cliente
+        </CardDescription>
       </CardHeader>
-      
       <CardContent>
-        <Tabs value={tabManager.selectedTab} onValueChange={tabManager.setSelectedTab}>
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="active">Orçamentos</TabsTrigger>
             <TabsTrigger value="form">
-              {tabManager.selectedBudget ? "Editar Orçamento" : "Novo Orçamento"}
+              {selectedBudget ? "Editar Orçamento" : "Novo Orçamento"}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="active" className="space-y-4">
-            <BudgetContent 
-              displayMode={viewControls.displayMode}
+            <CustomBudgetTable
               filteredClients={filteredClients}
               isLoading={isLoading}
               searchTerm={searchTerm}
@@ -101,22 +109,40 @@ export const CustomBudgetManager = ({ viewMode = "list" }: CustomBudgetManagerPr
               formatBudget={formatBudget}
               isCurrentlyActive={isCurrentlyActive}
               isFutureBudget={isFutureBudget}
-              onEdit={tabManager.handleEditBudget}
+              onEdit={(budget) => {
+                setSelectedBudget(budget);
+                setSelectedTab("form");
+              }}
               onDelete={(id) => deleteCustomBudgetMutation.mutate(id)}
               onToggleStatus={(id, isActive) => 
                 toggleBudgetStatusMutation.mutate({ id, isActive })
               }
-              onDuplicate={(budget) => duplicateBudgetMutation.mutate(budget)}
             />
           </TabsContent>
 
           <TabsContent value="form">
             <CustomBudgetForm
-              selectedBudget={tabManager.selectedBudget ? 
-                tabManager.convertBudgetToFormData(tabManager.selectedBudget) : null}
-              isSubmitting={tabManager.isSubmitting}
-              onSubmit={tabManager.handleFormSubmit}
-              onCancel={tabManager.handleFormCancel}
+              selectedBudget={selectedBudget ? convertBudgetToFormData(selectedBudget) : null}
+              isSubmitting={
+                addCustomBudgetMutation.isPending || 
+                updateCustomBudgetMutation.isPending
+              }
+              onSubmit={(formData: CustomBudgetFormData) => {
+                if (selectedBudget) {
+                  updateCustomBudgetMutation.mutate({
+                    id: selectedBudget.id,
+                    ...formData
+                  });
+                } else {
+                  addCustomBudgetMutation.mutate(formData);
+                }
+                setSelectedBudget(null);
+                setSelectedTab("active");
+              }}
+              onCancel={() => {
+                setSelectedBudget(null);
+                setSelectedTab("active");
+              }}
             />
           </TabsContent>
         </Tabs>

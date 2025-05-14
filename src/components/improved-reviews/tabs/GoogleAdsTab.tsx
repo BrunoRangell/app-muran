@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
 import { MetricsPanel } from "../dashboard/MetricsPanel";
@@ -8,61 +8,17 @@ import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { AlertTriangle } from "lucide-react";
-import { useTabVisibility } from "../hooks/useTabVisibility";
 
 interface GoogleAdsTabProps {
   onRefreshCompleted?: () => void;
-  isActive?: boolean;
 }
 
-// Chave para armazenamento local do estado do filtro
-const FILTER_STATE_KEY = "google_ads_filters_state";
-
-export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsTabProps = {}) {
-  // Estado para controle da UI
+export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
-  
-  // Recuperar estado de filtros do localStorage ao inicializar
-  useEffect(() => {
-    try {
-      const savedFilters = localStorage.getItem(FILTER_STATE_KEY);
-      if (savedFilters) {
-        const parsedFilters = JSON.parse(savedFilters);
-        setSearchQuery(parsedFilters.searchQuery || "");
-        setViewMode(parsedFilters.viewMode || "cards");
-        setShowOnlyAdjustments(parsedFilters.showOnlyAdjustments || false);
-      }
-    } catch (err) {
-      console.error("Erro ao recuperar estado dos filtros:", err);
-    }
-  }, []);
-
-  // Salvar estado dos filtros no localStorage quando mudar
-  useEffect(() => {
-    try {
-      localStorage.setItem(FILTER_STATE_KEY, JSON.stringify({
-        searchQuery,
-        viewMode,
-        showOnlyAdjustments
-      }));
-    } catch (err) {
-      console.error("Erro ao salvar estado dos filtros:", err);
-    }
-  }, [searchQuery, viewMode, showOnlyAdjustments]);
-
-  // Usar o hook de visibilidade da aba
-  useTabVisibility({
-    isActive,
-    onBecomeVisible: () => {
-      console.log("Tab GoogleAds se tornou visível!");
-    }
-  });
-
-  const { data, isLoading, error, metrics, refreshData, isFetching } = useGoogleAdsData();
-  
-  const { reviewAllClients, isProcessing, processingIds } = useBatchOperations({
+  const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
+  const { reviewAllClients, isProcessing } = useBatchOperations({
     platform: "google",
     onComplete: () => {
       console.log("Revisão em lote do Google Ads concluída. Atualizando dados...");
@@ -101,7 +57,6 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
     }
   };
 
-  // Renderização condicional baseada no estado de carregamento
   if (isLoading) {
     return <ImprovedLoadingState />;
   }
@@ -116,16 +71,12 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
     );
   }
 
-  // Verificar se temos dados válidos
-  const hasValidData = data && data.length > 0;
-  
   return (
     <div className="space-y-6">
-      {/* Sempre exibir o MetricsPanel, mesmo durante atualizações */}
       <MetricsPanel 
         metrics={metrics} 
         onBatchReview={handleBatchReview}
-        isProcessing={isProcessing || isFetching}
+        isProcessing={isProcessing}
       />
       
       <FilterBar 
@@ -136,21 +87,17 @@ export function GoogleAdsTab({ onRefreshCompleted, isActive = true }: GoogleAdsT
         onViewModeChange={handleViewModeChange}
         onFilterChange={handleFilterChange}
         onRefresh={handleRefresh}
-        isRefreshing={isFetching}
+        isRefreshing={isLoading}
         platform="google"
       />
       
-      {isFetching && !data ? (
-        <ImprovedLoadingState />
-      ) : (
-        <ClientsList 
-          data={data}
-          viewMode={viewMode}
-          searchQuery={searchQuery}
-          showOnlyAdjustments={showOnlyAdjustments}
-          platform="google"
-        />
-      )}
+      <ClientsList 
+        data={data}
+        viewMode={viewMode}
+        searchQuery={searchQuery}
+        showOnlyAdjustments={showOnlyAdjustments}
+        platform="google"
+      />
     </div>
   );
 }

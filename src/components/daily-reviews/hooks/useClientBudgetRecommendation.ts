@@ -10,10 +10,7 @@ import { BudgetInfo } from "./types/budgetTypes";
 export const useClientBudgetRecommendation = (
   clientBudget: number | null | undefined,
   totalSpent: number | null | undefined,
-  currentDailyBudget: number | null | undefined,
-  customBudgetAmount?: number | null,
-  customBudgetEndDate?: string | null,
-  usingCustomBudget: boolean = false
+  currentDailyBudget: number | null | undefined
 ) => {
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [idealDailyBudget, setIdealDailyBudget] = useState<number | null>(null);
@@ -22,49 +19,35 @@ export const useClientBudgetRecommendation = (
   const [remainingBudget, setRemainingBudget] = useState<number | null>(null);
   
   useEffect(() => {
-    if ((clientBudget || customBudgetAmount) && 
-        totalSpent !== undefined && totalSpent !== null && 
-        currentDailyBudget !== undefined && currentDailyBudget !== null) {
+    if (clientBudget && totalSpent !== undefined && totalSpent !== null && currentDailyBudget !== undefined && currentDailyBudget !== null) {
       try {
         // Data atual para o cálculo (usando fuso horário de Brasília)
         const saoPauloDate = getCurrentDateInBrasiliaTz();
         
         console.log("Data atual utilizada para cálculo (São Paulo):", saoPauloDate.toLocaleDateString('pt-BR'));
         
-        // Determinar qual orçamento usar (personalizado ou mensal)
-        const effectiveBudget = usingCustomBudget && customBudgetAmount ? 
-          Number(customBudgetAmount) : 
-          Number(clientBudget || 0);
-          
+        // Obter valores do orçamento e gastos
+        const monthlyBudget = Number(clientBudget);
         const totalSpentValue = Number(totalSpent);
         const currentDailyBudgetValue = Number(currentDailyBudget);
         
-        console.log("Orçamento efetivo usado:", effectiveBudget);
-        console.log("Usando orçamento personalizado:", usingCustomBudget);
+        console.log("Orçamento mensal do cliente:", monthlyBudget);
         console.log("Total gasto até agora:", totalSpentValue);
         console.log("Orçamento diário atual:", currentDailyBudgetValue);
         
-        // Calculando dias restantes
-        let remainingDaysValue;
-        
-        if (usingCustomBudget && customBudgetEndDate) {
-          // Se for orçamento personalizado, calcular dias até a data final
-          const endDate = new Date(customBudgetEndDate);
-          const diffTime = endDate.getTime() - saoPauloDate.getTime();
-          remainingDaysValue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          console.log("Dias restantes até o fim do orçamento personalizado:", remainingDaysValue);
-        } else {
-          // Caso contrário, calcular dias restantes no mês
-          const daysInMonth = getDaysInMonth(saoPauloDate);
-          const currentDay = saoPauloDate.getDate();
-          remainingDaysValue = daysInMonth - currentDay + 1;
-          console.log("Dias restantes no mês:", remainingDaysValue);
-        }
-        
+        // Calculando dias restantes no mês
+        const daysInMonth = getDaysInMonth(saoPauloDate);
+        const currentDay = saoPauloDate.getDate();
+        // Ajustando para incluir o dia atual na contagem
+        const remainingDaysValue = daysInMonth - currentDay + 1;
         setRemainingDays(remainingDaysValue);
         
+        console.log("Dias no mês:", daysInMonth);
+        console.log("Dia atual (São Paulo):", currentDay);
+        console.log("Dias restantes (incluindo hoje):", remainingDaysValue);
+        
         // Calcular orçamento restante
-        const remainingBudgetValue = effectiveBudget - totalSpentValue;
+        const remainingBudgetValue = monthlyBudget - totalSpentValue;
         setRemainingBudget(remainingBudgetValue);
         console.log("Orçamento restante:", remainingBudgetValue);
         
@@ -93,7 +76,7 @@ export const useClientBudgetRecommendation = (
         console.error("Erro ao calcular orçamento ideal:", error);
       }
     }
-  }, [clientBudget, totalSpent, currentDailyBudget, customBudgetAmount, customBudgetEndDate, usingCustomBudget]);
+  }, [clientBudget, totalSpent, currentDailyBudget]);
 
   return {
     recommendation,

@@ -12,8 +12,6 @@ interface BudgetRecommendationProps {
   hasReview: boolean;
   lastFiveDaysAverage?: number;
   compact?: boolean;
-  platform?: "meta" | "google";
-  usingCustomBudget?: boolean;
 }
 
 export const BudgetRecommendation = ({ 
@@ -23,9 +21,7 @@ export const BudgetRecommendation = ({
   shouldShowAverage = false,
   hasReview,
   lastFiveDaysAverage = 0,
-  compact = false,
-  platform = "meta",
-  usingCustomBudget = false
+  compact = false
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
 
@@ -34,17 +30,15 @@ export const BudgetRecommendation = ({
     return (
       <CompactBudgetRecommendation
         budgetDifference={budgetDifference}
-        budgetDifferenceBasedOnAverage={platform === "google" ? budgetDifferenceBasedOnAverage : undefined}
+        budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
         shouldShow={shouldShow}
-        shouldShowAverage={platform === "google" ? shouldShowAverage : false}
-        lastFiveDaysAverage={platform === "google" ? lastFiveDaysAverage : undefined}
-        usingCustomBudget={usingCustomBudget}
+        shouldShowAverage={shouldShowAverage}
+        lastFiveDaysAverage={lastFiveDaysAverage}
       />
     );
   }
 
-  const shouldShowAverageForPlatform = shouldShowAverage && platform === "google";
-  const hasAnyRecommendation = shouldShow || shouldShowAverageForPlatform;
+  const hasAnyRecommendation = shouldShow || shouldShowAverage;
   
   if (!hasAnyRecommendation) {
     return (
@@ -53,11 +47,6 @@ export const BudgetRecommendation = ({
           <MinusCircle size={18} className="text-gray-500" />
           Recomendação: Nenhum ajuste necessário
         </div>
-        {usingCustomBudget && (
-          <div className="mt-1 text-xs text-gray-500">
-            Usando orçamento personalizado para cálculo
-          </div>
-        )}
       </div>
     );
   }
@@ -90,9 +79,6 @@ export const BudgetRecommendation = ({
                 </TooltipTrigger>
                 <TooltipContent className="p-3 max-w-xs">
                   <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
-                  {usingCustomBudget && (
-                    <p className="mt-1 text-[#ff6e00]">Usando orçamento personalizado para este cálculo.</p>
-                  )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -100,7 +86,7 @@ export const BudgetRecommendation = ({
         </div>
       )}
 
-      {shouldShowAverageForPlatform && (
+      {shouldShowAverage && (
         <div className={`p-3 rounded-lg ${
           budgetDifferenceBasedOnAverage > 0 
             ? 'bg-green-50 border-l-4 border-l-green-500' 
@@ -126,9 +112,6 @@ export const BudgetRecommendation = ({
                 </TooltipTrigger>
                 <TooltipContent className="p-3 max-w-xs">
                   <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
-                  {usingCustomBudget && (
-                    <p className="mt-1 text-[#ff6e00]">Usando orçamento personalizado para este cálculo.</p>
-                  )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

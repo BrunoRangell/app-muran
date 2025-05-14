@@ -1,205 +1,251 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.4.0";
 
-async function handleTokenCheck() {
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseKey) {
-      return { success: false, error: "Configuração do Supabase incompleta" };
-    }
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
-    // Obter tokens da API do Google Ads
-    const googleTokensResponse = await fetch(
-      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_developer_token,google_ads_manager_id)&select=name,value`, {
-      headers: {
-        "apikey": supabaseKey,
-        "Authorization": `Bearer ${supabaseKey}`,
-        "Content-Type": "application/json"
-      }
-    });
-    
-    if (!googleTokensResponse.ok) {
-      throw new Error(`Erro ao buscar tokens: ${googleTokensResponse.statusText}`);
-    }
-    
-    const googleTokensData = await googleTokensResponse.json();
-    const googleTokens: Record<string, string> = {};
-    
-    googleTokensData.forEach((token: { name: string; value: string }) => {
-      googleTokens[token.name] = token.value;
-    });
-    
-    // Verificar se os tokens necessários existem
-    const tokenStatuses: Record<string, string> = {};
-    const requiredTokens = [
-      'google_ads_access_token',
-      'google_ads_refresh_token',
-      'google_ads_client_id',
-      'google_ads_client_secret',
-      'google_ads_developer_token',
-      'google_ads_manager_id'
-    ];
-    
-    let allTokensPresent = true;
-    
-    // Verificar presença dos tokens
-    for (const tokenName of requiredTokens) {
-      if (!googleTokens[tokenName]) {
-        tokenStatuses[tokenName] = "ausente";
-        allTokensPresent = false;
-      } else {
-        const value = googleTokens[tokenName];
-        // Mostrar apenas os primeiros caracteres do token para segurança
-        tokenStatuses[tokenName] = `presente (${value.substring(0, 4)}...)`;
-      }
-    }
-    
-    // Se temos tokens de refresh, tentar atualizar o token de acesso
-    if (googleTokens.google_ads_refresh_token && 
-        googleTokens.google_ads_client_id && 
-        googleTokens.google_ads_client_secret) {
-      
-      try {
-        console.log("Tentando atualizar o token de acesso...");
-        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-          },
-          body: new URLSearchParams({
-            client_id: googleTokens.google_ads_client_id,
-            client_secret: googleTokens.google_ads_client_secret,
-            refresh_token: googleTokens.google_ads_refresh_token,
-            grant_type: "refresh_token"
-          })
-        });
-        
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          if (refreshData.access_token) {
-            console.log("Token de acesso atualizado com sucesso");
-            
-            // Atualizar o token no banco de dados
-            const updateResponse = await fetch(
-              `${supabaseUrl}/rest/v1/api_tokens?name=eq.google_ads_access_token`, {
-              method: "PATCH",
-              headers: {
-                "apikey": supabaseKey,
-                "Authorization": `Bearer ${supabaseKey}`,
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-              },
-              body: JSON.stringify({
-                value: refreshData.access_token,
-                updated_at: new Date().toISOString()
-              })
-            });
-            
-            if (!updateResponse.ok) {
-              throw new Error(`Erro ao atualizar token: ${updateResponse.statusText}`);
-            }
-            
-            // Registrar a atualização
-            await fetch(
-              `${supabaseUrl}/rest/v1/google_ads_token_metadata`, {
-              method: "POST",
-              headers: {
-                "apikey": supabaseKey,
-                "Authorization": `Bearer ${supabaseKey}`,
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-              },
-              body: JSON.stringify({
-                token_type: "access_token",
-                status: "updated",
-                last_refreshed: new Date().toISOString(),
-                expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hora de validade
-                details: {
-                  token_type: refreshData.token_type,
-                  expires_in: refreshData.expires_in,
-                  scope: refreshData.scope
-                }
-              })
-            });
-            
-            return { 
-              success: true, 
-              message: "Token atualizado com sucesso", 
-              tokenStatuses,
-              apiAccess: true,
-              refreshSuccess: true
-            };
-          } else {
-            throw new Error("Resposta do refresh sem token de acesso");
-          }
-        } else {
-          const errorText = await refreshResponse.text();
-          let errorJson;
-          try {
-            errorJson = JSON.parse(errorText);
-          } catch (e) {
-            errorJson = { error: errorText };
-          }
-          
-          console.error("Erro ao atualizar token:", errorJson);
-          throw new Error(`Falha ao atualizar token: ${errorJson?.error?.message || errorText}`);
-        }
-      } catch (refreshError) {
-        console.error("Erro no processo de refresh:", refreshError);
-        return { 
-          success: false, 
-          error: `Erro ao atualizar token: ${refreshError.message}`, 
-          tokenStatuses,
-          apiAccess: false,
-          refreshSuccess: false
-        };
-      }
-    }
-    
-    // Se não temos todos os tokens necessários ou a atualização não foi possível
-    return {
-      success: allTokensPresent,
-      message: allTokensPresent 
-        ? "Todos os tokens estão presentes, mas não foi possível testar o acesso à API" 
-        : "Alguns tokens estão ausentes",
-      tokenStatuses,
-      apiAccess: false,
-      allTokensPresent
-    };
-    
-  } catch (error) {
-    console.error("Erro ao verificar tokens:", error);
-    return {
-      success: false,
-      error: `Erro ao verificar tokens: ${error.message}`
-    };
-  }
+interface GoogleAdsToken {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
-  
+
   try {
-    const result = await handleTokenCheck();
-    
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200
+    // Criar cliente do Supabase usando variáveis de ambiente
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
+    );
+
+    const { data: tokensData, error: tokensError } = await supabaseClient
+      .from('api_tokens')
+      .select('name, value')
+      .or('name.eq.google_ads_refresh_token,name.eq.google_ads_client_id,name.eq.google_ads_client_secret');
+
+    if (tokensError) {
+      console.error("Erro ao buscar tokens:", tokensError);
+      return new Response(
+        JSON.stringify({ error: "Falha ao buscar tokens do banco de dados", details: tokensError }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    // Extrair tokens do resultado
+    const tokens: Record<string, string> = {};
+    tokensData?.forEach(token => {
+      tokens[token.name] = token.value;
     });
-  } catch (error) {
-    console.error("Erro na função Edge:", error);
-    
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message || "Erro desconhecido"
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500
+
+    // Verificar se temos todos os tokens necessários
+    if (!tokens.google_ads_refresh_token || !tokens.google_ads_client_id || !tokens.google_ads_client_secret) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Tokens incompletos", 
+          details: "Refresh token, client ID ou client secret não encontrados" 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Renovar o token de acesso usando refresh token
+    const tokenUrl = 'https://oauth2.googleapis.com/token';
+    const tokenParams = new URLSearchParams({
+      client_id: tokens.google_ads_client_id,
+      client_secret: tokens.google_ads_client_secret,
+      refresh_token: tokens.google_ads_refresh_token,
+      grant_type: 'refresh_token'
     });
+
+    console.log("Enviando requisição para renovar token...");
+    const tokenResponse = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: tokenParams
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error("Erro na resposta da API do Google:", errorData);
+      
+      // Registrar o erro no banco de dados
+      await supabaseClient.from('google_ads_token_metadata').insert({
+        token_type: 'access_token',
+        status: 'error',
+        details: { error: errorData, timestamp: new Date().toISOString() }
+      });
+
+      return new Response(
+        JSON.stringify({ error: "Falha ao renovar token", details: errorData }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    const tokenData: GoogleAdsToken = await tokenResponse.json();
+    console.log("Token renovado com sucesso");
+
+    // Atualizar o token de acesso no banco de dados
+    const { error: updateError } = await supabaseClient
+      .from('api_tokens')
+      .update({ value: tokenData.access_token })
+      .eq('name', 'google_ads_access_token');
+
+    if (updateError) {
+      console.error("Erro ao atualizar token de acesso:", updateError);
+      return new Response(
+        JSON.stringify({ error: "Falha ao salvar token renovado", details: updateError }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    // Atualizar os metadados do token
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
+
+    await supabaseClient.from('google_ads_token_metadata').insert({
+      token_type: 'access_token',
+      status: 'valid',
+      expires_at: expiresAt.toISOString(),
+      details: {
+        token_type: tokenData.token_type,
+        expires_in: tokenData.expires_in
+      }
+    });
+
+    // Verificar se podemos acessar a API do Google Ads
+    const { data: managerIdData, error: managerIdError } = await supabaseClient
+      .from('api_tokens')
+      .select('value')
+      .eq('name', 'google_ads_manager_id')
+      .single();
+
+    if (managerIdError || !managerIdData) {
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          tokenRefreshed: true, 
+          apiAccess: false,
+          message: "Token renovado, mas ID da conta gerenciadora não encontrado" 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: developerTokenData, error: developerTokenError } = await supabaseClient
+      .from('api_tokens')
+      .select('value')
+      .eq('name', 'google_ads_developer_token')
+      .single();
+
+    if (developerTokenError || !developerTokenData) {
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          tokenRefreshed: true, 
+          apiAccess: false,
+          message: "Token renovado, mas developer token não encontrado" 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Testar acesso à API do Google Ads
+    const managerId = managerIdData.value;
+    const developerToken = developerTokenData.value;
+    
+    try {
+      const testResponse = await fetch(
+        `https://googleads.googleapis.com/v18/customers/${managerId}/googleAds:search`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'developer-token': developerToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            query: `
+              SELECT
+                  customer_client.id,
+                  customer_client.descriptive_name
+              FROM
+                  customer_client
+              LIMIT 100
+            `
+          })
+        }
+      );
+
+      if (!testResponse.ok) {
+        const apiError = await testResponse.text();
+        console.error("Erro ao testar API Google Ads:", apiError);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            tokenRefreshed: true, 
+            apiAccess: false,
+            apiError: apiError
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const apiData = await testResponse.json();
+      const clientsCount = apiData.results ? apiData.results.length : 0;
+      
+      // Preparar lista de clientes para retornar
+      const clients = apiData.results ? apiData.results.map((result: any) => ({
+        id: result.customerClient?.id || '',
+        name: result.customerClient?.descriptiveName || ''
+      })) : [];
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          tokenRefreshed: true, 
+          apiAccess: true,
+          clientsCount: clientsCount,
+          clients: clients,
+          message: `Token renovado e API acessível. ${clientsCount} clientes encontrados.`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (apiError) {
+      console.error("Erro ao testar API Google Ads:", apiError);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          tokenRefreshed: true, 
+          apiAccess: false,
+          error: String(apiError)
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+  } catch (err) {
+    console.error("Erro geral na função:", err);
+    
+    return new Response(
+      JSON.stringify({ error: String(err) }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    );
   }
 });

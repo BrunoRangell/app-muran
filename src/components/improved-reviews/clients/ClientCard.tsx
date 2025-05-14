@@ -2,15 +2,12 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, BadgeDollarSign, Building2, Calendar, ChevronRight, Info } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboard/card-components/CompactBudgetRecommendation";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface ClientCardProps {
   client: any;
@@ -20,36 +17,24 @@ interface ClientCardProps {
 export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
-  const { reviewClient, processingIds, isProcessingAccount } = useBatchOperations({
+  const { reviewClient, processingIds } = useBatchOperations({
     platform: platform as "meta" | "google"
   });
   
-  const isProcessing = isProcessingAccount(client.id, client[`${platform}_account_id`]);
+  const isProcessing = processingIds.includes(client.id);
   
   // Preparar dados para exibição
   const accountName = client[`${platform}_account_name`] || "Conta Principal";
   const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
   const budgetAmount = client.budget_amount || 0;
   const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
-  const needsAdjustment = client.budgetCalculation?.needsBudgetAdjustment || false;
+  const needsAdjustment = client.needsAdjustment;
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
   
-  // Verificar se há um orçamento personalizado ativo
-  const hasCustomBudget = client.review?.using_custom_budget || false;
-  const customBudgetAmount = client.review?.custom_budget_amount || 0;
-  const customBudgetEndDate = client.review?.custom_budget_end_date;
-  const customBudgetStartDate = client.review?.custom_budget_start_date;
-  
-  // Dados para recomendação baseada na média dos últimos 5 dias (apenas para Google)
-  const lastFiveDaysAvg = platform === "google" ? (client.lastFiveDaysAvg || 0) : 0;
-  const budgetDifferenceAvg = platform === "google" ? (client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0) : 0;
-  const needsAdjustmentBasedOnAverage = platform === "google" ? (client.budgetCalculation?.needsAdjustmentBasedOnAverage || false) : false;
-
-  const formatCustomDate = (dateString: string | undefined) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return format(date, "dd/MM/yyyy", { locale: ptBR });
-  };
+  // Dados para recomendação baseada na média dos últimos 5 dias
+  const lastFiveDaysAvg = client.lastFiveDaysAvg || 0;
+  const budgetDifferenceAvg = client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0;
+  const needsAdjustmentBasedOnAverage = client.budgetCalculation?.needsAdjustmentBasedOnAverage || false;
   
   const handleReviewClick = async () => {
     try {
@@ -75,23 +60,6 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
             <h3 className="font-medium line-clamp-1 flex items-center gap-1">
               <Building2 className="h-4 w-4 text-[#ff6e00]" />
               {client.company_name}
-              {hasCustomBudget && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <BadgeDollarSign size={16} className="text-[#ff6e00]" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="text-xs">
-                        <p>Orçamento personalizado: {formatCurrency(customBudgetAmount)}</p>
-                        {customBudgetStartDate && customBudgetEndDate && (
-                          <p>Período: {formatCustomDate(customBudgetStartDate)} até {formatCustomDate(customBudgetEndDate)}</p>
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
             </h3>
             <p className="text-sm text-gray-500">{accountName}</p>
           </div>
@@ -109,24 +77,8 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
               <span className="font-medium">{formatCurrency(spentAmount)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">
-                {hasCustomBudget ? "Orçamento personalizado" : "Orçamento"}
-                {hasCustomBudget && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Calendar size={12} className="ml-1 text-[#ff6e00]/70 inline" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Válido até {formatCustomDate(customBudgetEndDate)}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </span>
-              <span className="font-medium">
-                {hasCustomBudget ? formatCurrency(customBudgetAmount) : formatCurrency(budgetAmount)}
-              </span>
+              <span className="text-gray-500">Orçamento</span>
+              <span className="font-medium">{formatCurrency(budgetAmount)}</span>
             </div>
             <Progress 
               value={spentPercentage} 
@@ -147,11 +99,10 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
           {/* Recomendações de orçamento em formato compacto */}
           <CompactBudgetRecommendation 
             budgetDifference={budgetDifference}
-            budgetDifferenceBasedOnAverage={platform === "google" ? budgetDifferenceAvg : undefined}
-            shouldShow={needsAdjustment}
-            shouldShowAverage={platform === "google" ? needsAdjustmentBasedOnAverage : false}
-            lastFiveDaysAverage={platform === "google" ? lastFiveDaysAvg : undefined}
-            platform={platform}
+            budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
+            shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
+            shouldShowAverage={needsAdjustmentBasedOnAverage}
+            lastFiveDaysAverage={lastFiveDaysAvg}
           />
           
           {expanded && client.review && (
@@ -168,12 +119,10 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
                 <span className="text-gray-500">Dias restantes</span>
                 <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
               </div>
-              {platform === "google" && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Média gasto (5 dias)</span>
-                  <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
-                </div>
-              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Média gasto (5 dias)</span>
+                <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
+              </div>
             </div>
           )}
         </div>

@@ -1,11 +1,9 @@
 
 import { Badge } from "@/components/ui/badge";
-import { BadgeDollarSign, Calendar } from "lucide-react";
+import { BadgeDollarSign } from "lucide-react";
 import { formatDateInBrasiliaTz } from "@/components/daily-reviews/summary/utils";
-import { ClientWithReview, MetaAccount } from "@/components/daily-reviews/hooks/types/reviewTypes";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ClientWithReview } from "@/components/daily-reviews/hooks/types/reviewTypes";
+import { MetaAccount } from "@/components/daily-reviews/hooks/types/accountTypes";
 
 interface ClientInfoProps {
   client: ClientWithReview;
@@ -22,12 +20,6 @@ export const ClientInfo = ({
 }: ClientInfoProps) => {
   const lastReviewDate = client.lastReview?.updated_at;
   const isPrimaryAccount = metaAccount?.is_primary;
-  
-  const formatCustomDate = (dateString: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return format(date, "dd/MM/yyyy", { locale: ptBR });
-  };
 
   return (
     <>
@@ -42,19 +34,7 @@ export const ClientInfo = ({
           </span>
         )}
         {customBudget && isUsingCustomBudgetInReview && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <BadgeDollarSign size={16} className="text-[#ff6e00]" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="text-xs">
-                  <p>Orçamento personalizado: R$ {customBudget.budget_amount}</p>
-                  <p>Período: {formatCustomDate(customBudget.start_date)} até {formatCustomDate(customBudget.end_date)}</p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <BadgeDollarSign size={16} className="text-[#ff6e00]" />
         )}
       </div>
       
@@ -65,20 +45,10 @@ export const ClientInfo = ({
       )}
       
       {customBudget && isUsingCustomBudgetInReview && (
-        <div className="mt-1 flex items-center gap-1">
+        <div className="mt-1">
           <Badge className="bg-[#ff6e00]/10 text-[#ff6e00] hover:bg-[#ff6e00]/20 border-none">
             Orçamento personalizado ativo
           </Badge>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Calendar size={14} className="text-[#ff6e00]/70" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Válido até {formatCustomDate(customBudget.end_date)}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       )}
     </>

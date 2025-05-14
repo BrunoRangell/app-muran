@@ -60,28 +60,11 @@ export function useUnifiedReviewsData() {
         .eq("review_date", new Date().toISOString().split("T")[0]);
 
       if (reviewsError) throw reviewsError;
-      
-      // Buscar orçamentos personalizados ativos
-      const today = new Date().toISOString().split('T')[0];
-      const { data: customBudgets, error: customBudgetsError } = await supabase
-        .from("custom_budgets")
-        .select("*")
-        .eq("platform", "meta")
-        .eq("is_active", true)
-        .lte("start_date", today)
-        .gte("end_date", today);
-
-      if (customBudgetsError) {
-        console.error("Erro ao buscar orçamentos personalizados:", customBudgetsError);
-      }
 
       // Combinar os dados
       const clientsWithData = clients.map(client => {
         // Encontrar contas do cliente
         const accounts = metaAccounts.filter(account => account.client_id === client.id);
-        
-        // Encontrar orçamentos personalizados do cliente
-        const clientCustomBudgets = customBudgets?.filter(budget => budget.client_id === client.id) || [];
         
         // Se o cliente tiver contas específicas, criar um item para cada conta
         if (accounts.length > 0) {
@@ -92,72 +75,42 @@ export function useUnifiedReviewsData() {
               (r.meta_account_id === account.account_id || r.client_account_id === account.account_id)
             );
             
-            // Encontrar orçamento personalizado específico para esta conta
-            const accountCustomBudget = clientCustomBudgets.find(b => 
-              b.account_id === account.account_id || !b.account_id
-            );
-            
-            // Usar dados do orçamento personalizado da revisão ou do orçamento ativo
-            const isUsingCustomBudget = review?.using_custom_budget || false;
-            const customBudgetAmount = review?.custom_budget_amount || accountCustomBudget?.budget_amount;
-            const customBudgetEndDate = review?.custom_budget_end_date || accountCustomBudget?.end_date;
-            
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
               monthlyBudget: account.budget_amount,
               totalSpent: review?.meta_total_spent || 0,
-              currentDailyBudget: review?.meta_daily_budget_current || 0,
-              usingCustomBudget: isUsingCustomBudget,
-              customBudgetAmount: customBudgetAmount,
-              customBudgetEndDate: customBudgetEndDate
+              currentDailyBudget: review?.meta_daily_budget_current || 0
             });
             
             return {
               ...client,
               meta_account_id: account.account_id,
               meta_account_name: account.account_name,
-              budget_amount: isUsingCustomBudget && customBudgetAmount ? 
-                customBudgetAmount : account.budget_amount,
+              budget_amount: account.budget_amount,
               review: review || null,
               budgetCalculation: budgetCalc,
-              needsAdjustment: budgetCalc.needsBudgetAdjustment,
-              customBudget: accountCustomBudget || null,
-              isUsingCustomBudget
+              needsAdjustment: budgetCalc.needsBudgetAdjustment
             };
           });
         } else {
           // Cliente sem contas específicas, usar valores padrão
           const review = reviews.find(r => r.client_id === client.id);
           
-          // Encontrar orçamento personalizado global para este cliente
-          const clientCustomBudget = clientCustomBudgets.length > 0 ? clientCustomBudgets[0] : null;
-          
-          // Usar dados do orçamento personalizado da revisão ou do orçamento ativo
-          const isUsingCustomBudget = review?.using_custom_budget || false;
-          const customBudgetAmount = review?.custom_budget_amount || clientCustomBudget?.budget_amount;
-          const customBudgetEndDate = review?.custom_budget_end_date || clientCustomBudget?.end_date;
-          
           // Calcular orçamento recomendado
           const budgetCalc = calculateBudget({
             monthlyBudget: client.meta_ads_budget,
             totalSpent: review?.meta_total_spent || 0,
-            currentDailyBudget: review?.meta_daily_budget_current || 0,
-            usingCustomBudget: isUsingCustomBudget,
-            customBudgetAmount: customBudgetAmount,
-            customBudgetEndDate: customBudgetEndDate
+            currentDailyBudget: review?.meta_daily_budget_current || 0
           });
           
           return {
             ...client,
             meta_account_id: null,
             meta_account_name: "Conta Principal",
-            budget_amount: isUsingCustomBudget && customBudgetAmount ? 
-              customBudgetAmount : client.meta_ads_budget,
+            budget_amount: client.meta_ads_budget,
             review: review || null,
             budgetCalculation: budgetCalc,
-            needsAdjustment: budgetCalc.needsBudgetAdjustment,
-            customBudget: clientCustomBudget || null,
-            isUsingCustomBudget
+            needsAdjustment: budgetCalc.needsBudgetAdjustment
           };
         }
       });
@@ -187,7 +140,6 @@ export function useUnifiedReviewsData() {
     isLoading,
     error,
     metrics,
-    refreshData: refetch,
-    isRefreshing: false // Adicionado isRefreshing para compatibilidade com a interface
+    refreshData: refetch
   };
 }

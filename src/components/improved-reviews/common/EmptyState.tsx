@@ -1,28 +1,21 @@
 
-import React, { ReactNode } from "react";
-import { AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { SearchX } from "lucide-react";
 
 interface EmptyStateProps {
   title: string;
   description: string;
-  icon?: ReactNode;
-  actionButton?: ReactNode;
+  icon?: React.ReactNode;
 }
 
-export const EmptyState = ({ 
-  title, 
-  description, 
-  icon = <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />,
-  actionButton 
-}: EmptyStateProps) => {
+export function EmptyState({ title, description, icon }: EmptyStateProps) {
   return (
-    <div className="bg-white p-8 rounded-md shadow-sm border border-gray-100 flex flex-col items-center justify-center my-8">
-      <div className="text-center space-y-4 max-w-lg">
-        {icon}
-        <h2 className="text-lg font-medium text-gray-800">{title}</h2>
-        <p className="text-gray-600">{description}</p>
-        {actionButton}
-      </div>
-    </div>
+    <Card>
+      <CardContent className="p-12 flex flex-col items-center justify-center text-center">
+        {icon || <SearchX className="h-16 w-16 text-[#ff6e00]/30 mb-4" />}
+        <h3 className="text-xl font-medium text-[#321e32] mb-2">{title}</h3>
+        <p className="text-[#321e32]/70">{description}</p>
+      </CardContent>
+    </Card>
   );
-};
+}

@@ -5,7 +5,6 @@ import { MetaAdsTab } from "@/components/improved-reviews/tabs/MetaAdsTab";
 import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
 import { SettingsTab } from "@/components/improved-reviews/tabs/SettingsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
-import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
 import { useSearchParams } from "react-router-dom";
 
@@ -27,17 +26,6 @@ export default function ImprovedDailyReviews() {
     if (lastReviewTimeStr) {
       setLastReviewTime(new Date(lastReviewTimeStr));
     }
-
-    // Pré-carregamento da aba Google Ads quando o componente montar
-    // Isso garante que os dados já estejam disponíveis quando o usuário alternar para a aba
-    if (selectedTab !== "google-ads") {
-      const prefetchTimeout = setTimeout(() => {
-        console.log("Pré-carregando dados do Google Ads...");
-        // Não precisamos fazer nada aqui, apenas garantir que o React Query inicialize
-      }, 3000);
-      return () => clearTimeout(prefetchTimeout);
-    }
-    
   }, []);
 
   // Função para registrar a hora da última atualização
@@ -59,7 +47,6 @@ export default function ImprovedDailyReviews() {
             <TabsTrigger value="dashboard">Meta Ads</TabsTrigger>
             <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
             <TabsTrigger value="budgets">Orçamentos</TabsTrigger>
-            <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
           
@@ -68,10 +55,7 @@ export default function ImprovedDailyReviews() {
               lastReviewTime={lastReviewTime} 
               onRefresh={handleRefresh} 
             />
-            <MetaAdsTab 
-              onRefreshCompleted={handleRefresh} 
-              isActive={selectedTab === "dashboard"} 
-            />
+            <MetaAdsTab onRefreshCompleted={handleRefresh} />
           </TabsContent>
           
           <TabsContent value="google-ads" className="space-y-6">
@@ -79,18 +63,11 @@ export default function ImprovedDailyReviews() {
               lastReviewTime={lastReviewTime} 
               onRefresh={handleRefresh} 
             />
-            <GoogleAdsTab 
-              onRefreshCompleted={handleRefresh} 
-              isActive={selectedTab === "google-ads"} 
-            />
+            <GoogleAdsTab onRefreshCompleted={handleRefresh} />
           </TabsContent>
 
           <TabsContent value="budgets" className="space-y-6">
             <BudgetManagerTab />
-          </TabsContent>
-          
-          <TabsContent value="custom-budgets" className="space-y-6">
-            <CustomBudgetTab />
           </TabsContent>
           
           <TabsContent value="settings">

@@ -5,23 +5,6 @@ import { supabase } from "@/lib/supabase";
 import { useBudgetCalculator } from "./useBudgetCalculator";
 import { ClientMetrics } from "./useUnifiedReviewsData";
 
-export interface GoogleAdsClientData {
-  id: string;
-  company_name: string;
-  google_account_id: string;
-  google_account_name: string;
-  budget_amount: number;
-  review: any;
-  budgetCalculation: any;
-  needsAdjustment: boolean;
-  lastFiveDaysAvg: number;
-  usingRealData?: boolean;
-}
-
-// Chave para armazenamento local dos dados e métricas do Google Ads
-const GOOGLE_ADS_DATA_KEY = "google_ads_data_cache";
-const GOOGLE_ADS_METRICS_KEY = "google_ads_metrics_cache";
-
 export function useGoogleAdsData() {
   const [metrics, setMetrics] = useState<ClientMetrics>({
     totalClients: 0,
@@ -30,32 +13,15 @@ export function useGoogleAdsData() {
     totalSpent: 0,
     spentPercentage: 0
   });
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const { calculateBudget } = useBudgetCalculator();
-
-  // Carregar dados do localStorage quando o componente montar
-  useEffect(() => {
-    try {
-      const savedMetrics = localStorage.getItem(GOOGLE_ADS_METRICS_KEY);
-      if (savedMetrics) {
-        setMetrics(JSON.parse(savedMetrics));
-      }
-    } catch (err) {
-      console.error("Erro ao carregar métricas do cache:", err);
-    }
-
-    // Marcar que a carga inicial foi concluída após este useEffect
-    setIsInitialLoad(false);
-  }, []);
 
   // Fetch clients with their Google accounts and reviews
   const { 
     data, 
     isLoading, 
     error, 
-    refetch,
-    isFetching,
+    refetch 
   } = useQuery({
     queryKey: ["improved-google-reviews"],
     queryFn: async () => {
@@ -98,27 +64,11 @@ export function useGoogleAdsData() {
         .from("google_ads_reviews")
         .select("*")
         .gte("review_date", firstDayStr)
-        .order("review_date", { ascending: false })
-        .order("updated_at", { ascending: false });
+        .order("review_date", { ascending: false });
 
       if (reviewsError) throw reviewsError;
       
       console.log(`Encontradas ${reviews?.length || 0} revisões do mês atual`);
-      
-      // Buscar orçamentos personalizados ativos
-      const { data: customBudgets, error: budgetsError } = await supabase
-        .from("custom_budgets")
-        .select("*")
-        .eq("platform", "google")
-        .eq("is_active", true)
-        .lte("start_date", currentDate.toISOString().split("T")[0])
-        .gte("end_date", currentDate.toISOString().split("T")[0]);
-        
-      if (budgetsError) {
-        console.error("Erro ao buscar orçamentos personalizados:", budgetsError);
-      } else {
-        console.log(`Encontrados ${customBudgets?.length || 0} orçamentos personalizados ativos`);
-      }
 
       // Combinar os dados
       const clientsWithData = clients
@@ -127,122 +77,64 @@ export function useGoogleAdsData() {
           // Encontrar contas do cliente
           const accounts = googleAccounts ? googleAccounts.filter(account => account.client_id === client.id) : [];
           
-          // Encontrar orçamentos personalizados para este cliente
-          const clientBudgets = customBudgets?.filter(budget => 
-            budget.client_id === client.id && 
-            budget.platform === "google"
-          ) || [];
-          
           // Se o cliente tiver contas específicas, criar um item para cada conta
           if (accounts.length > 0) {
             return accounts.map(account => {
-              // Encontrar revisões para esta conta específica (cliente + conta)
+              // Encontrar revisões para esta conta (apenas do mês atual)
               const accountReviews = reviews ? reviews.filter(r => 
                 r.client_id === client.id && 
-                (
-                  (r.google_account_id === account.account_id) ||
-                  (r.client_account_id === account.id)
-                )
+                (r.google_account_id === account.account_id || r.client_account_id === account.id)
               ) : [];
               
-              // Usar a revisão mais recente para esta conta
+              // Usar a revisão mais recente
               const review = accountReviews.length > 0 ? accountReviews[0] : null;
-              
-              // Encontrar orçamento personalizado para esta conta específica
-              const accountBudget = clientBudgets?.find(budget => 
-                (!budget.account_id || budget.account_id === account.account_id)
-              );
-              
-              // Verificar se os dados são reais ou simulados
-              const usingRealData = review?.usingRealData !== false; // Se não especificado, assumir verdadeiro
               
               // Obter a média de gasto dos últimos 5 dias (se disponível)
               const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
-              console.log(`[DEBUG] Cliente ${client.company_name}, Conta ${account.account_name} - Média 5 dias: ${lastFiveDaysAvg}`);
-              
-              // Verificar se está usando orçamento personalizado
-              const usingCustomBudget = review?.using_custom_budget || false;
-              const effectiveBudget = usingCustomBudget && review?.custom_budget_amount ? 
-                review.custom_budget_amount : account.budget_amount;
               
               // Calcular orçamento recomendado
               const budgetCalc = calculateBudget({
                 monthlyBudget: account.budget_amount || 0,
                 totalSpent: review?.google_total_spent || 0,
                 currentDailyBudget: review?.google_daily_budget_current || 0,
-                lastFiveDaysAverage: lastFiveDaysAvg,
-                customBudgetAmount: review?.custom_budget_amount,
-                customBudgetEndDate: review?.custom_budget_end_date,
-                usingCustomBudget: usingCustomBudget
+                lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
               });
-              
-              // Verificar se precisa de ajuste (baseado em orçamento diário OU na média dos últimos 5 dias)
-              const needsAnyAdjustment = budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage;
               
               return {
                 ...client,
                 google_account_id: account.account_id,
-                google_account_name: account.account_name || "Conta Google",
-                budget_amount: effectiveBudget,
+                google_account_name: account.account_name,
+                budget_amount: account.budget_amount,
                 review: review || null,
                 budgetCalculation: budgetCalc,
-                needsAdjustment: needsAnyAdjustment,
-                lastFiveDaysAvg: lastFiveDaysAvg,
-                usingRealData,
-                customBudget: accountBudget || null
+                needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
+                lastFiveDaysAvg: lastFiveDaysAvg
               };
             });
           } else if (client.google_account_id) {
             // Cliente com ID de conta padrão
-            const clientReviews = reviews ? reviews.filter(r => 
-              r.client_id === client.id && 
-              r.google_account_id === client.google_account_id
-            ) : [];
-            
+            const clientReviews = reviews ? reviews.filter(r => r.client_id === client.id) : [];
             const review = clientReviews.length > 0 ? clientReviews[0] : null;
-            
-            // Encontrar orçamento personalizado para este cliente
-            const clientBudget = clientBudgets?.find(budget => 
-              budget.client_id === client.id &&
-              (!budget.account_id || budget.account_id === client.google_account_id)
-            );
-            
-            // Verificar se os dados são reais ou simulados
-            const usingRealData = review?.usingRealData !== false; // Se não especificado, assumir verdadeiro
             
             // Obter a média de gasto dos últimos 5 dias (se disponível)
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
-            console.log(`[DEBUG] Cliente ${client.company_name}, Conta principal - Média 5 dias: ${lastFiveDaysAvg}`);
-            
-            // Verificar se está usando orçamento personalizado
-            const usingCustomBudget = review?.using_custom_budget || false;
-            const effectiveBudget = usingCustomBudget && review?.custom_budget_amount ? 
-              review.custom_budget_amount : client.google_ads_budget;
             
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
               monthlyBudget: client.google_ads_budget || 0,
               totalSpent: review?.google_total_spent || 0,
               currentDailyBudget: review?.google_daily_budget_current || 0,
-              lastFiveDaysAverage: lastFiveDaysAvg,
-              customBudgetAmount: review?.custom_budget_amount,
-              customBudgetEndDate: review?.custom_budget_end_date,
-              usingCustomBudget: usingCustomBudget
+              lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
             });
-            
-            // Verificar se precisa de ajuste (baseado em orçamento diário OU na média dos últimos 5 dias)
-            const needsAnyAdjustment = budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage;
             
             return {
               ...client,
               google_account_name: "Conta Principal",
-              budget_amount: effectiveBudget,
+              budget_amount: client.google_ads_budget || 0,
               review: review || null,
               budgetCalculation: budgetCalc,
-              needsAdjustment: needsAnyAdjustment,
-              lastFiveDaysAvg: lastFiveDaysAvg,
-              usingRealData,
-              customBudget: clientBudget || null
+              needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
+              lastFiveDaysAvg: lastFiveDaysAvg
             };
           }
           
@@ -268,53 +160,16 @@ export function useGoogleAdsData() {
       
       console.log("Métricas calculadas:", metricsData);
       setMetrics(metricsData);
-      
-      // Salvar métricas e dados no localStorage para persistência
-      try {
-        localStorage.setItem(GOOGLE_ADS_METRICS_KEY, JSON.stringify(metricsData));
-        localStorage.setItem(GOOGLE_ADS_DATA_KEY, JSON.stringify(flattenedClients));
-      } catch (err) {
-        console.error("Erro ao salvar dados no cache:", err);
-      }
 
       return flattenedClients;
-    },
-    refetchOnWindowFocus: false,
-    refetchOnMount: false, // Não refetch automático ao montar
-    staleTime: 10 * 60 * 1000, // 10 minutos (mais agressivo)
-    gcTime: 60 * 60 * 1000, // 1 hora (equivalente ao antigo cacheTime)
-    initialData: () => {
-      // Tentar recuperar dados do localStorage ao inicializar
-      try {
-        const savedData = localStorage.getItem(GOOGLE_ADS_DATA_KEY);
-        if (savedData) {
-          const parsedData = JSON.parse(savedData);
-          console.log("Carregando dados do Google Ads do cache local", parsedData.length);
-          return parsedData;
-        }
-      } catch (err) {
-        console.error("Erro ao recuperar dados do cache:", err);
-      }
-      return undefined;
-    },
+    }
   });
-
-  // Função para forçar uma atualização completa dos dados
-  const refreshData = async () => {
-    console.log("Forçando atualização dos dados do Google Ads...");
-    return refetch({ cancelRefetch: true });
-  };
-
-  // Calculando um estado de carregamento combinado que considera tanto o carregamento inicial
-  // quanto o refetching para garantir que a UI não seja renderizada prematuramente
-  const isLoadingCombined = isInitialLoad || isLoading || (isFetching && !data);
 
   return {
     data,
-    isLoading: isLoadingCombined,
-    isFetching,
+    isLoading,
     error,
     metrics,
-    refreshData
+    refreshData: refetch
   };
 }

@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDateInBrasiliaTz } from "@/components/daily-reviews/summary/utils";
+import React from "react";
 
 export interface CustomBudget {
   id: string;
@@ -12,11 +12,9 @@ export interface CustomBudget {
   start_date: string;
   end_date: string;
   description: string | null;
-  platform: 'meta' | 'google';
   created_at: string;
+  status: 'active' | 'completed' | 'cancelled';
   is_active: boolean;
-  is_recurring: boolean;
-  recurrence_pattern: string | null;
   client_name?: string;
 }
 
@@ -31,20 +29,10 @@ export interface CustomBudgetFormData {
   budgetAmount: number;
   startDate: string;
   endDate: string;
-  platform: 'meta' | 'google';
   description: string;
-  isRecurring?: boolean;
-  recurrencePattern?: string;
 }
 
-interface UseCustomBudgetsOptions {
-  sortBy?: string;
-  statusFilter?: string;
-  platformFilter?: string;
-}
-
-export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
-  const { sortBy = "client_name", statusFilter = "all", platformFilter = "all" } = options;
+export const useCustomBudgets = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
@@ -58,7 +46,7 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     queryKey: ["custom-budgets"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets")
         .select(`
           *,
           clients (
@@ -98,84 +86,20 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     },
   });
 
-  // Aplicar filtros e ordenação aos orçamentos/clientes
-  const getFilteredAndSortedBudgets = () => {
-    if (!customBudgets) return [];
-    
-    let filtered = [...customBudgets];
-    
-    // Aplicar filtro por plataforma
-    if (platformFilter !== "all") {
-      filtered = filtered.filter(budget => budget.platform === platformFilter);
-    }
-    
-    // Aplicar filtro por status
-    if (statusFilter !== "all") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      filtered = filtered.filter(budget => {
-        const startDate = new Date(budget.start_date);
-        const endDate = new Date(budget.end_date);
-        
-        switch (statusFilter) {
-          case "active":
-            return budget.is_active && startDate <= today && endDate >= today;
-          case "scheduled":
-            return budget.is_active && startDate > today;
-          case "inactive":
-            return !budget.is_active;
-          case "expired":
-            return budget.is_active && endDate < today;
-          case "recurring":
-            return budget.is_recurring;
-          default:
-            return true;
-        }
-      });
-    }
-    
-    // Aplicar ordenação
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "client_name":
-          return (a.client_name || "").localeCompare(b.client_name || "");
-        case "budget_amount_desc":
-          return b.budget_amount - a.budget_amount;
-        case "budget_amount_asc":
-          return a.budget_amount - b.budget_amount;
-        case "start_date_desc":
-          return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
-        case "start_date_asc":
-          return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-        case "end_date_desc":
-          return new Date(b.end_date).getTime() - new Date(a.end_date).getTime();
-        case "end_date_asc":
-          return new Date(a.end_date).getTime() - new Date(b.end_date).getTime();
-        case "platform":
-          return a.platform.localeCompare(b.platform);
-        default:
-          return 0;
-      }
-    });
-    
-    return filtered;
-  };
-
-  // Filtrar clientes com base no termo de pesquisa e agrupar orçamentos por cliente
+  // Filtrar clientes com base no termo de pesquisa
   const filteredClients = clients && customBudgets ? clients.filter(client => 
     client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   ).map(client => {
-    const filteredBudgets = getFilteredAndSortedBudgets().filter(
+    const clientBudgets = customBudgets.filter(
       (budget: CustomBudget) => budget.client_id === client.id
     );
     
     return {
       id: client.id,
       company_name: client.company_name,
-      customBudgets: filteredBudgets
+      customBudgets: clientBudgets
     };
-  }).filter(client => (statusFilter === "all" && platformFilter === "all") || client.customBudgets.length > 0) : [];
+  }) : [];
 
   // Criar novo orçamento personalizado
   const addCustomBudgetMutation = useMutation({
@@ -190,18 +114,16 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
 
       console.log("Enviando dados para criação:", formData);
 
+      // Remova o campo status do objeto de inserção, já que ele não existe na tabela
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets")
         .insert({
           client_id: formData.clientId,
           budget_amount: formData.budgetAmount,
           start_date: formData.startDate,
           end_date: formData.endDate,
-          platform: formData.platform,
           description: formData.description || null,
-          is_active: true,
-          is_recurring: formData.isRecurring || false,
-          recurrence_pattern: formData.recurrencePattern || null
+          is_active: true  // Remova o campo status e use apenas is_active
         })
         .select()
         .single();
@@ -249,15 +171,12 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       console.log("Enviando dados para atualização:", { id, ...formData });
 
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets")
         .update({
           budget_amount: formData.budgetAmount,
           start_date: formData.startDate,
           end_date: formData.endDate,
-          platform: formData.platform,
           description: formData.description || null,
-          is_recurring: formData.isRecurring || false,
-          recurrence_pattern: formData.recurrencePattern || null
         })
         .eq('id', id)
         .select()
@@ -292,53 +211,11 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     },
   });
 
-  // Duplicar orçamento existente
-  const duplicateBudgetMutation = useMutation({
-    mutationFn: async (budget: CustomBudget) => {
-      const { data, error } = await supabase
-        .from("custom_budgets")
-        .insert({
-          client_id: budget.client_id,
-          budget_amount: budget.budget_amount,
-          start_date: budget.start_date,
-          end_date: budget.end_date,
-          platform: budget.platform,
-          description: budget.description ? `${budget.description} (cópia)` : '(cópia)',
-          is_active: true,
-          is_recurring: budget.is_recurring,
-          recurrence_pattern: budget.recurrence_pattern
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Erro ao duplicar orçamento personalizado:", error);
-        throw error;
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["custom-budgets"] });
-      toast({
-        title: "Orçamento duplicado",
-        description: "O orçamento foi duplicado com sucesso.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erro ao duplicar orçamento",
-        description: "Não foi possível duplicar o orçamento personalizado.",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Excluir orçamento personalizado
   const deleteCustomBudgetMutation = useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets")
         .delete()
         .eq('id', id)
         .select()
@@ -371,7 +248,7 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
   const toggleBudgetStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
       const { data, error } = await supabase
-        .from("custom_budgets")
+        .from("meta_custom_budgets")
         .update({
           is_active: isActive
         })
@@ -424,10 +301,6 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       errors.endDate = "Informe a data de término";
     }
 
-    if (!formData.platform) {
-      errors.platform = "Selecione uma plataforma";
-    }
-
     // Validar intervalo de datas
     if (formData.startDate && formData.endDate) {
       const startDate = new Date(formData.startDate);
@@ -438,11 +311,6 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       if (!result.valid) {
         errors.dateRange = result.message;
       }
-    }
-
-    // Validar padrão de recorrência
-    if (formData.isRecurring && !formData.recurrencePattern) {
-      errors.recurrencePattern = "Selecione um padrão de recorrência";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -461,6 +329,17 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
       };
     }
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Remover esta validação que não permite datas no passado
+    // if (startDate < today) {
+    //   return {
+    //     valid: false,
+    //     message: "A data de início não pode ser anterior a hoje"
+    //   };
+    // }
+
     // Calcular a diferença em dias
     const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -473,71 +352,6 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     }
 
     return { valid: true, message: "" };
-  };
-
-  // Exportar para CSV
-  const exportToCSV = () => {
-    if (!customBudgets || customBudgets.length === 0) {
-      toast({
-        title: "Nenhum dado para exportar",
-        description: "Não há orçamentos personalizados para exportar.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Preparar dados para exportação
-    const csvData = getFilteredAndSortedBudgets().map(budget => {
-      const client = clients?.find(c => c.id === budget.client_id);
-      return {
-        cliente: client?.company_name || budget.client_id,
-        plataforma: budget.platform === 'meta' ? 'Meta Ads' : 'Google Ads',
-        valor: budget.budget_amount,
-        data_inicio: formatDate(budget.start_date),
-        data_fim: formatDate(budget.end_date),
-        status: budget.is_active ? "Ativo" : "Inativo",
-        recorrente: budget.is_recurring ? "Sim" : "Não",
-        padrao_recorrencia: budget.recurrence_pattern || "N/A",
-        descricao: budget.description || ""
-      };
-    });
-    
-    // Criar cabeçalhos
-    const headers = [
-      "Cliente", "Plataforma", "Valor (R$)", "Data Início", 
-      "Data Fim", "Status", "Recorrente", "Padrão de Recorrência", "Descrição"
-    ];
-    
-    // Converter para formato CSV
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => [
-        `"${row.cliente}"`, 
-        `"${row.plataforma}"`,
-        row.valor, 
-        `"${row.data_inicio}"`, 
-        `"${row.data_fim}"`,
-        `"${row.status}"`,
-        `"${row.recorrente}"`,
-        `"${row.padrao_recorrencia}"`,
-        `"${row.descricao}"`
-      ].join(','))
-    ].join('\n');
-    
-    // Criar e baixar arquivo
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `orcamentos-personalizados-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: "Exportação concluída",
-      description: "Os dados foram exportados com sucesso.",
-    });
   };
 
   // Limpar erros do formulário
@@ -604,72 +418,14 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
   };
 
   // Obter orçamentos ativos para um cliente específico
-  const getActiveBudgetsForClient = (clientId: string, platform?: 'meta' | 'google') => {
+  const getActiveBudgetsForClient = (clientId: string) => {
     if (!customBudgets) return [];
     
     return customBudgets.filter((budget: CustomBudget) => 
       budget.client_id === clientId && 
       budget.is_active &&
-      isCurrentlyActive(budget) &&
-      (platform ? budget.platform === platform : true)
+      isCurrentlyActive(budget)
     );
-  };
-
-  // Função para formatar data com o formato usado na interface
-  const format = (date: Date, formatStr: string) => {
-    // Implementação simples para o formato usado na função exportToCSV
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Obter estatísticas de orçamentos
-  const getBudgetStats = () => {
-    if (!customBudgets) {
-      return {
-        total: 0,
-        active: 0,
-        scheduled: 0,
-        expired: 0,
-        meta: 0, 
-        google: 0
-      };
-    }
-
-    const stats = {
-      total: customBudgets.length,
-      active: 0,
-      scheduled: 0,
-      expired: 0,
-      meta: 0,
-      google: 0
-    };
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    customBudgets.forEach(budget => {
-      // Contar por plataforma
-      if (budget.platform === 'meta') stats.meta++;
-      else if (budget.platform === 'google') stats.google++;
-
-      // Contar por status
-      if (!budget.is_active) return;
-
-      const startDate = new Date(budget.start_date);
-      const endDate = new Date(budget.end_date);
-
-      if (startDate <= today && endDate >= today) {
-        stats.active++;
-      } else if (startDate > today) {
-        stats.scheduled++;
-      } else if (endDate < today) {
-        stats.expired++;
-      }
-    });
-
-    return stats;
   };
 
   return {
@@ -695,13 +451,10 @@ export const useCustomBudgets = (options: UseCustomBudgetsOptions = {}) => {
     isCurrentlyActive,
     isFutureBudget,
     getActiveBudgetsForClient,
-    exportToCSV,
-    getBudgetStats,
     // Adicionando as mutações necessárias
     addCustomBudgetMutation,
     updateCustomBudgetMutation,
     deleteCustomBudgetMutation,
-    toggleBudgetStatusMutation,
-    duplicateBudgetMutation
+    toggleBudgetStatusMutation
   };
 };
