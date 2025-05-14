@@ -22,6 +22,23 @@ export interface RegularBudget {
   totalSpent?: number;
 }
 
+// Interface para mapeamento entre a tabela do banco e nosso modelo
+export interface CustomBudgetDatabase {
+  id: string;
+  client_id: string;
+  account_id?: string;
+  platform: string;
+  budget_amount: number;
+  start_date: string;
+  end_date: string;
+  description?: string;
+  is_active: boolean;
+  is_recurring: boolean;
+  recurrence_pattern?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CustomBudget {
   id: string;
   clientId: string;
@@ -32,7 +49,37 @@ export interface CustomBudget {
   endDate: string;
   description?: string;
   isActive: boolean;
+  isRecurring?: boolean;
+  recurrencePattern?: string;
 }
+
+// Helpers para conversão entre tipos de banco de dados e modelos da aplicação
+export const dbToCustomBudget = (db: CustomBudgetDatabase): CustomBudget => ({
+  id: db.id,
+  clientId: db.client_id,
+  accountId: db.account_id,
+  platform: db.platform as "meta" | "google",
+  budgetAmount: db.budget_amount,
+  startDate: db.start_date,
+  endDate: db.end_date,
+  description: db.description,
+  isActive: db.is_active,
+  isRecurring: db.is_recurring,
+  recurrencePattern: db.recurrence_pattern
+});
+
+export const customBudgetToDb = (budget: Omit<CustomBudget, "id">): Omit<CustomBudgetDatabase, "id" | "created_at" | "updated_at"> => ({
+  client_id: budget.clientId,
+  account_id: budget.accountId,
+  platform: budget.platform,
+  budget_amount: budget.budgetAmount,
+  start_date: budget.startDate,
+  end_date: budget.endDate,
+  description: budget.description,
+  is_active: budget.isActive,
+  is_recurring: budget.isRecurring || false,
+  recurrence_pattern: budget.recurrencePattern
+});
 
 // Estado ReviewsContext
 export interface ReviewsState {

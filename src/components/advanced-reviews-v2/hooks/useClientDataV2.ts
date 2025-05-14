@@ -24,7 +24,7 @@ const fetchClientsWithReviews = async (): Promise<{
     const { data: metaReviews, error: metaReviewsError } = await supabase
       .from("client_current_reviews")
       .select("*")
-      .is("meta_account_id", "not.null");
+      .not("meta_account_id", "is", null);
 
     if (metaReviewsError) throw metaReviewsError;
 
@@ -32,7 +32,7 @@ const fetchClientsWithReviews = async (): Promise<{
     const { data: googleReviews, error: googleReviewsError } = await supabase
       .from("client_current_reviews")
       .select("*")
-      .is("google_account_id", "not.null");
+      .not("google_account_id", "is", null);
 
     if (googleReviewsError) throw googleReviewsError;
 

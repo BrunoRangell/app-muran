@@ -4,7 +4,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBudgets } from "../context/BudgetContext";
 import { useToast } from "@/hooks/use-toast";
-import { CustomBudget } from "../context/types";
+import { 
+  CustomBudget, 
+  CustomBudgetDatabase, 
+  dbToCustomBudget, 
+  customBudgetToDb 
+} from "../context/types";
 
 export function useBudgetManagerV2() {
   const { state, dispatch } = useBudgets();
@@ -23,13 +28,14 @@ export function useBudgetManagerV2() {
 
         if (error) throw error;
 
-        // Agrupar por clientId para fácil acesso
+        // Converter dados do banco para o modelo da aplicação e agrupar por clientId
         const groupedBudgets: Record<string, CustomBudget[]> = {};
-        data.forEach(budget => {
-          if (!groupedBudgets[budget.client_id]) {
-            groupedBudgets[budget.client_id] = [];
+        data.forEach((budget: CustomBudgetDatabase) => {
+          const customBudget = dbToCustomBudget(budget);
+          if (!groupedBudgets[customBudget.clientId]) {
+            groupedBudgets[customBudget.clientId] = [];
           }
-          groupedBudgets[budget.client_id].push(budget as CustomBudget);
+          groupedBudgets[customBudget.clientId].push(customBudget);
         });
 
         return groupedBudgets;
@@ -50,14 +56,17 @@ export function useBudgetManagerV2() {
   // Mutation para criar orçamento personalizado
   const createBudgetMutation = useMutation({
     mutationFn: async (budget: Omit<CustomBudget, "id">) => {
+      // Converter para o formato esperado pelo banco
+      const dbBudget = customBudgetToDb(budget);
+      
       const { data, error } = await supabase
         .from("custom_budgets")
-        .insert([budget])
+        .insert([dbBudget])
         .select()
         .single();
 
       if (error) throw error;
-      return data as CustomBudget;
+      return dbToCustomBudget(data as CustomBudgetDatabase);
     },
     onSuccess: (data) => {
       dispatch({ type: "ADD_CUSTOM_BUDGET", payload: data });
@@ -80,15 +89,18 @@ export function useBudgetManagerV2() {
   // Mutation para atualizar orçamento personalizado
   const updateBudgetMutation = useMutation({
     mutationFn: async (budget: CustomBudget) => {
+      // Converter para o formato esperado pelo banco
+      const dbBudget = customBudgetToDb(budget);
+      
       const { data, error } = await supabase
         .from("custom_budgets")
-        .update(budget)
+        .update(dbBudget)
         .eq("id", budget.id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as CustomBudget;
+      return dbToCustomBudget(data as CustomBudgetDatabase);
     },
     onSuccess: (data) => {
       dispatch({ type: "UPDATE_CUSTOM_BUDGET", payload: data });
