@@ -12,6 +12,7 @@ interface CompactBudgetRecommendationProps {
   lastFiveDaysAverage?: number;
   platform?: 'google' | 'meta';
   usingRealData?: boolean;
+  usingCustomBudget?: boolean;
 }
 
 export const CompactBudgetRecommendation = ({ 
@@ -21,7 +22,8 @@ export const CompactBudgetRecommendation = ({
   shouldShowAverage = false,
   lastFiveDaysAverage = 0,
   platform = 'meta',
-  usingRealData = true
+  usingRealData = true,
+  usingCustomBudget = false
 }: CompactBudgetRecommendationProps) => {
   const hasAnyRecommendation = shouldShow || shouldShowAverage;
   

@@ -59,7 +59,7 @@ export function MetricsPanel({ metrics, onBatchReview, isProcessing }: MetricsPa
                 <span className="text-2xl font-bold">{formatCurrency(availableBudget)}</span>
                 <div className="flex items-center mt-1">
                   <span className="text-sm text-gray-500">
-                    {metrics.availablePercentage}% disponível
+                    {availablePercentage.toFixed(1)}% disponível
                   </span>
                 </div>
               </div>
