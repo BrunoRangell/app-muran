@@ -1,39 +1,44 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AppProviders } from "@/components/advanced-reviews-v2/context/AppProviders";
 import { DashboardHeader } from "@/components/advanced-reviews-v2/dashboard/DashboardHeader";
-import { MetaAdsTabV2 } from "@/components/advanced-reviews-v2/tabs/MetaAdsTabV2";
-import { GoogleAdsTabV2 } from "@/components/advanced-reviews-v2/tabs/GoogleAdsTabV2";
-import { SettingsTabV2 } from "@/components/advanced-reviews-v2/tabs/SettingsTabV2";
-import { BudgetManagerTabV2 } from "@/components/advanced-reviews-v2/tabs/BudgetManagerTabV2";
-import { CustomBudgetTabV2 } from "@/components/advanced-reviews-v2/tabs/CustomBudgetTabV2";
+import { useClientDataV2 } from "@/components/advanced-reviews-v2/hooks/useClientDataV2";
+import { useReviews } from "@/components/advanced-reviews-v2/context/ReviewContext";
 import { useSearchParams } from "react-router-dom";
 
-export default function AdvancedDailyReviewV2() {
+// Importar as abas (vamos usar os componentes já criados por enquanto)
+import { MetaAdsTabV2 } from "@/components/advanced-reviews-v2/tabs/MetaAdsTabV2";
+import { GoogleAdsTabV2 } from "@/components/advanced-reviews-v2/tabs/GoogleAdsTabV2";
+import { BudgetManagerTabV2 } from "@/components/advanced-reviews-v2/tabs/BudgetManagerTabV2";
+import { CustomBudgetTabV2 } from "@/components/advanced-reviews-v2/tabs/CustomBudgetTabV2";
+import { SettingsTabV2 } from "@/components/advanced-reviews-v2/tabs/SettingsTabV2";
+
+// Componente interno que usa o contexto
+function DailyReviewContent() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const [selectedTab, setSelectedTab] = useState<string>(tabParam || "meta-ads");
-  const [lastReviewTime, setLastReviewTime] = useState<Date | undefined>(undefined);
+  const [selectedTab, setSelectedTab] = useState<string>(tabParam || "meta");
+  
+  const { state, dispatch } = useReviews();
+  const { 
+    refreshData, 
+    isLoading, 
+    lastRefresh 
+  } = useClientDataV2();
   
   // Atualizar a URL quando a tab mudar
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
     setSearchParams({ tab: value });
-  };
-
-  // Ao inicializar o componente, verificar se há uma última revisão salva
-  useEffect(() => {
-    const lastReviewTimeStr = localStorage.getItem("last_review_time_v2");
-    if (lastReviewTimeStr) {
-      setLastReviewTime(new Date(lastReviewTimeStr));
+    
+    // Atualizar a plataforma no filtro do contexto
+    if (value === "meta" || value === "google") {
+      dispatch({ 
+        type: "SET_FILTER", 
+        payload: { platform: value }
+      });
     }
-  }, []);
-
-  // Função para registrar a hora da última atualização
-  const handleRefresh = () => {
-    const now = new Date();
-    localStorage.setItem("last_review_time_v2", now.toISOString());
-    setLastReviewTime(now);
   };
   
   return (
@@ -45,30 +50,36 @@ export default function AdvancedDailyReviewV2() {
       <div className="grid grid-cols-1 gap-6">
         <Tabs value={selectedTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4">
-            <TabsTrigger value="meta-ads">Meta Ads</TabsTrigger>
-            <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
-            <TabsTrigger value="budget-manager">Orçamentos</TabsTrigger>
+            <TabsTrigger value="meta">Meta Ads</TabsTrigger>
+            <TabsTrigger value="google">Google Ads</TabsTrigger>
+            <TabsTrigger value="budgets">Orçamentos</TabsTrigger>
             <TabsTrigger value="custom-budgets">Orçamentos Personalizados</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="meta-ads" className="space-y-6">
+          <TabsContent value="meta" className="space-y-6">
             <DashboardHeader 
-              lastReviewTime={lastReviewTime} 
-              onRefresh={handleRefresh} 
+              lastReviewTime={lastRefresh} 
+              onRefresh={refreshData} 
+              isLoading={isLoading || state.processing.batchProcessing}
+              metrics={state.metrics.meta}
+              platform="meta"
             />
-            <MetaAdsTabV2 onRefreshCompleted={handleRefresh} />
+            <MetaAdsTabV2 />
           </TabsContent>
           
-          <TabsContent value="google-ads" className="space-y-6">
+          <TabsContent value="google" className="space-y-6">
             <DashboardHeader 
-              lastReviewTime={lastReviewTime} 
-              onRefresh={handleRefresh} 
+              lastReviewTime={lastRefresh} 
+              onRefresh={refreshData} 
+              isLoading={isLoading || state.processing.batchProcessing}
+              metrics={state.metrics.google}
+              platform="google"
             />
-            <GoogleAdsTabV2 onRefreshCompleted={handleRefresh} />
+            <GoogleAdsTabV2 />
           </TabsContent>
 
-          <TabsContent value="budget-manager" className="space-y-6">
+          <TabsContent value="budgets" className="space-y-6">
             <BudgetManagerTabV2 />
           </TabsContent>
           
@@ -82,5 +93,14 @@ export default function AdvancedDailyReviewV2() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+// Componente principal que fornece o contexto
+export default function AdvancedDailyReviewV2() {
+  return (
+    <AppProviders>
+      <DailyReviewContent />
+    </AppProviders>
   );
 }
