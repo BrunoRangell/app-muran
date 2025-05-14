@@ -5,7 +5,7 @@ import { AppProviders } from "@/components/advanced-reviews-v2/context/AppProvid
 import { DashboardHeader } from "@/components/advanced-reviews-v2/dashboard/DashboardHeader";
 import { useClientDataV2 } from "@/components/advanced-reviews-v2/hooks/useClientDataV2";
 import { useReviews } from "@/components/advanced-reviews-v2/context/ReviewContext";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { SideNav } from "@/components/advanced-reviews-v2/navigation/SideNav";
 
 // Importar as abas
@@ -26,6 +26,7 @@ interface UrlChangeEvent extends Event {
 // Componente interno que usa o contexto
 function DailyReviewContent() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const tabParam = searchParams.get("tab");
   const [selectedTab, setSelectedTab] = useState<string>(tabParam || "dashboard");
   
@@ -36,14 +37,12 @@ function DailyReviewContent() {
     lastRefresh 
   } = useClientDataV2();
   
-  // Atualizar a URL quando a tab mudar, mas EVITANDO recarregar a página
+  // Atualizar a URL quando a tab mudar sem recarregar a página
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
     
-    // Usar o objeto window.history para atualizar a URL sem recarregar a página
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", value);
-    window.history.pushState({}, "", url);
+    // Usar o navigate da react-router-dom para atualizar a URL sem recarregar a página
+    navigate(`/revisao-diaria-avancada-v2?tab=${value}`, { replace: true });
     
     // Atualizar a plataforma no filtro do contexto
     if (value === "meta" || value === "google") {

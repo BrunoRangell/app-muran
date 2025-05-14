@@ -53,14 +53,18 @@ export function SideNav() {
   
   // Manipulador para atualizar a URL sem recarregar a página
   const handleNavItemClick = (tabParam: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // Previne o comportamento padrão do Link
     
+    // Atualiza a URL sem recarregar usando o History API
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tabParam);
     window.history.pushState({}, "", url);
     
-    // Dispare um evento personalizado para notificar sobre a mudança de aba
-    window.dispatchEvent(new CustomEvent("urlchange", { detail: { tab: tabParam } }));
+    // Dispara um evento personalizado para notificar sobre a mudança de aba
+    const event = new CustomEvent("urlchange", { 
+      detail: { tab: tabParam }
+    });
+    window.dispatchEvent(event);
   };
   
   // Lista de itens de navegação
