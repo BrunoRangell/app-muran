@@ -1,7 +1,7 @@
 
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ChartBar, Settings, Grid2X2, List, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,7 +15,7 @@ interface NavItemProps {
   isActive?: boolean;
   isPending?: boolean;
   isDisabled?: boolean;
-  onClick?: (e: React.MouseEvent) => void; // Corrigido o tipo para aceitar o evento do mouse
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 function NavItem({
@@ -49,22 +49,14 @@ function NavItem({
 
 export function SideNav() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Manipulador para atualizar a URL sem recarregar a página
+  // Manipulador simplificado para navegação usando React Router
   const handleNavItemClick = (tabParam: string) => (e: React.MouseEvent) => {
-    e.preventDefault(); // Previne o comportamento padrão do Link
-    
-    // Atualiza a URL sem recarregar usando o History API
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", tabParam);
-    window.history.pushState({}, "", url);
-    
-    // Dispara um evento personalizado para notificar sobre a mudança de aba
-    const event = new CustomEvent("urlchange", { 
-      detail: { tab: tabParam }
-    });
-    window.dispatchEvent(event);
+    e.preventDefault();
+    // Usar o navigate do React Router para atualizar a URL
+    navigate(`/revisao-diaria-avancada-v2?tab=${tabParam}`);
   };
   
   // Lista de itens de navegação

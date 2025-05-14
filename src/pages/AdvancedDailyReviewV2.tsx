@@ -16,16 +16,9 @@ import { BudgetManagerTabV2 } from "@/components/advanced-reviews-v2/tabs/Budget
 import { CustomBudgetTabV2 } from "@/components/advanced-reviews-v2/tabs/CustomBudgetTabV2";
 import { SettingsTabV2 } from "@/components/advanced-reviews-v2/tabs/SettingsTabV2";
 
-// Tipo para o evento personalizado
-interface UrlChangeEvent extends Event {
-  detail: {
-    tab: string;
-  };
-}
-
 // Componente interno que usa o contexto
 function DailyReviewContent() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const tabParam = searchParams.get("tab");
   const [selectedTab, setSelectedTab] = useState<string>(tabParam || "dashboard");
@@ -41,8 +34,8 @@ function DailyReviewContent() {
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
     
-    // Usar o navigate da react-router-dom para atualizar a URL sem recarregar a página
-    navigate(`/revisao-diaria-avancada-v2?tab=${value}`, { replace: true });
+    // Atualizar os parâmetros de URL usando o setSearchParams
+    setSearchParams({ tab: value });
     
     // Atualizar a plataforma no filtro do contexto
     if (value === "meta" || value === "google") {
@@ -53,7 +46,7 @@ function DailyReviewContent() {
     }
   };
   
-  // Sincronizar tab com parâmetro de URL ao inicializar
+  // Sincronizar tab com parâmetro de URL ao inicializar e quando mudar
   useEffect(() => {
     if (tabParam) {
       setSelectedTab(tabParam);
@@ -67,28 +60,6 @@ function DailyReviewContent() {
       }
     }
   }, [tabParam, dispatch]);
-  
-  // Ouvir o evento personalizado de mudança de URL do menu lateral
-  useEffect(() => {
-    const handleUrlChange = (event: Event) => {
-      const { tab } = (event as UrlChangeEvent).detail;
-      setSelectedTab(tab);
-      
-      // Atualizar a plataforma no filtro do contexto
-      if (tab === "meta" || tab === "google") {
-        dispatch({ 
-          type: "SET_FILTER", 
-          payload: { platform: tab }
-        });
-      }
-    };
-    
-    window.addEventListener("urlchange", handleUrlChange);
-    
-    return () => {
-      window.removeEventListener("urlchange", handleUrlChange);
-    };
-  }, [dispatch]);
   
   return (
     <div className="flex h-screen">
