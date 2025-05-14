@@ -49,22 +49,27 @@ export function MetaAdsTabV2({ onRefreshCompleted }: MetaAdsTabProps) {
             )
           : [];
 
-        return {
+        const lastReview = sortedReviews[0] || null;
+
+        // Adaptando para o formato ClientWithReview
+        const adaptedClient = {
           ...client,
-          lastReview: sortedReviews[0] || null,
-          // Adicionar flag para indicar se o cliente precisa de ajuste de orçamento
-          needsBudgetAdjustment: sortedReviews[0]
+          lastReview: lastReview,
+          // Incluir dados necessários para o tipo GoogleReview mesmo quando for Meta
+          // Isso é necessário por conta da tipagem ClientWithReview que espera ambos os campos
+          needsBudgetAdjustment: lastReview
             ? Math.abs(
-                (sortedReviews[0].meta_daily_budget_current || 0) -
+                (lastReview.meta_daily_budget_current || 0) -
                   calculateIdealDailyBudget(
-                    sortedReviews[0].using_custom_budget
-                      ? sortedReviews[0].custom_budget_amount || client.meta_ads_budget
+                    lastReview.using_custom_budget
+                      ? lastReview.custom_budget_amount || client.meta_ads_budget
                       : client.meta_ads_budget,
-                    sortedReviews[0].meta_total_spent || 0
+                    lastReview.meta_total_spent || 0
                   )
               ) >= 5
             : false,
-        };
+        } as unknown as ClientWithReview;
+        return adaptedClient;
       });
     },
     staleTime: 5 * 60 * 1000, // 5 minutos

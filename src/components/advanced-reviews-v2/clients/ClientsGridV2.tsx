@@ -20,7 +20,7 @@ interface ClientsGridProps {
   processingIds: string[];
   isLoadingClients: boolean;
   onReviewClient: (clientId: string, accountId?: string) => void;
-  onReviewAll?: () => void;
+  onReviewAll: (selectedClients?: ClientWithReview[]) => void;
   onViewDetails?: (clientId: string) => void;
   isProcessingAll?: boolean;
 }

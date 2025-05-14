@@ -49,22 +49,27 @@ export function GoogleAdsTabV2({ onRefreshCompleted }: GoogleAdsTabProps) {
             )
           : [];
 
-        return {
+        const lastReview = sortedReviews[0] || null;
+        
+        // Adaptando para o formato ClientWithReview
+        const adaptedClient = {
           ...client,
-          lastReview: sortedReviews[0] || null,
-          // Adicionar flag para indicar se o cliente precisa de ajuste de orçamento
-          needsBudgetAdjustment: sortedReviews[0]
+          lastReview: lastReview,
+          // Adicionar campos necessários para a tipagem
+          needsBudgetAdjustment: lastReview
             ? Math.abs(
-                (sortedReviews[0].google_daily_budget_current || 0) -
+                (lastReview.google_daily_budget_current || 0) -
                   calculateIdealDailyBudget(
-                    sortedReviews[0].using_custom_budget
-                      ? sortedReviews[0].custom_budget_amount || client.google_ads_budget
+                    lastReview.using_custom_budget
+                      ? lastReview.custom_budget_amount || client.google_ads_budget
                       : client.google_ads_budget,
-                    sortedReviews[0].google_total_spent || 0
+                    lastReview.google_total_spent || 0
                   )
               ) >= 5
             : false,
-        };
+        } as unknown as ClientWithReview;
+        
+        return adaptedClient;
       });
     },
     staleTime: 5 * 60 * 1000, // 5 minutos

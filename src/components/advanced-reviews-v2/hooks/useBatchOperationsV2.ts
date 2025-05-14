@@ -1,236 +1,98 @@
 
-import { useState, useCallback } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { ClientWithReview } from "@/components/daily-reviews/hooks/types/reviewTypes";
+import { useToast } from "@/hooks/use-toast";
 
-export type BatchOperationsPlatform = "meta" | "google";
-export type BatchOperationsPriority = "sequential" | "parallel";
-
-type BatchOperationsConfigV2 = {
+interface BatchOperationsProps {
+  platform: "meta" | "google";
   onComplete?: () => void;
-  platform: BatchOperationsPlatform;
-  processingStrategy?: BatchOperationsPriority;
-  maxConcurrent?: number;
-  useThrottling?: boolean;
-  throttleDelay?: number;
-};
+}
 
-export function useBatchOperationsV2(config: BatchOperationsConfigV2) {
-  const [isProcessing, setIsProcessing] = useState(false);
+export function useBatchOperationsV2({ platform, onComplete }: BatchOperationsProps) {
   const [processingIds, setProcessingIds] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
-  const [errorIds, setErrorIds] = useState<string[]>([]);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Configurações padrão
-  const {
-    platform,
-    processingStrategy = "sequential",
-    maxConcurrent = 3,
-    useThrottling = true,
-    throttleDelay = 300,
-    onComplete
-  } = config;
-
-  // Iniciar processamento de um cliente específico
-  const startClientProcessing = useCallback((clientId: string) => {
-    setProcessingIds(prev => [...prev, clientId]);
-  }, []);
-
-  // Finalizar processamento de um cliente específico  
-  const finishClientProcessing = useCallback((clientId: string, hasError: boolean = false) => {
-    setProcessingIds(prev => prev.filter(id => id !== clientId));
-    setProgress(prev => prev + 1);
-    
-    if (hasError) {
-      setErrorIds(prev => [...prev, clientId]);
-    }
-  }, []);
-
-  // Adicionar um atraso para controlar a taxa de requisições
-  const delay = useCallback((ms: number) => new Promise(resolve => setTimeout(resolve, ms)), []);
-  
-  // Revisar um cliente específico
-  const reviewClient = useCallback(async (clientId: string, accountId?: string) => {
-    startClientProcessing(clientId);
-    
+  // Função para revisar um único cliente
+  const reviewClient = async (clientId: string, accountId?: string) => {
     try {
-      const reviewDate = new Date().toISOString().split("T")[0];
-      
-      // Obter detalhes do cliente
-      const { data: client, error: clientError } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("id", clientId)
-        .single();
-      
-      if (clientError) {
-        throw new Error("Cliente não encontrado");
-      }
-      
-      // Buscar orçamento personalizado ativo, se existir
-      const today = new Date().toISOString().split('T')[0];
-      const { data: customBudget } = await supabase
-        .from(platform === "meta" ? "meta_custom_budgets" : "custom_budgets")
-        .select("*")
-        .eq("client_id", clientId)
-        .eq("is_active", true)
-        .lte("start_date", today)
-        .gte("end_date", today)
-        .maybeSingle();
-      
-      // Definir endpoint baseado na plataforma
-      const endpoint = platform === "meta" ? 
-        "daily-meta-review" : 
-        "daily-google-review";
-      
-      // Construir payload
-      const payload = {
-        clientId,
-        reviewDate,
-        customBudgetId: customBudget?.id,
-        [platform === "meta" ? "metaAccountId" : "googleAccountId"]: accountId || 
-          (platform === "meta" ? client.meta_account_id : client.google_account_id)
-      };
-      
-      // Fazer chamada para a função Edge
-      const { data, error } = await supabase.functions.invoke(endpoint, {
-        body: payload
+      setProcessingIds((prev) => [...prev, clientId]);
+
+      // Chamada para a Edge Function apropriada com base na plataforma
+      const fn = platform === "meta" 
+        ? "review_meta_ads_client" 
+        : "review_google_ads_client";
+
+      // Chamar edge function para revisar o cliente
+      const { data, error } = await supabase.functions.invoke(fn, {
+        body: {
+          clientId,
+          accountId
+        },
       });
-      
-      if (error || (data && data.error)) {
-        throw new Error(error?.message || data?.error || "Erro ao processar revisão");
+
+      if (error) {
+        console.error(`Erro ao revisar cliente ${clientId}:`, error);
+        toast({
+          title: "Erro ao revisar cliente",
+          description: "Ocorreu um erro ao processar a revisão.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Revisão concluída",
+          description: "Cliente revisado com sucesso.",
+        });
       }
-      
-      // Atualizar cache do React Query
-      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-      
-      toast({
-        title: "Revisão concluída",
-        description: `Cliente ${client.company_name} revisado com sucesso.`,
-      });
-      
+
       return data;
-    } catch (error: any) {
-      console.error("Erro ao revisar cliente:", error);
-      
+    } catch (error) {
+      console.error("Erro durante revisão:", error);
       toast({
         title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao revisar o cliente",
+        description: "Ocorreu um erro inesperado durante o processo.",
         variant: "destructive",
       });
-      
-      finishClientProcessing(clientId, true);
-      throw error;
     } finally {
-      finishClientProcessing(clientId);
+      setProcessingIds((prev) => prev.filter((id) => id !== clientId));
     }
-  }, [platform, startClientProcessing, finishClientProcessing, queryClient, toast]);
+  };
 
-  // Processamento sequencial de clientes
-  const processSequentially = useCallback(async (clients: any[]) => {
-    const successfulReviews: string[] = [];
-    const failedReviews: string[] = [];
-    
-    for (const client of clients) {
-      try {
-        await reviewClient(client.id, client[`${platform}_account_id`] || undefined);
-        successfulReviews.push(client.company_name || client.id);
-      } catch (error) {
-        failedReviews.push(client.company_name || client.id);
-      }
-      
-      // Pequeno atraso para melhorar a experiência visual
-      if (useThrottling) {
-        await delay(throttleDelay);
-      }
-    }
-    
-    return { successfulReviews, failedReviews };
-  }, [platform, reviewClient, useThrottling, throttleDelay, delay]);
-
-  // Processamento paralelo com limite de concorrência
-  const processParallel = useCallback(async (clients: any[]) => {
-    const successfulReviews: string[] = [];
-    const failedReviews: string[] = [];
-    
-    // Processar em lotes para controlar concorrência
-    for (let i = 0; i < clients.length; i += maxConcurrent) {
-      const batch = clients.slice(i, i + maxConcurrent);
-      
-      const results = await Promise.allSettled(
-        batch.map(client => 
-          reviewClient(client.id, client[`${platform}_account_id`] || undefined)
-        )
-      );
-      
-      results.forEach((result, index) => {
-        const client = batch[index];
-        if (result.status === "fulfilled") {
-          successfulReviews.push(client.company_name || client.id);
-        } else {
-          failedReviews.push(client.company_name || client.id);
-        }
-      });
-      
-      // Adicionar atraso entre lotes
-      if (useThrottling && i + maxConcurrent < clients.length) {
-        await delay(throttleDelay);
-      }
-    }
-    
-    return { successfulReviews, failedReviews };
-  }, [platform, reviewClient, maxConcurrent, useThrottling, throttleDelay, delay]);
-  
-  // Revisar todos os clientes
-  const reviewAllClients = useCallback(async (clients: any[]) => {
-    if (!clients?.length) {
-      toast({
-        title: "Sem clientes para analisar",
-        description: "Não há clientes disponíveis para análise.",
-      });
-      return;
-    }
-    
+  // Função para revisar múltiplos clientes em lote
+  const reviewAllClients = async (clients: ClientWithReview[]) => {
     setIsProcessing(true);
     setProgress(0);
     setTotal(clients.length);
-    setErrorIds([]);
-    setProcessingIds(clients.map(client => client.id));
-    
+
     try {
-      // Escolher estratégia de processamento
-      const { successfulReviews, failedReviews } = 
-        processingStrategy === "sequential" 
-          ? await processSequentially(clients)
-          : await processParallel(clients);
-      
-      // Atualizar cache do React Query
-      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
-      
+      for (let i = 0; i < clients.length; i++) {
+        const client = clients[i];
+        await reviewClient(client.id, client[`${platform}_account_id`]);
+        setProgress(i + 1);
+      }
+
       toast({
-        title: "Revisão em massa concluída",
-        description: `${successfulReviews.length} clientes revisados com sucesso${failedReviews.length > 0 ? `, ${failedReviews.length} falhas` : ''}.`,
+        title: "Processamento em lote concluído",
+        description: `${clients.length} clientes foram revisados com sucesso.`,
       });
-      
+
       if (onComplete) {
         onComplete();
       }
+    } catch (error) {
+      console.error("Erro no processamento em lote:", error);
+      toast({
+        title: "Erro no processamento em lote",
+        description: "Alguns clientes não puderam ser revisados.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
-      setProcessingIds([]);
     }
-  }, [
-    toast, 
-    processSequentially, 
-    processParallel, 
-    processingStrategy, 
-    queryClient,
-    onComplete
-  ]);
+  };
 
   return {
     reviewClient,
@@ -239,6 +101,5 @@ export function useBatchOperationsV2(config: BatchOperationsConfigV2) {
     processingIds,
     progress,
     total,
-    errorIds
   };
 }

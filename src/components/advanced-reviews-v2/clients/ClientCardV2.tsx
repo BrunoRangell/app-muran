@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { RefreshCw, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface BudgetData {
@@ -188,10 +188,10 @@ export function ClientCardV2({
                   <span>Dias restantes:</span>
                   <span>{budgetData.remainingDays}</span>
                 </div>
-                {budgetData.isCustomBudget && (
+                {budgetData.isCustomBudget && budgetData.customBudgetEndDate && (
                   <div className="flex justify-between text-[#ff6e00]">
                     <span>Orçamento personalizado</span>
-                    <span>Até {new Date(budgetData.customBudgetEndDate!).toLocaleDateString('pt-BR')}</span>
+                    <span>Até {new Date(budgetData.customBudgetEndDate).toLocaleDateString('pt-BR')}</span>
                   </div>
                 )}
               </div>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -30,9 +30,29 @@ export interface CustomBudgetFormData {
   description?: string;
 }
 
+// Interface para o orçamento personalizado na tabela
+interface CustomBudgetData {
+  id: string;
+  client_id: string;
+  budget_amount: number;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  description?: string;
+  platform: "meta" | "google";
+  account_name?: string;
+  client: {
+    id: string;
+    company_name: string;
+  };
+  account_id?: string; // Campo adicionado para compatibilidade
+}
+
 export function CustomBudgetTabV2() {
   const [selectedTab, setSelectedTab] = useState<string>("list");
-  const [selectedBudget, setSelectedBudget] = useState<any>(null);
+  const [selectedBudget, setSelectedBudget] = useState<CustomBudgetData | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -66,78 +86,82 @@ export function CustomBudgetTabV2() {
         throw new Error("Não foi possível buscar orçamentos personalizados Google");
       }
 
-      const processedMetaBudgets = metaBudgets.map((budget) => ({
+      // Adicionar campos necessários para compatibilidade
+      const processedMetaBudgets = metaBudgets.map((budget: any) => ({
         ...budget,
         platform: "meta",
-        account_name: "Meta Ads" // Padrão para orçamentos antigos
+        account_name: "Meta Ads", // Padrão para orçamentos antigos
+        account_id: budget.account_id || null
       }));
 
-      const processedGoogleBudgets = googleBudgets.map((budget) => ({
+      const processedGoogleBudgets = googleBudgets.map((budget: any) => ({
         ...budget,
         platform: "google",
-        account_name: "Google Ads" // Padrão para orçamentos antigos
+        account_name: "Google Ads", // Padrão para orçamentos antigos
+        account_id: budget.account_id || null
       }));
 
       // Combinar resultados
-      const allBudgets = [...processedMetaBudgets, ...processedGoogleBudgets];
+      let allBudgets = [...processedMetaBudgets, ...processedGoogleBudgets];
 
       // Buscar nomes de conta para aqueles com account_id definido
-      const budgetsWithAccountIds = allBudgets.filter(
-        (budget) => budget.account_id !== null
-      );
+      const metaAccountIds = allBudgets
+        .filter((budget) => budget.platform === "meta" && budget.account_id)
+        .map((budget) => budget.account_id);
 
-      if (budgetsWithAccountIds.length > 0) {
-        // Agrupar por plataforma
-        const metaAccountIds = budgetsWithAccountIds
-          .filter((budget) => budget.platform === "meta")
-          .map((budget) => budget.account_id);
+      const googleAccountIds = allBudgets
+        .filter((budget) => budget.platform === "google" && budget.account_id)
+        .map((budget) => budget.account_id);
 
-        const googleAccountIds = budgetsWithAccountIds
-          .filter((budget) => budget.platform === "google")
-          .map((budget) => budget.account_id);
+      // Buscar detalhes das contas Meta, se houver
+      if (metaAccountIds.length > 0) {
+        const { data: metaAccounts } = await supabase
+          .from("client_meta_accounts")
+          .select("account_id, account_name")
+          .in("account_id", metaAccountIds);
 
-        // Buscar detalhes das contas Meta, se houver
-        if (metaAccountIds.length > 0) {
-          const { data: metaAccounts } = await supabase
-            .from("client_meta_accounts")
-            .select("account_id, account_name")
-            .in("account_id", metaAccountIds);
-
-          if (metaAccounts) {
-            const accountMap = Object.fromEntries(
-              metaAccounts.map((acc) => [acc.account_id, acc.account_name])
-            );
-            
-            allBudgets.forEach((budget) => {
-              if (budget.platform === "meta" && budget.account_id && accountMap[budget.account_id]) {
-                budget.account_name = accountMap[budget.account_id];
-              }
-            });
-          }
-        }
-
-        // Buscar detalhes das contas Google, se houver
-        if (googleAccountIds.length > 0) {
-          const { data: googleAccounts } = await supabase
-            .from("client_google_accounts")
-            .select("account_id, account_name")
-            .in("account_id", googleAccountIds);
-
-          if (googleAccounts) {
-            const accountMap = Object.fromEntries(
-              googleAccounts.map((acc) => [acc.account_id, acc.account_name])
-            );
-            
-            allBudgets.forEach((budget) => {
-              if (budget.platform === "google" && budget.account_id && accountMap[budget.account_id]) {
-                budget.account_name = accountMap[budget.account_id];
-              }
-            });
-          }
+        if (metaAccounts) {
+          const accountMap = Object.fromEntries(
+            metaAccounts.map((acc) => [acc.account_id, acc.account_name])
+          );
+          
+          allBudgets = allBudgets.map(budget => {
+            if (budget.platform === "meta" && budget.account_id && accountMap[budget.account_id]) {
+              return {
+                ...budget,
+                account_name: accountMap[budget.account_id]
+              };
+            }
+            return budget;
+          });
         }
       }
 
-      return allBudgets;
+      // Buscar detalhes das contas Google, se houver
+      if (googleAccountIds.length > 0) {
+        const { data: googleAccounts } = await supabase
+          .from("client_google_accounts")
+          .select("account_id, account_name")
+          .in("account_id", googleAccountIds);
+
+        if (googleAccounts) {
+          const accountMap = Object.fromEntries(
+            googleAccounts.map((acc) => [acc.account_id, acc.account_name])
+          );
+          
+          allBudgets = allBudgets.map(budget => {
+            if (budget.platform === "google" && budget.account_id && accountMap[budget.account_id]) {
+              return {
+                ...budget,
+                account_name: accountMap[budget.account_id]
+              };
+            }
+            return budget;
+          });
+        }
+      }
+
+      return allBudgets as CustomBudgetData[];
     },
     staleTime: 1000 * 60 * 5, // 5 minutos
   });
@@ -302,7 +326,7 @@ export function CustomBudgetTabV2() {
   };
 
   // Verifica se um orçamento está ativo com base nas datas
-  const isCurrentlyActive = (budget: any) => {
+  const isCurrentlyActive = (budget: CustomBudgetData) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -316,7 +340,7 @@ export function CustomBudgetTabV2() {
   };
 
   // Verifica se um orçamento é para o futuro
-  const isFutureBudget = (budget: any) => {
+  const isFutureBudget = (budget: CustomBudgetData) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -327,11 +351,11 @@ export function CustomBudgetTabV2() {
   };
 
   // Reset do orçamento selecionado quando mudar de tab
-  useEffect(() => {
+  useState(() => {
     if (selectedTab === "list") {
       setSelectedBudget(null);
     }
-  }, [selectedTab]);
+  });
 
   return (
     <Card className="w-full shadow-md">
@@ -385,7 +409,7 @@ export function CustomBudgetTabV2() {
                   updateBudgetMutation.mutate({
                     id: selectedBudget.id,
                     ...formData,
-                    platform: selectedBudget.platform,
+                    platform: selectedBudget.platform as "meta" | "google",
                   });
                 } else {
                   addBudgetMutation.mutate(formData);
