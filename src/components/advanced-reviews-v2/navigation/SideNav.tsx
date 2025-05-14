@@ -15,6 +15,7 @@ interface NavItemProps {
   isActive?: boolean;
   isPending?: boolean;
   isDisabled?: boolean;
+  onClick?: () => void;
 }
 
 function NavItem({
@@ -24,11 +25,13 @@ function NavItem({
   isActive,
   isPending,
   isDisabled,
+  onClick,
 }: NavItemProps) {
   return (
     <Link
       to={href}
       aria-disabled={isDisabled}
+      onClick={onClick}
       className={cn(
         "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
         isActive
@@ -48,43 +51,61 @@ export function SideNav() {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Manipulador para atualizar a URL sem recarregar a página
+  const handleNavItemClick = (tabParam: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tabParam);
+    window.history.pushState({}, "", url);
+    
+    // Dispare um evento personalizado para notificar sobre a mudança de aba
+    window.dispatchEvent(new CustomEvent("urlchange", { detail: { tab: tabParam } }));
+  };
+  
   // Lista de itens de navegação
   const navItems = [
     {
       title: "Dashboard",
       href: "/revisao-diaria-avancada-v2",
       icon: <Grid2X2 size={18} />,
-      match: (path: string) => path === "/revisao-diaria-avancada-v2"
+      match: (path: string) => path === "/revisao-diaria-avancada-v2" || path.includes("tab=dashboard"),
+      onClick: handleNavItemClick("dashboard")
     },
     {
       title: "Revisão Meta Ads",
       href: "/revisao-diaria-avancada-v2?tab=meta",
       icon: <ChartBar size={18} />,
-      match: (path: string) => path.includes("tab=meta")
+      match: (path: string) => path.includes("tab=meta"),
+      onClick: handleNavItemClick("meta")
     },
     {
       title: "Revisão Google Ads",
       href: "/revisao-diaria-avancada-v2?tab=google",
       icon: <ChartBar size={18} />,
-      match: (path: string) => path.includes("tab=google")
+      match: (path: string) => path.includes("tab=google"),
+      onClick: handleNavItemClick("google")
     },
     {
       title: "Gerenciamento de Orçamentos",
       href: "/revisao-diaria-avancada-v2?tab=budgets",
       icon: <List size={18} />,
-      match: (path: string) => path.includes("tab=budgets")
+      match: (path: string) => path.includes("tab=budgets"),
+      onClick: handleNavItemClick("budgets")
     },
     {
       title: "Orçamentos Personalizados",
       href: "/revisao-diaria-avancada-v2?tab=custom-budgets",
       icon: <List size={18} />,
-      match: (path: string) => path.includes("tab=custom-budgets")
+      match: (path: string) => path.includes("tab=custom-budgets"),
+      onClick: handleNavItemClick("custom-budgets")
     },
     {
       title: "Configurações",
       href: "/revisao-diaria-avancada-v2?tab=settings",
       icon: <Settings size={18} />,
-      match: (path: string) => path.includes("tab=settings")
+      match: (path: string) => path.includes("tab=settings"),
+      onClick: handleNavItemClick("settings")
     },
   ];
   
@@ -121,6 +142,7 @@ export function SideNav() {
                   title={item.title}
                   icon={item.icon}
                   isActive={item.match(location.pathname + location.search)}
+                  onClick={item.onClick}
                 />
               ))}
             </div>

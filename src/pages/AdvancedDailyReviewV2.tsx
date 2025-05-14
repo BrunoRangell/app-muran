@@ -16,9 +16,16 @@ import { BudgetManagerTabV2 } from "@/components/advanced-reviews-v2/tabs/Budget
 import { CustomBudgetTabV2 } from "@/components/advanced-reviews-v2/tabs/CustomBudgetTabV2";
 import { SettingsTabV2 } from "@/components/advanced-reviews-v2/tabs/SettingsTabV2";
 
+// Tipo para o evento personalizado
+interface UrlChangeEvent extends Event {
+  detail: {
+    tab: string;
+  };
+}
+
 // Componente interno que usa o contexto
 function DailyReviewContent() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [selectedTab, setSelectedTab] = useState<string>(tabParam || "dashboard");
   
@@ -29,10 +36,14 @@ function DailyReviewContent() {
     lastRefresh 
   } = useClientDataV2();
   
-  // Atualizar a URL quando a tab mudar
+  // Atualizar a URL quando a tab mudar, mas EVITANDO recarregar a página
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
-    setSearchParams({ tab: value });
+    
+    // Usar o objeto window.history para atualizar a URL sem recarregar a página
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", value);
+    window.history.pushState({}, "", url);
     
     // Atualizar a plataforma no filtro do contexto
     if (value === "meta" || value === "google") {
@@ -47,8 +58,38 @@ function DailyReviewContent() {
   useEffect(() => {
     if (tabParam) {
       setSelectedTab(tabParam);
+      
+      // Atualizar a plataforma no filtro do contexto
+      if (tabParam === "meta" || tabParam === "google") {
+        dispatch({ 
+          type: "SET_FILTER", 
+          payload: { platform: tabParam }
+        });
+      }
     }
-  }, [tabParam]);
+  }, [tabParam, dispatch]);
+  
+  // Ouvir o evento personalizado de mudança de URL do menu lateral
+  useEffect(() => {
+    const handleUrlChange = (event: Event) => {
+      const { tab } = (event as UrlChangeEvent).detail;
+      setSelectedTab(tab);
+      
+      // Atualizar a plataforma no filtro do contexto
+      if (tab === "meta" || tab === "google") {
+        dispatch({ 
+          type: "SET_FILTER", 
+          payload: { platform: tab }
+        });
+      }
+    };
+    
+    window.addEventListener("urlchange", handleUrlChange);
+    
+    return () => {
+      window.removeEventListener("urlchange", handleUrlChange);
+    };
+  }, [dispatch]);
   
   return (
     <div className="flex h-screen">
