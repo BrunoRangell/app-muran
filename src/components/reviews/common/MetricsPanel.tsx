@@ -1,7 +1,7 @@
 
-import { Card, CardContent } from '@/components/ui/card';
-import { TrendingDown, TrendingUp, DollarSign, RefreshCw } from 'lucide-react';
+import { Card, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 
 interface MetricsPanelProps {
@@ -17,111 +17,91 @@ interface MetricsPanelProps {
 }
 
 export function MetricsPanel({ metrics, onBatchReview, isProcessing }: MetricsPanelProps) {
-  // Calcular o orçamento disponível
+  // Calcular métricas derivadas
   const availableBudget = metrics.totalBudget - metrics.totalSpent;
-  const availablePercentage = 100 - metrics.spentPercentage;
+  const availablePercentage = metrics.totalBudget > 0 
+    ? 100 - metrics.spentPercentage 
+    : 0;
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex justify-between items-start">
+    <Card className="bg-white">
+      <CardContent className="pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Total de clientes
+            </CardTitle>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Orçamento Total</h3>
-              <div className="mt-1">
-                <span className="text-2xl font-bold">{formatCurrency(metrics.totalBudget)}</span>
-                <div className="flex items-center mt-1">
-                  <span className="text-sm text-gray-500">
-                    {formatCurrency(metrics.totalSpent)} gasto ({Math.round(metrics.spentPercentage)}%)
-                  </span>
-                </div>
+              <span className="text-2xl font-bold">{metrics.totalClients}</span>
+              <div className="flex items-center mt-1">
+                <span className="text-sm text-gray-500">
+                  {metrics.clientsNeedingAdjustment} precisam de ajuste
+                </span>
               </div>
             </div>
-            <DollarSign className="h-8 w-8 text-[#ff6e00] bg-orange-50 p-1 rounded-full" />
           </div>
-          <div className="mt-2">
-            <div className="w-full bg-gray-100 rounded-full h-2">
-              <div
-                className="bg-[#ff6e00] h-2 rounded-full"
-                style={{ width: `${Math.min(metrics.spentPercentage, 100)}%` }}
-              ></div>
+          
+          <div className="space-y-2">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Orçamento total
+            </CardTitle>
+            <div>
+              <span className="text-2xl font-bold">{formatCurrency(metrics.totalBudget)}</span>
+              <div className="flex items-center mt-1">
+                <span className="text-sm text-gray-500">
+                  investimento mensal
+                </span>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          
+          <div className="space-y-2">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Valor gasto
+            </CardTitle>
+            <div>
+              <span className="text-2xl font-bold">{formatCurrency(metrics.totalSpent)}</span>
+              <div className="flex items-center mt-1">
+                <span className="text-sm text-gray-500">
+                  {metrics.spentPercentage.toFixed(1)}% utilizado
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Saldo disponível
+            </CardTitle>
+            <div>
+              <span className="text-2xl font-bold">{formatCurrency(availableBudget)}</span>
+              <div className="flex items-center mt-1">
+                <span className="text-sm text-gray-500">
+                  {availablePercentage.toFixed(1)}% disponível
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
       
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Orçamento Disponível</h3>
-              <div className="mt-1">
-                <span className="text-2xl font-bold">{formatCurrency(availableBudget)}</span>
-                <div className="flex items-center mt-1">
-                  <span className="text-sm text-gray-500">
-                    {availablePercentage.toFixed(1)}% disponível
-                  </span>
-                </div>
-              </div>
-            </div>
-            {availablePercentage > 70 ? (
-              <TrendingUp className="h-8 w-8 text-green-500 bg-green-50 p-1 rounded-full" />
-            ) : availablePercentage > 30 ? (
-              <TrendingUp className="h-8 w-8 text-yellow-500 bg-yellow-50 p-1 rounded-full" />
-            ) : (
-              <TrendingDown className="h-8 w-8 text-red-500 bg-red-50 p-1 rounded-full" />
-            )}
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-gray-100 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full ${
-                  availablePercentage > 70 
-                    ? 'bg-green-500' 
-                    : availablePercentage > 30 
-                      ? 'bg-yellow-500' 
-                      : 'bg-red-500'
-                }`}
-                style={{ width: `${Math.min(availablePercentage, 100)}%` }}
-              ></div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Clientes com Revisão</h3>
-              <div className="mt-1">
-                <span className="text-2xl font-bold">{metrics.totalClients}</span>
-                <div className="flex items-center mt-1">
-                  <span className="text-sm text-gray-500">
-                    {metrics.clientsNeedingAdjustment} precisam de ajustes
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-4">
-            <Button 
-              onClick={onBatchReview} 
-              disabled={isProcessing}
-              className="w-full bg-[#ff6e00] hover:bg-[#e66300] text-white"
-            >
-              {isProcessing ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                'Analisar Todos'
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <CardFooter className="pt-2 pb-4">
+        <Button
+          variant="default"
+          className="bg-[#ff6e00] hover:bg-[#e66300] ml-auto"
+          onClick={onBatchReview}
+          disabled={isProcessing || metrics.totalClients === 0}
+        >
+          {isProcessing ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Analisando...
+            </>
+          ) : (
+            'Analisar Todos'
+          )}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }

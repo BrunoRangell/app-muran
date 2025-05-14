@@ -1,208 +1,157 @@
 
-import React, { createContext, useContext, useState, useReducer, useCallback } from 'react';
+import React, { createContext, useContext, useReducer } from 'react';
 
-type FilterState = {
-  searchQuery: string;
-  viewMode: 'cards' | 'table' | 'list';
-  showOnlyAdjustments: boolean;
-};
-
-type ReviewsState = {
+// Define os tipos
+interface ReviewsState {
   filters: {
-    meta: FilterState;
-    google: FilterState;
-  };
-  lastRefresh: {
-    meta: Date | null;
-    google: Date | null;
-    budgets: Date | null;
+    meta: {
+      searchQuery: string;
+      showOnlyAdjustments: boolean;
+    };
+    google: {
+      searchQuery: string;
+      showOnlyAdjustments: boolean;
+    };
   };
   processingClients: string[];
   processingAccounts: Record<string, boolean>;
-  isBatchProcessing: boolean;
-};
+  lastRefresh: Date | null;
+}
 
 type ReviewsAction =
-  | { type: 'SET_FILTER'; platform: 'meta' | 'google'; filter: Partial<FilterState> }
-  | { type: 'SET_LAST_REFRESH'; platform: 'meta' | 'google' | 'budgets'; time: Date }
-  | { type: 'ADD_PROCESSING_CLIENT'; clientId: string }
-  | { type: 'REMOVE_PROCESSING_CLIENT'; clientId: string }
-  | { type: 'SET_PROCESSING_ACCOUNT'; accountKey: string; isProcessing: boolean }
-  | { type: 'CLEAR_PROCESSING_STATES' }
-  | { type: 'SET_BATCH_PROCESSING'; isProcessing: boolean };
+  | { type: 'SET_META_SEARCH_QUERY'; payload: string }
+  | { type: 'SET_META_SHOW_ONLY_ADJUSTMENTS'; payload: boolean }
+  | { type: 'SET_GOOGLE_SEARCH_QUERY'; payload: string }
+  | { type: 'SET_GOOGLE_SHOW_ONLY_ADJUSTMENTS'; payload: boolean }
+  | { type: 'SET_PROCESSING_CLIENT'; payload: { clientId: string; isProcessing: boolean } }
+  | { type: 'SET_PROCESSING_ACCOUNT'; payload: { accountKey: string; isProcessing: boolean } }
+  | { type: 'SET_LAST_REFRESH'; payload: Date };
 
+// Estado inicial
 const initialState: ReviewsState = {
   filters: {
     meta: {
       searchQuery: '',
-      viewMode: 'cards',
-      showOnlyAdjustments: false
+      showOnlyAdjustments: false,
     },
     google: {
       searchQuery: '',
-      viewMode: 'cards',
-      showOnlyAdjustments: false
-    }
-  },
-  lastRefresh: {
-    meta: null,
-    google: null,
-    budgets: null
+      showOnlyAdjustments: false,
+    },
   },
   processingClients: [],
   processingAccounts: {},
-  isBatchProcessing: false
+  lastRefresh: null,
 };
 
-function reviewsReducer(state: ReviewsState, action: ReviewsAction): ReviewsState {
+// Reducer para gerenciar as atualizações de estado
+const reviewsReducer = (state: ReviewsState, action: ReviewsAction): ReviewsState => {
   switch (action.type) {
-    case 'SET_FILTER':
+    case 'SET_META_SEARCH_QUERY':
       return {
         ...state,
         filters: {
           ...state.filters,
-          [action.platform]: {
-            ...state.filters[action.platform],
-            ...action.filter
-          }
-        }
+          meta: {
+            ...state.filters.meta,
+            searchQuery: action.payload,
+          },
+        },
       };
-    
-    case 'SET_LAST_REFRESH':
+
+    case 'SET_META_SHOW_ONLY_ADJUSTMENTS':
       return {
         ...state,
-        lastRefresh: {
-          ...state.lastRefresh,
-          [action.platform]: action.time
-        }
+        filters: {
+          ...state.filters,
+          meta: {
+            ...state.filters.meta,
+            showOnlyAdjustments: action.payload,
+          },
+        },
       };
-    
-    case 'ADD_PROCESSING_CLIENT':
+
+    case 'SET_GOOGLE_SEARCH_QUERY':
       return {
         ...state,
-        processingClients: [...state.processingClients, action.clientId]
+        filters: {
+          ...state.filters,
+          google: {
+            ...state.filters.google,
+            searchQuery: action.payload,
+          },
+        },
       };
-    
-    case 'REMOVE_PROCESSING_CLIENT':
+
+    case 'SET_GOOGLE_SHOW_ONLY_ADJUSTMENTS':
       return {
         ...state,
-        processingClients: state.processingClients.filter(id => id !== action.clientId)
+        filters: {
+          ...state.filters,
+          google: {
+            ...state.filters.google,
+            showOnlyAdjustments: action.payload,
+          },
+        },
       };
-    
+
+    case 'SET_PROCESSING_CLIENT':
+      return {
+        ...state,
+        processingClients: action.payload.isProcessing
+          ? [...state.processingClients, action.payload.clientId]
+          : state.processingClients.filter(id => id !== action.payload.clientId),
+      };
+
     case 'SET_PROCESSING_ACCOUNT':
       return {
         ...state,
         processingAccounts: {
           ...state.processingAccounts,
-          [action.accountKey]: action.isProcessing
-        }
+          [action.payload.accountKey]: action.payload.isProcessing,
+        },
       };
-    
-    case 'CLEAR_PROCESSING_STATES':
+
+    case 'SET_LAST_REFRESH':
       return {
         ...state,
-        processingClients: [],
-        processingAccounts: {},
-        isBatchProcessing: false
+        lastRefresh: action.payload,
       };
-    
-    case 'SET_BATCH_PROCESSING':
-      return {
-        ...state,
-        isBatchProcessing: action.isProcessing
-      };
-    
+
     default:
       return state;
   }
-}
-
-type ReviewsContextType = {
-  state: ReviewsState;
-  setFilter: (platform: 'meta' | 'google', filter: Partial<FilterState>) => void;
-  setLastRefresh: (platform: 'meta' | 'google' | 'budgets', time?: Date) => void;
-  markClientProcessing: (clientId: string) => void;
-  unmarkClientProcessing: (clientId: string) => void;
-  markAccountProcessing: (accountKey: string) => void;
-  unmarkAccountProcessing: (accountKey: string) => void;
-  clearProcessingStates: () => void;
-  setBatchProcessing: (isProcessing: boolean) => void;
-  isClientProcessing: (clientId: string) => boolean;
-  isAccountProcessing: (accountKey: string) => boolean;
 };
 
-const ReviewsContext = createContext<ReviewsContextType | undefined>(undefined);
+// Tipo para o contexto
+interface ReviewsContextProps {
+  state: ReviewsState;
+  dispatch: React.Dispatch<ReviewsAction>;
+}
 
-export const ReviewsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Criar o contexto
+const ReviewsContext = createContext<ReviewsContextProps | undefined>(undefined);
+
+// Provider
+interface ReviewsProviderProps {
+  children: React.ReactNode;
+}
+
+export const ReviewsProvider: React.FC<ReviewsProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(reviewsReducer, initialState);
 
-  const setFilter = useCallback((platform: 'meta' | 'google', filter: Partial<FilterState>) => {
-    dispatch({ type: 'SET_FILTER', platform, filter });
-  }, []);
-
-  const setLastRefresh = useCallback((platform: 'meta' | 'google' | 'budgets', time: Date = new Date()) => {
-    dispatch({ type: 'SET_LAST_REFRESH', platform, time });
-  }, []);
-
-  const markClientProcessing = useCallback((clientId: string) => {
-    dispatch({ type: 'ADD_PROCESSING_CLIENT', clientId });
-  }, []);
-
-  const unmarkClientProcessing = useCallback((clientId: string) => {
-    dispatch({ type: 'REMOVE_PROCESSING_CLIENT', clientId });
-  }, []);
-
-  const markAccountProcessing = useCallback((accountKey: string) => {
-    dispatch({ type: 'SET_PROCESSING_ACCOUNT', accountKey, isProcessing: true });
-  }, []);
-
-  const unmarkAccountProcessing = useCallback((accountKey: string) => {
-    dispatch({ type: 'SET_PROCESSING_ACCOUNT', accountKey, isProcessing: false });
-  }, []);
-
-  const clearProcessingStates = useCallback(() => {
-    dispatch({ type: 'CLEAR_PROCESSING_STATES' });
-  }, []);
-
-  const setBatchProcessing = useCallback((isProcessing: boolean) => {
-    dispatch({ type: 'SET_BATCH_PROCESSING', isProcessing });
-  }, []);
-
-  const isClientProcessing = useCallback((clientId: string) => {
-    return state.processingClients.includes(clientId);
-  }, [state.processingClients]);
-
-  const isAccountProcessing = useCallback((accountKey: string) => {
-    return Boolean(state.processingAccounts[accountKey]);
-  }, [state.processingAccounts]);
-
-  const value = {
-    state,
-    setFilter,
-    setLastRefresh,
-    markClientProcessing,
-    unmarkClientProcessing,
-    markAccountProcessing,
-    unmarkAccountProcessing,
-    clearProcessingStates,
-    setBatchProcessing,
-    isClientProcessing,
-    isAccountProcessing
-  };
-
   return (
-    <ReviewsContext.Provider value={value}>
+    <ReviewsContext.Provider value={{ state, dispatch }}>
       {children}
     </ReviewsContext.Provider>
   );
 };
 
-export const useReviewsContext = (): ReviewsContextType => {
+// Hook para acessar o contexto
+export const useReviewsContext = (): ReviewsContextProps => {
   const context = useContext(ReviewsContext);
-  
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useReviewsContext must be used within a ReviewsProvider');
   }
-  
   return context;
 };
