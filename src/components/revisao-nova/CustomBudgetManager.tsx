@@ -65,18 +65,8 @@ export const CustomBudgetManager = () => {
       budgetAmount: budget.budget_amount,
       startDate: budget.start_date,
       endDate: budget.end_date,
-      description: budget.description || ""
-    };
-  };
-
-  // Função para converter do formato do form para o formato do banco de dados
-  const convertFormDataToBudget = (formData: CustomBudgetFormData) => {
-    return {
-      client_id: formData.clientId,
-      budget_amount: formData.budgetAmount,
-      start_date: formData.startDate,
-      end_date: formData.endDate,
-      description: formData.description || null
+      description: budget.description || "",
+      platform: budget.platform || "meta"
     };
   };
 
@@ -84,7 +74,7 @@ export const CustomBudgetManager = () => {
     <Card className="w-full shadow-md">
       <CardHeader className="pb-3">
         <CardTitle className="text-xl text-muran-dark">
-          Orçamentos Personalizados Meta Ads
+          Orçamentos Personalizados
         </CardTitle>
         <CardDescription className="mt-1">
           Configure orçamentos com períodos personalizados para cada cliente
@@ -113,9 +103,9 @@ export const CustomBudgetManager = () => {
                 setSelectedBudget(budget);
                 setSelectedTab("form");
               }}
-              onDelete={(id) => deleteCustomBudgetMutation.mutate(id)}
-              onToggleStatus={(id, isActive) => 
-                toggleBudgetStatusMutation.mutate({ id, isActive })
+              onDelete={(budgetInfo) => deleteCustomBudgetMutation.mutate(budgetInfo)}
+              onToggleStatus={(id, isActive, platform) => 
+                toggleBudgetStatusMutation.mutate({ id, isActive, platform })
               }
             />
           </TabsContent>

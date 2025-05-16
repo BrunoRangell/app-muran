@@ -6,8 +6,31 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   // Verificar se o cliente tem uma revisão
   const hasReview = !!client.lastReview;
   
+  // Verificar se está usando orçamento personalizado
+  const usingCustomBudget = useMemo(() => {
+    return hasReview && client.lastReview?.using_custom_budget === true;
+  }, [hasReview, client.lastReview]);
+  
+  // Informações de orçamento personalizado
+  const customBudgetAmount = useMemo(() => {
+    return usingCustomBudget ? client.lastReview?.custom_budget_amount : null;
+  }, [usingCustomBudget, client.lastReview]);
+  
+  const customBudgetStartDate = useMemo(() => {
+    return usingCustomBudget ? client.lastReview?.custom_budget_start_date : null;
+  }, [usingCustomBudget, client.lastReview]);
+  
+  const customBudgetEndDate = useMemo(() => {
+    return usingCustomBudget ? client.lastReview?.custom_budget_end_date : null;
+  }, [usingCustomBudget, client.lastReview]);
+  
   // Calcular o orçamento total do Google Ads somando todas as contas
   const calculateTotalGoogleBudget = () => {
+    // Se estiver usando orçamento personalizado, usar esse valor
+    if (usingCustomBudget && customBudgetAmount) {
+      return customBudgetAmount;
+    }
+    
     // Se não tiver contas Google configuradas, usar o valor legado
     if (!client.google_accounts || client.google_accounts.length === 0) {
       return client.google_ads_budget || 0;
@@ -109,15 +132,26 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   }, [hasReview, client.lastReview, client.google_reviews]);
   
   // Calcular orçamento diário ideal
-  const currentDate = new Date();
-  const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-  const remainingDays = lastDayOfMonth.getDate() - currentDate.getDate() + 1;
+  const calculatedRemainingDays = useMemo(() => {
+    if (usingCustomBudget && customBudgetEndDate) {
+      // Se tiver um orçamento personalizado com data de término, calcular dias restantes até essa data
+      const today = new Date();
+      const endDate = new Date(customBudgetEndDate);
+      const timeDiff = endDate.getTime() - today.getTime();
+      return Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
+    } else {
+      // Caso contrário, usar o cálculo padrão (dias restantes no mês)
+      const currentDate = new Date();
+      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      return lastDayOfMonth.getDate() - currentDate.getDate() + 1;
+    }
+  }, [usingCustomBudget, customBudgetEndDate]);
   
   const remainingBudget = Math.max(monthlyBudget - totalSpent, 0);
   
   const idealDailyBudget = useMemo(() => {
-    return remainingDays > 0 ? remainingBudget / remainingDays : 0;
-  }, [remainingBudget, remainingDays]);
+    return calculatedRemainingDays > 0 ? remainingBudget / calculatedRemainingDays : 0;
+  }, [remainingBudget, calculatedRemainingDays]);
   
   // Calcular a diferença entre o orçamento diário atual e o ideal
   const budgetDifference = useMemo(() => {
@@ -165,9 +199,13 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     idealDailyBudget,
     budgetDifference,
     budgetDifferenceBasedOnAverage,
-    remainingDaysValue: remainingDays,
+    remainingDaysValue: calculatedRemainingDays,
     remainingBudget,
     needsBudgetAdjustment,
-    needsAdjustmentBasedOnAverage
+    needsAdjustmentBasedOnAverage,
+    usingCustomBudget,
+    customBudgetAmount,
+    customBudgetStartDate,
+    customBudgetEndDate
   };
 };

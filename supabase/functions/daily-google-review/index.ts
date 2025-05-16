@@ -66,6 +66,33 @@ async function processGoogleReview(req: Request) {
       }
     }
 
+    // Verificar se existe um orçamento personalizado ativo
+    const today = new Date().toISOString().split('T')[0];
+    const customBudgetResponse = await fetch(
+      `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&is_active=eq.true&platform=eq.google&start_date=lte.${today}&end_date=gte.${today}&order=created_at.desc&limit=1`, {
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    let customBudget = null;
+    const usingCustomBudget = customBudgetResponse.ok;
+    
+    if (customBudgetResponse.ok) {
+      const customBudgets = await customBudgetResponse.json();
+      if (customBudgets && customBudgets.length > 0) {
+        customBudget = customBudgets[0];
+        budgetAmount = customBudget.budget_amount || budgetAmount;
+        
+        console.log(`Usando orçamento personalizado (ID: ${customBudget.id}) - Valor: ${budgetAmount}`);
+      }
+    }
+
+    console.log(`Usando orçamento personalizado: ${!!customBudget}`);
+    console.log(`Orçamento usado: ${budgetAmount} para conta ${accountName} (${accountId})`);
+
     // Verificar revisão existente
     const existingReviewResponse = await fetch(
       `${supabaseUrl}/rest/v1/google_ads_reviews?client_id=eq.${clientId}&google_account_id=eq.${accountId}&review_date=eq.${reviewDate}&select=id`, {
@@ -245,6 +272,21 @@ async function processGoogleReview(req: Request) {
     const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
     const roundedIdealDailyBudget = Math.round(idealDailyBudget * 100) / 100;
 
+    // Configurar informações de orçamento personalizado
+    const customBudgetInfo = customBudget ? {
+      using_custom_budget: true,
+      custom_budget_id: customBudget.id,
+      custom_budget_amount: customBudget.budget_amount,
+      custom_budget_start_date: customBudget.start_date,
+      custom_budget_end_date: customBudget.end_date
+    } : {
+      using_custom_budget: false,
+      custom_budget_id: null,
+      custom_budget_amount: null,
+      custom_budget_start_date: null,
+      custom_budget_end_date: null
+    };
+
     // Dados para a revisão
     const reviewData = {
       client_id: clientId,
@@ -255,6 +297,7 @@ async function processGoogleReview(req: Request) {
       google_account_id: accountId,
       google_account_name: accountName,
       account_display_name: accountName,
+      ...customBudgetInfo,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -266,7 +309,8 @@ async function processGoogleReview(req: Request) {
       gastoMédiaCincoDias: lastFiveDaysSpent,
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
-      orçamentoDiárioIdeal: roundedIdealDailyBudget
+      orçamentoDiárioIdeal: roundedIdealDailyBudget,
+      usandoOrçamentoPersonalizado: customBudget ? true : false
     });
     
     // Atualizar ou criar revisão
@@ -287,6 +331,7 @@ async function processGoogleReview(req: Request) {
           google_daily_budget_current: currentDailyBudget,
           google_total_spent: totalSpent,
           google_last_five_days_spent: lastFiveDaysSpent,
+          ...customBudgetInfo,
           updated_at: new Date().toISOString()
         })
       });
@@ -329,7 +374,8 @@ async function processGoogleReview(req: Request) {
       idealDailyBudget: roundedIdealDailyBudget,
       currentDailyBudget,
       totalSpent,
-      lastFiveDaysSpent
+      lastFiveDaysSpent,
+      ...customBudgetInfo
     };
   } catch (error) {
     console.error("Erro na função Edge do Google Ads:", error.message);
