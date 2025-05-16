@@ -32,6 +32,8 @@ export interface ReviewData {
   using_custom_budget: boolean;
   custom_budget_id: string | null;
   custom_budget_amount: number | null;
+  custom_budget_start_date?: string | null;
+  custom_budget_end_date?: string | null;
 }
 
 // Criação do cliente Supabase
@@ -185,41 +187,45 @@ export async function updateClientCurrentReview(
   reviewDate: string,
   reviewData: ReviewData
 ): Promise<void> {
-  // Verificar se já existe revisão atual para este cliente
-  const { data: currentReview, error: currentReviewError } = await supabase
-    .from("client_current_reviews")
-    .select("*")
-    .eq("client_id", clientId)
-    .maybeSingle();
-
-  if (currentReviewError && currentReviewError.code !== "PGRST116") {
-    console.error(`Erro ao verificar revisão atual: ${currentReviewError.message}`);
-  }
-
-  const currentReviewData = {
-    client_id: clientId,
-    review_date: reviewDate,
-    ...reviewData
-  };
-
-  if (currentReview) {
-    // Atualizar revisão atual
-    const { error: updateCurrentError } = await supabase
+  try {
+    // Verificar se já existe revisão atual para este cliente
+    const { data: currentReview, error: currentReviewError } = await supabase
       .from("client_current_reviews")
-      .update(currentReviewData)
-      .eq("id", currentReview.id);
+      .select("*")
+      .eq("client_id", clientId)
+      .maybeSingle();
 
-    if (updateCurrentError) {
-      console.error(`Erro ao atualizar revisão atual: ${updateCurrentError.message}`);
+    if (currentReviewError && currentReviewError.code !== "PGRST116") {
+      console.error(`Erro ao verificar revisão atual: ${currentReviewError.message}`);
     }
-  } else {
-    // Inserir nova revisão atual
-    const { error: insertCurrentError } = await supabase
-      .from("client_current_reviews")
-      .insert(currentReviewData);
 
-    if (insertCurrentError) {
-      console.error(`Erro ao inserir revisão atual: ${insertCurrentError.message}`);
+    const currentReviewData = {
+      client_id: clientId,
+      review_date: reviewDate,
+      ...reviewData
+    };
+
+    if (currentReview) {
+      // Atualizar revisão atual
+      const { error: updateCurrentError } = await supabase
+        .from("client_current_reviews")
+        .update(currentReviewData)
+        .eq("id", currentReview.id);
+
+      if (updateCurrentError) {
+        console.error(`Erro ao atualizar revisão atual: ${updateCurrentError.message}`);
+      }
+    } else {
+      // Inserir nova revisão atual
+      const { error: insertCurrentError } = await supabase
+        .from("client_current_reviews")
+        .insert(currentReviewData);
+
+      if (insertCurrentError) {
+        console.error(`Erro ao inserir revisão atual: ${insertCurrentError.message}`);
+      }
     }
+  } catch (error) {
+    console.error(`Erro ao atualizar revisão atual do cliente: ${error.message}`);
   }
 }

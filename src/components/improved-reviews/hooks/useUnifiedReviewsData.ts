@@ -56,19 +56,17 @@ export function useUnifiedReviewsData() {
       // Buscar revisões mais recentes
       const { data: reviews, error: reviewsError } = await supabase
         .from("daily_budget_reviews")
-        .select(`
-          *,
-          meta_custom_budgets (
-            id,
-            budget_amount,
-            start_date,
-            end_date,
-            is_active
-          )
-        `)
+        .select(`*`)
         .eq("review_date", new Date().toISOString().split("T")[0]);
 
       if (reviewsError) throw reviewsError;
+      
+      // Buscar orçamentos personalizados separadamente (corrigindo o problema de relação)
+      const { data: customBudgets, error: customBudgetsError } = await supabase
+        .from("meta_custom_budgets")
+        .select("*");
+      
+      if (customBudgetsError) throw customBudgetsError;
       
       // Buscar orçamentos personalizados ativos
       const today = new Date().toISOString().split("T")[0];
@@ -110,12 +108,16 @@ export function useUnifiedReviewsData() {
             if (review?.using_custom_budget && review?.custom_budget_amount) {
               isUsingCustomBudget = true;
               monthlyBudget = review.custom_budget_amount;
-              customBudget = review.custom_budget_id ? { 
-                id: review.custom_budget_id,
-                budget_amount: review.custom_budget_amount,
-                start_date: review.custom_budget_start_date,
-                end_date: review.custom_budget_end_date
-              } : null;
+              
+              // Se temos um custom_budget_id, buscar diretamente do array de customBudgets
+              if (review.custom_budget_id) {
+                customBudget = customBudgets.find(b => b.id === review.custom_budget_id) || {
+                  id: review.custom_budget_id,
+                  budget_amount: review.custom_budget_amount,
+                  start_date: review.custom_budget_start_date,
+                  end_date: review.custom_budget_end_date
+                };
+              }
             } 
             // Se não, verificar se há orçamento personalizado ativo
             else if (customBudgetsByClientId.has(client.id)) {
@@ -160,12 +162,16 @@ export function useUnifiedReviewsData() {
           if (review?.using_custom_budget && review?.custom_budget_amount) {
             isUsingCustomBudget = true;
             monthlyBudget = review.custom_budget_amount;
-            customBudget = review.custom_budget_id ? {
-              id: review.custom_budget_id,
-              budget_amount: review.custom_budget_amount,
-              start_date: review.custom_budget_start_date,
-              end_date: review.custom_budget_end_date
-            } : null;
+            
+            // Se temos um custom_budget_id, buscar diretamente do array de customBudgets
+            if (review.custom_budget_id) {
+              customBudget = customBudgets.find(b => b.id === review.custom_budget_id) || {
+                id: review.custom_budget_id,
+                budget_amount: review.custom_budget_amount,
+                start_date: review.custom_budget_start_date,
+                end_date: review.custom_budget_end_date
+              };
+            }
           }
           // Se não, verificar se há orçamento personalizado ativo
           else if (customBudgetsByClientId.has(client.id)) {

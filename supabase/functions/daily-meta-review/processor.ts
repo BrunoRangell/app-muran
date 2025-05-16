@@ -133,6 +133,8 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       using_custom_budget: usingCustomBudget,
       custom_budget_id: customBudget?.id || null,
       custom_budget_amount: usingCustomBudget ? customBudget?.budget_amount : null,
+      custom_budget_start_date: usingCustomBudget ? customBudget?.start_date : null,
+      custom_budget_end_date: usingCustomBudget ? customBudget?.end_date : null
     };
     
     if (existingReview) {
@@ -174,27 +176,4 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       error: error.message
     };
   }
-}
-
-// Função de validação da requisição
-function validateRequest(req: Request | string): Response | null {
-  if (typeof req === 'string') {
-    // Estamos validando o clientId
-    if (!req) {
-      return new Response(
-        JSON.stringify({ error: "ID do cliente é obrigatório" }),
-        { status: 400 }
-      );
-    }
-  } else {
-    // Estamos validando a requisição HTTP
-    if (req.method !== 'POST' && req.method !== 'OPTIONS') {
-      return new Response(
-        JSON.stringify({ error: "Método não permitido" }),
-        { status: 405 }
-      );
-    }
-  }
-  
-  return null;
 }
