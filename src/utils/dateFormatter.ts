@@ -1,5 +1,5 @@
 
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 /**
@@ -11,7 +11,8 @@ export function formatDateBr(dateString: string | Date | null | undefined): stri
   if (!dateString) return '';
   
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    // Se for uma string de data, usar parseISO para preservar a data original
+    const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
     
     // Verificar se a data é válida
     if (isNaN(date.getTime())) {
@@ -22,7 +23,7 @@ export function formatDateBr(dateString: string | Date | null | undefined): stri
     // Formatar a data no padrão brasileiro sem conversão de fuso horário
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   } catch (error) {
-    console.error("Erro ao formatar data:", error, dateString);
+    console.error("Erro ao formatar data:", error);
     return typeof dateString === 'string' ? dateString : '';
   }
 }
@@ -36,7 +37,7 @@ export function formatDateIso(dateString: string | Date | null | undefined): str
   if (!dateString) return '';
   
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
     
     // Verificar se a data é válida
     if (isNaN(date.getTime())) {

@@ -1,9 +1,9 @@
+
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateBr } from "@/utils/dateFormatter";
 
 export interface CustomBudgetFormData {
   clientId: string;
@@ -317,7 +317,7 @@ export const useCustomBudgets = () => {
     updateCustomBudgetMutation,
     deleteCustomBudgetMutation,
     toggleBudgetStatusMutation,
-    formatDate,
+    formatDate: formatDateBr, // Usar a função corrigida do módulo de utilidades
     formatBudget,
     isCurrentlyActive,
     isFutureBudget,
