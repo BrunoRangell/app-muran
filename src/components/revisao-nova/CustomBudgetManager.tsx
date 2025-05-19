@@ -17,6 +17,7 @@ import { CustomBudgetTable } from "./custom-budget/CustomBudgetTable";
 import { CustomBudgetForm } from "./custom-budget/CustomBudgetForm";
 import { useCustomBudgets, CustomBudgetFormData } from "./hooks/useCustomBudgets";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatDateBr } from "@/utils/dateFormatter";
 
 export const CustomBudgetManager = () => {
   const [selectedTab, setSelectedTab] = useState<string>("active");
@@ -33,7 +34,6 @@ export const CustomBudgetManager = () => {
     updateCustomBudgetMutation,
     deleteCustomBudgetMutation,
     toggleBudgetStatusMutation,
-    formatDate,
     formatBudget,
     isCurrentlyActive,
     isFutureBudget
@@ -95,7 +95,7 @@ export const CustomBudgetManager = () => {
               isLoading={isLoading}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
-              formatDate={formatDate}
+              formatDate={formatDateBr}
               formatBudget={formatBudget}
               isCurrentlyActive={isCurrentlyActive}
               isFutureBudget={isFutureBudget}

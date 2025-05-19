@@ -1,8 +1,9 @@
-
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export interface CustomBudgetFormData {
   clientId: string;
@@ -260,10 +261,24 @@ export const useCustomBudgets = () => {
     },
   });
 
-  // Formatar data
+  // Formatar data - Corrigida para usar date-fns corretamente
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR");
+    try {
+      // Garantir que estamos recebendo uma data válida
+      const date = new Date(dateString);
+      
+      // Verificar se a data é válida
+      if (isNaN(date.getTime())) {
+        console.error("Data inválida:", dateString);
+        return dateString;
+      }
+      
+      // Formatar a data no padrão brasileiro sem conversão de fuso horário
+      return format(date, "dd/MM/yyyy", { locale: ptBR });
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return dateString;
+    }
   };
 
   // Formatar valor do orçamento
