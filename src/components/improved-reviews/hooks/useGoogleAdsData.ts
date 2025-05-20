@@ -69,6 +69,21 @@ export function useGoogleAdsData() {
       if (reviewsError) throw reviewsError;
       
       console.log(`Encontradas ${reviews?.length || 0} revisões do mês atual`);
+      
+      // Buscar orçamentos personalizados ativos do Google Ads
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data: customBudgets, error: customBudgetsError } = await supabase
+        .from("custom_budgets")
+        .select("*")
+        .eq("is_active", true)
+        .eq("platform", "google")
+        .lte("start_date", today)
+        .gte("end_date", today);
+        
+      if (customBudgetsError) throw customBudgetsError;
+      
+      console.log(`Encontrados ${customBudgets?.length || 0} orçamentos personalizados ativos para o Google Ads`);
 
       // Combinar os dados
       const clientsWithData = clients
@@ -80,6 +95,12 @@ export function useGoogleAdsData() {
           // Se o cliente tiver contas específicas, criar um item para cada conta
           if (accounts.length > 0) {
             return accounts.map(account => {
+              // Verificar se existe um orçamento personalizado para esta conta
+              const activeCustomBudget = customBudgets ? customBudgets.find(budget => 
+                budget.client_id === client.id && 
+                (budget.account_id === account.account_id || budget.account_id === null)
+              ) : null;
+              
               // Encontrar revisões para esta conta (apenas do mês atual)
               const accountReviews = reviews ? reviews.filter(r => 
                 r.client_id === client.id && 
@@ -92,49 +113,98 @@ export function useGoogleAdsData() {
               // Obter a média de gasto dos últimos 5 dias (se disponível)
               const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
               
+              // Verificar se a revisão indica uso de orçamento personalizado
+              const isUsingCustomBudgetInReview = review?.using_custom_budget || false;
+              
+              // Determinar o orçamento a ser usado (personalizado ou padrão)
+              const budgetAmount = activeCustomBudget ? 
+                activeCustomBudget.budget_amount : 
+                (isUsingCustomBudgetInReview && review?.custom_budget_amount ? 
+                  review.custom_budget_amount : 
+                  account.budget_amount || 0);
+              
+              // Armazenar o orçamento original para referência
+              const originalBudgetAmount = account.budget_amount || 0;
+              
               // Calcular orçamento recomendado
               const budgetCalc = calculateBudget({
-                monthlyBudget: account.budget_amount || 0,
+                monthlyBudget: budgetAmount,
                 totalSpent: review?.google_total_spent || 0,
                 currentDailyBudget: review?.google_daily_budget_current || 0,
-                lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
+                lastFiveDaysAverage: lastFiveDaysAvg
               });
               
               return {
                 ...client,
                 google_account_id: account.account_id,
                 google_account_name: account.account_name,
-                budget_amount: account.budget_amount,
+                budget_amount: budgetAmount,
+                original_budget_amount: originalBudgetAmount,
                 review: review || null,
                 budgetCalculation: budgetCalc,
                 needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
-                lastFiveDaysAvg: lastFiveDaysAvg
+                lastFiveDaysAvg: lastFiveDaysAvg,
+                isUsingCustomBudget: isUsingCustomBudgetInReview || !!activeCustomBudget,
+                customBudget: activeCustomBudget || (isUsingCustomBudgetInReview ? {
+                  id: review?.custom_budget_id,
+                  budget_amount: review?.custom_budget_amount,
+                  start_date: review?.custom_budget_start_date,
+                  end_date: review?.custom_budget_end_date
+                } : null)
               };
             });
           } else if (client.google_account_id) {
             // Cliente com ID de conta padrão
+            // Verificar se existe um orçamento personalizado para este cliente
+            const activeCustomBudget = customBudgets ? customBudgets.find(budget => 
+              budget.client_id === client.id && 
+              (budget.account_id === client.google_account_id || budget.account_id === null)
+            ) : null;
+            
+            // Encontrar revisões para o cliente
             const clientReviews = reviews ? reviews.filter(r => r.client_id === client.id) : [];
             const review = clientReviews.length > 0 ? clientReviews[0] : null;
             
             // Obter a média de gasto dos últimos 5 dias (se disponível)
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
             
+            // Verificar se a revisão indica uso de orçamento personalizado
+            const isUsingCustomBudgetInReview = review?.using_custom_budget || false;
+            
+            // Determinar o orçamento a ser usado (personalizado ou padrão)
+            const budgetAmount = activeCustomBudget ? 
+              activeCustomBudget.budget_amount : 
+              (isUsingCustomBudgetInReview && review?.custom_budget_amount ? 
+                review.custom_budget_amount : 
+                client.google_ads_budget || 0);
+            
+            // Armazenar o orçamento original para referência
+            const originalBudgetAmount = client.google_ads_budget || 0;
+            
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
-              monthlyBudget: client.google_ads_budget || 0,
+              monthlyBudget: budgetAmount,
               totalSpent: review?.google_total_spent || 0,
               currentDailyBudget: review?.google_daily_budget_current || 0,
-              lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
+              lastFiveDaysAverage: lastFiveDaysAvg
             });
             
             return {
               ...client,
               google_account_name: "Conta Principal",
-              budget_amount: client.google_ads_budget || 0,
+              budget_amount: budgetAmount,
+              original_budget_amount: originalBudgetAmount,
               review: review || null,
               budgetCalculation: budgetCalc,
               needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
-              lastFiveDaysAvg: lastFiveDaysAvg
+              lastFiveDaysAvg: lastFiveDaysAvg,
+              isUsingCustomBudget: isUsingCustomBudgetInReview || !!activeCustomBudget,
+              customBudget: activeCustomBudget || (isUsingCustomBudgetInReview ? {
+                id: review?.custom_budget_id,
+                budget_amount: review?.custom_budget_amount,
+                start_date: review?.custom_budget_start_date,
+                end_date: review?.custom_budget_end_date
+              } : null)
             };
           }
           
