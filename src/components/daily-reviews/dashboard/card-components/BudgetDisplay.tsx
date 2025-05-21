@@ -1,89 +1,52 @@
 
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface BudgetDisplayProps {
-  idealDailyBudget: number;
-  showRecommendation: boolean;
-  showRecommendationAverage?: boolean;
-  needsIncrease: boolean;
-  needsIncreaseAverage?: boolean;
-  budgetDifference: number;
-  budgetDifferenceAverage?: number;
-  accountName?: string;
-  lastFiveDaysAverage?: number;
+  displayBudget: number;
+  totalSpent: number;
+  currentDailyBudget: number;
+  lastFiveDaysAverage: number;
+  hasReview: boolean;
+  hasCustomBudget: boolean;
 }
 
-export const BudgetDisplay = ({ 
-  idealDailyBudget, 
-  showRecommendation, 
-  showRecommendationAverage = false,
-  needsIncrease, 
-  needsIncreaseAverage = false,
-  budgetDifference,
-  budgetDifferenceAverage = 0,
-  accountName,
-  lastFiveDaysAverage = 0
+export const BudgetDisplay = ({
+  displayBudget,
+  totalSpent,
+  currentDailyBudget,
+  lastFiveDaysAverage,
+  hasReview,
+  hasCustomBudget
 }: BudgetDisplayProps) => {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <div className="font-medium">
-          {idealDailyBudget > 0 
-            ? formatCurrency(idealDailyBudget) 
-            : "Não disponível"}
+    <div className="grid grid-cols-2 gap-2 mb-3">
+      <div className="bg-gray-50 p-2 rounded">
+        <div className="text-xs text-gray-500">Orçamento</div>
+        <div className="font-medium flex items-center">
+          {formatCurrency(displayBudget)}
+          {hasCustomBudget && (
+            <span className="text-xs text-[#ff6e00] ml-1">*</span>
+          )}
         </div>
       </div>
       
-      <div className="flex flex-wrap gap-1">
-        {showRecommendation && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Badge className={`flex items-center ${needsIncrease ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {accountName && (
-                    <span className="mr-1 font-medium">{accountName}:</span>
-                  )}
-                  <span className="mr-1 text-xs">Orç:</span>
-                  {needsIncrease ? (
-                    <TrendingUp size={14} className="mr-1" />
-                  ) : (
-                    <TrendingDown size={14} className="mr-1" />
-                  )}
-                  {needsIncrease ? "+" : ""}{formatCurrency(Math.abs(budgetDifference))}
-                  <Info size={10} className="ml-1 text-gray-500" />
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Recomendação baseada no orçamento diário atual configurado nas campanhas.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        
-        {showRecommendationAverage && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Badge className={`flex items-center ${needsIncreaseAverage ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  <span className="mr-1 text-xs">5d:</span>
-                  {needsIncreaseAverage ? (
-                    <TrendingUp size={14} className="mr-1" />
-                  ) : (
-                    <TrendingDown size={14} className="mr-1" />
-                  )}
-                  {needsIncreaseAverage ? "+" : ""}{formatCurrency(Math.abs(budgetDifferenceAverage))}
-                  <Info size={10} className="ml-1 text-gray-500" />
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Recomendação baseada na média de gasto dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+      <div className="bg-gray-50 p-2 rounded">
+        <div className="text-xs text-gray-500">Gasto</div>
+        <div className="font-medium">{formatCurrency(totalSpent)}</div>
+      </div>
+      
+      <div className="bg-gray-50 p-2 rounded">
+        <div className="text-xs text-gray-500">Orç. diário atual</div>
+        <div className="font-medium">
+          {hasReview && currentDailyBudget ? formatCurrency(currentDailyBudget) : "-"}
+        </div>
+      </div>
+      
+      <div className="bg-gray-50 p-2 rounded">
+        <div className="text-xs text-gray-500">Média últimos 5 dias</div>
+        <div className="font-medium">
+          {hasReview && lastFiveDaysAverage > 0 ? formatCurrency(lastFiveDaysAverage) : "-"}
+        </div>
       </div>
     </div>
   );

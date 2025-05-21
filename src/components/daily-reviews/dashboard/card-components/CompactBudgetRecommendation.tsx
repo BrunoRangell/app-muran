@@ -1,82 +1,96 @@
 
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Info } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, MinusCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 interface CompactBudgetRecommendationProps {
+  hasReview: boolean;
+  inactive: boolean;
+  showRecommendation: boolean;
+  showRecommendationAverage: boolean;
+  needsIncrease: boolean;
+  needsIncreaseAverage: boolean;
   budgetDifference: number;
-  budgetDifferenceBasedOnAverage?: number;
-  shouldShow: boolean;
-  shouldShowAverage?: boolean;
-  lastFiveDaysAverage?: number;
+  budgetDifferenceBasedOnAverage: number;
+  lastFiveDaysAverage: number;
 }
 
-export const CompactBudgetRecommendation = ({ 
+export const CompactBudgetRecommendation = ({
+  hasReview,
+  inactive,
+  showRecommendation,
+  showRecommendationAverage,
+  needsIncrease,
+  needsIncreaseAverage,
   budgetDifference,
-  budgetDifferenceBasedOnAverage = 0,
-  shouldShow,
-  shouldShowAverage = false,
-  lastFiveDaysAverage = 0
+  budgetDifferenceBasedOnAverage,
+  lastFiveDaysAverage
 }: CompactBudgetRecommendationProps) => {
-  const hasAnyRecommendation = shouldShow || shouldShowAverage;
-  
-  if (!hasAnyRecommendation) {
+  if (!hasReview || inactive) {
     return null;
   }
-  
+
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {shouldShow && (
+    <div className="p-3 flex items-center gap-2 border-l">
+      {showRecommendation && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger>
-              <Badge className={`flex items-center ${
-                budgetDifference > 0 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
+              <div className={`flex items-center ${
+                needsIncrease 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
               }`}>
-                <span className="mr-1 text-xs">Orç:</span>
-                {budgetDifference > 0 ? (
-                  <TrendingUp size={14} className="mr-1" />
-                ) : (
-                  <TrendingDown size={14} className="mr-1" />
-                )}
-                {budgetDifference > 0 ? "+" : ""}{formatCurrency(budgetDifference)}
-                <Info size={10} className="ml-1 text-gray-500" />
-              </Badge>
+                {needsIncrease 
+                  ? <TrendingUp size={16} /> 
+                  : <TrendingDown size={16} />
+                }
+                <span className="ml-1 font-medium">
+                  {formatCurrency(Math.abs(budgetDifference))}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
+              <p>Recomendação baseada no orçamento diário atual</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       )}
-      
-      {shouldShowAverage && (
+
+      {showRecommendationAverage && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger>
-              <Badge className={`flex items-center ${
-                budgetDifferenceBasedOnAverage > 0 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
+              <div className={`flex items-center ${
+                needsIncreaseAverage 
+                  ? 'text-blue-600' 
+                  : 'text-orange-600'
               }`}>
-                <span className="mr-1 text-xs">5d:</span>
-                {budgetDifferenceBasedOnAverage > 0 ? (
-                  <TrendingUp size={14} className="mr-1" />
-                ) : (
-                  <TrendingDown size={14} className="mr-1" />
-                )}
-                {budgetDifferenceBasedOnAverage > 0 ? "+" : ""}{formatCurrency(budgetDifferenceBasedOnAverage)}
-                <Info size={10} className="ml-1 text-gray-500" />
-              </Badge>
+                <Clock size={16} />
+                <span className="ml-1 font-medium">
+                  {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
+              <p>Recomendação baseada na média dos últimos 5 dias: {formatCurrency(lastFiveDaysAverage)}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+      )}
+
+      {!showRecommendation && !showRecommendationAverage && (
+        <div className="text-gray-600 flex items-center">
+          <MinusCircle size={16} />
+          <span className="ml-1 font-medium">
+            OK
+          </span>
+        </div>
       )}
     </div>
   );
