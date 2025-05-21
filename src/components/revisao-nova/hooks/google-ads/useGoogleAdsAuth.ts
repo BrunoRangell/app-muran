@@ -2,11 +2,13 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+// Modificar a interface para incluir um índice de assinatura para string
 export interface GoogleAdsAuthHeaders {
   Authorization: string;
   'developer-token': string;
   'Content-Type': string;
   'login-customer-id'?: string;
+  [key: string]: string | undefined; // Adicionar índice de assinatura para string
 }
 
 export const useGoogleAdsAuth = () => {
