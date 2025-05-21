@@ -1,10 +1,14 @@
 
 import { Card } from "@/components/ui/card";
-import { Loader } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "../summary/utils";
+import { GoogleAdsClientInfo } from "./card-components/GoogleAdsClientInfo";
+import { GoogleReviewButton } from "./card-components/GoogleReviewButton";
+import { CustomBudgetInfo } from "./card-components/CustomBudgetInfo";
+import { GoogleBudgetMetrics } from "./card-components/GoogleBudgetMetrics";
+import { GoogleBudgetRecommendation } from "./card-components/GoogleBudgetRecommendation";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -91,128 +95,42 @@ export const GoogleAdsClientReviewCardCompact = ({
     >
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
-          <div>
-            <h3 className="font-semibold text-gray-800 text-sm line-clamp-1 mb-1">
-              {client.company_name}
-            </h3>
-            <div className="flex items-center">
-              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                {formattedLastReviewDate}
-              </span>
-              {hasGoogleAccounts && (
-                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded ml-1">
-                  {accountsLabel}
-                </span>
-              )}
-              {usingCustomBudget && (
-                <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded ml-1 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
-                  </svg>
-                  Orç. Personalizado
-                </span>
-              )}
-            </div>
-          </div>
+          <GoogleAdsClientInfo 
+            client={client}
+            formattedLastReviewDate={formattedLastReviewDate}
+            hasGoogleAccounts={hasGoogleAccounts}
+            accountsLabel={accountsLabel}
+            usingCustomBudget={usingCustomBudget}
+          />
           
-          <button
-            onClick={handleReviewClick}
-            disabled={isProcessing || inactive}
-            className={`px-3 py-1 rounded text-xs font-medium ${
-              inactive
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : isProcessing
-                ? 'bg-blue-100 text-blue-700 cursor-wait'
-                : 'bg-muran-primary text-white hover:bg-muran-primary/90'
-            }`}
-          >
-            {isProcessing ? (
-              <div className="flex items-center">
-                <Loader className="animate-spin mr-1 h-3 w-3" />
-                <span>Analisando</span>
-              </div>
-            ) : inactive ? (
-              'Sem Conta'
-            ) : (
-              'Analisar'
-            )}
-          </button>
+          <GoogleReviewButton 
+            onReviewClick={handleReviewClick}
+            isProcessing={isProcessing}
+            inactive={inactive}
+          />
         </div>
 
         {usingCustomBudget && (
-          <div className="bg-orange-50 p-2 rounded mb-2 text-xs">
-            <div className="text-orange-600 font-medium mb-1">Orçamento personalizado ativo</div>
-            <div className="flex justify-between">
-              <div>
-                <span className="text-gray-600">Valor:</span>{" "}
-                <span className="font-medium">{formatCurrency(customBudgetAmount || 0)}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Período:</span>{" "}
-                <span className="font-medium">{formattedCustomBudgetStartDate} - {formattedCustomBudgetEndDate}</span>
-              </div>
-            </div>
-          </div>
+          <CustomBudgetInfo 
+            customBudgetAmount={customBudgetAmount}
+            formattedCustomBudgetStartDate={formattedCustomBudgetStartDate}
+            formattedCustomBudgetEndDate={formattedCustomBudgetEndDate}
+          />
         )}
 
-        {!compact && (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-gray-50 p-2 rounded">
-              <div className="text-gray-500">Orçamento</div>
-              <div className="font-semibold">{formattedMonthlyBudget}</div>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <div className="text-gray-500">Gasto Total</div>
-              <div className="font-semibold">{formattedTotalSpent}</div>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <div className="text-gray-500">Média 5 dias</div>
-              <div className="font-semibold">{formattedLastFiveDaysSpent}</div>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <div className="text-gray-500">Orç. Diário Atual</div>
-              <div className="font-semibold">{formattedCurrentDaily}</div>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <div className="text-gray-500">Orç. Diário Ideal</div>
-              <div className="font-semibold">{formattedIdealDaily}</div>
-            </div>
-          </div>
-        )}
+        <GoogleBudgetMetrics 
+          formattedMonthlyBudget={formattedMonthlyBudget}
+          formattedTotalSpent={formattedTotalSpent}
+          formattedLastFiveDaysSpent={formattedLastFiveDaysSpent}
+          formattedCurrentDaily={formattedCurrentDaily}
+          formattedIdealDaily={formattedIdealDaily}
+          compact={compact}
+        />
 
-        {compact && (
-          <div className="flex justify-between items-center mt-2 text-xs gap-2">
-            <div>
-              <span className="text-gray-500 mr-1">Orçamento:</span>
-              <span className="font-semibold">{formattedMonthlyBudget}</span>
-            </div>
-            <div>
-              <span className="text-gray-500 mr-1">Gasto:</span>
-              <span className="font-semibold">{formattedTotalSpent}</span>
-            </div>
-            <div className="flex-1 p-3 border-l">
-              <div className="text-xs text-gray-500">Média 5 dias</div>
-              <div className="flex items-center">
-                {formattedLastFiveDaysSpent}
-              </div>
-            </div>
-            <div>
-              <span className="text-gray-500 mr-1">Atual:</span>
-              <span className="font-semibold">{formattedCurrentDaily}</span>
-            </div>
-          </div>
-        )}
-
-        {needsBudgetAdjustment && budgetDifference && (
-          <div className="mt-2 text-xs p-2 rounded flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-muran-primary"></div>
-            <span className="font-medium">
-              {budgetDifference > 0 ? 
-                `Aumentar orçamento diário em ${formatCurrency(Math.abs(budgetDifference))}` : 
-                `Diminuir orçamento diário em ${formatCurrency(Math.abs(budgetDifference))}`}
-            </span>
-          </div>
-        )}
+        <GoogleBudgetRecommendation 
+          budgetDifference={budgetDifference}
+          needsBudgetAdjustment={needsBudgetAdjustment}
+        />
       </div>
     </Card>
   );
