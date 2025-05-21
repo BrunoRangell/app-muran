@@ -31,8 +31,10 @@ export const BudgetRecommendation = ({
       <CompactBudgetRecommendation
         budgetDifference={budgetDifference}
         budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
-        shouldShow={shouldShow}
-        shouldShowAverage={shouldShowAverage}
+        showRecommendation={shouldShow}
+        showRecommendationAverage={shouldShowAverage}
+        needsIncrease={budgetDifference > 0}
+        needsIncreaseAverage={budgetDifferenceBasedOnAverage > 0}
         lastFiveDaysAverage={lastFiveDaysAverage}
       />
     );

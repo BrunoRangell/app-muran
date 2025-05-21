@@ -83,9 +83,12 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
           <CompactBudgetRecommendation 
             budgetDifference={budgetDifference}
             budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
-            shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
-            shouldShowAverage={needsAdjustmentBasedOnAverage}
+            showRecommendation={client.budgetCalculation?.needsBudgetAdjustment}
+            showRecommendationAverage={needsAdjustmentBasedOnAverage}
+            needsIncrease={budgetDifference > 0}
+            needsIncreaseAverage={budgetDifferenceAvg > 0}
             lastFiveDaysAverage={lastFiveDaysAvg}
+            hasReview={!!client.review}
           />
           
           {expanded && (

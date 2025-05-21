@@ -9,28 +9,29 @@ import {
 } from "@/components/ui/tooltip";
 
 interface CompactBudgetRecommendationProps {
-  hasReview: boolean;
-  inactive: boolean;
-  showRecommendation: boolean;
-  showRecommendationAverage: boolean;
-  needsIncrease: boolean;
-  needsIncreaseAverage: boolean;
+  hasReview?: boolean;
+  inactive?: boolean;
+  showRecommendation: boolean; // Renomeado de shouldShow
+  showRecommendationAverage: boolean; // Renomeado de shouldShowAverage
+  needsIncrease?: boolean;
+  needsIncreaseAverage?: boolean;
   budgetDifference: number;
   budgetDifferenceBasedOnAverage: number;
   lastFiveDaysAverage: number;
 }
 
 export const CompactBudgetRecommendation = ({
-  hasReview,
-  inactive,
+  hasReview = true,
+  inactive = false,
   showRecommendation,
   showRecommendationAverage,
-  needsIncrease,
-  needsIncreaseAverage,
+  needsIncrease = false,
+  needsIncreaseAverage = false,
   budgetDifference,
   budgetDifferenceBasedOnAverage,
   lastFiveDaysAverage
 }: CompactBudgetRecommendationProps) => {
+  // Não exibe nada se não tiver revisão ou estiver inativo
   if (!hasReview || inactive) {
     return null;
   }
