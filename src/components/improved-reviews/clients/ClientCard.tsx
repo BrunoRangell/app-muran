@@ -33,10 +33,10 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   
-  // Dados para recomendação baseada na média dos últimos 5 dias
-  const lastFiveDaysAvg = client.lastFiveDaysAvg || 0;
-  const budgetDifferenceAvg = client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0;
-  const needsAdjustmentBasedOnAverage = client.budgetCalculation?.needsAdjustmentBasedOnAverage || false;
+  // Remoção da média dos últimos 5 dias para Meta Ads
+  const budgetDifferenceAvg = platform === "meta" ? 0 : (client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0);
+  const needsAdjustmentBasedOnAverage = platform === "meta" ? false : (client.budgetCalculation?.needsAdjustmentBasedOnAverage || false);
+  const lastFiveDaysAvg = platform === "meta" ? 0 : (client.lastFiveDaysAvg || 0);
   
   // Dados do orçamento personalizado
   const customBudget = client.customBudget;
@@ -84,7 +84,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
             budgetDifference={budgetDifference}
             budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
             showRecommendation={client.budgetCalculation?.needsBudgetAdjustment}
-            showRecommendationAverage={needsAdjustmentBasedOnAverage}
+            showRecommendationAverage={platform === "google" && needsAdjustmentBasedOnAverage}
             needsIncrease={budgetDifference > 0}
             needsIncreaseAverage={budgetDifferenceAvg > 0}
             lastFiveDaysAverage={lastFiveDaysAvg}
@@ -99,7 +99,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
               customBudget={customBudget}
               originalBudgetAmount={originalBudgetAmount}
               budgetAmount={budgetAmount}
-              lastFiveDaysAvg={lastFiveDaysAvg}
+              lastFiveDaysAvg={platform === "google" ? lastFiveDaysAvg : undefined}
             />
           )}
         </div>

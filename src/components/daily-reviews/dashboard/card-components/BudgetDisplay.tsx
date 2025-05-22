@@ -5,9 +5,10 @@ interface BudgetDisplayProps {
   displayBudget: number;
   totalSpent: number;
   currentDailyBudget: number;
-  lastFiveDaysAverage: number;
+  lastFiveDaysAverage?: number;
   hasReview: boolean;
   hasCustomBudget: boolean;
+  platform?: "meta" | "google";
 }
 
 export const BudgetDisplay = ({
@@ -16,8 +17,11 @@ export const BudgetDisplay = ({
   currentDailyBudget,
   lastFiveDaysAverage,
   hasReview,
-  hasCustomBudget
+  hasCustomBudget,
+  platform = "meta"
 }: BudgetDisplayProps) => {
+  const showLastFiveDaysAverage = platform === "google" && lastFiveDaysAverage !== undefined && lastFiveDaysAverage > 0;
+
   return (
     <div className="grid grid-cols-2 gap-2 mb-3">
       <div className="bg-gray-50 p-2 rounded">
@@ -42,12 +46,21 @@ export const BudgetDisplay = ({
         </div>
       </div>
       
-      <div className="bg-gray-50 p-2 rounded">
-        <div className="text-xs text-gray-500">Média últimos 5 dias</div>
-        <div className="font-medium">
-          {hasReview && lastFiveDaysAverage > 0 ? formatCurrency(lastFiveDaysAverage) : "-"}
+      {showLastFiveDaysAverage ? (
+        <div className="bg-gray-50 p-2 rounded">
+          <div className="text-xs text-gray-500">Média últimos 5 dias</div>
+          <div className="font-medium">
+            {formatCurrency(lastFiveDaysAverage || 0)}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-gray-50 p-2 rounded">
+          <div className="text-xs text-gray-500">Status</div>
+          <div className="font-medium">
+            {hasReview ? "Dados atualizados" : "Pendente"}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

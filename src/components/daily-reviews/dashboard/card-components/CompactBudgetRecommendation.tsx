@@ -1,5 +1,5 @@
 
-import { TrendingUp, TrendingDown, Clock, MinusCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, MinusCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import {
   TooltipProvider,
@@ -11,25 +11,25 @@ import {
 interface CompactBudgetRecommendationProps {
   hasReview?: boolean;
   inactive?: boolean;
-  showRecommendation: boolean; // Renomeado de shouldShow
-  showRecommendationAverage: boolean; // Renomeado de shouldShowAverage
+  showRecommendation: boolean;
+  showRecommendationAverage?: boolean;
   needsIncrease?: boolean;
   needsIncreaseAverage?: boolean;
   budgetDifference: number;
-  budgetDifferenceBasedOnAverage: number;
-  lastFiveDaysAverage: number;
+  budgetDifferenceBasedOnAverage?: number;
+  lastFiveDaysAverage?: number;
 }
 
 export const CompactBudgetRecommendation = ({
   hasReview = true,
   inactive = false,
   showRecommendation,
-  showRecommendationAverage,
+  showRecommendationAverage = false,
   needsIncrease = false,
   needsIncreaseAverage = false,
   budgetDifference,
-  budgetDifferenceBasedOnAverage,
-  lastFiveDaysAverage
+  budgetDifferenceBasedOnAverage = 0,
+  lastFiveDaysAverage = 0
 }: CompactBudgetRecommendationProps) => {
   // Não exibe nada se não tiver revisão ou estiver inativo
   if (!hasReview || inactive) {
@@ -63,29 +63,7 @@ export const CompactBudgetRecommendation = ({
         </TooltipProvider>
       )}
 
-      {showRecommendationAverage && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
-              <div className={`flex items-center ${
-                needsIncreaseAverage 
-                  ? 'text-blue-600' 
-                  : 'text-orange-600'
-              }`}>
-                <Clock size={16} />
-                <span className="ml-1 font-medium">
-                  {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
-                </span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Recomendação baseada na média dos últimos 5 dias: {formatCurrency(lastFiveDaysAverage)}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-
-      {!showRecommendation && !showRecommendationAverage && (
+      {!showRecommendation && (
         <div className="text-gray-600 flex items-center">
           <MinusCircle size={16} />
           <span className="ml-1 font-medium">

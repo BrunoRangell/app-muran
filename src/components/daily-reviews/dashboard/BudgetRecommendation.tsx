@@ -32,7 +32,7 @@ export const BudgetRecommendation = ({
         budgetDifference={budgetDifference}
         budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
         showRecommendation={shouldShow}
-        showRecommendationAverage={shouldShowAverage}
+        showRecommendationAverage={false} // Desativado para Meta Ads
         needsIncrease={budgetDifference > 0}
         needsIncreaseAverage={budgetDifferenceBasedOnAverage > 0}
         lastFiveDaysAverage={lastFiveDaysAverage}
@@ -40,7 +40,7 @@ export const BudgetRecommendation = ({
     );
   }
 
-  const hasAnyRecommendation = shouldShow || shouldShowAverage;
+  const hasAnyRecommendation = shouldShow;
   
   if (!hasAnyRecommendation) {
     return (
@@ -81,39 +81,6 @@ export const BudgetRecommendation = ({
                 </TooltipTrigger>
                 <TooltipContent className="p-3 max-w-xs">
                   <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-      )}
-
-      {shouldShowAverage && (
-        <div className={`p-3 rounded-lg ${
-          budgetDifferenceBasedOnAverage > 0 
-            ? 'bg-green-50 border-l-4 border-l-green-500' 
-            : 'bg-red-50 border-l-4 border-l-red-500'
-        }`}>
-          <div className={`flex items-center gap-2 font-medium ${
-            budgetDifferenceBasedOnAverage > 0 
-              ? 'text-green-700' 
-              : 'text-red-700'
-          }`}>
-            {budgetDifferenceBasedOnAverage > 0 ? (
-              <TrendingUp size={18} className="text-green-500" />
-            ) : (
-              <TrendingDown size={18} className="text-red-500" />
-            )}
-            <span>
-              Recomendado (últ. 5 dias): {budgetDifferenceBasedOnAverage > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
-            </span>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info size={14} className="text-gray-500 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="p-3 max-w-xs">
-                  <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

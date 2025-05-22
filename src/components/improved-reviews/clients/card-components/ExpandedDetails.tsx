@@ -1,67 +1,101 @@
 
-import { Calendar, BadgeDollarSign } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { formatDateBr } from "@/utils/dateFormatter";
+import { ClientCardInfo } from "../ClientCardInfo";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { CalendarDays, Clock, BadgeDollarSign } from "lucide-react";
 
 interface ExpandedDetailsProps {
   platform: "meta" | "google";
   client: any;
   isUsingCustomBudget: boolean;
-  customBudget: any | null;
+  customBudget: any;
   originalBudgetAmount: number;
   budgetAmount: number;
-  lastFiveDaysAvg: number;
+  lastFiveDaysAvg?: number;
 }
 
-export function ExpandedDetails({
-  platform,
-  client,
-  isUsingCustomBudget,
-  customBudget,
-  originalBudgetAmount,
+export function ExpandedDetails({ 
+  platform, 
+  client, 
+  isUsingCustomBudget, 
+  customBudget, 
+  originalBudgetAmount, 
   budgetAmount,
   lastFiveDaysAvg
 }: ExpandedDetailsProps) {
+  const dailyBudget = client.review?.[`${platform}_daily_budget_current`] || 0;
+  const totalSpent = client.review?.[`${platform}_total_spent`] || 0;
+  const idealBudget = client.budgetCalculation?.idealDailyBudget || 0;
+  const needsAdjustment = client.budgetCalculation?.needsBudgetAdjustment || false;
+  
+  // Ajuste para não mostrar média dos últimos 5 dias para Meta
+  const showLastFiveDaysAvg = platform === "google" && lastFiveDaysAvg !== undefined;
+  
   return (
-    <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="text-gray-500">Orçamento diário atual</span>
-        <span className="font-medium">{formatCurrency(client.review?.[`${platform}_daily_budget_current`] || 0)}</span>
-      </div>
-      <div className="flex justify-between text-sm">
-        <span className="text-gray-500">Orçamento diário ideal</span>
-        <span className="font-medium">{formatCurrency(client.budgetCalculation?.idealDailyBudget || 0)}</span>
-      </div>
-      <div className="flex justify-between text-sm">
-        <span className="text-gray-500">Dias restantes</span>
-        <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
-      </div>
-      <div className="flex justify-between text-sm">
-        <span className="text-gray-500">Média gasto (5 dias)</span>
-        <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
-      </div>
+    <div className="space-y-3">
+      <Separator />
+      
+      <div className="text-sm font-medium">Detalhes do orçamento</div>
+      
+      <ClientCardInfo
+        platform={platform}
+        dailyBudget={dailyBudget}
+        idealBudget={idealBudget}
+        totalSpent={totalSpent}
+        needsAdjustment={needsAdjustment}
+        totalBudget={budgetAmount}
+        lastFiveDaysAvg={showLastFiveDaysAvg ? lastFiveDaysAvg : undefined}
+        className="mt-2"
+      />
       
       {isUsingCustomBudget && customBudget && (
-        <div className="mt-2 pt-2 border-t border-dashed border-gray-200">
-          <div className="flex items-center gap-1 text-sm mb-1">
-            <BadgeDollarSign className="h-4 w-4 text-[#ff6e00]" />
-            <span className="font-medium text-[#ff6e00]">Orçamento Personalizado</span>
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center gap-1 text-sm font-medium text-[#ff6e00]">
+            <BadgeDollarSign size={16} />
+            <span>Orçamento personalizado ativo</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Período</span>
-            <span className="font-medium flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-gray-500" />
-              {formatDateBr(customBudget.start_date)} a {formatDateBr(customBudget.end_date)}
-            </span>
+          
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="bg-orange-50 p-2 rounded">
+              <div className="text-xs text-orange-600">Valor original</div>
+              <div className="font-medium">{formatCurrency(originalBudgetAmount)}</div>
+            </div>
+            
+            <div className="bg-orange-50 p-2 rounded">
+              <div className="text-xs text-orange-600">Valor personalizado</div>
+              <div className="font-medium">{formatCurrency(customBudget.budget_amount)}</div>
+            </div>
+            
+            <div className="bg-orange-50 p-2 rounded">
+              <div className="text-xs text-orange-600 flex items-center gap-1">
+                <CalendarDays size={12} />
+                <span>Início</span>
+              </div>
+              <div className="font-medium">{new Date(customBudget.start_date).toLocaleDateString('pt-BR')}</div>
+            </div>
+            
+            <div className="bg-orange-50 p-2 rounded">
+              <div className="text-xs text-orange-600 flex items-center gap-1">
+                <Clock size={12} />
+                <span>Término</span>
+              </div>
+              <div className="font-medium">{new Date(customBudget.end_date).toLocaleDateString('pt-BR')}</div>
+            </div>
           </div>
-          {originalBudgetAmount !== budgetAmount && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Orçamento padrão</span>
-              <span className="font-medium">{formatCurrency(originalBudgetAmount)}</span>
+          
+          {customBudget.description && (
+            <div className="bg-orange-50 p-2 rounded">
+              <div className="text-xs text-orange-600">Descrição</div>
+              <div className="text-sm">{customBudget.description}</div>
             </div>
           )}
         </div>
       )}
+      
+      <div className="text-xs text-gray-500 mt-2">
+        ID da Conta: {client[`${platform}_account_id`] || "Não configurado"}
+      </div>
     </div>
   );
 }
