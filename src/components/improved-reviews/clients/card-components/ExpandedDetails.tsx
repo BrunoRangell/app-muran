@@ -11,16 +11,28 @@ import { Separator } from "@/components/ui/separator";
 import { BudgetRecommendation } from "@/components/daily-reviews/dashboard/BudgetRecommendation";
 import { getRemainingDaysInMonth } from "@/components/daily-reviews/summary/utils";
 
-interface ExpandedDetailsProps {
+export interface ExpandedDetailsProps {
   client: any;
   platform?: "meta" | "google";
+  isUsingCustomBudget?: boolean;
+  customBudget?: any;
+  originalBudgetAmount?: number;
+  budgetAmount?: number;
+  lastFiveDaysAvg?: number;
 }
 
-export function ExpandedDetails({ client, platform = "meta" }: ExpandedDetailsProps) {
+export function ExpandedDetails({ 
+  client, 
+  platform = "meta",
+  isUsingCustomBudget = false,
+  customBudget = null,
+  originalBudgetAmount = 0,
+  budgetAmount = 0,
+  lastFiveDaysAvg = 0
+}: ExpandedDetailsProps) {
   const reviewData = client.review;
   const budgetCalc = client.budgetCalculation || {};
   const spentAmount = reviewData?.[`${platform}_total_spent`] || 0;
-  const budgetAmount = client.budget_amount || 0;
   const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
   const currentDailyBudget = reviewData?.[`${platform}_daily_budget_current`] || 0;
   const remainingDays = getRemainingDaysInMonth();
@@ -32,12 +44,6 @@ export function ExpandedDetails({ client, platform = "meta" }: ExpandedDetailsPr
   const showRecommendationAverage = platform === "google" ? needsAdjustmentAverage : false;
   const budgetDifference = budgetCalc.budgetDifference || 0;
   const budgetDifferenceAverage = platform === "google" ? (budgetCalc.budgetDifferenceBasedOnAverage || 0) : 0;
-  const lastFiveDaysAverage = platform === "google" ? (client.lastFiveDaysAvg || 0) : 0;
-  
-  // Dados de orçamento personalizado
-  const isUsingCustomBudget = client.isUsingCustomBudget || false;
-  const customBudget = client.customBudget || null;
-  const originalBudgetAmount = client.original_budget_amount || budgetAmount;
 
   return (
     <div className="mt-4 space-y-4">
@@ -118,7 +124,7 @@ export function ExpandedDetails({ client, platform = "meta" }: ExpandedDetailsPr
             <div className="bg-gray-50 p-3 rounded col-span-2">
               <div className="text-xs text-gray-500">Média de Gasto (últimos 5 dias)</div>
               <div className="font-medium">
-                {formatCurrency(lastFiveDaysAverage)}
+                {formatCurrency(lastFiveDaysAvg)}
               </div>
             </div>
           )}
@@ -135,7 +141,7 @@ export function ExpandedDetails({ client, platform = "meta" }: ExpandedDetailsPr
           shouldShow={showRecommendation}
           shouldShowAverage={showRecommendationAverage}
           hasReview={hasReview}
-          lastFiveDaysAverage={lastFiveDaysAverage}
+          lastFiveDaysAverage={lastFiveDaysAvg}
           platform={platform}
         />
       </div>
