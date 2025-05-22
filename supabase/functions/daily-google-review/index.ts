@@ -108,7 +108,7 @@ async function processGoogleReview(req: Request) {
     
     // Obter tokens da API do Google Ads
     const googleTokensResponse = await fetch(
-      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_developer_token)&select=name,value`, {
+      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_developer_token,google_ads_manager_id)&select=name,value`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -144,6 +144,10 @@ async function processGoogleReview(req: Request) {
         'Content-Type': 'application/json'
       };
       
+      if (googleTokens.google_ads_manager_id) {
+        headers['login-customer-id'] = googleTokens.google_ads_manager_id;
+      }
+      
       // Calcular datas para query
       const today = new Date();
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -159,7 +163,7 @@ async function processGoogleReview(req: Request) {
       const fiveDaysAgoDate = fiveDaysAgo.toISOString().split('T')[0];
       const yesterdayFormattedDate = yesterdayDate.toISOString().split('T')[0];
       
-      // Query para obter gastos do mês atual
+      // Query aprimorada para obter gastos do mês atual com informações por dia
       const query = `
         SELECT
             metrics.cost_micros,
@@ -193,8 +197,13 @@ async function processGoogleReview(req: Request) {
       
       const data = await response.json();
       
-      // Calcular o gasto total somando o custo de todas as campanhas
-      if (data && data.results) {
+      // Variáveis para rastrear gastos por dia
+      let dailySpends = {};
+      
+      // Calcular o gasto total e rastrear gastos por dia
+      if (data && data.results && data.results.length > 0) {
+        console.log(`Encontrados ${data.results.length} resultados de gastos para a conta ${accountId}`);
+        
         // Processar resultados para calcular gastos
         data.results.forEach((campaign: any) => {
           const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
@@ -203,22 +212,52 @@ async function processGoogleReview(req: Request) {
           // Adicionar ao gasto total
           totalSpent += cost;
           
-          // Verificar se está dentro dos últimos 5 dias (excluindo hoje)
-          if (date && date >= fiveDaysAgoDate && date <= yesterdayFormattedDate) {
-            lastFiveDaysSpent += cost;
+          // Rastrear gasto por dia para calcular média dos últimos 5 dias
+          if (date) {
+            if (!dailySpends[date]) {
+              dailySpends[date] = 0;
+            }
+            dailySpends[date] += cost;
           }
         });
+        
+        console.log(`Gasto total para o mês atual: ${totalSpent.toFixed(2)}`);
+        console.log("Gastos diários:", dailySpends);
+      } else {
+        console.log("Nenhum resultado de gasto encontrado para este período");
       }
       
-      // Calcular a média diária dos últimos 5 dias
-      lastFiveDaysSpent = lastFiveDaysSpent / 5;
+      // Calcular a média dos últimos 5 dias (excluindo hoje)
+      let totalDaysWithData = 0;
+      let totalSpentLastFiveDays = 0;
       
-      // Obter orçamento diário atual somando os orçamentos das campanhas ativas
+      // Percorrer do dia anterior até 5 dias atrás
+      for (let i = 1; i <= 5; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        if (dailySpends[dateStr] !== undefined) {
+          totalSpentLastFiveDays += dailySpends[dateStr];
+          totalDaysWithData++;
+        }
+      }
+      
+      // Calcular a média diária dos últimos 5 dias, mas só se tivermos pelo menos um dia com dados
+      if (totalDaysWithData > 0) {
+        lastFiveDaysSpent = totalSpentLastFiveDays / totalDaysWithData;
+        console.log(`Média de gastos dos últimos ${totalDaysWithData} dias (excluindo hoje): ${lastFiveDaysSpent.toFixed(2)}`);
+      } else {
+        console.log("Sem dados suficientes para calcular a média dos últimos 5 dias");
+      }
+      
+      // Query aprimorada para obter orçamentos das campanhas ativas
       const campaignsQuery = `
         SELECT
             campaign_budget.amount_micros,
             campaign.status,
-            campaign.name
+            campaign.name,
+            campaign.id
         FROM
             campaign
         WHERE
@@ -239,12 +278,18 @@ async function processGoogleReview(req: Request) {
       if (campaignsResponse.ok) {
         const campaignsData = await campaignsResponse.json();
         
-        if (campaignsData && campaignsData.results) {
+        if (campaignsData && campaignsData.results && campaignsData.results.length > 0) {
+          console.log(`Encontradas ${campaignsData.results.length} campanhas ativas`);
+          
           currentDailyBudget = campaignsData.results.reduce((acc: number, campaign: any) => {
             const budget = campaign.campaignBudget?.amountMicros ? campaign.campaignBudget.amountMicros / 1e6 : 0;
-            console.log(`Campanha: ${campaign.campaign?.name}, Status: ${campaign.campaign?.status}, Orçamento: ${budget}`);
+            console.log(`Campanha: ${campaign.campaign?.name}, ID: ${campaign.campaign?.id}, Status: ${campaign.campaign?.status}, Orçamento: ${budget}`);
             return acc + budget;
           }, 0);
+          
+          console.log(`Orçamento diário total: ${currentDailyBudget.toFixed(2)}`);
+        } else {
+          console.log("Nenhuma campanha ativa encontrada");
         }
       } else {
         console.error("Erro ao obter orçamentos das campanhas:", await campaignsResponse.text());

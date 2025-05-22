@@ -18,6 +18,7 @@ interface CompactBudgetRecommendationProps {
   budgetDifference: number;
   budgetDifferenceBasedOnAverage?: number;
   lastFiveDaysAverage?: number;
+  platform?: "meta" | "google";
 }
 
 export const CompactBudgetRecommendation = ({
@@ -29,12 +30,16 @@ export const CompactBudgetRecommendation = ({
   needsIncreaseAverage = false,
   budgetDifference,
   budgetDifferenceBasedOnAverage = 0,
-  lastFiveDaysAverage = 0
+  lastFiveDaysAverage = 0,
+  platform = "meta"
 }: CompactBudgetRecommendationProps) => {
   // Não exibe nada se não tiver revisão ou estiver inativo
   if (!hasReview || inactive) {
     return null;
   }
+
+  // Só mostrar recomendação baseada na média dos últimos 5 dias para Google Ads
+  const displayAverageRecommendation = platform === "google" && showRecommendationAverage && lastFiveDaysAverage > 0;
 
   return (
     <div className="p-3 flex items-center gap-2 border-l">
@@ -63,7 +68,28 @@ export const CompactBudgetRecommendation = ({
         </TooltipProvider>
       )}
 
-      {!showRecommendation && (
+      {displayAverageRecommendation && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <div className={`flex items-center ${
+                needsIncreaseAverage 
+                  ? 'text-blue-600' 
+                  : 'text-orange-600'
+              }`}>
+                <span className="ml-1 font-medium text-xs">
+                  ({needsIncreaseAverage ? "+" : "-"}{formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))})
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Recomendação baseada na média dos últimos 5 dias</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
+      {!showRecommendation && !displayAverageRecommendation && (
         <div className="text-gray-600 flex items-center">
           <MinusCircle size={16} />
           <span className="ml-1 font-medium">

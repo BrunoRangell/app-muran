@@ -20,6 +20,7 @@ export const BudgetDisplay = ({
   hasCustomBudget,
   platform = "meta"
 }: BudgetDisplayProps) => {
+  // Só exibir média dos últimos 5 dias para o Google Ads
   const showLastFiveDaysAverage = platform === "google" && lastFiveDaysAverage !== undefined && lastFiveDaysAverage > 0;
 
   return (

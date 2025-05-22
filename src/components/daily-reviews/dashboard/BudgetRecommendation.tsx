@@ -12,6 +12,7 @@ interface BudgetRecommendationProps {
   hasReview: boolean;
   lastFiveDaysAverage?: number;
   compact?: boolean;
+  platform?: "meta" | "google";
 }
 
 export const BudgetRecommendation = ({ 
@@ -21,7 +22,8 @@ export const BudgetRecommendation = ({
   shouldShowAverage = false,
   hasReview,
   lastFiveDaysAverage = 0,
-  compact = false
+  compact = false,
+  platform = "meta"
 }: BudgetRecommendationProps) => {
   if (!hasReview) return null;
 
@@ -32,15 +34,17 @@ export const BudgetRecommendation = ({
         budgetDifference={budgetDifference}
         budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
         showRecommendation={shouldShow}
-        showRecommendationAverage={false} // Desativado para Meta Ads
+        showRecommendationAverage={shouldShowAverage && platform === "google"}
         needsIncrease={budgetDifference > 0}
         needsIncreaseAverage={budgetDifferenceBasedOnAverage > 0}
         lastFiveDaysAverage={lastFiveDaysAverage}
+        platform={platform}
       />
     );
   }
 
-  const hasAnyRecommendation = shouldShow;
+  // Verificar se há alguma recomendação para exibir
+  const hasAnyRecommendation = shouldShow || (shouldShowAverage && platform === "google");
   
   if (!hasAnyRecommendation) {
     return (
@@ -81,6 +85,39 @@ export const BudgetRecommendation = ({
                 </TooltipTrigger>
                 <TooltipContent className="p-3 max-w-xs">
                   <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+      )}
+
+      {shouldShowAverage && platform === "google" && lastFiveDaysAverage > 0 && (
+        <div className={`p-3 rounded-lg ${
+          budgetDifferenceBasedOnAverage > 0 
+            ? 'bg-blue-50 border-l-4 border-l-blue-500' 
+            : 'bg-orange-50 border-l-4 border-l-orange-500'
+        }`}>
+          <div className={`flex items-center gap-2 font-medium ${
+            budgetDifferenceBasedOnAverage > 0 
+              ? 'text-blue-700' 
+              : 'text-orange-700'
+          }`}>
+            {budgetDifferenceBasedOnAverage > 0 ? (
+              <TrendingUp size={18} className="text-blue-500" />
+            ) : (
+              <TrendingDown size={18} className="text-orange-500" />
+            )}
+            <span>
+              Baseado na média 5 dias: {budgetDifferenceBasedOnAverage > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
+            </span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info size={14} className="text-gray-500 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="p-3 max-w-xs">
+                  <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gastos dos últimos 5 dias.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
