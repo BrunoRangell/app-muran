@@ -1,6 +1,6 @@
 
 import { formatCurrency } from "@/utils/formatters";
-import { MinusCircle, TrendingDown, TrendingUp, Info } from "lucide-react";
+import { MinusCircle, TrendingDown, TrendingUp, Info, AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CompactBudgetRecommendation } from "./card-components/CompactBudgetRecommendation";
 
@@ -52,6 +52,20 @@ export const BudgetRecommendation = ({
         <div className="flex items-center gap-2 font-medium text-gray-700">
           <MinusCircle size={18} className="text-gray-500" />
           Recomendação: Nenhum ajuste necessário
+        </div>
+      </div>
+    );
+  }
+
+  // Verificar se não temos dados reais disponíveis para recomendar (apenas para Google)
+  const noRealData = platform === "google" && lastFiveDaysAverage === 0 && !shouldShow;
+  
+  if (noRealData) {
+    return (
+      <div className="mt-2 p-3 rounded-lg bg-yellow-50 border-l-4 border-l-yellow-500">
+        <div className="flex items-center gap-2 font-medium text-yellow-700">
+          <AlertTriangle size={18} className="text-yellow-500" />
+          Dados insuficientes para gerar recomendações
         </div>
       </div>
     );
@@ -126,4 +140,4 @@ export const BudgetRecommendation = ({
       )}
     </div>
   );
-};
+}

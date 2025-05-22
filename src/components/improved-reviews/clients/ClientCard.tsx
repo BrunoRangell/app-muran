@@ -32,6 +32,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const needsAdjustment = client.needsAdjustment;
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
+  const hasRealData = platform === "google" ? (client.review?.has_real_data !== false) : true;
   
   // Remoção da média dos últimos 5 dias para Meta Ads
   const budgetDifferenceAvg = platform === "meta" ? 0 : (client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0);
@@ -56,9 +57,17 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
       });
     }
   };
+
+  // Determinação da cor da borda com base na necessidade de ajuste e disponibilidade de dados reais
+  let borderClass = '';
+  if (platform === "google" && !hasRealData) {
+    borderClass = 'border-l-4 border-l-yellow-500';
+  } else if (needsAdjustment) {
+    borderClass = 'border-l-4 border-l-amber-500';
+  }
   
   return (
-    <Card className={`overflow-hidden transition-all ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''} ${isUsingCustomBudget ? 'border-t-4 border-t-[#ff6e00]' : ''}`}>
+    <Card className={`overflow-hidden transition-all ${borderClass} ${isUsingCustomBudget ? 'border-t-4 border-t-[#ff6e00]' : ''}`}>
       <CardHeader className="p-4 pb-0">
         <ClientCardHeader 
           clientName={client.company_name}
@@ -66,6 +75,8 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
           isUsingCustomBudget={isUsingCustomBudget}
           needsAdjustment={needsAdjustment}
           customBudget={customBudget}
+          hasRealData={platform === "google" ? hasRealData : true}
+          platform={platform}
         />
       </CardHeader>
       
@@ -77,6 +88,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
             spentPercentage={spentPercentage}
             isUsingCustomBudget={isUsingCustomBudget}
             originalBudgetAmount={originalBudgetAmount}
+            hasRealData={hasRealData}
           />
           
           {/* Recomendações de orçamento em formato compacto */}
@@ -89,6 +101,8 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
             needsIncreaseAverage={budgetDifferenceAvg > 0}
             lastFiveDaysAverage={lastFiveDaysAvg}
             hasReview={!!client.review}
+            platform={platform}
+            inactive={platform === "google" && !hasRealData}
           />
           
           {expanded && (
@@ -111,6 +125,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
           setExpanded={setExpanded}
           isProcessing={isProcessing}
           onReview={handleReviewClick}
+          needsRefresh={platform === "google" && !hasRealData}
         />
       </CardFooter>
     </Card>

@@ -3,6 +3,123 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { formatResponse, formatErrorResponse } from "./response.ts";
 
+// Função para verificar e possivelmente atualizar o token de acesso
+async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
+  try {
+    console.log("Verificando status do token de acesso do Google Ads");
+    
+    // Obter tokens da API do Google Ads
+    const tokenResponse = await fetch(
+      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_token_expiry)&select=name,value`, {
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!tokenResponse.ok) {
+      throw new Error(`Erro ao buscar tokens: ${tokenResponse.statusText}`);
+    }
+    
+    const tokensData = await tokenResponse.json();
+    const tokens: Record<string, string> = {};
+    
+    tokensData.forEach((token: { name: string; value: string }) => {
+      tokens[token.name] = token.value;
+    });
+    
+    // Verificar se temos todos os tokens necessários
+    if (!tokens.google_ads_access_token || !tokens.google_ads_refresh_token || 
+        !tokens.google_ads_client_id || !tokens.google_ads_client_secret) {
+      throw new Error("Configuração de tokens incompleta");
+    }
+    
+    // Verificar expiração do token atual
+    const tokenExpiry = tokens.google_ads_token_expiry ? parseInt(tokens.google_ads_token_expiry) : 0;
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    // Se o token expirou ou expirará em menos de 5 minutos
+    if (!tokenExpiry || currentTime > (tokenExpiry - 300)) {
+      console.log("Token de acesso expirado ou prestes a expirar. Atualizando...");
+      
+      // Solicitar novo token usando o refresh token
+      const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          client_id: tokens.google_ads_client_id,
+          client_secret: tokens.google_ads_client_secret,
+          refresh_token: tokens.google_ads_refresh_token,
+          grant_type: "refresh_token"
+        })
+      });
+      
+      if (!refreshResponse.ok) {
+        const errorData = await refreshResponse.text();
+        console.error("Erro ao atualizar token:", errorData);
+        throw new Error(`Erro ao atualizar token de acesso: ${refreshResponse.statusText}`);
+      }
+      
+      const refreshData = await refreshResponse.json();
+      
+      // Calcular nova data de expiração
+      const newExpiry = Math.floor(Date.now() / 1000) + refreshData.expires_in;
+      
+      // Atualizar o token de acesso no banco de dados
+      const updateResponse = await fetch(
+        `${supabaseUrl}/rest/v1/api_tokens?name=eq.google_ads_access_token`, {
+        method: "PATCH",
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({
+          value: refreshData.access_token
+        })
+      });
+      
+      if (!updateResponse.ok) {
+        throw new Error(`Erro ao atualizar token de acesso no banco de dados: ${updateResponse.statusText}`);
+      }
+      
+      // Atualizar a data de expiração no banco de dados
+      const expiryUpdateResponse = await fetch(
+        `${supabaseUrl}/rest/v1/api_tokens?name=eq.google_ads_token_expiry`, {
+        method: "PATCH",
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({
+          value: newExpiry.toString()
+        })
+      });
+      
+      if (!expiryUpdateResponse.ok) {
+        console.warn("Erro ao atualizar data de expiração:", expiryUpdateResponse.statusText);
+      }
+      
+      // Atualizar o token local
+      tokens.google_ads_access_token = refreshData.access_token;
+      console.log("Token atualizado com sucesso");
+    } else {
+      console.log("Token de acesso ainda é válido");
+    }
+    
+    return tokens.google_ads_access_token;
+  } catch (error) {
+    console.error("Erro no processo de verificação/atualização do token:", error);
+    throw error;
+  }
+}
+
 // Função para processar as revisões do Google Ads
 async function processGoogleReview(req: Request) {
   try {
@@ -106,9 +223,12 @@ async function processGoogleReview(req: Request) {
     const existingReviews = await existingReviewResponse.json();
     let reviewId;
     
+    // Assegurar que temos um token de acesso válido
+    const accessToken = await ensureValidToken(supabaseUrl, supabaseKey);
+    
     // Obter tokens da API do Google Ads
     const googleTokensResponse = await fetch(
-      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_access_token,google_ads_refresh_token,google_ads_client_id,google_ads_client_secret,google_ads_developer_token,google_ads_manager_id)&select=name,value`, {
+      `${supabaseUrl}/rest/v1/api_tokens?name=in.(google_ads_developer_token,google_ads_manager_id)&select=name,value`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -121,7 +241,9 @@ async function processGoogleReview(req: Request) {
     }
     
     const googleTokensData = await googleTokensResponse.json();
-    const googleTokens: Record<string, string> = {};
+    const googleTokens: Record<string, string> = {
+      google_ads_access_token: accessToken
+    };
     
     googleTokensData.forEach((token: { name: string; value: string }) => {
       googleTokens[token.name] = token.value;
@@ -131,10 +253,11 @@ async function processGoogleReview(req: Request) {
       throw new Error("Tokens do Google Ads não configurados corretamente");
     }
     
-    // Configurar valores padrão caso não consigamos obter dados reais da API
+    // Configurar valores para armazenar os dados da API
     let totalSpent = 0;
     let lastFiveDaysSpent = 0;
     let currentDailyBudget = 0;
+    let hasData = false;
     
     try {
       // Configurar headers para a API do Google Ads
@@ -191,17 +314,19 @@ async function processGoogleReview(req: Request) {
       
       if (!response.ok) {
         const errorData = await response.json();
+        const errorMessage = errorData?.error?.message || response.statusText;
         console.error("Erro na API do Google Ads:", errorData);
-        throw new Error(`Erro na API do Google Ads: ${response.statusText}`);
+        throw new Error(`Erro na API do Google Ads: ${errorMessage}`);
       }
       
       const data = await response.json();
       
       // Variáveis para rastrear gastos por dia
-      let dailySpends = {};
+      let dailySpends: Record<string, number> = {};
       
       // Calcular o gasto total e rastrear gastos por dia
       if (data && data.results && data.results.length > 0) {
+        hasData = true;
         console.log(`Encontrados ${data.results.length} resultados de gastos para a conta ${accountId}`);
         
         // Processar resultados para calcular gastos
@@ -292,19 +417,24 @@ async function processGoogleReview(req: Request) {
           console.log("Nenhuma campanha ativa encontrada");
         }
       } else {
-        console.error("Erro ao obter orçamentos das campanhas:", await campaignsResponse.text());
+        const errorText = await campaignsResponse.text();
+        console.error("Erro ao obter orçamentos das campanhas:", errorText);
+        throw new Error(`Erro ao obter orçamentos das campanhas: ${campaignsResponse.statusText}`);
       }
       
-    } catch (apiError) {
+    } catch (apiError: any) {
       console.error("Erro ao acessar API do Google Ads:", apiError);
       
-      // Em caso de erro na API, usaremos valores simulados (apenas como fallback)
-      totalSpent = budgetAmount * 0.62; // 62% do orçamento gasto (simulação para fallback)
-      lastFiveDaysSpent = totalSpent / 15; // simulação simplificada para fallback
-      
-      // Logs para debug
-      console.log("Usando valores simulados devido a erro na API:");
-      console.log(`Orçamento total: ${budgetAmount}, Gasto total simulado: ${totalSpent}`);
+      // Em caso de erro na API, retornar erro sem usar valores simulados
+      return { 
+        success: false, 
+        error: `Erro ao obter dados do Google Ads: ${apiError.message}`,
+        errorDetails: apiError
+      };
+    }
+    
+    if (!hasData) {
+      console.warn("Nenhum dado foi retornado pela API. Sem informações para processar.");
     }
     
     // Calcular orçamento diário ideal baseado em dados reais
@@ -342,6 +472,7 @@ async function processGoogleReview(req: Request) {
       google_account_id: accountId,
       google_account_name: accountName,
       account_display_name: accountName,
+      has_real_data: hasData,  // Novo campo para indicar dados reais vs. indisponíveis
       ...customBudgetInfo,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -355,7 +486,8 @@ async function processGoogleReview(req: Request) {
       orçamentoRestante: remainingBudget,
       diasRestantes: remainingDays,
       orçamentoDiárioIdeal: roundedIdealDailyBudget,
-      usandoOrçamentoPersonalizado: customBudget ? true : false
+      usandoOrçamentoPersonalizado: customBudget ? true : false,
+      dadosReais: hasData
     });
     
     // Atualizar ou criar revisão
@@ -376,6 +508,7 @@ async function processGoogleReview(req: Request) {
           google_daily_budget_current: currentDailyBudget,
           google_total_spent: totalSpent,
           google_last_five_days_spent: lastFiveDaysSpent,
+          has_real_data: hasData,
           ...customBudgetInfo,
           updated_at: new Date().toISOString()
         })
@@ -420,6 +553,7 @@ async function processGoogleReview(req: Request) {
       currentDailyBudget,
       totalSpent,
       lastFiveDaysSpent,
+      has_real_data: hasData,
       ...customBudgetInfo
     };
   } catch (error) {

@@ -1,14 +1,21 @@
 
-import { Building2, BadgeDollarSign, AlertTriangle } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDateBr } from "@/utils/dateFormatter";
+import { Info, AlertTriangle } from "lucide-react";
+import { 
+  TooltipProvider, 
+  Tooltip, 
+  TooltipTrigger, 
+  TooltipContent 
+} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 interface CardHeaderProps {
   clientName: string;
   accountName: string;
   isUsingCustomBudget: boolean;
   needsAdjustment: boolean;
-  customBudget: any | null;
+  customBudget: any;
+  hasRealData?: boolean;
+  platform?: "meta" | "google";
 }
 
 export function CardHeader({ 
@@ -16,53 +23,59 @@ export function CardHeader({
   accountName, 
   isUsingCustomBudget, 
   needsAdjustment,
-  customBudget
+  customBudget,
+  hasRealData = true,
+  platform = "meta"
 }: CardHeaderProps) {
   return (
-    <div className="flex justify-between items-start">
-      <div className="space-y-1">
-        <h3 className="font-medium line-clamp-1 flex items-center gap-1">
-          <Building2 className="h-4 w-4 text-[#ff6e00]" />
-          {clientName}
-        </h3>
-        <p className="text-sm text-gray-500">{accountName}</p>
+    <div className="flex items-start justify-between">
+      <div>
+        <h3 className="font-semibold text-base line-clamp-1">{clientName}</h3>
+        <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-2">
+          <span className="line-clamp-1">{accountName}</span>
+          
+          {platform === "google" && !hasRealData && (
+            <Badge variant="outline" className="text-yellow-600 bg-yellow-50 border-yellow-200">
+              <AlertTriangle size={12} className="mr-1" />
+              Sem dados da API
+            </Badge>
+          )}
+          
+          {isUsingCustomBudget && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge variant="outline" className="text-[#ff6e00] bg-orange-50 border-orange-200">
+                    Orç. Personalizado
+                  </Badge>
+                </TooltipTrigger>
+                {customBudget && (
+                  <TooltipContent>
+                    <p>Orçamento personalizado:</p>
+                    <p>{Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(customBudget.budget_amount)}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        {isUsingCustomBudget && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <BadgeDollarSign className="h-5 w-5 text-[#ff6e00]" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="p-2">
-                  <p className="font-medium">Orçamento Personalizado Ativo</p>
-                  <p className="text-sm">
-                    Período: {formatDateBr(customBudget?.start_date)} a {formatDateBr(customBudget?.end_date)}
-                  </p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        
-        {needsAdjustment && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="p-2">Ajuste de orçamento recomendado</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </div>
+      
+      {needsAdjustment && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <Badge className="bg-amber-100 hover:bg-amber-200 text-amber-800 border-0">
+                <Info size={14} className="mr-1" />
+                Ajuste necessário
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>O orçamento diário precisa ser ajustado</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
     </div>
   );
 }

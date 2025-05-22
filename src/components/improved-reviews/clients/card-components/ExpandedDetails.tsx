@@ -1,6 +1,6 @@
 
 import { formatCurrency, formatPercentage } from "@/utils/formatters";
-import { AlertCircle, Calendar } from "lucide-react";
+import { AlertCircle, Calendar, AlertTriangle } from "lucide-react";
 import { 
   TooltipProvider, 
   Tooltip, 
@@ -10,6 +10,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { BudgetRecommendation } from "@/components/daily-reviews/dashboard/BudgetRecommendation";
 import { getRemainingDaysInMonth } from "@/components/daily-reviews/summary/utils";
+import { Badge } from "@/components/ui/badge";
 
 export interface ExpandedDetailsProps {
   client: any;
@@ -38,6 +39,7 @@ export function ExpandedDetails({
   const remainingDays = getRemainingDaysInMonth();
   
   const hasReview = !!reviewData;
+  const hasRealData = platform === "google" ? (reviewData?.has_real_data !== false) : true;
   const needsAdjustment = budgetCalc.needsBudgetAdjustment || false;
   const needsAdjustmentAverage = platform === "google" ? (budgetCalc.needsAdjustmentBasedOnAverage || false) : false;
   const showRecommendation = needsAdjustment;
@@ -48,7 +50,15 @@ export function ExpandedDetails({
   return (
     <div className="mt-4 space-y-4">
       <div>
-        <h4 className="text-sm font-medium mb-2">Detalhes de Orçamento</h4>
+        <h4 className="text-sm font-medium mb-2 flex items-center justify-between">
+          Detalhes de Orçamento
+          {platform === "google" && !hasRealData && (
+            <Badge variant="outline" className="text-yellow-600 bg-yellow-50 border-yellow-200">
+              <AlertTriangle size={12} className="mr-1" />
+              Sem dados da API
+            </Badge>
+          )}
+        </h4>
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-gray-50 p-3 rounded">
             <div className="text-xs text-gray-500">Orçamento Mensal</div>
@@ -70,17 +80,27 @@ export function ExpandedDetails({
           <div className="bg-gray-50 p-3 rounded">
             <div className="text-xs text-gray-500">Gasto Total</div>
             <div className="font-medium">
-              {formatCurrency(spentAmount)}
-              <span className="text-xs ml-1 text-gray-500">
-                ({formatPercentage(spentPercentage)})
-              </span>
+              {hasReview && hasRealData ? (
+                <>
+                  {formatCurrency(spentAmount)}
+                  <span className="text-xs ml-1 text-gray-500">
+                    ({formatPercentage(spentPercentage)})
+                  </span>
+                </>
+              ) : (
+                <span className="text-gray-400">Não disponível</span>
+              )}
             </div>
           </div>
           
           <div className="bg-gray-50 p-3 rounded">
             <div className="text-xs text-gray-500">Orçamento Restante</div>
             <div className="font-medium">
-              {formatCurrency(Math.max(budgetAmount - spentAmount, 0))}
+              {hasReview && hasRealData ? (
+                formatCurrency(Math.max(budgetAmount - spentAmount, 0))
+              ) : (
+                <span className="text-gray-400">Não disponível</span>
+              )}
             </div>
           </div>
           
@@ -109,7 +129,9 @@ export function ExpandedDetails({
           <div className="bg-gray-50 p-3 rounded">
             <div className="text-xs text-gray-500">Orçamento Diário Atual</div>
             <div className="font-medium">
-              {hasReview ? formatCurrency(currentDailyBudget) : "-"}
+              {hasReview && hasRealData ? formatCurrency(currentDailyBudget) : (
+                <span className="text-gray-400">Não disponível</span>
+              )}
             </div>
           </div>
           
@@ -124,7 +146,11 @@ export function ExpandedDetails({
             <div className="bg-gray-50 p-3 rounded col-span-2">
               <div className="text-xs text-gray-500">Média de Gasto (últimos 5 dias)</div>
               <div className="font-medium">
-                {formatCurrency(lastFiveDaysAvg)}
+                {hasReview && hasRealData && lastFiveDaysAvg > 0 ? (
+                  formatCurrency(lastFiveDaysAvg)
+                ) : (
+                  <span className="text-gray-400">Não disponível</span>
+                )}
               </div>
             </div>
           )}

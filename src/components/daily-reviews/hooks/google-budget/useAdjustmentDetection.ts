@@ -8,11 +8,6 @@ interface AdjustmentDetectionProps {
   budgetDifferenceBasedOnAverage: number;
 }
 
-interface AdjustmentResult {
-  needsBudgetAdjustment: boolean;
-  needsAdjustmentBasedOnAverage: boolean;
-}
-
 export const useAdjustmentDetection = ({
   hasReview,
   currentDailyBudget,
@@ -20,18 +15,22 @@ export const useAdjustmentDetection = ({
   lastFiveDaysSpent,
   budgetDifference,
   budgetDifferenceBasedOnAverage
-}: AdjustmentDetectionProps): AdjustmentResult => {
-  // Verificar se é necessário ajuste do orçamento diário atual
-  const needsBudgetAdjustment = hasReview && 
-                              currentDailyBudget > 0 && 
-                              Math.abs(budgetDifference) >= 5 && 
-                              (Math.abs(budgetDifference) / currentDailyBudget >= 0.05);
+}: AdjustmentDetectionProps) => {
+  // Para detecção baseada no orçamento atual
+  const needsBudgetAdjustment = hasReview && currentDailyBudget > 0 && (
+    // Verificar se a diferença absoluta é significativa (>= 5)
+    (Math.abs(budgetDifference) >= 5) && 
+    // E se a diferença percentual é significativa (>= 5%)
+    (Math.abs(budgetDifference) / currentDailyBudget >= 0.05)
+  );
   
-  // Verificar se é necessário ajuste baseado na média dos últimos 5 dias
-  const needsAdjustmentBasedOnAverage = hasReview && 
-                                     lastFiveDaysSpent > 0 && 
-                                     Math.abs(budgetDifferenceBasedOnAverage) >= 5 && 
-                                     (Math.abs(budgetDifferenceBasedOnAverage) / lastFiveDaysSpent >= 0.05);
+  // Para detecção baseada na média dos últimos 5 dias (apenas para Google)
+  const needsAdjustmentBasedOnAverage = hasReview && lastFiveDaysSpent > 0 && (
+    // Verificar se a diferença absoluta é significativa (>= 5)
+    (Math.abs(budgetDifferenceBasedOnAverage) >= 5) && 
+    // E se a diferença percentual é significativa (>= 5%)
+    (Math.abs(budgetDifferenceBasedOnAverage) / lastFiveDaysSpent >= 0.05)
+  );
   
   return {
     needsBudgetAdjustment,

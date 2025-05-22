@@ -1,30 +1,34 @@
 
-import { corsHeaders } from "./cors.ts";
-
-// Função para formatar respostas de sucesso
-export function formatResponse(data: any): Response {
-  return new Response(JSON.stringify(data), {
-    status: 200,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json',
+// Formatação de respostas
+export function formatResponse(data: any) {
+  return new Response(
+    JSON.stringify(data),
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+      },
+      status: 200,
     },
-  });
+  );
 }
 
-// Função para formatar respostas de erro
-export function formatErrorResponse(message: string, status: number = 400): Response {
+export function formatErrorResponse(message: string, status: number = 400) {
   return new Response(
-    JSON.stringify({ 
-      success: false, 
-      error: message 
+    JSON.stringify({
+      success: false,
+      error: message
     }),
     {
-      status,
       headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
       },
-    }
+      status,
+    },
   );
 }

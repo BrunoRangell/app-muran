@@ -35,6 +35,15 @@ export const CompactBudgetRecommendation = ({
 }: CompactBudgetRecommendationProps) => {
   // Não exibe nada se não tiver revisão ou estiver inativo
   if (!hasReview || inactive) {
+    if (platform === "google" && inactive) {
+      return (
+        <div className="p-3 flex items-center gap-2 border-l border-yellow-300 bg-yellow-50">
+          <div className="text-yellow-600 text-sm">
+            Dados da API indisponíveis - clique em "Buscar dados"
+          </div>
+        </div>
+      );
+    }
     return null;
   }
 
@@ -99,4 +108,4 @@ export const CompactBudgetRecommendation = ({
       )}
     </div>
   );
-};
+}

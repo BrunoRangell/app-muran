@@ -1,41 +1,57 @@
 
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
-interface CardFooterProps {
-  expanded: boolean; 
+interface CardFooterActionsProps {
+  expanded: boolean;
   setExpanded: (expanded: boolean) => void;
   isProcessing: boolean;
   onReview: () => void;
+  needsRefresh?: boolean;
 }
 
-export function CardFooterActions({
-  expanded,
-  setExpanded,
-  isProcessing,
-  onReview
-}: CardFooterProps) {
+export function CardFooterActions({ 
+  expanded, 
+  setExpanded, 
+  isProcessing, 
+  onReview,
+  needsRefresh = false
+}: CardFooterActionsProps) {
   return (
-    <div className="p-4 pt-0 flex justify-between">
-      <Button 
-        variant="ghost" 
-        size="sm"
-        onClick={() => setExpanded(!expanded)}
-        className="text-xs"
-      >
-        {expanded ? "Menos detalhes" : "Mais detalhes"}
-      </Button>
-      
-      <Button 
-        variant="default"
-        size="sm"
-        className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
-        onClick={onReview}
-        disabled={isProcessing}
-      >
-        {isProcessing ? "Processando..." : "Revisar"}
-        <ChevronRight className="ml-2 h-4 w-4" />
-      </Button>
+    <div className="w-full">
+      <Separator />
+      <div className="flex justify-between p-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded(!expanded)}
+          className="text-gray-500"
+        >
+          {expanded ? (
+            <>
+              <ChevronUp className="h-4 w-4 mr-1" />
+              Ver menos
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-4 w-4 mr-1" />
+              Ver mais
+            </>
+          )}
+        </Button>
+        
+        <Button
+          variant={needsRefresh ? "default" : "outline"}
+          size="sm"
+          onClick={onReview}
+          disabled={isProcessing}
+          className={needsRefresh ? "bg-[#ff6e00] hover:bg-[#e05d00]" : ""}
+        >
+          <RefreshCw className={`h-4 w-4 mr-1 ${isProcessing ? 'animate-spin' : ''}`} />
+          {needsRefresh ? "Buscar dados" : "Revisar"}
+        </Button>
+      </div>
     </div>
   );
 }
