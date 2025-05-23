@@ -7,7 +7,11 @@ import { useGoogleAdsData } from "../hooks/useGoogleAdsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
-import { AlertTriangle } from "lucide-react";
+import { useTokenVerification } from "../hooks/useTokenVerification";
+import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
 
 interface GoogleAdsTabProps {
   onRefreshCompleted?: () => void;
@@ -26,6 +30,10 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
       if (onRefreshCompleted) onRefreshCompleted();
     }
   });
+
+  // Uso do hook de verificação de token
+  const { verifyGoogleAdsToken, isVerifying, tokenStatus } = useTokenVerification();
+  const { toast } = useToast();
 
   // Handle search query changes
   const handleSearchChange = (query: string) => {
@@ -57,6 +65,26 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     }
   };
 
+  // Verificar token do Google Ads
+  const handleVerifyToken = async () => {
+    const isValid = await verifyGoogleAdsToken();
+    if (isValid) {
+      toast({
+        title: "Token do Google Ads válido",
+        description: "O token está funcionando corretamente.",
+        variant: "default",
+      });
+      // Recarregar dados após confirmar que o token é válido
+      refreshData();
+    } else {
+      toast({
+        title: "Token do Google Ads inválido",
+        description: tokenStatus.error || "Erro ao verificar o token.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return <ImprovedLoadingState />;
   }
@@ -73,6 +101,36 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
 
   return (
     <div className="space-y-6">
+      {/* Status do token */}
+      {tokenStatus.isValid !== null && (
+        <Alert variant={tokenStatus.isValid ? "default" : "destructive"}>
+          {tokenStatus.isValid ? (
+            <CheckCircle className="h-4 w-4" />
+          ) : (
+            <XCircle className="h-4 w-4" />
+          )}
+          <AlertTitle>
+            {tokenStatus.isValid ? "Token do Google Ads válido" : "Token do Google Ads inválido"}
+          </AlertTitle>
+          <AlertDescription>
+            {tokenStatus.isValid
+              ? "O token está funcionando corretamente."
+              : tokenStatus.error || "Erro ao verificar o token."}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Botão para verificar token */}
+      <div className="flex justify-end">
+        <Button 
+          onClick={handleVerifyToken} 
+          disabled={isVerifying}
+          className="bg-[#321e32] hover:bg-[#4d2e4d] text-white"
+        >
+          {isVerifying ? "Verificando..." : "Verificar Token do Google Ads"}
+        </Button>
+      </div>
+
       <MetricsPanel 
         metrics={metrics} 
         onBatchReview={handleBatchReview}

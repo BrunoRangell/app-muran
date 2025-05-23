@@ -1,27 +1,35 @@
 
-# Este é um arquivo de configuração para a integração Supabase com Vercel.
 project_id = "socrnutfpqtcjmetskta"
 
 [api]
 enabled = true
 port = 54321
-extra_search_path = ["extensions"]
-max_rows = 1000
-
-[auth]
-enabled = true
-port = 54323
-
-[storage]
-enabled = true
+schemas = ["public", "storage", "graphql_public"]
 
 [db]
 port = 54322
 shadow_port = 54320
 major_version = 15
 
+[realtime]
+enabled = false
+
+[storage]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[auth]
+enabled = true
+
+[functions.daily-google-review]
+verify_jwt = true
+
 [functions.daily-meta-review]
 verify_jwt = true
 
-[functions.daily-google-review]
+[functions.google-ads-token-check]
 verify_jwt = true
