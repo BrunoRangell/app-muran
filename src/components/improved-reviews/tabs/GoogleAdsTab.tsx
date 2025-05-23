@@ -18,7 +18,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
-  const { reviewAllClients, isProcessing } = useBatchOperations({
+  const { reviewAllClients, isReviewingBatch } = useBatchOperations({
     platform: "google",
     onComplete: () => {
       console.log("Revisão em lote do Google Ads concluída. Atualizando dados...");
@@ -76,7 +76,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
       <MetricsPanel 
         metrics={metrics} 
         onBatchReview={handleBatchReview}
-        isProcessing={isProcessing}
+        isProcessing={isReviewingBatch}
       />
       
       <FilterBar 
@@ -88,7 +88,6 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
         onFilterChange={handleFilterChange}
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
-        platform="google"
       />
       
       <ClientsList 
