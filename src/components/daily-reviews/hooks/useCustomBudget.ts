@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { formatDateBr } from '@/utils/dateFormatter';
 
 export const useCustomBudget = (clientId: string) => {
   const [isUsingCustomBudgetInReview, setIsUsingCustomBudgetInReview] = useState(false);
@@ -57,15 +56,8 @@ export const useCustomBudget = (clientId: string) => {
     checkCurrentReview();
   }, [customBudget, clientId]);
   
-  // Formatar as datas do orçamento personalizado para exibição
-  const formattedCustomBudget = customBudget ? {
-    ...customBudget,
-    formatted_start_date: formatDateBr(customBudget.start_date),
-    formatted_end_date: formatDateBr(customBudget.end_date)
-  } : null;
-  
   return {
-    customBudget: formattedCustomBudget,
+    customBudget,
     isUsingCustomBudgetInReview,
     isLoadingCustomBudget,
     customBudgetError

@@ -1,6 +1,4 @@
 
-import { formatDateBr } from "./dateFormatter";
-
 // Função para converter strings numéricas com formatos como "1.000,00" para number
 export function parseCurrencyToNumber(value: string): number {
   // Remover símbolos de moeda, espaços, pontos e converter vírgula para ponto
@@ -26,7 +24,13 @@ export function formatCurrency(value: number | string): string {
 export function formatDate(date: Date | string | null): string {
   if (!date) return '';
   
-  return formatDateBr(date);
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  return dateObj.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
 }
 
 // Função para formatar porcentagem

@@ -17,7 +17,6 @@ import { CustomBudgetTable } from "./custom-budget/CustomBudgetTable";
 import { CustomBudgetForm } from "./custom-budget/CustomBudgetForm";
 import { useCustomBudgets, CustomBudgetFormData } from "./hooks/useCustomBudgets";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatDateBr } from "@/utils/dateFormatter";
 
 export const CustomBudgetManager = () => {
   const [selectedTab, setSelectedTab] = useState<string>("active");
@@ -34,6 +33,7 @@ export const CustomBudgetManager = () => {
     updateCustomBudgetMutation,
     deleteCustomBudgetMutation,
     toggleBudgetStatusMutation,
+    formatDate,
     formatBudget,
     isCurrentlyActive,
     isFutureBudget
@@ -65,8 +65,18 @@ export const CustomBudgetManager = () => {
       budgetAmount: budget.budget_amount,
       startDate: budget.start_date,
       endDate: budget.end_date,
-      description: budget.description || "",
-      platform: budget.platform || "meta"
+      description: budget.description || ""
+    };
+  };
+
+  // Função para converter do formato do form para o formato do banco de dados
+  const convertFormDataToBudget = (formData: CustomBudgetFormData) => {
+    return {
+      client_id: formData.clientId,
+      budget_amount: formData.budgetAmount,
+      start_date: formData.startDate,
+      end_date: formData.endDate,
+      description: formData.description || null
     };
   };
 
@@ -74,7 +84,7 @@ export const CustomBudgetManager = () => {
     <Card className="w-full shadow-md">
       <CardHeader className="pb-3">
         <CardTitle className="text-xl text-muran-dark">
-          Orçamentos Personalizados
+          Orçamentos Personalizados Meta Ads
         </CardTitle>
         <CardDescription className="mt-1">
           Configure orçamentos com períodos personalizados para cada cliente
@@ -95,7 +105,7 @@ export const CustomBudgetManager = () => {
               isLoading={isLoading}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
-              formatDate={formatDateBr}
+              formatDate={formatDate}
               formatBudget={formatBudget}
               isCurrentlyActive={isCurrentlyActive}
               isFutureBudget={isFutureBudget}
@@ -103,9 +113,9 @@ export const CustomBudgetManager = () => {
                 setSelectedBudget(budget);
                 setSelectedTab("form");
               }}
-              onDelete={(budgetInfo) => deleteCustomBudgetMutation.mutate(budgetInfo)}
-              onToggleStatus={(id, isActive, platform) => 
-                toggleBudgetStatusMutation.mutate({ id, isActive, platform })
+              onDelete={(id) => deleteCustomBudgetMutation.mutate(id)}
+              onToggleStatus={(id, isActive) => 
+                toggleBudgetStatusMutation.mutate({ id, isActive })
               }
             />
           </TabsContent>
