@@ -1,65 +1,28 @@
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { CalendarIcon, Loader } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
-import { CustomBudgetFormData } from "../hooks/useCustomBudgets";
+import { useToast } from "@/hooks/use-toast";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-// Schema para validação do formulário
-const customBudgetSchema = z.object({
-  client_id: z.string({
-    required_error: "Selecione um cliente",
-  }),
-  budget_amount: z.number({
-    required_error: "Informe o valor do orçamento",
-  }).positive("O valor deve ser maior que zero"),
-  start_date: z.date({
-    required_error: "Informe a data de início",
-  }),
-  end_date: z.date({
-    required_error: "Informe a data de término",
-  }).refine(
-    (date) => date instanceof Date && !isNaN(date.getTime()),
-    { message: "Data inválida" }
-  ),
-  description: z.string().nullable().optional(),
-}).refine(
-  (data) => data.end_date >= data.start_date,
-  {
-    message: "A data de término deve ser igual ou posterior à data de início",
-    path: ["end_date"],
-  }
-);
+export interface CustomBudgetFormData {
+  clientId: string;
+  budgetAmount: number;
+  startDate: string;
+  endDate: string;
+  description?: string;
+  platform?: string;
+}
 
 interface CustomBudgetFormProps {
   selectedBudget: CustomBudgetFormData | null;
@@ -68,321 +31,333 @@ interface CustomBudgetFormProps {
   onCancel: () => void;
 }
 
-type FormData = z.infer<typeof customBudgetSchema>;
-
-export const CustomBudgetForm = ({
+export function CustomBudgetForm({ 
   selectedBudget,
   isSubmitting,
   onSubmit,
-  onCancel,
-}: CustomBudgetFormProps) => {
-  const [formattedBudget, setFormattedBudget] = useState("");
+  onCancel
+}: CustomBudgetFormProps) {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [clientId, setClientId] = useState<string>(selectedBudget?.clientId || "");
+  const [budgetAmount, setBudgetAmount] = useState<string>(selectedBudget?.budgetAmount ? String(selectedBudget.budgetAmount) : "");
+  const [startDate, setStartDate] = useState<Date | undefined>(selectedBudget?.startDate ? new Date(selectedBudget.startDate) : undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(selectedBudget?.endDate ? new Date(selectedBudget.endDate) : undefined);
+  const [description, setDescription] = useState<string>(selectedBudget?.description || "");
+  const [platform, setPlatform] = useState<string>(selectedBudget?.platform || "meta");
 
-  // Buscar clientes ativos
-  const { data: clients, isLoading: isLoadingClients } = useQuery({
-    queryKey: ["active-clients-for-budget"],
+  // Buscar clientes para o dropdown
+  const { data: clients } = useQuery({
+    queryKey: ["clients-for-custom-budget"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: clients, error } = await supabase
         .from("clients")
         .select("id, company_name")
         .eq("status", "active")
         .order("company_name");
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        toast({
+          title: "Erro ao buscar clientes",
+          description: error.message,
+          variant: "destructive",
+        });
+        return [];
+      }
+
+      return clients || [];
     },
   });
 
-  // Configurar o formulário com react-hook-form e zod
-  const form = useForm<FormData>({
-    resolver: zodResolver(customBudgetSchema),
-    defaultValues: {
-      client_id: "",
-      budget_amount: 0,
-      start_date: new Date(),
-      end_date: new Date(),
-      description: "",
-    },
-  });
+  // Formatar valor do orçamento para exibição
+  const formatCurrencyInput = (value: string) => {
+    // Remover caracteres não numéricos
+    const numericValue = value.replace(/[^\d]/g, "");
+    
+    // Converter para centavos e depois para reais com vírgula
+    const floatValue = parseInt(numericValue) / 100;
+    
+    // Formatar como moeda brasileira
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+    }).format(floatValue);
+  };
 
-  // Preencher o formulário quando um orçamento for selecionado para edição
+  // Converter o valor formatado em número
+  const parseCurrencyValue = (formattedValue: string): number => {
+    const numericValue = formattedValue.replace(/[^\d]/g, "");
+    return parseInt(numericValue) / 100;
+  };
+
+  // Lidar com mudança no valor do orçamento
+  const handleBudgetValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/[^\d]/g, "");
+    
+    if (rawValue === "") {
+      setBudgetAmount("");
+      return;
+    }
+    
+    const numericValue = parseInt(rawValue);
+    
+    if (isNaN(numericValue)) {
+      setBudgetAmount("");
+      return;
+    }
+    
+    setBudgetAmount(String(numericValue));
+  };
+
+  // Formatar o valor do orçamento quando o campo perde o foco
+  const handleBudgetValueBlur = () => {
+    if (budgetAmount === "") {
+      return;
+    }
+    
+    // Garantir que o valor tenha pelo menos 2 casas decimais (centavos)
+    const paddedValue = budgetAmount.padStart(3, "0");
+    
+    // Converter para centavos e depois para reais
+    const floatValue = parseInt(paddedValue) / 100;
+    
+    // Atualizar o estado com o valor formatado
+    setBudgetAmount(String(floatValue * 100));
+  };
+
+  // Validar o formulário antes de enviar
+  const validateForm = (): boolean => {
+    if (!clientId) {
+      toast({
+        title: "Cliente obrigatório",
+        description: "Selecione um cliente para criar o orçamento personalizado.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!budgetAmount || parseFloat(budgetAmount) <= 0) {
+      toast({
+        title: "Valor do orçamento inválido",
+        description: "Informe um valor válido para o orçamento.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!startDate) {
+      toast({
+        title: "Data de início obrigatória",
+        description: "Selecione uma data de início para o orçamento personalizado.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!endDate) {
+      toast({
+        title: "Data de término obrigatória",
+        description: "Selecione uma data de término para o orçamento personalizado.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (startDate > endDate) {
+      toast({
+        title: "Datas inválidas",
+        description: "A data de início não pode ser posterior à data de término.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  // Enviar o formulário
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    // Converter datas para formato ISO
+    const formattedStartDate = startDate!.toISOString().split("T")[0];
+    const formattedEndDate = endDate!.toISOString().split("T")[0];
+
+    // Preparar dados para envio
+    const formData: CustomBudgetFormData = {
+      clientId,
+      budgetAmount: parseFloat(budgetAmount) / 100,
+      startDate: formattedStartDate,
+      endDate: formattedEndDate,
+      description,
+      platform
+    };
+
+    // Chamar função de envio
+    onSubmit(formData);
+  };
+
+  // Efeitos para atualizar o formulário quando o orçamento selecionado muda
   useEffect(() => {
     if (selectedBudget) {
-      // Corrigindo o problema da data: converter as strings para objetos Date
-      // sem alterar o fuso horário
-      const startDate = new Date(selectedBudget.startDate + 'T12:00:00');
-      const endDate = new Date(selectedBudget.endDate + 'T12:00:00');
-      
-      console.log('Datas originais:', selectedBudget.startDate, selectedBudget.endDate);
-      console.log('Datas corrigidas para form:', startDate, endDate);
-      
-      form.reset({
-        client_id: selectedBudget.clientId,
-        budget_amount: selectedBudget.budgetAmount,
-        start_date: startDate,
-        end_date: endDate,
-        description: selectedBudget.description,
-      });
-      setFormattedBudget(formatCurrency(selectedBudget.budgetAmount));
-    } else {
-      form.reset({
-        client_id: "",
-        budget_amount: 0,
-        start_date: new Date(),
-        end_date: new Date(),
-        description: "",
-      });
-      setFormattedBudget("");
+      setClientId(selectedBudget.clientId || "");
+      setBudgetAmount(selectedBudget.budgetAmount ? String(selectedBudget.budgetAmount * 100) : "");
+      setStartDate(selectedBudget.startDate ? new Date(selectedBudget.startDate) : undefined);
+      setEndDate(selectedBudget.endDate ? new Date(selectedBudget.endDate) : undefined);
+      setDescription(selectedBudget.description || "");
+      setPlatform(selectedBudget.platform || "meta");
     }
-  }, [selectedBudget, form]);
-
-  // Manipulador para o campo de orçamento formatado como moeda
-  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setFormattedBudget(value);
-    
-    // Atualizar o valor no formulário apenas se for um número válido
-    const numericValue = parseCurrencyToNumber(value);
-    if (!isNaN(numericValue)) {
-      form.setValue("budget_amount", numericValue);
-    }
-  };
-
-  const handleBudgetBlur = () => {
-    const numericValue = parseCurrencyToNumber(formattedBudget);
-    if (!isNaN(numericValue)) {
-      setFormattedBudget(formatCurrency(numericValue));
-    }
-  };
-
-  // Calcular o número de dias no período e o valor diário
-  const startDate = form.watch("start_date");
-  const endDate = form.watch("end_date");
-  const budgetAmount = form.watch("budget_amount");
-
-  const getDaysInPeriod = () => {
-    if (startDate && endDate) {
-      // +1 para incluir o dia inicial e final na contagem
-      return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    }
-    return 0;
-  };
-
-  const getDailyBudget = () => {
-    const days = getDaysInPeriod();
-    if (days > 0 && budgetAmount) {
-      return budgetAmount / days;
-    }
-    return 0;
-  };
-
-  // Manipulador de submissão do formulário
-  const handleFormSubmit = (data: FormData) => {
-    try {
-      // Garantir que as datas sejam formatadas no formato YYYY-MM-DD sem ajuste de fuso horário
-      const formatDateToYYYYMMDD = (date: Date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-
-      console.log('Dados do formulário antes de enviar:', data);
-
-      const formData: CustomBudgetFormData = {
-        clientId: data.client_id,
-        budgetAmount: data.budget_amount,
-        startDate: formatDateToYYYYMMDD(data.start_date),
-        endDate: formatDateToYYYYMMDD(data.end_date),
-        description: data.description || "",
-      };
-
-      console.log('Dados formatados para envio:', formData);
-      onSubmit(formData);
-    } catch (error) {
-      console.error('Erro ao processar formulário:', error);
-    }
-  };
-
-  // Exibir um indicador de carregamento enquanto os clientes estão sendo carregados
-  if (isLoadingClients) {
-    return (
-      <div className="flex justify-center items-center p-8">
-        <Loader className="animate-spin h-6 w-6 mr-2 text-muran-primary" />
-        <span>Carregando clientes...</span>
-      </div>
-    );
-  }
+  }, [selectedBudget]);
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="client_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cliente</FormLabel>
-                <Select
+    <Card className="w-full">
+      <CardContent className="pt-6">
+        <form className="space-y-4">
+          {/* Plataforma */}
+          <div className="space-y-1">
+            <Label htmlFor="platform">Plataforma</Label>
+            <RadioGroup
+              value={platform}
+              onValueChange={setPlatform}
+              className="flex flex-row space-x-4 mt-1"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="meta" id="platform-meta" />
+                <Label htmlFor="platform-meta">Meta Ads</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="google" id="platform-google" />
+                <Label htmlFor="platform-google">Google Ads</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          
+          {/* Cliente */}
+          <div className="space-y-1">
+            <Label htmlFor="client">Cliente</Label>
+            <select
+              id="client"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              disabled={isSubmitting || selectedBudget !== null}
+            >
+              <option value="">Selecione um cliente</option>
+              {clients?.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.company_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Valor do Orçamento */}
+          <div className="space-y-1">
+            <Label htmlFor="budgetAmount">Valor do Orçamento</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-500">R$</span>
+              <Input
+                id="budgetAmount"
+                value={
+                  budgetAmount
+                    ? new Intl.NumberFormat("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(parseFloat(budgetAmount) / 100)
+                    : ""
+                }
+                onChange={handleBudgetValueChange}
+                onBlur={handleBudgetValueBlur}
+                className="pl-8"
+                placeholder="0,00"
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          {/* Data de Início */}
+          <div className="space-y-1">
+            <Label htmlFor="startDate">Data de Início</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full justify-start text-left font-normal ${
+                    !startDate ? "text-gray-400" : ""
+                  }`}
                   disabled={isSubmitting}
-                  onValueChange={field.onChange}
-                  value={field.value}
                 >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um cliente" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {clients?.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.company_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? (
+                    format(startDate, "PPP", { locale: ptBR })
+                  ) : (
+                    <span>Selecione uma data</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
-          <FormField
-            control={form.control}
-            name="budget_amount"
-            render={() => (
-              <FormItem>
-                <FormLabel>Valor do Orçamento</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="R$ 0,00"
-                    value={formattedBudget}
-                    onChange={handleBudgetChange}
-                    onBlur={handleBudgetBlur}
-                    disabled={isSubmitting}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Data de Término */}
+          <div className="space-y-1">
+            <Label htmlFor="endDate">Data de Término</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full justify-start text-left font-normal ${
+                    !endDate ? "text-gray-400" : ""
+                  }`}
+                  disabled={isSubmitting}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? (
+                    format(endDate, "PPP", { locale: ptBR })
+                  ) : (
+                    <span>Selecione uma data</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  locale={ptBR}
+                  disabled={(date) =>
+                    startDate ? date < startDate : false
+                  }
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data de Início</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={`w-full pl-3 text-left font-normal ${
-                            !field.value ? "text-muted-foreground" : ""
-                          }`}
-                          disabled={isSubmitting}
-                        >
-                          {field.value ? (
-                            format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                          ) : (
-                            <span>Selecione uma data</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={isSubmitting}
-                        locale={ptBR}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="end_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data de Término</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={`w-full pl-3 text-left font-normal ${
-                            !field.value ? "text-muted-foreground" : ""
-                          }`}
-                          disabled={isSubmitting}
-                        >
-                          {field.value ? (
-                            format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                          ) : (
-                            <span>Selecione uma data</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={isSubmitting}
-                        locale={ptBR}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
+          {/* Descrição */}
+          <div className="space-y-1">
+            <Label htmlFor="description">Descrição (opcional)</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detalhes adicionais sobre o orçamento personalizado"
+              className="resize-none"
+              disabled={isSubmitting}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-md">
-            <div>
-              <span className="text-sm text-gray-500">Duração do período:</span>
-              <p className="font-medium">{getDaysInPeriod()} dias</p>
-            </div>
-            <div>
-              <span className="text-sm text-gray-500">Orçamento diário estimado:</span>
-              <p className="font-medium">{formatCurrency(getDailyBudget())}</p>
-            </div>
-          </div>
-
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descrição (opcional)</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Adicione informações ou observações sobre este orçamento"
-                    {...field}
-                    value={field.value || ""}
-                    disabled={isSubmitting}
-                    className="resize-none"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex justify-end gap-3 pt-2">
+          {/* Botões de Ação */}
+          <div className="flex justify-end gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
@@ -392,22 +367,25 @@ export const CustomBudgetForm = ({
               Cancelar
             </Button>
             <Button
-              type="submit"
-              className="bg-muran-primary hover:bg-muran-primary/90"
+              type="button"
+              onClick={handleSubmit}
               disabled={isSubmitting}
+              className="bg-muran-primary hover:bg-muran-primary/90"
             >
               {isSubmitting ? (
                 <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...
                 </>
+              ) : selectedBudget ? (
+                "Atualizar Orçamento"
               ) : (
-                selectedBudget ? "Atualizar Orçamento" : "Adicionar Orçamento"
+                "Criar Orçamento"
               )}
             </Button>
           </div>
         </form>
-      </Form>
-    </div>
+      </CardContent>
+    </Card>
   );
-};
+}

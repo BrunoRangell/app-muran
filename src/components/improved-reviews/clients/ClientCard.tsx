@@ -4,13 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, BadgeDollarSign, Building2, Calendar, ChevronRight, Info } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
+import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboard/card-components/CompactBudgetRecommendation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface ClientCardProps {
   client: any;
@@ -43,17 +42,6 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   
   // Dados do orçamento personalizado
   const customBudget = client.customBudget;
-  
-  // Formatação de data
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    try {
-      return format(new Date(dateString), 'dd/MM/yyyy', { locale: ptBR });
-    } catch (e) {
-      console.error("Erro ao formatar data:", e);
-      return dateString;
-    }
-  };
   
   const handleReviewClick = async () => {
     try {
@@ -95,7 +83,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
                     <div className="p-2">
                       <p className="font-medium">Orçamento Personalizado Ativo</p>
                       <p className="text-sm">
-                        Período: {formatDate(customBudget?.start_date)} a {formatDate(customBudget?.end_date)}
+                        Período: {formatDateBr(customBudget?.start_date)} a {formatDateBr(customBudget?.end_date)}
                       </p>
                     </div>
                   </TooltipContent>
@@ -205,7 +193,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
                     <span className="text-gray-500">Período</span>
                     <span className="font-medium flex items-center gap-1">
                       <Calendar className="h-3 w-3 text-gray-500" />
-                      {formatDate(customBudget.start_date)} a {formatDate(customBudget.end_date)}
+                      {formatDateBr(customBudget.start_date)} a {formatDateBr(customBudget.end_date)}
                     </span>
                   </div>
                   {originalBudgetAmount !== budgetAmount && (
