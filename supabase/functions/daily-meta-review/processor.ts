@@ -19,6 +19,12 @@ interface RequestBody {
   reviewDate?: string;
   metaAccountName?: string;
   metaBudgetAmount?: number;
+  // Dados reais da API Meta (quando disponíveis)
+  realApiData?: {
+    totalSpent: number;
+    dailyBudget: number;
+    lastFiveDaysSpent: number;
+  };
 }
 
 interface ReviewResult {
@@ -57,14 +63,14 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       metaAccountId, 
       reviewDate = new Date().toISOString().split("T")[0],
       metaAccountName,
-      metaBudgetAmount
+      metaBudgetAmount,
+      realApiData
     } = requestBody;
 
-    console.log(`Iniciando revisão para cliente ${clientId} com conta Meta ${metaAccountId || "padrão"}`);
+    console.log(`Iniciando revisão META para cliente ${clientId} com conta Meta ${metaAccountId || "padrão"}`);
 
     // Verificar se o clientId foi fornecido
-    const clientIdError = validateRequest(clientId);
-    if (clientIdError) {
+    if (!clientId) {
       return {
         success: false,
         reviewId: null,
@@ -111,10 +117,26 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     console.log(`Usando orçamento personalizado: ${usingCustomBudget}`);
     console.log(`Orçamento usado: ${budgetAmount} para conta ${accountName} (${accountId})`);
 
-    // Simular gasto total (em produção, isso seria calculado com base nos dados reais)
-    const totalSpent = budgetAmount * 0.65; // Simulação: 65% do orçamento mensal foi gasto
+    // NOVA LÓGICA: APENAS DADOS REAIS OU ZERADOS
+    let totalSpent = 0;
+    let currentDailyBudget = 0;
+    let lastFiveDaysSpent = 0;
 
-    // Calcular orçamento diário ideal
+    // Se temos dados reais da API Meta, usar eles
+    if (realApiData) {
+      console.log("Usando dados REAIS da API Meta:", realApiData);
+      totalSpent = realApiData.totalSpent || 0;
+      currentDailyBudget = realApiData.dailyBudget || 0;
+      lastFiveDaysSpent = realApiData.lastFiveDaysSpent || 0;
+    } else {
+      console.log("Nenhum dado real da API Meta disponível - usando valores zerados");
+      // Valores já estão zerados por padrão
+      totalSpent = 0;
+      currentDailyBudget = 0;
+      lastFiveDaysSpent = 0;
+    }
+
+    // Calcular orçamento diário ideal baseado nos dados reais ou zerados
     const roundedIdealDailyBudget = calculateIdealDailyBudget(budgetAmount, totalSpent);
     
     // Verificar se já existe uma revisão atual para este cliente e conta específica
@@ -122,10 +144,11 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     
     let reviewId;
     
-    // Preparar dados para a revisão
+    // Preparar dados para a revisão - APENAS DADOS REAIS OU ZERADOS
     const reviewData = {
-      meta_daily_budget_current: roundedIdealDailyBudget,
-      meta_total_spent: totalSpent,
+      meta_daily_budget_current: currentDailyBudget, // Dados reais ou zerado
+      meta_total_spent: totalSpent, // Dados reais ou zerado
+      meta_last_five_days_spent: lastFiveDaysSpent, // Dados reais ou zerado
       meta_account_id: accountId || null,
       client_account_id: accountId || null,
       meta_account_name: accountName,
@@ -137,6 +160,14 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       custom_budget_end_date: usingCustomBudget ? customBudget?.end_date : null
     };
     
+    console.log("Dados FINAIS para revisão META (apenas valores reais ou zerados):", {
+      orçamentoDiárioAtual: currentDailyBudget,
+      gastoTotal: totalSpent,
+      gastoMédiaCincoDias: lastFiveDaysSpent,
+      orçamentoDiárioIdeal: roundedIdealDailyBudget,
+      usandoOrçamentoPersonalizado: usingCustomBudget
+    });
+    
     if (existingReview) {
       console.log("Encontrada revisão existente:", existingReview);
       
@@ -144,13 +175,13 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       await updateExistingReview(supabase, existingReview.id, reviewData);
       
       reviewId = existingReview.id;
-      console.log(`Revisão existente atualizada: ${reviewId}`);
+      console.log(`Revisão existente atualizada com dados reais: ${reviewId}`);
     } else {
       console.log("Criando nova revisão");
       
       // Criar nova revisão
       reviewId = await createNewReview(supabase, clientId, reviewDate, reviewData);
-      console.log(`Nova revisão criada: ${reviewId}`);
+      console.log(`Nova revisão criada com dados reais: ${reviewId}`);
     }
 
     // Registrar na tabela client_current_reviews para referência rápida ao estado atual
@@ -168,7 +199,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       usingCustomBudget,
     };
   } catch (error) {
-    console.error("Erro na função Edge:", error.message);
+    console.error("Erro na função Edge META:", error.message);
     return {
       success: false,
       reviewId: null,
