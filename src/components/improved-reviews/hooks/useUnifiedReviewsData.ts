@@ -144,9 +144,7 @@ export function useUnifiedReviewsData() {
               budgetCalculation: budgetCalc,
               needsAdjustment: budgetCalc.needsBudgetAdjustment,
               customBudget: customBudget,
-              isUsingCustomBudget: isUsingCustomBudget,
-              // Adicionar média dos últimos 5 dias se disponível
-              lastFiveDaysAvg: review?.meta_last_five_days_spent || 0
+              isUsingCustomBudget: isUsingCustomBudget
             };
           });
         } else {
@@ -198,9 +196,7 @@ export function useUnifiedReviewsData() {
             budgetCalculation: budgetCalc,
             needsAdjustment: budgetCalc.needsBudgetAdjustment,
             customBudget: customBudget,
-            isUsingCustomBudget: isUsingCustomBudget,
-            // Adicionar média dos últimos 5 dias se disponível
-            lastFiveDaysAvg: review?.meta_last_five_days_spent || 0
+            isUsingCustomBudget: isUsingCustomBudget
           };
         }
       });

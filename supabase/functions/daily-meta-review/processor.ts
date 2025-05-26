@@ -23,7 +23,6 @@ interface RequestBody {
   realApiData?: {
     totalSpent: number;
     dailyBudget: number;
-    lastFiveDaysSpent: number;
   };
 }
 
@@ -120,20 +119,17 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     // NOVA LÓGICA: APENAS DADOS REAIS OU ZERADOS
     let totalSpent = 0;
     let currentDailyBudget = 0;
-    let lastFiveDaysSpent = 0;
 
     // Se temos dados reais da API Meta, usar eles
     if (realApiData) {
       console.log("Usando dados REAIS da API Meta:", realApiData);
       totalSpent = realApiData.totalSpent || 0;
       currentDailyBudget = realApiData.dailyBudget || 0;
-      lastFiveDaysSpent = realApiData.lastFiveDaysSpent || 0;
     } else {
       console.log("Nenhum dado real da API Meta disponível - usando valores zerados");
       // Valores já estão zerados por padrão
       totalSpent = 0;
       currentDailyBudget = 0;
-      lastFiveDaysSpent = 0;
     }
 
     // Calcular orçamento diário ideal baseado nos dados reais ou zerados
@@ -148,7 +144,6 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     const reviewData = {
       meta_daily_budget_current: currentDailyBudget, // Dados reais ou zerado
       meta_total_spent: totalSpent, // Dados reais ou zerado
-      meta_last_five_days_spent: lastFiveDaysSpent, // Dados reais ou zerado
       meta_account_id: accountId || null,
       client_account_id: accountId || null,
       meta_account_name: accountName,
@@ -163,7 +158,6 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     console.log("Dados FINAIS para revisão META (apenas valores reais ou zerados):", {
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
-      gastoMédiaCincoDias: lastFiveDaysSpent,
       orçamentoDiárioIdeal: roundedIdealDailyBudget,
       usandoOrçamentoPersonalizado: usingCustomBudget
     });
