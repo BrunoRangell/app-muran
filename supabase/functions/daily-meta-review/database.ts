@@ -28,7 +28,6 @@ export interface ReviewData {
   meta_account_id: string | null;
   client_account_id: string | null;
   meta_account_name: string;
-  account_display_name: string;
   using_custom_budget: boolean;
   custom_budget_id: string | null;
   custom_budget_amount: number | null;
@@ -227,5 +226,95 @@ export async function updateClientCurrentReview(
     }
   } catch (error) {
     console.error(`Erro ao atualizar revisão atual do cliente: ${error.message}`);
+  }
+}
+
+// Função para buscar dados reais da API Meta Ads
+export async function fetchMetaAdsData(accessToken: string, accountId: string, dateRange: { start: string, end: string }) {
+  console.log(`DIAGNÓSTICO API META: Iniciando busca para conta ${accountId}`);
+  console.log(`DIAGNÓSTICO API META: Período de ${dateRange.start} até ${dateRange.end}`);
+  console.log(`DIAGNÓSTICO API META: Token (primeiros 20 chars): ${accessToken.substring(0, 20)}...`);
+  
+  try {
+    // URL da API Meta Ads para buscar insights da conta
+    const baseUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights`;
+    const params = new URLSearchParams({
+      access_token: accessToken,
+      time_range: JSON.stringify({
+        since: dateRange.start,
+        until: dateRange.end
+      }),
+      fields: 'spend,account_id,date_start,date_stop',
+      level: 'account'
+    });
+    
+    const apiUrl = `${baseUrl}?${params.toString()}`;
+    console.log(`DIAGNÓSTICO API META: URL da requisição: ${apiUrl.replace(accessToken, '[TOKEN_HIDDEN]')}`);
+    
+    const response = await fetch(apiUrl);
+    console.log(`DIAGNÓSTICO API META: Status da resposta: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`DIAGNÓSTICO API META: Erro na API (${response.status}):`, errorText);
+      throw new Error(`Erro na API Meta Ads: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log(`DIAGNÓSTICO API META: Resposta da API:`, JSON.stringify(data, null, 2));
+    
+    // Calcular total gasto
+    let totalSpent = 0;
+    if (data.data && Array.isArray(data.data)) {
+      totalSpent = data.data.reduce((sum: number, item: any) => {
+        const spend = parseFloat(item.spend || '0');
+        console.log(`DIAGNÓSTICO API META: Gasto do período ${item.date_start}-${item.date_stop}: ${spend}`);
+        return sum + spend;
+      }, 0);
+    }
+    
+    console.log(`DIAGNÓSTICO API META: Total gasto calculado: ${totalSpent}`);
+    
+    // Buscar orçamento diário atual das campanhas ativas
+    let currentDailyBudget = 0;
+    try {
+      const campaignsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/campaigns`;
+      const campaignParams = new URLSearchParams({
+        access_token: accessToken,
+        fields: 'daily_budget,status,effective_status',
+        effective_status: '["ACTIVE"]'
+      });
+      
+      const campaignResponse = await fetch(`${campaignsUrl}?${campaignParams.toString()}`);
+      console.log(`DIAGNÓSTICO API META: Status busca campanhas: ${campaignResponse.status}`);
+      
+      if (campaignResponse.ok) {
+        const campaignData = await campaignResponse.json();
+        console.log(`DIAGNÓSTICO API META: Campanhas encontradas:`, JSON.stringify(campaignData, null, 2));
+        
+        if (campaignData.data && Array.isArray(campaignData.data)) {
+          currentDailyBudget = campaignData.data.reduce((sum: number, campaign: any) => {
+            const budget = parseFloat(campaign.daily_budget || '0') / 100; // Meta retorna em centavos
+            console.log(`DIAGNÓSTICO API META: Campanha ${campaign.id} - Orçamento diário: ${budget}`);
+            return sum + budget;
+          }, 0);
+        }
+      } else {
+        const campaignError = await campaignResponse.text();
+        console.error(`DIAGNÓSTICO API META: Erro ao buscar campanhas:`, campaignError);
+      }
+    } catch (campaignError) {
+      console.error(`DIAGNÓSTICO API META: Exceção ao buscar campanhas:`, campaignError);
+    }
+    
+    console.log(`DIAGNÓSTICO API META: Orçamento diário atual total: ${currentDailyBudget}`);
+    
+    return {
+      totalSpent,
+      dailyBudget: currentDailyBudget
+    };
+  } catch (error) {
+    console.error(`DIAGNÓSTICO API META: Erro geral na busca de dados:`, error);
+    throw error;
   }
 }

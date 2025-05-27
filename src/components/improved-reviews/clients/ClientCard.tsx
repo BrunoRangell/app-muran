@@ -1,235 +1,156 @@
 
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, BadgeDollarSign, Building2, Calendar, ChevronRight, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/utils/formatters";
-import { formatDateBr } from "@/utils/dateFormatter";
-import { useBatchOperations } from "../hooks/useBatchOperations";
-import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboard/card-components/CompactBudgetRecommendation";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader, AlertTriangle, CheckCircle, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { UnifiedClientData } from "../hooks/useUnifiedReviewsData";
 
 interface ClientCardProps {
-  client: any;
-  platform?: "meta" | "google";
+  client: UnifiedClientData;
+  onReview: (clientId: string, metaAccountId?: string) => void;
+  isProcessing: boolean;
+  platform: "meta" | "google";
 }
 
-export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const { toast } = useToast();
-  const { reviewClient, processingIds } = useBatchOperations({
-    platform: platform as "meta" | "google"
-  });
-  
-  const isProcessing = processingIds.includes(client.id);
-  
-  // Preparar dados para exibição
-  const accountName = client[`${platform}_account_name`] || "Conta Principal";
-  const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
-  const budgetAmount = client.budget_amount || 0;
-  const originalBudgetAmount = client.original_budget_amount || budgetAmount;
-  const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
-  const needsAdjustment = client.needsAdjustment;
-  const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
-  const isUsingCustomBudget = client.isUsingCustomBudget || false;
-  
-  // Dados para recomendação baseada na média dos últimos 5 dias
-  const lastFiveDaysAvg = client.lastFiveDaysAvg || 0;
-  const budgetDifferenceAvg = client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0;
-  const needsAdjustmentBasedOnAverage = client.budgetCalculation?.needsAdjustmentBasedOnAverage || false;
-  
-  // Dados do orçamento personalizado
-  const customBudget = client.customBudget;
-  
-  const handleReviewClick = async () => {
-    try {
-      await reviewClient(client.id, client[`${platform}_account_id`]);
-      toast({
-        title: "Revisão completa",
-        description: `O orçamento de ${client.company_name} foi revisado com sucesso.`
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao revisar o cliente",
-        variant: "destructive"
-      });
+export function ClientCard({ client, onReview, isProcessing, platform }: ClientCardProps) {
+  const handleReview = () => {
+    if (platform === "meta") {
+      onReview(client.id, client.meta_account_id || undefined);
+    } else {
+      onReview(client.id, client.google_account_id || undefined);
     }
   };
-  
+
+  const getBudgetStatus = () => {
+    if (!client.budgetCalculation) return "unknown";
+    
+    const { needsBudgetAdjustment, adjustmentType } = client.budgetCalculation;
+    
+    if (!needsBudgetAdjustment) return "ok";
+    return adjustmentType || "unknown";
+  };
+
+  const getStatusIcon = () => {
+    const status = getBudgetStatus();
+    
+    switch (status) {
+      case "increase":
+        return <ArrowUp className="h-4 w-4 text-red-500" />;
+      case "decrease":
+        return <ArrowDown className="h-4 w-4 text-blue-500" />;
+      case "ok":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      default:
+        return <Minus className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getStatusBadge = () => {
+    const status = getBudgetStatus();
+    
+    switch (status) {
+      case "increase":
+        return <Badge variant="destructive">Aumentar</Badge>;
+      case "decrease":
+        return <Badge variant="secondary">Diminuir</Badge>;
+      case "ok":
+        return <Badge variant="default" className="bg-green-100 text-green-800">OK</Badge>;
+      default:
+        return <Badge variant="outline">-</Badge>;
+    }
+  };
+
+  // Obter dados específicos da plataforma
+  const platformData = platform === "meta" ? {
+    totalSpent: client.review?.meta_total_spent || 0,
+    currentBudget: client.review?.meta_daily_budget_current || 0,
+    accountName: client.meta_account_name || "Conta Principal"
+  } : {
+    totalSpent: client.review?.google_total_spent || 0,
+    currentBudget: client.review?.google_daily_budget_current || 0,
+    accountName: client.google_account_name || "Conta Principal"
+  };
+
   return (
-    <Card className={`overflow-hidden transition-all ${needsAdjustment ? 'border-l-4 border-l-amber-500' : ''} ${isUsingCustomBudget ? 'border-t-4 border-t-[#ff6e00]' : ''}`}>
-      <CardHeader className="p-4 pb-0">
-        <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <h3 className="font-medium line-clamp-1 flex items-center gap-1">
-              <Building2 className="h-4 w-4 text-[#ff6e00]" />
-              {client.company_name}
-            </h3>
-            <p className="text-sm text-gray-500">{accountName}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isUsingCustomBudget && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <BadgeDollarSign className="h-5 w-5 text-[#ff6e00]" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="p-2">
-                      <p className="font-medium">Orçamento Personalizado Ativo</p>
-                      <p className="text-sm">
-                        Período: {formatDateBr(customBudget?.start_date)} a {formatDateBr(customBudget?.end_date)}
-                      </p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            
-            {needsAdjustment && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <AlertTriangle className="h-5 w-5 text-amber-500" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="p-2">Ajuste de orçamento recomendado</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            {getStatusIcon()}
+            {client.company_name}
+          </CardTitle>
+          {getStatusBadge()}
         </div>
+        <p className="text-sm text-gray-600">{platformData.accountName}</p>
+        {client.isUsingCustomBudget && (
+          <Badge variant="outline" className="w-fit">
+            Orçamento Personalizado
+          </Badge>
+        )}
       </CardHeader>
       
-      <CardContent className="p-4">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Gasto</span>
-              <span className="font-medium">{formatCurrency(spentAmount)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">
-                <span className="flex items-center gap-1">
-                  Orçamento
-                  {isUsingCustomBudget && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <BadgeDollarSign className="h-3 w-3 text-[#ff6e00]" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <div className="p-2">
-                            <p className="font-medium">Orçamento Personalizado Ativo</p>
-                            <p className="text-sm">Orçamento original: {formatCurrency(originalBudgetAmount)}</p>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </span>
-              </span>
-              <span className="font-medium">{formatCurrency(budgetAmount)}</span>
-            </div>
-            <Progress 
-              value={spentPercentage} 
-              className="h-2"
-              indicatorClassName={`${
-                spentPercentage > 90 
-                  ? "bg-red-500" 
-                  : spentPercentage > 70 
-                  ? "bg-amber-500" 
-                  : "bg-emerald-500"
-              }`}
-            />
-            <div className="text-xs text-right text-gray-500">
-              {Math.round(spentPercentage)}% utilizado
-            </div>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Orçamento Mensal</p>
+            <p className="text-lg font-semibold text-muran-primary">
+              {formatCurrency(client.budget_amount || 0)}
+            </p>
           </div>
           
-          {/* Recomendações de orçamento em formato compacto */}
-          <CompactBudgetRecommendation 
-            budgetDifference={budgetDifference}
-            budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
-            shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
-            shouldShowAverage={needsAdjustmentBasedOnAverage}
-            lastFiveDaysAverage={lastFiveDaysAvg}
-          />
-          
-          {expanded && (
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Orçamento diário atual</span>
-                <span className="font-medium">{formatCurrency(client.review?.[`${platform}_daily_budget_current`] || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Orçamento diário ideal</span>
-                <span className="font-medium">{formatCurrency(client.budgetCalculation?.idealDailyBudget || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Dias restantes</span>
-                <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Média gasto (5 dias)</span>
-                <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
-              </div>
-              
-              {isUsingCustomBudget && customBudget && (
-                <div className="mt-2 pt-2 border-t border-dashed border-gray-200">
-                  <div className="flex items-center gap-1 text-sm mb-1">
-                    <BadgeDollarSign className="h-4 w-4 text-[#ff6e00]" />
-                    <span className="font-medium text-[#ff6e00]">Orçamento Personalizado</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Período</span>
-                    <span className="font-medium flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-gray-500" />
-                      {formatDateBr(customBudget.start_date)} a {formatDateBr(customBudget.end_date)}
-                    </span>
-                  </div>
-                  {originalBudgetAmount !== budgetAmount && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Orçamento padrão</span>
-                      <span className="font-medium">{formatCurrency(originalBudgetAmount)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          <div>
+            <p className="text-sm font-medium text-gray-500">Gasto Total</p>
+            <p className="text-lg font-semibold">
+              {formatCurrency(platformData.totalSpent)}
+            </p>
+          </div>
         </div>
-      </CardContent>
-      
-      <CardFooter className="p-4 pt-0 flex justify-between">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => setExpanded(!expanded)}
-          className="text-xs"
-        >
-          {expanded ? "Menos detalhes" : "Mais detalhes"}
-        </Button>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm font-medium text-gray-500">Orçamento Atual</p>
+            <p className="text-lg font-semibold">
+              {formatCurrency(platformData.currentBudget)}
+            </p>
+          </div>
+          
+          <div>
+            <p className="text-sm font-medium text-gray-500">Recomendado</p>
+            <p className="text-lg font-semibold text-muran-primary">
+              {client.budgetCalculation 
+                ? formatCurrency(client.budgetCalculation.recommendedDailyBudget)
+                : formatCurrency(0)
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Mostrar diagnóstico se dados estão zerados */}
+        {platformData.totalSpent === 0 && platformData.currentBudget === 0 && (
+          <div className="flex items-center gap-2 p-2 bg-amber-50 rounded-md">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <span className="text-sm text-amber-800">
+              Dados não disponíveis - usando valores zerados
+            </span>
+          </div>
+        )}
         
-        <Button 
-          variant="default"
-          size="sm"
-          className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
-          onClick={handleReviewClick}
+        <Button
+          onClick={handleReview}
           disabled={isProcessing}
+          className="w-full bg-muran-primary hover:bg-muran-primary/90"
         >
-          {isProcessing ? "Processando..." : "Revisar"}
-          <ChevronRight className="ml-2 h-4 w-4" />
+          {isProcessing ? (
+            <>
+              <Loader className="mr-2 h-4 w-4 animate-spin" />
+              Processando...
+            </>
+          ) : (
+            `Revisar ${platform === "meta" ? "Meta" : "Google"}`
+          )}
         </Button>
-      </CardFooter>
+      </CardContent>
     </Card>
   );
 }
