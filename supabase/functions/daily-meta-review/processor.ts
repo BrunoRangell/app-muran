@@ -24,6 +24,9 @@ interface RequestBody {
     totalSpent: number;
     dailyBudget: number;
   };
+  // Parâmetros para busca de dados da API
+  accessToken?: string;
+  fetchRealData?: boolean;
 }
 
 interface ReviewResult {
@@ -36,7 +39,112 @@ interface ReviewResult {
   totalSpent?: number;
   budgetAmount?: number;
   usingCustomBudget?: boolean;
+  dataSource?: string; // "api" | "zero" | "provided"
   error?: string;
+}
+
+// Função para buscar dados reais da API Meta
+async function fetchMetaApiData(accessToken: string, accountId: string): Promise<{ totalSpent: number; dailyBudget: number } | null> {
+  try {
+    console.log(`🔍 Tentando buscar dados reais da API Meta para conta ${accountId}...`);
+    
+    if (!accessToken) {
+      console.warn("⚠️ Token de acesso não fornecido - usando valores zerados");
+      return null;
+    }
+    
+    // Definir período para busca (mês atual)
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const today = new Date();
+    
+    const startDate = firstDay.toISOString().split('T')[0];
+    const endDate = today.toISOString().split('T')[0];
+    
+    console.log(`📅 Buscando dados do período: ${startDate} a ${endDate}`);
+    
+    // Buscar insights da conta
+    const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights`;
+    const insightsParams = new URLSearchParams({
+      access_token: accessToken,
+      time_range: JSON.stringify({
+        since: startDate,
+        until: endDate
+      }),
+      fields: 'spend',
+      level: 'account'
+    });
+    
+    console.log(`🌐 Fazendo requisição para API Meta: ${insightsUrl}?${insightsParams}`);
+    
+    const insightsResponse = await fetch(`${insightsUrl}?${insightsParams}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!insightsResponse.ok) {
+      const errorText = await insightsResponse.text();
+      console.error(`❌ Erro na API Meta (insights):`, {
+        status: insightsResponse.status,
+        statusText: insightsResponse.statusText,
+        error: errorText
+      });
+      return null;
+    }
+    
+    const insightsData = await insightsResponse.json();
+    console.log(`📊 Resposta da API Meta (insights):`, insightsData);
+    
+    // Buscar informações da conta para orçamento diário
+    const accountUrl = `https://graph.facebook.com/v18.0/act_${accountId}`;
+    const accountParams = new URLSearchParams({
+      access_token: accessToken,
+      fields: 'daily_budget_limit,account_status'
+    });
+    
+    const accountResponse = await fetch(`${accountUrl}?${accountParams}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!accountResponse.ok) {
+      const errorText = await accountResponse.text();
+      console.error(`❌ Erro na API Meta (account):`, {
+        status: accountResponse.status,
+        statusText: accountResponse.statusText,
+        error: errorText
+      });
+      return null;
+    }
+    
+    const accountData = await accountResponse.json();
+    console.log(`📊 Resposta da API Meta (account):`, accountData);
+    
+    // Extrair dados
+    const totalSpent = insightsData.data && insightsData.data.length > 0 
+      ? parseFloat(insightsData.data[0].spend || '0') 
+      : 0;
+      
+    const dailyBudget = accountData.daily_budget_limit 
+      ? parseFloat(accountData.daily_budget_limit) / 100 // Meta retorna em centavos
+      : 0;
+    
+    console.log(`✅ Dados extraídos da API Meta:`, {
+      totalSpent,
+      dailyBudget,
+      period: `${startDate} a ${endDate}`
+    });
+    
+    return { totalSpent, dailyBudget };
+    
+  } catch (error) {
+    console.error(`❌ Erro ao buscar dados da API Meta:`, error);
+    return null;
+  }
 }
 
 // Função principal que processa a solicitação de revisão
@@ -63,10 +171,18 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       reviewDate = new Date().toISOString().split("T")[0],
       metaAccountName,
       metaBudgetAmount,
-      realApiData
+      realApiData,
+      accessToken,
+      fetchRealData = false
     } = requestBody;
 
-    console.log(`Iniciando revisão META para cliente ${clientId} com conta Meta ${metaAccountId || "padrão"}`);
+    console.log(`🚀 Iniciando revisão META para cliente ${clientId}`, {
+      metaAccountId: metaAccountId || "padrão",
+      reviewDate,
+      fetchRealData,
+      hasAccessToken: !!accessToken,
+      hasRealApiData: !!realApiData
+    });
 
     // Verificar se o clientId foi fornecido
     if (!clientId) {
@@ -113,26 +229,48 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       budgetAmount = customBudget?.budget_amount || budgetAmount;
     }
 
-    console.log(`Usando orçamento personalizado: ${usingCustomBudget}`);
-    console.log(`Orçamento usado: ${budgetAmount} para conta ${accountName} (${accountId})`);
+    console.log(`💰 Configuração de orçamento:`, {
+      usingCustomBudget,
+      budgetAmount,
+      accountName,
+      accountId
+    });
 
-    // NOVA LÓGICA: APENAS DADOS REAIS OU ZERADOS
+    // LÓGICA DE BUSCA DE DADOS
     let totalSpent = 0;
     let currentDailyBudget = 0;
+    let dataSource = "zero";
 
-    // Se temos dados reais da API Meta, usar eles
+    // Prioridade 1: Dados fornecidos diretamente na requisição
     if (realApiData) {
-      console.log("Usando dados REAIS da API Meta:", realApiData);
+      console.log("📥 Usando dados reais fornecidos na requisição:", realApiData);
       totalSpent = realApiData.totalSpent || 0;
       currentDailyBudget = realApiData.dailyBudget || 0;
-    } else {
-      console.log("Nenhum dado real da API Meta disponível - usando valores zerados");
-      // Valores já estão zerados por padrão
+      dataSource = "provided";
+    }
+    // Prioridade 2: Buscar dados da API se solicitado e token disponível
+    else if (fetchRealData && accessToken && accountId) {
+      console.log("🔄 Tentando buscar dados reais da API Meta...");
+      const apiData = await fetchMetaApiData(accessToken, accountId);
+      if (apiData) {
+        totalSpent = apiData.totalSpent;
+        currentDailyBudget = apiData.dailyBudget;
+        dataSource = "api";
+        console.log("✅ Dados obtidos da API Meta com sucesso!");
+      } else {
+        console.warn("⚠️ Falha ao obter dados da API - usando valores zerados");
+        dataSource = "zero";
+      }
+    }
+    // Prioridade 3: Valores zerados (padrão)
+    else {
+      console.log("🔄 Usando valores zerados (sem dados da API disponíveis)");
       totalSpent = 0;
       currentDailyBudget = 0;
+      dataSource = "zero";
     }
 
-    // Calcular orçamento diário ideal baseado nos dados reais ou zerados
+    // Calcular orçamento diário ideal baseado nos dados obtidos
     const roundedIdealDailyBudget = calculateIdealDailyBudget(budgetAmount, totalSpent);
     
     // Verificar se já existe uma revisão atual para este cliente e conta específica
@@ -140,10 +278,10 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     
     let reviewId;
     
-    // Preparar dados para a revisão - APENAS DADOS REAIS OU ZERADOS
+    // Preparar dados para a revisão
     const reviewData = {
-      meta_daily_budget_current: currentDailyBudget, // Dados reais ou zerado
-      meta_total_spent: totalSpent, // Dados reais ou zerado
+      meta_daily_budget_current: currentDailyBudget,
+      meta_total_spent: totalSpent,
       meta_account_id: accountId || null,
       client_account_id: accountId || null,
       meta_account_name: accountName,
@@ -155,33 +293,32 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       custom_budget_end_date: usingCustomBudget ? customBudget?.end_date : null
     };
     
-    console.log("Dados FINAIS para revisão META (apenas valores reais ou zerados):", {
-      orçamentoDiárioAtual: currentDailyBudget,
-      gastoTotal: totalSpent,
-      orçamentoDiárioIdeal: roundedIdealDailyBudget,
-      usandoOrçamentoPersonalizado: usingCustomBudget
+    console.log("💾 Dados para salvar na revisão:", {
+      ...reviewData,
+      idealDailyBudget: roundedIdealDailyBudget,
+      dataSource
     });
     
     if (existingReview) {
-      console.log("Encontrada revisão existente:", existingReview);
+      console.log("🔄 Atualizando revisão existente:", existingReview.id);
       
       // Atualizar revisão existente
       await updateExistingReview(supabase, existingReview.id, reviewData);
       
       reviewId = existingReview.id;
-      console.log(`Revisão existente atualizada com dados reais: ${reviewId}`);
+      console.log(`✅ Revisão existente atualizada: ${reviewId}`);
     } else {
-      console.log("Criando nova revisão");
+      console.log("➕ Criando nova revisão");
       
       // Criar nova revisão
       reviewId = await createNewReview(supabase, clientId, reviewDate, reviewData);
-      console.log(`Nova revisão criada com dados reais: ${reviewId}`);
+      console.log(`✅ Nova revisão criada: ${reviewId}`);
     }
 
     // Registrar na tabela client_current_reviews para referência rápida ao estado atual
     await updateClientCurrentReview(supabase, clientId, reviewDate, reviewData);
 
-    return {
+    const result = {
       success: true,
       reviewId,
       clientId,
@@ -191,9 +328,14 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       totalSpent,
       budgetAmount,
       usingCustomBudget,
+      dataSource
     };
+
+    console.log("🎉 Revisão concluída com sucesso:", result);
+
+    return result;
   } catch (error) {
-    console.error("Erro na função Edge META:", error.message);
+    console.error("💥 Erro na função Edge META:", error.message);
     return {
       success: false,
       reviewId: null,

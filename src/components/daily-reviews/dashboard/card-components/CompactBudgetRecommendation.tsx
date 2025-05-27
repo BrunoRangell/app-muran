@@ -1,83 +1,39 @@
 
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Info } from "lucide-react";
+import { AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CompactBudgetRecommendationProps {
   budgetDifference: number;
-  budgetDifferenceBasedOnAverage?: number;
   shouldShow: boolean;
-  shouldShowAverage?: boolean;
-  lastFiveDaysAverage?: number;
 }
 
-export const CompactBudgetRecommendation = ({ 
-  budgetDifference,
-  budgetDifferenceBasedOnAverage = 0,
-  shouldShow,
-  shouldShowAverage = false,
-  lastFiveDaysAverage = 0
-}: CompactBudgetRecommendationProps) => {
-  const hasAnyRecommendation = shouldShow || shouldShowAverage;
-  
-  if (!hasAnyRecommendation) {
+export function CompactBudgetRecommendation({ 
+  budgetDifference, 
+  shouldShow 
+}: CompactBudgetRecommendationProps) {
+  if (!shouldShow || budgetDifference === 0) {
     return null;
   }
-  
+
+  const isIncrease = budgetDifference > 0;
+  const Icon = isIncrease ? TrendingUp : TrendingDown;
+  const bgColor = isIncrease ? "bg-green-50" : "bg-red-50";
+  const textColor = isIncrease ? "text-green-700" : "text-red-700";
+  const iconColor = isIncrease ? "text-green-600" : "text-red-600";
+
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {shouldShow && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
-              <Badge className={`flex items-center ${
-                budgetDifference > 0 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                <span className="mr-1 text-xs">Orç:</span>
-                {budgetDifference > 0 ? (
-                  <TrendingUp size={14} className="mr-1" />
-                ) : (
-                  <TrendingDown size={14} className="mr-1" />
-                )}
-                {budgetDifference > 0 ? "+" : ""}{formatCurrency(budgetDifference)}
-                <Info size={10} className="ml-1 text-gray-500" />
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Recomendação baseada na diferença entre o orçamento diário ideal e o orçamento diário atual configurado nas campanhas.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-      
-      {shouldShowAverage && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
-              <Badge className={`flex items-center ${
-                budgetDifferenceBasedOnAverage > 0 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                <span className="mr-1 text-xs">5d:</span>
-                {budgetDifferenceBasedOnAverage > 0 ? (
-                  <TrendingUp size={14} className="mr-1" />
-                ) : (
-                  <TrendingDown size={14} className="mr-1" />
-                )}
-                {budgetDifferenceBasedOnAverage > 0 ? "+" : ""}{formatCurrency(budgetDifferenceBasedOnAverage)}
-                <Info size={10} className="ml-1 text-gray-500" />
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Recomendação baseada na diferença entre o orçamento diário ideal e a média de gasto real dos últimos 5 dias ({formatCurrency(lastFiveDaysAverage)}).</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
+    <div className={`${bgColor} border border-dashed ${isIncrease ? 'border-green-200' : 'border-red-200'} rounded-lg p-3`}>
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${iconColor}`} />
+        <div className="flex-1">
+          <div className={`text-xs font-medium ${textColor}`}>
+            {isIncrease ? "Aumentar" : "Reduzir"} orçamento
+          </div>
+          <div className={`text-xs ${textColor}`}>
+            {formatCurrency(Math.abs(budgetDifference))}
+          </div>
+        </div>
+      </div>
     </div>
   );
-};
+}

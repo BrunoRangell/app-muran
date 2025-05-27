@@ -2,7 +2,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, BadgeDollarSign, Building2, Calendar, ChevronRight, Info } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Building2, Calendar, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
@@ -34,11 +34,6 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const needsAdjustment = client.needsAdjustment;
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
-  
-  // Dados para recomendação baseada na média dos últimos 5 dias
-  const lastFiveDaysAvg = client.lastFiveDaysAvg || 0;
-  const budgetDifferenceAvg = client.budgetCalculation?.budgetDifferenceBasedOnAverage || 0;
-  const needsAdjustmentBasedOnAverage = client.budgetCalculation?.needsAdjustmentBasedOnAverage || false;
   
   // Dados do orçamento personalizado
   const customBudget = client.customBudget;
@@ -158,10 +153,7 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
           {/* Recomendações de orçamento em formato compacto */}
           <CompactBudgetRecommendation 
             budgetDifference={budgetDifference}
-            budgetDifferenceBasedOnAverage={budgetDifferenceAvg}
             shouldShow={client.budgetCalculation?.needsBudgetAdjustment}
-            shouldShowAverage={needsAdjustmentBasedOnAverage}
-            lastFiveDaysAverage={lastFiveDaysAvg}
           />
           
           {expanded && (
@@ -178,10 +170,14 @@ export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
                 <span className="text-gray-500">Dias restantes</span>
                 <span className="font-medium">{client.budgetCalculation?.remainingDays || 0}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Média gasto (5 dias)</span>
-                <span className="font-medium">{formatCurrency(lastFiveDaysAvg)}</span>
-              </div>
+              
+              {/* Mostrar média apenas para Google Ads */}
+              {platform === "google" && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Média gasto (5 dias)</span>
+                  <span className="font-medium">{formatCurrency(client.lastFiveDaysAvg || 0)}</span>
+                </div>
+              )}
               
               {isUsingCustomBudget && customBudget && (
                 <div className="mt-2 pt-2 border-t border-dashed border-gray-200">

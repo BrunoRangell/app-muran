@@ -32,6 +32,8 @@ export function useUnifiedReviewsData() {
   } = useQuery({
     queryKey: ["improved-meta-reviews"],
     queryFn: async () => {
+      console.log("🔍 Buscando dados dos clientes Meta Ads...");
+      
       // Buscar clientes ativos
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
@@ -43,7 +45,12 @@ export function useUnifiedReviewsData() {
         `)
         .eq("status", "active");
 
-      if (clientsError) throw clientsError;
+      if (clientsError) {
+        console.error("❌ Erro ao buscar clientes:", clientsError);
+        throw clientsError;
+      }
+
+      console.log("✅ Clientes encontrados:", clients?.length || 0);
 
       // Buscar contas Meta dos clientes
       const { data: metaAccounts, error: accountsError } = await supabase
@@ -51,25 +58,52 @@ export function useUnifiedReviewsData() {
         .select("*")
         .eq("status", "active");
 
-      if (accountsError) throw accountsError;
+      if (accountsError) {
+        console.error("❌ Erro ao buscar contas Meta:", accountsError);
+        throw accountsError;
+      }
+
+      console.log("✅ Contas Meta encontradas:", metaAccounts?.length || 0);
 
       // Buscar revisões mais recentes
+      const today = new Date().toISOString().split("T")[0];
       const { data: reviews, error: reviewsError } = await supabase
         .from("daily_budget_reviews")
         .select(`*`)
-        .eq("review_date", new Date().toISOString().split("T")[0]);
+        .eq("review_date", today);
 
-      if (reviewsError) throw reviewsError;
+      if (reviewsError) {
+        console.error("❌ Erro ao buscar revisões:", reviewsError);
+        throw reviewsError;
+      }
       
-      // Buscar orçamentos personalizados separadamente (corrigindo o problema de relação)
+      console.log("✅ Revisões encontradas para hoje:", reviews?.length || 0);
+      
+      // Log detalhado das revisões
+      if (reviews && reviews.length > 0) {
+        reviews.forEach(review => {
+          console.log(`📊 Revisão cliente ${review.client_id}:`, {
+            totalSpent: review.meta_total_spent,
+            currentBudget: review.meta_daily_budget_current,
+            accountId: review.meta_account_id || 'principal',
+            accountName: review.meta_account_name || 'Conta Principal'
+          });
+        });
+      } else {
+        console.warn("⚠️ Nenhuma revisão encontrada para hoje. Clientes aparecerão com dados zerados.");
+      }
+      
+      // Buscar orçamentos personalizados separadamente
       const { data: customBudgets, error: customBudgetsError } = await supabase
         .from("meta_custom_budgets")
         .select("*");
       
-      if (customBudgetsError) throw customBudgetsError;
+      if (customBudgetsError) {
+        console.error("❌ Erro ao buscar orçamentos personalizados:", customBudgetsError);
+        throw customBudgetsError;
+      }
       
       // Buscar orçamentos personalizados ativos
-      const today = new Date().toISOString().split("T")[0];
       const { data: activeCustomBudgets, error: budgetsError } = await supabase
         .from("meta_custom_budgets")
         .select("*")
@@ -77,7 +111,12 @@ export function useUnifiedReviewsData() {
         .lte("start_date", today)
         .gte("end_date", today);
       
-      if (budgetsError) throw budgetsError;
+      if (budgetsError) {
+        console.error("❌ Erro ao buscar orçamentos ativos:", budgetsError);
+        throw budgetsError;
+      }
+      
+      console.log("✅ Orçamentos personalizados ativos:", activeCustomBudgets?.length || 0);
       
       // Mapear orçamentos personalizados por client_id para fácil acesso
       const customBudgetsByClientId = new Map();
@@ -134,7 +173,7 @@ export function useUnifiedReviewsData() {
               currentDailyBudget: review?.meta_daily_budget_current || 0
             });
             
-            return {
+            const clientData = {
               ...client,
               meta_account_id: account.account_id,
               meta_account_name: account.account_name,
@@ -146,6 +185,15 @@ export function useUnifiedReviewsData() {
               customBudget: customBudget,
               isUsingCustomBudget: isUsingCustomBudget
             };
+            
+            console.log(`📝 Cliente processado: ${client.company_name} (${account.account_name})`, {
+              totalSpent: review?.meta_total_spent || 0,
+              budgetAmount: monthlyBudget,
+              needsAdjustment: budgetCalc.needsBudgetAdjustment,
+              hasReview: !!review
+            });
+            
+            return clientData;
           });
         } else {
           // Cliente sem contas específicas, usar valores padrão
@@ -186,7 +234,7 @@ export function useUnifiedReviewsData() {
             currentDailyBudget: review?.meta_daily_budget_current || 0
           });
           
-          return {
+          const clientData = {
             ...client,
             meta_account_id: null,
             meta_account_name: "Conta Principal",
@@ -198,6 +246,15 @@ export function useUnifiedReviewsData() {
             customBudget: customBudget,
             isUsingCustomBudget: isUsingCustomBudget
           };
+          
+          console.log(`📝 Cliente processado: ${client.company_name} (Conta Principal)`, {
+            totalSpent: review?.meta_total_spent || 0,
+            budgetAmount: monthlyBudget,
+            needsAdjustment: budgetCalc.needsBudgetAdjustment,
+            hasReview: !!review
+          });
+          
+          return clientData;
         }
       });
 
@@ -208,6 +265,14 @@ export function useUnifiedReviewsData() {
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.meta_total_spent || 0), 0);
       const needingAdjustment = flattenedClients.filter(client => client.needsAdjustment).length;
+      
+      console.log("📊 Métricas calculadas:", {
+        totalClients: flattenedClients.length,
+        totalBudget,
+        totalSpent,
+        clientsNeedingAdjustment: needingAdjustment,
+        spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
+      });
       
       setMetrics({
         totalClients: flattenedClients.length,
