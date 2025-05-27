@@ -30,10 +30,7 @@ export const BudgetRecommendation = ({
     return (
       <CompactBudgetRecommendation
         budgetDifference={budgetDifference}
-        budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
         shouldShow={shouldShow}
-        shouldShowAverage={shouldShowAverage}
-        lastFiveDaysAverage={lastFiveDaysAverage}
       />
     );
   }
