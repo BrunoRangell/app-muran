@@ -26,14 +26,10 @@ export interface ReviewData {
   meta_daily_budget_current: number;
   meta_total_spent: number;
   meta_account_id: string | null;
-  client_account_id: string | null;
   meta_account_name: string;
-  account_display_name: string;
   using_custom_budget: boolean;
   custom_budget_id: string | null;
   custom_budget_amount: number | null;
-  custom_budget_start_date?: string | null;
-  custom_budget_end_date?: string | null;
 }
 
 // Criação do cliente Supabase
@@ -123,7 +119,7 @@ export async function checkExistingReview(
     .select("*")
     .eq("client_id", clientId)
     .eq("review_date", reviewDate)
-    .or(`meta_account_id.eq.${accountId || ""},client_account_id.eq.${accountId || ""}`)
+    .or(`meta_account_id.eq.${accountId || ""},meta_account_id.is.null`)
     .maybeSingle();
 
   if (existingReviewError && existingReviewError.code !== "PGRST116") {
@@ -199,10 +195,17 @@ export async function updateClientCurrentReview(
       console.error(`Erro ao verificar revisão atual: ${currentReviewError.message}`);
     }
 
+    // Preparar dados apenas com campos que existem na tabela
     const currentReviewData = {
       client_id: clientId,
       review_date: reviewDate,
-      ...reviewData
+      meta_daily_budget_current: reviewData.meta_daily_budget_current,
+      meta_total_spent: reviewData.meta_total_spent,
+      meta_account_id: reviewData.meta_account_id,
+      meta_account_name: reviewData.meta_account_name,
+      using_custom_budget: reviewData.using_custom_budget,
+      custom_budget_id: reviewData.custom_budget_id,
+      custom_budget_amount: reviewData.custom_budget_amount
     };
 
     if (currentReview) {
@@ -214,6 +217,8 @@ export async function updateClientCurrentReview(
 
       if (updateCurrentError) {
         console.error(`Erro ao atualizar revisão atual: ${updateCurrentError.message}`);
+      } else {
+        console.log(`✅ Revisão atual atualizada para cliente ${clientId}`);
       }
     } else {
       // Inserir nova revisão atual
@@ -223,6 +228,8 @@ export async function updateClientCurrentReview(
 
       if (insertCurrentError) {
         console.error(`Erro ao inserir revisão atual: ${insertCurrentError.message}`);
+      } else {
+        console.log(`✅ Nova revisão atual criada para cliente ${clientId}`);
       }
     }
   } catch (error) {

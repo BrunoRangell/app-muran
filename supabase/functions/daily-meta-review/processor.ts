@@ -43,6 +43,34 @@ interface ReviewResult {
   error?: string;
 }
 
+// Função para verificar se token Meta está configurado
+async function checkMetaToken(): Promise<boolean> {
+  try {
+    const supabase = createSupabaseClient();
+    const { data: tokenData, error: tokenError } = await supabase
+      .from("api_tokens")
+      .select("value")
+      .eq("name", "meta_access_token")
+      .maybeSingle();
+
+    if (tokenError) {
+      console.error("❌ Erro ao verificar token Meta:", tokenError.message);
+      return false;
+    }
+
+    if (!tokenData?.value) {
+      console.warn("⚠️ Token Meta não encontrado ou vazio");
+      return false;
+    }
+
+    console.log("✅ Token Meta configurado corretamente");
+    return true;
+  } catch (error) {
+    console.error("❌ Erro ao verificar token Meta:", error);
+    return false;
+  }
+}
+
 // Função para buscar dados reais da API Meta
 async function fetchMetaApiData(accessToken: string, accountId: string): Promise<{ totalSpent: number; dailyBudget: number } | null> {
   try {
@@ -197,6 +225,12 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     // Buscar informações do cliente
     const client = await fetchClientData(supabase, clientId);
 
+    // Verificar se token Meta está configurado
+    const hasMetaToken = await checkMetaToken();
+    if (!hasMetaToken) {
+      console.warn("⚠️ Token Meta não configurado - usando valores zerados");
+    }
+
     // Valores padrão
     let accountId = metaAccountId || client.meta_account_id;
     let budgetAmount = client.meta_ads_budget;
@@ -233,7 +267,8 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       usingCustomBudget,
       budgetAmount,
       accountName,
-      accountId
+      accountId,
+      hasMetaToken
     });
 
     // LÓGICA DE BUSCA DE DADOS
@@ -248,18 +283,28 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       currentDailyBudget = realApiData.dailyBudget || 0;
       dataSource = "provided";
     }
-    // Prioridade 2: Buscar dados da API se solicitado e token disponível
-    else if (fetchRealData && accessToken && accountId) {
+    // Prioridade 2: Buscar dados da API se solicitado, token disponível e conta configurada
+    else if (fetchRealData && hasMetaToken && accountId) {
       console.log("🔄 Tentando buscar dados reais da API Meta...");
-      const apiData = await fetchMetaApiData(accessToken, accountId);
-      if (apiData) {
-        totalSpent = apiData.totalSpent;
-        currentDailyBudget = apiData.dailyBudget;
-        dataSource = "api";
-        console.log("✅ Dados obtidos da API Meta com sucesso!");
-      } else {
-        console.warn("⚠️ Falha ao obter dados da API - usando valores zerados");
-        dataSource = "zero";
+      
+      // Buscar token do banco
+      const { data: tokenData } = await supabase
+        .from("api_tokens")
+        .select("value")
+        .eq("name", "meta_access_token")
+        .maybeSingle();
+      
+      if (tokenData?.value) {
+        const apiData = await fetchMetaApiData(tokenData.value, accountId);
+        if (apiData) {
+          totalSpent = apiData.totalSpent;
+          currentDailyBudget = apiData.dailyBudget;
+          dataSource = "api";
+          console.log("✅ Dados obtidos da API Meta com sucesso!");
+        } else {
+          console.warn("⚠️ Falha ao obter dados da API - usando valores zerados");
+          dataSource = "zero";
+        }
       }
     }
     // Prioridade 3: Valores zerados (padrão)
@@ -268,6 +313,10 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       totalSpent = 0;
       currentDailyBudget = 0;
       dataSource = "zero";
+      
+      if (!hasMetaToken) {
+        console.log("💡 Dica: Configure o token Meta nas configurações para buscar dados reais");
+      }
     }
 
     // Calcular orçamento diário ideal baseado nos dados obtidos
@@ -278,25 +327,22 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
     
     let reviewId;
     
-    // Preparar dados para a revisão
+    // Preparar dados para a revisão (apenas campos que existem na tabela)
     const reviewData = {
       meta_daily_budget_current: currentDailyBudget,
       meta_total_spent: totalSpent,
       meta_account_id: accountId || null,
-      client_account_id: accountId || null,
       meta_account_name: accountName,
-      account_display_name: accountName,
       using_custom_budget: usingCustomBudget,
       custom_budget_id: customBudget?.id || null,
-      custom_budget_amount: usingCustomBudget ? customBudget?.budget_amount : null,
-      custom_budget_start_date: usingCustomBudget ? customBudget?.start_date : null,
-      custom_budget_end_date: usingCustomBudget ? customBudget?.end_date : null
+      custom_budget_amount: usingCustomBudget ? customBudget?.budget_amount : null
     };
     
     console.log("💾 Dados para salvar na revisão:", {
       ...reviewData,
       idealDailyBudget: roundedIdealDailyBudget,
-      dataSource
+      dataSource,
+      hasMetaToken
     });
     
     if (existingReview) {
