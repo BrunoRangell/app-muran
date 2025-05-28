@@ -49,13 +49,23 @@ export function useBatchOperations(config: BatchOperationsConfig) {
         "daily-meta-review" : 
         "daily-google-review";
       
-      // Construir payload
+      // Construir payload com fetchRealData sempre true para Meta Ads
       const payload = {
         clientId,
         reviewDate,
         [config.platform === "meta" ? "metaAccountId" : "googleAccountId"]: accountId || 
-          (config.platform === "meta" ? client.meta_account_id : client.google_account_id)
+          (config.platform === "meta" ? client.meta_account_id : client.google_account_id),
+        // Sempre tentar buscar dados reais para Meta Ads
+        ...(config.platform === "meta" && {
+          fetchRealData: true,
+          clientName: client.company_name
+        })
       };
+      
+      console.log(`[useBatchOperations] Enviando payload para ${endpoint}:`, {
+        ...payload,
+        accessToken: "***REDACTED***" // Não logar o token
+      });
       
       // Fazer chamada direta para a função Edge
       const { data, error } = await supabase.functions.invoke(endpoint, {
@@ -63,12 +73,22 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       });
       
       if (error) {
+        console.error(`[useBatchOperations] Erro ao processar revisão:`, error);
         throw new Error(`Erro ao processar revisão: ${error.message}`);
       }
       
       if (data && data.error) {
+        console.error(`[useBatchOperations] Erro retornado pela função:`, data);
         throw new Error(data.error || "Erro ao processar revisão");
       }
+      
+      // Log do resultado para debugging
+      console.log(`[useBatchOperations] Revisão concluída para ${client.company_name}:`, {
+        reviewId: data?.reviewId,
+        dataSource: data?.dataSource,
+        totalSpent: data?.totalSpent,
+        idealDailyBudget: data?.idealDailyBudget
+      });
       
       toast({
         title: "Revisão concluída",
@@ -77,7 +97,7 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       
       return data;
     } catch (error: any) {
-      console.error("Erro ao revisar cliente:", error);
+      console.error(`[useBatchOperations] Erro ao revisar cliente ${clientId}:`, error);
       toast({
         title: "Erro na revisão",
         description: error.message || "Ocorreu um erro ao revisar o cliente",
@@ -99,6 +119,8 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       return;
     }
     
+    console.log(`[useBatchOperations] Iniciando revisão em lote de ${clients.length} clientes para ${config.platform}`);
+    
     setIsProcessing(true);
     setProgress(0);
     setTotal(clients.length);
@@ -111,16 +133,23 @@ export function useBatchOperations(config: BatchOperationsConfig) {
     const processWithDelay = async () => {
       for (const client of clients) {
         try {
+          console.log(`[useBatchOperations] Processando cliente: ${client.company_name || client.id}`);
           await reviewClient(client.id, client[`${config.platform}_account_id`] || undefined);
           successfulReviews.push(client.company_name || client.id);
         } catch (error) {
           failedReviews.push(client.company_name || client.id);
-          console.error(`Erro ao revisar cliente ${client.id}:`, error);
+          console.error(`[useBatchOperations] Erro ao revisar cliente ${client.id}:`, error);
         }
         
         // Pequeno atraso para melhorar a experiência visual
         await new Promise(r => setTimeout(r, 300));
       }
+      
+      console.log(`[useBatchOperations] Revisão em lote concluída:`, {
+        successful: successfulReviews.length,
+        failed: failedReviews.length,
+        platform: config.platform
+      });
       
       setIsProcessing(false);
       setProcessingIds([]);

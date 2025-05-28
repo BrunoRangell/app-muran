@@ -268,10 +268,11 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       budgetAmount,
       accountName,
       accountId,
-      hasMetaToken
+      hasMetaToken,
+      fetchRealData
     });
 
-    // LÓGICA DE BUSCA DE DADOS
+    // LÓGICA DE BUSCA DE DADOS - PRIORIZAR DADOS REAIS
     let totalSpent = 0;
     let currentDailyBudget = 0;
     let dataSource = "zero";
@@ -283,7 +284,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       currentDailyBudget = realApiData.dailyBudget || 0;
       dataSource = "provided";
     }
-    // Prioridade 2: Buscar dados da API se solicitado, token disponível e conta configurada
+    // Prioridade 2: Buscar dados da API se solicitado E token disponível E conta configurada
     else if (fetchRealData && hasMetaToken && accountId) {
       console.log("🔄 Tentando buscar dados reais da API Meta...");
       
@@ -295,26 +296,37 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
         .maybeSingle();
       
       if (tokenData?.value) {
+        console.log("🔑 Token Meta encontrado, fazendo chamada para API...");
         const apiData = await fetchMetaApiData(tokenData.value, accountId);
         if (apiData) {
           totalSpent = apiData.totalSpent;
           currentDailyBudget = apiData.dailyBudget;
           dataSource = "api";
-          console.log("✅ Dados obtidos da API Meta com sucesso!");
+          console.log("✅ Dados obtidos da API Meta com sucesso!", {
+            totalSpent,
+            currentDailyBudget,
+            accountId
+          });
         } else {
           console.warn("⚠️ Falha ao obter dados da API - usando valores zerados");
           dataSource = "zero";
         }
+      } else {
+        console.warn("⚠️ Token Meta não encontrado no banco - usando valores zerados");
+        dataSource = "zero";
       }
     }
-    // Prioridade 3: Valores zerados (padrão)
+    // Prioridade 3: Valores zerados (fallback)
     else {
-      console.log("🔄 Usando valores zerados (sem dados da API disponíveis)");
+      const reason = !fetchRealData ? "fetchRealData=false" : 
+                     !hasMetaToken ? "token não configurado" : 
+                     !accountId ? "conta não configurada" : "motivo desconhecido";
+      console.log(`🔄 Usando valores zerados (${reason})`);
       totalSpent = 0;
       currentDailyBudget = 0;
       dataSource = "zero";
       
-      if (!hasMetaToken) {
+      if (!hasMetaToken && fetchRealData) {
         console.log("💡 Dica: Configure o token Meta nas configurações para buscar dados reais");
       }
     }
@@ -342,7 +354,8 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       ...reviewData,
       idealDailyBudget: roundedIdealDailyBudget,
       dataSource,
-      hasMetaToken
+      hasMetaToken,
+      fetchRealData
     });
     
     if (existingReview) {
