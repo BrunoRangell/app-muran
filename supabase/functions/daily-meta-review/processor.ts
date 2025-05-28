@@ -1,4 +1,3 @@
-
 import { 
   createSupabaseClient,
   fetchClientData, 
@@ -91,7 +90,7 @@ async function fetchMetaApiData(accessToken: string, accountId: string): Promise
     
     console.log(`📅 Buscando dados do período: ${startDate} a ${endDate}`);
     
-    // Buscar insights da conta
+    // Buscar insights da conta (gastos)
     const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights`;
     const insightsParams = new URLSearchParams({
       access_token: accessToken,
@@ -103,7 +102,7 @@ async function fetchMetaApiData(accessToken: string, accountId: string): Promise
       level: 'account'
     });
     
-    console.log(`🌐 Fazendo requisição para API Meta: ${insightsUrl}?${insightsParams}`);
+    console.log(`🌐 Fazendo requisição para API Meta (insights): ${insightsUrl}?${insightsParams}`);
     
     const insightsResponse = await fetch(`${insightsUrl}?${insightsParams}`, {
       method: 'GET',
@@ -125,45 +124,18 @@ async function fetchMetaApiData(accessToken: string, accountId: string): Promise
     const insightsData = await insightsResponse.json();
     console.log(`📊 Resposta da API Meta (insights):`, insightsData);
     
-    // Buscar informações da conta para orçamento diário
-    const accountUrl = `https://graph.facebook.com/v18.0/act_${accountId}`;
-    const accountParams = new URLSearchParams({
-      access_token: accessToken,
-      fields: 'daily_budget_limit,account_status'
-    });
-    
-    const accountResponse = await fetch(`${accountUrl}?${accountParams}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!accountResponse.ok) {
-      const errorText = await accountResponse.text();
-      console.error(`❌ Erro na API Meta (account):`, {
-        status: accountResponse.status,
-        statusText: accountResponse.statusText,
-        error: errorText
-      });
-      return null;
-    }
-    
-    const accountData = await accountResponse.json();
-    console.log(`📊 Resposta da API Meta (account):`, accountData);
-    
-    // Extrair dados
+    // Extrair apenas dados de gastos (não buscar mais daily_budget_limit)
     const totalSpent = insightsData.data && insightsData.data.length > 0 
       ? parseFloat(insightsData.data[0].spend || '0') 
       : 0;
-      
-    const dailyBudget = accountData.daily_budget_limit 
-      ? parseFloat(accountData.daily_budget_limit) / 100 // Meta retorna em centavos
-      : 0;
+    
+    // Para o orçamento diário, vamos usar 0 já que não conseguimos buscar da API
+    // O sistema vai usar o orçamento configurado no banco de dados
+    const dailyBudget = 0;
     
     console.log(`✅ Dados extraídos da API Meta:`, {
       totalSpent,
-      dailyBudget,
+      dailyBudget: "não disponível via API - usando configuração do sistema",
       period: `${startDate} a ${endDate}`
     });
     
@@ -272,7 +244,7 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
       fetchRealData
     });
 
-    // LÓGICA DE BUSCA DE DADOS - PRIORIZAR DADOS REAIS
+    // LÓGICA DE BUSCA DE DADOS MELHORADA - PRIORIZAR DADOS REAIS
     let totalSpent = 0;
     let currentDailyBudget = 0;
     let dataSource = "zero";
@@ -300,11 +272,12 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
         const apiData = await fetchMetaApiData(tokenData.value, accountId);
         if (apiData) {
           totalSpent = apiData.totalSpent;
-          currentDailyBudget = apiData.dailyBudget;
+          // Para o orçamento diário atual, vamos manter 0 já que a API não fornece mais
+          currentDailyBudget = 0;
           dataSource = "api";
           console.log("✅ Dados obtidos da API Meta com sucesso!", {
             totalSpent,
-            currentDailyBudget,
+            note: "Orçamento diário não disponível via API - usando configuração do sistema",
             accountId
           });
         } else {
