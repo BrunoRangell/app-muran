@@ -175,7 +175,7 @@ async function calculateTotalBudgetMeta(accessToken: string, accountId: string):
       }
     }
     
-    console.log(`✅ Orçamento diário total calculado: ${totalBudget}`);
+    console.log(`💰 Orçamento diário total real calculado: ${totalBudget}`);
     return totalBudget;
     
   } catch (error) {
@@ -190,7 +190,7 @@ async function fetchMetaApiData(accessToken: string, accountId: string): Promise
     console.log(`🔍 Tentando buscar dados reais da API Meta para conta ${accountId}...`);
     
     if (!accessToken) {
-      console.warn("⚠️ Token de acesso não fornecido - usando valores zerados");
+      console.warn("⚠️ Token de acesso não fornecido - retornando null");
       return null;
     }
     
@@ -386,12 +386,13 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
         const apiData = await fetchMetaApiData(tokenData.value, accountId);
         if (apiData) {
           totalSpent = apiData.totalSpent;
-          // Para o orçamento diário atual, vamos manter 0 já que a API não fornece mais
-          currentDailyBudget = 0;
+          // CORREÇÃO CRÍTICA: Usar o valor real calculado da API
+          currentDailyBudget = apiData.dailyBudget;
           dataSource = "api";
           console.log("✅ Dados obtidos da API Meta com sucesso!", {
             totalSpent,
-            note: "Orçamento diário não disponível via API - usando configuração do sistema",
+            currentDailyBudget,
+            dataSource: "API real",
             accountId
           });
         } else {
@@ -417,6 +418,16 @@ export async function processReviewRequest(req: Request): Promise<ReviewResult> 
         console.log("💡 Dica: Configure o token Meta nas configurações para buscar dados reais");
       }
     }
+
+    // Log final dos valores que serão usados
+    console.log(`📊 Valores finais para revisão:`, {
+      totalSpent,
+      currentDailyBudget,
+      budgetAmount,
+      dataSource,
+      accountId,
+      accountName
+    });
 
     // Calcular orçamento diário ideal baseado nos dados obtidos
     const roundedIdealDailyBudget = calculateIdealDailyBudget(budgetAmount, totalSpent);
