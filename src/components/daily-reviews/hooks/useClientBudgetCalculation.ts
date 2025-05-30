@@ -70,8 +70,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
         
         if (review) {
           // Usar os valores da revisão
-          currentDailyBudget = review.meta_daily_budget_current || 0;
-          totalSpent = review.meta_total_spent || 0;
+          currentDailyBudget = review.google_daily_budget_current || 0;
+          totalSpent = review.google_total_spent || 0;
           
           // Verificar se a revisão está usando um orçamento personalizado
           const isUsingCustomBudgetInReview = review.using_custom_budget || false;

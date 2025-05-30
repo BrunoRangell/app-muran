@@ -1,5 +1,5 @@
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import { lazy, Suspense } from "react";
@@ -53,8 +53,7 @@ const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"))
 const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"));
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
-const DailyReviews = lazyWithTimeout(() => import("@/pages/DailyReviews"));
-const RevisaoNova = lazyWithTimeout(() => import("@/pages/RevisaoNova"));
+const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
 
 function App() {
   return (
@@ -102,15 +101,14 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/revisoes-diarias"
-          element={
-            <PrivateRoute requireAdmin>
-              <DailyReviews />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/revisao-meta" element={<RevisaoNova />} />
+        {/* Página principal de revisão diária */}
+        <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
+        
+        {/* Redirecionamentos das páginas antigas */}
+        <Route path="/revisoes-diarias" element={<Navigate to="/revisao-diaria-avancada" replace />} />
+        <Route path="/revisao-meta" element={<Navigate to="/revisao-diaria-avancada" replace />} />
+        
+        {/* Redirecionamento da rota antiga */}
         <Route path="/financeiro" element={<ManagerFinancial />} />
         <Route path="/tarefas" element={<Tasks />} />
         <Route path="*" element={<NotFound />} />

@@ -1,52 +1,28 @@
 
-import { Search, Edit, Trash2, AlertCircle } from "lucide-react";
+import React from "react";
 import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ClientWithBudgets, CustomBudget } from "../hooks/useCustomBudgets";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Search, Edit, Trash2, Power, PowerOff } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CustomBudgetTableProps {
-  filteredClients?: ClientWithBudgets[];
+  filteredClients: any[];
   isLoading: boolean;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
-  formatDate: (date: string) => string;
+  formatDate: (dateString: string) => string;
   formatBudget: (value: number) => string;
-  isCurrentlyActive: (budget: CustomBudget) => boolean;
-  isFutureBudget: (budget: CustomBudget) => boolean;
-  onEdit: (budget: CustomBudget) => void;
-  onDelete: (id: string) => void;
-  onToggleStatus: (id: string, isActive: boolean) => void;
+  isCurrentlyActive: (budget: any) => boolean;
+  isFutureBudget: (budget: any) => boolean;
+  onEdit: (budget: any) => void;
+  onDelete: (budgetInfo: {id: string, platform: string}) => void;
+  onToggleStatus: (id: string, isActive: boolean, platform: string) => void;
 }
 
-export const CustomBudgetTable = ({
+export function CustomBudgetTable({
   filteredClients,
   isLoading,
   searchTerm,
@@ -58,174 +34,183 @@ export const CustomBudgetTable = ({
   onEdit,
   onDelete,
   onToggleStatus,
-}: CustomBudgetTableProps) => {
-  // Função para obter o status do orçamento
-  const getBudgetStatus = (budget: CustomBudget) => {
-    if (!budget.is_active) {
-      return { label: "Inativo", variant: "outline" as const };
-    }
-    if (isCurrentlyActive(budget)) {
-      return { label: "Ativo", variant: "default" as const }; 
-    }
-    if (isFutureBudget(budget)) {
-      return { label: "Agendado", variant: "secondary" as const };
-    }
-    return { label: "Encerrado", variant: "secondary" as const };
-  };
-
-  // Função para calcular a duração do período em dias (corrigida)
-  const calculatePeriodDuration = (startDate: string, endDate: string): number => {
-    // As datas estão no formato ISO YYYY-MM-DD
-    const start = new Date(`${startDate}T12:00:00`);
-    const end = new Date(`${endDate}T12:00:00`);
-    
-    // Cálculo da diferença em dias (incluindo o último dia)
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    
-    return diffDays;
-  };
-
+}: CustomBudgetTableProps) {
+  // Renderizar esqueleto de carregamento
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <Loader className="animate-spin h-6 w-6 mr-2 text-muran-primary" />
-        <span>Carregando orçamentos...</span>
+      <div className="space-y-4">
+        <div className="flex gap-2">
+          <Skeleton className="h-9 flex-1" />
+        </div>
+        <div className="border rounded-md">
+          <div className="p-2 border-b bg-gray-50">
+            <Skeleton className="h-6 w-full" />
+          </div>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="p-4 border-b last:border-0">
+              <div className="flex justify-between">
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-5 w-1/4" />
+              </div>
+              <div className="mt-2">
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Barra de pesquisa */}
       <div className="relative">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Buscar cliente..."
-          className="pl-8"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-8"
         />
       </div>
 
-      <div className="rounded-md border">
-        <Table>
+      {/* Tabela de orçamentos personalizados */}
+      <div className="rounded-md border overflow-hidden">
+        <Table className="min-w-full">
           <TableHeader className="bg-gray-50">
             <TableRow>
-              <TableHead className="w-[25%]">Cliente</TableHead>
+              <TableHead className="w-[20%]">Cliente</TableHead>
+              <TableHead className="w-[15%]">Plataforma</TableHead>
               <TableHead className="w-[15%]">Valor</TableHead>
               <TableHead className="w-[15%]">Período</TableHead>
               <TableHead className="w-[15%]">Status</TableHead>
-              <TableHead className="w-[20%]">Descrição</TableHead>
-              <TableHead className="w-[10%] text-right">Ações</TableHead>
+              <TableHead className="w-[20%] text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {!filteredClients || filteredClients.length === 0 ? (
+            {filteredClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                  {searchTerm
-                    ? `Nenhum cliente encontrado com o termo "${searchTerm}"`
-                    : "Nenhum orçamento personalizado configurado"}
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  Nenhum orçamento personalizado encontrado.
                 </TableCell>
               </TableRow>
             ) : (
               filteredClients.map((client) => (
-                client.customBudgets && client.customBudgets.length > 0 ? (
-                  client.customBudgets.map((budget) => (
-                    <TableRow key={budget.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        {client.company_name}
-                      </TableCell>
-                      <TableCell>{formatBudget(budget.budget_amount)}</TableCell>
-                      <TableCell>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">
-                                {formatDate(budget.start_date)} - {formatDate(budget.end_date)}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">
-                                {calculatePeriodDuration(budget.start_date, budget.end_date)} dias
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={budget.is_active}
-                            onCheckedChange={(checked) => 
-                              onToggleStatus(budget.id, checked)
-                            }
-                          />
-                          <Badge variant={getBudgetStatus(budget).variant}>
-                            {getBudgetStatus(budget).label}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">
-                        {budget.description || "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onEdit(budget)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4 text-red-500" />
+                <React.Fragment key={client.id}>
+                  {client.custom_budgets && client.custom_budgets.length > 0 ? (
+                    client.custom_budgets.map((budget: any) => {
+                      const isActive = isCurrentlyActive(budget);
+                      const isFuture = isFutureBudget(budget);
+                      
+                      return (
+                        <TableRow key={budget.id}>
+                          <TableCell className="font-medium">
+                            {client.company_name}
+                            {client.status !== "active" && (
+                              <Badge variant="outline" className="ml-2 bg-gray-100">
+                                {client.status}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={budget.platform === "meta" ? "default" : "secondary"} className={`${
+                              budget.platform === "meta" 
+                                ? "bg-blue-500 hover:bg-blue-500/80" 
+                                : "bg-red-500 hover:bg-red-500/80"
+                            }`}>
+                              {budget.platform === "meta" ? "Meta Ads" : "Google Ads"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatBudget(budget.budget_amount)}</TableCell>
+                          <TableCell>
+                            {formatDate(budget.start_date)} a {formatDate(budget.end_date)}
+                          </TableCell>
+                          <TableCell>
+                            {isActive ? (
+                              <Badge className="bg-green-500 hover:bg-green-500/80">
+                                Ativo
+                              </Badge>
+                            ) : isFuture ? (
+                              <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50">
+                                Futuro
+                              </Badge>
+                            ) : !budget.is_active ? (
+                              <Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50">
+                                Desativado
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
+                                Expirado
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                onClick={() => onEdit(budget)}
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="h-4 w-4" />
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Excluir orçamento
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Tem certeza que deseja excluir este orçamento? Esta
-                                  ação não pode ser desfeita.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => onDelete(budget.id)}
-                                  className="bg-red-500 hover:bg-red-600"
-                                >
-                                  Excluir
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : null
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir orçamento personalizado</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja excluir este orçamento personalizado? Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => onDelete({id: budget.id, platform: budget.platform})}
+                                      className="bg-red-500 hover:bg-red-600"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                              <Button
+                                onClick={() => onToggleStatus(budget.id, !budget.is_active, budget.platform)}
+                                variant="outline"
+                                size="sm"
+                                className={`h-8 w-8 p-0 ${
+                                  budget.is_active
+                                    ? "text-orange-500 hover:text-orange-600"
+                                    : "text-green-500 hover:text-green-600"
+                                }`}
+                              >
+                                {budget.is_active ? (
+                                  <PowerOff className="h-4 w-4" />
+                                ) : (
+                                  <Power className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : null}
+                </React.Fragment>
               ))
             )}
           </TableBody>
         </Table>
       </div>
-
-      {filteredClients && filteredClients.length > 0 && 
-       filteredClients.every(client => client.customBudgets.length === 0) && (
-        <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-md">
-          <AlertCircle className="h-10 w-10 text-muran-primary mb-2" />
-          <h3 className="text-lg font-medium mb-1">Nenhum orçamento configurado</h3>
-          <p className="text-gray-500 text-center">
-            Os clientes foram encontrados, mas nenhum possui orçamentos personalizados.
-          </p>
-        </div>
-      )}
     </div>
   );
-};
+}

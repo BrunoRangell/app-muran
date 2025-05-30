@@ -1,61 +1,27 @@
 
+# Este é um arquivo de configuração para a integração Supabase com Vercel.
 project_id = "socrnutfpqtcjmetskta"
 
 [api]
+enabled = true
 port = 54321
-schemas = ["public", "storage", "graphql_public"]
-extra_search_path = ["public", "extensions"]
+extra_search_path = ["extensions"]
 max_rows = 1000
+
+[auth]
+enabled = true
+port = 54323
+
+[storage]
+enabled = true
 
 [db]
 port = 54322
 shadow_port = 54320
 major_version = 15
 
-[studio]
-port = 54323
-
-[inbucket]
-port = 54324
-smtp_port = 54325
-pop3_port = 54326
-
-[storage]
-file_size_limit = "50MiB"
-
-[auth]
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
-jwt_expiry = 3600
-enable_refresh_token_rotation = true
-refresh_token_reuse_interval = 10
-
-[auth.email]
-enable_signup = true
-double_confirm_changes = true
-enable_confirmations = false
-
-[auth.sms]
-enable_signup = true
-enable_confirmations = true
-
-# A configuração 'disabled' foi removida de analytics
-[analytics]
-port = 54327
-vector_port = 54328
-backend = "postgres"
-
-# A configuração 'webhook_config' foi removida de realtime
-[realtime]
-
 [functions.daily-meta-review]
 verify_jwt = true
 
-[functions.daily-budget-reviews]
-verify_jwt = true
-
-[functions.google-ads-token-check]
-verify_jwt = true
-
-[functions.meta-budget-calculator]
+[functions.daily-google-review]
 verify_jwt = true

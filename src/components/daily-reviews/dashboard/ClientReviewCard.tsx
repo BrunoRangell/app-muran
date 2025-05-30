@@ -29,14 +29,24 @@ export const ClientReviewCard = ({
     totalSpent,
     currentDailyBudget,
     idealDailyBudget,
-    budgetDifference
+    budgetDifference,
+    budgetDifferenceBasedOnAverage,
+    lastFiveDaysAverage,
+    needsBudgetAdjustment,
+    needsAdjustmentBasedOnAverage
   } = useClientBudgetCalculation(client);
 
-  // Flag para mostrar recomendação de orçamento
-  const showRecommendation = Math.abs(budgetDifference) >= 5;
+  // Flag para mostrar recomendação de orçamento baseada no orçamento atual
+  const showRecommendation = needsBudgetAdjustment;
+  
+  // Flag para mostrar recomendação baseada na média dos últimos 5 dias
+  const showRecommendationAverage = needsAdjustmentBasedOnAverage && lastFiveDaysAverage > 0;
+
+  // Determinar se o card deve ter destaque (se houver qualquer recomendação)
+  const shouldHighlight = showRecommendation || showRecommendationAverage;
 
   return (
-    <Card className={`overflow-hidden border ${showRecommendation ? 'border-l-4 border-l-amber-500' : ''}`}>
+    <Card className={`overflow-hidden border ${shouldHighlight ? 'border-l-4 border-l-amber-500' : ''}`}>
       <CardContent className="p-4">
         <CardHeader 
           companyName={client.company_name} 
@@ -48,6 +58,7 @@ export const ClientReviewCard = ({
           monthlyBudget={monthlyBudget}
           totalSpent={totalSpent}
           currentDailyBudget={currentDailyBudget}
+          lastFiveDaysAverage={lastFiveDaysAverage}
           idealDailyBudget={idealDailyBudget}
           isCalculating={isCalculating}
           calculationError={calculationError}
@@ -56,8 +67,12 @@ export const ClientReviewCard = ({
 
         <BudgetRecommendation 
           budgetDifference={budgetDifference}
+          budgetDifferenceBasedOnAverage={budgetDifferenceBasedOnAverage}
           shouldShow={showRecommendation}
+          shouldShowAverage={showRecommendationAverage}
           hasReview={hasReview}
+          lastFiveDaysAverage={lastFiveDaysAverage}
+          compact={true} // Usar versão compacta
         />
 
         <CalculationError error={calculationError} />
