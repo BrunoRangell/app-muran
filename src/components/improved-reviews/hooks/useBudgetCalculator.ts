@@ -6,6 +6,7 @@ type BudgetInput = {
   totalSpent: number;
   currentDailyBudget: number;
   lastFiveDaysAverage?: number; // Adicionado campo para média dos últimos 5 dias
+  customBudgetEndDate?: string; // Novo campo para data de fim do orçamento personalizado
 };
 
 type BudgetCalculation = {
@@ -23,10 +24,21 @@ export function useBudgetCalculator() {
   const calculateBudget = useMemo(() => {
     return (input: BudgetInput): BudgetCalculation => {
       const today = new Date();
-      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      const remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
       
-      // Orçamento restante para o mês (nunca negativo)
+      // Calcular dias restantes com base no orçamento personalizado ou mês atual
+      let remainingDays;
+      if (input.customBudgetEndDate) {
+        // Se tem orçamento personalizado, calcular até a data de fim
+        const endDate = new Date(input.customBudgetEndDate);
+        const timeDiff = endDate.getTime() - today.getTime();
+        remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
+      } else {
+        // Caso contrário, usar o cálculo padrão (dias restantes no mês)
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
+      }
+      
+      // Orçamento restante para o período (nunca negativo)
       const remainingBudget = Math.max(0, input.monthlyBudget - input.totalSpent);
       
       // Calcular porcentagem gasta do orçamento

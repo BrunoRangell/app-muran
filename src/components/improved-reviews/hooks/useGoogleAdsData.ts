@@ -53,6 +53,26 @@ export function useGoogleAdsData() {
       
       console.log(`Encontradas ${googleAccounts?.length || 0} contas Google Ads`);
 
+      // Buscar orçamentos personalizados ATIVOS para Google Ads
+      const today = new Date().toISOString().split('T')[0];
+      const { data: customBudgets, error: customBudgetsError } = await supabase
+        .from("custom_budgets")
+        .select("*")
+        .eq("platform", "google")
+        .eq("is_active", true)
+        .lte("start_date", today)
+        .gte("end_date", today);
+
+      if (customBudgetsError) throw customBudgetsError;
+      
+      console.log(`Encontrados ${customBudgets?.length || 0} orçamentos personalizados ativos para Google Ads`);
+
+      // Criar mapa de orçamentos personalizados por client_id
+      const customBudgetMap = new Map();
+      customBudgets?.forEach(budget => {
+        customBudgetMap.set(budget.client_id, budget);
+      });
+
       // Buscar revisões mais recentes do Google Ads (apenas do mês atual)
       const currentDate = new Date();
       const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -74,6 +94,10 @@ export function useGoogleAdsData() {
       const clientsWithData = clients
         .filter(client => client.google_account_id || (googleAccounts && googleAccounts.some(acc => acc.client_id === client.id)))
         .map(client => {
+          // Verificar se tem orçamento personalizado ativo
+          const customBudget = customBudgetMap.get(client.id);
+          const isUsingCustomBudget = !!customBudget;
+          
           // Encontrar contas do cliente
           const accounts = googleAccounts ? googleAccounts.filter(account => account.client_id === client.id) : [];
           
@@ -89,22 +113,29 @@ export function useGoogleAdsData() {
               // Usar a revisão mais recente
               const review = accountReviews.length > 0 ? accountReviews[0] : null;
               
+              // Determinar o orçamento a ser usado
+              const originalBudgetAmount = account.budget_amount || 0;
+              const budgetAmount = isUsingCustomBudget ? customBudget.budget_amount : originalBudgetAmount;
+              
               // Obter a média de gasto dos últimos 5 dias (se disponível)
               const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
               
               // Calcular orçamento recomendado
               const budgetCalc = calculateBudget({
-                monthlyBudget: account.budget_amount || 0,
+                monthlyBudget: budgetAmount,
                 totalSpent: review?.google_total_spent || 0,
                 currentDailyBudget: review?.google_daily_budget_current || 0,
-                lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
+                lastFiveDaysAverage: lastFiveDaysAvg
               });
               
               return {
                 ...client,
                 google_account_id: account.account_id,
                 google_account_name: account.account_name,
-                budget_amount: account.budget_amount,
+                budget_amount: budgetAmount,
+                original_budget_amount: originalBudgetAmount,
+                isUsingCustomBudget,
+                customBudget,
                 review: review || null,
                 budgetCalculation: budgetCalc,
                 needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
@@ -116,21 +147,28 @@ export function useGoogleAdsData() {
             const clientReviews = reviews ? reviews.filter(r => r.client_id === client.id) : [];
             const review = clientReviews.length > 0 ? clientReviews[0] : null;
             
+            // Determinar o orçamento a ser usado
+            const originalBudgetAmount = client.google_ads_budget || 0;
+            const budgetAmount = isUsingCustomBudget ? customBudget.budget_amount : originalBudgetAmount;
+            
             // Obter a média de gasto dos últimos 5 dias (se disponível)
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
             
             // Calcular orçamento recomendado
             const budgetCalc = calculateBudget({
-              monthlyBudget: client.google_ads_budget || 0,
+              monthlyBudget: budgetAmount,
               totalSpent: review?.google_total_spent || 0,
               currentDailyBudget: review?.google_daily_budget_current || 0,
-              lastFiveDaysAverage: lastFiveDaysAvg // Passar a média dos últimos 5 dias
+              lastFiveDaysAverage: lastFiveDaysAvg
             });
             
             return {
               ...client,
               google_account_name: "Conta Principal",
-              budget_amount: client.google_ads_budget || 0,
+              budget_amount: budgetAmount,
+              original_budget_amount: originalBudgetAmount,
+              isUsingCustomBudget,
+              customBudget,
               review: review || null,
               budgetCalculation: budgetCalc,
               needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
@@ -145,7 +183,7 @@ export function useGoogleAdsData() {
       // Achatar o array (já que alguns clientes podem ter várias contas)
       const flattenedClients = clientsWithData.flat().filter(Boolean);
       
-      // Calcular métricas
+      // Calcular métricas usando o orçamento correto (personalizado ou padrão)
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.google_total_spent || 0), 0);
       const needingAdjustment = flattenedClients.filter(client => client.needsAdjustment).length;
@@ -158,7 +196,7 @@ export function useGoogleAdsData() {
         spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
       };
       
-      console.log("Métricas calculadas:", metricsData);
+      console.log("Métricas calculadas com orçamentos personalizados:", metricsData);
       setMetrics(metricsData);
 
       return flattenedClients;
