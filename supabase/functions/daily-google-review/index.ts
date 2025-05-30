@@ -127,6 +127,31 @@ async function ensureValidToken(supabaseUrl: string, supabaseKey: string) {
   }
 }
 
+// Função para validar se um orçamento personalizado existe
+async function validateCustomBudget(supabaseUrl: string, supabaseKey: string, budgetId: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/custom_budgets?id=eq.${budgetId}&platform=eq.google&select=id`, {
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!response.ok) {
+      console.error(`Erro ao validar orçamento personalizado: ${response.statusText}`);
+      return false;
+    }
+    
+    const budgets = await response.json();
+    return budgets && budgets.length > 0;
+  } catch (error) {
+    console.error("Erro ao validar orçamento personalizado:", error);
+    return false;
+  }
+}
+
 // Função para processar as revisões do Google Ads
 async function processGoogleReview(req: Request) {
   try {
@@ -222,7 +247,7 @@ async function processGoogleReview(req: Request) {
       }
     }
 
-    // Verificar se existe um orçamento personalizado ativo
+    // CORREÇÃO: Verificar se existe um orçamento personalizado ativo para Google Ads
     const today = new Date().toISOString().split('T')[0];
     const customBudgetResponse = await fetch(
       `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&is_active=eq.true&platform=eq.google&start_date=lte.${today}&end_date=gte.${today}&order=created_at.desc&limit=1`, {
@@ -239,12 +264,20 @@ async function processGoogleReview(req: Request) {
       const customBudgets = await customBudgetResponse.json();
       if (customBudgets && customBudgets.length > 0) {
         customBudget = customBudgets[0];
-        budgetAmount = customBudget.budget_amount || budgetAmount;
-        console.log(`Usando orçamento personalizado (ID: ${customBudget.id}) - Valor: ${budgetAmount}`);
+        
+        // VALIDAÇÃO CRÍTICA: Verificar se o orçamento personalizado realmente existe
+        const isValidBudget = await validateCustomBudget(supabaseUrl, supabaseKey, customBudget.id);
+        if (isValidBudget) {
+          budgetAmount = customBudget.budget_amount || budgetAmount;
+          console.log(`✅ Usando orçamento personalizado VÁLIDO (ID: ${customBudget.id}) - Valor: ${budgetAmount}`);
+        } else {
+          console.warn(`⚠️ Orçamento personalizado inválido (ID: ${customBudget.id}) - usando orçamento padrão`);
+          customBudget = null; // Reset para não usar orçamento inválido
+        }
       }
     }
 
-    console.log(`Orçamento usado: ${budgetAmount} para conta ${accountName} (${googleAccountId})`);
+    console.log(`💰 Orçamento final usado: ${budgetAmount} para conta ${accountName} (${googleAccountId})`);
 
     // Verificar revisão existente
     const existingReviewResponse = await fetch(
@@ -266,7 +299,7 @@ async function processGoogleReview(req: Request) {
     let apiErrorDetails = null;
     
     try {
-      console.log("Tentando obter dados reais da API do Google Ads...");
+      console.log("🔍 Tentando obter dados reais da API do Google Ads...");
       
       // Assegurar que temos um token de acesso válido
       const accessToken = await ensureValidToken(supabaseUrl, supabaseKey);
@@ -329,7 +362,7 @@ async function processGoogleReview(req: Request) {
             segments.date BETWEEN '${startDate}' AND '${endDate}'
       `;
       
-      console.log(`Consultando API do Google Ads para a conta ${googleAccountId}, período: ${startDate} a ${endDate}`);
+      console.log(`📊 Consultando API do Google Ads para a conta ${googleAccountId}, período: ${startDate} a ${endDate}`);
       
       // Fazer chamada para a API do Google Ads
       const response = await fetch(
@@ -343,7 +376,7 @@ async function processGoogleReview(req: Request) {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Erro detalhado da API do Google Ads:", {
+        console.error("❌ Erro detalhado da API do Google Ads:", {
           status: response.status,
           statusText: response.statusText,
           headers: Object.fromEntries(response.headers.entries()),
@@ -373,14 +406,14 @@ async function processGoogleReview(req: Request) {
       }
       
       const data = await response.json();
-      console.log("Resposta da API do Google Ads:", JSON.stringify(data, null, 2));
+      console.log("✅ Resposta da API do Google Ads obtida com sucesso");
       
       // Variáveis para rastrear gastos por dia
       let dailySpends: Record<string, number> = {};
       
       // Calcular o gasto total e rastrear gastos por dia APENAS COM DADOS REAIS
       if (data && data.results && data.results.length > 0) {
-        console.log(`Encontrados ${data.results.length} resultados de gastos para a conta ${googleAccountId}`);
+        console.log(`📈 Encontrados ${data.results.length} resultados de gastos para a conta ${googleAccountId}`);
         
         // Processar resultados para calcular gastos
         data.results.forEach((campaign: any) => {
@@ -399,10 +432,9 @@ async function processGoogleReview(req: Request) {
           }
         });
         
-        console.log(`Gasto total REAL para o mês atual: ${totalSpent.toFixed(2)}`);
-        console.log("Gastos diários REAIS:", dailySpends);
+        console.log(`💰 Gasto total REAL para o mês atual: ${totalSpent.toFixed(2)}`);
       } else {
-        console.log("Nenhum resultado de gasto encontrado - mantendo valores zerados");
+        console.log("📊 Nenhum resultado de gasto encontrado - mantendo valores zerados");
       }
       
       // Calcular a média dos últimos 5 dias APENAS COM DADOS REAIS (excluindo hoje)
@@ -424,9 +456,9 @@ async function processGoogleReview(req: Request) {
       // Calcular a média diária dos últimos 5 dias APENAS se tivermos dados reais
       if (totalDaysWithData > 0) {
         lastFiveDaysSpent = totalSpentLastFiveDays / totalDaysWithData;
-        console.log(`Média REAL de gastos dos últimos ${totalDaysWithData} dias: ${lastFiveDaysSpent.toFixed(2)}`);
+        console.log(`📊 Média REAL de gastos dos últimos ${totalDaysWithData} dias: ${lastFiveDaysSpent.toFixed(2)}`);
       } else {
-        console.log("Sem dados reais para média dos últimos 5 dias - mantendo valor zerado");
+        console.log("📊 Sem dados reais para média dos últimos 5 dias - mantendo valor zerado");
         lastFiveDaysSpent = 0;
       }
       
@@ -443,7 +475,7 @@ async function processGoogleReview(req: Request) {
             campaign.status = 'ENABLED'
       `;
       
-      console.log(`Consultando orçamentos REAIS das campanhas ativas para a conta ${googleAccountId}`);
+      console.log(`🔍 Consultando orçamentos REAIS das campanhas ativas para a conta ${googleAccountId}`);
       
       const campaignsResponse = await fetch(
         `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
@@ -458,27 +490,26 @@ async function processGoogleReview(req: Request) {
         const campaignsData = await campaignsResponse.json();
         
         if (campaignsData && campaignsData.results && campaignsData.results.length > 0) {
-          console.log(`Encontradas ${campaignsData.results.length} campanhas ativas`);
+          console.log(`📋 Encontradas ${campaignsData.results.length} campanhas ativas`);
           
           currentDailyBudget = campaignsData.results.reduce((acc: number, campaign: any) => {
             const budget = campaign.campaignBudget?.amountMicros ? campaign.campaignBudget.amountMicros / 1e6 : 0;
-            console.log(`Campanha: ${campaign.campaign?.name}, Orçamento REAL: ${budget}`);
             return acc + budget;
           }, 0);
           
-          console.log(`Orçamento diário REAL total: ${currentDailyBudget.toFixed(2)}`);
+          console.log(`💰 Orçamento diário REAL total: ${currentDailyBudget.toFixed(2)}`);
         } else {
-          console.log("Nenhuma campanha ativa encontrada - orçamento diário mantido zerado");
+          console.log("📊 Nenhuma campanha ativa encontrada - orçamento diário mantido zerado");
           currentDailyBudget = 0;
         }
       } else {
         const errorText = await campaignsResponse.text();
-        console.error("Erro ao obter orçamentos das campanhas:", errorText);
+        console.error("❌ Erro ao obter orçamentos das campanhas:", errorText);
         currentDailyBudget = 0; // Manter zerado se não conseguir dados reais
       }
       
     } catch (apiError: any) {
-      console.error("Erro ao acessar API do Google Ads - usando valores zerados:", apiError);
+      console.error("❌ Erro ao acessar API do Google Ads - usando valores zerados:", apiError);
       // Valores já estão zerados, não fazer nada
       totalSpent = 0;
       lastFiveDaysSpent = 0;
@@ -490,7 +521,7 @@ async function processGoogleReview(req: Request) {
       };
     }
     
-    // Configurar informações de orçamento personalizado
+    // CORREÇÃO CRÍTICA: Configurar informações de orçamento personalizado com validação defensiva
     const customBudgetInfo = customBudget ? {
       using_custom_budget: true,
       custom_budget_id: customBudget.id,
@@ -520,68 +551,146 @@ async function processGoogleReview(req: Request) {
       updated_at: new Date().toISOString()
     };
     
-    console.log("Dados FINAIS para revisão (apenas valores reais ou zerados):", {
+    console.log("📋 Dados FINAIS para revisão (apenas valores reais ou zerados):", {
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
       gastoMédiaCincoDias: lastFiveDaysSpent,
       usandoOrçamentoPersonalizado: customBudget ? true : false,
+      customBudgetId: customBudget?.id || null,
       apiErrorDetails
     });
     
-    // Atualizar ou criar revisão
-    if (existingReviews && existingReviews.length > 0) {
-      reviewId = existingReviews[0].id;
-      
-      // Atualizar revisão existente
-      const updateResponse = await fetch(
-        `${supabaseUrl}/rest/v1/google_ads_reviews?id=eq.${reviewId}`, {
-        method: "PATCH",
-        headers: {
-          "apikey": supabaseKey,
-          "Authorization": `Bearer ${supabaseKey}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=minimal"
-        },
-        body: JSON.stringify({
-          google_daily_budget_current: currentDailyBudget,
-          google_total_spent: totalSpent,
-          google_last_five_days_spent: lastFiveDaysSpent,
-          ...customBudgetInfo,
-          updated_at: new Date().toISOString()
-        })
-      });
-      
-      if (!updateResponse.ok) {
-        const errorText = await updateResponse.text();
-        console.error("Erro ao atualizar revisão:", errorText);
-        throw new Error(`Erro ao atualizar revisão: ${updateResponse.status} - ${errorText}`);
+    // TRATAMENTO DEFENSIVO: Atualizar ou criar revisão com validação de erro
+    try {
+      if (existingReviews && existingReviews.length > 0) {
+        reviewId = existingReviews[0].id;
+        
+        // Atualizar revisão existente
+        const updateResponse = await fetch(
+          `${supabaseUrl}/rest/v1/google_ads_reviews?id=eq.${reviewId}`, {
+          method: "PATCH",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({
+            google_daily_budget_current: currentDailyBudget,
+            google_total_spent: totalSpent,
+            google_last_five_days_spent: lastFiveDaysSpent,
+            ...customBudgetInfo,
+            updated_at: new Date().toISOString()
+          })
+        });
+        
+        if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          console.error("❌ Erro ao atualizar revisão:", errorText);
+          
+          // Se for erro de chave estrangeira com orçamento personalizado, tentar sem ele
+          if (errorText.includes("violates foreign key constraint") && customBudget) {
+            console.warn("⚠️ Erro de chave estrangeira com orçamento personalizado - tentando sem orçamento personalizado");
+            
+            const fallbackUpdateResponse = await fetch(
+              `${supabaseUrl}/rest/v1/google_ads_reviews?id=eq.${reviewId}`, {
+              method: "PATCH",
+              headers: {
+                "apikey": supabaseKey,
+                "Authorization": `Bearer ${supabaseKey}`,
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+              },
+              body: JSON.stringify({
+                google_daily_budget_current: currentDailyBudget,
+                google_total_spent: totalSpent,
+                google_last_five_days_spent: lastFiveDaysSpent,
+                using_custom_budget: false,
+                custom_budget_id: null,
+                custom_budget_amount: null,
+                custom_budget_start_date: null,
+                custom_budget_end_date: null,
+                updated_at: new Date().toISOString()
+              })
+            });
+            
+            if (!fallbackUpdateResponse.ok) {
+              const fallbackErrorText = await fallbackUpdateResponse.text();
+              throw new Error(`Erro ao atualizar revisão (fallback): ${fallbackUpdateResponse.status} - ${fallbackErrorText}`);
+            }
+            
+            console.log(`✅ Revisão existente atualizada com dados reais (sem orçamento personalizado): ${reviewId}`);
+          } else {
+            throw new Error(`Erro ao atualizar revisão: ${updateResponse.status} - ${errorText}`);
+          }
+        } else {
+          console.log(`✅ Revisão existente atualizada com dados reais: ${reviewId}`);
+        }
+      } else {
+        // Criar nova revisão
+        const insertResponse = await fetch(
+          `${supabaseUrl}/rest/v1/google_ads_reviews`, {
+          method: "POST",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+          },
+          body: JSON.stringify(reviewData)
+        });
+        
+        if (!insertResponse.ok) {
+          const errorText = await insertResponse.text();
+          console.error("❌ Erro ao criar revisão:", errorText);
+          
+          // Se for erro de chave estrangeira com orçamento personalizado, tentar sem ele
+          if (errorText.includes("violates foreign key constraint") && customBudget) {
+            console.warn("⚠️ Erro de chave estrangeira com orçamento personalizado - tentando sem orçamento personalizado");
+            
+            const fallbackReviewData = {
+              ...reviewData,
+              using_custom_budget: false,
+              custom_budget_id: null,
+              custom_budget_amount: null,
+              custom_budget_start_date: null,
+              custom_budget_end_date: null
+            };
+            
+            const fallbackInsertResponse = await fetch(
+              `${supabaseUrl}/rest/v1/google_ads_reviews`, {
+              method: "POST",
+              headers: {
+                "apikey": supabaseKey,
+                "Authorization": `Bearer ${supabaseKey}`,
+                "Content-Type": "application/json",
+                "Prefer": "return=representation"
+              },
+              body: JSON.stringify(fallbackReviewData)
+            });
+            
+            if (!fallbackInsertResponse.ok) {
+              const fallbackErrorText = await fallbackInsertResponse.text();
+              throw new Error(`Erro ao criar revisão (fallback): ${fallbackInsertResponse.status} - ${fallbackErrorText}`);
+            }
+            
+            const newReview = await fallbackInsertResponse.json();
+            reviewId = newReview[0].id;
+            
+            console.log(`✅ Nova revisão criada com dados reais (sem orçamento personalizado): ${reviewId}`);
+          } else {
+            throw new Error(`Erro ao criar revisão: ${insertResponse.status} - ${errorText}`);
+          }
+        } else {
+          const newReview = await insertResponse.json();
+          reviewId = newReview[0].id;
+          
+          console.log(`✅ Nova revisão criada com dados reais: ${reviewId}`);
+        }
       }
-      
-      console.log(`Revisão existente atualizada com dados reais: ${reviewId}`);
-    } else {
-      // Criar nova revisão
-      const insertResponse = await fetch(
-        `${supabaseUrl}/rest/v1/google_ads_reviews`, {
-        method: "POST",
-        headers: {
-          "apikey": supabaseKey,
-          "Authorization": `Bearer ${supabaseKey}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=representation"
-        },
-        body: JSON.stringify(reviewData)
-      });
-      
-      if (!insertResponse.ok) {
-        const errorText = await insertResponse.text();
-        console.error("Erro ao criar revisão:", errorText);
-        throw new Error(`Erro ao criar revisão: ${insertResponse.status} - ${errorText}`);
-      }
-      
-      const newReview = await insertResponse.json();
-      reviewId = newReview[0].id;
-      
-      console.log(`Nova revisão criada com dados reais: ${reviewId}`);
+    } catch (dbError: any) {
+      console.error("❌ Erro crítico ao salvar revisão:", dbError);
+      throw new Error(`Erro crítico ao salvar revisão: ${dbError.message}`);
     }
 
     return {
@@ -597,7 +706,7 @@ async function processGoogleReview(req: Request) {
       ...customBudgetInfo
     };
   } catch (error) {
-    console.error("Erro na função Edge do Google Ads:", error.message);
+    console.error("❌ Erro na função Edge do Google Ads:", error.message);
     return {
       success: false,
       error: error.message,
@@ -618,13 +727,13 @@ serve(async (req: Request) => {
     const result = await processGoogleReview(req);
     
     if (!result.success) {
-      console.error("Resultado com erro:", result);
+      console.error("❌ Resultado com erro:", result);
       return formatErrorResponse(result.error || "Erro desconhecido", 400);
     }
 
     return formatResponse(result);
   } catch (error) {
-    console.error("Erro crítico na função Edge:", error.message);
+    console.error("❌ Erro crítico na função Edge:", error.message);
     return formatErrorResponse(`Erro crítico: ${error.message}`, 500);
   }
 });

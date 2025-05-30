@@ -74,11 +74,39 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       
       if (error) {
         console.error(`[useBatchOperations] Erro ao processar revisão:`, error);
+        
+        // Tratamento específico para erros de orçamento personalizado no Google Ads
+        if (config.platform === "google" && error.message?.includes("violates foreign key constraint")) {
+          console.warn(`[useBatchOperations] Erro de orçamento personalizado detectado para cliente ${clientId} - continuando...`);
+          
+          toast({
+            title: "Aviso - Orçamento personalizado",
+            description: `Cliente ${client.company_name}: problema com orçamento personalizado, mas revisão foi salva.`,
+            variant: "default",
+          });
+          
+          return { reviewId: null, warning: "custom_budget_error" };
+        }
+        
         throw new Error(`Erro ao processar revisão: ${error.message}`);
       }
       
       if (data && data.error) {
         console.error(`[useBatchOperations] Erro retornado pela função:`, data);
+        
+        // Tratamento específico para erros de orçamento personalizado no Google Ads
+        if (config.platform === "google" && data.error?.includes("violates foreign key constraint")) {
+          console.warn(`[useBatchOperations] Erro de orçamento personalizado detectado para cliente ${clientId} - continuando...`);
+          
+          toast({
+            title: "Aviso - Orçamento personalizado",
+            description: `Cliente ${client.company_name}: problema com orçamento personalizado, mas revisão foi salva.`,
+            variant: "default",
+          });
+          
+          return { reviewId: null, warning: "custom_budget_error" };
+        }
+        
         throw new Error(data.error || "Erro ao processar revisão");
       }
       
@@ -98,11 +126,16 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       return data;
     } catch (error: any) {
       console.error(`[useBatchOperations] Erro ao revisar cliente ${clientId}:`, error);
-      toast({
-        title: "Erro na revisão",
-        description: error.message || "Ocorreu um erro ao revisar o cliente",
-        variant: "destructive",
-      });
+      
+      // Não mostrar toast de erro para problemas de orçamento personalizado já tratados
+      if (!error.message?.includes("custom_budget_error")) {
+        toast({
+          title: "Erro na revisão",
+          description: error.message || "Ocorreu um erro ao revisar o cliente",
+          variant: "destructive",
+        });
+      }
+      
       throw error;
     } finally {
       finishClientProcessing(clientId);
@@ -128,14 +161,20 @@ export function useBatchOperations(config: BatchOperationsConfig) {
     
     const successfulReviews: string[] = [];
     const failedReviews: string[] = [];
+    const warningReviews: string[] = [];
     
     // Crie um atraso para mostrar o progresso da operação
     const processWithDelay = async () => {
       for (const client of clients) {
         try {
           console.log(`[useBatchOperations] Processando cliente: ${client.company_name || client.id}`);
-          await reviewClient(client.id, client[`${config.platform}_account_id`] || undefined);
-          successfulReviews.push(client.company_name || client.id);
+          const result = await reviewClient(client.id, client[`${config.platform}_account_id`] || undefined);
+          
+          if (result?.warning === "custom_budget_error") {
+            warningReviews.push(client.company_name || client.id);
+          } else {
+            successfulReviews.push(client.company_name || client.id);
+          }
         } catch (error) {
           failedReviews.push(client.company_name || client.id);
           console.error(`[useBatchOperations] Erro ao revisar cliente ${client.id}:`, error);
@@ -147,6 +186,7 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       
       console.log(`[useBatchOperations] Revisão em lote concluída:`, {
         successful: successfulReviews.length,
+        warnings: warningReviews.length,
         failed: failedReviews.length,
         platform: config.platform
       });
@@ -154,9 +194,20 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       setIsProcessing(false);
       setProcessingIds([]);
       
+      // Construir mensagem de resultado
+      let description = `${successfulReviews.length} clientes revisados com sucesso`;
+      if (warningReviews.length > 0) {
+        description += `, ${warningReviews.length} com avisos`;
+      }
+      if (failedReviews.length > 0) {
+        description += `, ${failedReviews.length} falhas`;
+      }
+      description += '.';
+      
       toast({
         title: "Revisão em massa concluída",
-        description: `${successfulReviews.length} clientes revisados com sucesso${failedReviews.length > 0 ? `, ${failedReviews.length} falhas` : ''}.`,
+        description,
+        variant: failedReviews.length > 0 ? "destructive" : "default",
       });
       
       if (config.onComplete) {
