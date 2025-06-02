@@ -72,7 +72,7 @@ async function fetchMetaApiData(accountId: string, accessToken: string) {
     return {
       totalSpent,
       currentDailyBudget: totalDailyBudget,
-      dataSource: "API real",
+      dataSource: "api",
       accountId
     };
   } catch (error) {
@@ -100,8 +100,7 @@ export async function processReviewRequest(req: Request) {
       metaAccountId,
       reviewDate,
       fetchRealData,
-      hasAccessToken: !!accessToken,
-      hasRealApiData: false
+      hasAccessToken: !!accessToken
     });
     
     // Buscar dados do cliente
@@ -110,7 +109,7 @@ export async function processReviewRequest(req: Request) {
     // Verificar se tem token Meta configurado
     const hasMetaToken = !!accessToken;
     if (!hasMetaToken) {
-      console.log("⚠️ Token Meta não encontrado");
+      console.log("⚠️ Token Meta não encontrado - valores serão zerados");
     } else {
       console.log("✅ Token Meta configurado corretamente");
     }
@@ -156,17 +155,18 @@ export async function processReviewRequest(req: Request) {
       customBudgetEndDate
     });
     
+    // Inicializar valores como zero
     let totalSpent = 0;
     let currentDailyBudget = 0;
-    let dataSource = "mock";
+    let dataSource = "no_data";
     
-    // Tentar buscar dados reais da API Meta
+    // Tentar buscar dados reais da API Meta APENAS se tiver token e fetchRealData for true
     if (hasMetaToken && fetchRealData && accountId) {
       console.log("🔄 Tentando buscar dados reais da API Meta...");
       
       try {
         console.log("🔑 Token Meta encontrado, fazendo chamada para API...");
-        console.log(`🔍 Tentando buscar dados reais da API Meta para conta ${accountId}...`);
+        console.log(`🔍 Buscando dados reais da API Meta para conta ${accountId}...`);
         
         const apiData = await fetchMetaApiData(accountId, accessToken);
         
@@ -188,17 +188,17 @@ export async function processReviewRequest(req: Request) {
           accountId
         });
       } catch (apiError) {
-        console.error("❌ Erro ao buscar dados da API Meta:", apiError);
-        // Usar dados mock em caso de erro
-        totalSpent = Math.random() * 100;
-        currentDailyBudget = Math.random() * 50;
-        dataSource = "mock_fallback";
+        console.error("❌ Erro ao buscar dados da API Meta - mantendo valores zerados:", apiError);
+        // Manter valores zerados em caso de erro
+        totalSpent = 0;
+        currentDailyBudget = 0;
+        dataSource = "api_error";
       }
     } else {
-      // Dados simulados para teste
-      totalSpent = Math.random() * 100;
-      currentDailyBudget = Math.random() * 50;
-      dataSource = "mock";
+      // Sem token ou fetchRealData false - manter valores zerados
+      const reason = !hasMetaToken ? "sem token" : !fetchRealData ? "fetchRealData=false" : "sem accountId";
+      console.log(`⚠️ Não buscando dados da API Meta (${reason}) - usando valores zerados`);
+      dataSource = "no_token";
     }
     
     console.log("📊 Valores finais para revisão:", {
@@ -225,7 +225,6 @@ export async function processReviewRequest(req: Request) {
     
     console.log("💾 Dados para salvar na revisão:", {
       ...reviewData,
-      idealDailyBudget: "NaN",
       dataSource,
       hasMetaToken,
       fetchRealData
@@ -256,8 +255,8 @@ export async function processReviewRequest(req: Request) {
       clientId,
       accountId,
       accountName,
-      idealDailyBudget: "NaN",
       totalSpent,
+      currentDailyBudget,
       budgetAmount,
       usingCustomBudget,
       dataSource
