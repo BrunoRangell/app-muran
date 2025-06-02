@@ -34,13 +34,15 @@ export function useUnifiedReviewsData() {
     queryFn: async () => {
       console.log("🔍 Buscando dados dos clientes Meta Ads consolidados...");
       
-      // Buscar clientes ativos
+      // Buscar clientes ativos - FONTE ÚNICA DE VERDADE para orçamentos
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
         .select(`
           id,
           company_name,
-          status
+          status,
+          meta_ads_budget,
+          meta_account_id
         `)
         .eq("status", "active");
 
@@ -51,18 +53,19 @@ export function useUnifiedReviewsData() {
 
       console.log("✅ Clientes encontrados:", clients?.length || 0);
 
-      // Buscar contas Meta específicas (agora única fonte de verdade)
-      const { data: metaAccounts, error: accountsError } = await supabase
+      // Buscar contas Meta adicionais (apenas para múltiplas contas)
+      const { data: additionalMetaAccounts, error: accountsError } = await supabase
         .from("client_meta_accounts")
         .select("*")
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("is_primary", false); // Apenas contas secundárias
 
       if (accountsError) {
-        console.error("❌ Erro ao buscar contas Meta:", accountsError);
+        console.error("❌ Erro ao buscar contas Meta adicionais:", accountsError);
         throw accountsError;
       }
 
-      console.log("✅ Contas Meta encontradas:", metaAccounts?.length || 0);
+      console.log("✅ Contas Meta adicionais encontradas:", additionalMetaAccounts?.length || 0);
 
       // Buscar revisões mais recentes
       const today = new Date().toISOString().split("T")[0];
@@ -78,16 +81,17 @@ export function useUnifiedReviewsData() {
       
       console.log("✅ Revisões encontradas para hoje:", reviews?.length || 0);
       
-      // Buscar orçamentos personalizados ativos
+      // Buscar orçamentos personalizados ativos - TABELA UNIFICADA
       const { data: activeCustomBudgets, error: budgetsError } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .select("*")
+        .eq("platform", "meta")
         .eq("is_active", true)
         .lte("start_date", today)
         .gte("end_date", today);
       
       if (budgetsError) {
-        console.error("❌ Erro ao buscar orçamentos ativos:", budgetsError);
+        console.error("❌ Erro ao buscar orçamentos personalizados:", budgetsError);
         throw budgetsError;
       }
       
@@ -99,9 +103,18 @@ export function useUnifiedReviewsData() {
         customBudgetsByClientId.set(budget.client_id, budget);
       });
 
-      // Criar Set de clientes com contas Meta (baseado apenas na tabela específica)
+      // Criar Set de clientes com contas Meta
       const clientsWithAccounts = new Set();
-      metaAccounts?.forEach(account => {
+      
+      // Processar clientes com conta principal (da tabela clients)
+      clients?.forEach(client => {
+        if (client.meta_account_id) {
+          clientsWithAccounts.add(client.id);
+        }
+      });
+      
+      // Adicionar clientes com contas adicionais
+      additionalMetaAccounts?.forEach(account => {
         clientsWithAccounts.add(account.client_id);
       });
       
@@ -114,15 +127,42 @@ export function useUnifiedReviewsData() {
 
       // Combinar os dados - incluir TODOS os clientes
       const clientsWithData = clients?.map(client => {
-        // Encontrar contas específicas do cliente
-        const accounts = metaAccounts?.filter(account => account.client_id === client.id) || [];
+        // Verificar se tem conta principal (da tabela clients)
+        const hasMainAccount = client.meta_account_id && client.meta_account_id !== '';
+        
+        // Buscar contas adicionais
+        const additionalAccounts = additionalMetaAccounts?.filter(account => 
+          account.client_id === client.id
+        ) || [];
+        
+        const allAccounts = [];
+        
+        // Adicionar conta principal se existir
+        if (hasMainAccount) {
+          allAccounts.push({
+            account_id: client.meta_account_id,
+            account_name: "Conta Principal",
+            budget_amount: client.meta_ads_budget || 0, // FONTE ÚNICA: clients.meta_ads_budget
+            is_primary: true
+          });
+        }
+        
+        // Adicionar contas secundárias
+        additionalAccounts.forEach(account => {
+          allAccounts.push({
+            account_id: account.account_id,
+            account_name: account.account_name,
+            budget_amount: account.budget_amount,
+            is_primary: false
+          });
+        });
         
         // Se o cliente tem contas Meta configuradas
-        if (accounts.length > 0) {
-          return accounts.map(account => {
+        if (allAccounts.length > 0) {
+          return allAccounts.map(account => {
             const review = reviews?.find(r => 
               r.client_id === client.id && 
-              (r.meta_account_id === account.account_id || r.client_account_id === account.id)
+              r.meta_account_id === account.account_id
             );
             
             let customBudget = null;
@@ -154,10 +194,10 @@ export function useUnifiedReviewsData() {
             const budgetCalc = calculateBudget({
               monthlyBudget: monthlyBudget,
               totalSpent: review?.meta_total_spent || 0,
-              currentDailyBudget: review?.meta_daily_budget_current || 0
+              currentDailyBudget: review?.meta_daily_budget_current || 0,
+              customBudgetEndDate: customBudget?.end_date
             });
             
-            // CORREÇÃO: Usar apenas needsBudgetAdjustment que já considera o threshold de R$ 5
             const needsAdjustment = budgetCalc.needsBudgetAdjustment;
             
             const clientData = {
@@ -180,7 +220,8 @@ export function useUnifiedReviewsData() {
               needsAdjustment: needsAdjustment,
               budgetDifference: budgetCalc.budgetDifference,
               needsBudgetAdjustment: budgetCalc.needsBudgetAdjustment,
-              hasReview: !!review
+              hasReview: !!review,
+              sourceTable: account.is_primary ? "clients" : "client_meta_accounts"
             });
             
             return clientData;
@@ -196,11 +237,12 @@ export function useUnifiedReviewsData() {
             original_budget_amount: 0,
             review: null,
             budgetCalculation: {
-              recommendedDailyBudget: 0,
+              idealDailyBudget: 0,
+              budgetDifference: 0,
+              remainingDays: 0,
+              remainingBudget: 0,
               needsBudgetAdjustment: false,
-              adjustmentReason: null,
-              currentSpendRate: 0,
-              daysRemaining: 0
+              spentPercentage: 0
             },
             needsAdjustment: false,
             customBudget: null,

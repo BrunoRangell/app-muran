@@ -27,13 +27,15 @@ export function useGoogleAdsData() {
     queryFn: async () => {
       console.log("🔍 Buscando dados dos clientes Google Ads consolidados...");
       
-      // Buscar clientes ativos
+      // Buscar clientes ativos - FONTE ÚNICA DE VERDADE para orçamentos
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
         .select(`
           id,
           company_name,
-          status
+          status,
+          google_ads_budget,
+          google_account_id
         `)
         .eq("status", "active");
 
@@ -41,17 +43,18 @@ export function useGoogleAdsData() {
       
       console.log(`✅ Clientes encontrados: ${clients?.length || 0}`);
 
-      // Buscar contas Google específicas (agora única fonte de verdade)
-      const { data: googleAccounts, error: accountsError } = await supabase
+      // Buscar contas Google adicionais (apenas para múltiplas contas)
+      const { data: additionalGoogleAccounts, error: accountsError } = await supabase
         .from("client_google_accounts")
         .select("*")
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("is_primary", false); // Apenas contas secundárias
 
       if (accountsError) throw accountsError;
       
-      console.log(`✅ Contas Google Ads encontradas: ${googleAccounts?.length || 0}`);
+      console.log(`✅ Contas Google Ads adicionais encontradas: ${additionalGoogleAccounts?.length || 0}`);
 
-      // Buscar orçamentos personalizados ATIVOS para Google Ads
+      // Buscar orçamentos personalizados ATIVOS para Google Ads - TABELA UNIFICADA
       const today = new Date().toISOString().split('T')[0];
       const { data: customBudgets, error: customBudgetsError } = await supabase
         .from("custom_budgets")
@@ -71,9 +74,18 @@ export function useGoogleAdsData() {
         customBudgetMap.set(budget.client_id, budget);
       });
 
-      // Calcular clientes com contas (baseado apenas na tabela específica)
+      // Calcular clientes com contas
       const clientsWithAccounts = new Set();
-      googleAccounts?.forEach(account => {
+      
+      // Processar clientes com conta principal (da tabela clients)
+      clients?.forEach(client => {
+        if (client.google_account_id) {
+          clientsWithAccounts.add(client.id);
+        }
+      });
+      
+      // Adicionar clientes com contas adicionais
+      additionalGoogleAccounts?.forEach(account => {
         clientsWithAccounts.add(account.client_id);
       });
       
@@ -107,23 +119,50 @@ export function useGoogleAdsData() {
         const customBudget = customBudgetMap.get(client.id);
         const isUsingCustomBudget = !!customBudget;
         
-        // Encontrar contas específicas do cliente
-        const accounts = googleAccounts?.filter(account => account.client_id === client.id) || [];
+        // Verificar se tem conta principal
+        const hasMainAccount = client.google_account_id && client.google_account_id !== '';
+        
+        // Buscar contas adicionais
+        const additionalAccounts = additionalGoogleAccounts?.filter(account => 
+          account.client_id === client.id
+        ) || [];
+        
+        const allAccounts = [];
+        
+        // Adicionar conta principal se existir
+        if (hasMainAccount) {
+          allAccounts.push({
+            account_id: client.google_account_id,
+            account_name: "Conta Principal",
+            budget_amount: client.google_ads_budget || 0, // FONTE ÚNICA: clients.google_ads_budget
+            is_primary: true
+          });
+        }
+        
+        // Adicionar contas secundárias
+        additionalAccounts.forEach(account => {
+          allAccounts.push({
+            account_id: account.account_id,
+            account_name: account.account_name,
+            budget_amount: account.budget_amount,
+            is_primary: false
+          });
+        });
         
         // Se o cliente tiver contas específicas, criar um item para cada conta
-        if (accounts.length > 0) {
-          return accounts.map(account => {
+        if (allAccounts.length > 0) {
+          return allAccounts.map(account => {
             // Encontrar revisões para esta conta (apenas do mês atual)
             const accountReviews = reviews?.filter(r => 
               r.client_id === client.id && 
-              (r.google_account_id === account.account_id || r.client_account_id === account.id)
+              r.google_account_id === account.account_id
             ) || [];
             
             // Usar a revisão mais recente
             const review = accountReviews.length > 0 ? accountReviews[0] : null;
             
             // Determinar o orçamento a ser usado
-            const originalBudgetAmount = account.budget_amount || 0;
+            const originalBudgetAmount = account.budget_amount;
             const budgetAmount = isUsingCustomBudget ? customBudget.budget_amount : originalBudgetAmount;
             
             // Obter a média de gasto dos últimos 5 dias (se disponível)
@@ -134,11 +173,10 @@ export function useGoogleAdsData() {
               monthlyBudget: budgetAmount,
               totalSpent: review?.google_total_spent || 0,
               currentDailyBudget: review?.google_daily_budget_current || 0,
-              lastFiveDaysAverage: lastFiveDaysAvg
+              lastFiveDaysAverage: lastFiveDaysAvg,
+              customBudgetEndDate: customBudget?.end_date
             });
             
-            // CORREÇÃO: Usar apenas needsBudgetAdjustment que já considera o threshold de R$ 5
-            // Remover a verificação de needsAdjustmentBasedOnAverage para manter consistência
             const needsAdjustment = budgetCalc.needsBudgetAdjustment;
             
             return {
@@ -169,11 +207,12 @@ export function useGoogleAdsData() {
             customBudget: null,
             review: null,
             budgetCalculation: {
-              recommendedDailyBudget: 0,
+              idealDailyBudget: 0,
+              budgetDifference: 0,
+              remainingDays: 0,
+              remainingBudget: 0,
               needsBudgetAdjustment: false,
-              adjustmentReason: null,
-              currentSpendRate: 0,
-              daysRemaining: 0
+              spentPercentage: 0
             },
             needsAdjustment: false,
             lastFiveDaysAvg: 0,
