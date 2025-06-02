@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -57,30 +56,40 @@ export function useCustomBudgets() {
 
       console.log(`✅ ${clients?.length || 0} clientes e ${customBudgets?.length || 0} orçamentos encontrados`);
 
-      // Organizar orçamentos por cliente e plataforma
+      // Organizar orçamentos por cliente
       const budgetsByClient = new Map();
       customBudgets?.forEach(budget => {
-        const key = `${budget.client_id}-${budget.platform}`;
-        if (!budgetsByClient.has(key)) {
-          budgetsByClient.set(key, []);
+        if (!budgetsByClient.has(budget.client_id)) {
+          budgetsByClient.set(budget.client_id, []);
         }
-        budgetsByClient.get(key).push(budget);
+        budgetsByClient.get(budget.client_id).push(budget);
       });
 
-      // Combinar dados dos clientes com seus orçamentos
+      // Combinar dados dos clientes com seus orçamentos - CORRIGIDO
       const clientsWithBudgets = clients?.map(client => {
-        const metaBudgets = budgetsByClient.get(`${client.id}-meta`) || [];
-        const googleBudgets = budgetsByClient.get(`${client.id}-google`) || [];
+        const clientBudgets = budgetsByClient.get(client.id) || [];
+        const metaBudgets = clientBudgets.filter(b => b.platform === 'meta');
+        const googleBudgets = clientBudgets.filter(b => b.platform === 'google');
 
         return {
           ...client,
           metaBudgets,
           googleBudgets,
-          customBudgets: [...metaBudgets, ...googleBudgets] // Para compatibilidade
+          custom_budgets: clientBudgets // Esta é a propriedade que a tabela espera
         };
       }) || [];
 
-      return clientsWithBudgets;
+      // Filtrar apenas clientes que têm orçamentos personalizados
+      const clientsWithAnyBudgets = clientsWithBudgets.filter(client => 
+        client.custom_budgets && client.custom_budgets.length > 0
+      );
+
+      console.log(`🔍 Debug: ${clientsWithAnyBudgets.length} clientes com orçamentos personalizados encontrados`);
+      clientsWithAnyBudgets.forEach(client => {
+        console.log(`   - ${client.company_name}: ${client.custom_budgets.length} orçamentos`);
+      });
+
+      return clientsWithAnyBudgets;
     }
   });
 
