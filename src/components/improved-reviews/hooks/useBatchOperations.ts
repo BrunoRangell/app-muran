@@ -124,6 +124,19 @@ export function useBatchOperations(config: BatchOperationsConfig) {
         totalSpent: data?.totalSpent,
         idealDailyBudget: data?.idealDailyBudget
       });
+
+      // INVALIDAR QUERIES APÓS SUCESSO INDIVIDUAL - CORREÇÃO PRINCIPAL
+      console.log(`[useBatchOperations] Invalidando queries após análise individual do cliente ${client.company_name}`);
+      await queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+      await queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      await queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["client-current-reviews"] });
+      await queryClient.invalidateQueries({ queryKey: ["daily-budget-reviews"] });
+      
+      // Invalidar queries específicas da plataforma
+      if (config.platform === "google") {
+        await queryClient.invalidateQueries({ queryKey: ["google-ads-clients-with-reviews"] });
+      }
       
       toast({
         title: "Revisão concluída",
