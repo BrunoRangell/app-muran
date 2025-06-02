@@ -62,40 +62,27 @@ export function useBudgetCalculator() {
       if (input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0) {
         budgetDifferenceBasedOnAverage = roundedIdealDailyBudget - input.lastFiveDaysAverage;
         
-        // Determinar se precisa de ajuste baseado na média (diferença de 5 reais ou 5%)
+        // CORREÇÃO: Aplicar apenas o threshold de R$ 5 para consistência
         const absoluteDifferenceAverage = Math.abs(budgetDifferenceBasedOnAverage);
-        const percentageDifferenceAverage = input.lastFiveDaysAverage > 0 
-          ? absoluteDifferenceAverage / input.lastFiveDaysAverage 
-          : 0;
-          
-        needsAdjustmentBasedOnAverage = 
-          (absoluteDifferenceAverage >= 5) || // diferença absoluta de 5 reais
-          (percentageDifferenceAverage >= 0.05 && absoluteDifferenceAverage >= 1); // ou 5% com pelo menos 1 real de diferença
+        needsAdjustmentBasedOnAverage = absoluteDifferenceAverage >= 5;
 
         console.log(`🔍 DEBUG - Ajuste baseado na média (${input.lastFiveDaysAverage}):`, {
           absoluteDifferenceAverage,
-          percentageDifferenceAverage,
           needsAdjustmentBasedOnAverage,
-          threshold: '≥ R$ 5 ou ≥ 5%'
+          threshold: '≥ R$ 5'
         });
       }
       
-      // Determinar se precisa de ajuste (diferença de 5 reais ou 5%)
+      // CORREÇÃO: Aplicar apenas o threshold de R$ 5 para consistência
       const absoluteDifference = Math.abs(budgetDifference);
-      const percentageDifference = input.currentDailyBudget > 0 
-        ? absoluteDifference / input.currentDailyBudget 
-        : 0;
-        
       const needsBudgetAdjustment = 
         input.currentDailyBudget > 0 && // só considera se tem orçamento atual
-        ((absoluteDifference >= 5) || // diferença absoluta de 5 reais
-        (percentageDifference >= 0.05 && absoluteDifference >= 1)); // ou 5% com pelo menos 1 real de diferença
+        absoluteDifference >= 5; // APENAS diferença absoluta de 5 reais
 
       console.log(`🔍 DEBUG - Cálculo de ajuste orçamentário:`, {
         absoluteDifference,
-        percentageDifference,
         needsBudgetAdjustment,
-        threshold: '≥ R$ 5 ou ≥ 5%',
+        threshold: '≥ R$ 5',
         currentDailyBudget: input.currentDailyBudget,
         idealDailyBudget: roundedIdealDailyBudget
       });
