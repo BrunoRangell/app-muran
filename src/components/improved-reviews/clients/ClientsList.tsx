@@ -1,4 +1,3 @@
-
 import { ClientCard } from "./ClientCard";
 import { ClientRow } from "./ClientRow";
 import { ClientsTable } from "./ClientsTable";
@@ -44,10 +43,14 @@ export function ClientsList({
     });
   }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, platform]);
   
-  // Ordenar clientes - ORDENAÇÃO ALFABÉTICA PRIMÁRIA
+  // Ordenar clientes - PRIORIDADE DE CONTA + ORDEM ALFABÉTICA
   const sortedClients = useMemo(() => {
     return [...filteredData].sort((a, b) => {
-      // Critério único: ordem alfabética por nome da empresa
+      // Primeiro critério: clientes COM conta aparecem primeiro
+      if (a.hasAccount !== b.hasAccount) {
+        return a.hasAccount ? -1 : 1;
+      }
+      // Segundo critério: ordem alfabética por nome da empresa
       return a.company_name.localeCompare(b.company_name);
     });
   }, [filteredData]);
