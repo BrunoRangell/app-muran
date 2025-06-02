@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 
 // Tipos para operações de banco de dados
@@ -28,6 +27,8 @@ export interface ReviewData {
   using_custom_budget: boolean;
   custom_budget_id: string | null;
   custom_budget_amount: number | null;
+  custom_budget_start_date?: string | null;
+  custom_budget_end_date?: string | null;
 }
 
 // Criação do cliente Supabase
@@ -124,6 +125,15 @@ export async function fetchActiveCustomBudget(
   if (customBudgetError) {
     console.error(`Erro ao buscar orçamento personalizado: ${customBudgetError.message}`);
     return null;
+  }
+
+  if (customBudget) {
+    console.log(`✅ Orçamento personalizado encontrado:`, {
+      id: customBudget.id,
+      budget_amount: customBudget.budget_amount,
+      start_date: customBudget.start_date,
+      end_date: customBudget.end_date
+    });
   }
 
   return customBudget;
