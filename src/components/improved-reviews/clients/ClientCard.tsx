@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -9,20 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { CompactBudgetRecommendation } from "@/components/daily-reviews/dashboard/card-components/CompactBudgetRecommendation";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CircularBudgetCard } from "./CircularBudgetCard";
 
 interface ClientCardProps {
   client: any;
   platform?: "meta" | "google";
-  variant?: "default" | "circular";
 }
 
-export function ClientCard({ client, platform = "meta", variant = "circular" }: ClientCardProps) {
-  // Se o variant for circular, usar o novo componente
-  if (variant === "circular") {
-    return <CircularBudgetCard client={client} platform={platform} />;
-  }
-
+export function ClientCard({ client, platform = "meta" }: ClientCardProps) {
   const [expanded, setExpanded] = useState(false);
   const { toast } = useToast();
   const { reviewClient, processingIds } = useBatchOperations({
