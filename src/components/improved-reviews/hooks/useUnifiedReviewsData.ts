@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -31,7 +32,7 @@ export function useUnifiedReviewsData() {
   } = useQuery({
     queryKey: ["improved-meta-reviews"],
     queryFn: async () => {
-      console.log("🔍 Buscando dados dos clientes Meta Ads...");
+      console.log("🔍 Buscando dados dos clientes Meta Ads consolidados...");
       
       // Buscar clientes ativos
       const { data: clients, error: clientsError } = await supabase
@@ -39,8 +40,6 @@ export function useUnifiedReviewsData() {
         .select(`
           id,
           company_name,
-          meta_ads_budget,
-          meta_account_id,
           status
         `)
         .eq("status", "active");
@@ -52,7 +51,7 @@ export function useUnifiedReviewsData() {
 
       console.log("✅ Clientes encontrados:", clients?.length || 0);
 
-      // Buscar contas Meta dos clientes
+      // Buscar contas Meta específicas (agora única fonte de verdade)
       const { data: metaAccounts, error: accountsError } = await supabase
         .from("client_meta_accounts")
         .select("*")
@@ -79,29 +78,6 @@ export function useUnifiedReviewsData() {
       
       console.log("✅ Revisões encontradas para hoje:", reviews?.length || 0);
       
-      if (reviews && reviews.length > 0) {
-        reviews.forEach(review => {
-          console.log(`📊 Revisão cliente ${review.client_id}:`, {
-            totalSpent: review.meta_total_spent,
-            currentBudget: review.meta_daily_budget_current,
-            accountId: review.meta_account_id || 'principal',
-            accountName: review.meta_account_name || 'Conta Principal'
-          });
-        });
-      } else {
-        console.warn("⚠️ Nenhuma revisão encontrada para hoje. Clientes aparecerão com dados zerados.");
-      }
-      
-      // Buscar orçamentos personalizados separadamente
-      const { data: customBudgets, error: customBudgetsError } = await supabase
-        .from("meta_custom_budgets")
-        .select("*");
-      
-      if (customBudgetsError) {
-        console.error("❌ Erro ao buscar orçamentos personalizados:", customBudgetsError);
-        throw customBudgetsError;
-      }
-      
       // Buscar orçamentos personalizados ativos
       const { data: activeCustomBudgets, error: budgetsError } = await supabase
         .from("meta_custom_budgets")
@@ -117,23 +93,14 @@ export function useUnifiedReviewsData() {
       
       console.log("✅ Orçamentos personalizados ativos:", activeCustomBudgets?.length || 0);
       
-      // Mapear orçamentos personalizados por client_id para fácil acesso
+      // Mapear orçamentos personalizados por client_id
       const customBudgetsByClientId = new Map();
       activeCustomBudgets?.forEach(budget => {
         customBudgetsByClientId.set(budget.client_id, budget);
       });
 
-      // Corrigir cálculo de clientes com contas - verificar ambas as fontes
+      // Criar Set de clientes com contas Meta (baseado apenas na tabela específica)
       const clientsWithAccounts = new Set();
-      
-      // Adicionar clientes que têm meta_account_id na tabela clients
-      clients?.forEach(client => {
-        if (client.meta_account_id) {
-          clientsWithAccounts.add(client.id);
-        }
-      });
-      
-      // Adicionar clientes que têm contas na tabela client_meta_accounts
       metaAccounts?.forEach(account => {
         clientsWithAccounts.add(account.client_id);
       });
@@ -142,35 +109,33 @@ export function useUnifiedReviewsData() {
         !clientsWithAccounts.has(client.id)
       ).length || 0;
 
-      console.log("📊 Clientes com conta:", clientsWithAccounts.size);
-      console.log("📊 Clientes sem conta:", clientsWithoutAccount);
+      console.log("📊 Clientes com conta Meta:", clientsWithAccounts.size);
+      console.log("📊 Clientes sem conta Meta:", clientsWithoutAccount);
 
-      // Combinar os dados - incluir TODOS os clientes, mesmo os sem conta
+      // Combinar os dados - incluir TODOS os clientes
       const clientsWithData = clients?.map(client => {
         // Encontrar contas específicas do cliente
         const accounts = metaAccounts?.filter(account => account.client_id === client.id) || [];
         
-        // Determinar se o cliente tem conta configurada (verificar ambas as fontes)
-        const hasAccount = clientsWithAccounts.has(client.id);
-        
-        // Se o cliente tiver contas específicas na tabela client_meta_accounts
+        // Se o cliente tem contas Meta configuradas
         if (accounts.length > 0) {
           return accounts.map(account => {
             const review = reviews?.find(r => 
               r.client_id === client.id && 
-              (r.meta_account_id === account.account_id || r.client_account_id === account.account_id)
+              (r.meta_account_id === account.account_id || r.client_account_id === account.id)
             );
             
             let customBudget = null;
             let monthlyBudget = account.budget_amount;
             let isUsingCustomBudget = false;
             
+            // Verificar orçamento personalizado na revisão
             if (review?.using_custom_budget && review?.custom_budget_amount) {
               isUsingCustomBudget = true;
               monthlyBudget = review.custom_budget_amount;
               
               if (review.custom_budget_id) {
-                customBudget = customBudgets?.find(b => b.id === review.custom_budget_id) || {
+                customBudget = {
                   id: review.custom_budget_id,
                   budget_amount: review.custom_budget_amount,
                   start_date: review.custom_budget_start_date,
@@ -178,6 +143,7 @@ export function useUnifiedReviewsData() {
                 };
               }
             } 
+            // Verificar orçamento personalizado ativo
             else if (customBudgetsByClientId.has(client.id)) {
               const budget = customBudgetsByClientId.get(client.id);
               customBudget = budget;
@@ -202,7 +168,7 @@ export function useUnifiedReviewsData() {
               needsAdjustment: budgetCalc.needsBudgetAdjustment,
               customBudget: customBudget,
               isUsingCustomBudget: isUsingCustomBudget,
-              hasAccount: true // Cliente com conta específica sempre tem conta
+              hasAccount: true
             };
             
             console.log(`📝 Cliente processado: ${client.company_name} (${account.account_name})`, {
@@ -215,63 +181,6 @@ export function useUnifiedReviewsData() {
             return clientData;
           });
         } 
-        // Se o cliente tem meta_account_id na tabela clients (mas não tem conta específica)
-        else if (client.meta_account_id) {
-          const review = reviews?.find(r => r.client_id === client.id);
-          
-          let customBudget = null;
-          let monthlyBudget = client.meta_ads_budget;
-          let isUsingCustomBudget = false;
-          
-          if (review?.using_custom_budget && review?.custom_budget_amount) {
-            isUsingCustomBudget = true;
-            monthlyBudget = review.custom_budget_amount;
-            
-            if (review.custom_budget_id) {
-              customBudget = customBudgets?.find(b => b.id === review.custom_budget_id) || {
-                id: review.custom_budget_id,
-                budget_amount: review.custom_budget_amount,
-                start_date: review.custom_budget_start_date,
-                end_date: review.custom_budget_end_date
-              };
-            }
-          }
-          else if (customBudgetsByClientId.has(client.id)) {
-            const budget = customBudgetsByClientId.get(client.id);
-            customBudget = budget;
-            monthlyBudget = budget.budget_amount;
-            isUsingCustomBudget = true;
-          }
-          
-          const budgetCalc = calculateBudget({
-            monthlyBudget: monthlyBudget,
-            totalSpent: review?.meta_total_spent || 0,
-            currentDailyBudget: review?.meta_daily_budget_current || 0
-          });
-          
-          const clientData = {
-            ...client,
-            meta_account_id: client.meta_account_id,
-            meta_account_name: "Conta Principal",
-            budget_amount: monthlyBudget,
-            original_budget_amount: client.meta_ads_budget,
-            review: review || null,
-            budgetCalculation: budgetCalc,
-            needsAdjustment: budgetCalc.needsBudgetAdjustment,
-            customBudget: customBudget,
-            isUsingCustomBudget: isUsingCustomBudget,
-            hasAccount: true // Cliente com meta_account_id tem conta
-          };
-          
-          console.log(`📝 Cliente processado: ${client.company_name} (Conta Principal)`, {
-            totalSpent: review?.meta_total_spent || 0,
-            budgetAmount: monthlyBudget,
-            needsAdjustment: budgetCalc.needsBudgetAdjustment,
-            hasReview: !!review
-          });
-          
-          return clientData;
-        }
         // Cliente sem conta cadastrada
         else {
           const clientData = {
@@ -279,7 +188,7 @@ export function useUnifiedReviewsData() {
             meta_account_id: null,
             meta_account_name: "Sem conta cadastrada",
             budget_amount: 0,
-            original_budget_amount: client.meta_ads_budget || 0,
+            original_budget_amount: 0,
             review: null,
             budgetCalculation: {
               recommendedDailyBudget: 0,
@@ -291,7 +200,7 @@ export function useUnifiedReviewsData() {
             needsAdjustment: false,
             customBudget: null,
             isUsingCustomBudget: false,
-            hasAccount: false // Cliente sem conta
+            hasAccount: false
           };
           
           console.log(`📝 Cliente SEM CONTA processado: ${client.company_name}`);
@@ -300,7 +209,7 @@ export function useUnifiedReviewsData() {
         }
       }) || [];
 
-      // Achatar o array (já que alguns clientes podem ter várias contas)
+      // Achatar o array
       const flattenedClients = clientsWithData.flat();
       
       // Calcular métricas
