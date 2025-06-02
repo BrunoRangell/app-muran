@@ -44,14 +44,10 @@ export function ClientsList({
     });
   }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, platform]);
   
-  // Ordenar clientes (prioridade para os que precisam de ajuste)
+  // Ordenar clientes - ORDENAÇÃO ALFABÉTICA PRIMÁRIA
   const sortedClients = useMemo(() => {
     return [...filteredData].sort((a, b) => {
-      // Primeiro critério: necessidade de ajuste (os que precisam ficam primeiro)
-      if (a.needsAdjustment !== b.needsAdjustment) {
-        return a.needsAdjustment ? -1 : 1;
-      }
-      // Segundo critério: ordem alfabética
+      // Critério único: ordem alfabética por nome da empresa
       return a.company_name.localeCompare(b.company_name);
     });
   }, [filteredData]);
