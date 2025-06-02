@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -18,7 +19,7 @@ export const useBatchReview = () => {
   const [totalClientsToAnalyze, setTotalClientsToAnalyze] = useState(0);
   const [batchProgress, setBatchProgress] = useState(0);
   
-  // Buscar a lista de clientes e suas revisões mais recentes sem refetch automático
+  // Buscar a lista de clientes e suas revisões mais recentes
   const { 
     data: clientsData = { clientsData: [], lastReviewTime: null }, 
     isLoading, 
@@ -27,9 +28,9 @@ export const useBatchReview = () => {
   } = useQuery({
     queryKey: ['clients-with-reviews'],
     queryFn: fetchClientsWithReviews,
-    refetchOnWindowFocus: false, // Evita refetch ao focar na janela
-    refetchOnMount: false, // Evita refetch ao montar o componente
-    staleTime: Infinity, // Nunca marca os dados como desatualizados automaticamente
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
   // Extrair os arrays de clientes do resultado
@@ -37,24 +38,37 @@ export const useBatchReview = () => {
     ? clientsData 
     : (clientsData?.clientsData || []);
   
-  // Buscar o horário da última revisão em massa
-  useEffect(() => {
-    const fetchLastBatchReviewTime = async () => {
+  // Buscar o horário da última revisão em massa REAL do system_logs
+  const { data: lastBatchInfo, refetch: refetchBatchInfo } = useQuery({
+    queryKey: ['last-batch-review-real'],
+    queryFn: async () => {
+      console.log("🔍 Buscando última revisão em massa real do system_logs...");
+      
       const { data } = await supabase
         .from('system_logs')
-        .select('created_at')
+        .select('created_at, message, details')
         .eq('event_type', 'batch_review_completed')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
-      if (data) {
-        setLastBatchReviewTime(data.created_at);
-      }
-    };
-    
-    fetchLastBatchReviewTime();
-  }, []);
+      console.log("📅 Última revisão em massa encontrada:", data);
+      
+      return data ? {
+        lastBatchReviewTime: data.created_at,
+        details: data.details
+      } : null;
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30 segundos
+  });
+  
+  // Atualizar o estado local quando os dados chegarem
+  useEffect(() => {
+    if (lastBatchInfo?.lastBatchReviewTime) {
+      setLastBatchReviewTime(lastBatchInfo.lastBatchReviewTime);
+    }
+  }, [lastBatchInfo]);
   
   // Marcar que um cliente está sendo processado
   const startProcessingClient = useCallback((clientId: string) => {
@@ -82,7 +96,7 @@ export const useBatchReview = () => {
       
       await analyzeClient(clientId, clientsWithReviews);
       
-      // Invalidar a consulta para recarregar os dados
+      // Invalidar as consultas para recarregar os dados
       queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
       queryClient.invalidateQueries({ queryKey: ['client-detail', clientId] });
       queryClient.invalidateQueries({ queryKey: ['latest-review', clientId] });
@@ -121,6 +135,8 @@ export const useBatchReview = () => {
     }
     
     try {
+      console.log("🚀 Iniciando revisão em massa...");
+      
       // Filtrar clientes elegíveis (com meta_account_id configurado)
       const eligibleClients = clientsWithReviews.filter(
         client => client.meta_account_id && client.meta_account_id.trim() !== ""
@@ -142,15 +158,19 @@ export const useBatchReview = () => {
       let successCount = 0;
       let errorCount = 0;
       
+      console.log(`📊 Processando ${eligibleClients.length} clientes elegíveis...`);
+      
       // Processar cada cliente em sequência
       for (const client of eligibleClients) {
         try {
+          console.log(`⚡ Processando cliente: ${client.company_name}`);
           startProcessingClient(client.id);
           await analyzeClient(client.id, clientsWithReviews);
           successCount++;
           setBatchProgress(prev => prev + 1);
+          console.log(`✅ Cliente ${client.company_name} processado com sucesso`);
         } catch (error) {
-          console.error(`Erro ao analisar cliente ${client.company_name}:`, error);
+          console.error(`❌ Erro ao analisar cliente ${client.company_name}:`, error);
           errorCount++;
           setBatchProgress(prev => prev + 1);
         } finally {
@@ -158,26 +178,49 @@ export const useBatchReview = () => {
         }
       }
       
-      // Registrar conclusão da revisão em lote
+      // IMPORTANTE: Só registrar no system_logs APÓS todas as revisões serem concluídas
       const now = getCurrentDateInBrasiliaTz().toISOString();
-      setLastBatchReviewTime(now);
       
-      await supabase.from('system_logs').insert({
-        event_type: 'batch_review_completed',
-        message: `Revisão em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
-        details: { successCount, errorCount }
-      });
+      console.log(`📝 Registrando conclusão da revisão em massa: ${successCount} sucessos, ${errorCount} erros`);
       
-      // Recarregar dados
+      const { data: logData, error: logError } = await supabase
+        .from('system_logs')
+        .insert({
+          event_type: 'batch_review_completed',
+          message: `Revisão em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
+          details: { 
+            successCount, 
+            errorCount, 
+            totalClients: eligibleClients.length,
+            completedAt: now
+          }
+        })
+        .select()
+        .single();
+      
+      if (logError) {
+        console.error("❌ Erro ao registrar log:", logError);
+      } else {
+        console.log("✅ Log de conclusão registrado:", logData);
+        
+        // Só atualizar o estado local APÓS confirmar que o log foi salvo
+        setLastBatchReviewTime(now);
+        
+        // Invalidar a query para buscar os dados atualizados
+        refetchBatchInfo();
+      }
+      
+      // Recarregar dados dos clientes
       queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
       
       toast({
         title: "Revisão em lote concluída",
-        description: `${successCount} cliente(s) analisado(s) com sucesso. ${errorCount} erro(s).`,
+        description: `${successCount} cliente(s) analisado(s) com sucesso. ${errorCount > 0 ? `${errorCount} erro(s).` : ''}`,
+        variant: errorCount > 0 ? "destructive" : "default",
       });
       
     } catch (error) {
-      console.error("Erro na revisão em lote:", error);
+      console.error("❌ Erro na revisão em lote:", error);
       
       toast({
         title: "Erro na revisão em lote",
@@ -186,8 +229,10 @@ export const useBatchReview = () => {
       });
     } finally {
       setIsBatchAnalyzing(false);
+      setBatchProgress(0);
+      setTotalClientsToAnalyze(0);
     }
-  }, [clientsWithReviews, isBatchAnalyzing, startProcessingClient, finishProcessingClient, toast, queryClient]);
+  }, [clientsWithReviews, isBatchAnalyzing, startProcessingClient, finishProcessingClient, toast, queryClient, refetchBatchInfo]);
   
   return {
     clientsWithReviews,

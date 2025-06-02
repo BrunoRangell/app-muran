@@ -27,20 +27,6 @@ export default function ImprovedDailyReviews() {
   };
   
   const [selectedTab, setSelectedTab] = useState<string>(getInitialTab());
-  const [lastReviewTime, setLastReviewTime] = useState<Date | undefined>(undefined);
-  
-  // Ao inicializar o componente, verificar se há uma última revisão salva
-  useEffect(() => {
-    const lastReviewTimeStr = localStorage.getItem("last_review_time");
-    if (lastReviewTimeStr) {
-      setLastReviewTime(new Date(lastReviewTimeStr));
-    }
-    
-    // Inicializa a hash da URL se ela não existir
-    if (!window.location.hash) {
-      window.location.hash = selectedTab;
-    }
-  }, []);
   
   // Efeito para sincronizar mudanças na hash da URL
   useEffect(() => {
@@ -54,11 +40,16 @@ export default function ImprovedDailyReviews() {
     // Adiciona listener para mudanças na hash
     window.addEventListener('hashchange', handleHashChange);
     
+    // Inicializa a hash da URL se ela não existir
+    if (!window.location.hash) {
+      window.location.hash = selectedTab;
+    }
+    
     // Cleanup listener quando o componente for desmontado
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, []);
+  }, [selectedTab]);
   
   // Função para alterar a aba selecionada
   const handleTabChange = (value: string) => {
@@ -67,13 +58,6 @@ export default function ImprovedDailyReviews() {
     
     // Atualiza a hash da URL sem recarregar a página
     window.location.hash = value;
-  };
-
-  // Função para registrar a hora da última atualização
-  const handleRefresh = () => {
-    const now = new Date();
-    localStorage.setItem("last_review_time", now.toISOString());
-    setLastReviewTime(now);
   };
   
   return (
@@ -92,19 +76,13 @@ export default function ImprovedDailyReviews() {
           </TabsList>
           
           <TabsContent value="meta-ads" className="space-y-6">
-            <DashboardHeader 
-              lastReviewTime={lastReviewTime} 
-              onRefresh={handleRefresh} 
-            />
-            <MetaAdsTab onRefreshCompleted={handleRefresh} />
+            <DashboardHeader />
+            <MetaAdsTab />
           </TabsContent>
           
           <TabsContent value="google-ads" className="space-y-6">
-            <DashboardHeader 
-              lastReviewTime={lastReviewTime} 
-              onRefresh={handleRefresh} 
-            />
-            <GoogleAdsTab onRefreshCompleted={handleRefresh} />
+            <DashboardHeader />
+            <GoogleAdsTab />
           </TabsContent>
 
           <TabsContent value="budgets" className="space-y-6">

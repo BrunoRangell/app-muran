@@ -16,7 +16,7 @@ export const DashboardHeader = ({
   isLoading,
   onAnalyzeAll
 }: DashboardHeaderProps) => {
-  // Obter dias restantes no mês
+  // Obter dias restantes no mês - mesmo cálculo usado nos cards
   const remainingDays = getRemainingDaysInMonth();
   
   return (

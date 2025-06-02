@@ -1,20 +1,15 @@
 
-import { Clock, BarChart3, RefreshCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Clock, BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface DashboardHeaderProps {
   lastReviewTime?: Date;
-  onRefresh?: () => void;
-  isLoading?: boolean;
 }
 
 export function DashboardHeader({
-  lastReviewTime,
-  onRefresh,
-  isLoading = false
+  lastReviewTime
 }: DashboardHeaderProps = {}) {
   return (
     <Card className="p-4 flex justify-between items-center bg-gradient-to-r from-[#321e32] to-[#321e32]/90 text-white rounded-xl shadow-md">
@@ -33,19 +28,6 @@ export function DashboardHeader({
           </div>
         )}
       </div>
-      
-      {onRefresh && (
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="text-white hover:text-white hover:bg-white/10 transition-colors"
-          onClick={onRefresh}
-          disabled={isLoading}
-        >
-          <RefreshCcw size={16} className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
-      )}
     </Card>
   );
 }
