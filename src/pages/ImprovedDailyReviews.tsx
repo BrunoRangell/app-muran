@@ -6,6 +6,7 @@ import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
+import { useBatchReview } from "@/components/daily-reviews/hooks/useBatchReview";
 
 export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage
@@ -27,6 +28,9 @@ export default function ImprovedDailyReviews() {
   };
   
   const [selectedTab, setSelectedTab] = useState<string>(getInitialTab());
+
+  // Usar o hook para obter dados de revisão em lote
+  const { lastBatchReviewTime } = useBatchReview();
   
   // Efeito para sincronizar mudanças na hash da URL
   useEffect(() => {
@@ -76,12 +80,12 @@ export default function ImprovedDailyReviews() {
           </TabsList>
           
           <TabsContent value="meta-ads" className="space-y-6">
-            <DashboardHeader />
+            <DashboardHeader lastReviewTime={lastBatchReviewTime ? new Date(lastBatchReviewTime) : undefined} />
             <MetaAdsTab />
           </TabsContent>
           
           <TabsContent value="google-ads" className="space-y-6">
-            <DashboardHeader />
+            <DashboardHeader lastReviewTime={lastBatchReviewTime ? new Date(lastBatchReviewTime) : undefined} />
             <GoogleAdsTab />
           </TabsContent>
 
