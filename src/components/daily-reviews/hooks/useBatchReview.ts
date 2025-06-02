@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -135,7 +134,7 @@ export const useBatchReview = () => {
     }
     
     try {
-      console.log("🚀 Iniciando revisão em massa...");
+      console.log("🚀 Iniciando revisão em massa Meta Ads...");
       
       // Filtrar clientes elegíveis (com meta_account_id configurado)
       const eligibleClients = clientsWithReviews.filter(
@@ -158,19 +157,19 @@ export const useBatchReview = () => {
       let successCount = 0;
       let errorCount = 0;
       
-      console.log(`📊 Processando ${eligibleClients.length} clientes elegíveis...`);
+      console.log(`📊 Processando ${eligibleClients.length} clientes Meta Ads elegíveis...`);
       
       // Processar cada cliente em sequência
       for (const client of eligibleClients) {
         try {
-          console.log(`⚡ Processando cliente: ${client.company_name}`);
+          console.log(`⚡ Processando cliente Meta Ads: ${client.company_name}`);
           startProcessingClient(client.id);
           await analyzeClient(client.id, clientsWithReviews);
           successCount++;
           setBatchProgress(prev => prev + 1);
-          console.log(`✅ Cliente ${client.company_name} processado com sucesso`);
+          console.log(`✅ Cliente Meta Ads ${client.company_name} processado com sucesso`);
         } catch (error) {
-          console.error(`❌ Erro ao analisar cliente ${client.company_name}:`, error);
+          console.error(`❌ Erro ao analisar cliente Meta Ads ${client.company_name}:`, error);
           errorCount++;
           setBatchProgress(prev => prev + 1);
         } finally {
@@ -181,14 +180,15 @@ export const useBatchReview = () => {
       // IMPORTANTE: Só registrar no system_logs APÓS todas as revisões serem concluídas
       const now = getCurrentDateInBrasiliaTz().toISOString();
       
-      console.log(`📝 Registrando conclusão da revisão em massa: ${successCount} sucessos, ${errorCount} erros`);
+      console.log(`📝 Registrando conclusão da revisão em massa Meta Ads: ${successCount} sucessos, ${errorCount} erros`);
       
       const { data: logData, error: logError } = await supabase
         .from('system_logs')
         .insert({
           event_type: 'batch_review_completed',
-          message: `Revisão em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
+          message: `Revisão Meta Ads em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
           details: { 
+            platform: 'meta',
             successCount, 
             errorCount, 
             totalClients: eligibleClients.length,
@@ -199,9 +199,9 @@ export const useBatchReview = () => {
         .single();
       
       if (logError) {
-        console.error("❌ Erro ao registrar log:", logError);
+        console.error("❌ Erro ao registrar log Meta Ads:", logError);
       } else {
-        console.log("✅ Log de conclusão registrado:", logData);
+        console.log("✅ Log de conclusão Meta Ads registrado:", logData);
         
         // Só atualizar o estado local APÓS confirmar que o log foi salvo
         setLastBatchReviewTime(now);
@@ -214,16 +214,16 @@ export const useBatchReview = () => {
       queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
       
       toast({
-        title: "Revisão em lote concluída",
+        title: "Revisão Meta Ads em lote concluída",
         description: `${successCount} cliente(s) analisado(s) com sucesso. ${errorCount > 0 ? `${errorCount} erro(s).` : ''}`,
         variant: errorCount > 0 ? "destructive" : "default",
       });
       
     } catch (error) {
-      console.error("❌ Erro na revisão em lote:", error);
+      console.error("❌ Erro na revisão Meta Ads em lote:", error);
       
       toast({
-        title: "Erro na revisão em lote",
+        title: "Erro na revisão Meta Ads em lote",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
