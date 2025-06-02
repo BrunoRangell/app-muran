@@ -50,19 +50,19 @@ export function MetricsPanel({ metrics, onBatchReview, isProcessing = false }: M
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-500 flex items-center gap-2">
-              <AlertTriangle size={16} className="text-amber-500" />
-              Necessitam Ajuste
+              <AlertTriangle size={16} className="text-gray-500" />
+              Clientes sem conta cadastrada
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {metrics.clientsNeedingAdjustment}
+              {metrics.clientsWithoutAccount}
               <span className="text-sm text-gray-500 ml-2">
-                ({Math.round((metrics.clientsNeedingAdjustment / Math.max(1, metrics.totalClients)) * 100)}%)
+                ({Math.round((metrics.clientsWithoutAccount / Math.max(1, metrics.totalClients + metrics.clientsWithoutAccount)) * 100)}%)
               </span>
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              Clientes com recomendação de ajuste
+              Clientes ativos sem conta configurada
             </div>
           </CardContent>
         </Card>
@@ -86,7 +86,7 @@ export function MetricsPanel({ metrics, onBatchReview, isProcessing = false }: M
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-500 flex items-center gap-2">
               <PiggyBank size={16} className="text-blue-500" />
-              Gastos
+              Investimento este mês
             </CardTitle>
           </CardHeader>
           <CardContent>

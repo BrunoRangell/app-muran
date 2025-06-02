@@ -8,7 +8,7 @@ import { ClientMetrics } from "./useUnifiedReviewsData";
 export function useGoogleAdsData() {
   const [metrics, setMetrics] = useState<ClientMetrics>({
     totalClients: 0,
-    clientsNeedingAdjustment: 0,
+    clientsWithoutAccount: 0,
     totalBudget: 0,
     totalSpent: 0,
     spentPercentage: 0
@@ -72,6 +72,23 @@ export function useGoogleAdsData() {
       customBudgets?.forEach(budget => {
         customBudgetMap.set(budget.client_id, budget);
       });
+
+      // Calcular clientes sem conta cadastrada
+      const clientsWithAccounts = new Set();
+      // Adicionar clientes que têm google_account_id na tabela clients
+      clients?.forEach(client => {
+        if (client.google_account_id) {
+          clientsWithAccounts.add(client.id);
+        }
+      });
+      // Adicionar clientes que têm contas na tabela client_google_accounts
+      googleAccounts?.forEach(account => {
+        clientsWithAccounts.add(account.client_id);
+      });
+      
+      const clientsWithoutAccount = clients?.filter(client => 
+        !clientsWithAccounts.has(client.id)
+      ).length || 0;
 
       // Buscar revisões mais recentes do Google Ads (apenas do mês atual)
       const currentDate = new Date();
@@ -186,11 +203,10 @@ export function useGoogleAdsData() {
       // Calcular métricas usando o orçamento correto (personalizado ou padrão)
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.google_total_spent || 0), 0);
-      const needingAdjustment = flattenedClients.filter(client => client.needsAdjustment).length;
       
       const metricsData = {
         totalClients: flattenedClients.length,
-        clientsNeedingAdjustment: needingAdjustment,
+        clientsWithoutAccount: clientsWithoutAccount,
         totalBudget: totalBudget,
         totalSpent: totalSpent,
         spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0

@@ -6,7 +6,7 @@ import { useBudgetCalculator } from "./useBudgetCalculator";
 
 export type ClientMetrics = {
   totalClients: number;
-  clientsNeedingAdjustment: number;
+  clientsWithoutAccount: number;
   totalBudget: number;
   totalSpent: number;
   spentPercentage: number;
@@ -15,7 +15,7 @@ export type ClientMetrics = {
 export function useUnifiedReviewsData() {
   const [metrics, setMetrics] = useState<ClientMetrics>({
     totalClients: 0,
-    clientsNeedingAdjustment: 0,
+    clientsWithoutAccount: 0,
     totalBudget: 0,
     totalSpent: 0,
     spentPercentage: 0
@@ -123,6 +123,16 @@ export function useUnifiedReviewsData() {
       activeCustomBudgets?.forEach(budget => {
         customBudgetsByClientId.set(budget.client_id, budget);
       });
+
+      // Calcular clientes sem conta cadastrada
+      const clientsWithAccounts = new Set();
+      metaAccounts?.forEach(account => {
+        clientsWithAccounts.add(account.client_id);
+      });
+      
+      const clientsWithoutAccount = clients.filter(client => 
+        !clientsWithAccounts.has(client.id)
+      ).length;
 
       // Combinar os dados
       const clientsWithData = clients.map(client => {
@@ -264,19 +274,18 @@ export function useUnifiedReviewsData() {
       // Calcular métricas
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.meta_total_spent || 0), 0);
-      const needingAdjustment = flattenedClients.filter(client => client.needsAdjustment).length;
       
       console.log("📊 Métricas calculadas:", {
         totalClients: flattenedClients.length,
         totalBudget,
         totalSpent,
-        clientsNeedingAdjustment: needingAdjustment,
+        clientsWithoutAccount: clientsWithoutAccount,
         spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
       });
       
       setMetrics({
         totalClients: flattenedClients.length,
-        clientsNeedingAdjustment: needingAdjustment,
+        clientsWithoutAccount: clientsWithoutAccount,
         totalBudget: totalBudget,
         totalSpent: totalSpent,
         spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
