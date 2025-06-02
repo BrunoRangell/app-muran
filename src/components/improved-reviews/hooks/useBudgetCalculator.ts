@@ -31,11 +31,27 @@ export function useBudgetCalculator() {
         // Se tem orçamento personalizado, calcular até a data de fim
         const endDate = new Date(input.customBudgetEndDate);
         const timeDiff = endDate.getTime() - today.getTime();
-        remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
+        remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)));
+        
+        console.log(`🔍 DEBUG - Cálculo de dias restantes (orçamento personalizado):`, {
+          today: today.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          customBudgetEndDate: input.customBudgetEndDate,
+          timeDiff,
+          remainingDays,
+          calculationUsed: 'customBudget'
+        });
       } else {
         // Caso contrário, usar o cálculo padrão (dias restantes no mês)
         const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
+        
+        console.log(`🔍 DEBUG - Cálculo de dias restantes (mês atual):`, {
+          today: today.toISOString().split('T')[0],
+          lastDayOfMonth: lastDayOfMonth.toISOString().split('T')[0],
+          remainingDays,
+          calculationUsed: 'monthEnd'
+        });
       }
       
       // Orçamento restante para o período (nunca negativo)
