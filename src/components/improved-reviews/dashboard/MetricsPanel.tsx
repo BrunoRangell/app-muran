@@ -5,31 +5,53 @@ import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/utils/formatters";
 import { ClientMetrics } from "../hooks/useUnifiedReviewsData";
 import { AlertTriangle, TrendingUp, PiggyBank, BarChart3, RefreshCcw } from "lucide-react";
+import { BatchProgressBar } from "./BatchProgressBar";
 
 interface MetricsPanelProps {
   metrics: ClientMetrics;
   onBatchReview?: () => void;
   isProcessing?: boolean;
+  progress?: number;
+  total?: number;
+  currentClientName?: string;
+  platform?: "meta" | "google";
+  onCancelBatchProcessing?: () => void;
 }
 
-export function MetricsPanel({ metrics, onBatchReview, isProcessing = false }: MetricsPanelProps) {
+export function MetricsPanel({ 
+  metrics, 
+  onBatchReview, 
+  isProcessing = false,
+  progress = 0,
+  total = 0,
+  currentClientName,
+  platform = "meta",
+  onCancelBatchProcessing
+}: MetricsPanelProps) {
   return (
     <div className="space-y-4">
-      {onBatchReview && (
-        <div className="flex justify-end">
-          <Button 
-            onClick={onBatchReview}
-            disabled={isProcessing || metrics.totalClients === 0}
-            className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
-          >
-            <RefreshCcw className={`mr-2 h-4 w-4 ${isProcessing ? 'animate-spin' : ''}`} />
-            {isProcessing 
-              ? "Processando..." 
-              : `Revisar todos (${metrics.totalClients})`
-            }
-          </Button>
-        </div>
-      )}
+      <div className="flex justify-end">
+        {isProcessing ? (
+          <BatchProgressBar
+            progress={progress}
+            total={total}
+            currentClientName={currentClientName}
+            platform={platform}
+            onCancel={onCancelBatchProcessing}
+          />
+        ) : (
+          onBatchReview && (
+            <Button 
+              onClick={onBatchReview}
+              disabled={metrics.totalClients === 0}
+              className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
+            >
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Revisar todos ({metrics.totalClients})
+            </Button>
+          )
+        )}
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -50,19 +72,19 @@ export function MetricsPanel({ metrics, onBatchReview, isProcessing = false }: M
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-500 flex items-center gap-2">
-              <AlertTriangle size={16} className="text-amber-500" />
-              Necessitam Ajuste
+              <AlertTriangle size={16} className="text-gray-500" />
+              Clientes sem conta cadastrada
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {metrics.clientsNeedingAdjustment}
+              {metrics.clientsWithoutAccount}
               <span className="text-sm text-gray-500 ml-2">
-                ({Math.round((metrics.clientsNeedingAdjustment / Math.max(1, metrics.totalClients)) * 100)}%)
+                ({Math.round((metrics.clientsWithoutAccount / Math.max(1, metrics.totalClients + metrics.clientsWithoutAccount)) * 100)}%)
               </span>
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              Clientes com recomendação de ajuste
+              Clientes ativos sem conta configurada
             </div>
           </CardContent>
         </Card>
@@ -86,7 +108,7 @@ export function MetricsPanel({ metrics, onBatchReview, isProcessing = false }: M
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-500 flex items-center gap-2">
               <PiggyBank size={16} className="text-blue-500" />
-              Gastos
+              Investimento este mês
             </CardTitle>
           </CardHeader>
           <CardContent>

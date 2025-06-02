@@ -1,7 +1,9 @@
 
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { getCurrentDateInBrasiliaTz } from "@/components/daily-reviews/summary/utils";
 
 type BatchOperationsConfig = {
   onComplete?: () => void;
@@ -13,7 +15,9 @@ export function useBatchOperations(config: BatchOperationsConfig) {
   const [processingIds, setProcessingIds] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
+  const [currentClientName, setCurrentClientName] = useState<string>("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Iniciar processamento de um cliente específico
   const startClientProcessing = (clientId: string) => {
@@ -43,6 +47,9 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       if (!client) {
         throw new Error("Cliente não encontrado");
       }
+
+      // Atualizar o nome do cliente atual sendo processado
+      setCurrentClientName(client.company_name || "Cliente sem nome");
       
       // Definir endpoint baseado na plataforma
       const endpoint = config.platform === "meta" ? 
@@ -157,6 +164,7 @@ export function useBatchOperations(config: BatchOperationsConfig) {
     setIsProcessing(true);
     setProgress(0);
     setTotal(clients.length);
+    setCurrentClientName("");
     setProcessingIds(clients.map(client => client.id));
     
     const successfulReviews: string[] = [];
@@ -190,9 +198,49 @@ export function useBatchOperations(config: BatchOperationsConfig) {
         failed: failedReviews.length,
         platform: config.platform
       });
+
+      // REGISTRAR CONCLUSÃO NO SYSTEM_LOGS
+      try {
+        const now = getCurrentDateInBrasiliaTz().toISOString();
+        const platformName = config.platform === 'meta' ? 'Meta Ads' : 'Google Ads';
+        
+        console.log(`📝 Registrando conclusão da revisão em massa ${platformName}: ${successfulReviews.length} sucessos, ${failedReviews.length} erros`);
+        
+        const { data: logData, error: logError } = await supabase
+          .from('system_logs')
+          .insert({
+            event_type: 'batch_review_completed',
+            message: `Revisão ${platformName} em lote concluída: ${successfulReviews.length} sucesso(s), ${failedReviews.length} erro(s)`,
+            details: { 
+              platform: config.platform,
+              successCount: successfulReviews.length, 
+              errorCount: failedReviews.length, 
+              warningCount: warningReviews.length,
+              totalClients: clients.length,
+              completedAt: now
+            }
+          })
+          .select()
+          .single();
+        
+        if (logError) {
+          console.error(`❌ Erro ao registrar log ${platformName}:`, logError);
+        } else {
+          console.log(`✅ Log de conclusão ${platformName} registrado:`, logData);
+          
+          // Invalidar cache para atualizar dados imediatamente
+          await queryClient.invalidateQueries({ queryKey: ['last-batch-review-meta'] });
+          await queryClient.invalidateQueries({ queryKey: ['last-batch-review-google'] });
+          await queryClient.invalidateQueries({ queryKey: ['clients-with-reviews'] });
+          await queryClient.invalidateQueries({ queryKey: ['google-ads-clients-with-reviews'] });
+        }
+      } catch (error) {
+        console.error(`❌ Erro ao registrar conclusão da revisão em massa ${config.platform}:`, error);
+      }
       
       setIsProcessing(false);
       setProcessingIds([]);
+      setCurrentClientName("");
       
       // Construir mensagem de resultado
       let description = `${successfulReviews.length} clientes revisados com sucesso`;
@@ -218,12 +266,29 @@ export function useBatchOperations(config: BatchOperationsConfig) {
     processWithDelay();
   };
 
+  // Função para cancelar o processamento
+  const cancelBatchProcessing = () => {
+    setIsProcessing(false);
+    setProcessingIds([]);
+    setCurrentClientName("");
+    setProgress(0);
+    setTotal(0);
+    
+    toast({
+      title: "Processamento cancelado",
+      description: "A revisão em massa foi cancelada pelo usuário.",
+      variant: "default",
+    });
+  };
+
   return {
     reviewClient,
     reviewAllClients,
+    cancelBatchProcessing,
     isProcessing,
     processingIds,
     progress,
-    total
+    total,
+    currentClientName
   };
 }

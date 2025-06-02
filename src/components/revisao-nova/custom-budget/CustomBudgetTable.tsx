@@ -35,6 +35,15 @@ export function CustomBudgetTable({
   onDelete,
   onToggleStatus,
 }: CustomBudgetTableProps) {
+  // Debug: log dos dados recebidos
+  console.log("🔍 CustomBudgetTable - Dados recebidos:", {
+    filteredClients: filteredClients?.length || 0,
+    clientsData: filteredClients?.map(c => ({
+      name: c.company_name,
+      budgets: c.custom_budgets?.length || 0
+    }))
+  });
+
   // Renderizar esqueleto de carregamento
   if (isLoading) {
     return (
@@ -73,6 +82,11 @@ export function CustomBudgetTable({
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-8"
         />
+      </div>
+
+      {/* Debug info */}
+      <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+        Debug: {filteredClients?.length || 0} clientes encontrados
       </div>
 
       {/* Tabela de orçamentos personalizados */}
@@ -184,7 +198,7 @@ export function CustomBudgetTable({
                                 </AlertDialogContent>
                               </AlertDialog>
                               <Button
-                                onClick={() => onToggleStatus(budget.id, !budget.is_active, budget.platform)}
+                                onClick={() => onToggleStatus(budget.id, budget.is_active, budget.platform)}
                                 variant="outline"
                                 size="sm"
                                 className={`h-8 w-8 p-0 ${
@@ -204,7 +218,13 @@ export function CustomBudgetTable({
                         </TableRow>
                       );
                     })
-                  ) : null}
+                  ) : (
+                    <TableRow key={`no-budgets-${client.id}`}>
+                      <TableCell colSpan={6} className="h-16 text-center text-muted-foreground">
+                        Cliente {client.company_name} sem orçamentos personalizados
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </React.Fragment>
               ))
             )}

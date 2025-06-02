@@ -10,6 +10,7 @@ interface ClientsListProps {
   viewMode: string;
   searchQuery: string;
   showOnlyAdjustments: boolean;
+  showWithoutAccount: boolean;
   platform?: "meta" | "google";
 }
 
@@ -18,6 +19,7 @@ export function ClientsList({
   viewMode,
   searchQuery,
   showOnlyAdjustments,
+  showWithoutAccount,
   platform = "meta"
 }: ClientsListProps) {
   // Filtrar os dados com base na pesquisa e nos filtros
@@ -35,21 +37,44 @@ export function ClientsList({
       // Filtro de apenas ajustes necessários
       const matchesAdjustment = !showOnlyAdjustments || client.needsAdjustment;
       
-      return matchesSearch && matchesAdjustment;
+      // Debug log para verificar o filtro de ajustes
+      if (showOnlyAdjustments) {
+        console.log(`🔍 DEBUG - Filtro "necessitam ajustes" para ${client.company_name}:`, {
+          needsAdjustment: client.needsAdjustment,
+          budgetDifference: client.budgetCalculation?.budgetDifference,
+          needsBudgetAdjustment: client.budgetCalculation?.needsBudgetAdjustment,
+          needsAdjustmentBasedOnAverage: client.budgetCalculation?.needsAdjustmentBasedOnAverage,
+          passedFilter: matchesAdjustment
+        });
+      }
+      
+      // Filtro de clientes sem conta cadastrada
+      const matchesAccountFilter = !showWithoutAccount || !client.hasAccount;
+      
+      return matchesSearch && matchesAdjustment && matchesAccountFilter;
     });
-  }, [data, searchQuery, showOnlyAdjustments, platform]);
+  }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, platform]);
   
-  // Ordenar clientes (prioridade para os que precisam de ajuste)
+  // Ordenar clientes - PRIORIDADE DE CONTA + ORDEM ALFABÉTICA
   const sortedClients = useMemo(() => {
     return [...filteredData].sort((a, b) => {
-      // Primeiro critério: necessidade de ajuste (os que precisam ficam primeiro)
-      if (a.needsAdjustment !== b.needsAdjustment) {
-        return a.needsAdjustment ? -1 : 1;
+      // Primeiro critério: clientes COM conta aparecem primeiro
+      if (a.hasAccount !== b.hasAccount) {
+        return a.hasAccount ? -1 : 1;
       }
-      // Segundo critério: ordem alfabética
+      // Segundo critério: ordem alfabética por nome da empresa
       return a.company_name.localeCompare(b.company_name);
     });
   }, [filteredData]);
+
+  // Debug log para verificar a lista final
+  console.log(`🔍 DEBUG - Lista final de clientes (${platform}):`, {
+    totalClients: data?.length || 0,
+    filteredClients: filteredData.length,
+    sortedClients: sortedClients.length,
+    showOnlyAdjustments,
+    clientsNeedingAdjustment: data?.filter(c => c.needsAdjustment).length || 0
+  });
 
   if (!sortedClients || sortedClients.length === 0) {
     return (

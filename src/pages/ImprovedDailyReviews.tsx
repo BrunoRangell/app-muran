@@ -6,6 +6,7 @@ import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
+import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/usePlatformBatchReviews";
 
 export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage
@@ -27,20 +28,13 @@ export default function ImprovedDailyReviews() {
   };
   
   const [selectedTab, setSelectedTab] = useState<string>(getInitialTab());
-  const [lastReviewTime, setLastReviewTime] = useState<Date | undefined>(undefined);
-  
-  // Ao inicializar o componente, verificar se há uma última revisão salva
-  useEffect(() => {
-    const lastReviewTimeStr = localStorage.getItem("last_review_time");
-    if (lastReviewTimeStr) {
-      setLastReviewTime(new Date(lastReviewTimeStr));
-    }
-    
-    // Inicializa a hash da URL se ela não existir
-    if (!window.location.hash) {
-      window.location.hash = selectedTab;
-    }
-  }, []);
+
+  // Usar o hook para obter dados de revisão em lote por plataforma
+  const { 
+    lastMetaReviewTime, 
+    lastGoogleReviewTime,
+    refetchBoth 
+  } = usePlatformBatchReviews();
   
   // Efeito para sincronizar mudanças na hash da URL
   useEffect(() => {
@@ -54,11 +48,16 @@ export default function ImprovedDailyReviews() {
     // Adiciona listener para mudanças na hash
     window.addEventListener('hashchange', handleHashChange);
     
+    // Inicializa a hash da URL se ela não existir
+    if (!window.location.hash) {
+      window.location.hash = selectedTab;
+    }
+    
     // Cleanup listener quando o componente for desmontado
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, []);
+  }, [selectedTab]);
   
   // Função para alterar a aba selecionada
   const handleTabChange = (value: string) => {
@@ -67,13 +66,9 @@ export default function ImprovedDailyReviews() {
     
     // Atualiza a hash da URL sem recarregar a página
     window.location.hash = value;
-  };
 
-  // Função para registrar a hora da última atualização
-  const handleRefresh = () => {
-    const now = new Date();
-    localStorage.setItem("last_review_time", now.toISOString());
-    setLastReviewTime(now);
+    // Atualizar dados quando mudar de aba
+    refetchBoth();
   };
   
   return (
@@ -93,18 +88,18 @@ export default function ImprovedDailyReviews() {
           
           <TabsContent value="meta-ads" className="space-y-6">
             <DashboardHeader 
-              lastReviewTime={lastReviewTime} 
-              onRefresh={handleRefresh} 
+              lastReviewTime={lastMetaReviewTime ? new Date(lastMetaReviewTime) : undefined}
+              platform="meta"
             />
-            <MetaAdsTab onRefreshCompleted={handleRefresh} />
+            <MetaAdsTab />
           </TabsContent>
           
           <TabsContent value="google-ads" className="space-y-6">
             <DashboardHeader 
-              lastReviewTime={lastReviewTime} 
-              onRefresh={handleRefresh} 
+              lastReviewTime={lastGoogleReviewTime ? new Date(lastGoogleReviewTime) : undefined}
+              platform="google"
             />
-            <GoogleAdsTab onRefreshCompleted={handleRefresh} />
+            <GoogleAdsTab />
           </TabsContent>
 
           <TabsContent value="budgets" className="space-y-6">

@@ -1,313 +1,282 @@
-import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { formatDateBr } from "@/utils/dateFormatter";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 export interface CustomBudgetFormData {
   clientId: string;
   budgetAmount: number;
   startDate: string;
   endDate: string;
-  description?: string;
-  platform?: string;
+  description: string;
+  platform: "meta" | "google";
 }
 
-export const useCustomBudgets = () => {
-  const { toast } = useToast();
+export function useCustomBudgets() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBudget, setSelectedBudget] = useState<any>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Buscar clientes com orçamentos personalizados
-  const { data: clients, isLoading, refetch } = useQuery({
-    queryKey: ["clients-with-custom-budgets"],
+  // Buscar clientes com orçamentos personalizados usando a tabela UNIFICADA
+  const { data: filteredClients, isLoading } = useQuery({
+    queryKey: ["clients-with-custom-budgets", searchTerm],
     queryFn: async () => {
-      // Buscar todos os clientes
+      console.log("🔍 Buscando clientes com orçamentos personalizados...");
+      
+      // Buscar todos os clientes ativos
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
-        .select("id, company_name, status")
+        .select(`
+          id,
+          company_name,
+          status,
+          meta_ads_budget,
+          google_ads_budget
+        `)
         .eq("status", "active")
+        .ilike("company_name", `%${searchTerm}%`)
         .order("company_name");
 
       if (clientsError) {
-        toast({
-          title: "Erro ao buscar clientes",
-          description: clientsError.message,
-          variant: "destructive",
-        });
-        return [];
+        console.error("❌ Erro ao buscar clientes:", clientsError);
+        throw clientsError;
       }
 
-      // Buscar orçamentos personalizados
-      const { data: metaCustomBudgets, error: metaCustomBudgetsError } = await supabase
-        .from("meta_custom_budgets")
-        .select("*");
-
-      if (metaCustomBudgetsError) {
-        toast({
-          title: "Erro ao buscar orçamentos personalizados Meta",
-          description: metaCustomBudgetsError.message,
-          variant: "destructive",
-        });
-      }
-
-      // Buscar orçamentos personalizados do Google
-      const { data: googleCustomBudgets, error: googleCustomBudgetsError } = await supabase
+      // Buscar todos os orçamentos personalizados da tabela UNIFICADA
+      const { data: customBudgets, error: budgetsError } = await supabase
         .from("custom_budgets")
-        .select("*");
+        .select("*")
+        .order("created_at", { ascending: false });
 
-      if (googleCustomBudgetsError) {
-        toast({
-          title: "Erro ao buscar orçamentos personalizados Google",
-          description: googleCustomBudgetsError.message,
-          variant: "destructive",
-        });
+      if (budgetsError) {
+        console.error("❌ Erro ao buscar orçamentos personalizados:", budgetsError);
+        throw budgetsError;
       }
 
-      // Verificar data atual para destacar orçamentos ativos
-      const today = new Date().toISOString().split("T")[0];
+      console.log(`✅ ${clients?.length || 0} clientes e ${customBudgets?.length || 0} orçamentos encontrados`);
 
-      // Combinar dados
-      return clients?.map((client) => {
-        const metaBudgets = metaCustomBudgets
-          ?.filter((budget) => budget.client_id === client.id)
-          .map(budget => ({
-            ...budget,
-            platform: "meta"  // Adicionar plataforma para diferenciar
-          })) || [];
-          
-        const googleBudgets = googleCustomBudgets
-          ?.filter((budget) => budget.client_id === client.id)
-          .map(budget => ({
-            ...budget,
-            platform: budget.platform || "google"  // Garantir que tenha a plataforma
-          })) || [];
-          
-        const allBudgets = [...metaBudgets, ...googleBudgets];
+      // Organizar orçamentos por cliente
+      const budgetsByClient = new Map();
+      customBudgets?.forEach(budget => {
+        if (!budgetsByClient.has(budget.client_id)) {
+          budgetsByClient.set(budget.client_id, []);
+        }
+        budgetsByClient.get(budget.client_id).push(budget);
+      });
+
+      // Combinar dados dos clientes com seus orçamentos - CORRIGIDO
+      const clientsWithBudgets = clients?.map(client => {
+        const clientBudgets = budgetsByClient.get(client.id) || [];
+        const metaBudgets = clientBudgets.filter(b => b.platform === 'meta');
+        const googleBudgets = clientBudgets.filter(b => b.platform === 'google');
 
         return {
           ...client,
-          custom_budgets: allBudgets,
-          has_active_budget: allBudgets.some(
-            (budget) => 
-              budget.is_active && 
-              budget.start_date <= today && 
-              budget.end_date >= today
-          ),
+          metaBudgets,
+          googleBudgets,
+          custom_budgets: clientBudgets // Esta é a propriedade que a tabela espera
         };
+      }) || [];
+
+      // Filtrar apenas clientes que têm orçamentos personalizados
+      const clientsWithAnyBudgets = clientsWithBudgets.filter(client => 
+        client.custom_budgets && client.custom_budgets.length > 0
+      );
+
+      console.log(`🔍 Debug: ${clientsWithAnyBudgets.length} clientes com orçamentos personalizados encontrados`);
+      clientsWithAnyBudgets.forEach(client => {
+        console.log(`   - ${client.company_name}: ${client.custom_budgets.length} orçamentos`);
       });
-    },
+
+      return clientsWithAnyBudgets;
+    }
   });
 
-  // Filtrar clientes por termo de busca
-  const filteredClients = (clients || []).filter((client) =>
-    client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Mutation para adicionar novo orçamento personalizado
+  // Mutation para adicionar orçamento personalizado
   const addCustomBudgetMutation = useMutation({
-    mutationFn: async (data: CustomBudgetFormData) => {
-      const table = data.platform === "meta" ? "meta_custom_budgets" : "custom_budgets";
+    mutationFn: async (budgetData: CustomBudgetFormData) => {
+      console.log("➕ Adicionando orçamento personalizado:", budgetData);
       
-      // Formato do payload depende da tabela
-      const payload = data.platform === "meta" 
-        ? {
-            client_id: data.clientId,
-            budget_amount: data.budgetAmount,
-            start_date: data.startDate,
-            end_date: data.endDate,
-            description: data.description,
-            is_active: true,
-          }
-        : {
-            client_id: data.clientId,
-            budget_amount: data.budgetAmount,
-            start_date: data.startDate,
-            end_date: data.endDate,
-            description: data.description,
-            is_active: true,
-            platform: "google",
-          };
-      
-      const { data: result, error } = await supabase
-        .from(table)
-        .insert(payload)
-        .select();
+      const { data, error } = await supabase
+        .from("custom_budgets")
+        .insert({
+          client_id: budgetData.clientId,
+          platform: budgetData.platform,
+          budget_amount: budgetData.budgetAmount,
+          start_date: budgetData.startDate,
+          end_date: budgetData.endDate,
+          description: budgetData.description,
+          is_active: true
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
-      return result;
+      if (error) {
+        console.error("❌ Erro ao adicionar orçamento:", error);
+        throw error;
+      }
+
+      console.log("✅ Orçamento adicionado:", data);
+      return data;
     },
     onSuccess: () => {
       toast({
-        title: "Orçamento personalizado criado",
-        description: "O orçamento personalizado foi criado com sucesso.",
+        title: "Orçamento adicionado",
+        description: "O orçamento personalizado foi criado com sucesso."
       });
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
     },
     onError: (error) => {
+      console.error("❌ Erro ao adicionar orçamento:", error);
       toast({
-        title: "Erro ao criar orçamento personalizado",
-        description: error.message,
-        variant: "destructive",
+        title: "Erro ao adicionar orçamento",
+        description: "Não foi possível criar o orçamento personalizado.",
+        variant: "destructive"
       });
-    },
+    }
   });
 
   // Mutation para atualizar orçamento personalizado
   const updateCustomBudgetMutation = useMutation({
-    mutationFn: async ({
-      id,
-      ...data
-    }: CustomBudgetFormData & { id: string }) => {
-      const table = data.platform === "meta" ? "meta_custom_budgets" : "custom_budgets";
+    mutationFn: async ({ id, ...budgetData }: CustomBudgetFormData & { id: string }) => {
+      console.log("📝 Atualizando orçamento personalizado:", { id, ...budgetData });
       
-      // Formato do payload depende da tabela
-      const payload = data.platform === "meta" 
-        ? {
-            budget_amount: data.budgetAmount,
-            start_date: data.startDate,
-            end_date: data.endDate,
-            description: data.description,
-          }
-        : {
-            budget_amount: data.budgetAmount,
-            start_date: data.startDate,
-            end_date: data.endDate,
-            description: data.description,
-            platform: "google",
-          };
-      
-      const { data: result, error } = await supabase
-        .from(table)
-        .update(payload)
+      const { data, error } = await supabase
+        .from("custom_budgets")
+        .update({
+          client_id: budgetData.clientId,
+          platform: budgetData.platform,
+          budget_amount: budgetData.budgetAmount,
+          start_date: budgetData.startDate,
+          end_date: budgetData.endDate,
+          description: budgetData.description,
+          updated_at: new Date().toISOString()
+        })
         .eq("id", id)
-        .select();
+        .select()
+        .single();
 
-      if (error) throw error;
-      return result;
+      if (error) {
+        console.error("❌ Erro ao atualizar orçamento:", error);
+        throw error;
+      }
+
+      console.log("✅ Orçamento atualizado:", data);
+      return data;
     },
     onSuccess: () => {
       toast({
-        title: "Orçamento personalizado atualizado",
-        description: "O orçamento personalizado foi atualizado com sucesso.",
+        title: "Orçamento atualizado",
+        description: "O orçamento personalizado foi atualizado com sucesso."
       });
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
     },
     onError: (error) => {
+      console.error("❌ Erro ao atualizar orçamento:", error);
       toast({
-        title: "Erro ao atualizar orçamento personalizado",
-        description: error.message,
-        variant: "destructive",
+        title: "Erro ao atualizar orçamento",
+        description: "Não foi possível atualizar o orçamento personalizado.",
+        variant: "destructive"
       });
-    },
+    }
   });
 
-  // Mutation para excluir orçamento personalizado
+  // Mutation para deletar orçamento personalizado
   const deleteCustomBudgetMutation = useMutation({
-    mutationFn: async (budgetInfo: {id: string, platform: string}) => {
-      const table = budgetInfo.platform === "meta" ? "meta_custom_budgets" : "custom_budgets";
+    mutationFn: async (budgetInfo: { id: string; platform: string }) => {
+      console.log("🗑️ Deletando orçamento personalizado:", budgetInfo);
       
       const { error } = await supabase
-        .from(table)
+        .from("custom_budgets")
         .delete()
         .eq("id", budgetInfo.id);
 
-      if (error) throw error;
-      return true;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Orçamento personalizado excluído",
-        description: "O orçamento personalizado foi excluído com sucesso.",
-      });
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        title: "Erro ao excluir orçamento personalizado",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Mutation para ativar/desativar orçamento personalizado
-  const toggleBudgetStatusMutation = useMutation({
-    mutationFn: async ({ id, isActive, platform }: { id: string; isActive: boolean, platform: string }) => {
-      const table = platform === "meta" ? "meta_custom_budgets" : "custom_budgets";
-      
-      const { error } = await supabase
-        .from(table)
-        .update({ is_active: isActive })
-        .eq("id", id);
-
-      if (error) throw error;
-      return true;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Status do orçamento alterado",
-        description: "O status do orçamento foi alterado com sucesso.",
-      });
-      refetch();
-    },
-    onError: (error) => {
-      toast({
-        title: "Erro ao alterar status do orçamento",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Formatar data - Corrigida para usar date-fns corretamente
-  const formatDate = (dateString: string) => {
-    try {
-      // Garantir que estamos recebendo uma data válida
-      const date = new Date(dateString);
-      
-      // Verificar se a data é válida
-      if (isNaN(date.getTime())) {
-        console.error("Data inválida:", dateString);
-        return dateString;
+      if (error) {
+        console.error("❌ Erro ao deletar orçamento:", error);
+        throw error;
       }
-      
-      // Formatar a data no padrão brasileiro sem conversão de fuso horário
-      return format(date, "dd/MM/yyyy", { locale: ptBR });
-    } catch (error) {
-      console.error("Erro ao formatar data:", error);
-      return dateString;
-    }
-  };
 
-  // Formatar valor do orçamento
+      console.log("✅ Orçamento deletado");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Orçamento removido",
+        description: "O orçamento personalizado foi removido com sucesso."
+      });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
+    },
+    onError: (error) => {
+      console.error("❌ Erro ao deletar orçamento:", error);
+      toast({
+        title: "Erro ao remover orçamento",
+        description: "Não foi possível remover o orçamento personalizado.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation para alternar status do orçamento
+  const toggleBudgetStatusMutation = useMutation({
+    mutationFn: async ({ id, isActive, platform }: { id: string; isActive: boolean; platform: string }) => {
+      console.log("🔄 Alternando status do orçamento:", { id, isActive, platform });
+      
+      const { data, error } = await supabase
+        .from("custom_budgets")
+        .update({ 
+          is_active: !isActive,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("❌ Erro ao alternar status:", error);
+        throw error;
+      }
+
+      console.log("✅ Status do orçamento alterado:", data);
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Status atualizado",
+        description: "O status do orçamento personalizado foi atualizado."
+      });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-custom-budgets"] });
+    },
+    onError: (error) => {
+      console.error("❌ Erro ao alternar status:", error);
+      toast({
+        title: "Erro ao atualizar status",
+        description: "Não foi possível atualizar o status do orçamento.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Funções auxiliares
   const formatBudget = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
-      currency: "BRL",
+      currency: "BRL"
     }).format(value);
   };
 
-  // Verificar se o orçamento está atualmente ativo
   const isCurrentlyActive = (budget: any) => {
-    const today = new Date().toISOString().split("T")[0];
-    return (
-      budget.is_active &&
-      budget.start_date <= today &&
-      budget.end_date >= today
-    );
+    const today = new Date().toISOString().split('T')[0];
+    return budget.is_active && 
+           budget.start_date <= today && 
+           budget.end_date >= today;
   };
 
-  // Verificar se o orçamento é para o futuro
   const isFutureBudget = (budget: any) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toISOString().split('T')[0];
     return budget.start_date > today;
   };
 
   return {
-    clients,
     filteredClients,
     isLoading,
     searchTerm,
@@ -318,9 +287,8 @@ export const useCustomBudgets = () => {
     updateCustomBudgetMutation,
     deleteCustomBudgetMutation,
     toggleBudgetStatusMutation,
-    formatDate: formatDateBr, // Usar a função corrigida do módulo de utilidades
     formatBudget,
     isCurrentlyActive,
-    isFutureBudget,
+    isFutureBudget
   };
-};
+}

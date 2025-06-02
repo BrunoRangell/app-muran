@@ -2,15 +2,16 @@
 import { supabase } from "@/lib/supabase";
 
 /**
- * Verifica se existe um orçamento personalizado ativo para o cliente na data atual
+ * Verifica se existe um orçamento personalizado ativo para o cliente na data atual - VERSÃO UNIFICADA
  */
 export async function getActiveCustomBudget(clientId: string) {
   const today = new Date().toISOString().split('T')[0];
   
   const { data, error } = await supabase
-    .from("meta_custom_budgets")
+    .from("custom_budgets")
     .select("*")
     .eq("client_id", clientId)
+    .eq("platform", "meta")
     .eq("is_active", true)
     .lte("start_date", today)
     .gte("end_date", today)
@@ -51,8 +52,9 @@ export async function getAllActiveCustomBudgets() {
   const today = new Date().toISOString().split('T')[0];
   
   const { data, error } = await supabase
-    .from("meta_custom_budgets")
+    .from("custom_budgets")
     .select("*")
+    .eq("platform", "meta")
     .eq("is_active", true)
     .lte("start_date", today)
     .gte("end_date", today);
@@ -70,9 +72,10 @@ export async function getAllActiveCustomBudgets() {
  */
 export async function getCustomBudgetById(budgetId: string) {
   const { data, error } = await supabase
-    .from("meta_custom_budgets")
+    .from("custom_budgets")
     .select("*")
     .eq("id", budgetId)
+    .eq("platform", "meta")
     .maybeSingle();
     
   if (error) {

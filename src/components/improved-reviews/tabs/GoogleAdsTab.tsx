@@ -17,8 +17,16 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
-  const { reviewAllClients, isProcessing } = useBatchOperations({
+  const { 
+    reviewAllClients, 
+    cancelBatchProcessing,
+    isProcessing, 
+    progress, 
+    total, 
+    currentClientName 
+  } = useBatchOperations({
     platform: "google",
     onComplete: () => {
       console.log("Revisão em lote do Google Ads concluída. Atualizando dados...");
@@ -37,9 +45,14 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     setViewMode(mode);
   };
 
-  // Handle filter changes
-  const handleFilterChange = (showAdjustments: boolean) => {
+  // Handle adjustment filter changes
+  const handleAdjustmentFilterChange = (showAdjustments: boolean) => {
     setShowOnlyAdjustments(showAdjustments);
+  };
+
+  // Handle account filter changes
+  const handleAccountFilterChange = (showWithoutAccount: boolean) => {
+    setShowWithoutAccount(showWithoutAccount);
   };
 
   // Handle refresh
@@ -77,15 +90,22 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
         metrics={metrics} 
         onBatchReview={handleBatchReview}
         isProcessing={isProcessing}
+        progress={progress}
+        total={total}
+        currentClientName={currentClientName}
+        platform="google"
+        onCancelBatchProcessing={cancelBatchProcessing}
       />
       
       <FilterBar 
         searchQuery={searchQuery}
         viewMode={viewMode}
         showOnlyAdjustments={showOnlyAdjustments}
+        showWithoutAccount={showWithoutAccount}
         onSearchChange={handleSearchChange}
         onViewModeChange={handleViewModeChange}
-        onFilterChange={handleFilterChange}
+        onAdjustmentFilterChange={handleAdjustmentFilterChange}
+        onAccountFilterChange={handleAccountFilterChange}
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
         platform="google"
@@ -96,6 +116,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
         viewMode={viewMode}
         searchQuery={searchQuery}
         showOnlyAdjustments={showOnlyAdjustments}
+        showWithoutAccount={showWithoutAccount}
         platform="google"
       />
     </div>

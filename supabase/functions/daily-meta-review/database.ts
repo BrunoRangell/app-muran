@@ -5,8 +5,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 export interface ClientData {
   id: string;
   company_name: string;
-  meta_account_id: string | null;
-  meta_ads_budget: number;
 }
 
 export interface MetaAccount {
@@ -39,13 +37,13 @@ export function createSupabaseClient() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-// Buscar dados do cliente
+// Buscar dados do cliente (simplificado - sem campos Meta específicos)
 export async function fetchClientData(supabase: any, clientId: string): Promise<ClientData> {
   console.log(`Buscando dados para cliente ${clientId}`);
   
   const { data: client, error: clientError } = await supabase
     .from("clients")
-    .select("*")
+    .select("id, company_name")
     .eq("id", clientId)
     .single();
 
@@ -56,7 +54,7 @@ export async function fetchClientData(supabase: any, clientId: string): Promise<
   return client;
 }
 
-// Buscar detalhes da conta Meta específica
+// Buscar detalhes da conta Meta específica (única fonte de verdade)
 export async function fetchMetaAccountDetails(
   supabase: any, 
   clientId: string, 
@@ -69,6 +67,7 @@ export async function fetchMetaAccountDetails(
     .select("*")
     .eq("client_id", clientId)
     .eq("account_id", accountId)
+    .eq("status", "active")
     .maybeSingle();
 
   if (accountError) {
@@ -79,7 +78,31 @@ export async function fetchMetaAccountDetails(
   return metaAccount;
 }
 
-// Buscar orçamento personalizado ativo
+// Buscar conta Meta principal do cliente (se não especificar account_id)
+export async function fetchPrimaryMetaAccount(
+  supabase: any, 
+  clientId: string
+): Promise<MetaAccount | null> {
+  console.log(`Buscando conta Meta principal para cliente ${clientId}`);
+  
+  const { data: metaAccount, error: accountError } = await supabase
+    .from("client_meta_accounts")
+    .select("*")
+    .eq("client_id", clientId)
+    .eq("status", "active")
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true })
+    .maybeSingle();
+
+  if (accountError) {
+    console.error(`Erro ao buscar conta Meta principal: ${accountError.message}`);
+    return null;
+  }
+
+  return metaAccount;
+}
+
+// Buscar orçamento personalizado ativo - ATUALIZADO PARA TABELA UNIFICADA
 export async function fetchActiveCustomBudget(
   supabase: any, 
   clientId: string,
@@ -88,9 +111,10 @@ export async function fetchActiveCustomBudget(
   console.log(`Buscando orçamento personalizado ativo para cliente ${clientId}`);
   
   const { data: customBudget, error: customBudgetError } = await supabase
-    .from("meta_custom_budgets")
+    .from("custom_budgets")
     .select("*")
     .eq("client_id", clientId)
+    .eq("platform", "meta")
     .eq("is_active", true)
     .lte("start_date", today)
     .gte("end_date", today)

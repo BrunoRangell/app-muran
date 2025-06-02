@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchClientsWithGoogleReviews, reviewGoogleClient } from "./services/googleAdsClientReviewService";
 import { splitClientsByGoogleAdsId } from "../dashboard/utils/clientSorting";
 import { supabase } from "@/lib/supabase";
+import { getCurrentDateInBrasiliaTz } from "../summary/utils";
 
 export const useGoogleAdsBatchReview = () => {
   const [isReviewingBatch, setIsReviewingBatch] = useState(false);
@@ -118,6 +119,8 @@ export const useGoogleAdsBatchReview = () => {
     if (isReviewingBatch || clientsWithGoogleAdsId.length === 0) return;
 
     try {
+      console.log("🚀 Iniciando revisão em massa Google Ads...");
+      
       setIsReviewingBatch(true);
       
       // Inicializar lista de clientes em processamento com todos os clientes que têm ID Google Ads
@@ -131,16 +134,17 @@ export const useGoogleAdsBatchReview = () => {
         throw new Error("Tokens inválidos ou API inacessível");
       }
 
-      // Registrar a data/hora da revisão em lote
-      setLastBatchReviewDate(new Date().toISOString());
-
       // Contador para acompanhar o progresso
       let successCount = 0;
       let errorCount = 0;
 
+      console.log(`📊 Processando ${clientsWithGoogleAdsId.length} clientes Google Ads elegíveis...`);
+
       // Processar um cliente de cada vez para não sobrecarregar o servidor
       for (const client of clientsWithGoogleAdsId) {
         try {
+          console.log(`⚡ Processando cliente Google Ads: ${client.company_name}`);
+          
           // Verificar se o cliente tem ID Google Ads
           if (!client.google_account_id) {
             errorCount++;
@@ -152,15 +156,46 @@ export const useGoogleAdsBatchReview = () => {
           // Realizar a revisão para este cliente
           await reviewGoogleClient(client);
           successCount++;
+          console.log(`✅ Cliente Google Ads ${client.company_name} processado com sucesso`);
 
           // Remover o cliente da lista de processamento
           setProcessingClients((prev) => prev.filter((id) => id !== client.id));
         } catch (error) {
-          console.error(`Erro ao revisar cliente ${client.company_name}:`, error);
+          console.error(`❌ Erro ao revisar cliente Google Ads ${client.company_name}:`, error);
           errorCount++;
           // Remover o cliente da lista de processamento mesmo em caso de erro
           setProcessingClients((prev) => prev.filter((id) => id !== client.id));
         }
+      }
+
+      // IMPORTANTE: Só registrar no system_logs APÓS todas as revisões serem concluídas
+      const now = getCurrentDateInBrasiliaTz().toISOString();
+      
+      console.log(`📝 Registrando conclusão da revisão em massa Google Ads: ${successCount} sucessos, ${errorCount} erros`);
+      
+      const { data: logData, error: logError } = await supabase
+        .from('system_logs')
+        .insert({
+          event_type: 'batch_review_completed',
+          message: `Revisão Google Ads em lote concluída: ${successCount} sucesso(s), ${errorCount} erro(s)`,
+          details: { 
+            platform: 'google',
+            successCount, 
+            errorCount, 
+            totalClients: clientsWithGoogleAdsId.length,
+            completedAt: now
+          }
+        })
+        .select()
+        .single();
+      
+      if (logError) {
+        console.error("❌ Erro ao registrar log Google Ads:", logError);
+      } else {
+        console.log("✅ Log de conclusão Google Ads registrado:", logData);
+        
+        // Só atualizar o estado local APÓS confirmar que o log foi salvo
+        setLastBatchReviewDate(now);
       }
 
       // Atualizar o cache do React Query
@@ -168,14 +203,14 @@ export const useGoogleAdsBatchReview = () => {
 
       // Mostrar toast com o resumo
       toast({
-        title: "Revisão em lote concluída",
+        title: "Revisão Google Ads em lote concluída",
         description: `${successCount} clientes analisados com sucesso. ${errorCount} falhas.`,
         variant: successCount > 0 ? "default" : "destructive",
       });
     } catch (error) {
-      console.error("Erro ao iniciar revisão em lote:", error);
+      console.error("Erro ao iniciar revisão Google Ads em lote:", error);
       toast({
-        title: "Erro na revisão em lote",
+        title: "Erro na revisão Google Ads em lote",
         description: "Não foi possível iniciar a revisão em lote",
         variant: "destructive",
       });

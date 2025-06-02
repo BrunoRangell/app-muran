@@ -7,7 +7,7 @@ import { formatDateBr } from '@/utils/dateFormatter';
 export const useCustomBudget = (clientId: string) => {
   const [isUsingCustomBudgetInReview, setIsUsingCustomBudgetInReview] = useState(false);
   
-  // Busca orçamentos personalizados ativos para o cliente
+  // Busca orçamentos personalizados ativos para o cliente - VERSÃO UNIFICADA
   const { 
     data: customBudget,
     isLoading: isLoadingCustomBudget,
@@ -19,9 +19,10 @@ export const useCustomBudget = (clientId: string) => {
       
       // Buscar orçamentos personalizados que estejam ativos e dentro do período de validade
       const { data, error } = await supabase
-        .from('meta_custom_budgets')
+        .from('custom_budgets')
         .select('*')
         .eq('client_id', clientId)
+        .eq('platform', 'meta')
         .eq('is_active', true)
         .lte('start_date', today)
         .gte('end_date', today)

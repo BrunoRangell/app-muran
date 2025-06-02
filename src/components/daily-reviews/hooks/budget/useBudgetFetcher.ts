@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { ClientWithReview } from "../types/reviewTypes";
 
 /**
- * Hook para buscar e gerenciar orçamentos personalizados
+ * Hook para buscar e gerenciar orçamentos personalizados - VERSÃO UNIFICADA
  */
 export const useBudgetFetcher = (client: ClientWithReview, accountId?: string) => {
   const [customBudget, setCustomBudget] = useState<any | null>(null);
@@ -24,9 +24,10 @@ export const useBudgetFetcher = (client: ClientWithReview, accountId?: string) =
         // Se já temos a informação do orçamento personalizado na revisão, usamos ela
         if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_id) {
           const { data, error } = await supabase
-            .from("meta_custom_budgets")
+            .from("custom_budgets")
             .select("*")
             .eq("id", client.lastReview.custom_budget_id)
+            .eq("platform", "meta")
             .maybeSingle();
             
           if (error) {
@@ -42,9 +43,10 @@ export const useBudgetFetcher = (client: ClientWithReview, accountId?: string) =
         // Buscar orçamento personalizado ativo para a data atual
         const today = new Date().toISOString().split('T')[0];
         const { data, error } = await supabase
-          .from("meta_custom_budgets")
+          .from("custom_budgets")
           .select("*")
           .eq("client_id", client.id)
+          .eq("platform", "meta")
           .eq("is_active", true)
           .lte("start_date", today)
           .gte("end_date", today)
