@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -224,12 +223,12 @@ export function useGoogleAdsData() {
       // Achatar o array
       const flattenedClients = clientsWithData.flat().filter(Boolean);
       
-      // Calcular métricas usando o orçamento correto
+      // Calcular métricas - CORREÇÃO: usar clientsWithAccounts.size para clientes monitorados
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.google_total_spent || 0), 0);
       
       const metricsData = {
-        totalClients: flattenedClients.length,
+        totalClients: clientsWithAccounts.size, // CORRIGIDO: usar clientes com contas
         clientsWithoutAccount: clientsWithoutAccount,
         totalBudget: totalBudget,
         totalSpent: totalSpent,

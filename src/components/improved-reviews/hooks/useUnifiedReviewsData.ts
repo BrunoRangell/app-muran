@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -264,7 +263,7 @@ export function useUnifiedReviewsData() {
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.meta_total_spent || 0), 0);
       
       console.log("📊 Métricas calculadas:", {
-        totalClients: flattenedClients.length,
+        totalClients: clientsWithAccounts.size, // CORRIGIDO: usar clientes com contas
         totalBudget,
         totalSpent,
         clientsWithoutAccount: clientsWithoutAccount,
@@ -272,7 +271,7 @@ export function useUnifiedReviewsData() {
       });
       
       setMetrics({
-        totalClients: flattenedClients.length,
+        totalClients: clientsWithAccounts.size, // CORRIGIDO: usar clientes com contas
         clientsWithoutAccount: clientsWithoutAccount,
         totalBudget: totalBudget,
         totalSpent: totalSpent,
