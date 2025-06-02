@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,7 @@ export function useBatchOperations(config: BatchOperationsConfig) {
   const [processingIds, setProcessingIds] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
+  const [currentClientName, setCurrentClientName] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -45,6 +47,9 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       if (!client) {
         throw new Error("Cliente não encontrado");
       }
+
+      // Atualizar o nome do cliente atual sendo processado
+      setCurrentClientName(client.company_name || "Cliente sem nome");
       
       // Definir endpoint baseado na plataforma
       const endpoint = config.platform === "meta" ? 
@@ -159,6 +164,7 @@ export function useBatchOperations(config: BatchOperationsConfig) {
     setIsProcessing(true);
     setProgress(0);
     setTotal(clients.length);
+    setCurrentClientName("");
     setProcessingIds(clients.map(client => client.id));
     
     const successfulReviews: string[] = [];
@@ -234,6 +240,7 @@ export function useBatchOperations(config: BatchOperationsConfig) {
       
       setIsProcessing(false);
       setProcessingIds([]);
+      setCurrentClientName("");
       
       // Construir mensagem de resultado
       let description = `${successfulReviews.length} clientes revisados com sucesso`;
@@ -259,12 +266,29 @@ export function useBatchOperations(config: BatchOperationsConfig) {
     processWithDelay();
   };
 
+  // Função para cancelar o processamento
+  const cancelBatchProcessing = () => {
+    setIsProcessing(false);
+    setProcessingIds([]);
+    setCurrentClientName("");
+    setProgress(0);
+    setTotal(0);
+    
+    toast({
+      title: "Processamento cancelado",
+      description: "A revisão em massa foi cancelada pelo usuário.",
+      variant: "default",
+    });
+  };
+
   return {
     reviewClient,
     reviewAllClients,
+    cancelBatchProcessing,
     isProcessing,
     processingIds,
     progress,
-    total
+    total,
+    currentClientName
   };
 }

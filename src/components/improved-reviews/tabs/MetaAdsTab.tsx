@@ -19,7 +19,14 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
-  const { reviewAllClients, isProcessing } = useBatchOperations({
+  const { 
+    reviewAllClients, 
+    cancelBatchProcessing,
+    isProcessing, 
+    progress, 
+    total, 
+    currentClientName 
+  } = useBatchOperations({
     platform: "meta",
     onComplete: () => {
       console.log("Revisão em lote do Meta Ads concluída. Atualizando dados...");
@@ -83,6 +90,11 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         metrics={metrics} 
         onBatchReview={handleBatchReview}
         isProcessing={isProcessing}
+        progress={progress}
+        total={total}
+        currentClientName={currentClientName}
+        platform="meta"
+        onCancelBatchProcessing={cancelBatchProcessing}
       />
       
       <FilterBar 
