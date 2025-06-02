@@ -31,7 +31,7 @@ export function useBudgetCalculator() {
         // Se tem orçamento personalizado, calcular até a data de fim
         const endDate = new Date(input.customBudgetEndDate);
         const timeDiff = endDate.getTime() - today.getTime();
-        remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)));
+        remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
         
         console.log(`🔍 DEBUG - Cálculo de dias restantes (orçamento personalizado):`, {
           today: today.toISOString().split('T')[0],
