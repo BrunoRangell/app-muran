@@ -1,3 +1,4 @@
+
 import { createSupabaseClient, fetchClientData, fetchMetaAccountDetails, fetchPrimaryMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview, updateClientCurrentReview, fetchMetaAccessToken } from "./database.ts";
 
 // Função para buscar dados da API Meta com lógica corrigida
@@ -41,7 +42,8 @@ async function fetchAllCampaigns(accountId: string, accessToken: string) {
   let campaigns = [];
   let url = `https://graph.facebook.com/v20.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time,id&access_token=${accessToken}&limit=1000`;
   
-  console.log(`🔍 Iniciando busca de campanhas com paginação...`);
+  console.log(`🔍 NOVA VERSÃO - Iniciando busca de campanhas com paginação...`);
+  console.log(`🔍 URL CORRIGIDA: ${url.replace(accessToken, 'ACCESS_TOKEN')}`);
   
   while (url) {
     console.log(`📄 Buscando página de campanhas...`);
@@ -168,6 +170,7 @@ export async function processReviewRequest(req: Request) {
     // Parse do corpo da requisição
     const body = await req.json();
     console.log("📥 Requisição recebida:", { ...body, accessToken: body.accessToken ? "***REDACTED***" : undefined });
+    console.log("🚀 VERSÃO CORRIGIDA DA FUNÇÃO - Deploy realizado com sucesso!");
     
     const { clientId, metaAccountId, reviewDate = new Date().toISOString().split("T")[0], fetchRealData = false } = body;
     
