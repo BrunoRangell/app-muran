@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 
 // Tipos para operações de banco de dados
@@ -28,6 +27,8 @@ export interface ReviewData {
   using_custom_budget: boolean;
   custom_budget_id: string | null;
   custom_budget_amount: number | null;
+  custom_budget_start_date?: string | null;
+  custom_budget_end_date?: string | null;
 }
 
 // Criação do cliente Supabase
@@ -35,6 +36,35 @@ export function createSupabaseClient() {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   return createClient(supabaseUrl, supabaseServiceKey);
+}
+
+// Buscar token Meta da tabela api_tokens
+export async function fetchMetaAccessToken(supabase: any): Promise<string | null> {
+  console.log("🔍 Buscando token Meta da tabela api_tokens...");
+  
+  try {
+    const { data: tokenData, error: tokenError } = await supabase
+      .from("api_tokens")
+      .select("value")
+      .eq("name", "meta_access_token")
+      .maybeSingle();
+
+    if (tokenError) {
+      console.error(`❌ Erro ao buscar token Meta: ${tokenError.message}`);
+      return null;
+    }
+
+    if (!tokenData || !tokenData.value) {
+      console.log("⚠️ Token Meta não encontrado na tabela api_tokens");
+      return null;
+    }
+
+    console.log("✅ Token Meta encontrado na base de dados");
+    return tokenData.value;
+  } catch (error) {
+    console.error(`❌ Erro inesperado ao buscar token Meta: ${error.message}`);
+    return null;
+  }
 }
 
 // Buscar dados do cliente (simplificado - sem campos Meta específicos)
@@ -124,6 +154,15 @@ export async function fetchActiveCustomBudget(
   if (customBudgetError) {
     console.error(`Erro ao buscar orçamento personalizado: ${customBudgetError.message}`);
     return null;
+  }
+
+  if (customBudget) {
+    console.log(`✅ Orçamento personalizado encontrado:`, {
+      id: customBudget.id,
+      budget_amount: customBudget.budget_amount,
+      start_date: customBudget.start_date,
+      end_date: customBudget.end_date
+    });
   }
 
   return customBudget;

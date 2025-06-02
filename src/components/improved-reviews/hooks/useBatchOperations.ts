@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -124,6 +123,23 @@ export function useBatchOperations(config: BatchOperationsConfig) {
         totalSpent: data?.totalSpent,
         idealDailyBudget: data?.idealDailyBudget
       });
+
+      // INVALIDAR QUERIES APÓS SUCESSO INDIVIDUAL - CORREÇÃO PRINCIPAL
+      console.log(`[useBatchOperations] Invalidando queries após análise individual do cliente ${client.company_name} - plataforma: ${config.platform}`);
+      
+      // Invalidar queries específicas da plataforma
+      if (config.platform === "meta") {
+        await queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+      } else if (config.platform === "google") {
+        await queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+        await queryClient.invalidateQueries({ queryKey: ["google-ads-clients-with-reviews"] });
+      }
+      
+      // Invalidar queries comuns a ambas as plataformas
+      await queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      await queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["client-current-reviews"] });
+      await queryClient.invalidateQueries({ queryKey: ["daily-budget-reviews"] });
       
       toast({
         title: "Revisão concluída",

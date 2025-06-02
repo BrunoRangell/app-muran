@@ -1,5 +1,5 @@
-
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { AnalysisResult } from "./types";
 import { AppError } from "@/lib/errors";
@@ -10,6 +10,7 @@ import { AppError } from "@/lib/errors";
 export const useEdgeFunction = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
   
   const callFunction = async (clientId: string) => {
     setIsLoading(true);
@@ -17,6 +18,14 @@ export const useEdgeFunction = () => {
     
     try {
       const result = await callEdgeFunction(clientId);
+      
+      // Invalidar queries após sucesso para forçar atualização da interface
+      queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+      queryClient.invalidateQueries({ queryKey: ["client-current-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["daily-budget-reviews"] });
+      
       return result;
     } catch (err) {
       setError(err as Error);
@@ -108,49 +117,25 @@ export const invokeEdgeFunction = async (
       throw new Error("Cliente não possui ID de conta Meta Ads configurado. Configure o ID na página de clientes.");
     }
     
-    // Chamando primeiro uma função de ping para testar a conectividade com a Edge Function
-    try {
-      console.log("Testando conectividade com a função Edge antes da requisição principal");
-      const pingResult = await supabase.functions.invoke("daily-budget-reviews", {
-        body: { method: "ping" },
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
-      
-      if (pingResult.error) {
-        console.error("Erro no teste de ping da função Edge:", pingResult.error);
-        throw new Error("Erro na comunicação com a função Edge: " + pingResult.error.message);
-      }
-      
-      console.log("Teste de ping bem-sucedido:", pingResult.data);
-    } catch (pingError) {
-      console.error("Falha no teste de ping:", pingError);
-      // Continuamos mesmo com falha no ping, tentando a requisição principal
-    }
-    
     // Preparar payload completo com todos os dados necessários
     const requestPayload = { 
       method: "getMetaAdsData", 
       clientId,
       reviewDate: formattedDate,
-      accessToken,
       clientName: clientData.company_name,
-      metaAccountId: clientData.meta_account_id
+      metaAccountId: clientData.meta_account_id,
+      fetchRealData: true
     };
     
-    console.log("Enviando payload para função Edge:", JSON.stringify({
-      ...requestPayload,
-      accessToken: "***TOKEN OCULTADO***"
-    }, null, 2));
+    console.log("Enviando payload para função Edge:", JSON.stringify(requestPayload, null, 2));
     
     try {
-      // Tentar usar um timeout para evitar que a requisição fique pendente indefinidamente
+      // Usar timeout para evitar que a requisição fique pendente indefinidamente
       const timeoutPromise = new Promise<{ data: any, error: any }>((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout ao conectar à função Edge (20s)")), 20000);
+        setTimeout(() => reject(new Error("Timeout ao conectar à função Edge (30s)")), 30000);
       });
       
-      const functionPromise = supabase.functions.invoke("daily-budget-reviews", {
+      const functionPromise = supabase.functions.invoke("daily-meta-review", {
         body: requestPayload,
         headers: {
           "Content-Type": "application/json"
@@ -171,21 +156,20 @@ export const invokeEdgeFunction = async (
       // Verificar resposta válida
       console.log("Resposta recebida da função Edge:", data);
       
-      // Se a função Edge falhar, usamos dados de mock para teste
-      if (!data) {
-        console.warn("Usando dados de mock para testes devido a erro na função Edge");
-        return getMockAnalysisData(clientId, clientData);
+      // Se a função Edge falhar ou não retornar dados válidos, retornar erro
+      if (!data || !data.success) {
+        const errorMessage = data?.error || "Resposta inválida da função Edge";
+        console.error("Função Edge não retornou dados válidos:", errorMessage);
+        throw new Error("Erro ao obter dados do Meta Ads: " + errorMessage);
       }
       
       // Garantir que os valores numéricos estão sendo tratados corretamente
       if (data.meta_total_spent !== undefined) {
-        // Certifique-se de que o valor é um número
-        data.meta_total_spent = parseFloat(String(data.meta_total_spent));
+        data.meta_total_spent = parseFloat(String(data.meta_total_spent)) || 0;
       }
       
       if (data.meta_daily_budget_current !== undefined) {
-        // Certifique-se de que o valor é um número
-        data.meta_daily_budget_current = parseFloat(String(data.meta_daily_budget_current));
+        data.meta_daily_budget_current = parseFloat(String(data.meta_daily_budget_current)) || 0;
       }
       
       // Adicionar dados do cliente para manter consistência
@@ -199,56 +183,14 @@ export const invokeEdgeFunction = async (
     } catch (edgeError: any) {
       console.error("Erro ao chamar função Edge:", edgeError);
       
-      // Usar dados de mock para continuar os testes
-      console.warn("Usando dados de mock para testes devido a erro na função Edge");
-      return getMockAnalysisData(clientId, clientData);
+      // NÃO usar dados simulados - retornar o erro
+      throw new Error("Falha na comunicação com a função Edge: " + edgeError.message);
     }
   } catch (error: any) {
     console.error("Falha ao obter dados do Meta Ads:", error);
     throw error;
   }
 };
-
-/**
- * Função auxiliar para gerar dados de mock consistentes para testes
- */
-function getMockAnalysisData(clientId: string, clientData: any): AnalysisResult {
-  const mockData: AnalysisResult = {
-    success: true,
-    message: "Dados mock gerados para teste (função Edge indisponível)",
-    meta_total_spent: 1250.75,
-    meta_daily_budget_current: 75.00,
-    client: {
-      id: clientId,
-      company_name: clientData.company_name,
-      meta_account_id: clientData.meta_account_id || "não configurado"
-    },
-    meta: {
-      totalSpent: 1250.75,
-      dailyBudget: 75.00,
-      dateRange: {
-        start: "2025-03-01",
-        end: "2025-03-31"
-      },
-      campaigns: [
-        {
-          id: "123456789",
-          name: "Campanha de Teste 1",
-          status: "ACTIVE",
-          spend: 750.75
-        },
-        {
-          id: "987654321",
-          name: "Campanha de Teste 2",
-          status: "PAUSED",
-          spend: 500.00
-        }
-      ]
-    }
-  };
-  
-  return mockData;
-}
 
 /**
  * Chama a função Edge para análise de cliente (nome alternativo para compatibilidade)

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -167,11 +168,13 @@ export function useUnifiedReviewsData() {
             let customBudget = null;
             let monthlyBudget = account.budget_amount;
             let isUsingCustomBudget = false;
+            let customBudgetEndDate = null;
             
             // Verificar orçamento personalizado na revisão
             if (review?.using_custom_budget && review?.custom_budget_amount) {
               isUsingCustomBudget = true;
               monthlyBudget = review.custom_budget_amount;
+              customBudgetEndDate = review.custom_budget_end_date;
               
               if (review.custom_budget_id) {
                 customBudget = {
@@ -188,13 +191,16 @@ export function useUnifiedReviewsData() {
               customBudget = budget;
               monthlyBudget = budget.budget_amount;
               isUsingCustomBudget = true;
+              customBudgetEndDate = budget.end_date;
             }
+            
+            console.log(`🔍 DEBUG - Cliente ${client.company_name}: customBudgetEndDate = ${customBudgetEndDate}`);
             
             const budgetCalc = calculateBudget({
               monthlyBudget: monthlyBudget,
               totalSpent: review?.meta_total_spent || 0,
               currentDailyBudget: review?.meta_daily_budget_current || 0,
-              customBudgetEndDate: customBudget?.end_date
+              customBudgetEndDate: customBudgetEndDate
             });
             
             const needsAdjustment = budgetCalc.needsBudgetAdjustment;
@@ -220,7 +226,9 @@ export function useUnifiedReviewsData() {
               budgetDifference: budgetCalc.budgetDifference,
               needsBudgetAdjustment: budgetCalc.needsBudgetAdjustment,
               hasReview: !!review,
-              sourceTable: account.is_primary ? "clients" : "client_meta_accounts"
+              sourceTable: account.is_primary ? "clients" : "client_meta_accounts",
+              customBudgetEndDate: customBudgetEndDate,
+              remainingDays: budgetCalc.remainingDays
             });
             
             return clientData;

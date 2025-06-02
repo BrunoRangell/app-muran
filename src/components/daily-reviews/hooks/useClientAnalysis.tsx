@@ -1,5 +1,5 @@
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,6 +14,7 @@ export const useClientAnalysis = (
   onSuccess?: (result: AnalysisResultType) => void
 ) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Mutação para análise de um único cliente
   const analyzeMutation = useMutation({
@@ -158,6 +159,13 @@ export const useClientAnalysis = (
         title: "Análise concluída",
         description: "Dados do cliente atualizados com sucesso",
       });
+
+      // Invalidar todas as queries relevantes para forçar atualização da interface
+      queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+      queryClient.invalidateQueries({ queryKey: ["client-current-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["daily-budget-reviews"] });
 
       // Chamar callback de sucesso se fornecido
       if (onSuccess) {
