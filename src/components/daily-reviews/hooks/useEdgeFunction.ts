@@ -1,5 +1,5 @@
-
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { AnalysisResult } from "./types";
 import { AppError } from "@/lib/errors";
@@ -10,6 +10,7 @@ import { AppError } from "@/lib/errors";
 export const useEdgeFunction = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
   
   const callFunction = async (clientId: string) => {
     setIsLoading(true);
@@ -17,6 +18,14 @@ export const useEdgeFunction = () => {
     
     try {
       const result = await callEdgeFunction(clientId);
+      
+      // Invalidar queries após sucesso para forçar atualização da interface
+      queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+      queryClient.invalidateQueries({ queryKey: ["client-current-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["daily-budget-reviews"] });
+      
       return result;
     } catch (err) {
       setError(err as Error);
