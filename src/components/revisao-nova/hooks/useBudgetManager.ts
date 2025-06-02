@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
+type AccountType = 'primary' | 'secondary';
+
 interface BudgetState {
   // Meta Ads - Conta Principal (clients table)
   formattedValue: string;
@@ -25,6 +27,28 @@ interface BudgetState {
   secondaryGoogleRawValue: number;
   secondaryGoogleAccountId: string;
 }
+
+// Função para formatar moeda
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  }).format(value);
+};
+
+// Função para converter moeda formatada para número
+const parseCurrencyToNumber = (value: string): number => {
+  if (!value || typeof value !== 'string') return 0;
+  
+  // Remove símbolos de moeda, espaços e pontos de milhares
+  const cleanValue = value
+    .replace(/[R$\s]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.');
+  
+  const number = parseFloat(cleanValue);
+  return isNaN(number) ? 0 : number;
+};
 
 export function useBudgetManager() {
   const [budgets, setBudgets] = useState<Record<string, BudgetState>>({});
@@ -151,14 +175,6 @@ export function useBudgetManager() {
       calculateTotals(initialBudgets);
     }
   }, [clients]);
-
-  // Função para formatar moeda
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(value);
-  };
 
   // Função para calcular totais
   const calculateTotals = (currentBudgets: Record<string, BudgetState>) => {
