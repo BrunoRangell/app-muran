@@ -1,5 +1,4 @@
-
-import { createSupabaseClient, fetchClientData, fetchMetaAccountDetails, fetchPrimaryMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview, updateClientCurrentReview } from "./database.ts";
+import { createSupabaseClient, fetchClientData, fetchMetaAccountDetails, fetchPrimaryMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview, updateClientCurrentReview, fetchMetaAccessToken } from "./database.ts";
 
 // Função para buscar dados da API Meta
 async function fetchMetaApiData(accountId: string, accessToken: string) {
@@ -90,7 +89,7 @@ export async function processReviewRequest(req: Request) {
     const body = await req.json();
     console.log("📥 Requisição recebida:", { ...body, accessToken: body.accessToken ? "***REDACTED***" : undefined });
     
-    const { clientId, metaAccountId, reviewDate = new Date().toISOString().split("T")[0], fetchRealData = false, accessToken } = body;
+    const { clientId, metaAccountId, reviewDate = new Date().toISOString().split("T")[0], fetchRealData = false } = body;
     
     if (!clientId) {
       throw new Error("clientId é obrigatório");
@@ -99,19 +98,20 @@ export async function processReviewRequest(req: Request) {
     console.log(`🚀 Iniciando revisão META para cliente ${clientId}`, {
       metaAccountId,
       reviewDate,
-      fetchRealData,
-      hasAccessToken: !!accessToken
+      fetchRealData
     });
     
     // Buscar dados do cliente
     const client = await fetchClientData(supabase, clientId);
     
-    // Verificar se tem token Meta configurado
+    // Buscar token Meta automaticamente da tabela api_tokens
+    const accessToken = await fetchMetaAccessToken(supabase);
     const hasMetaToken = !!accessToken;
+    
     if (!hasMetaToken) {
-      console.log("⚠️ Token Meta não encontrado - valores serão zerados");
+      console.log("⚠️ Token Meta não encontrado na base de dados - valores serão zerados");
     } else {
-      console.log("✅ Token Meta configurado corretamente");
+      console.log("✅ Token Meta encontrado e configurado corretamente");
     }
     
     // Buscar detalhes da conta Meta
@@ -196,7 +196,7 @@ export async function processReviewRequest(req: Request) {
       }
     } else {
       // Sem token ou fetchRealData false - manter valores zerados
-      const reason = !hasMetaToken ? "sem token" : !fetchRealData ? "fetchRealData=false" : "sem accountId";
+      const reason = !hasMetaToken ? "sem token na base de dados" : !fetchRealData ? "fetchRealData=false" : "sem accountId";
       console.log(`⚠️ Não buscando dados da API Meta (${reason}) - usando valores zerados`);
       dataSource = "no_token";
     }

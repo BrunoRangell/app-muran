@@ -38,6 +38,35 @@ export function createSupabaseClient() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
+// Buscar token Meta da tabela api_tokens
+export async function fetchMetaAccessToken(supabase: any): Promise<string | null> {
+  console.log("🔍 Buscando token Meta da tabela api_tokens...");
+  
+  try {
+    const { data: tokenData, error: tokenError } = await supabase
+      .from("api_tokens")
+      .select("value")
+      .eq("name", "meta_access_token")
+      .maybeSingle();
+
+    if (tokenError) {
+      console.error(`❌ Erro ao buscar token Meta: ${tokenError.message}`);
+      return null;
+    }
+
+    if (!tokenData || !tokenData.value) {
+      console.log("⚠️ Token Meta não encontrado na tabela api_tokens");
+      return null;
+    }
+
+    console.log("✅ Token Meta encontrado na base de dados");
+    return tokenData.value;
+  } catch (error) {
+    console.error(`❌ Erro inesperado ao buscar token Meta: ${error.message}`);
+    return null;
+  }
+}
+
 // Buscar dados do cliente (simplificado - sem campos Meta específicos)
 export async function fetchClientData(supabase: any, clientId: string): Promise<ClientData> {
   console.log(`Buscando dados para cliente ${clientId}`);
