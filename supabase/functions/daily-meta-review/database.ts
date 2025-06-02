@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 
 // Tipos para operações de banco de dados
@@ -101,7 +102,7 @@ export async function fetchPrimaryMetaAccount(
   return metaAccount;
 }
 
-// Buscar orçamento personalizado ativo
+// Buscar orçamento personalizado ativo - ATUALIZADO PARA TABELA UNIFICADA
 export async function fetchActiveCustomBudget(
   supabase: any, 
   clientId: string,
@@ -110,9 +111,10 @@ export async function fetchActiveCustomBudget(
   console.log(`Buscando orçamento personalizado ativo para cliente ${clientId}`);
   
   const { data: customBudget, error: customBudgetError } = await supabase
-    .from("meta_custom_budgets")
+    .from("custom_budgets")
     .select("*")
     .eq("client_id", clientId)
+    .eq("platform", "meta")
     .eq("is_active", true)
     .lte("start_date", today)
     .gte("end_date", today)
