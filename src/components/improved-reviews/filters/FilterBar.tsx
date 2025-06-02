@@ -11,9 +11,11 @@ interface FilterBarProps {
   searchQuery: string;
   viewMode: string;
   showOnlyAdjustments: boolean;
+  showWithoutAccount: boolean;
   onSearchChange: (query: string) => void;
   onViewModeChange: (mode: "cards" | "table" | "list") => void;
-  onFilterChange: (showAdjustments: boolean) => void;
+  onAdjustmentFilterChange: (showAdjustments: boolean) => void;
+  onAccountFilterChange: (showWithoutAccount: boolean) => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
   platform?: "meta" | "google";
@@ -23,9 +25,11 @@ export function FilterBar({
   searchQuery,
   viewMode,
   showOnlyAdjustments,
+  showWithoutAccount,
   onSearchChange,
   onViewModeChange,
-  onFilterChange,
+  onAdjustmentFilterChange,
+  onAccountFilterChange,
   onRefresh,
   isRefreshing = false,
   platform = "meta"
@@ -50,10 +54,21 @@ export function FilterBar({
               <Switch
                 id="show-adjustments"
                 checked={showOnlyAdjustments}
-                onCheckedChange={onFilterChange}
+                onCheckedChange={onAdjustmentFilterChange}
               />
               <Label htmlFor="show-adjustments" className="text-sm">
-                Apenas recomendados
+                Necessitam ajustes
+              </Label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="show-without-account"
+                checked={showWithoutAccount}
+                onCheckedChange={onAccountFilterChange}
+              />
+              <Label htmlFor="show-without-account" className="text-sm">
+                Sem conta cadastrada
               </Label>
             </div>
             

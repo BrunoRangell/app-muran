@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -156,7 +155,8 @@ export function useGoogleAdsData() {
                 review: review || null,
                 budgetCalculation: budgetCalc,
                 needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
-                lastFiveDaysAvg: lastFiveDaysAvg
+                lastFiveDaysAvg: lastFiveDaysAvg,
+                hasAccount: true // Cliente com conta específica sempre tem conta
               };
             });
           } else if (client.google_account_id) {
@@ -189,7 +189,8 @@ export function useGoogleAdsData() {
               review: review || null,
               budgetCalculation: budgetCalc,
               needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
-              lastFiveDaysAvg: lastFiveDaysAvg
+              lastFiveDaysAvg: lastFiveDaysAvg,
+              hasAccount: true // Cliente com google_account_id tem conta
             };
           }
           

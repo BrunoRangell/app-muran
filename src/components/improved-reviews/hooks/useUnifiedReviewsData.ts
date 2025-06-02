@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -139,6 +138,9 @@ export function useUnifiedReviewsData() {
         // Encontrar contas do cliente
         const accounts = metaAccounts.filter(account => account.client_id === client.id);
         
+        // Determinar se o cliente tem conta configurada
+        const hasAccount = accounts.length > 0;
+        
         // Se o cliente tiver contas específicas, criar um item para cada conta
         if (accounts.length > 0) {
           return accounts.map(account => {
@@ -193,7 +195,8 @@ export function useUnifiedReviewsData() {
               budgetCalculation: budgetCalc,
               needsAdjustment: budgetCalc.needsBudgetAdjustment,
               customBudget: customBudget,
-              isUsingCustomBudget: isUsingCustomBudget
+              isUsingCustomBudget: isUsingCustomBudget,
+              hasAccount: true // Cliente com conta específica sempre tem conta
             };
             
             console.log(`📝 Cliente processado: ${client.company_name} (${account.account_name})`, {
@@ -254,7 +257,8 @@ export function useUnifiedReviewsData() {
             budgetCalculation: budgetCalc,
             needsAdjustment: budgetCalc.needsBudgetAdjustment,
             customBudget: customBudget,
-            isUsingCustomBudget: isUsingCustomBudget
+            isUsingCustomBudget: isUsingCustomBudget,
+            hasAccount: false // Cliente sem contas específicas não tem conta
           };
           
           console.log(`📝 Cliente processado: ${client.company_name} (Conta Principal)`, {

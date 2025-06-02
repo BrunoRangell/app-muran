@@ -10,6 +10,7 @@ interface ClientsListProps {
   viewMode: string;
   searchQuery: string;
   showOnlyAdjustments: boolean;
+  showWithoutAccount: boolean;
   platform?: "meta" | "google";
 }
 
@@ -18,6 +19,7 @@ export function ClientsList({
   viewMode,
   searchQuery,
   showOnlyAdjustments,
+  showWithoutAccount,
   platform = "meta"
 }: ClientsListProps) {
   // Filtrar os dados com base na pesquisa e nos filtros
@@ -35,9 +37,12 @@ export function ClientsList({
       // Filtro de apenas ajustes necessários
       const matchesAdjustment = !showOnlyAdjustments || client.needsAdjustment;
       
-      return matchesSearch && matchesAdjustment;
+      // Filtro de clientes sem conta cadastrada
+      const matchesAccountFilter = !showWithoutAccount || !client.hasAccount;
+      
+      return matchesSearch && matchesAdjustment && matchesAccountFilter;
     });
-  }, [data, searchQuery, showOnlyAdjustments, platform]);
+  }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, platform]);
   
   // Ordenar clientes (prioridade para os que precisam de ajuste)
   const sortedClients = useMemo(() => {

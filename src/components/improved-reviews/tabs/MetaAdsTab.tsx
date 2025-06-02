@@ -17,6 +17,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
   const { reviewAllClients, isProcessing } = useBatchOperations({
     platform: "meta",
@@ -37,9 +38,14 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
     setViewMode(mode);
   };
 
-  // Handle filter changes
-  const handleFilterChange = (showAdjustments: boolean) => {
+  // Handle adjustment filter changes
+  const handleAdjustmentFilterChange = (showAdjustments: boolean) => {
     setShowOnlyAdjustments(showAdjustments);
+  };
+
+  // Handle account filter changes
+  const handleAccountFilterChange = (showWithoutAccount: boolean) => {
+    setShowWithoutAccount(showWithoutAccount);
   };
 
   // Handle refresh
@@ -83,9 +89,11 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         searchQuery={searchQuery}
         viewMode={viewMode}
         showOnlyAdjustments={showOnlyAdjustments}
+        showWithoutAccount={showWithoutAccount}
         onSearchChange={handleSearchChange}
         onViewModeChange={handleViewModeChange}
-        onFilterChange={handleFilterChange}
+        onAdjustmentFilterChange={handleAdjustmentFilterChange}
+        onAccountFilterChange={handleAccountFilterChange}
         onRefresh={handleRefresh}
         isRefreshing={isLoading}
       />
@@ -95,6 +103,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         viewMode={viewMode}
         searchQuery={searchQuery}
         showOnlyAdjustments={showOnlyAdjustments}
+        showWithoutAccount={showWithoutAccount}
         platform="meta"
       />
     </div>
