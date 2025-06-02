@@ -71,6 +71,13 @@ export function useBudgetCalculator() {
         needsAdjustmentBasedOnAverage = 
           (absoluteDifferenceAverage >= 5) || // diferença absoluta de 5 reais
           (percentageDifferenceAverage >= 0.05 && absoluteDifferenceAverage >= 1); // ou 5% com pelo menos 1 real de diferença
+
+        console.log(`🔍 DEBUG - Ajuste baseado na média (${input.lastFiveDaysAverage}):`, {
+          absoluteDifferenceAverage,
+          percentageDifferenceAverage,
+          needsAdjustmentBasedOnAverage,
+          threshold: '≥ R$ 5 ou ≥ 5%'
+        });
       }
       
       // Determinar se precisa de ajuste (diferença de 5 reais ou 5%)
@@ -83,6 +90,15 @@ export function useBudgetCalculator() {
         input.currentDailyBudget > 0 && // só considera se tem orçamento atual
         ((absoluteDifference >= 5) || // diferença absoluta de 5 reais
         (percentageDifference >= 0.05 && absoluteDifference >= 1)); // ou 5% com pelo menos 1 real de diferença
+
+      console.log(`🔍 DEBUG - Cálculo de ajuste orçamentário:`, {
+        absoluteDifference,
+        percentageDifference,
+        needsBudgetAdjustment,
+        threshold: '≥ R$ 5 ou ≥ 5%',
+        currentDailyBudget: input.currentDailyBudget,
+        idealDailyBudget: roundedIdealDailyBudget
+      });
       
       return {
         idealDailyBudget: roundedIdealDailyBudget,

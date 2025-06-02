@@ -1,3 +1,4 @@
+
 import { ClientCard } from "./ClientCard";
 import { ClientRow } from "./ClientRow";
 import { ClientsTable } from "./ClientsTable";
@@ -36,6 +37,17 @@ export function ClientsList({
       // Filtro de apenas ajustes necessários
       const matchesAdjustment = !showOnlyAdjustments || client.needsAdjustment;
       
+      // Debug log para verificar o filtro de ajustes
+      if (showOnlyAdjustments) {
+        console.log(`🔍 DEBUG - Filtro "necessitam ajustes" para ${client.company_name}:`, {
+          needsAdjustment: client.needsAdjustment,
+          budgetDifference: client.budgetCalculation?.budgetDifference,
+          needsBudgetAdjustment: client.budgetCalculation?.needsBudgetAdjustment,
+          needsAdjustmentBasedOnAverage: client.budgetCalculation?.needsAdjustmentBasedOnAverage,
+          passedFilter: matchesAdjustment
+        });
+      }
+      
       // Filtro de clientes sem conta cadastrada
       const matchesAccountFilter = !showWithoutAccount || !client.hasAccount;
       
@@ -54,6 +66,15 @@ export function ClientsList({
       return a.company_name.localeCompare(b.company_name);
     });
   }, [filteredData]);
+
+  // Debug log para verificar a lista final
+  console.log(`🔍 DEBUG - Lista final de clientes (${platform}):`, {
+    totalClients: data?.length || 0,
+    filteredClients: filteredData.length,
+    sortedClients: sortedClients.length,
+    showOnlyAdjustments,
+    clientsNeedingAdjustment: data?.filter(c => c.needsAdjustment).length || 0
+  });
 
   if (!sortedClients || sortedClients.length === 0) {
     return (
