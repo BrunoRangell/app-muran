@@ -157,6 +157,9 @@ export function useUnifiedReviewsData() {
               currentDailyBudget: review?.meta_daily_budget_current || 0
             });
             
+            // CORREÇÃO: Usar apenas needsBudgetAdjustment que já considera o threshold de R$ 5
+            const needsAdjustment = budgetCalc.needsBudgetAdjustment;
+            
             const clientData = {
               ...client,
               meta_account_id: account.account_id,
@@ -165,7 +168,7 @@ export function useUnifiedReviewsData() {
               original_budget_amount: account.budget_amount,
               review: review || null,
               budgetCalculation: budgetCalc,
-              needsAdjustment: budgetCalc.needsBudgetAdjustment,
+              needsAdjustment: needsAdjustment,
               customBudget: customBudget,
               isUsingCustomBudget: isUsingCustomBudget,
               hasAccount: true
@@ -174,7 +177,9 @@ export function useUnifiedReviewsData() {
             console.log(`📝 Cliente processado: ${client.company_name} (${account.account_name})`, {
               totalSpent: review?.meta_total_spent || 0,
               budgetAmount: monthlyBudget,
-              needsAdjustment: budgetCalc.needsBudgetAdjustment,
+              needsAdjustment: needsAdjustment,
+              budgetDifference: budgetCalc.budgetDifference,
+              needsBudgetAdjustment: budgetCalc.needsBudgetAdjustment,
               hasReview: !!review
             });
             

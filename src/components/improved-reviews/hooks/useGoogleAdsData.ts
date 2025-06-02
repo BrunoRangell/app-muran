@@ -137,6 +137,10 @@ export function useGoogleAdsData() {
               lastFiveDaysAverage: lastFiveDaysAvg
             });
             
+            // CORREÇÃO: Usar apenas needsBudgetAdjustment que já considera o threshold de R$ 5
+            // Remover a verificação de needsAdjustmentBasedOnAverage para manter consistência
+            const needsAdjustment = budgetCalc.needsBudgetAdjustment;
+            
             return {
               ...client,
               google_account_id: account.account_id,
@@ -147,7 +151,7 @@ export function useGoogleAdsData() {
               customBudget,
               review: review || null,
               budgetCalculation: budgetCalc,
-              needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
+              needsAdjustment: needsAdjustment,
               lastFiveDaysAvg: lastFiveDaysAvg,
               hasAccount: true
             };
