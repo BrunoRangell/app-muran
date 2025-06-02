@@ -26,7 +26,7 @@ export function useGoogleAdsData() {
     queryFn: async () => {
       console.log("Buscando dados de clientes e revisões Google Ads...");
       
-      // Buscar clientes ativos
+      // Buscar TODOS os clientes ativos (não apenas os com conta)
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
         .select(`
@@ -72,14 +72,16 @@ export function useGoogleAdsData() {
         customBudgetMap.set(budget.client_id, budget);
       });
 
-      // Calcular clientes sem conta cadastrada
+      // Calcular clientes com contas - verificar ambas as fontes
       const clientsWithAccounts = new Set();
+      
       // Adicionar clientes que têm google_account_id na tabela clients
       clients?.forEach(client => {
         if (client.google_account_id) {
           clientsWithAccounts.add(client.id);
         }
       });
+      
       // Adicionar clientes que têm contas na tabela client_google_accounts
       googleAccounts?.forEach(account => {
         clientsWithAccounts.add(account.client_id);
@@ -88,6 +90,9 @@ export function useGoogleAdsData() {
       const clientsWithoutAccount = clients?.filter(client => 
         !clientsWithAccounts.has(client.id)
       ).length || 0;
+
+      console.log("📊 Clientes com conta Google:", clientsWithAccounts.size);
+      console.log("📊 Clientes sem conta Google:", clientsWithoutAccount);
 
       // Buscar revisões mais recentes do Google Ads (apenas do mês atual)
       const currentDate = new Date();
@@ -106,66 +111,32 @@ export function useGoogleAdsData() {
       
       console.log(`Encontradas ${reviews?.length || 0} revisões do mês atual`);
 
-      // Combinar os dados
-      const clientsWithData = clients
-        .filter(client => client.google_account_id || (googleAccounts && googleAccounts.some(acc => acc.client_id === client.id)))
-        .map(client => {
-          // Verificar se tem orçamento personalizado ativo
-          const customBudget = customBudgetMap.get(client.id);
-          const isUsingCustomBudget = !!customBudget;
-          
-          // Encontrar contas do cliente
-          const accounts = googleAccounts ? googleAccounts.filter(account => account.client_id === client.id) : [];
-          
-          // Se o cliente tiver contas específicas, criar um item para cada conta
-          if (accounts.length > 0) {
-            return accounts.map(account => {
-              // Encontrar revisões para esta conta (apenas do mês atual)
-              const accountReviews = reviews ? reviews.filter(r => 
-                r.client_id === client.id && 
-                (r.google_account_id === account.account_id || r.client_account_id === account.id)
-              ) : [];
-              
-              // Usar a revisão mais recente
-              const review = accountReviews.length > 0 ? accountReviews[0] : null;
-              
-              // Determinar o orçamento a ser usado
-              const originalBudgetAmount = account.budget_amount || 0;
-              const budgetAmount = isUsingCustomBudget ? customBudget.budget_amount : originalBudgetAmount;
-              
-              // Obter a média de gasto dos últimos 5 dias (se disponível)
-              const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
-              
-              // Calcular orçamento recomendado
-              const budgetCalc = calculateBudget({
-                monthlyBudget: budgetAmount,
-                totalSpent: review?.google_total_spent || 0,
-                currentDailyBudget: review?.google_daily_budget_current || 0,
-                lastFiveDaysAverage: lastFiveDaysAvg
-              });
-              
-              return {
-                ...client,
-                google_account_id: account.account_id,
-                google_account_name: account.account_name,
-                budget_amount: budgetAmount,
-                original_budget_amount: originalBudgetAmount,
-                isUsingCustomBudget,
-                customBudget,
-                review: review || null,
-                budgetCalculation: budgetCalc,
-                needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
-                lastFiveDaysAvg: lastFiveDaysAvg,
-                hasAccount: true // Cliente com conta específica sempre tem conta
-              };
-            });
-          } else if (client.google_account_id) {
-            // Cliente com ID de conta padrão
-            const clientReviews = reviews ? reviews.filter(r => r.client_id === client.id) : [];
-            const review = clientReviews.length > 0 ? clientReviews[0] : null;
+      // Combinar os dados - incluir TODOS os clientes, mesmo os sem conta
+      const clientsWithData = clients?.map(client => {
+        // Verificar se tem orçamento personalizado ativo
+        const customBudget = customBudgetMap.get(client.id);
+        const isUsingCustomBudget = !!customBudget;
+        
+        // Encontrar contas específicas do cliente
+        const accounts = googleAccounts?.filter(account => account.client_id === client.id) || [];
+        
+        // Determinar se o cliente tem conta configurada
+        const hasAccount = clientsWithAccounts.has(client.id);
+        
+        // Se o cliente tiver contas específicas, criar um item para cada conta
+        if (accounts.length > 0) {
+          return accounts.map(account => {
+            // Encontrar revisões para esta conta (apenas do mês atual)
+            const accountReviews = reviews?.filter(r => 
+              r.client_id === client.id && 
+              (r.google_account_id === account.account_id || r.client_account_id === account.id)
+            ) || [];
+            
+            // Usar a revisão mais recente
+            const review = accountReviews.length > 0 ? accountReviews[0] : null;
             
             // Determinar o orçamento a ser usado
-            const originalBudgetAmount = client.google_ads_budget || 0;
+            const originalBudgetAmount = account.budget_amount || 0;
             const budgetAmount = isUsingCustomBudget ? customBudget.budget_amount : originalBudgetAmount;
             
             // Obter a média de gasto dos últimos 5 dias (se disponível)
@@ -181,7 +152,8 @@ export function useGoogleAdsData() {
             
             return {
               ...client,
-              google_account_name: "Conta Principal",
+              google_account_id: account.account_id,
+              google_account_name: account.account_name,
               budget_amount: budgetAmount,
               original_budget_amount: originalBudgetAmount,
               isUsingCustomBudget,
@@ -190,13 +162,68 @@ export function useGoogleAdsData() {
               budgetCalculation: budgetCalc,
               needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
               lastFiveDaysAvg: lastFiveDaysAvg,
-              hasAccount: true // Cliente com google_account_id tem conta
+              hasAccount: true // Cliente com conta específica sempre tem conta
             };
-          }
+          });
+        } 
+        // Cliente com ID de conta padrão na tabela clients
+        else if (client.google_account_id) {
+          const clientReviews = reviews?.filter(r => r.client_id === client.id) || [];
+          const review = clientReviews.length > 0 ? clientReviews[0] : null;
           
-          return null;
-        })
-        .filter(Boolean);
+          // Determinar o orçamento a ser usado
+          const originalBudgetAmount = client.google_ads_budget || 0;
+          const budgetAmount = isUsingCustomBudget ? customBudget.budget_amount : originalBudgetAmount;
+          
+          // Obter a média de gasto dos últimos 5 dias (se disponível)
+          const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
+          
+          // Calcular orçamento recomendado
+          const budgetCalc = calculateBudget({
+            monthlyBudget: budgetAmount,
+            totalSpent: review?.google_total_spent || 0,
+            currentDailyBudget: review?.google_daily_budget_current || 0,
+            lastFiveDaysAverage: lastFiveDaysAvg
+          });
+          
+          return {
+            ...client,
+            google_account_name: "Conta Principal",
+            budget_amount: budgetAmount,
+            original_budget_amount: originalBudgetAmount,
+            isUsingCustomBudget,
+            customBudget,
+            review: review || null,
+            budgetCalculation: budgetCalc,
+            needsAdjustment: budgetCalc.needsBudgetAdjustment || budgetCalc.needsAdjustmentBasedOnAverage,
+            lastFiveDaysAvg: lastFiveDaysAvg,
+            hasAccount: true // Cliente com google_account_id tem conta
+          };
+        }
+        // Cliente sem conta cadastrada - NOVO: incluir estes clientes
+        else {
+          return {
+            ...client,
+            google_account_id: null,
+            google_account_name: "Sem conta cadastrada",
+            budget_amount: 0,
+            original_budget_amount: client.google_ads_budget || 0,
+            isUsingCustomBudget: false,
+            customBudget: null,
+            review: null,
+            budgetCalculation: {
+              recommendedDailyBudget: 0,
+              needsBudgetAdjustment: false,
+              adjustmentReason: null,
+              currentSpendRate: 0,
+              daysRemaining: 0
+            },
+            needsAdjustment: false,
+            lastFiveDaysAvg: 0,
+            hasAccount: false // Cliente sem conta
+          };
+        }
+      }) || [];
 
       // Achatar o array (já que alguns clientes podem ter várias contas)
       const flattenedClients = clientsWithData.flat().filter(Boolean);
