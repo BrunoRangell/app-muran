@@ -67,28 +67,35 @@ export function useUnifiedReviewsData() {
 
       console.log("✅ Contas Meta adicionais encontradas:", additionalMetaAccounts?.length || 0);
 
-      // Buscar revisões mais recentes
-      const today = new Date().toISOString().split("T")[0];
+      // MUDANÇA PRINCIPAL: Buscar revisões desde o início do mês, igual ao Google Ads
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const firstDayStr = firstDay.toISOString().split("T")[0];
+      
+      console.log(`🔍 Buscando revisões Meta desde ${firstDayStr} (início do mês)`);
+      
       const { data: reviews, error: reviewsError } = await supabase
         .from("daily_budget_reviews")
         .select(`*`)
-        .eq("review_date", today);
+        .gte("review_date", firstDayStr)
+        .order("review_date", { ascending: false }); // Mais recente primeiro
 
       if (reviewsError) {
         console.error("❌ Erro ao buscar revisões:", reviewsError);
         throw reviewsError;
       }
       
-      console.log("✅ Revisões encontradas para hoje:", reviews?.length || 0);
+      console.log("✅ Revisões encontradas desde início do mês:", reviews?.length || 0);
       
       // Buscar orçamentos personalizados ativos - TABELA UNIFICADA
+      const todayStr = today.toISOString().split("T")[0];
       const { data: activeCustomBudgets, error: budgetsError } = await supabase
         .from("custom_budgets")
         .select("*")
         .eq("platform", "meta")
         .eq("is_active", true)
-        .lte("start_date", today)
-        .gte("end_date", today);
+        .lte("start_date", todayStr)
+        .gte("end_date", todayStr);
       
       if (budgetsError) {
         console.error("❌ Erro ao buscar orçamentos personalizados:", budgetsError);
@@ -160,10 +167,16 @@ export function useUnifiedReviewsData() {
         // Se o cliente tem contas Meta configuradas
         if (allAccounts.length > 0) {
           return allAccounts.map(account => {
-            const review = reviews?.find(r => 
+            // MUDANÇA PRINCIPAL: Buscar a revisão mais recente para esta conta
+            const clientReviews = reviews?.filter(r => 
               r.client_id === client.id && 
               r.meta_account_id === account.account_id
-            );
+            ) || [];
+            
+            // Usar a revisão mais recente (primeira no array ordenado)
+            const review = clientReviews.length > 0 ? clientReviews[0] : null;
+            
+            console.log(`🔍 Cliente ${client.company_name} (${account.account_name}): ${clientReviews.length} revisões encontradas, usando: ${review?.review_date || 'nenhuma'}`);
             
             let customBudget = null;
             let monthlyBudget = account.budget_amount;
@@ -226,6 +239,7 @@ export function useUnifiedReviewsData() {
               budgetDifference: budgetCalc.budgetDifference,
               needsBudgetAdjustment: budgetCalc.needsBudgetAdjustment,
               hasReview: !!review,
+              reviewDate: review?.review_date,
               sourceTable: account.is_primary ? "clients" : "client_meta_accounts",
               customBudgetEndDate: customBudgetEndDate,
               remainingDays: budgetCalc.remainingDays
@@ -271,7 +285,7 @@ export function useUnifiedReviewsData() {
       const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.meta_total_spent || 0), 0);
       
       console.log("📊 Métricas calculadas:", {
-        totalClients: clientsWithAccounts.size, // CORRIGIDO: usar clientes com contas
+        totalClients: clientsWithAccounts.size,
         totalBudget,
         totalSpent,
         clientsWithoutAccount: clientsWithoutAccount,
@@ -279,7 +293,7 @@ export function useUnifiedReviewsData() {
       });
       
       setMetrics({
-        totalClients: clientsWithAccounts.size, // CORRIGIDO: usar clientes com contas
+        totalClients: clientsWithAccounts.size,
         clientsWithoutAccount: clientsWithoutAccount,
         totalBudget: totalBudget,
         totalSpent: totalSpent,
