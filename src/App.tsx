@@ -47,7 +47,6 @@ const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 10
 const Clients = lazyWithTimeout(() => import("@/pages/Clients"));
 const NotFound = lazyWithTimeout(() => import("@/pages/NotFound"));
 const Managers = lazyWithTimeout(() => import("@/pages/Managers"));
-const ManagerFinancial = lazyWithTimeout(() => import("@/pages/ManagerFinancial"));
 const Tasks = lazyWithTimeout(() => import("@/pages/Tasks"));
 const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
 const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"));
@@ -108,8 +107,8 @@ function App() {
         <Route path="/revisoes-diarias" element={<Navigate to="/revisao-diaria-avancada" replace />} />
         <Route path="/revisao-meta" element={<Navigate to="/revisao-diaria-avancada" replace />} />
         
-        {/* Redirecionamento da rota antiga */}
-        <Route path="/financeiro" element={<ManagerFinancial />} />
+        {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
+        <Route path="/financeiro" element={<Navigate to="/" replace />} />
         <Route path="/tarefas" element={<Tasks />} />
         <Route path="*" element={<NotFound />} />
       </Route>
