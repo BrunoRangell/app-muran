@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
 import { socialMediaSchema, SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
 import { SocialMediaForm } from "@/components/team/forms/SocialMediaForm";
@@ -53,6 +55,7 @@ export const UserProfileForm = () => {
   }, [currentUser, form]);
 
   const isAdmin = currentUser?.permission === 'admin';
+  const isMember = currentUser?.permission === 'member' || !isAdmin;
 
   const handleSubmit = async (data: SocialMediaSchemaType) => {
     if (!currentUser) return;
@@ -61,22 +64,31 @@ export const UserProfileForm = () => {
       setIsLoading(true);
       console.log("Salvando dados do perfil:", data);
 
+      // Para membros, apenas campos permitidos podem ser atualizados
+      const updateData = isMember ? {
+        name: data.name,
+        photo_url: data.photo_url,
+        birthday: data.birthday,
+        bio: data.bio,
+        instagram: data.instagram,
+        linkedin: data.linkedin,
+        tiktok: data.tiktok
+      } : {
+        name: data.name,
+        role: data.role,
+        photo_url: data.photo_url,
+        birthday: data.birthday,
+        bio: data.bio,
+        instagram: data.instagram,
+        linkedin: data.linkedin,
+        tiktok: data.tiktok,
+        permission: data.permission,
+        start_date: data.start_date
+      };
+
       const { error } = await supabase
         .from('team_members')
-        .update({
-          name: data.name,
-          role: data.role,
-          photo_url: data.photo_url,
-          birthday: data.birthday,
-          bio: data.bio,
-          instagram: data.instagram,
-          linkedin: data.linkedin,
-          tiktok: data.tiktok,
-          ...(isAdmin && { 
-            permission: data.permission,
-            start_date: data.start_date 
-          })
-        })
+        .update(updateData)
         .eq('id', currentUser.id);
 
       if (error) {
@@ -122,6 +134,16 @@ export const UserProfileForm = () => {
           <p className="text-gray-600">
             Gerencie suas informações pessoais e preferências.
           </p>
+          
+          {isMember && (
+            <Alert className="mt-4">
+              <InfoIcon className="h-4 w-4" />
+              <AlertDescription>
+                Como membro, você pode editar: Nome, Foto de Perfil, Data de Aniversário, Biografia e Redes Sociais. 
+                Outros campos são gerenciados pelos administradores.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <Form {...form}>
@@ -146,10 +168,22 @@ export const UserProfileForm = () => {
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cargo</FormLabel>
+                    <FormLabel>
+                      Cargo
+                      {isMember && <span className="text-sm text-gray-500 ml-1">(Somente leitura)</span>}
+                    </FormLabel>
                     <FormControl>
-                      <Input {...field} disabled={!isAdmin} />
+                      <Input 
+                        {...field} 
+                        disabled={isMember}
+                        className={isMember ? "bg-gray-100 text-gray-600" : ""}
+                      />
                     </FormControl>
+                    {isMember && (
+                      <FormDescription className="text-xs text-gray-500">
+                        Este campo é gerenciado pelos administradores.
+                      </FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
