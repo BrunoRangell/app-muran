@@ -140,7 +140,7 @@ export const UserProfileForm = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header da página */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold text-[#321e32]">Configurações</h1>
@@ -149,31 +149,33 @@ export const UserProfileForm = () => {
         </p>
       </div>
 
-      {/* Layout em grid para telas maiores */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Coluna Esquerda - Conta e Pessoal */}
+      {/* Layout em grid com 3 colunas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Coluna 1 - Informações Pessoais */}
         <div className="space-y-6">
-          {/* Seção de Configurações de Conta (E-mail e Senha) */}
-          <AccountSecuritySection currentEmail={currentEmail} />
-
-          {/* Informações Pessoais */}
           <Form {...form}>
             <PersonalInfoSection form={form} />
           </Form>
         </div>
 
-        {/* Coluna Direita - Profissional e Redes Sociais */}
+        {/* Coluna 2 - Redes Sociais */}
         <div className="space-y-6">
           <Form {...form}>
-            {/* Informações Profissionais (apenas para admins) */}
+            <SocialMediaSection form={form} />
+          </Form>
+        </div>
+
+        {/* Coluna 3 - Segurança da Conta e Profissional (se admin) */}
+        <div className="space-y-6">
+          <AccountSecuritySection currentEmail={currentEmail} />
+          
+          {/* Informações Profissionais (apenas para admins) */}
+          <Form {...form}>
             <ProfessionalInfoSection 
               form={form} 
               isAdmin={isAdmin} 
               isMember={isMember} 
             />
-
-            {/* Redes Sociais */}
-            <SocialMediaSection form={form} />
           </Form>
         </div>
       </div>
@@ -181,7 +183,7 @@ export const UserProfileForm = () => {
       {/* Botão de Salvar - Centralizado */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)}>
-          <div className="flex justify-center pt-4 border-t border-gray-200">
+          <div className="flex justify-center pt-6 border-t border-gray-200">
             <Button 
               type="submit" 
               disabled={isLoading}
