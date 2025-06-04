@@ -36,7 +36,6 @@ const adminMenuItems: MenuItem[] = [
     submenu: financialSubMenu
   },
   { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
 ];
@@ -44,7 +43,6 @@ const adminMenuItems: MenuItem[] = [
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: DollarSign, label: "Meu Financeiro", path: "/financeiro" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
 ];
