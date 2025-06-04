@@ -67,7 +67,7 @@ export const BudgetRecommendation = ({
               <TrendingDown size={18} className="text-red-500" />
             )}
             <span>
-              Recomendado (orç. diário): {budgetDifference > 0 ? 'Aumentar +' : 'Reduzir -'}{formatCurrency(Math.abs(budgetDifference))}
+              Recomendado (orç. diário): {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
             </span>
             <TooltipProvider>
               <Tooltip>
@@ -100,7 +100,7 @@ export const BudgetRecommendation = ({
               <TrendingDown size={18} className="text-red-500" />
             )}
             <span>
-              Recomendado (últ. 5 dias): {budgetDifferenceBasedOnAverage > 0 ? 'Aumentar +' : 'Reduzir -'}{formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
+              Recomendado (últ. 5 dias): {budgetDifferenceBasedOnAverage > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
             </span>
             <TooltipProvider>
               <Tooltip>

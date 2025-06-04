@@ -39,22 +39,14 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange, curr
     if (!suggestedBudgetChange) return null;
     
     if (suggestedBudgetChange > 5) {
-      return {
-        text: `Ajuste recomendado: Reduzir ${formatCurrency(Math.abs(suggestedBudgetChange))}`,
-        color: "text-red-600",
-        bgColor: "bg-red-50"
-      };
+      return `Ajuste recomendado: Diminuir ${formatCurrency(Math.abs(suggestedBudgetChange))}`;
     } else if (suggestedBudgetChange < -5) {
-      return {
-        text: `Ajuste recomendado: Aumentar ${formatCurrency(Math.abs(suggestedBudgetChange))}`,
-        color: "text-green-600",
-        bgColor: "bg-green-50"
-      };
+      return `Ajuste recomendado: Aumentar ${formatCurrency(Math.abs(suggestedBudgetChange))}`;
     }
     return null;
   };
 
-  const adjustmentInfo = getAdjustmentMessage();
+  const adjustmentMessage = getAdjustmentMessage();
 
   return (
     <Card className="border-l-4 border-l-[#ff6e00]">
@@ -68,11 +60,9 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange, curr
         <div className={`text-lg font-medium ${getRecommendationColorClass()}`}>
           {recommendation || "Não há recomendação disponível"}
         </div>
-        {adjustmentInfo && (
-          <div className={`text-sm mt-2 p-2 rounded-md ${adjustmentInfo.bgColor}`}>
-            <div className={`font-medium ${adjustmentInfo.color}`}>
-              {adjustmentInfo.text}
-            </div>
+        {adjustmentMessage && (
+          <div className={`text-sm mt-2 font-medium ${getRecommendationColorClass()}`}>
+            {adjustmentMessage}
           </div>
         )}
         <div className="text-sm text-gray-500 mt-1">

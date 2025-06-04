@@ -27,10 +27,10 @@ export function CompactBudgetRecommendation({
         <Icon className={`h-4 w-4 ${iconColor}`} />
         <div className="flex-1">
           <div className={`text-xs font-medium ${textColor}`}>
-            {isIncrease ? "Aumentar orçamento" : "Reduzir orçamento"}
+            {isIncrease ? "Aumentar" : "Reduzir"} orçamento
           </div>
           <div className={`text-xs ${textColor}`}>
-            {isIncrease ? '+' : '-'}{formatCurrency(Math.abs(budgetDifference))}
+            {formatCurrency(Math.abs(budgetDifference))}
           </div>
         </div>
       </div>
