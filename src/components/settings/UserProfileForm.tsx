@@ -2,21 +2,23 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
 import { socialMediaSchema, SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
-import { SocialMediaForm } from "@/components/team/forms/SocialMediaForm";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { AccountSecuritySection } from "./AccountSecuritySection";
+import { PersonalInfoSection } from "./PersonalInfoSection";
+import { ProfessionalInfoSection } from "./ProfessionalInfoSection";
+import { SocialMediaSection } from "./SocialMediaSection";
+import { Save } from "lucide-react";
 
 export const UserProfileForm = () => {
   const { data: currentUser, refetch } = useCurrentUser();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState("");
 
   const form = useForm<SocialMediaSchemaType>({
     resolver: zodResolver(socialMediaSchema),
@@ -33,6 +35,18 @@ export const UserProfileForm = () => {
       start_date: ''
     }
   });
+
+  useEffect(() => {
+    // Buscar e-mail atual do usuário autenticado
+    const getCurrentUserEmail = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setCurrentEmail(session.user.email);
+      }
+    };
+    
+    getCurrentUserEmail();
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -117,6 +131,7 @@ export const UserProfileForm = () => {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
+          <div className="w-8 h-8 border-4 border-[#ff6e00] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <h3 className="text-lg font-semibold text-[#321e32] mb-2">Carregando...</h3>
           <p className="text-gray-600">Carregando suas informações de perfil...</p>
         </div>
@@ -125,157 +140,47 @@ export const UserProfileForm = () => {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-lg border p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-[#321e32] mb-2">Meu Perfil</h2>
-          <p className="text-gray-600">
-            Gerencie suas informações pessoais e preferências.
-          </p>
-        </div>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome *</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cargo</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        disabled={isMember}
-                        className={isMember ? "bg-gray-100 text-gray-600" : ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {isAdmin && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="permission"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nível de Permissão</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a permissão" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="member">Membro</SelectItem>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="start_date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Na Muran desde</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            <FormField
-              control={form.control}
-              name="photo_url"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL da Foto de Perfil</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="birthday"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data de Aniversário *</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Biografia</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      placeholder="Conte um pouco sobre você..."
-                      className="resize-none h-24"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-[#321e32] mb-4">Redes Sociais</h3>
-              <SocialMediaForm form={form} />
-            </div>
-
-            <div className="flex justify-end pt-6 border-t">
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="bg-[#ff6e00] hover:bg-[#e56200] min-w-[120px]"
-              >
-                {isLoading ? "Salvando..." : "Salvar Alterações"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Header da página */}
+      <div className="text-center space-y-2">
+        <h1 className="text-3xl font-bold text-[#321e32]">Configurações</h1>
+        <p className="text-gray-600">
+          Gerencie suas informações pessoais, profissionais e configurações de conta
+        </p>
       </div>
+
+      {/* Seção de Configurações de Conta (E-mail e Senha) */}
+      <AccountSecuritySection currentEmail={currentEmail} />
+
+      {/* Formulário de Perfil */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+          {/* Informações Pessoais */}
+          <PersonalInfoSection form={form} />
+
+          {/* Informações Profissionais (apenas para admins) */}
+          <ProfessionalInfoSection 
+            form={form} 
+            isAdmin={isAdmin} 
+            isMember={isMember} 
+          />
+
+          {/* Redes Sociais */}
+          <SocialMediaSection form={form} />
+
+          {/* Botão de Salvar */}
+          <div className="flex justify-end pt-6 border-t border-gray-200">
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="bg-[#ff6e00] hover:bg-[#e56200] min-w-[160px] h-11 text-white font-medium"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isLoading ? "Salvando..." : "Salvar Perfil"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 };
