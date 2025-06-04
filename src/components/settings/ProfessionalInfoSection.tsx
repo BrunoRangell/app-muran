@@ -18,31 +18,31 @@ export const ProfessionalInfoSection = ({ form, isAdmin, isMember }: Professiona
 
   return (
     <Card>
-      <CardHeader className="bg-gradient-to-r from-purple-50 to-transparent">
+      <CardHeader className="bg-gradient-to-r from-purple-50 to-transparent pb-4">
         <div className="flex items-center space-x-2">
           <Briefcase className="h-5 w-5 text-purple-600" />
-          <CardTitle className="text-[#321e32]">Informações Profissionais</CardTitle>
+          <CardTitle className="text-[#321e32] text-lg">Informações Profissionais</CardTitle>
         </div>
-        <CardDescription>
-          Configurações relacionadas ao trabalho (somente administradores)
+        <CardDescription className="text-sm">
+          Configurações relacionadas ao trabalho
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <CardContent className="space-y-4 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="role"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center space-x-2">
-                  <Briefcase className="h-4 w-4 text-[#ff6e00]" />
+                <FormLabel className="flex items-center space-x-2 text-sm">
+                  <Briefcase className="h-3 w-3 text-[#ff6e00]" />
                   <span>Cargo</span>
                 </FormLabel>
                 <FormControl>
                   <Input 
                     {...field} 
                     disabled={isMember}
-                    className={`focus:ring-[#ff6e00] focus:border-[#ff6e00] ${
+                    className={`focus:ring-[#ff6e00] focus:border-[#ff6e00] h-9 ${
                       isMember ? "bg-gray-100 text-gray-600" : ""
                     }`}
                   />
@@ -57,8 +57,8 @@ export const ProfessionalInfoSection = ({ form, isAdmin, isMember }: Professiona
             name="permission"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center space-x-2">
-                  <Shield className="h-4 w-4 text-[#ff6e00]" />
+                <FormLabel className="flex items-center space-x-2 text-sm">
+                  <Shield className="h-3 w-3 text-[#ff6e00]" />
                   <span>Nível de Permissão</span>
                 </FormLabel>
                 <Select
@@ -66,7 +66,7 @@ export const ProfessionalInfoSection = ({ form, isAdmin, isMember }: Professiona
                   onValueChange={field.onChange}
                 >
                   <FormControl>
-                    <SelectTrigger className="focus:ring-[#ff6e00] focus:border-[#ff6e00]">
+                    <SelectTrigger className="focus:ring-[#ff6e00] focus:border-[#ff6e00] h-9">
                       <SelectValue placeholder="Selecione a permissão" />
                     </SelectTrigger>
                   </FormControl>
@@ -86,15 +86,15 @@ export const ProfessionalInfoSection = ({ form, isAdmin, isMember }: Professiona
           name="start_date"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-[#ff6e00]" />
+              <FormLabel className="flex items-center space-x-2 text-sm">
+                <Calendar className="h-3 w-3 text-[#ff6e00]" />
                 <span>Na Muran desde</span>
               </FormLabel>
               <FormControl>
                 <Input 
                   type="date" 
                   {...field} 
-                  className="focus:ring-[#ff6e00] focus:border-[#ff6e00]"
+                  className="focus:ring-[#ff6e00] focus:border-[#ff6e00] h-9"
                 />
               </FormControl>
               <FormMessage />

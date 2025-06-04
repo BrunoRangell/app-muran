@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +45,7 @@ export const AccountSecuritySection = ({ currentEmail }: AccountSecuritySectionP
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
     defaultValues: {
-      email: currentEmail,
+      email: "",
     },
   });
 
@@ -57,6 +57,13 @@ export const AccountSecuritySection = ({ currentEmail }: AccountSecuritySectionP
       confirmPassword: "",
     },
   });
+
+  // Atualizar o email no formulário quando currentEmail mudar
+  useEffect(() => {
+    if (currentEmail) {
+      emailForm.setValue('email', currentEmail);
+    }
+  }, [currentEmail, emailForm]);
 
   const handleEmailUpdate = async (data: EmailFormData) => {
     setIsChangingEmail(true);
@@ -110,33 +117,32 @@ export const AccountSecuritySection = ({ currentEmail }: AccountSecuritySectionP
 
   return (
     <Card className="border-l-4 border-l-[#ff6e00]">
-      <CardHeader className="bg-gradient-to-r from-[#ff6e00]/5 to-transparent">
+      <CardHeader className="bg-gradient-to-r from-[#ff6e00]/5 to-transparent pb-4">
         <div className="flex items-center space-x-2">
           <Shield className="h-5 w-5 text-[#ff6e00]" />
-          <CardTitle className="text-[#321e32]">Configurações de Conta</CardTitle>
+          <CardTitle className="text-[#321e32] text-lg">Segurança da Conta</CardTitle>
         </div>
-        <CardDescription>
+        <CardDescription className="text-sm">
           Gerencie seu e-mail e senha de acesso
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 pt-6">
+      <CardContent className="space-y-4 pt-4">
         {/* Seção E-mail */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center space-x-2">
             <Mail className="h-4 w-4 text-[#ff6e00]" />
-            <h3 className="text-lg font-semibold text-[#321e32]">E-mail</h3>
+            <h3 className="text-base font-medium text-[#321e32]">E-mail</h3>
           </div>
           
           <Form {...emailForm}>
-            <form onSubmit={emailForm.handleSubmit(handleEmailUpdate)} className="space-y-4">
+            <form onSubmit={emailForm.handleSubmit(handleEmailUpdate)} className="space-y-3">
               <FormField
                 control={emailForm.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>E-mail atual</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" />
+                      <Input {...field} type="email" className="h-9" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -146,44 +152,39 @@ export const AccountSecuritySection = ({ currentEmail }: AccountSecuritySectionP
               <Button 
                 type="submit" 
                 disabled={isChangingEmail}
-                className="bg-[#ff6e00] hover:bg-[#e56200]"
+                size="sm"
+                className="bg-[#ff6e00] hover:bg-[#e56200] h-8 px-4"
               >
                 {isChangingEmail ? "Atualizando..." : "Atualizar E-mail"}
               </Button>
             </form>
           </Form>
-
-          <Alert className="bg-blue-50 border-blue-200">
-            <AlertDescription className="text-sm text-blue-800">
-              Após alterar o e-mail, você receberá um link de confirmação no novo endereço.
-            </AlertDescription>
-          </Alert>
         </div>
 
         {/* Divisor */}
         <div className="border-t border-gray-200"></div>
 
         {/* Seção Senha */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center space-x-2">
             <Lock className="h-4 w-4 text-[#ff6e00]" />
-            <h3 className="text-lg font-semibold text-[#321e32]">Senha</h3>
+            <h3 className="text-base font-medium text-[#321e32]">Senha</h3>
           </div>
           
           <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(handlePasswordUpdate)} className="space-y-4">
+            <form onSubmit={passwordForm.handleSubmit(handlePasswordUpdate)} className="space-y-3">
               <FormField
                 control={passwordForm.control}
                 name="currentPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Senha atual</FormLabel>
+                    <FormLabel className="text-sm">Senha atual</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input 
                           {...field} 
                           type={showPasswords.current ? "text" : "password"}
-                          className="pr-10"
+                          className="pr-10 h-9"
                         />
                         <Button
                           type="button"
@@ -205,82 +206,91 @@ export const AccountSecuritySection = ({ currentEmail }: AccountSecuritySectionP
                 )}
               />
 
-              <FormField
-                control={passwordForm.control}
-                name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nova senha</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input 
-                          {...field} 
-                          type={showPasswords.new ? "text" : "password"}
-                          className="pr-10"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                        >
-                          {showPasswords.new ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <FormField
+                  control={passwordForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Nova senha</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            {...field} 
+                            type={showPasswords.new ? "text" : "password"}
+                            className="pr-10 h-9"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                          >
+                            {showPasswords.new ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={passwordForm.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirmar nova senha</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input 
-                          {...field} 
-                          type={showPasswords.confirm ? "text" : "password"}
-                          className="pr-10"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
-                        >
-                          {showPasswords.confirm ? (
-                            <EyeOff className="h-4 w-4 text-gray-400" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-400" />
-                          )}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={passwordForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Confirmar senha</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            {...field} 
+                            type={showPasswords.confirm ? "text" : "password"}
+                            className="pr-10 h-9"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                          >
+                            {showPasswords.confirm ? (
+                              <EyeOff className="h-4 w-4 text-gray-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               
               <Button 
                 type="submit" 
                 disabled={isChangingPassword}
-                className="bg-[#ff6e00] hover:bg-[#e56200]"
+                size="sm"
+                className="bg-[#ff6e00] hover:bg-[#e56200] h-8 px-4"
               >
                 {isChangingPassword ? "Atualizando..." : "Atualizar Senha"}
               </Button>
             </form>
           </Form>
         </div>
+
+        <Alert className="bg-blue-50 border-blue-200">
+          <AlertDescription className="text-xs text-blue-800">
+            As alterações de e-mail e senha são processadas pelo sistema de autenticação e não afetam outras informações do perfil.
+          </AlertDescription>
+        </Alert>
       </CardContent>
     </Card>
   );

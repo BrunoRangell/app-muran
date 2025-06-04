@@ -140,7 +140,7 @@ export const UserProfileForm = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Header da página */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold text-[#321e32]">Configurações</h1>
@@ -149,34 +149,46 @@ export const UserProfileForm = () => {
         </p>
       </div>
 
-      {/* Seção de Configurações de Conta (E-mail e Senha) */}
-      <AccountSecuritySection currentEmail={currentEmail} />
+      {/* Layout em grid para telas maiores */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Coluna Esquerda - Conta e Pessoal */}
+        <div className="space-y-6">
+          {/* Seção de Configurações de Conta (E-mail e Senha) */}
+          <AccountSecuritySection currentEmail={currentEmail} />
 
-      {/* Formulário de Perfil */}
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
           {/* Informações Pessoais */}
-          <PersonalInfoSection form={form} />
+          <Form {...form}>
+            <PersonalInfoSection form={form} />
+          </Form>
+        </div>
 
-          {/* Informações Profissionais (apenas para admins) */}
-          <ProfessionalInfoSection 
-            form={form} 
-            isAdmin={isAdmin} 
-            isMember={isMember} 
-          />
+        {/* Coluna Direita - Profissional e Redes Sociais */}
+        <div className="space-y-6">
+          <Form {...form}>
+            {/* Informações Profissionais (apenas para admins) */}
+            <ProfessionalInfoSection 
+              form={form} 
+              isAdmin={isAdmin} 
+              isMember={isMember} 
+            />
 
-          {/* Redes Sociais */}
-          <SocialMediaSection form={form} />
+            {/* Redes Sociais */}
+            <SocialMediaSection form={form} />
+          </Form>
+        </div>
+      </div>
 
-          {/* Botão de Salvar */}
-          <div className="flex justify-end pt-6 border-t border-gray-200">
+      {/* Botão de Salvar - Centralizado */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
+          <div className="flex justify-center pt-4 border-t border-gray-200">
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="bg-[#ff6e00] hover:bg-[#e56200] min-w-[160px] h-11 text-white font-medium"
+              className="bg-[#ff6e00] hover:bg-[#e56200] min-w-[200px] h-12 text-white font-medium text-lg"
             >
-              <Save className="h-4 w-4 mr-2" />
-              {isLoading ? "Salvando..." : "Salvar Perfil"}
+              <Save className="h-5 w-5 mr-2" />
+              {isLoading ? "Salvando..." : "Salvar Todas as Alterações"}
             </Button>
           </div>
         </form>
