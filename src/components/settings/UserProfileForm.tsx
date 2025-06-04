@@ -2,13 +2,11 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
 import { socialMediaSchema, SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
 import { SocialMediaForm } from "@/components/team/forms/SocialMediaForm";
@@ -134,16 +132,6 @@ export const UserProfileForm = () => {
           <p className="text-gray-600">
             Gerencie suas informações pessoais e preferências.
           </p>
-          
-          {isMember && (
-            <Alert className="mt-4">
-              <InfoIcon className="h-4 w-4" />
-              <AlertDescription>
-                Como membro, você pode editar: Nome, Foto de Perfil, Data de Aniversário, Biografia e Redes Sociais. 
-                Outros campos são gerenciados pelos administradores.
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
 
         <Form {...form}>
@@ -168,10 +156,7 @@ export const UserProfileForm = () => {
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Cargo
-                      {isMember && <span className="text-sm text-gray-500 ml-1">(Somente leitura)</span>}
-                    </FormLabel>
+                    <FormLabel>Cargo</FormLabel>
                     <FormControl>
                       <Input 
                         {...field} 
@@ -179,11 +164,6 @@ export const UserProfileForm = () => {
                         className={isMember ? "bg-gray-100 text-gray-600" : ""}
                       />
                     </FormControl>
-                    {isMember && (
-                      <FormDescription className="text-xs text-gray-500">
-                        Este campo é gerenciado pelos administradores.
-                      </FormDescription>
-                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -242,10 +222,6 @@ export const UserProfileForm = () => {
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
-                  <FormDescription className="text-xs">
-                    Para melhor compatibilidade, recomendamos usar serviços como imgur.com ou imgbb.com para hospedar suas fotos. 
-                    Cole aqui o link direto da imagem após fazer o upload.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
