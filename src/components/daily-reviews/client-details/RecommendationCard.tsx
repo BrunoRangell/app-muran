@@ -15,7 +15,7 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange, curr
     
     if (recommendation.includes("Aumentar")) {
       return <TrendingUp className="text-green-500" size={18} />;
-    } else if (recommendation.includes("Diminuir")) {
+    } else if (recommendation.includes("Reduzir")) {
       return <TrendingDown className="text-red-500" size={18} />;
     } else if (recommendation.includes("Manter")) {
       return <MinusCircle className="text-gray-500" size={18} />;
@@ -28,7 +28,7 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange, curr
     
     if (recommendation.includes("Aumentar")) {
       return "text-green-600";
-    } else if (recommendation.includes("Diminuir")) {
+    } else if (recommendation.includes("Reduzir")) {
       return "text-red-600";
     }
     return "";
@@ -39,9 +39,9 @@ export const RecommendationCard = ({ recommendation, suggestedBudgetChange, curr
     if (!suggestedBudgetChange) return null;
     
     if (suggestedBudgetChange > 5) {
-      return `Ajuste recomendado: Diminuir ${formatCurrency(Math.abs(suggestedBudgetChange))}`;
+      return `Ajuste recomendado: Reduzir -${formatCurrency(Math.abs(suggestedBudgetChange))}`;
     } else if (suggestedBudgetChange < -5) {
-      return `Ajuste recomendado: Aumentar ${formatCurrency(Math.abs(suggestedBudgetChange))}`;
+      return `Ajuste recomendado: Aumentar +${formatCurrency(Math.abs(suggestedBudgetChange))}`;
     }
     return null;
   };
