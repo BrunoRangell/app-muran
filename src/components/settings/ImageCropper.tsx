@@ -26,26 +26,38 @@ export const ImageCropper = ({
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
+  const [minScale, setMinScale] = useState(0.1);
 
   const cropSize = 300; // Tamanho fixo do crop em pixels
 
-  // Carregar imagem
+  // Carregar imagem e calcular zoom inicial
   useEffect(() => {
     const img = new Image();
     img.onload = () => {
       setImageElement(img);
       setImageLoaded(true);
       
-      // Centralizar imagem inicialmente
+      // Calcular zoom mínimo para que a imagem caiba no círculo
       const canvas = canvasRef.current;
       if (canvas) {
-        const centerX = (canvas.width - img.width * scale) / 2;
-        const centerY = (canvas.height - img.height * scale) / 2;
+        const minScaleX = cropSize / img.width;
+        const minScaleY = cropSize / img.height;
+        const calculatedMinScale = Math.max(minScaleX, minScaleY);
+        
+        // Definir um zoom inicial ligeiramente maior que o mínimo
+        const initialScale = Math.max(calculatedMinScale * 1.1, 0.2);
+        
+        setMinScale(calculatedMinScale);
+        setScale(initialScale);
+        
+        // Centralizar imagem
+        const centerX = (canvas.width - img.width * initialScale) / 2;
+        const centerY = (canvas.height - img.height * initialScale) / 2;
         setImagePosition({ x: centerX, y: centerY });
       }
     };
     img.src = imageSrc;
-  }, [imageSrc, scale]);
+  }, [imageSrc, cropSize]);
 
   // Desenhar canvas
   const drawCanvas = useCallback(() => {
@@ -87,16 +99,16 @@ export const ImageCropper = ({
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.stroke();
 
-    // Atualizar dados do crop
+    // Calcular dados do crop corrigidos
     const cropData: CropData = {
-      x: centerX - radius - imagePosition.x,
-      y: centerY - radius - imagePosition.y,
-      width: cropSize,
-      height: cropSize,
+      x: (centerX - radius - imagePosition.x) * scale,
+      y: (centerY - radius - imagePosition.y) * scale,
+      width: cropSize * scale,
+      height: cropSize * scale,
       scale
     };
     onCropChange(cropData);
-  }, [imageElement, imagePosition, scale, imageLoaded, onCropChange]);
+  }, [imageElement, imagePosition, scale, imageLoaded, onCropChange, cropSize]);
 
   // Atualizar canvas quando propriedades mudarem
   useEffect(() => {
@@ -183,9 +195,9 @@ export const ImageCropper = ({
           <Slider
             value={[scale]}
             onValueChange={handleZoomChange}
-            min={0.5}
+            min={minScale}
             max={3}
-            step={0.1}
+            step={0.05}
             className="flex-1"
           />
           <ZoomIn className="h-4 w-4 text-gray-600" />

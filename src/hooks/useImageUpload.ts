@@ -45,19 +45,33 @@ export const useImageUpload = () => {
 
       setUploadProgress(25);
 
-      // Aplicar crop e scale
+      // Calcular coordenadas corrigidas para o crop
+      // Convertemos as coordenadas do canvas de visualização para a imagem original
       const sourceX = cropData.x / cropData.scale;
       const sourceY = cropData.y / cropData.scale;
       const sourceWidth = cropData.width / cropData.scale;
       const sourceHeight = cropData.height / cropData.scale;
 
+      // Garantir que as coordenadas estejam dentro dos limites da imagem
+      const clampedX = Math.max(0, Math.min(sourceX, img.width - sourceWidth));
+      const clampedY = Math.max(0, Math.min(sourceY, img.height - sourceHeight));
+      const clampedWidth = Math.min(sourceWidth, img.width - clampedX);
+      const clampedHeight = Math.min(sourceHeight, img.height - clampedY);
+
+      console.log('Crop data:', {
+        original: cropData,
+        calculated: { sourceX, sourceY, sourceWidth, sourceHeight },
+        clamped: { clampedX, clampedY, clampedWidth, clampedHeight },
+        imageSize: { width: img.width, height: img.height }
+      });
+
       // Desenhar imagem cropada no canvas
       ctx.drawImage(
         img,
-        sourceX,
-        sourceY,
-        sourceWidth,
-        sourceHeight,
+        clampedX,
+        clampedY,
+        clampedWidth,
+        clampedHeight,
         0,
         0,
         finalSize,
