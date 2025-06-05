@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface CropData {
   x: number;
@@ -15,6 +16,7 @@ export const useImageUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const uploadProfilePhoto = async (
     file: File,
@@ -89,7 +91,7 @@ export const useImageUpload = () => {
         );
       });
 
-      setUploadProgress(75);
+      setUploadProgress(65);
 
       // Upload para Supabase Storage
       const fileName = `${userId}/profile-${Date.now()}.jpg`;
@@ -103,19 +105,41 @@ export const useImageUpload = () => {
 
       if (uploadError) throw uploadError;
 
-      setUploadProgress(100);
+      setUploadProgress(80);
 
       // Obter URL pública
       const { data } = supabase.storage
         .from('profile-photos')
         .getPublicUrl(fileName);
 
+      // Adicionar timestamp para forçar refresh da imagem no browser
+      const photoUrlWithTimestamp = `${data.publicUrl}?t=${Date.now()}`;
+
+      // Atualizar o registro do usuário no banco de dados
+      const { error: updateError } = await supabase
+        .from('team_members')
+        .update({ photo_url: photoUrlWithTimestamp })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('Erro ao atualizar foto no banco:', updateError);
+        throw updateError;
+      }
+
+      setUploadProgress(95);
+
+      // Invalidar cache do React Query para forçar recarregamento dos dados
+      await queryClient.invalidateQueries({ queryKey: ['current_user'] });
+      await queryClient.invalidateQueries({ queryKey: ['team_members'] });
+
+      setUploadProgress(100);
+
       toast({
         title: "Sucesso!",
         description: "Foto de perfil atualizada com sucesso.",
       });
 
-      return data.publicUrl;
+      return photoUrlWithTimestamp;
 
     } catch (error) {
       console.error('Erro no upload:', error);
@@ -135,7 +159,10 @@ export const useImageUpload = () => {
     try {
       if (!photoUrl.includes('profile-photos')) return;
       
-      const fileName = photoUrl.split('/profile-photos/')[1];
+      // Remover timestamp e query params para obter o path correto
+      const cleanUrl = photoUrl.split('?')[0];
+      const fileName = cleanUrl.split('/profile-photos/')[1];
+      
       const { error } = await supabase.storage
         .from('profile-photos')
         .remove([fileName]);

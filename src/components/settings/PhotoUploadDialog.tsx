@@ -1,11 +1,12 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload } from 'lucide-react';
 import { ImageCropper } from './ImageCropper';
 import { useImageUpload, CropData } from '@/hooks/useImageUpload';
 import { Progress } from '@/components/ui/progress';
+import { ensureStorageBucket } from '@/lib/storageSetup';
 
 interface PhotoUploadDialogProps {
   currentPhotoUrl?: string;
@@ -25,6 +26,11 @@ export const PhotoUploadDialog = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { uploadProfilePhoto, deleteProfilePhoto, isUploading, uploadProgress } = useImageUpload();
+
+  // Configurar storage quando o componente for montado
+  useEffect(() => {
+    ensureStorageBucket();
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,6 +59,8 @@ export const PhotoUploadDialog = ({
   const handleSave = async () => {
     if (!selectedFile || !cropData) return;
 
+    console.log('Iniciando upload da foto...');
+
     // Deletar foto anterior se existir
     if (currentPhotoUrl && currentPhotoUrl.includes('profile-photos')) {
       await deleteProfilePhoto(currentPhotoUrl);
@@ -62,6 +70,7 @@ export const PhotoUploadDialog = ({
     const newUrl = await uploadProfilePhoto(selectedFile, cropData, userId);
     
     if (newUrl) {
+      console.log('Upload concluído. Nova URL:', newUrl);
       onPhotoUpdate(newUrl);
       handleCancel();
     }
@@ -140,7 +149,7 @@ export const PhotoUploadDialog = ({
             {isUploading && (
               <div className="mb-4">
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
-                  <span>Fazendo upload...</span>
+                  <span>Salvando foto de perfil...</span>
                   <span>{uploadProgress}%</span>
                 </div>
                 <Progress value={uploadProgress} className="h-2" />
