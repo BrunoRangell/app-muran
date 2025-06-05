@@ -226,15 +226,15 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
               </p>
             </div>
             
-            {/* Mostrar média para Google Ads */}
-            {platform === "google" && client.lastFiveDaysAvg ? (
+            {/* Mostrar média para Google Ads sempre */}
+            {platform === "google" && (
               <div>
                 <p className="text-xs text-gray-500 mb-1">Média 5 dias</p>
                 <p className="text-sm font-semibold text-gray-700">
-                  {formatCurrency(client.lastFiveDaysAvg)}
+                  {formatCurrency(client.lastFiveDaysAvg || 0)}
                 </p>
               </div>
-            ) : null}
+            )}
             
             {/* Mostrar diário ideal para Google Ads sempre que houver diferença do atual */}
             {platform === "google" && idealDailyBudget !== currentDailyBudget ? (
