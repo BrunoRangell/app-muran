@@ -3,9 +3,11 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Calendar, FileText, Camera } from "lucide-react";
+import { User, Calendar, FileText } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
+import { PhotoUploadDialog } from "../PhotoUploadDialog";
+import { useCurrentUser } from "@/hooks/useTeamMembers";
 
 interface ProfileSectionProps {
   form: UseFormReturn<SocialMediaSchemaType>;
@@ -14,6 +16,11 @@ interface ProfileSectionProps {
 export const ProfileSection = ({ form }: ProfileSectionProps) => {
   const photoUrl = form.watch("photo_url");
   const userName = form.watch("name");
+  const { data: currentUser } = useCurrentUser();
+
+  const handlePhotoUpdate = (newUrl: string) => {
+    form.setValue("photo_url", newUrl);
+  };
 
   return (
     <div className="space-y-8">
@@ -28,26 +35,17 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
           </Avatar>
         </div>
         
-        <FormField
-          control={form.control}
-          name="photo_url"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center justify-center space-x-2 text-sm">
-                <Camera className="h-4 w-4 text-[#ff6e00]" />
-                <span>URL da Foto de Perfil</span>
-              </FormLabel>
-              <FormControl>
-                <Input 
-                  {...field} 
-                  placeholder="https://exemplo.com/sua-foto.jpg"
-                  className="focus:ring-[#ff6e00] focus:border-[#ff6e00]"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="space-y-3">
+          <PhotoUploadDialog
+            currentPhotoUrl={photoUrl}
+            onPhotoUpdate={handlePhotoUpdate}
+            userId={currentUser?.id || ''}
+          />
+          
+          <p className="text-xs text-gray-500">
+            Recomendado: imagem quadrada, mínimo 400x400px
+          </p>
+        </div>
       </div>
 
       {/* Informações Básicas */}
