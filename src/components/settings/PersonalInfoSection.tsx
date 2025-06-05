@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Calendar, FileText } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
-import { PhotoUploadDialog } from "../PhotoUploadDialog";
+import { PhotoUploadDialog } from "./PhotoUploadDialog";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
 
 interface PersonalInfoSectionProps {
