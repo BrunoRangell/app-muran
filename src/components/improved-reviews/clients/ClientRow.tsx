@@ -55,7 +55,7 @@ export function ClientRow({ client, platform = "meta" }: ClientRowProps) {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <span className="text-sm">
-                {budgetDifference > 0 ? 'Aumentar' : 'Diminuir'} {formatCurrency(Math.abs(budgetDifference))}
+                {budgetDifference > 0 ? 'Aumentar +' : 'Reduzir -'}{formatCurrency(Math.abs(budgetDifference))}
               </span>
             </div>
           )}

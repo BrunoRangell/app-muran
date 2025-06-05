@@ -44,7 +44,7 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
           color: "stroke-red-500",
           borderColor: "border-red-200",
           textColor: "text-red-600",
-          status: "Diminuir orçamento",
+          status: "Reduzir orçamento",
           statusColor: "text-red-600"
         };
       } else {
@@ -52,7 +52,7 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
           color: "stroke-amber-500",
           borderColor: "border-amber-200",
           textColor: "text-amber-600",
-          status: budgetDifference > 0 ? "Aumentar orçamento" : "Ajustar orçamento",
+          status: budgetDifference > 0 ? "Aumentar orçamento" : "Reduzir orçamento",
           statusColor: "text-amber-600"
         };
       }
@@ -251,7 +251,7 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Ajuste recomendado:</span>
               <span className={`text-sm font-semibold ${statusInfo.statusColor}`}>
-                {budgetDifference > 0 ? "+" : ""}{formatCurrency(Math.abs(budgetDifference))}
+                {budgetDifference > 0 ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}
               </span>
             </div>
           </div>
