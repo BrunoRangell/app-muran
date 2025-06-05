@@ -2,7 +2,7 @@
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Briefcase, Shield, Calendar, AlertCircle } from "lucide-react";
+import { Briefcase, Shield, Calendar } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
 
@@ -13,23 +13,11 @@ interface ProfessionalSectionProps {
 }
 
 export const ProfessionalSection = ({ form, isAdmin, isMember }: ProfessionalSectionProps) => {
-  if (!isAdmin) {
-    return (
-      <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-600 mb-2">Acesso Restrito</h3>
-        <p className="text-gray-500">
-          Apenas administradores podem acessar as configurações profissionais.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h3 className="text-lg font-semibold text-[#321e32] mb-2">Configurações Profissionais</h3>
-        <p className="text-gray-600">Gerencie informações relacionadas ao trabalho</p>
+        <p className="text-gray-600">Informações relacionadas ao trabalho</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -69,9 +57,12 @@ export const ProfessionalSection = ({ form, isAdmin, isMember }: ProfessionalSec
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
+                disabled={isMember}
               >
                 <FormControl>
-                  <SelectTrigger className="focus:ring-[#ff6e00] focus:border-[#ff6e00]">
+                  <SelectTrigger className={`focus:ring-[#ff6e00] focus:border-[#ff6e00] ${
+                    isMember ? "bg-gray-100 text-gray-600" : ""
+                  }`}>
                     <SelectValue placeholder="Selecione a permissão" />
                   </SelectTrigger>
                 </FormControl>
@@ -98,7 +89,10 @@ export const ProfessionalSection = ({ form, isAdmin, isMember }: ProfessionalSec
                 <Input 
                   type="date" 
                   {...field} 
-                  className="focus:ring-[#ff6e00] focus:border-[#ff6e00]"
+                  disabled={isMember}
+                  className={`focus:ring-[#ff6e00] focus:border-[#ff6e00] ${
+                    isMember ? "bg-gray-100 text-gray-600" : ""
+                  }`}
                 />
               </FormControl>
               <FormMessage />
@@ -107,12 +101,22 @@ export const ProfessionalSection = ({ form, isAdmin, isMember }: ProfessionalSec
         />
       </div>
 
-      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-        <h4 className="font-medium text-purple-800 mb-2">ℹ️ Informações Importantes</h4>
-        <ul className="text-purple-700 text-sm space-y-1">
-          <li>• Apenas administradores podem alterar permissões</li>
-          <li>• Mudanças de permissão afetam o acesso às funcionalidades</li>
-          <li>• A data de início é usada para calcular tempo na empresa</li>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 className="font-medium text-blue-800 mb-2">ℹ️ Informações sobre Permissões</h4>
+        <ul className="text-blue-700 text-sm space-y-1">
+          {isAdmin ? (
+            <>
+              <li>• Como administrador, você pode alterar todas as configurações</li>
+              <li>• Mudanças de permissão afetam o acesso às funcionalidades</li>
+              <li>• A data de início é usada para calcular tempo na empresa</li>
+            </>
+          ) : (
+            <>
+              <li>• Apenas administradores podem alterar configurações profissionais</li>
+              <li>• Seu nível atual de permissão é: <strong>{form.watch("permission") || "Carregando..."}</strong></li>
+              <li>• Entre em contato com um administrador para alterações</li>
+            </>
+          )}
         </ul>
       </div>
     </div>

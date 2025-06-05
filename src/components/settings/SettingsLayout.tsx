@@ -6,8 +6,7 @@ import {
   User, 
   Shield, 
   Share2, 
-  Briefcase, 
-  Settings as SettingsIcon,
+  Briefcase,
   Check
 } from "lucide-react";
 
@@ -42,12 +41,6 @@ const settingsSections: SettingsSection[] = [
     label: "Configurações Profissionais",
     icon: Briefcase,
     description: "Cargo e permissões"
-  },
-  {
-    id: "integrations",
-    label: "APIs e Integrações",
-    icon: SettingsIcon,
-    description: "Google Ads e outras integrações"
   }
 ];
 
@@ -77,7 +70,7 @@ export const SettingsLayout = ({
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-[#ff6e00] rounded-lg flex items-center justify-center">
-                <SettingsIcon className="h-5 w-5 text-white" />
+                <User className="h-5 w-5 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-[#321e32]">Configurações</h1>

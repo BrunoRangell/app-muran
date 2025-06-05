@@ -14,7 +14,6 @@ import { ProfileSection } from "@/components/settings/sections/ProfileSection";
 import { SecuritySection } from "@/components/settings/sections/SecuritySection";
 import { SocialSection } from "@/components/settings/sections/SocialSection";
 import { ProfessionalSection } from "@/components/settings/sections/ProfessionalSection";
-import { IntegrationsSection } from "@/components/settings/sections/IntegrationsSection";
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState("profile");
@@ -148,8 +147,6 @@ export default function Settings() {
         return <SocialSection form={form} />;
       case "professional":
         return <ProfessionalSection form={form} isAdmin={isAdmin} isMember={isMember} />;
-      case "integrations":
-        return <IntegrationsSection />;
       default:
         return <ProfileSection form={form} />;
     }
