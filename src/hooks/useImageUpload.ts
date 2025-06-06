@@ -27,7 +27,18 @@ export const useImageUpload = () => {
       setIsUploading(true);
       setUploadProgress(0);
 
-      console.log('Iniciando upload para usuário:', userId);
+      console.log('=== INICIANDO UPLOAD ===');
+      console.log('User ID:', userId);
+      console.log('Arquivo:', file.name, file.size, file.type);
+      console.log('Crop data:', cropData);
+
+      // Verificar se o usuário está autenticado
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('Erro de autenticação:', authError);
+        throw new Error('Usuário não autenticado');
+      }
+      console.log('Usuário autenticado:', user.id);
 
       // Criar canvas para crop da imagem
       const canvas = document.createElement('canvas');
@@ -38,6 +49,8 @@ export const useImageUpload = () => {
       canvas.width = finalSize;
       canvas.height = finalSize;
 
+      setUploadProgress(20);
+
       // Carregar imagem original
       const img = new Image();
       await new Promise((resolve, reject) => {
@@ -46,40 +59,31 @@ export const useImageUpload = () => {
         img.src = URL.createObjectURL(file);
       });
 
-      setUploadProgress(25);
+      console.log('Imagem carregada:', img.width, 'x', img.height);
+      setUploadProgress(40);
 
-      // Calcular coordenadas corrigidas para o crop
-      const sourceX = cropData.x / cropData.scale;
-      const sourceY = cropData.y / cropData.scale;
-      const sourceWidth = cropData.width / cropData.scale;
-      const sourceHeight = cropData.height / cropData.scale;
+      // Calcular coordenadas do crop
+      const sourceX = Math.max(0, cropData.x / cropData.scale);
+      const sourceY = Math.max(0, cropData.y / cropData.scale);
+      const sourceWidth = Math.min(cropData.width / cropData.scale, img.width - sourceX);
+      const sourceHeight = Math.min(cropData.height / cropData.scale, img.height - sourceY);
 
-      const clampedX = Math.max(0, Math.min(sourceX, img.width - sourceWidth));
-      const clampedY = Math.max(0, Math.min(sourceY, img.height - sourceHeight));
-      const clampedWidth = Math.min(sourceWidth, img.width - clampedX);
-      const clampedHeight = Math.min(sourceHeight, img.height - clampedY);
-
-      console.log('Dados do crop:', {
-        original: cropData,
-        calculated: { sourceX, sourceY, sourceWidth, sourceHeight },
-        clamped: { clampedX, clampedY, clampedWidth, clampedHeight },
-        imageSize: { width: img.width, height: img.height }
-      });
+      console.log('Crop calculado:', { sourceX, sourceY, sourceWidth, sourceHeight });
 
       // Desenhar imagem cropada no canvas
       ctx.drawImage(
         img,
-        clampedX,
-        clampedY,
-        clampedWidth,
-        clampedHeight,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
         0,
         0,
         finalSize,
         finalSize
       );
 
-      setUploadProgress(50);
+      setUploadProgress(60);
 
       // Converter canvas para blob
       const blob = await new Promise<Blob>((resolve) => {
@@ -90,12 +94,14 @@ export const useImageUpload = () => {
         );
       });
 
-      setUploadProgress(65);
+      console.log('Blob criado:', blob.size, 'bytes');
+      setUploadProgress(70);
 
       // Upload para Supabase Storage
       const fileName = `${userId}/profile-${Date.now()}.jpg`;
+      console.log('Fazendo upload para:', fileName);
       
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('profile-photos')
         .upload(fileName, blob, {
           cacheControl: '3600',
@@ -107,7 +113,8 @@ export const useImageUpload = () => {
         throw uploadError;
       }
 
-      setUploadProgress(80);
+      console.log('Upload realizado com sucesso:', uploadData);
+      setUploadProgress(85);
 
       // Obter URL pública
       const { data } = supabase.storage
@@ -120,25 +127,33 @@ export const useImageUpload = () => {
       setUploadProgress(90);
 
       // Atualizar o registro do usuário no banco de dados
-      console.log('Atualizando photo_url no banco para usuário:', userId);
+      console.log('Atualizando banco de dados...');
       const { data: updateData, error: updateError } = await supabase
         .from('team_members')
         .update({ photo_url: photoUrlWithTimestamp })
         .eq('id', userId)
-        .select();
+        .select('*');
 
       if (updateError) {
         console.error('Erro ao atualizar foto no banco:', updateError);
         throw updateError;
       }
 
-      console.log('Foto atualizada no banco com sucesso:', updateData);
+      if (!updateData || updateData.length === 0) {
+        console.error('Nenhum registro foi atualizado - usuário não encontrado:', userId);
+        throw new Error('Usuário não encontrado na base de dados');
+      }
+
+      console.log('Banco atualizado com sucesso:', updateData[0]);
       setUploadProgress(95);
 
-      // Invalidar cache do React Query para forçar recarregamento dos dados
+      // Invalidar cache do React Query
       console.log('Invalidando cache do React Query...');
       await queryClient.invalidateQueries({ queryKey: ['current_user'] });
       await queryClient.invalidateQueries({ queryKey: ['team_members'] });
+      
+      // Forçar refresh dos dados
+      await queryClient.refetchQueries({ queryKey: ['current_user'] });
 
       setUploadProgress(100);
 
@@ -147,14 +162,16 @@ export const useImageUpload = () => {
         description: "Foto de perfil atualizada com sucesso.",
       });
 
-      console.log('Upload concluído com sucesso!');
+      console.log('=== UPLOAD CONCLUÍDO COM SUCESSO ===');
       return photoUrlWithTimestamp;
 
     } catch (error) {
-      console.error('Erro no upload:', error);
+      console.error('=== ERRO NO UPLOAD ===');
+      console.error('Detalhes do erro:', error);
+      
       toast({
         title: "Erro",
-        description: "Erro ao fazer upload da foto. Tente novamente.",
+        description: error instanceof Error ? error.message : "Erro ao fazer upload da foto. Tente novamente.",
         variant: "destructive"
       });
       return null;
@@ -166,10 +183,18 @@ export const useImageUpload = () => {
 
   const deleteProfilePhoto = async (photoUrl: string) => {
     try {
-      if (!photoUrl.includes('profile-photos')) return;
+      if (!photoUrl || !photoUrl.includes('profile-photos')) {
+        console.log('URL não é válida para deletar:', photoUrl);
+        return;
+      }
       
       const cleanUrl = photoUrl.split('?')[0];
       const fileName = cleanUrl.split('/profile-photos/')[1];
+      
+      if (!fileName) {
+        console.warn('Nome do arquivo não encontrado na URL:', photoUrl);
+        return;
+      }
       
       console.log('Deletando foto antiga:', fileName);
       const { error } = await supabase.storage

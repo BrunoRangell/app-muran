@@ -5,34 +5,25 @@ export const ensureStorageBucket = async () => {
   try {
     console.log('Verificando bucket profile-photos...');
     
-    // Verificar se o bucket já existe
+    // Apenas verificar se o bucket existe - não tentar criar
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
     
     if (listError) {
       console.error('Erro ao listar buckets:', listError);
-      return;
+      return false;
     }
 
     const bucketExists = buckets?.some(bucket => bucket.name === 'profile-photos');
     
-    if (!bucketExists) {
-      console.log('Bucket não existe, criando...');
-      // Criar bucket se não existir
-      const { error: createError } = await supabase.storage.createBucket('profile-photos', {
-        public: true,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-        fileSizeLimit: 5242880 // 5MB
-      });
-
-      if (createError) {
-        console.error('Erro ao criar bucket:', createError);
-      } else {
-        console.log('Bucket profile-photos criado com sucesso');
-      }
+    if (bucketExists) {
+      console.log('Bucket profile-photos encontrado e funcionando');
+      return true;
     } else {
-      console.log('Bucket profile-photos já existe');
+      console.warn('Bucket profile-photos não encontrado');
+      return false;
     }
   } catch (error) {
-    console.error('Erro na configuração do storage:', error);
+    console.error('Erro na verificação do storage:', error);
+    return false;
   }
 };

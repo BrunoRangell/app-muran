@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Camera, Upload } from 'lucide-react';
 import { ImageCropper } from './ImageCropper';
@@ -23,51 +23,74 @@ export const PhotoUploadDialog = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [cropData, setCropData] = useState<CropData | null>(null);
+  const [storageReady, setStorageReady] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { uploadProfilePhoto, deleteProfilePhoto, isUploading, uploadProgress } = useImageUpload();
 
   useEffect(() => {
-    ensureStorageBucket();
+    const checkStorage = async () => {
+      const isReady = await ensureStorageBucket();
+      setStorageReady(isReady);
+      if (!isReady) {
+        console.warn('Storage bucket não está disponível');
+      }
+    };
+    checkStorage();
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log('Arquivo selecionado:', file.name, file.size, file.type);
+
     if (!file.type.startsWith('image/')) {
+      console.error('Arquivo não é uma imagem:', file.type);
       alert('Por favor, selecione apenas arquivos de imagem.');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
+      console.error('Arquivo muito grande:', file.size);
       alert('A imagem deve ter no máximo 5MB.');
       return;
     }
 
     setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    console.log('Preview URL criada:', url);
   };
 
   const handleCropChange = (newCropData: CropData) => {
     setCropData(newCropData);
+    console.log('Crop data atualizado:', newCropData);
   };
 
   const handleSave = async () => {
     if (!selectedFile || !cropData) {
-      console.error('Arquivo ou dados de crop não encontrados');
+      console.error('Dados incompletos para upload:', { selectedFile: !!selectedFile, cropData: !!cropData });
       return;
     }
 
     if (!userId) {
       console.error('ID do usuário não fornecido');
+      alert('Erro: ID do usuário não encontrado');
       return;
     }
 
-    console.log('Iniciando upload da foto para usuário:', userId);
+    if (!storageReady) {
+      console.error('Storage não está pronto');
+      alert('Erro: Sistema de armazenamento não está disponível');
+      return;
+    }
+
+    console.log('Iniciando processo de upload...');
 
     // Deletar foto anterior se existir
     if (currentPhotoUrl && currentPhotoUrl.includes('profile-photos')) {
+      console.log('Deletando foto anterior:', currentPhotoUrl);
       await deleteProfilePhoto(currentPhotoUrl);
     }
 
@@ -75,7 +98,7 @@ export const PhotoUploadDialog = ({
     const newUrl = await uploadProfilePhoto(selectedFile, cropData, userId);
     
     if (newUrl) {
-      console.log('Upload concluído. Nova URL:', newUrl);
+      console.log('Upload bem-sucedido, atualizando UI:', newUrl);
       onPhotoUpdate(newUrl);
       handleCancel();
     } else {
@@ -84,6 +107,7 @@ export const PhotoUploadDialog = ({
   };
 
   const handleCancel = () => {
+    console.log('Cancelando upload...');
     setSelectedFile(null);
     setPreviewUrl('');
     setCropData(null);
@@ -105,6 +129,7 @@ export const PhotoUploadDialog = ({
           variant="outline"
           size="sm"
           className="flex items-center space-x-2"
+          disabled={!storageReady}
         >
           <Camera className="h-4 w-4" />
           <span>Alterar Foto</span>
@@ -112,6 +137,11 @@ export const PhotoUploadDialog = ({
       </DialogTrigger>
       
       <DialogContent className="max-w-lg">
+        <DialogTitle>Foto de Perfil</DialogTitle>
+        <DialogDescription>
+          Escolha uma nova foto para seu perfil
+        </DialogDescription>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -139,6 +169,7 @@ export const PhotoUploadDialog = ({
               <Button
                 onClick={triggerFileSelect}
                 className="w-full bg-[#ff6e00] hover:bg-[#e56200]"
+                disabled={!storageReady}
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Selecionar Arquivo
@@ -147,6 +178,12 @@ export const PhotoUploadDialog = ({
               <div className="text-xs text-gray-500">
                 Formatos aceitos: JPG, PNG, WEBP • Máximo: 5MB
               </div>
+
+              {!storageReady && (
+                <div className="text-xs text-red-500">
+                  ⚠️ Sistema de armazenamento indisponível
+                </div>
+              )}
             </div>
           </div>
         ) : (

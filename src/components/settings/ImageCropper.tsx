@@ -32,8 +32,10 @@ export const ImageCropper = ({
 
   // Carregar imagem e calcular zoom inicial
   useEffect(() => {
+    console.log('Carregando imagem para cropper:', imageSrc);
     const img = new Image();
     img.onload = () => {
+      console.log('Imagem carregada no cropper:', img.width, 'x', img.height);
       setImageElement(img);
       setImageLoaded(true);
       
@@ -51,7 +53,17 @@ export const ImageCropper = ({
         const centerX = (canvas.width - img.width * initialScale) / 2;
         const centerY = (canvas.height - img.height * initialScale) / 2;
         setImagePosition({ x: centerX, y: centerY });
+        
+        console.log('Configuração inicial do cropper:', {
+          minScale: calculatedMinScale,
+          initialScale,
+          centerX,
+          centerY
+        });
       }
+    };
+    img.onerror = (error) => {
+      console.error('Erro ao carregar imagem no cropper:', error);
     };
     img.src = imageSrc;
   }, [imageSrc, cropSize]);
@@ -62,8 +74,10 @@ export const ImageCropper = ({
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx || !imageElement || !imageLoaded) return;
 
+    // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Desenhar imagem
     ctx.drawImage(
       imageElement,
       imagePosition.x,
@@ -72,9 +86,11 @@ export const ImageCropper = ({
       imageElement.height * scale
     );
 
+    // Desenhar overlay escuro
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Recortar área circular
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const radius = cropSize / 2;
@@ -84,6 +100,7 @@ export const ImageCropper = ({
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.fill();
 
+    // Desenhar borda circular
     ctx.globalCompositeOperation = 'source-over';
     ctx.strokeStyle = '#ff6e00';
     ctx.lineWidth = 2;
@@ -91,6 +108,7 @@ export const ImageCropper = ({
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.stroke();
 
+    // Calcular dados do crop
     const cropData: CropData = {
       x: centerX - radius - imagePosition.x,
       y: centerY - radius - imagePosition.y,
@@ -98,6 +116,7 @@ export const ImageCropper = ({
       height: cropSize,
       scale
     };
+    
     onCropChange(cropData);
   }, [imageElement, imagePosition, scale, imageLoaded, onCropChange, cropSize]);
 
@@ -106,6 +125,8 @@ export const ImageCropper = ({
   }, [drawCanvas]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (isUploading) return;
+    
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     
@@ -116,7 +137,7 @@ export const ImageCropper = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragStart) return;
+    if (!dragStart || isUploading) return;
     
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -132,18 +153,23 @@ export const ImageCropper = ({
   };
 
   const handleZoomChange = (value: number[]) => {
+    if (isUploading) return;
     setScale(value[0]);
   };
 
   const handleZoomIn = () => {
+    if (isUploading) return;
     setScale(prev => Math.min(prev + 0.1, 3));
   };
 
   const handleZoomOut = () => {
+    if (isUploading) return;
     setScale(prev => Math.max(prev - 0.1, minScale));
   };
 
   const resetPosition = () => {
+    if (isUploading) return;
+    
     const canvas = canvasRef.current;
     if (canvas && imageElement) {
       const centerX = (canvas.width - imageElement.width * scale) / 2;
@@ -169,7 +195,9 @@ export const ImageCropper = ({
             ref={canvasRef}
             width={400}
             height={400}
-            className="border border-gray-300 rounded-lg cursor-move"
+            className={`border border-gray-300 rounded-lg ${
+              isUploading ? 'cursor-wait opacity-75' : 'cursor-move'
+            }`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -191,7 +219,7 @@ export const ImageCropper = ({
             variant="outline"
             size="sm"
             onClick={handleZoomOut}
-            disabled={scale <= minScale}
+            disabled={scale <= minScale || isUploading}
             className="p-2"
           >
             <ZoomOut className="h-4 w-4" />
@@ -204,6 +232,7 @@ export const ImageCropper = ({
             max={3}
             step={0.05}
             className="flex-1"
+            disabled={isUploading}
           />
           
           <Button
@@ -211,7 +240,7 @@ export const ImageCropper = ({
             variant="outline"
             size="sm"
             onClick={handleZoomIn}
-            disabled={scale >= 3}
+            disabled={scale >= 3 || isUploading}
             className="p-2"
           >
             <ZoomIn className="h-4 w-4" />
@@ -224,6 +253,7 @@ export const ImageCropper = ({
             variant="outline"
             size="sm"
             onClick={resetPosition}
+            disabled={isUploading}
             className="flex items-center space-x-2"
           >
             <RotateCcw className="h-4 w-4" />
