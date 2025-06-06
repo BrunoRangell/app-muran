@@ -28,7 +28,7 @@ export const ImageCropper = ({
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
   const [minScale, setMinScale] = useState(0.1);
 
-  const cropSize = 300; // Tamanho fixo do crop em pixels
+  const cropSize = 300;
 
   // Carregar imagem e calcular zoom inicial
   useEffect(() => {
@@ -37,20 +37,17 @@ export const ImageCropper = ({
       setImageElement(img);
       setImageLoaded(true);
       
-      // Calcular zoom mínimo para que a imagem caiba no círculo
       const canvas = canvasRef.current;
       if (canvas) {
         const minScaleX = cropSize / img.width;
         const minScaleY = cropSize / img.height;
         const calculatedMinScale = Math.max(minScaleX, minScaleY);
         
-        // Definir um zoom inicial ligeiramente maior que o mínimo
         const initialScale = Math.max(calculatedMinScale * 1.1, 0.2);
         
         setMinScale(calculatedMinScale);
         setScale(initialScale);
         
-        // Centralizar imagem
         const centerX = (canvas.width - img.width * initialScale) / 2;
         const centerY = (canvas.height - img.height * initialScale) / 2;
         setImagePosition({ x: centerX, y: centerY });
@@ -65,10 +62,8 @@ export const ImageCropper = ({
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx || !imageElement || !imageLoaded) return;
 
-    // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Desenhar imagem
     ctx.drawImage(
       imageElement,
       imagePosition.x,
@@ -77,11 +72,9 @@ export const ImageCropper = ({
       imageElement.height * scale
     );
 
-    // Desenhar overlay escuro
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Área de crop (circular)
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const radius = cropSize / 2;
@@ -91,7 +84,6 @@ export const ImageCropper = ({
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.fill();
 
-    // Borda do crop
     ctx.globalCompositeOperation = 'source-over';
     ctx.strokeStyle = '#ff6e00';
     ctx.lineWidth = 2;
@@ -99,23 +91,20 @@ export const ImageCropper = ({
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.stroke();
 
-    // Calcular dados do crop corrigidos
     const cropData: CropData = {
-      x: (centerX - radius - imagePosition.x) * scale,
-      y: (centerY - radius - imagePosition.y) * scale,
-      width: cropSize * scale,
-      height: cropSize * scale,
+      x: centerX - radius - imagePosition.x,
+      y: centerY - radius - imagePosition.y,
+      width: cropSize,
+      height: cropSize,
       scale
     };
     onCropChange(cropData);
   }, [imageElement, imagePosition, scale, imageLoaded, onCropChange, cropSize]);
 
-  // Atualizar canvas quando propriedades mudarem
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
 
-  // Handlers de mouse para drag
   const handleMouseDown = (e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -146,6 +135,14 @@ export const ImageCropper = ({
     setScale(value[0]);
   };
 
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(prev + 0.1, 3));
+  };
+
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(prev - 0.1, minScale));
+  };
+
   const resetPosition = () => {
     const canvas = canvasRef.current;
     if (canvas && imageElement) {
@@ -162,11 +159,10 @@ export const ImageCropper = ({
           Ajustar Foto de Perfil
         </h3>
         <p className="text-gray-600 text-sm">
-          Arraste para posicionar e use o controle para dar zoom
+          Arraste para posicionar e use os controles para ajustar o zoom
         </p>
       </div>
 
-      {/* Canvas de crop */}
       <div className="flex justify-center">
         <div className="relative">
           <canvas
@@ -188,10 +184,19 @@ export const ImageCropper = ({
         </div>
       </div>
 
-      {/* Controles de zoom */}
       <div className="space-y-4">
         <div className="flex items-center space-x-4">
-          <ZoomOut className="h-4 w-4 text-gray-600" />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleZoomOut}
+            disabled={scale <= minScale}
+            className="p-2"
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          
           <Slider
             value={[scale]}
             onValueChange={handleZoomChange}
@@ -200,7 +205,17 @@ export const ImageCropper = ({
             step={0.05}
             className="flex-1"
           />
-          <ZoomIn className="h-4 w-4 text-gray-600" />
+          
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleZoomIn}
+            disabled={scale >= 3}
+            className="p-2"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
         </div>
 
         <div className="flex justify-center">
@@ -217,7 +232,6 @@ export const ImageCropper = ({
         </div>
       </div>
 
-      {/* Botões de ação */}
       <div className="flex justify-end space-x-3 pt-4 border-t">
         <Button
           type="button"

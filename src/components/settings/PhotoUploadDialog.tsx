@@ -27,7 +27,6 @@ export const PhotoUploadDialog = ({
   
   const { uploadProfilePhoto, deleteProfilePhoto, isUploading, uploadProgress } = useImageUpload();
 
-  // Configurar storage quando o componente for montado
   useEffect(() => {
     ensureStorageBucket();
   }, []);
@@ -36,13 +35,11 @@ export const PhotoUploadDialog = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo de arquivo
     if (!file.type.startsWith('image/')) {
       alert('Por favor, selecione apenas arquivos de imagem.');
       return;
     }
 
-    // Validar tamanho (5MB máximo)
     if (file.size > 5 * 1024 * 1024) {
       alert('A imagem deve ter no máximo 5MB.');
       return;
@@ -57,9 +54,17 @@ export const PhotoUploadDialog = ({
   };
 
   const handleSave = async () => {
-    if (!selectedFile || !cropData) return;
+    if (!selectedFile || !cropData) {
+      console.error('Arquivo ou dados de crop não encontrados');
+      return;
+    }
 
-    console.log('Iniciando upload da foto...');
+    if (!userId) {
+      console.error('ID do usuário não fornecido');
+      return;
+    }
+
+    console.log('Iniciando upload da foto para usuário:', userId);
 
     // Deletar foto anterior se existir
     if (currentPhotoUrl && currentPhotoUrl.includes('profile-photos')) {
@@ -73,6 +78,8 @@ export const PhotoUploadDialog = ({
       console.log('Upload concluído. Nova URL:', newUrl);
       onPhotoUpdate(newUrl);
       handleCancel();
+    } else {
+      console.error('Upload falhou - URL não retornada');
     }
   };
 
@@ -114,7 +121,6 @@ export const PhotoUploadDialog = ({
         />
 
         {!selectedFile ? (
-          // Tela inicial de seleção
           <div className="text-center space-y-6 py-8">
             <div className="mx-auto w-16 h-16 bg-[#ff6e00] rounded-full flex items-center justify-center">
               <Upload className="h-8 w-8 text-white" />
@@ -144,7 +150,6 @@ export const PhotoUploadDialog = ({
             </div>
           </div>
         ) : (
-          // Tela de crop
           <div>
             {isUploading && (
               <div className="mb-4">

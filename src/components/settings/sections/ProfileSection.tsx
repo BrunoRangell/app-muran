@@ -19,12 +19,18 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
   const { data: currentUser } = useCurrentUser();
 
   const handlePhotoUpdate = (newUrl: string) => {
+    console.log('Atualizando foto no formulário com URL:', newUrl);
     form.setValue("photo_url", newUrl);
+    
+    // Forçar re-render do formulário
+    form.trigger("photo_url");
   };
+
+  console.log('ProfileSection - User ID:', currentUser?.id);
+  console.log('ProfileSection - Photo URL atual:', photoUrl);
 
   return (
     <div className="space-y-8">
-      {/* Foto de Perfil */}
       <div className="text-center">
         <div className="flex justify-center mb-4">
           <Avatar className="h-24 w-24">
@@ -36,11 +42,13 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
         </div>
         
         <div className="space-y-3">
-          <PhotoUploadDialog
-            currentPhotoUrl={photoUrl}
-            onPhotoUpdate={handlePhotoUpdate}
-            userId={currentUser?.id || ''}
-          />
+          {currentUser?.id && (
+            <PhotoUploadDialog
+              currentPhotoUrl={photoUrl}
+              onPhotoUpdate={handlePhotoUpdate}
+              userId={currentUser.id}
+            />
+          )}
           
           <p className="text-xs text-gray-500">
             Recomendado: imagem quadrada, mínimo 400x400px
@@ -48,7 +56,6 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
         </div>
       </div>
 
-      {/* Informações Básicas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormField
           control={form.control}
@@ -93,7 +100,6 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
         />
       </div>
 
-      {/* Biografia */}
       <FormField
         control={form.control}
         name="bio"
