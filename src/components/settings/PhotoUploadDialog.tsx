@@ -23,26 +23,15 @@ export const PhotoUploadDialog = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [cropData, setCropData] = useState<CropData | null>(null);
-  const [storageReady, setStorageReady] = useState(true); // Assumir disponível por padrão
+  const [storageReady, setStorageReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { uploadProfilePhoto, deleteProfilePhoto, isUploading, uploadProgress } = useImageUpload();
+  const { uploadProfilePhoto, isUploading, uploadProgress } = useImageUpload();
 
   useEffect(() => {
     const checkStorage = async () => {
-      try {
-        const isReady = await ensureStorageBucket();
-        setStorageReady(isReady);
-        if (!isReady) {
-          console.warn('Storage bucket não está disponível - botão será desabilitado');
-        } else {
-          console.log('✅ Storage verificado e disponível');
-        }
-      } catch (error) {
-        console.error('Erro ao verificar storage:', error);
-        // Em caso de erro, manter como disponível para não bloquear a UI
-        setStorageReady(true);
-      }
+      const isReady = await ensureStorageBucket();
+      setStorageReady(isReady);
     };
     
     checkStorage();
@@ -52,16 +41,12 @@ export const PhotoUploadDialog = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    console.log('Arquivo selecionado:', file.name, file.size, file.type);
-
     if (!file.type.startsWith('image/')) {
-      console.error('Arquivo não é uma imagem:', file.type);
       alert('Por favor, selecione apenas arquivos de imagem.');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      console.error('Arquivo muito grande:', file.size);
       alert('A imagem deve ter no máximo 5MB.');
       return;
     }
@@ -69,48 +54,32 @@ export const PhotoUploadDialog = ({
     setSelectedFile(file);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
-    console.log('Preview URL criada:', url);
   };
 
   const handleCropChange = (newCropData: CropData) => {
     setCropData(newCropData);
-    console.log('Crop data atualizado:', newCropData);
   };
 
   const handleSave = async () => {
-    if (!selectedFile || !cropData) {
-      console.error('Dados incompletos para upload:', { selectedFile: !!selectedFile, cropData: !!cropData });
-      return;
-    }
+    if (!selectedFile || !cropData || !userId) return;
 
-    if (!userId) {
-      console.error('ID do usuário não fornecido');
-      alert('Erro: ID do usuário não encontrado');
-      return;
-    }
-
-    console.log('Iniciando processo de upload...');
-
-    // Deletar foto anterior se existir
-    if (currentPhotoUrl && currentPhotoUrl.includes('profile-photos')) {
-      console.log('Deletando foto anterior:', currentPhotoUrl);
-      await deleteProfilePhoto(currentPhotoUrl);
-    }
-
-    // Upload nova foto
-    const newUrl = await uploadProfilePhoto(selectedFile, cropData, userId);
-    
-    if (newUrl) {
-      console.log('Upload bem-sucedido, atualizando UI:', newUrl);
-      onPhotoUpdate(newUrl);
-      handleCancel();
-    } else {
-      console.error('Upload falhou - URL não retornada');
-    }
+    uploadProfilePhoto(
+      { 
+        file: selectedFile, 
+        cropData, 
+        userId,
+        currentPhotoUrl 
+      },
+      {
+        onSuccess: (newUrl) => {
+          onPhotoUpdate(newUrl);
+          handleCancel();
+        }
+      }
+    );
   };
 
   const handleCancel = () => {
-    console.log('Cancelando upload...');
     setSelectedFile(null);
     setPreviewUrl('');
     setCropData(null);
@@ -124,7 +93,6 @@ export const PhotoUploadDialog = ({
     fileInputRef.current?.click();
   };
 
-  // Verifica se o botão deve estar habilitado
   const isButtonEnabled = userId && storageReady && !isUploading;
 
   return (
@@ -188,12 +156,6 @@ export const PhotoUploadDialog = ({
               {!storageReady && (
                 <div className="text-xs text-red-500">
                   ⚠️ Sistema de armazenamento indisponível
-                </div>
-              )}
-
-              {!userId && (
-                <div className="text-xs text-red-500">
-                  ⚠️ Usuário não identificado
                 </div>
               )}
             </div>

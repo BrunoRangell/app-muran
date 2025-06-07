@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -14,6 +13,7 @@ import { ProfileSection } from "@/components/settings/sections/ProfileSection";
 import { SecuritySection } from "@/components/settings/sections/SecuritySection";
 import { SocialSection } from "@/components/settings/sections/SocialSection";
 import { ProfessionalSection } from "@/components/settings/sections/ProfessionalSection";
+import { initializeStorage } from "@/lib/storageSetup";
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState("profile");
@@ -39,6 +39,11 @@ export default function Settings() {
       start_date: ''
     }
   });
+
+  // Inicializar storage na primeira vez que a página carregar
+  useEffect(() => {
+    initializeStorage();
+  }, []);
 
   useEffect(() => {
     const getCurrentUserEmail = async () => {

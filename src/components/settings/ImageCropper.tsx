@@ -32,10 +32,8 @@ export const ImageCropper = ({
 
   // Carregar imagem e calcular zoom inicial
   useEffect(() => {
-    console.log('Carregando imagem para cropper:', imageSrc);
     const img = new Image();
     img.onload = () => {
-      console.log('Imagem carregada no cropper:', img.width, 'x', img.height);
       setImageElement(img);
       setImageLoaded(true);
       
@@ -53,17 +51,7 @@ export const ImageCropper = ({
         const centerX = (canvas.width - img.width * initialScale) / 2;
         const centerY = (canvas.height - img.height * initialScale) / 2;
         setImagePosition({ x: centerX, y: centerY });
-        
-        console.log('Configuração inicial do cropper:', {
-          minScale: calculatedMinScale,
-          initialScale,
-          centerX,
-          centerY
-        });
       }
-    };
-    img.onerror = (error) => {
-      console.error('Erro ao carregar imagem no cropper:', error);
     };
     img.src = imageSrc;
   }, [imageSrc, cropSize]);
@@ -108,7 +96,7 @@ export const ImageCropper = ({
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.stroke();
 
-    // Calcular dados do crop
+    // Calcular dados do crop (sem log excessivo)
     const cropData: CropData = {
       x: centerX - radius - imagePosition.x,
       y: centerY - radius - imagePosition.y,

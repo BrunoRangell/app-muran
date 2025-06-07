@@ -8,49 +8,43 @@ import { UseFormReturn } from "react-hook-form";
 import { SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
 import { PhotoUploadDialog } from "../PhotoUploadDialog";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 
 interface ProfileSectionProps {
   form: UseFormReturn<SocialMediaSchemaType>;
 }
 
 export const ProfileSection = ({ form }: ProfileSectionProps) => {
-  const photoUrl = form.watch("photo_url");
+  const [optimisticPhotoUrl, setOptimisticPhotoUrl] = useState<string>('');
   const userName = form.watch("name");
+  const formPhotoUrl = form.watch("photo_url");
   const { data: currentUser, refetch } = useCurrentUser();
 
-  // Recarregar dados do usuário quando a foto mudar
+  // Usar URL otimista se disponível, senão usar do form ou do usuário
+  const displayPhotoUrl = optimisticPhotoUrl || formPhotoUrl || currentUser?.photo_url;
+
+  // Resetar URL otimista quando os dados reais chegarem
   useEffect(() => {
-    if (photoUrl && currentUser) {
-      console.log('Photo URL mudou, recarregando dados do usuário:', photoUrl);
-      refetch();
+    if (formPhotoUrl && optimisticPhotoUrl && formPhotoUrl !== optimisticPhotoUrl) {
+      setOptimisticPhotoUrl('');
     }
-  }, [photoUrl, refetch, currentUser]);
+  }, [formPhotoUrl, optimisticPhotoUrl]);
 
   const handlePhotoUpdate = (newUrl: string) => {
-    console.log('=== ATUALIZANDO FOTO NO FORMULÁRIO ===');
-    console.log('Nova URL:', newUrl);
-    console.log('URL anterior:', photoUrl);
+    console.log('📸 Atualizando foto no formulário:', newUrl);
+    
+    // Update optimista para feedback imediato
+    setOptimisticPhotoUrl(newUrl);
     
     // Atualizar o formulário
     form.setValue("photo_url", newUrl);
-    
-    // Forçar re-render do formulário
     form.trigger("photo_url");
     
-    // Recarregar dados do usuário
+    // Recarregar dados do usuário após um delay
     setTimeout(() => {
-      console.log('Recarregando dados do usuário após atualização da foto...');
       refetch();
     }, 1000);
-    
-    console.log('Formulário atualizado com sucesso');
   };
-
-  console.log('=== PROFILE SECTION RENDER ===');
-  console.log('Current User ID:', currentUser?.id);
-  console.log('Photo URL atual no form:', photoUrl);
-  console.log('Photo URL atual no user:', currentUser?.photo_url);
 
   return (
     <div className="space-y-8">
@@ -58,9 +52,9 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
         <div className="flex justify-center mb-4">
           <Avatar className="h-24 w-24">
             <AvatarImage 
-              src={photoUrl || currentUser?.photo_url} 
+              src={displayPhotoUrl} 
               alt={userName || "Profile"}
-              key={photoUrl || currentUser?.photo_url} // Force re-render when URL changes
+              key={displayPhotoUrl} // Force re-render when URL changes
             />
             <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
               {userName?.charAt(0)?.toUpperCase() || currentUser?.name?.charAt(0)?.toUpperCase() || "?"}
@@ -71,7 +65,7 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
         <div className="space-y-3">
           {currentUser?.id && (
             <PhotoUploadDialog
-              currentPhotoUrl={photoUrl || currentUser?.photo_url}
+              currentPhotoUrl={displayPhotoUrl}
               onPhotoUpdate={handlePhotoUpdate}
               userId={currentUser.id}
             />
