@@ -110,6 +110,12 @@ export const useImageUpload = () => {
 
       if (uploadError) {
         console.error('Erro no upload para storage:', uploadError);
+        
+        // Se for erro de bucket não encontrado, fornecer mensagem mais clara
+        if (uploadError.message?.includes('Bucket not found')) {
+          throw new Error('Bucket de armazenamento não foi encontrado. Entre em contato com o administrador.');
+        }
+        
         throw uploadError;
       }
 

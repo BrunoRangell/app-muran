@@ -23,19 +23,28 @@ export const PhotoUploadDialog = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [cropData, setCropData] = useState<CropData | null>(null);
-  const [storageReady, setStorageReady] = useState(true);
+  const [storageReady, setStorageReady] = useState(true); // Assumir disponível por padrão
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { uploadProfilePhoto, deleteProfilePhoto, isUploading, uploadProgress } = useImageUpload();
 
   useEffect(() => {
     const checkStorage = async () => {
-      const isReady = await ensureStorageBucket();
-      setStorageReady(isReady);
-      if (!isReady) {
-        console.warn('Storage bucket não está disponível');
+      try {
+        const isReady = await ensureStorageBucket();
+        setStorageReady(isReady);
+        if (!isReady) {
+          console.warn('Storage bucket não está disponível - botão será desabilitado');
+        } else {
+          console.log('✅ Storage verificado e disponível');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar storage:', error);
+        // Em caso de erro, manter como disponível para não bloquear a UI
+        setStorageReady(true);
       }
     };
+    
     checkStorage();
   }, []);
 
@@ -80,12 +89,6 @@ export const PhotoUploadDialog = ({
       return;
     }
 
-    if (!storageReady) {
-      console.error('Storage não está pronto');
-      alert('Erro: Sistema de armazenamento não está disponível');
-      return;
-    }
-
     console.log('Iniciando processo de upload...');
 
     // Deletar foto anterior se existir
@@ -121,6 +124,9 @@ export const PhotoUploadDialog = ({
     fileInputRef.current?.click();
   };
 
+  // Verifica se o botão deve estar habilitado
+  const isButtonEnabled = userId && storageReady && !isUploading;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -129,7 +135,7 @@ export const PhotoUploadDialog = ({
           variant="outline"
           size="sm"
           className="flex items-center space-x-2"
-          disabled={!storageReady}
+          disabled={!isButtonEnabled}
         >
           <Camera className="h-4 w-4" />
           <span>Alterar Foto</span>
@@ -169,7 +175,7 @@ export const PhotoUploadDialog = ({
               <Button
                 onClick={triggerFileSelect}
                 className="w-full bg-[#ff6e00] hover:bg-[#e56200]"
-                disabled={!storageReady}
+                disabled={!isButtonEnabled}
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Selecionar Arquivo
@@ -182,6 +188,12 @@ export const PhotoUploadDialog = ({
               {!storageReady && (
                 <div className="text-xs text-red-500">
                   ⚠️ Sistema de armazenamento indisponível
+                </div>
+              )}
+
+              {!userId && (
+                <div className="text-xs text-red-500">
+                  ⚠️ Usuário não identificado
                 </div>
               )}
             </div>
