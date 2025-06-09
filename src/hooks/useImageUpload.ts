@@ -26,7 +26,6 @@ export const useImageUpload = () => {
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, cropData, userId, currentPhotoUrl }: UploadProfilePhotoParams) => {
-      console.log('🚀 Iniciando upload de foto de perfil');
       setUploadProgress(10);
 
       // Verificar autenticação
@@ -84,8 +83,6 @@ export const useImageUpload = () => {
       return photoUrl;
     },
     onSuccess: (photoUrl) => {
-      console.log('✅ Upload concluído com sucesso:', photoUrl);
-      
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['current_user'] });
       queryClient.invalidateQueries({ queryKey: ['team_members'] });
@@ -98,8 +95,6 @@ export const useImageUpload = () => {
       setUploadProgress(0);
     },
     onError: (error: Error) => {
-      console.error('❌ Erro no upload:', error);
-      
       toast({
         title: "Erro",
         description: error.message || "Erro ao fazer upload da foto. Tente novamente.",
@@ -151,10 +146,9 @@ export const useImageUpload = () => {
       
       if (fileName) {
         await supabase.storage.from('profile-photos').remove([fileName]);
-        console.log('🗑️ Foto anterior deletada');
       }
     } catch (error) {
-      console.warn('⚠️ Erro ao deletar foto anterior:', error);
+      // Falha silenciosa na remoção da foto anterior
     }
   };
 

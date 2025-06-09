@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -40,7 +41,7 @@ export default function Settings() {
     }
   });
 
-  // Inicializar storage na primeira vez que a página carregar
+  // Inicializar storage apenas uma vez
   useEffect(() => {
     initializeStorage();
   }, []);
@@ -58,7 +59,6 @@ export default function Settings() {
 
   useEffect(() => {
     if (currentUser) {
-      console.log("Resetando form com dados do usuário:", currentUser);
       form.reset({
         name: currentUser.name || '',
         role: currentUser.role || '',
@@ -90,7 +90,6 @@ export default function Settings() {
 
     try {
       setIsLoading(true);
-      console.log("Salvando dados do perfil:", data);
 
       const updateData = isMember ? {
         name: data.name,
@@ -119,7 +118,6 @@ export default function Settings() {
         .eq('id', currentUser.id);
 
       if (error) {
-        console.error("Erro ao atualizar perfil:", error);
         throw error;
       }
 
@@ -131,7 +129,6 @@ export default function Settings() {
       setHasChanges(false);
       refetch();
     } catch (error) {
-      console.error("Erro ao salvar perfil:", error);
       toast({
         title: "Erro",
         description: "Ocorreu um erro ao salvar suas informações.",

@@ -96,7 +96,7 @@ export const ImageCropper = ({
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.stroke();
 
-    // Calcular dados do crop (sem log excessivo)
+    // Calcular dados do crop
     const cropData: CropData = {
       x: centerX - radius - imagePosition.x,
       y: centerY - radius - imagePosition.y,

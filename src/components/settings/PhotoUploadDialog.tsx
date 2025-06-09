@@ -6,7 +6,7 @@ import { Camera, Upload } from 'lucide-react';
 import { ImageCropper } from './ImageCropper';
 import { useImageUpload, CropData } from '@/hooks/useImageUpload';
 import { Progress } from '@/components/ui/progress';
-import { ensureStorageBucket } from '@/lib/storageSetup';
+import { verifyStorageBucket } from '@/lib/storageSetup';
 
 interface PhotoUploadDialogProps {
   currentPhotoUrl?: string;
@@ -23,19 +23,21 @@ export const PhotoUploadDialog = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [cropData, setCropData] = useState<CropData | null>(null);
-  const [storageReady, setStorageReady] = useState(false);
+  const [storageReady, setStorageReady] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { uploadProfilePhoto, isUploading, uploadProgress } = useImageUpload();
 
   useEffect(() => {
     const checkStorage = async () => {
-      const isReady = await ensureStorageBucket();
+      const isReady = await verifyStorageBucket();
       setStorageReady(isReady);
     };
     
-    checkStorage();
-  }, []);
+    if (isOpen) {
+      checkStorage();
+    }
+  }, [isOpen]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -93,8 +95,6 @@ export const PhotoUploadDialog = ({
     fileInputRef.current?.click();
   };
 
-  const isButtonEnabled = userId && storageReady && !isUploading;
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -103,7 +103,7 @@ export const PhotoUploadDialog = ({
           variant="outline"
           size="sm"
           className="flex items-center space-x-2"
-          disabled={!isButtonEnabled}
+          disabled={!userId || isUploading}
         >
           <Camera className="h-4 w-4" />
           <span>Alterar Foto</span>
@@ -143,7 +143,7 @@ export const PhotoUploadDialog = ({
               <Button
                 onClick={triggerFileSelect}
                 className="w-full bg-[#ff6e00] hover:bg-[#e56200]"
-                disabled={!isButtonEnabled}
+                disabled={!storageReady}
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Selecionar Arquivo
@@ -155,7 +155,7 @@ export const PhotoUploadDialog = ({
 
               {!storageReady && (
                 <div className="text-xs text-red-500">
-                  ⚠️ Sistema de armazenamento indisponível
+                  ⚠️ Sistema de armazenamento temporariamente indisponível
                 </div>
               )}
             </div>

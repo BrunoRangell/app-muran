@@ -1,49 +1,28 @@
 
 import { supabase } from '@/lib/supabase';
 
-export const ensureStorageBucket = async (): Promise<boolean> => {
+export const verifyStorageBucket = async (): Promise<boolean> => {
   try {
-    console.log('🔍 Verificando bucket profile-photos...');
-    
-    // Verificar se o bucket existe listando buckets
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    
-    if (listError) {
-      console.error('❌ Erro ao listar buckets:', listError);
+    // Apenas verificar se o bucket existe e está acessível
+    const { data, error } = await supabase.storage
+      .from('profile-photos')
+      .list('', { limit: 1 });
+
+    if (error) {
+      console.warn('⚠️ Storage não está disponível:', error.message);
       return false;
     }
 
-    const bucketExists = buckets?.some(bucket => bucket.name === 'profile-photos');
-    
-    if (bucketExists) {
-      console.log('✅ Bucket profile-photos já existe');
-      return true;
-    }
-
-    // Tentar criar o bucket se não existir
-    console.log('📦 Criando bucket profile-photos...');
-    const { error: createError } = await supabase.storage.createBucket('profile-photos', {
-      public: true,
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-      fileSizeLimit: 5242880 // 5MB
-    });
-
-    if (createError) {
-      console.error('❌ Erro ao criar bucket:', createError);
-      return false;
-    }
-
-    console.log('✅ Bucket profile-photos criado com sucesso');
     return true;
   } catch (error) {
-    console.error('❌ Erro na verificação do storage:', error);
+    console.warn('⚠️ Erro na verificação do storage:', error);
     return false;
   }
 };
 
 export const initializeStorage = async (): Promise<void> => {
-  const isAvailable = await ensureStorageBucket();
+  const isAvailable = await verifyStorageBucket();
   if (!isAvailable) {
-    console.warn('⚠️ Storage não está disponível - funcionalidade de upload será limitada');
+    console.warn('⚠️ Storage limitado - funcionalidade de upload pode não funcionar');
   }
 };
