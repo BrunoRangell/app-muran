@@ -328,7 +328,7 @@ export const ClientReviewCardCompact = ({
                   : <TrendingDown size={16} className="mr-1" />
                 }
                 <span className="text-sm font-medium">
-                  {needsIncrease ? "Aumentar" : "Diminuir"} {formatCurrency(Math.abs(budgetDifference))}
+                  {needsIncrease ? "Aumentar +" : "Reduzir -"}{formatCurrency(Math.abs(budgetDifference))}
                   <span className="text-xs ml-1 opacity-75">(orç. atual)</span>
                 </span>
               </div>
@@ -342,7 +342,7 @@ export const ClientReviewCardCompact = ({
               }`}>
                 <Clock size={16} className="mr-1" />
                 <span className="text-sm font-medium">
-                  {needsIncreaseAverage ? "Aumentar" : "Diminuir"} {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
+                  {needsIncreaseAverage ? "Aumentar +" : "Reduzir -"}{formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
                   <span className="text-xs ml-1 opacity-75">(média 5 dias)</span>
                 </span>
               </div>

@@ -190,15 +190,13 @@ export const GoogleAdsClientReviewCardCompact = ({
               <span className="text-gray-500 mr-1">Gasto:</span>
               <span className="font-semibold">{formattedTotalSpent}</span>
             </div>
-            <div className="flex-1 p-3 border-l">
-              <div className="text-xs text-gray-500">Média 5 dias</div>
-              <div className="flex items-center">
-                {formattedLastFiveDaysSpent}
-              </div>
-            </div>
             <div>
               <span className="text-gray-500 mr-1">Atual:</span>
               <span className="font-semibold">{formattedCurrentDaily}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-1">Ideal:</span>
+              <span className="font-semibold">{formattedIdealDaily}</span>
             </div>
           </div>
         )}
@@ -208,8 +206,8 @@ export const GoogleAdsClientReviewCardCompact = ({
             <div className="w-2 h-2 rounded-full bg-muran-primary"></div>
             <span className="font-medium">
               {budgetDifference > 0 ? 
-                `Aumentar orçamento diário em ${formatCurrency(Math.abs(budgetDifference))}` : 
-                `Diminuir orçamento diário em ${formatCurrency(Math.abs(budgetDifference))}`}
+                `Reduzir orçamento diário em -${formatCurrency(Math.abs(budgetDifference))}` : 
+                `Aumentar orçamento diário em +${formatCurrency(Math.abs(budgetDifference))}`}
             </span>
           </div>
         )}

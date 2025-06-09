@@ -30,7 +30,7 @@ export function CompactBudgetRecommendation({
             {isIncrease ? "Aumentar" : "Reduzir"} orçamento
           </div>
           <div className={`text-xs ${textColor}`}>
-            {formatCurrency(Math.abs(budgetDifference))}
+            {isIncrease ? '+' : '-'}{formatCurrency(Math.abs(budgetDifference))}
           </div>
         </div>
       </div>
