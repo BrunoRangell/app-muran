@@ -13,7 +13,8 @@ export const verifyStorageBucket = async (): Promise<boolean> => {
       return false;
     }
 
-    // Verificar se o bucket existe
+    // CORREÇÃO: Verificação mais simples - apenas verificar se conseguimos acessar o storage
+    // Removendo tentativa de listar arquivos que pode falhar devido a RLS
     const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
     
     if (bucketsError) {
@@ -28,16 +29,6 @@ export const verifyStorageBucket = async (): Promise<boolean> => {
       return false;
     }
 
-    // Tentar listar arquivos no bucket para verificar permissões
-    const { data, error } = await supabase.storage
-      .from('profile-photos')
-      .list('', { limit: 1 });
-
-    if (error) {
-      console.warn('⚠️ Storage não está acessível:', error.message);
-      return false;
-    }
-
     console.log('✅ Storage verificado e disponível');
     return true;
   } catch (error) {
@@ -46,11 +37,7 @@ export const verifyStorageBucket = async (): Promise<boolean> => {
   }
 };
 
+// CORREÇÃO: Função simplificada que não executa verificação desnecessária
 export const initializeStorage = async (): Promise<void> => {
-  const isAvailable = await verifyStorageBucket();
-  if (!isAvailable) {
-    console.warn('⚠️ Storage limitado - funcionalidade de upload pode não funcionar');
-  } else {
-    console.log('✅ Storage inicializado com sucesso');
-  }
+  console.log('🔧 Storage inicializado (verificação sob demanda)');
 };

@@ -27,19 +27,22 @@ export const PhotoUploadDialog = ({
   const [cropData, setCropData] = useState<CropData | null>(null);
   const [storageReady, setStorageReady] = useState(true);
   const [storageError, setStorageError] = useState<string>('');
+  const [storageChecked, setStorageChecked] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { uploadProfilePhoto, isUploading, uploadProgress, error } = useImageUpload();
   const { data: currentUser } = useCurrentUser();
 
+  // CORREÇÃO: Verificar storage apenas quando necessário e uma única vez
   useEffect(() => {
     const checkStorage = async () => {
-      if (isOpen) {
+      if (isOpen && !storageChecked) {
         console.log('🔄 Verificando storage ao abrir dialog...');
         setStorageError('');
         
         const isReady = await verifyStorageBucket();
         setStorageReady(isReady);
+        setStorageChecked(true);
         
         if (!isReady) {
           setStorageError('Sistema de armazenamento temporariamente indisponível');
@@ -48,7 +51,7 @@ export const PhotoUploadDialog = ({
     };
     
     checkStorage();
-  }, [isOpen]);
+  }, [isOpen, storageChecked]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,6 +114,7 @@ export const PhotoUploadDialog = ({
     setPreviewUrl('');
     setCropData(null);
     setIsOpen(false);
+    setStorageChecked(false); // Reset para verificar novamente na próxima abertura
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -159,8 +163,8 @@ export const PhotoUploadDialog = ({
           </Alert>
         )}
 
-        {/* Mostrar erro de storage se houver */}
-        {storageError && (
+        {/* CORREÇÃO: Mostrar erro de storage apenas se realmente houver problema */}
+        {storageError && !storageReady && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -188,7 +192,7 @@ export const PhotoUploadDialog = ({
               <Button
                 onClick={triggerFileSelect}
                 className="w-full bg-[#ff6e00] hover:bg-[#e56200]"
-                disabled={!storageReady || !currentUser}
+                disabled={!currentUser}
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Selecionar Arquivo
@@ -197,12 +201,6 @@ export const PhotoUploadDialog = ({
               <div className="text-xs text-gray-500">
                 Formatos aceitos: JPG, PNG, WEBP • Máximo: 5MB
               </div>
-
-              {!storageReady && (
-                <div className="text-xs text-red-500">
-                  ⚠️ Sistema de armazenamento temporariamente indisponível
-                </div>
-              )}
 
               {!currentUser && (
                 <div className="text-xs text-red-500">

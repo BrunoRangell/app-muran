@@ -14,7 +14,6 @@ import { ProfileSection } from "@/components/settings/sections/ProfileSection";
 import { SecuritySection } from "@/components/settings/sections/SecuritySection";
 import { SocialSection } from "@/components/settings/sections/SocialSection";
 import { ProfessionalSection } from "@/components/settings/sections/ProfessionalSection";
-import { initializeStorage } from "@/lib/storageSetup";
 
 export default function Settings() {
   const [activeSection, setActiveSection] = useState("profile");
@@ -41,10 +40,8 @@ export default function Settings() {
     }
   });
 
-  // Inicializar storage apenas uma vez
-  useEffect(() => {
-    initializeStorage();
-  }, []);
+  // CORREÇÃO: Remover inicialização desnecessária do storage
+  // A verificação será feita apenas quando necessário no PhotoUploadDialog
 
   useEffect(() => {
     const getCurrentUserEmail = async () => {
