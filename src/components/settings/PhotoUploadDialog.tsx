@@ -2,11 +2,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Camera, Upload } from 'lucide-react';
+import { Camera, Upload, AlertCircle } from 'lucide-react';
 import { ImageCropper } from './ImageCropper';
 import { useImageUpload, CropData } from '@/hooks/useImageUpload';
 import { Progress } from '@/components/ui/progress';
 import { verifyStorageBucket } from '@/lib/storageSetup';
+import { useCurrentUser } from '@/hooks/useTeamMembers';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PhotoUploadDialogProps {
   currentPhotoUrl?: string;
@@ -24,24 +26,35 @@ export const PhotoUploadDialog = ({
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [cropData, setCropData] = useState<CropData | null>(null);
   const [storageReady, setStorageReady] = useState(true);
+  const [storageError, setStorageError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { uploadProfilePhoto, isUploading, uploadProgress } = useImageUpload();
+  const { uploadProfilePhoto, isUploading, uploadProgress, error } = useImageUpload();
+  const { data: currentUser } = useCurrentUser();
 
   useEffect(() => {
     const checkStorage = async () => {
-      const isReady = await verifyStorageBucket();
-      setStorageReady(isReady);
+      if (isOpen) {
+        console.log('🔄 Verificando storage ao abrir dialog...');
+        setStorageError('');
+        
+        const isReady = await verifyStorageBucket();
+        setStorageReady(isReady);
+        
+        if (!isReady) {
+          setStorageError('Sistema de armazenamento temporariamente indisponível');
+        }
+      }
     };
     
-    if (isOpen) {
-      checkStorage();
-    }
+    checkStorage();
   }, [isOpen]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    console.log('📁 Arquivo selecionado:', { name: file.name, size: file.size, type: file.type });
 
     if (!file.type.startsWith('image/')) {
       alert('Por favor, selecione apenas arquivos de imagem.');
@@ -63,8 +76,19 @@ export const PhotoUploadDialog = ({
   };
 
   const handleSave = async () => {
-    if (!selectedFile || !cropData || !userId) return;
+    if (!selectedFile || !cropData || !userId) {
+      console.error('❌ Dados insuficientes para upload:', { selectedFile: !!selectedFile, cropData: !!cropData, userId });
+      return;
+    }
 
+    // Verificar se o usuário está autenticado
+    if (!currentUser || currentUser.id !== userId) {
+      console.error('❌ Usuário não autenticado ou ID não corresponde');
+      alert('Erro de autenticação. Faça login novamente.');
+      return;
+    }
+
+    console.log('💾 Iniciando salvamento da foto...');
     uploadProfilePhoto(
       { 
         file: selectedFile, 
@@ -74,6 +98,7 @@ export const PhotoUploadDialog = ({
       },
       {
         onSuccess: (newUrl) => {
+          console.log('✅ Upload concluído, atualizando interface...');
           onPhotoUpdate(newUrl);
           handleCancel();
         }
@@ -124,6 +149,26 @@ export const PhotoUploadDialog = ({
           className="hidden"
         />
 
+        {/* Mostrar erro de upload se houver */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Mostrar erro de storage se houver */}
+        {storageError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {storageError}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {!selectedFile ? (
           <div className="text-center space-y-6 py-8">
             <div className="mx-auto w-16 h-16 bg-[#ff6e00] rounded-full flex items-center justify-center">
@@ -143,7 +188,7 @@ export const PhotoUploadDialog = ({
               <Button
                 onClick={triggerFileSelect}
                 className="w-full bg-[#ff6e00] hover:bg-[#e56200]"
-                disabled={!storageReady}
+                disabled={!storageReady || !currentUser}
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Selecionar Arquivo
@@ -156,6 +201,12 @@ export const PhotoUploadDialog = ({
               {!storageReady && (
                 <div className="text-xs text-red-500">
                   ⚠️ Sistema de armazenamento temporariamente indisponível
+                </div>
+              )}
+
+              {!currentUser && (
+                <div className="text-xs text-red-500">
+                  ⚠️ Faça login para alterar sua foto de perfil
                 </div>
               )}
             </div>
