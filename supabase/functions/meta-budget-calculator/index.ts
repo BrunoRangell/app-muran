@@ -29,10 +29,33 @@ serve(async (req) => {
       return validationError;
     }
 
-    // Processar intervalo de datas
-    const { effectiveDateRange, daysDiff } = processDateRange(dateRange);
-    console.log(`Período de análise: ${effectiveDateRange.start} a ${effectiveDateRange.end}`);
-    console.log(`Diferença em dias: ${daysDiff}`);
+    // CORREÇÃO: Se não há dateRange especificado, usar período do mês atual completo
+    let effectiveDateRange;
+    let daysDiff;
+    
+    if (!dateRange) {
+      // Calcular período do mês atual completo (igual ao daily-meta-review)
+      const today = new Date();
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+      effectiveDateRange = {
+        start: firstDayOfMonth.toISOString().split('T')[0],
+        end: today.toISOString().split('T')[0]
+      };
+      
+      daysDiff = Math.ceil((today.getTime() - firstDayOfMonth.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      console.log(`📅 CORREÇÃO: Usando período do mês atual completo: ${effectiveDateRange.start} a ${effectiveDateRange.end}`);
+      console.log(`📅 Diferença em dias calculada: ${daysDiff}`);
+    } else {
+      // Processar intervalo de datas fornecido
+      const dateRangeResult = processDateRange(dateRange);
+      effectiveDateRange = dateRangeResult.effectiveDateRange;
+      daysDiff = dateRangeResult.daysDiff;
+      
+      console.log(`📅 Usando período fornecido: ${effectiveDateRange.start} a ${effectiveDateRange.end}`);
+      console.log(`📅 Diferença em dias: ${daysDiff}`);
+    }
     
     // Buscar campanhas e insights
     const campaigns = await fetchCampaigns(accountId, accessToken);
@@ -40,7 +63,7 @@ serve(async (req) => {
       return campaigns.response;
     }
 
-    // Buscar insights de gastos para o período
+    // Buscar insights de gastos para o período CORRIGIDO
     const insightsResult = await fetchCampaignInsights(
       accountId, 
       accessToken, 
@@ -51,6 +74,8 @@ serve(async (req) => {
     if (!insightsResult.success) {
       return insightsResult.response;
     }
+
+    console.log(`💰 Total gasto no período (${effectiveDateRange.start} a ${effectiveDateRange.end}): ${insightsResult.totalSpent}`);
 
     // Calcular orçamentos
     const budgetResult = await calculateDailyBudgets(
@@ -71,7 +96,8 @@ serve(async (req) => {
         skippedCampaigns: budgetResult.skippedCampaigns,
         statusCounts: budgetResult.statusCounts,
         dateRange: effectiveDateRange,
-        daysPeriod: daysDiff
+        daysPeriod: daysDiff,
+        correctedPeriod: !dateRange ? "Período corrigido para mês atual completo" : "Período fornecido pelo usuário"
       }
     });
 
