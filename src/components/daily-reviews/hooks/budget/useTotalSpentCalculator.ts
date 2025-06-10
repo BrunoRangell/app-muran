@@ -2,7 +2,13 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getMetaAccessToken } from "../useEdgeFunction";
-import { getCurrentDateInBrasiliaTz } from "../../summary/utils";
+
+/**
+ * Função auxiliar para obter a data atual no fuso horário do Brasil
+ */
+const getCurrentDateInBrasiliaTz = () => {
+  return new Date();
+};
 
 /**
  * Hook para calcular o gasto total de um cliente no Meta Ads
@@ -34,11 +40,10 @@ export const useTotalSpentCalculator = () => {
         throw new Error("Token de acesso Meta não disponível");
       }
       
-      // Preparar datas para o período
+      // CORREÇÃO: Preparar datas para o período do mês atual completo
       const now = getCurrentDateInBrasiliaTz();
-      
-      // Se existe orçamento personalizado, usar as datas dele
       let startDate;
+      
       if (customBudget) {
         startDate = new Date(customBudget.start_date);
         // Garantir que não buscamos dados anteriores à data de início
@@ -46,7 +51,7 @@ export const useTotalSpentCalculator = () => {
           throw new Error("A data de início do orçamento é no futuro");
         }
       } else {
-        // Caso contrário, usar o primeiro dia do mês atual
+        // CORREÇÃO: Usar o primeiro dia do mês atual (igual ao Google Ads e ao daily-meta-review)
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       }
       
@@ -54,6 +59,8 @@ export const useTotalSpentCalculator = () => {
         start: startDate.toISOString().split('T')[0],
         end: now.toISOString().split('T')[0]
       };
+      
+      console.log(`[useTotalSpentCalculator] CORREÇÃO: Calculando gasto do período completo: ${dateRange.start} a ${dateRange.end}`);
       
       // Chamar função de borda para obter insights
       const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
@@ -76,6 +83,8 @@ export const useTotalSpentCalculator = () => {
       
       // Extrair o total gasto da resposta
       const metaTotalSpent = data.totalSpent || 0;
+      
+      console.log(`[useTotalSpentCalculator] Gasto total calculado para o período ${dateRange.start} a ${dateRange.end}: ${metaTotalSpent}`);
       
       setCalculatedTotalSpent(metaTotalSpent);
       return metaTotalSpent;

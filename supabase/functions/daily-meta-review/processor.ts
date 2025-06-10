@@ -1,16 +1,18 @@
-
 import { createSupabaseClient, fetchClientData, fetchMetaAccountDetails, fetchPrimaryMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview, updateClientCurrentReview, fetchMetaAccessToken } from "./database.ts";
 
-// Função para buscar dados da API Meta com lógica corrigida
+// Função para buscar dados da API Meta com lógica corrigida para período do mês atual
 async function fetchMetaApiData(accountId: string, accessToken: string) {
-  const today = new Date().toISOString().split("T")[0];
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  // CORREÇÃO: Calcular período do mês atual completo (primeiro dia do mês até hoje)
+  const today = new Date();
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const startDate = firstDayOfMonth.toISOString().split("T")[0];
+  const endDate = today.toISOString().split("T")[0];
   
   try {
-    console.log(`📅 Buscando dados do período: ${yesterday} a ${today}`);
+    console.log(`📅 Buscando dados do período CORRIGIDO: ${startDate} a ${endDate} (mês atual completo)`);
     
-    // Buscar gasto total
-    const insightsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/insights?access_token=${accessToken}&time_range={"since":"${yesterday}","until":"${today}"}&fields=spend&level=account`;
+    // Buscar gasto total do mês atual completo
+    const insightsUrl = `https://graph.facebook.com/v20.0/act_${accountId}/insights?access_token=${accessToken}&time_range={"since":"${startDate}","until":"${endDate}"}&fields=spend&level=account`;
     console.log(`🌐 Fazendo requisição para API Meta (insights): ${insightsUrl.replace(accessToken, 'ACCESS_TOKEN')}`);
     
     const insightsResponse = await fetch(insightsUrl);
@@ -24,12 +26,15 @@ async function fetchMetaApiData(accountId: string, accessToken: string) {
     const totalDailyBudget = await calculateTotalBudgetMeta(accountId, accessToken);
     
     console.log(`💰 Orçamento diário total real calculado: ${totalDailyBudget / 100}`);
+    console.log(`💰 Gasto total do mês atual (${startDate} a ${endDate}): ${totalSpent}`);
     
     return {
       totalSpent,
       currentDailyBudget: totalDailyBudget / 100, // Converter de centavos para reais no final
       dataSource: "api",
-      accountId
+      accountId,
+      periodStart: startDate,
+      periodEnd: endDate
     };
   } catch (error) {
     console.error("❌ Erro ao buscar dados da API Meta:", error);
@@ -170,7 +175,7 @@ export async function processReviewRequest(req: Request) {
     // Parse do corpo da requisição
     const body = await req.json();
     console.log("📥 Requisição recebida:", { ...body, accessToken: body.accessToken ? "***REDACTED***" : undefined });
-    console.log("🚀 VERSÃO CORRIGIDA DA FUNÇÃO - Deploy realizado com sucesso!");
+    console.log("🚀 VERSÃO CORRIGIDA - Período do mês atual completo implementado!");
     
     const { clientId, metaAccountId, reviewDate = new Date().toISOString().split("T")[0], fetchRealData = false } = body;
     
@@ -257,7 +262,7 @@ export async function processReviewRequest(req: Request) {
           totalSpent: apiData.totalSpent,
           dailyBudget: apiData.currentDailyBudget,
           source: "API real - campanhas e adsets ativos",
-          period: `${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]} a ${new Date().toISOString().split("T")[0]}`
+          period: `${apiData.periodStart} a ${apiData.periodEnd} (mês atual completo)`
         });
         
         totalSpent = apiData.totalSpent;
@@ -268,7 +273,8 @@ export async function processReviewRequest(req: Request) {
           totalSpent,
           currentDailyBudget,
           dataSource: "API real",
-          accountId
+          accountId,
+          periodInfo: `${apiData.periodStart} a ${apiData.periodEnd}`
         });
       } catch (apiError) {
         console.error("❌ Erro ao buscar dados da API Meta - mantendo valores zerados:", apiError);
