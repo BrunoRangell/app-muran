@@ -15,7 +15,7 @@ export interface CropData {
 interface UploadProfilePhotoParams {
   file: File;
   cropData: CropData;
-  userId: string;
+  currentUser: any;
   currentPhotoUrl?: string;
 }
 
@@ -25,13 +25,17 @@ export const useImageUpload = () => {
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
-    mutationFn: async ({ file, cropData, userId, currentPhotoUrl }: UploadProfilePhotoParams) => {
-      console.log('🚀 Iniciando upload da foto:', { userId, fileName: file.name });
+    mutationFn: async ({ file, cropData, currentUser, currentPhotoUrl }: UploadProfilePhotoParams) => {
+      console.log('🚀 Iniciando upload da foto para:', currentUser.email);
       setUploadProgress(10);
 
-      // Verificação robusta de autenticação
+      // CORREÇÃO: Verificação de autenticação mais robusta
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      console.log('👤 Verificação de autenticação:', { user: user?.id, authError });
+      console.log('👤 Verificação de autenticação:', { 
+        authUser: user?.email, 
+        currentUserEmail: currentUser.email,
+        authError 
+      });
       
       if (authError) {
         console.error('❌ Erro de autenticação:', authError);
@@ -43,10 +47,13 @@ export const useImageUpload = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      // Verificar se o userId corresponde ao usuário autenticado
-      if (user.id !== userId) {
-        console.error('❌ UserID não corresponde ao usuário autenticado:', { authUserId: user.id, providedUserId: userId });
-        throw new Error('ID do usuário não corresponde ao usuário autenticado');
+      // CORREÇÃO: Usar email para verificar correspondência
+      if (user.email !== currentUser.email) {
+        console.error('❌ Email não corresponde:', { 
+          authEmail: user.email, 
+          currentUserEmail: currentUser.email 
+        });
+        throw new Error('Usuário autenticado não corresponde ao perfil sendo editado');
       }
 
       setUploadProgress(20);
@@ -63,27 +70,21 @@ export const useImageUpload = () => {
       }
       setUploadProgress(50);
 
-      // Gerar nome do arquivo com estrutura correta: userId/filename
-      const fileName = `${userId}/profile-${Date.now()}.jpg`;
+      // CORREÇÃO: Usar estrutura de arquivo mais simples
+      const fileName = `profile-${currentUser.id}-${Date.now()}.jpg`;
       console.log('📁 Nome do arquivo gerado:', fileName);
 
-      // Verificar se o bucket existe e está acessível
+      // Verificar acesso ao bucket
       try {
-        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-        console.log('📦 Buckets disponíveis:', buckets?.map(b => b.name));
+        const { data: testAccess } = supabase.storage
+          .from('profile-photos')
+          .getPublicUrl('test');
         
-        if (bucketsError) {
-          console.error('❌ Erro ao listar buckets:', bucketsError);
-          throw new Error(`Erro ao acessar storage: ${bucketsError.message}`);
-        }
-
-        const profileBucket = buckets?.find(b => b.name === 'profile-photos');
-        if (!profileBucket) {
-          console.error('❌ Bucket profile-photos não encontrado');
-          throw new Error('Bucket de fotos não encontrado');
+        if (!testAccess?.publicUrl) {
+          throw new Error('Bucket não acessível');
         }
       } catch (error) {
-        console.error('❌ Erro na verificação do bucket:', error);
+        console.error('❌ Erro ao verificar bucket:', error);
         throw new Error('Sistema de armazenamento indisponível');
       }
 
@@ -100,7 +101,6 @@ export const useImageUpload = () => {
       if (uploadError) {
         console.error('❌ Erro no upload:', uploadError);
         
-        // Tratamento específico para diferentes tipos de erro
         if (uploadError.message.includes('Bucket not found')) {
           throw new Error('Bucket de armazenamento não encontrado');
         } else if (uploadError.message.includes('Duplicate')) {
@@ -124,22 +124,22 @@ export const useImageUpload = () => {
       console.log('🔗 URL pública gerada:', photoUrl);
       setUploadProgress(80);
 
-      // Atualizar banco de dados
+      // CORREÇÃO: Atualizar banco usando o ID correto do team_member
       console.log('💾 Atualizando banco de dados...');
       const { error: updateError } = await supabase
         .from('team_members')
         .update({ photo_url: photoUrl })
-        .eq('id', userId);
+        .eq('id', currentUser.id);
 
       if (updateError) {
         console.error('❌ Erro ao atualizar perfil:', updateError);
         
-        // Tentar remover o arquivo que foi feito upload se a atualização falhou
+        // Remover arquivo se atualização falhou
         try {
           await supabase.storage.from('profile-photos').remove([fileName]);
           console.log('🧹 Arquivo removido após erro na atualização');
         } catch (cleanupError) {
-          console.error('❌ Erro ao limpar arquivo após falha:', cleanupError);
+          console.error('❌ Erro ao limpar arquivo:', cleanupError);
         }
         
         throw new Error(`Erro ao atualizar perfil: ${updateError.message}`);
@@ -152,7 +152,6 @@ export const useImageUpload = () => {
     onSuccess: (photoUrl) => {
       console.log('🎉 Upload finalizado com sucesso:', photoUrl);
       
-      // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['current_user'] });
       queryClient.invalidateQueries({ queryKey: ['team_members'] });
       

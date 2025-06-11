@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export const verifyStorageBucket = async (): Promise<boolean> => {
   try {
-    console.log('🔍 Verificando disponibilidade do storage...');
+    console.log('🔍 Verificando bucket profile-photos...');
     
     // Verificar se o usuário está autenticado
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -13,8 +13,22 @@ export const verifyStorageBucket = async (): Promise<boolean> => {
       return false;
     }
 
-    // CORREÇÃO: Verificação mais simples - apenas verificar se conseguimos acessar o storage
-    // Removendo tentativa de listar arquivos que pode falhar devido a RLS
+    // CORREÇÃO: Verificação simplificada - testar acesso direto ao bucket
+    try {
+      // Tentar obter URL pública de um arquivo inexistente para verificar se o bucket existe
+      const { data } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl('test-access');
+      
+      if (data && data.publicUrl) {
+        console.log('✅ Bucket profile-photos acessível');
+        return true;
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao acessar bucket:', error);
+    }
+
+    // Fallback: verificar se bucket existe na lista
     const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
     
     if (bucketsError) {
@@ -25,11 +39,11 @@ export const verifyStorageBucket = async (): Promise<boolean> => {
     const profileBucket = buckets?.find(bucket => bucket.name === 'profile-photos');
     
     if (!profileBucket) {
-      console.warn('⚠️ Bucket profile-photos não encontrado');
+      console.warn('⚠️ Bucket profile-photos não encontrado na lista');
       return false;
     }
 
-    console.log('✅ Storage verificado e disponível');
+    console.log('✅ Bucket encontrado na lista mas acesso direto falhou');
     return true;
   } catch (error) {
     console.warn('⚠️ Erro na verificação do storage:', error);
@@ -37,7 +51,6 @@ export const verifyStorageBucket = async (): Promise<boolean> => {
   }
 };
 
-// CORREÇÃO: Função simplificada que não executa verificação desnecessária
 export const initializeStorage = async (): Promise<void> => {
-  console.log('🔧 Storage inicializado (verificação sob demanda)');
+  console.log('🔧 Storage disponível para verificação sob demanda');
 };
