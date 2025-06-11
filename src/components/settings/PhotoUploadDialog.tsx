@@ -13,13 +13,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface PhotoUploadDialogProps {
   currentPhotoUrl?: string;
   onPhotoUpdate: (newUrl: string) => void;
-  userId: string;
 }
 
 export const PhotoUploadDialog = ({
   currentPhotoUrl,
-  onPhotoUpdate,
-  userId
+  onPhotoUpdate
 }: PhotoUploadDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -33,11 +31,11 @@ export const PhotoUploadDialog = ({
   const { uploadProfilePhoto, isUploading, uploadProgress, error } = useImageUpload();
   const { data: currentUser } = useCurrentUser();
 
-  // CORREÇÃO: Verificar storage apenas quando necessário e uma única vez
+  // CORREÇÃO: Verificar storage apenas quando necessário
   useEffect(() => {
     const checkStorage = async () => {
-      if (isOpen && !storageChecked) {
-        console.log('🔄 Verificando storage ao abrir dialog...');
+      if (isOpen && !storageChecked && currentUser) {
+        console.log('🔄 Verificando storage para usuário:', currentUser.email);
         setStorageError('');
         
         const isReady = await verifyStorageBucket();
@@ -45,13 +43,13 @@ export const PhotoUploadDialog = ({
         setStorageChecked(true);
         
         if (!isReady) {
-          setStorageError('Sistema de armazenamento temporariamente indisponível');
+          setStorageError('Bucket de armazenamento não está acessível no momento');
         }
       }
     };
     
     checkStorage();
-  }, [isOpen, storageChecked]);
+  }, [isOpen, storageChecked, currentUser]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,24 +77,23 @@ export const PhotoUploadDialog = ({
   };
 
   const handleSave = async () => {
-    if (!selectedFile || !cropData || !userId) {
-      console.error('❌ Dados insuficientes para upload:', { selectedFile: !!selectedFile, cropData: !!cropData, userId });
+    if (!selectedFile || !cropData || !currentUser) {
+      console.error('❌ Dados insuficientes para upload:', { 
+        selectedFile: !!selectedFile, 
+        cropData: !!cropData, 
+        currentUser: !!currentUser 
+      });
       return;
     }
 
-    // Verificar se o usuário está autenticado
-    if (!currentUser || currentUser.id !== userId) {
-      console.error('❌ Usuário não autenticado ou ID não corresponde');
-      alert('Erro de autenticação. Faça login novamente.');
-      return;
-    }
-
-    console.log('💾 Iniciando salvamento da foto...');
+    console.log('💾 Iniciando upload para usuário:', currentUser.email);
+    
+    // CORREÇÃO: Usar o currentUser diretamente, sem prop userId separada
     uploadProfilePhoto(
       { 
         file: selectedFile, 
         cropData, 
-        userId,
+        currentUser,
         currentPhotoUrl 
       },
       {
@@ -114,7 +111,7 @@ export const PhotoUploadDialog = ({
     setPreviewUrl('');
     setCropData(null);
     setIsOpen(false);
-    setStorageChecked(false); // Reset para verificar novamente na próxima abertura
+    setStorageChecked(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -132,7 +129,7 @@ export const PhotoUploadDialog = ({
           variant="outline"
           size="sm"
           className="flex items-center space-x-2"
-          disabled={!userId || isUploading}
+          disabled={!currentUser || isUploading}
         >
           <Camera className="h-4 w-4" />
           <span>Alterar Foto</span>
@@ -153,7 +150,6 @@ export const PhotoUploadDialog = ({
           className="hidden"
         />
 
-        {/* Mostrar erro de upload se houver */}
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -163,7 +159,6 @@ export const PhotoUploadDialog = ({
           </Alert>
         )}
 
-        {/* CORREÇÃO: Mostrar erro de storage apenas se realmente houver problema */}
         {storageError && !storageReady && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />

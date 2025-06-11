@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -48,7 +47,6 @@ export const PersonalInfoSection = ({ form }: PersonalInfoSectionProps) => {
             <PhotoUploadDialog
               currentPhotoUrl={photoUrl}
               onPhotoUpdate={handlePhotoUpdate}
-              userId={currentUser?.id || ''}
             />
           </div>
         </div>

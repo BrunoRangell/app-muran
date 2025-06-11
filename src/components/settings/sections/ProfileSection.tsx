@@ -1,4 +1,3 @@
-
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +32,7 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
   const handlePhotoUpdate = (newUrl: string) => {
     console.log('📸 Atualizando foto no formulário:', newUrl);
     
-    // Update optimista para feedback imediato
+    // Update otimista para feedback imediato
     setOptimisticPhotoUrl(newUrl);
     
     // Atualizar o formulário
@@ -54,7 +53,7 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
             <AvatarImage 
               src={displayPhotoUrl} 
               alt={userName || "Profile"}
-              key={displayPhotoUrl} // Force re-render when URL changes
+              key={displayPhotoUrl}
             />
             <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
               {userName?.charAt(0)?.toUpperCase() || currentUser?.name?.charAt(0)?.toUpperCase() || "?"}
@@ -63,13 +62,10 @@ export const ProfileSection = ({ form }: ProfileSectionProps) => {
         </div>
         
         <div className="space-y-3">
-          {currentUser?.id && (
-            <PhotoUploadDialog
-              currentPhotoUrl={displayPhotoUrl}
-              onPhotoUpdate={handlePhotoUpdate}
-              userId={currentUser.id}
-            />
-          )}
+          <PhotoUploadDialog
+            currentPhotoUrl={displayPhotoUrl}
+            onPhotoUpdate={handlePhotoUpdate}
+          />
           
           <p className="text-xs text-gray-500">
             Recomendado: imagem quadrada, mínimo 400x400px

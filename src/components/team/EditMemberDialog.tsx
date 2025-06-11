@@ -152,24 +152,6 @@ export const EditMemberDialog = ({
 
               <FormField
                 control={form.control}
-                name="photo_url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL da Foto</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                      Para melhor compatibilidade, recomendamos usar serviços como imgur.com ou imgbb.com para hospedar suas fotos. 
-                      Cole aqui o link direto da imagem após fazer o upload.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="birthday"
                 render={({ field }) => (
                   <FormItem>
