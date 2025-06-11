@@ -29,10 +29,11 @@ export const useImageUpload = () => {
       console.log('🚀 Iniciando upload da foto para:', currentUser.email);
       setUploadProgress(10);
 
-      // CORREÇÃO: Verificação de autenticação mais robusta
+      // CORREÇÃO: Validação de autenticação robusta
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       console.log('👤 Verificação de autenticação:', { 
         authUser: user?.email, 
+        authUserId: user?.id,
         currentUserEmail: currentUser.email,
         authError 
       });
@@ -47,7 +48,12 @@ export const useImageUpload = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      // CORREÇÃO: Usar email para verificar correspondência
+      if (!user.id) {
+        console.error('❌ ID do usuário não encontrado');
+        throw new Error('ID do usuário não disponível');
+      }
+
+      // CORREÇÃO: Verificar correspondência de email
       if (user.email !== currentUser.email) {
         console.error('❌ Email não corresponde:', { 
           authEmail: user.email, 
@@ -66,13 +72,15 @@ export const useImageUpload = () => {
       // Deletar foto anterior se existir
       if (currentPhotoUrl) {
         console.log('🗑️ Removendo foto anterior:', currentPhotoUrl);
-        await deletePhoto(currentPhotoUrl);
+        await deletePhoto(currentPhotoUrl, user.id);
       }
       setUploadProgress(50);
 
-      // CORREÇÃO: Usar estrutura de arquivo mais simples
-      const fileName = `profile-${currentUser.id}-${Date.now()}.jpg`;
-      console.log('📁 Nome do arquivo gerado:', fileName);
+      // CORREÇÃO: Usar estrutura de pasta baseada no auth.uid()
+      const fileName = `profile-${Date.now()}.jpg`;
+      const filePath = `${user.id}/${fileName}`;
+      console.log('📁 Caminho do arquivo gerado:', filePath);
+      console.log('🔑 Auth UID:', user.id);
 
       // Verificar acesso ao bucket
       try {
@@ -83,6 +91,7 @@ export const useImageUpload = () => {
         if (!testAccess?.publicUrl) {
           throw new Error('Bucket não acessível');
         }
+        console.log('✅ Bucket acessível');
       } catch (error) {
         console.error('❌ Erro ao verificar bucket:', error);
         throw new Error('Sistema de armazenamento indisponível');
@@ -90,9 +99,17 @@ export const useImageUpload = () => {
 
       // Upload da nova foto
       console.log('⬆️ Fazendo upload do arquivo...');
+      console.log('📊 Detalhes do upload:', {
+        bucket: 'profile-photos',
+        filePath,
+        authUserId: user.id,
+        fileSize: processedBlob.size,
+        fileType: 'image/jpeg'
+      });
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('profile-photos')
-        .upload(fileName, processedBlob, {
+        .upload(filePath, processedBlob, {
           cacheControl: '3600',
           upsert: false,
           contentType: 'image/jpeg'
@@ -105,8 +122,8 @@ export const useImageUpload = () => {
           throw new Error('Bucket de armazenamento não encontrado');
         } else if (uploadError.message.includes('Duplicate')) {
           throw new Error('Arquivo já existe. Tente novamente.');
-        } else if (uploadError.message.includes('unauthorized')) {
-          throw new Error('Sem permissão para fazer upload. Verifique se está logado.');
+        } else if (uploadError.message.includes('unauthorized') || uploadError.message.includes('row-level security')) {
+          throw new Error('Sem permissão para fazer upload. Verifique se está logado corretamente.');
         } else {
           throw new Error(`Erro no upload: ${uploadError.message}`);
         }
@@ -118,13 +135,13 @@ export const useImageUpload = () => {
       // Obter URL pública
       const { data } = supabase.storage
         .from('profile-photos')
-        .getPublicUrl(fileName);
+        .getPublicUrl(filePath);
 
       const photoUrl = `${data.publicUrl}?t=${Date.now()}`;
       console.log('🔗 URL pública gerada:', photoUrl);
       setUploadProgress(80);
 
-      // CORREÇÃO: Atualizar banco usando o ID correto do team_member
+      // Atualizar banco usando o ID correto do team_member
       console.log('💾 Atualizando banco de dados...');
       const { error: updateError } = await supabase
         .from('team_members')
@@ -136,7 +153,7 @@ export const useImageUpload = () => {
         
         // Remover arquivo se atualização falhou
         try {
-          await supabase.storage.from('profile-photos').remove([fileName]);
+          await supabase.storage.from('profile-photos').remove([filePath]);
           console.log('🧹 Arquivo removido após erro na atualização');
         } catch (cleanupError) {
           console.error('❌ Erro ao limpar arquivo:', cleanupError);
@@ -207,20 +224,30 @@ export const useImageUpload = () => {
     });
   };
 
-  const deletePhoto = async (photoUrl: string) => {
+  // CORREÇÃO: Função de limpeza atualizada para trabalhar com estrutura de pastas
+  const deletePhoto = async (photoUrl: string, authUserId: string) => {
     try {
       if (!photoUrl.includes('profile-photos')) return;
       
+      // Extrair o caminho do arquivo da URL
       const cleanUrl = photoUrl.split('?')[0];
-      const fileName = cleanUrl.split('/profile-photos/')[1];
+      const pathParts = cleanUrl.split('/profile-photos/');
       
-      if (fileName) {
-        console.log('🗑️ Removendo arquivo:', fileName);
-        const { error } = await supabase.storage.from('profile-photos').remove([fileName]);
-        if (error) {
-          console.warn('⚠️ Erro ao remover arquivo anterior:', error);
+      if (pathParts.length > 1) {
+        const filePath = pathParts[1];
+        console.log('🗑️ Removendo arquivo:', filePath);
+        console.log('👤 Auth User ID:', authUserId);
+        
+        // Verificar se o arquivo pertence ao usuário atual
+        if (filePath.startsWith(authUserId)) {
+          const { error } = await supabase.storage.from('profile-photos').remove([filePath]);
+          if (error) {
+            console.warn('⚠️ Erro ao remover arquivo anterior:', error);
+          } else {
+            console.log('✅ Arquivo anterior removido com sucesso');
+          }
         } else {
-          console.log('✅ Arquivo anterior removido com sucesso');
+          console.warn('⚠️ Arquivo não pertence ao usuário atual, não removendo');
         }
       }
     } catch (error) {
