@@ -42,7 +42,6 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     }, 0);
   };
   
-  // Extrair valores do orçamento
   const monthlyBudget = calculateTotalGoogleBudget();
   
   // Para total gasto e orçamento diário atual, precisamos usar os valores da revisão
@@ -103,6 +102,22 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     return client.lastReview?.google_last_five_days_spent || 0;
   }, [hasReview, client.lastReview, client.google_reviews]);
   
+  // Calcular média ponderada dos últimos 5 dias
+  const weightedAverage = useMemo(() => {
+    if (!hasReview || !client.lastReview) return 0;
+    
+    const day1 = client.lastReview.google_day_1_spent || 0; // 5 dias atrás
+    const day2 = client.lastReview.google_day_2_spent || 0; // 4 dias atrás
+    const day3 = client.lastReview.google_day_3_spent || 0; // 3 dias atrás
+    const day4 = client.lastReview.google_day_4_spent || 0; // 2 dias atrás
+    const day5 = client.lastReview.google_day_5_spent || 0; // 1 dia atrás
+    
+    // Fórmula da média ponderada: peso crescente para dias mais recentes
+    const weightedSum = (day1 * 0.1) + (day2 * 0.15) + (day3 * 0.2) + (day4 * 0.25) + (day5 * 0.3);
+    
+    return weightedSum;
+  }, [hasReview, client.lastReview]);
+  
   const currentDailyBudget = useMemo(() => {
     if (!hasReview) return 0;
     
@@ -160,14 +175,12 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     return idealDailyBudget - currentDailyBudget;
   }, [hasReview, idealDailyBudget, currentDailyBudget]);
   
-  // Calcular a diferença entre a média dos últimos 5 dias e o ideal
   const budgetDifferenceBasedOnAverage = useMemo(() => {
     if (!hasReview || lastFiveDaysSpent === 0) return 0;
     
     return idealDailyBudget - lastFiveDaysSpent;
   }, [hasReview, idealDailyBudget, lastFiveDaysSpent]);
   
-  // Determinar se o orçamento precisa de ajuste baseado no orçamento atual
   const needsBudgetAdjustment = useMemo(() => {
     if (!hasReview || currentDailyBudget === 0) return false;
     
@@ -178,7 +191,6 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     return absoluteDifference >= 5 && percentageDifference >= 0.05;
   }, [hasReview, budgetDifference, currentDailyBudget]);
   
-  // Determinar se o orçamento precisa de ajuste baseado na média de gasto
   const needsAdjustmentBasedOnAverage = useMemo(() => {
     if (!hasReview || lastFiveDaysSpent === 0) return false;
     
@@ -195,6 +207,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     monthlyBudget,
     totalSpent,
     lastFiveDaysSpent,
+    weightedAverage, // Nova métrica: Média Ponderada
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,

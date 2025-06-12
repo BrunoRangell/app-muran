@@ -26,6 +26,7 @@ export const GoogleAdsClientReviewCardCompact = ({
     monthlyBudget,
     totalSpent,
     lastFiveDaysSpent,
+    weightedAverage,
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
@@ -48,6 +49,7 @@ export const GoogleAdsClientReviewCardCompact = ({
   const formattedMonthlyBudget = formatCurrency(monthlyBudget || 0);
   const formattedTotalSpent = formatCurrency(totalSpent || 0);
   const formattedLastFiveDaysSpent = formatCurrency(lastFiveDaysSpent || 0);
+  const formattedWeightedAverage = formatCurrency(weightedAverage || 0);
   const formattedCurrentDaily = formatCurrency(currentDailyBudget || 0);
   const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
 
@@ -170,6 +172,10 @@ export const GoogleAdsClientReviewCardCompact = ({
               <div className="font-semibold">{formattedLastFiveDaysSpent}</div>
             </div>
             <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Média Pond</div>
+              <div className="font-semibold">{formattedWeightedAverage}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
               <div className="text-gray-500">Orç. Diário Atual</div>
               <div className="font-semibold">{formattedCurrentDaily}</div>
             </div>
@@ -189,6 +195,10 @@ export const GoogleAdsClientReviewCardCompact = ({
             <div>
               <span className="text-gray-500 mr-1">Gasto:</span>
               <span className="font-semibold">{formattedTotalSpent}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-1">Média Pond:</span>
+              <span className="font-semibold">{formattedWeightedAverage}</span>
             </div>
             <div>
               <span className="text-gray-500 mr-1">Atual:</span>

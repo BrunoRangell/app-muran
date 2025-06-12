@@ -199,7 +199,7 @@ export const reviewGoogleClient = async (client: ClientWithReview, accountId?: s
       const startDate = startOfMonth.toISOString().split('T')[0];
       const endDate = today.toISOString().split('T')[0];
       
-      // Calcular data de início para os últimos 5 dias (excluindo hoje)
+      // Calcular datas para os últimos 5 dias (excluindo hoje)
       const fiveDaysAgo = new Date(today);
       fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
       const yesterdayDate = new Date(today);
@@ -225,6 +225,17 @@ export const reviewGoogleClient = async (client: ClientWithReview, accountId?: s
       let lastFiveDaysSpent = 0;
       let currentDailyBudget = 0;
       
+      // Arrays para armazenar gastos dos últimos 5 dias
+      const dailySpends: number[] = [0, 0, 0, 0, 0]; // [dia1, dia2, dia3, dia4, dia5]
+      const dailyDates: string[] = [];
+      
+      // Calcular as datas dos últimos 5 dias
+      for (let i = 5; i >= 1; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        dailyDates.push(date.toISOString().split('T')[0]);
+      }
+      
       try {
         // Fazer chamada para a API do Google Ads
         const response = await axios.post(
@@ -233,7 +244,7 @@ export const reviewGoogleClient = async (client: ClientWithReview, accountId?: s
           { headers }
         );
         
-        // Calcular o gasto total somando o custo de todas as campanhas
+        // Calcular o gasto total e organizar gastos por dia
         if (response.data && response.data.results) {
           // Processar resultados para calcular gastos
           response.data.results.forEach(campaign => {
@@ -243,9 +254,15 @@ export const reviewGoogleClient = async (client: ClientWithReview, accountId?: s
             // Adicionar ao gasto total
             totalSpent += cost;
             
-            // Verificar se está dentro dos últimos 5 dias (excluindo hoje)
+            // Verificar se está dentro dos últimos 5 dias e organizar por dia
             if (date && date >= fiveDaysAgoDate && date <= yesterdayFormattedDate) {
               lastFiveDaysSpent += cost;
+              
+              // Encontrar o índice do dia correspondente
+              const dayIndex = dailyDates.findIndex(d => d === date);
+              if (dayIndex !== -1) {
+                dailySpends[dayIndex] += cost;
+              }
             }
           });
         }
@@ -298,12 +315,13 @@ export const reviewGoogleClient = async (client: ClientWithReview, accountId?: s
         orçamentoDiárioAtual: currentDailyBudget,
         gastoTotal: totalSpent,
         gastoMédiaCincoDias: lastFiveDaysSpent,
+        gastosIndividuais: dailySpends,
         orçamentoRestante: remainingBudget,
         diasRestantes: remainingDays,
         orçamentoDiárioIdeal: idealDailyBudget
       });
       
-      // Salvar revisão com informações da conta específica
+      // Salvar revisão com informações da conta específica e gastos individuais
       const reviewData = {
         client_id: client.id,
         client_account_id: account.id,
@@ -314,6 +332,12 @@ export const reviewGoogleClient = async (client: ClientWithReview, accountId?: s
         google_last_five_days_spent: lastFiveDaysSpent,
         google_account_id: account.account_id,
         google_account_name: account.account_name,
+        // Adicionar gastos individuais dos últimos 5 dias
+        google_day_1_spent: dailySpends[0], // 5 dias atrás
+        google_day_2_spent: dailySpends[1], // 4 dias atrás
+        google_day_3_spent: dailySpends[2], // 3 dias atrás
+        google_day_4_spent: dailySpends[3], // 2 dias atrás
+        google_day_5_spent: dailySpends[4], // 1 dia atrás
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
