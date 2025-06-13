@@ -36,6 +36,9 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   const customBudget = client.customBudget;
   
+  // NOVA MÉTRICA: Média Ponderada (só para Google Ads)
+  const weightedAverage = client.weightedAverage || 0;
+  
   // Determinar cor e status baseado na porcentagem e necessidade de ajuste
   const getStatusInfo = () => {
     if (needsAdjustment) {
@@ -232,6 +235,16 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
                 <p className="text-xs text-gray-500 mb-1">Média 5 dias</p>
                 <p className="text-sm font-semibold text-gray-700">
                   {formatCurrency(client.lastFiveDaysAvg || 0)}
+                </p>
+              </div>
+            )}
+            
+            {/* NOVA MÉTRICA: Mostrar Média Pond para Google Ads */}
+            {platform === "google" && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Média Pond</p>
+                <p className="text-sm font-semibold text-gray-700">
+                  {formatCurrency(weightedAverage)}
                 </p>
               </div>
             )}

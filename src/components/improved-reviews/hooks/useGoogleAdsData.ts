@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -95,7 +96,7 @@ export function useGoogleAdsData() {
       console.log("📊 Clientes com conta Google:", clientsWithAccounts.size);
       console.log("📊 Clientes sem conta Google:", clientsWithoutAccount);
 
-      // Buscar revisões mais recentes do Google Ads (apenas do mês atual)
+      // Buscar revisões mais recentes do Google Ads (apenas do mês atual) - INCLUINDO DADOS DIÁRIOS
       const currentDate = new Date();
       const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const firstDayStr = firstDayOfMonth.toISOString().split("T")[0];
@@ -104,13 +105,40 @@ export function useGoogleAdsData() {
       
       const { data: reviews, error: reviewsError } = await supabase
         .from("google_ads_reviews")
-        .select("*")
+        .select(`
+          *,
+          google_day_1_spent,
+          google_day_2_spent,
+          google_day_3_spent,
+          google_day_4_spent,
+          google_day_5_spent
+        `)
         .gte("review_date", firstDayStr)
         .order("review_date", { ascending: false });
 
       if (reviewsError) throw reviewsError;
       
       console.log(`✅ Revisões encontradas: ${reviews?.length || 0}`);
+      
+      // Função auxiliar para calcular média ponderada
+      const calculateWeightedAverage = (review: any) => {
+        if (!review) return 0;
+        
+        const day1 = review.google_day_1_spent || 0; // 5 dias atrás (peso 0.1)
+        const day2 = review.google_day_2_spent || 0; // 4 dias atrás (peso 0.15)
+        const day3 = review.google_day_3_spent || 0; // 3 dias atrás (peso 0.2)
+        const day4 = review.google_day_4_spent || 0; // 2 dias atrás (peso 0.25)
+        const day5 = review.google_day_5_spent || 0; // 1 dia atrás (peso 0.3)
+        
+        // Calcular média ponderada com pesos crescentes para dias mais recentes
+        const weightedAverage = (day1 * 0.1) + (day2 * 0.15) + (day3 * 0.2) + (day4 * 0.25) + (day5 * 0.3);
+        
+        console.log(`📊 Média ponderada calculada:`, {
+          day1, day2, day3, day4, day5, weightedAverage
+        });
+        
+        return weightedAverage;
+      };
 
       // Combinar os dados - incluir TODOS os clientes
       const clientsWithData = clients?.map(client => {
@@ -160,6 +188,9 @@ export function useGoogleAdsData() {
             // Usar a revisão mais recente
             const review = accountReviews.length > 0 ? accountReviews[0] : null;
             
+            // Calcular média ponderada dos últimos 5 dias
+            const weightedAverage = calculateWeightedAverage(review);
+            
             // Determinar o orçamento a ser usado
             const originalBudgetAmount = account.budget_amount;
             const budgetAmount = isUsingCustomBudget ? customBudget.budget_amount : originalBudgetAmount;
@@ -190,6 +221,7 @@ export function useGoogleAdsData() {
               budgetCalculation: budgetCalc,
               needsAdjustment: needsAdjustment,
               lastFiveDaysAvg: lastFiveDaysAvg,
+              weightedAverage: weightedAverage, // NOVA MÉTRICA ADICIONADA
               hasAccount: true
             };
           });
@@ -215,6 +247,7 @@ export function useGoogleAdsData() {
             },
             needsAdjustment: false,
             lastFiveDaysAvg: 0,
+            weightedAverage: 0, // NOVA MÉTRICA ZERADA PARA CLIENTES SEM CONTA
             hasAccount: false
           };
         }
