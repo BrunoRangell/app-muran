@@ -298,6 +298,13 @@ async function processGoogleReview(req: Request) {
     let currentDailyBudget = 0;
     let apiErrorDetails = null;
     
+    // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
+    let googleDay1Spent = 0;
+    let googleDay2Spent = 0;
+    let googleDay3Spent = 0;
+    let googleDay4Spent = 0;
+    let googleDay5Spent = 0;
+    
     try {
       console.log("🔍 Tentando obter dados reais da API do Google Ads...");
       
@@ -411,6 +418,16 @@ async function processGoogleReview(req: Request) {
       // Variáveis para rastrear gastos por dia
       let dailySpends: Record<string, number> = {};
       
+      // NOVO: Preparar datas dos últimos 5 dias para mapear corretamente
+      const lastFiveDays: string[] = [];
+      for (let i = 5; i >= 1; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        lastFiveDays.push(date.toISOString().split('T')[0]);
+      }
+      
+      console.log("📅 Últimos 5 dias para mapeamento:", lastFiveDays);
+      
       // Calcular o gasto total e rastrear gastos por dia APENAS COM DADOS REAIS
       if (data && data.results && data.results.length > 0) {
         console.log(`📈 Encontrados ${data.results.length} resultados de gastos para a conta ${googleAccountId}`);
@@ -433,6 +450,22 @@ async function processGoogleReview(req: Request) {
         });
         
         console.log(`💰 Gasto total REAL para o mês atual: ${totalSpent.toFixed(2)}`);
+        
+        // NOVO: Mapear gastos individuais dos últimos 5 dias
+        googleDay1Spent = dailySpends[lastFiveDays[0]] || 0; // 5 dias atrás
+        googleDay2Spent = dailySpends[lastFiveDays[1]] || 0; // 4 dias atrás
+        googleDay3Spent = dailySpends[lastFiveDays[2]] || 0; // 3 dias atrás
+        googleDay4Spent = dailySpends[lastFiveDays[3]] || 0; // 2 dias atrás
+        googleDay5Spent = dailySpends[lastFiveDays[4]] || 0; // 1 dia atrás
+        
+        console.log("💰 Gastos individuais dos últimos 5 dias:", {
+          day1: googleDay1Spent,
+          day2: googleDay2Spent,
+          day3: googleDay3Spent,
+          day4: googleDay4Spent,
+          day5: googleDay5Spent
+        });
+        
       } else {
         console.log("📊 Nenhum resultado de gasto encontrado - mantendo valores zerados");
       }
@@ -515,6 +548,13 @@ async function processGoogleReview(req: Request) {
       lastFiveDaysSpent = 0;
       currentDailyBudget = 0;
       
+      // Manter gastos individuais zerados
+      googleDay1Spent = 0;
+      googleDay2Spent = 0;
+      googleDay3Spent = 0;
+      googleDay4Spent = 0;
+      googleDay5Spent = 0;
+      
       apiErrorDetails = apiErrorDetails || {
         message: apiError.message,
         accountId: googleAccountId
@@ -536,7 +576,7 @@ async function processGoogleReview(req: Request) {
       custom_budget_end_date: null
     };
 
-    // Dados para a revisão - APENAS DADOS REAIS OU ZERADOS
+    // Dados para a revisão - APENAS DADOS REAIS OU ZERADOS + GASTOS INDIVIDUAIS
     const reviewData = {
       client_id: clientId,
       review_date: reviewDate,
@@ -546,15 +586,28 @@ async function processGoogleReview(req: Request) {
       google_account_id: googleAccountId,
       google_account_name: accountName,
       account_display_name: accountName,
+      // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
+      google_day_1_spent: googleDay1Spent,
+      google_day_2_spent: googleDay2Spent,
+      google_day_3_spent: googleDay3Spent,
+      google_day_4_spent: googleDay4Spent,
+      google_day_5_spent: googleDay5Spent,
       ...customBudgetInfo,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
     
-    console.log("📋 Dados FINAIS para revisão (apenas valores reais ou zerados):", {
+    console.log("📋 Dados FINAIS para revisão (incluindo gastos individuais):", {
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
       gastoMédiaCincoDias: lastFiveDaysSpent,
+      gastosIndividuais: {
+        dia1: googleDay1Spent,
+        dia2: googleDay2Spent,
+        dia3: googleDay3Spent,
+        dia4: googleDay4Spent,
+        dia5: googleDay5Spent
+      },
       usandoOrçamentoPersonalizado: customBudget ? true : false,
       customBudgetId: customBudget?.id || null,
       apiErrorDetails
@@ -579,6 +632,12 @@ async function processGoogleReview(req: Request) {
             google_daily_budget_current: currentDailyBudget,
             google_total_spent: totalSpent,
             google_last_five_days_spent: lastFiveDaysSpent,
+            // NOVOS CAMPOS: Gastos individuais
+            google_day_1_spent: googleDay1Spent,
+            google_day_2_spent: googleDay2Spent,
+            google_day_3_spent: googleDay3Spent,
+            google_day_4_spent: googleDay4Spent,
+            google_day_5_spent: googleDay5Spent,
             ...customBudgetInfo,
             updated_at: new Date().toISOString()
           })
@@ -605,6 +664,12 @@ async function processGoogleReview(req: Request) {
                 google_daily_budget_current: currentDailyBudget,
                 google_total_spent: totalSpent,
                 google_last_five_days_spent: lastFiveDaysSpent,
+                // NOVOS CAMPOS: Gastos individuais
+                google_day_1_spent: googleDay1Spent,
+                google_day_2_spent: googleDay2Spent,
+                google_day_3_spent: googleDay3Spent,
+                google_day_4_spent: googleDay4Spent,
+                google_day_5_spent: googleDay5Spent,
                 using_custom_budget: false,
                 custom_budget_id: null,
                 custom_budget_amount: null,
@@ -619,12 +684,12 @@ async function processGoogleReview(req: Request) {
               throw new Error(`Erro ao atualizar revisão (fallback): ${fallbackUpdateResponse.status} - ${fallbackErrorText}`);
             }
             
-            console.log(`✅ Revisão existente atualizada com dados reais (sem orçamento personalizado): ${reviewId}`);
+            console.log(`✅ Revisão existente atualizada com dados reais e gastos individuais (sem orçamento personalizado): ${reviewId}`);
           } else {
             throw new Error(`Erro ao atualizar revisão: ${updateResponse.status} - ${errorText}`);
           }
         } else {
-          console.log(`✅ Revisão existente atualizada com dados reais: ${reviewId}`);
+          console.log(`✅ Revisão existente atualizada com dados reais e gastos individuais: ${reviewId}`);
         }
       } else {
         // Criar nova revisão
@@ -677,7 +742,7 @@ async function processGoogleReview(req: Request) {
             const newReview = await fallbackInsertResponse.json();
             reviewId = newReview[0].id;
             
-            console.log(`✅ Nova revisão criada com dados reais (sem orçamento personalizado): ${reviewId}`);
+            console.log(`✅ Nova revisão criada com dados reais e gastos individuais (sem orçamento personalizado): ${reviewId}`);
           } else {
             throw new Error(`Erro ao criar revisão: ${insertResponse.status} - ${errorText}`);
           }
@@ -685,7 +750,7 @@ async function processGoogleReview(req: Request) {
           const newReview = await insertResponse.json();
           reviewId = newReview[0].id;
           
-          console.log(`✅ Nova revisão criada com dados reais: ${reviewId}`);
+          console.log(`✅ Nova revisão criada com dados reais e gastos individuais: ${reviewId}`);
         }
       }
     } catch (dbError: any) {
@@ -702,6 +767,14 @@ async function processGoogleReview(req: Request) {
       currentDailyBudget,
       totalSpent,
       lastFiveDaysSpent,
+      // NOVOS DADOS RETORNADOS: Gastos individuais
+      individualDaysSpent: {
+        day1: googleDay1Spent,
+        day2: googleDay2Spent,
+        day3: googleDay3Spent,
+        day4: googleDay4Spent,
+        day5: googleDay5Spent
+      },
       apiErrorDetails,
       ...customBudgetInfo
     };
