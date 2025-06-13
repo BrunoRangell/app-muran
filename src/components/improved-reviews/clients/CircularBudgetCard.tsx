@@ -32,7 +32,6 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
   const remainingDays = client.budgetCalculation?.remainingDays || 0;
   const idealDailyBudget = client.budgetCalculation?.idealDailyBudget || 0;
-  const currentDailyBudget = client.review?.[`${platform}_daily_budget_current`] || 0;
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   const customBudget = client.customBudget;
   
@@ -222,23 +221,6 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
               </p>
             </div>
             
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Diário atual</p>
-              <p className="text-sm font-semibold text-gray-700">
-                {formatCurrency(currentDailyBudget)}
-              </p>
-            </div>
-            
-            {/* Mostrar média para Google Ads sempre */}
-            {platform === "google" && (
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Média 5 dias</p>
-                <p className="text-sm font-semibold text-gray-700">
-                  {formatCurrency(client.lastFiveDaysAvg || 0)}
-                </p>
-              </div>
-            )}
-            
             {/* NOVA MÉTRICA: Mostrar Média Pond para Google Ads */}
             {platform === "google" && (
               <div>
@@ -249,8 +231,8 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
               </div>
             )}
             
-            {/* Mostrar diário ideal para Google Ads sempre que houver diferença do atual */}
-            {platform === "google" && idealDailyBudget !== currentDailyBudget ? (
+            {/* Mostrar diário ideal sempre que houver diferença da média ponderada (para Google) */}
+            {platform === "google" && idealDailyBudget !== weightedAverage ? (
               <div>
                 <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
                 <p className="text-sm font-semibold text-gray-700">
@@ -259,8 +241,17 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
               </div>
             ) : null}
             
-            {/* Para Meta Ads, mostrar diário ideal apenas se for diferente do atual */}
-            {platform === "meta" && idealDailyBudget !== currentDailyBudget ? (
+            {/* Para Meta Ads, manter a lógica atual */}
+            {platform === "meta" && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Diário atual</p>
+                <p className="text-sm font-semibold text-gray-700">
+                  {formatCurrency(client.review?.meta_daily_budget_current || 0)}
+                </p>
+              </div>
+            )}
+            
+            {platform === "meta" && idealDailyBudget !== (client.review?.meta_daily_budget_current || 0) ? (
               <div>
                 <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
                 <p className="text-sm font-semibold text-gray-700">
