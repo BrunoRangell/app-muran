@@ -21,31 +21,55 @@ export const calculateMonthlyMetrics = (
   clients: Client[], 
   currentDate: Date
 ): MonthlyMetrics => {
-  const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  try {
+    console.log(`Calculating metrics for ${format(currentDate, 'yyyy-MM-dd')}`);
+    
+    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
-  const activeClientsInMonth = clients.filter(client => 
-    isClientActiveInMonth(client, monthStart, monthEnd)
-  );
+    console.log(`Month range: ${format(monthStart, 'yyyy-MM-dd')} to ${format(monthEnd, 'yyyy-MM-dd')}`);
 
-  const newClients = clients.filter(client => 
-    isClientNewInMonth(client, monthStart, monthEnd)
-  ).length;
+    const activeClientsInMonth = clients.filter(client => 
+      isClientActiveInMonth(client, monthStart, monthEnd)
+    );
 
-  const churned = clients.filter(client => 
-    isClientChurnedInMonth(client, monthStart, monthEnd)
-  ).length;
+    const newClients = clients.filter(client => 
+      isClientNewInMonth(client, monthStart, monthEnd)
+    ).length;
 
-  const activeClientsAtStartOfMonth = getActiveClientsAtStartOfMonth(clients, monthStart);
+    const churned = clients.filter(client => 
+      isClientChurnedInMonth(client, monthStart, monthEnd)
+    ).length;
 
-  return {
-    month: format(currentDate, 'MMM/yy'),
-    mrr: activeClientsInMonth.reduce((sum, client) => sum + (client.contract_value || 0), 0),
-    clients: activeClientsInMonth.length,
-    churn: churned,
-    churnRate: activeClientsAtStartOfMonth > 0 
-      ? (churned / activeClientsAtStartOfMonth) * 100 
-      : 0,
-    newClients: newClients
-  };
+    const activeClientsAtStartOfMonth = getActiveClientsAtStartOfMonth(clients, monthStart);
+
+    const monthStr = format(currentDate, 'M/yy'); // Formato numérico para consistência
+
+    const result = {
+      month: monthStr,
+      mrr: activeClientsInMonth.reduce((sum, client) => sum + (client.contract_value || 0), 0),
+      clients: activeClientsInMonth.length,
+      churn: churned,
+      churnRate: activeClientsAtStartOfMonth > 0 
+        ? (churned / activeClientsAtStartOfMonth) * 100 
+        : 0,
+      newClients: newClients
+    };
+
+    console.log(`Results for ${monthStr}:`, result);
+    return result;
+  } catch (error) {
+    console.error("Error in calculateMonthlyMetrics:", error, currentDate);
+    
+    // Retornar dados padrão em caso de erro
+    const fallbackMonth = format(currentDate, 'M/yy');
+    return {
+      month: fallbackMonth,
+      mrr: 0,
+      clients: 0,
+      churn: 0,
+      churnRate: 0,
+      newClients: 0
+    };
+  }
 };
