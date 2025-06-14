@@ -30,7 +30,8 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     const campaignsData = await campaignsResponse.json();
     
     if (!campaignsData.data) {
-      throw new Error(`Erro ao buscar campanhas: ${campaignsData.error?.message || 'Resposta inválida'}`);
+      console.log(`Meta: Erro ao buscar campanhas para conta ${accountId}:`, campaignsData.error?.message || 'Resposta inválida');
+      return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
     
     // Filtrar apenas campanhas ativas
@@ -68,7 +69,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     };
     
   } catch (error) {
-    console.error('Erro ao buscar dados Meta:', error);
+    console.error(`Meta: Erro ao buscar dados para conta ${accountId}:`, error);
     return { cost: 0, impressions: 0, activeCampaigns: 0 };
   }
 }
@@ -78,9 +79,10 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string): Promise<{ c
   try {
     // Por enquanto retornamos dados mock - implementação real requer Google Ads API
     // TODO: Implementar chamada real à Google Ads API
+    console.log(`Google: Processando conta ${clientCustomerId} (mock data)`);
     return { cost: 0, impressions: 0, activeCampaigns: 0 };
   } catch (error) {
-    console.error('Erro ao buscar dados Google:', error);
+    console.error(`Google: Erro ao buscar dados para conta ${clientCustomerId}:`, error);
     return { cost: 0, impressions: 0, activeCampaigns: 0 };
   }
 }
@@ -109,10 +111,10 @@ Deno.serve(async (req) => {
       throw new Error('Token Meta Ads não configurado');
     }
 
-    // Buscar todos os clientes ativos
+    // Buscar todos os clientes ativos com seus account_ids diretamente da tabela clients
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
-      .select('id, company_name')
+      .select('id, company_name, meta_account_id, google_account_id')
       .eq('status', 'active')
       .order('company_name');
 
@@ -128,38 +130,23 @@ Deno.serve(async (req) => {
     for (const client of clients || []) {
       console.log(`📊 Processando cliente: ${client.company_name}`);
 
-      // Buscar contas Meta do cliente
-      const { data: metaAccounts } = await supabase
-        .from('client_meta_accounts')
-        .select('account_id, account_name')
-        .eq('client_id', client.id)
-        .eq('status', 'active');
-
-      // Buscar contas Google do cliente
-      const { data: googleAccounts } = await supabase
-        .from('client_google_accounts')
-        .select('account_id, account_name')
-        .eq('client_id', client.id)
-        .eq('status', 'active');
-
       // Processar Meta Ads
-      if (metaAccounts && metaAccounts.length > 0) {
-        for (const account of metaAccounts) {
-          const metaData = await fetchMetaActiveCampaigns(metaToken.value, account.account_id);
-          
-          healthData.push({
-            clientId: client.id,
-            clientName: client.company_name,
-            platform: 'meta',
-            hasAccount: true,
-            hasActiveCampaigns: metaData.activeCampaigns > 0,
-            costToday: metaData.cost,
-            impressionsToday: metaData.impressions,
-            activeCampaignsCount: metaData.activeCampaigns,
-            accountId: account.account_id,
-            accountName: account.account_name
-          });
-        }
+      if (client.meta_account_id && client.meta_account_id.trim() !== '') {
+        // Cliente tem conta Meta configurada
+        const metaData = await fetchMetaActiveCampaigns(metaToken.value, client.meta_account_id);
+        
+        healthData.push({
+          clientId: client.id,
+          clientName: client.company_name,
+          platform: 'meta',
+          hasAccount: true,
+          hasActiveCampaigns: metaData.activeCampaigns > 0,
+          costToday: metaData.cost,
+          impressionsToday: metaData.impressions,
+          activeCampaignsCount: metaData.activeCampaigns,
+          accountId: client.meta_account_id,
+          accountName: `Meta Ads - ${client.meta_account_id}`
+        });
       } else {
         // Cliente sem conta Meta configurada
         healthData.push({
@@ -175,23 +162,22 @@ Deno.serve(async (req) => {
       }
 
       // Processar Google Ads
-      if (googleAccounts && googleAccounts.length > 0) {
-        for (const account of googleAccounts) {
-          const googleData = await fetchGoogleActiveCampaigns(account.account_id);
-          
-          healthData.push({
-            clientId: client.id,
-            clientName: client.company_name,
-            platform: 'google',
-            hasAccount: true,
-            hasActiveCampaigns: googleData.activeCampaigns > 0,
-            costToday: googleData.cost,
-            impressionsToday: googleData.impressions,
-            activeCampaignsCount: googleData.activeCampaigns,
-            accountId: account.account_id,
-            accountName: account.account_name
-          });
-        }
+      if (client.google_account_id && client.google_account_id.trim() !== '') {
+        // Cliente tem conta Google configurada
+        const googleData = await fetchGoogleActiveCampaigns(client.google_account_id);
+        
+        healthData.push({
+          clientId: client.id,
+          clientName: client.company_name,
+          platform: 'google',
+          hasAccount: true,
+          hasActiveCampaigns: googleData.activeCampaigns > 0,
+          costToday: googleData.cost,
+          impressionsToday: googleData.impressions,
+          activeCampaignsCount: googleData.activeCampaigns,
+          accountId: client.google_account_id,
+          accountName: `Google Ads - ${client.google_account_id}`
+        });
       } else {
         // Cliente sem conta Google configurada
         healthData.push({
@@ -207,13 +193,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`📈 Dados processados: ${healthData.length} registros de saúde`);
+    console.log(`📈 Dados processados: ${healthData.length} registros de saúde (${clients?.length || 0} clientes × 2 plataformas)`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         data: healthData,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        totalClients: clients?.length || 0,
+        totalRecords: healthData.length
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
