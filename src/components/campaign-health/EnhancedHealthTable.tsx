@@ -1,0 +1,277 @@
+
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, ExternalLink, Settings, Zap, TrendingUp } from "lucide-react";
+import { EnhancedPlatformData } from "./types/enhanced-types";
+
+interface EnhancedClientData {
+  clientId: string;
+  clientName: string;
+  metaAds?: EnhancedPlatformData;
+  googleAds?: EnhancedPlatformData;
+  overallStatus: string;
+}
+
+interface EnhancedHealthTableProps {
+  data?: EnhancedClientData[];
+  isLoading: boolean;
+  error?: string | null;
+  handleAction: (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
+}
+
+function EnhancedPlatformCell({ 
+  platformData, 
+  platformName, 
+  platformKey, 
+  clientId, 
+  onAction 
+}: { 
+  platformData?: EnhancedPlatformData;
+  platformName: string;
+  platformKey: 'meta' | 'google';
+  clientId: string;
+  onAction: (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
+}) {
+  if (!platformData) {
+    return (
+      <TableCell className="py-4">
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Não configurado</span>
+            <Badge variant="outline" className="text-xs">Setup</Badge>
+          </div>
+          <p className="text-xs text-gray-400">Conectar conta para monitoramento</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onAction('configure', clientId, platformKey)}
+            className="w-full h-7 text-xs"
+          >
+            <Settings className="w-3 h-3 mr-1" />
+            Configurar
+          </Button>
+        </div>
+      </TableCell>
+    );
+  }
+
+  const getAlertColor = (alertLevel: string) => {
+    switch (alertLevel) {
+      case 'critical': return 'border-red-200 bg-red-50';
+      case 'high': return 'border-orange-200 bg-orange-50';
+      case 'medium': return 'border-yellow-200 bg-yellow-50';
+      case 'ok': return 'border-green-200 bg-green-50';
+      default: return 'border-gray-200 bg-gray-50';
+    }
+  };
+
+  const getStatusIcon = (alertLevel: string) => {
+    switch (alertLevel) {
+      case 'critical': return '🚨';
+      case 'high': return '⚠️';
+      case 'medium': return '⚡';
+      case 'ok': return '✅';
+      default: return '⚪';
+    }
+  };
+
+  const getPrimaryAction = () => {
+    if (platformData.problems.length > 0) {
+      const mainProblem = platformData.problems[0];
+      if (mainProblem.severity === 'critical') {
+        return { label: 'Resolver', icon: Zap, variant: 'destructive' as const };
+      } else if (mainProblem.severity === 'high') {
+        return { label: 'Investigar', icon: AlertCircle, variant: 'default' as const };
+      } else {
+        return { label: 'Revisar', icon: TrendingUp, variant: 'outline' as const };
+      }
+    }
+    return { label: 'Ver Detalhes', icon: ExternalLink, variant: 'outline' as const };
+  };
+
+  const primaryAction = getPrimaryAction();
+
+  return (
+    <TableCell className="py-4">
+      <div className={`rounded-lg p-3 space-y-3 border ${getAlertColor(platformData.alertLevel)}`}>
+        {/* Header com Status */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{getStatusIcon(platformData.alertLevel)}</span>
+            <span className="text-sm font-medium text-gray-900">
+              {platformData.activeCampaignsCount} campanhas
+            </span>
+          </div>
+          <Badge 
+            variant={platformData.alertLevel === 'ok' ? 'default' : 'destructive'} 
+            className="text-xs"
+          >
+            {platformData.alertLevel === 'critical' ? 'Crítico' :
+             platformData.alertLevel === 'high' ? 'Alto' :
+             platformData.alertLevel === 'medium' ? 'Médio' :
+             platformData.alertLevel === 'ok' ? 'OK' : 'Baixo'}
+          </Badge>
+        </div>
+
+        {/* Métricas */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-white rounded p-2">
+            <div className={`font-medium ${platformData.costToday > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+              R$ {platformData.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div className="text-gray-500">Gasto hoje</div>
+          </div>
+          <div className="bg-white rounded p-2">
+            <div className={`font-medium ${platformData.impressionsToday > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+              {platformData.impressionsToday.toLocaleString('pt-BR')}
+            </div>
+            <div className="text-gray-500">Impressões</div>
+          </div>
+        </div>
+
+        {/* Problemas e Ações */}
+        {platformData.problems.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs text-gray-600">
+              <strong>{platformData.problems[0].description}</strong>
+            </div>
+            <div className="text-xs text-gray-500">
+              💡 {platformData.problems[0].suggestedAction}
+            </div>
+            {platformData.problems[0].estimatedImpact && (
+              <div className="text-xs font-medium text-orange-600">
+                {platformData.problems[0].estimatedImpact}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Botões de Ação */}
+        <div className="flex gap-2">
+          <Button
+            variant={primaryAction.variant}
+            size="sm"
+            onClick={() => onAction(platformData.problems.length > 0 ? 'review' : 'details', clientId, platformKey)}
+            className="flex-1 h-7 text-xs"
+          >
+            <primaryAction.icon className="w-3 h-3 mr-1" />
+            {primaryAction.label}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onAction('details', clientId, platformKey)}
+            className="h-7 px-2"
+          >
+            <ExternalLink className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
+    </TableCell>
+  );
+}
+
+export function EnhancedHealthTable({
+  data,
+  isLoading,
+  error,
+  handleAction
+}: EnhancedHealthTableProps) {
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Erro ao carregar dados: {error}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-gray-500">Nenhum cliente encontrado com os filtros aplicados.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-gray-200">
+                <TableHead className="w-64 font-semibold text-gray-700">Cliente</TableHead>
+                <TableHead className="text-center font-semibold text-gray-700">Meta Ads</TableHead>
+                <TableHead className="text-center font-semibold text-gray-700">Google Ads</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((client) => (
+                <TableRow key={client.clientId} className="hover:bg-gray-50 transition-colors">
+                  {/* Cliente */}
+                  <TableCell className="py-4">
+                    <div>
+                      <p className="font-medium text-gray-900 mb-1">{client.clientName}</p>
+                      <div className="flex gap-1">
+                        {client.metaAds && (
+                          <Badge variant="outline" className="text-xs px-2 py-0">
+                            Meta: {client.metaAds.accountId}
+                          </Badge>
+                        )}
+                        {client.googleAds && (
+                          <Badge variant="outline" className="text-xs px-2 py-0">
+                            Google: {client.googleAds.accountId}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  
+                  {/* Meta Ads */}
+                  <EnhancedPlatformCell
+                    platformData={client.metaAds}
+                    platformName="Meta"
+                    platformKey="meta"
+                    clientId={client.clientId}
+                    onAction={handleAction}
+                  />
+                  
+                  {/* Google Ads */}
+                  <EnhancedPlatformCell
+                    platformData={client.googleAds}
+                    platformName="Google"
+                    platformKey="google"
+                    clientId={client.clientId}
+                    onAction={handleAction}
+                  />
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
