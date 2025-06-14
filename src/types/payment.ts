@@ -28,13 +28,3 @@ export interface PaymentFilters {
   endDate?: string;
   clientId?: string;
 }
-
-export interface AsaasPayment {
-  id: string;
-  customer: string;
-  value: number;
-  netValue: number;
-  status: string;
-  paymentDate: string;
-  customerName: string;
-}

@@ -6,30 +6,26 @@ import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
-import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/usePlatformBatchReviews";
+import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/useBatchOperations";
 
 export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage
   const getInitialTab = () => {
-    // Primeiro tenta obter da hash da URL
     const hashTab = window.location.hash.replace('#', '');
     if (hashTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(hashTab)) {
       return hashTab;
     }
     
-    // Se não encontrar na hash, tenta obter do localStorage
     const savedTab = localStorage.getItem("selected_tab");
     if (savedTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(savedTab)) {
       return savedTab;
     }
     
-    // Padrão é "meta-ads"
     return "meta-ads";
   };
   
   const [selectedTab, setSelectedTab] = useState<string>(getInitialTab());
 
-  // Usar o hook para obter dados de revisão em lote por plataforma
   const { 
     lastMetaReviewTime, 
     lastGoogleReviewTime,
@@ -45,15 +41,12 @@ export default function ImprovedDailyReviews() {
       }
     };
     
-    // Adiciona listener para mudanças na hash
     window.addEventListener('hashchange', handleHashChange);
     
-    // Inicializa a hash da URL se ela não existir
     if (!window.location.hash) {
       window.location.hash = selectedTab;
     }
     
-    // Cleanup listener quando o componente for desmontado
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
@@ -63,11 +56,7 @@ export default function ImprovedDailyReviews() {
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
     localStorage.setItem("selected_tab", value);
-    
-    // Atualiza a hash da URL sem recarregar a página
     window.location.hash = value;
-
-    // Atualizar dados quando mudar de aba
     refetchBoth();
   };
   

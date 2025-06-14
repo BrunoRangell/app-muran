@@ -2,7 +2,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
@@ -12,12 +12,23 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
+  onIndividualReviewComplete?: () => void; // NOVO: prop para callback
 }
 
-export function CircularBudgetCard({ client, platform = "meta" }: CircularBudgetCardProps) {
+export function CircularBudgetCard({ 
+  client, 
+  platform = "meta", 
+  onIndividualReviewComplete 
+}: CircularBudgetCardProps) {
   const { toast } = useToast();
   const { reviewClient, processingIds } = useBatchOperations({
-    platform: platform as "meta" | "google"
+    platform: platform as "meta" | "google",
+    onIndividualComplete: () => {
+      console.log(`🔄 Revisão individual ${platform} concluída - callback do card`);
+      if (onIndividualReviewComplete) {
+        onIndividualReviewComplete();
+      }
+    }
   });
   
   const isProcessing = processingIds.includes(client.id);
@@ -32,9 +43,11 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
   const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
   const remainingDays = client.budgetCalculation?.remainingDays || 0;
   const idealDailyBudget = client.budgetCalculation?.idealDailyBudget || 0;
-  const currentDailyBudget = client.review?.[`${platform}_daily_budget_current`] || 0;
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   const customBudget = client.customBudget;
+  
+  // NOVA MÉTRICA: Média Ponderada (só para Google Ads)
+  const weightedAverage = client.weightedAverage || 0;
   
   // Determinar cor e status baseado na porcentagem e necessidade de ajuste
   const getStatusInfo = () => {
@@ -88,13 +101,19 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
   };
   
   const handleReviewClick = async () => {
+    console.log(`🔍 Iniciando revisão individual para cliente ${client.company_name} (${platform})`);
+    
     try {
-      await reviewClient(client.id, client[`${platform}_account_id`]);
-      toast({
-        title: "Análise completa",
-        description: `O orçamento de ${client.company_name} foi analisado com sucesso.`
-      });
+      const accountId = platform === "meta" 
+        ? client.meta_account_id 
+        : client.google_account_id;
+        
+      await reviewClient(client.id, accountId);
+      
+      console.log(`✅ Revisão do cliente ${client.company_name} concluída com sucesso`);
+      
     } catch (error: any) {
+      console.error(`❌ Erro na revisão do cliente ${client.company_name}:`, error);
       toast({
         title: "Erro na análise",
         description: error.message || "Ocorreu um erro ao analisar o cliente",
@@ -219,25 +238,18 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
               </p>
             </div>
             
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Diário atual</p>
-              <p className="text-sm font-semibold text-gray-700">
-                {formatCurrency(currentDailyBudget)}
-              </p>
-            </div>
-            
-            {/* Mostrar média para Google Ads sempre */}
+            {/* NOVA MÉTRICA: Mostrar Média Pond para Google Ads */}
             {platform === "google" && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Média 5 dias</p>
+                <p className="text-xs text-gray-500 mb-1">Média Pond</p>
                 <p className="text-sm font-semibold text-gray-700">
-                  {formatCurrency(client.lastFiveDaysAvg || 0)}
+                  {formatCurrency(weightedAverage)}
                 </p>
               </div>
             )}
             
-            {/* Mostrar diário ideal para Google Ads sempre que houver diferença do atual */}
-            {platform === "google" && idealDailyBudget !== currentDailyBudget ? (
+            {/* Mostrar diário ideal sempre que houver diferença da média ponderada (para Google) */}
+            {platform === "google" && idealDailyBudget !== weightedAverage ? (
               <div>
                 <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
                 <p className="text-sm font-semibold text-gray-700">
@@ -246,8 +258,17 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
               </div>
             ) : null}
             
-            {/* Para Meta Ads, mostrar diário ideal apenas se for diferente do atual */}
-            {platform === "meta" && idealDailyBudget !== currentDailyBudget ? (
+            {/* Para Meta Ads, manter a lógica atual */}
+            {platform === "meta" && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Diário atual</p>
+                <p className="text-sm font-semibold text-gray-700">
+                  {formatCurrency(client.review?.meta_daily_budget_current || 0)}
+                </p>
+              </div>
+            )}
+            
+            {platform === "meta" && idealDailyBudget !== (client.review?.meta_daily_budget_current || 0) ? (
               <div>
                 <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
                 <p className="text-sm font-semibold text-gray-700">
@@ -286,8 +307,17 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
             onClick={handleReviewClick}
             disabled={isProcessing}
           >
-            {isProcessing ? "Processando..." : "Analisar"}
-            {!isProcessing && <ChevronRight className="ml-2 h-4 w-4" />}
+            {isProcessing ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              <>
+                Analisar
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </>
+            )}
           </Button>
         </div>
       </CardContent>

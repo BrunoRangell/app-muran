@@ -4,7 +4,7 @@ import { Loader } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
-import { formatDateInBrasiliaTz } from "../summary/utils";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -26,6 +26,7 @@ export const GoogleAdsClientReviewCardCompact = ({
     monthlyBudget,
     totalSpent,
     lastFiveDaysSpent,
+    weightedAverage,
     currentDailyBudget,
     idealDailyBudget,
     budgetDifference,
@@ -48,6 +49,7 @@ export const GoogleAdsClientReviewCardCompact = ({
   const formattedMonthlyBudget = formatCurrency(monthlyBudget || 0);
   const formattedTotalSpent = formatCurrency(totalSpent || 0);
   const formattedLastFiveDaysSpent = formatCurrency(lastFiveDaysSpent || 0);
+  const formattedWeightedAverage = formatCurrency(weightedAverage || 0);
   const formattedCurrentDaily = formatCurrency(currentDailyBudget || 0);
   const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
 
@@ -58,7 +60,7 @@ export const GoogleAdsClientReviewCardCompact = ({
 
   // Determinar se o card deve ter destaque
   const cardBorderClass = needsBudgetAdjustment
-    ? 'border-l-4 border-l-muran-primary'
+    ? 'border-l-4 border-l-[#ff6e00]'
     : '';
 
   // Verificar se o cliente tem contas Google configuradas
@@ -92,7 +94,7 @@ export const GoogleAdsClientReviewCardCompact = ({
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
           <div>
-            <h3 className="font-semibold text-gray-800 text-sm line-clamp-1 mb-1">
+            <h3 className="font-semibold text-[#321e32] text-sm line-clamp-1 mb-1">
               {client.company_name}
             </h3>
             <div className="flex items-center">
@@ -123,7 +125,7 @@ export const GoogleAdsClientReviewCardCompact = ({
                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 : isProcessing
                 ? 'bg-blue-100 text-blue-700 cursor-wait'
-                : 'bg-muran-primary text-white hover:bg-muran-primary/90'
+                : 'bg-[#ff6e00] text-white hover:bg-[#e66300]'
             }`}
           >
             {isProcessing ? (
@@ -170,6 +172,10 @@ export const GoogleAdsClientReviewCardCompact = ({
               <div className="font-semibold">{formattedLastFiveDaysSpent}</div>
             </div>
             <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Média Pond</div>
+              <div className="font-semibold">{formattedWeightedAverage}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
               <div className="text-gray-500">Orç. Diário Atual</div>
               <div className="font-semibold">{formattedCurrentDaily}</div>
             </div>
@@ -191,6 +197,10 @@ export const GoogleAdsClientReviewCardCompact = ({
               <span className="font-semibold">{formattedTotalSpent}</span>
             </div>
             <div>
+              <span className="text-gray-500 mr-1">Média Pond:</span>
+              <span className="font-semibold">{formattedWeightedAverage}</span>
+            </div>
+            <div>
               <span className="text-gray-500 mr-1">Atual:</span>
               <span className="font-semibold">{formattedCurrentDaily}</span>
             </div>
@@ -203,7 +213,7 @@ export const GoogleAdsClientReviewCardCompact = ({
 
         {needsBudgetAdjustment && budgetDifference && (
           <div className="mt-2 text-xs p-2 rounded flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-muran-primary"></div>
+            <div className="w-2 h-2 rounded-full bg-[#ff6e00]"></div>
             <span className="font-medium">
               {budgetDifference > 0 ? 
                 `Reduzir orçamento diário em -${formatCurrency(Math.abs(budgetDifference))}` : 

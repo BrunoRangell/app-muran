@@ -74,6 +74,74 @@ export type Database = {
           },
         ]
       }
+      campaign_health_snapshots: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          google_account_id: string | null
+          google_account_name: string | null
+          google_active_campaigns_count: number | null
+          google_cost_today: number | null
+          google_has_account: boolean | null
+          google_impressions_today: number | null
+          id: string
+          meta_account_id: string | null
+          meta_account_name: string | null
+          meta_active_campaigns_count: number | null
+          meta_cost_today: number | null
+          meta_has_account: boolean | null
+          meta_impressions_today: number | null
+          snapshot_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_active_campaigns_count?: number | null
+          google_cost_today?: number | null
+          google_has_account?: boolean | null
+          google_impressions_today?: number | null
+          id?: string
+          meta_account_id?: string | null
+          meta_account_name?: string | null
+          meta_active_campaigns_count?: number | null
+          meta_cost_today?: number | null
+          meta_has_account?: boolean | null
+          meta_impressions_today?: number | null
+          snapshot_date?: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          google_account_id?: string | null
+          google_account_name?: string | null
+          google_active_campaigns_count?: number | null
+          google_cost_today?: number | null
+          google_has_account?: boolean | null
+          google_impressions_today?: number | null
+          id?: string
+          meta_account_id?: string | null
+          meta_account_name?: string | null
+          meta_active_campaigns_count?: number | null
+          meta_cost_today?: number | null
+          meta_has_account?: boolean | null
+          meta_impressions_today?: number | null
+          snapshot_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_campaign_health_snapshots_client_id"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_current_reviews: {
         Row: {
           client_id: string
@@ -543,6 +611,11 @@ export type Database = {
           google_account_id: string | null
           google_account_name: string | null
           google_daily_budget_current: number | null
+          google_day_1_spent: number | null
+          google_day_2_spent: number | null
+          google_day_3_spent: number | null
+          google_day_4_spent: number | null
+          google_day_5_spent: number | null
           google_last_five_days_spent: number | null
           google_total_spent: number | null
           id: string
@@ -562,6 +635,11 @@ export type Database = {
           google_account_id?: string | null
           google_account_name?: string | null
           google_daily_budget_current?: number | null
+          google_day_1_spent?: number | null
+          google_day_2_spent?: number | null
+          google_day_3_spent?: number | null
+          google_day_4_spent?: number | null
+          google_day_5_spent?: number | null
           google_last_five_days_spent?: number | null
           google_total_spent?: number | null
           id?: string
@@ -581,6 +659,11 @@ export type Database = {
           google_account_id?: string | null
           google_account_name?: string | null
           google_daily_budget_current?: number | null
+          google_day_1_spent?: number | null
+          google_day_2_spent?: number | null
+          google_day_3_spent?: number | null
+          google_day_4_spent?: number | null
+          google_day_5_spent?: number | null
           google_last_five_days_spent?: number | null
           google_total_spent?: number | null
           id?: string

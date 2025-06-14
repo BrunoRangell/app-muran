@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -26,6 +25,7 @@ export const useFinancialMetrics = () => {
   });
 
   const handlePeriodChange = (value: PeriodFilter) => {
+    console.log('Changing period to:', value);
     setPeriodFilter(value);
     const now = new Date();
     
@@ -34,44 +34,55 @@ export const useFinancialMetrics = () => {
       return;
     }
     
+    let newDateRange: DateRangeFilter;
+    
     switch (value) {
       case 'last-3-months':
-        setDateRange({
-          start: startOfMonth(addMonths(now, -2)),
+        newDateRange = {
+          start: startOfMonth(addMonths(now, -2)), // -2 para incluir 3 meses (atual + 2 anteriores)
           end: endOfMonth(now)
-        });
+        };
         break;
       case 'last-6-months':
-        setDateRange({
-          start: startOfMonth(addMonths(now, -5)),
+        newDateRange = {
+          start: startOfMonth(addMonths(now, -5)), // -5 para incluir 6 meses
           end: endOfMonth(now)
-        });
+        };
         break;
       case 'last-12-months':
-        setDateRange({
-          start: startOfMonth(addMonths(now, -11)),
+        newDateRange = {
+          start: startOfMonth(addMonths(now, -11)), // -11 para incluir 12 meses
           end: endOfMonth(now)
-        });
+        };
         break;
       case 'last-24-months':
-        setDateRange({
-          start: startOfMonth(addMonths(now, -23)),
+        newDateRange = {
+          start: startOfMonth(addMonths(now, -23)), // -23 para incluir 24 meses
           end: endOfMonth(now)
-        });
+        };
         break;
       case 'this-year':
-        setDateRange({
+        newDateRange = {
           start: startOfYear(now),
           end: endOfYear(now)
-        });
+        };
         break;
       case 'last-year':
-        setDateRange({
-          start: startOfYear(subYears(now, 1)),
-          end: endOfYear(subYears(now, 1))
-        });
+        const lastYear = subYears(now, 1);
+        newDateRange = {
+          start: startOfYear(lastYear),
+          end: endOfYear(lastYear)
+        };
         break;
+      default:
+        newDateRange = {
+          start: startOfMonth(addMonths(now, -11)),
+          end: endOfMonth(now)
+        };
     }
+    
+    console.log('New date range:', newDateRange);
+    setDateRange(newDateRange);
   };
 
   const { data: allClientsMetrics, isLoading: isLoadingAllClients } = useQuery({

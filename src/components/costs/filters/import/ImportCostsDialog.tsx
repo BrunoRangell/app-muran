@@ -18,7 +18,6 @@ import { useImportService } from "./useImportService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQueryClient } from "@tanstack/react-query";
 import { FileUploadForm } from "./components/FileUploadForm";
-import { ImportActions } from "./components/ImportActions";
 import { useTransactionValidation } from "./hooks/useTransactionValidation";
 
 export function ImportCostsDialog() {
@@ -137,12 +136,22 @@ export function ImportCostsDialog() {
                 />
               </ScrollArea>
 
-              <ImportActions
-                isLoading={isLoading}
-                hasSelectedTransactions={transactions.some(t => t.selected)}
-                onCancel={handleCancel}
-                onImport={handleImport}
-              />
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancel}
+                  disabled={isLoading}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleImport}
+                  disabled={isLoading || !transactions.some(t => t.selected)}
+                  className="bg-muran-primary hover:bg-muran-primary/90"
+                >
+                  {isLoading ? "Importando..." : "Importar Selecionados"}
+                </Button>
+              </div>
             </div>
           )}
         </div>

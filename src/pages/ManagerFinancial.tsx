@@ -1,15 +1,15 @@
+
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { SalaryChart } from "@/components/managers/SalaryChart";
 import { Button } from "@/components/ui/button";
-import { History, TrendingUp, Sparkles } from "lucide-react";
+import { History, TrendingUp, Sparkles, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,6 +31,7 @@ const ManagerFinancial = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,7 +55,6 @@ const ManagerFinancial = () => {
         .order("month", { ascending: false });
 
       if (error) throw error;
-
       setSalaries(salariesData || []);
     } catch (error) {
       console.error("Error fetching salaries:", error);
@@ -103,8 +103,6 @@ const ManagerFinancial = () => {
       toast({ title: "Salário adicionado com sucesso!" });
       form.reset();
       setIsDialogOpen(false);
-
-      // Atualiza o estado local imediatamente para refletir no gráfico
       setSalaries((prev) => [{ month: formattedDate, amount }, ...prev]);
     } catch (error) {
       console.error("Erro ao adicionar salário:", error);

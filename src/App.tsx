@@ -1,4 +1,3 @@
-
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
@@ -53,6 +52,7 @@ const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
+const CampaignHealth = lazy(() => import("@/pages/CampaignHealth"));
 
 function App() {
   return (
@@ -110,6 +110,7 @@ function App() {
         {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
         <Route path="/financeiro" element={<Navigate to="/" replace />} />
         <Route path="/tarefas" element={<Tasks />} />
+        <Route path="/saude-campanhas" element={<CampaignHealth />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

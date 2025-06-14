@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
 import { MetricsPanel } from "../dashboard/MetricsPanel";
@@ -7,6 +6,7 @@ import { useGoogleAdsData } from "../hooks/useGoogleAdsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
+import { useRealTimeDataService } from "../services/realTimeDataService";
 import { AlertTriangle } from "lucide-react";
 
 interface GoogleAdsTabProps {
@@ -18,7 +18,11 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
+  
   const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
+  const { forceDataRefresh, startPolling } = useRealTimeDataService();
+  
+  // CORREÇÃO: Adicionar callback para revisões individuais
   const { 
     reviewAllClients, 
     cancelBatchProcessing,
@@ -28,43 +32,45 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     currentClientName 
   } = useBatchOperations({
     platform: "google",
-    onComplete: () => {
-      console.log("Revisão em lote do Google Ads concluída. Atualizando dados...");
-      refreshData();
+    onComplete: async () => {
+      console.log("✅ Revisão em lote do Google Ads concluída. Atualizando dados...");
+      await forceDataRefresh();
+      await refreshData();
+      if (onRefreshCompleted) onRefreshCompleted();
+    },
+    onIndividualComplete: async () => {
+      console.log("✅ Revisão individual do Google Ads concluída. Atualizando dados...");
+      await forceDataRefresh();
+      await refreshData();
       if (onRefreshCompleted) onRefreshCompleted();
     }
   });
 
-  // Handle search query changes
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-  };
+  // Iniciar polling para atualizações automáticas
+  useEffect(() => {
+    const pollingInterval = startPolling(30000);
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [startPolling]);
 
-  // Handle view mode changes
-  const handleViewModeChange = (mode: "cards" | "table" | "list") => {
-    setViewMode(mode);
-  };
+  // Handlers unificados para reduzir duplicação
+  const handleSearchChange = (query: string) => setSearchQuery(query);
+  const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
+  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
+  const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
 
-  // Handle adjustment filter changes
-  const handleAdjustmentFilterChange = (showAdjustments: boolean) => {
-    setShowOnlyAdjustments(showAdjustments);
-  };
-
-  // Handle account filter changes
-  const handleAccountFilterChange = (showWithoutAccount: boolean) => {
-    setShowWithoutAccount(showWithoutAccount);
-  };
-
-  // Handle refresh
   const handleRefresh = async () => {
-    console.log("Atualizando dados do Google Ads...");
+    console.log("🔄 Atualizando dados do Google Ads...");
+    await forceDataRefresh();
     await refreshData();
     if (onRefreshCompleted) onRefreshCompleted();
   };
 
-  // Handle batch review
   const handleBatchReview = () => {
-    console.log("Iniciando revisão em lote do Google Ads...");
+    console.log("🚀 Iniciando revisão em lote do Google Ads...");
     if (data && data.length > 0) {
       reviewAllClients(data);
     }

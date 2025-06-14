@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { useState, Suspense } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { LoadingState } from "@/components/ui/loading-state";
+import { useSidebarCollapse } from "@/hooks/useSidebarCollapse";
+import { cn } from "@/lib/utils";
 
 export const Layout = () => {
   const location = useLocation();
   const isTasksPage = location.pathname === "/tarefas";
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isCollapsed } = useSidebarCollapse();
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-muran-secondary">
@@ -37,14 +40,15 @@ export const Layout = () => {
       )}
       
       <main 
-        className={`
-          flex-1 
-          ${isTasksPage ? "p-0" : "p-4 md:p-8"} 
-          ${isMobile ? "mt-16" : "md:ml-64"}
-          transition-all 
-          duration-300 
-          ease-in-out
-        `}
+        className={cn(
+          "flex-1 transition-all duration-300 ease-in-out",
+          isTasksPage ? "p-0" : "p-4 md:p-8",
+          isMobile 
+            ? "mt-16" 
+            : isCollapsed 
+              ? "md:ml-16" 
+              : "md:ml-64"
+        )}
       >
         <Suspense 
           fallback={<LoadingState />}

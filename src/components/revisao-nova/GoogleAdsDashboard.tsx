@@ -3,32 +3,40 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { supabase } from "@/lib/supabase";
-import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
-import { GoogleAdsDashboardHeader } from "@/components/daily-reviews/dashboard/components/GoogleAdsDashboardHeader";
-import { useGoogleAdsBatchReview } from "@/components/daily-reviews/hooks/useGoogleAdsBatchReview";
+import { useBatchOperations } from "@/components/improved-reviews/hooks/useBatchOperations";
 import { AnalysisProgress } from "@/components/daily-reviews/dashboard/components/AnalysisProgress";
+import { useGoogleAdsData } from "@/components/improved-reviews/hooks/useGoogleAdsData";
+import { ClientsList } from "@/components/improved-reviews/clients/ClientsList";
+import { FilterBar } from "@/components/improved-reviews/filters/FilterBar";
+import { MetricsPanel } from "@/components/improved-reviews/dashboard/MetricsPanel";
 
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
+  
+  // Usar dados unificados do Google Ads
+  const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
+  
+  // Usar o hook unificado de batch operations
   const { 
-    reviewAllClients, 
-    isReviewingBatch, 
-    processingClients, 
-    lastBatchReviewDate,
-    clientsWithGoogleAdsId
-  } = useGoogleAdsBatchReview();
-
-  // Usar a data de revisão em lote do hook
-  useEffect(() => {
-    if (lastBatchReviewDate) {
-      setLastBatchReviewTime(new Date(lastBatchReviewDate));
+    reviewAllClients,
+    isProcessing: isReviewingBatch,
+    progress,
+    total,
+    currentClientName
+  } = useBatchOperations({
+    platform: "google",
+    onComplete: async () => {
+      console.log("✅ Revisão em lote do Google Ads concluída");
+      setLastBatchReviewTime(new Date());
+      await refreshData();
     }
-  }, [lastBatchReviewDate]);
+  });
 
   // Buscar a hora da última revisão em lote ao iniciar
   useEffect(() => {
@@ -53,24 +61,17 @@ export const GoogleAdsDashboard = () => {
     fetchLastBatchReview();
   }, []);
 
-  // Calcular variáveis de progresso com base nas informações disponíveis
-  const batchProgress = isReviewingBatch ? clientsWithGoogleAdsId.length - processingClients.length : 0;
-  const totalClientsToAnalyze = clientsWithGoogleAdsId.length;
-  const progressPercentage = totalClientsToAnalyze > 0 && isReviewingBatch
-    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
-    : 0;
-
-  const handleAnalyzeAll = async () => {
+  const handleAnalyzeAllAction = async () => {
     try {
-      // Usar o método do hook para analisar todos os clientes
-      await reviewAllClients();
+      if (data && data.length > 0) {
+        await reviewAllClients(data);
+      }
       
       toast({
         title: "Análise em lote iniciada",
         description: "A análise de todos os clientes foi iniciada com sucesso.",
       });
       
-      // Atualizar a hora da última revisão
       setLastBatchReviewTime(new Date());
     } catch (err: any) {
       toast({
@@ -81,46 +82,53 @@ export const GoogleAdsDashboard = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    console.log("🔄 Atualizando dados do Google Ads...");
+    await refreshData();
+  };
+
+  // Handlers para filtros
+  const handleSearchChange = (query: string) => setSearchQuery(query);
+  const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
+  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
+  const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
+
   return (
     <div className="space-y-6">
-      {/* Card de cabeçalho do dashboard com todos os controles */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <GoogleAdsDashboardHeader 
-          lastBatchReviewTime={lastBatchReviewTime}
-          isBatchAnalyzing={isReviewingBatch}
-          isLoading={isApiLoading}
-          onAnalyzeAll={handleAnalyzeAll}
-          searchQuery={searchQuery}
-          onSearchChange={(e) => setSearchQuery(e.target.value)}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          showOnlyAdjustments={showOnlyAdjustments}
-          onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
-        />
-
-        {/* Adicionar barra de progresso quando estiver analisando */}
-        {isReviewingBatch && (
-          <div className="mt-4">
-            <AnalysisProgress 
-              isBatchAnalyzing={isReviewingBatch}
-              batchProgress={clientsWithGoogleAdsId.length - processingClients.length}
-              totalClientsToAnalyze={clientsWithGoogleAdsId.length}
-              progressPercentage={
-                clientsWithGoogleAdsId.length > 0 && isReviewingBatch
-                  ? Math.round(((clientsWithGoogleAdsId.length - processingClients.length) / clientsWithGoogleAdsId.length) * 100)
-                  : 0
-              }
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Cards de clientes */}
-      <GoogleAdsDashboardCard 
-        onViewClientDetails={() => {}}
+      {/* Painel de métricas unificado */}
+      <MetricsPanel 
+        metrics={metrics} 
+        onBatchReview={handleAnalyzeAllAction}
+        isProcessing={isReviewingBatch}
+        progress={progress}
+        total={total}
+        currentClientName={currentClientName}
+        platform="google"
+      />
+      
+      {/* Barra de filtros unificada */}
+      <FilterBar 
         searchQuery={searchQuery}
         viewMode={viewMode}
         showOnlyAdjustments={showOnlyAdjustments}
+        showWithoutAccount={showWithoutAccount}
+        onSearchChange={handleSearchChange}
+        onViewModeChange={handleViewModeChange}
+        onAdjustmentFilterChange={handleAdjustmentFilterChange}
+        onAccountFilterChange={handleAccountFilterChange}
+        onRefresh={handleRefresh}
+        isRefreshing={isLoading}
+        platform="google"
+      />
+      
+      {/* Lista de clientes unificada */}
+      <ClientsList 
+        data={data}
+        viewMode={viewMode}
+        searchQuery={searchQuery}
+        showOnlyAdjustments={showOnlyAdjustments}
+        showWithoutAccount={showWithoutAccount}
+        platform="google"
       />
     </div>
   );

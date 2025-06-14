@@ -7,7 +7,10 @@ import {
   ListTodo,
   Receipt,
   CreditCard,
-  BarChart3
+  BarChart3,
+  Menu,
+  ChevronLeft,
+  Activity
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -15,6 +18,9 @@ import { SidebarLogo } from "./SidebarLogo";
 import { SidebarMenuItem } from "./SidebarMenuItem";
 import { UserProfileMenu } from "./UserProfileMenu";
 import { MenuItem } from "@/types/sidebar";
+import { useSidebarCollapse } from "@/hooks/useSidebarCollapse";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   onMobileItemClick?: () => void;
@@ -38,6 +44,7 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
+  { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
 ];
 
 const regularMenuItems: MenuItem[] = [
@@ -45,11 +52,13 @@ const regularMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
+  { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
 ];
 
 export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const { isCollapsed, toggleCollapse } = useSidebarCollapse();
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -74,6 +83,7 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
     checkAdminStatus();
   }, []);
 
+  // Selecionar menu baseado na permissão do usuário
   const menuItems = isAdmin ? adminMenuItems : regularMenuItems;
 
   const isPathActive = (path: string, submenu?: MenuItem[]) => {
@@ -84,18 +94,41 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
   };
 
   return (
-    <div className="h-screen w-64 bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col">
-      <SidebarLogo />
-      <div>
-        <UserProfileMenu />
+    <div 
+      className={cn(
+        "h-screen bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col transition-all duration-300 ease-in-out",
+        isCollapsed ? "w-16" : "w-64"
+      )}
+    >
+      {/* Header com botão de toggle */}
+      <div className="flex items-center justify-between mb-4">
+        {!isCollapsed && <SidebarLogo />}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleCollapse}
+          className="text-white hover:bg-muran-complementary/80 p-2 h-8 w-8"
+        >
+          {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
+        </Button>
       </div>
-      <nav className="flex-1 space-y-2 mt-4">
+
+      {/* Profile menu - apenas quando expandido */}
+      {!isCollapsed && (
+        <div className="mb-4">
+          <UserProfileMenu />
+        </div>
+      )}
+
+      {/* Navigation menu */}
+      <nav className="flex-1 space-y-2">
         {menuItems.map((item) => (
           <SidebarMenuItem
             key={item.path}
             {...item}
             isActive={isPathActive(item.path, item.submenu)}
             onClick={onMobileItemClick}
+            isCollapsed={isCollapsed}
           />
         ))}
       </nav>

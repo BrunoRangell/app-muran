@@ -41,6 +41,13 @@ export interface GoogleReview {
   custom_budget_id?: string;
   custom_budget_end_date?: string;
   
+  // Novos campos para gastos individuais dos últimos 5 dias
+  google_day_1_spent?: number;
+  google_day_2_spent?: number;
+  google_day_3_spent?: number;
+  google_day_4_spent?: number;
+  google_day_5_spent?: number;
+  
   // Adicionando campos compatíveis para evitar erros no código existente
   meta_account_id?: string;
   meta_daily_budget_current?: number;

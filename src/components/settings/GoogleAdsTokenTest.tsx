@@ -22,6 +22,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface Token {
   name: string;
@@ -62,7 +63,6 @@ export const GoogleAdsTokenTest = () => {
     setIsLoading(true);
     
     try {
-      // Buscar tokens do Google Ads
       const { data, error } = await supabase
         .from('api_tokens')
         .select('name, value')
@@ -72,7 +72,6 @@ export const GoogleAdsTokenTest = () => {
         throw error;
       }
 
-      // Mapear para o formato de tokens
       const formattedTokens: Token[] = [
         {
           name: 'google_ads_access_token',
@@ -106,7 +105,6 @@ export const GoogleAdsTokenTest = () => {
         }
       ];
 
-      // Preencher com os valores do banco de dados
       data?.forEach(token => {
         const tokenIndex = formattedTokens.findIndex(t => t.name === token.name);
         if (tokenIndex !== -1) {
@@ -164,7 +162,6 @@ export const GoogleAdsTokenTest = () => {
       } else {
         console.log('Resposta da função:', data);
         
-        // Re-buscar os tokens para atualizar a lista
         await fetchTokens();
         
         setTestResult({
@@ -176,7 +173,6 @@ export const GoogleAdsTokenTest = () => {
           },
         });
         
-        // Se houver clientes na resposta, armazenar para exibição
         if (data.clients && Array.isArray(data.clients)) {
           setClients(data.clients);
         }
@@ -232,7 +228,13 @@ export const GoogleAdsTokenTest = () => {
   return (
     <Card className="space-y-4 p-4 md:p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Tokens do Google Ads</h3>
+        <div>
+          <h3 className="text-lg font-semibold">Tokens do Google Ads</h3>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-xs text-gray-600">Sistema automatizado ativo</span>
+          </div>
+        </div>
         <div className="flex space-x-2">
           <Button
             variant="outline"
@@ -289,7 +291,7 @@ export const GoogleAdsTokenTest = () => {
         </Alert>
       )}
 
-      {/* Exibir clientes retornados da API */}
+      {/* Exibir contas encontradas */}
       {clients.length > 0 && (
         <Accordion type="single" collapsible className="w-full bg-white border rounded-md">
           <AccordionItem value="clients">
@@ -329,18 +331,13 @@ export const GoogleAdsTokenTest = () => {
                       ) : (
                         <TableRow>
                           <TableCell colSpan={2} className="text-center py-4 text-gray-500">
-                            Nenhuma conta encontrada com esse termo de pesquisa
+                            Nenhuma conta encontrada
                           </TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </div>
-                {clients.length > 10 && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    {filteredClients.length} de {clients.length} contas exibidas
-                  </p>
-                )}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -358,7 +355,6 @@ export const GoogleAdsTokenTest = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Estado de carregamento
               Array(6).fill(0).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell>
@@ -373,7 +369,6 @@ export const GoogleAdsTokenTest = () => {
                 </TableRow>
               ))
             ) : (
-              // Dados dos tokens
               tokens.map((token) => (
                 <TableRow key={token.name}>
                   <TableCell className="font-medium">
@@ -405,8 +400,7 @@ export const GoogleAdsTokenTest = () => {
 
       <div className="text-sm text-gray-500 mt-2">
         <p>
-          Clique em "Testar tokens" para verificar a conectividade com a API do Google Ads
-          e renovar automaticamente o token de acesso.
+          Sistema com renovação automática ativa. Use "Testar tokens" para verificar manualmente a conectividade.
         </p>
       </div>
     </Card>
