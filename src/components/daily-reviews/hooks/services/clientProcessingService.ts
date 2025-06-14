@@ -91,10 +91,11 @@ export const processClientsWithReviews = async () => {
           // Garantir que a revisão tenha as propriedades obrigatórias
           const accountLastReview = accountReviewsData?.[0] ? {
             ...accountReviewsData[0],
-            google_daily_budget_current: accountReviewsData[0].google_daily_budget_current || 0,
-            google_total_spent: accountReviewsData[0].google_total_spent || 0,
+            google_daily_budget_current: accountReviewsData[0].meta_daily_budget_current || 0,
+            google_total_spent: accountReviewsData[0].meta_total_spent || 0,
             meta_daily_budget_current: accountReviewsData[0].meta_daily_budget_current,
-            meta_total_spent: accountReviewsData[0].meta_total_spent
+            meta_total_spent: accountReviewsData[0].meta_total_spent,
+            id: String(accountReviewsData[0].id)
           } : null;
           
           // Log para diagnóstico
@@ -134,10 +135,11 @@ export const processClientsWithReviews = async () => {
         const reviewsData = await fetchClientReviews(client.id);
         const lastReview = reviewsData?.[0] ? {
           ...reviewsData[0],
-          google_daily_budget_current: reviewsData[0].google_daily_budget_current || 0,
-          google_total_spent: reviewsData[0].google_total_spent || 0,
+          google_daily_budget_current: reviewsData[0].meta_daily_budget_current || 0,
+          google_total_spent: reviewsData[0].meta_total_spent || 0,
           meta_daily_budget_current: reviewsData[0].meta_daily_budget_current,
-          meta_total_spent: reviewsData[0].meta_total_spent
+          meta_total_spent: reviewsData[0].meta_total_spent,
+          id: String(reviewsData[0].id)
         } : null;
         
         processedClients.push({

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/lib/supabase";
 import { ClientWithReview } from "../types/reviewTypes";
 import { logger } from "@/utils/logger";
@@ -235,4 +234,46 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
     metaTotalSpent,
     customBudgetInfo
   };
+};
+
+export const fetchLastReview = async (clientId: string, accountId?: string) => {
+  logger.info('CLIENT_REVIEW', `Buscando última revisão para cliente ${clientId}`, { accountId });
+  
+  try {
+    let query = supabase
+      .from('daily_budget_reviews')
+      .select('*')
+      .eq('client_id', clientId);
+    
+    if (accountId) {
+      query = query.eq('meta_account_id', accountId);
+    }
+    
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      logger.error('CLIENT_REVIEW', 'Erro ao buscar última revisão', error);
+      throw error;
+    }
+    
+    logger.info('CLIENT_REVIEW', 'Última revisão encontrada', { data });
+    
+    // Garantir que o objeto retornado tenha todas as propriedades necessárias
+    if (data) {
+      return {
+        ...data,
+        google_daily_budget_current: data.meta_daily_budget_current || 0,
+        google_total_spent: data.meta_total_spent || 0,
+        id: String(data.id)
+      };
+    }
+    
+    return data;
+  } catch (error) {
+    logger.error('CLIENT_REVIEW', 'Erro ao buscar última revisão', error);
+    throw error;
+  }
 };

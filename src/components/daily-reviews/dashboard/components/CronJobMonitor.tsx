@@ -582,6 +582,47 @@ export const CronJobMonitor = () => {
     ));
   };
 
+  // Função para atualizar o status de um job
+  const updateJobStatus = async (jobName: string, newStatus: boolean) => {
+    try {
+      setIsUpdating(true);
+      
+      const { error } = await supabase.functions.invoke('daily-meta-review', {
+        body: {
+          action: 'update_job_status',
+          jobName,
+          status: newStatus
+        }
+      });
+
+      if (error) throw error;
+
+      // Garantir que os objetos existam antes do spread
+      const updatedJobs = cronJobs.map(job => {
+        if (job && typeof job === 'object' && job.jobname === jobName) {
+          return { ...job, active: newStatus };
+        }
+        return job;
+      });
+
+      setCronJobs(updatedJobs);
+      
+      toast({
+        title: "Status atualizado",
+        description: `Job ${jobName} ${newStatus ? 'ativado' : 'desativado'} com sucesso`,
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar status do job:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status do job",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">

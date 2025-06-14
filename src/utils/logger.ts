@@ -1,4 +1,3 @@
-
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export type LogModule = 
   | 'APP' 
@@ -15,7 +14,24 @@ export type LogModule =
   | 'BATCH_OPERATIONS'
   | 'META_REVIEW'
   | 'CRON'
-  | 'API';
+  | 'API'
+  | 'SYSTEM'
+  | 'DATA_SERVICE'
+  | 'META_ADS'
+  | 'GOOGLE_ADS'
+  | 'BATCH'
+  | 'GOALS'
+  | 'COSTS'
+  | 'FINANCIAL'
+  | 'PAYMENTS'
+  | 'TEAM'
+  | 'SETTINGS'
+  | 'IMPORT'
+  | 'EXPORT'
+  | 'DASHBOARD'
+  | 'METRICS'
+  | 'UNIFIED_REVIEWS'
+  | 'DATABASE';
 
 interface LogEntry {
   timestamp: string;
