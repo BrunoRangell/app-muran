@@ -1,8 +1,7 @@
 
 import { useState } from "react";
 import { CostFilters } from "@/types/cost";
-import { MetricsOverview } from "@/components/financial-dashboard/MetricsOverview";
-import { DetailedAnalytics } from "@/components/financial-dashboard/DetailedAnalytics";
+import { UnifiedDashboard } from "@/components/financial-dashboard/UnifiedDashboard";
 import { FiltersSidebar } from "@/components/financial-dashboard/FiltersSidebar";
 import { DashboardHeader } from "@/components/financial-dashboard/DashboardHeader";
 import { ExportTools } from "@/components/financial-dashboard/ExportTools";
@@ -10,7 +9,6 @@ import { ExportTools } from "@/components/financial-dashboard/ExportTools";
 const FinancialReport = () => {
   const [filters, setFilters] = useState<CostFilters>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedView, setSelectedView] = useState<'overview' | 'detailed'>('overview');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-muran-secondary/20 to-white">
@@ -28,22 +26,14 @@ const FinancialReport = () => {
           {/* Header do Dashboard */}
           <DashboardHeader 
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-            selectedView={selectedView}
-            onViewChange={setSelectedView}
             sidebarOpen={sidebarOpen}
           />
 
           {/* Ferramentas de Exportação */}
           <ExportTools filters={filters} />
 
-          {/* Conteúdo Principal */}
-          <div className="space-y-6">
-            {selectedView === 'overview' ? (
-              <MetricsOverview filters={filters} />
-            ) : (
-              <DetailedAnalytics filters={filters} />
-            )}
-          </div>
+          {/* Dashboard Unificado */}
+          <UnifiedDashboard filters={filters} />
         </div>
       </div>
     </div>

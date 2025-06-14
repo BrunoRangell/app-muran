@@ -1,19 +1,15 @@
 
-import { BarChart3, Filter, Eye, TrendingUp } from "lucide-react";
+import { BarChart3, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface DashboardHeaderProps {
   onToggleSidebar: () => void;
-  selectedView: 'overview' | 'detailed';
-  onViewChange: (view: 'overview' | 'detailed') => void;
   sidebarOpen: boolean;
 }
 
 export const DashboardHeader = ({ 
   onToggleSidebar, 
-  selectedView, 
-  onViewChange, 
   sidebarOpen 
 }: DashboardHeaderProps) => {
   return (
@@ -39,28 +35,6 @@ export const DashboardHeader = ({
 
         {/* Controles */}
         <div className="flex items-center gap-3">
-          {/* Toggle de Visualização */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <Button
-              variant={selectedView === 'overview' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => onViewChange('overview')}
-              className={selectedView === 'overview' ? 'bg-muran-primary hover:bg-muran-primary/90' : ''}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Visão Geral
-            </Button>
-            <Button
-              variant={selectedView === 'detailed' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => onViewChange('detailed')}
-              className={selectedView === 'detailed' ? 'bg-muran-primary hover:bg-muran-primary/90' : ''}
-            >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Detalhado
-            </Button>
-          </div>
-
           {/* Botão de Filtros */}
           <Button
             variant={sidebarOpen ? 'default' : 'outline'}

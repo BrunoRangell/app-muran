@@ -1,32 +1,38 @@
+
 import { Card } from "@/components/ui/card";
 import { TrendingUp, AlertCircle, CheckCircle, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CostFilters } from "@/types/cost";
+
 interface QuickInsightsProps {
   filters: CostFilters;
 }
-export const QuickInsights = ({
-  filters
-}: QuickInsightsProps) => {
-  const insights = [{
-    type: 'success',
-    icon: CheckCircle,
-    title: 'Crescimento Saudável',
-    message: 'MRR cresceu 15.7% no último mês, superando a meta de 10%',
-    priority: 'high'
-  }, {
-    type: 'warning',
-    icon: AlertCircle,
-    title: 'Atenção ao Churn',
-    message: 'Taxa de churn aumentou 0.8% - considere ações de retenção',
-    priority: 'medium'
-  }, {
-    type: 'info',
-    icon: TrendingUp,
-    title: 'Oportunidade de Crescimento',
-    message: 'Ticket médio pode aumentar 20% com upselling de clientes atuais',
-    priority: 'low'
-  }];
+
+export const QuickInsights = ({ filters }: QuickInsightsProps) => {
+  const insights = [
+    {
+      type: 'success',
+      icon: CheckCircle,
+      title: 'Crescimento Saudável',
+      message: 'MRR cresceu 15.7% no último mês, superando a meta de 10%',
+      priority: 'high'
+    },
+    {
+      type: 'warning',
+      icon: AlertCircle,
+      title: 'Atenção ao Churn',
+      message: 'Taxa de churn aumentou 0.8% - considere ações de retenção',
+      priority: 'medium'
+    },
+    {
+      type: 'info',
+      icon: TrendingUp,
+      title: 'Oportunidade de Crescimento',
+      message: 'Ticket médio pode aumentar 20% com upselling de clientes atuais',
+      priority: 'low'
+    }
+  ];
+
   const getTypeStyles = (type: string) => {
     switch (type) {
       case 'success':
@@ -39,6 +45,7 @@ export const QuickInsights = ({
         return 'border-gray-200 bg-gray-50 text-gray-800';
     }
   };
+
   const getIconColor = (type: string) => {
     switch (type) {
       case 'success':
@@ -51,5 +58,46 @@ export const QuickInsights = ({
         return 'text-gray-600';
     }
   };
-  return;
+
+  return (
+    <Card className="p-6 border-l-4 border-l-blue-500">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-blue-100 rounded-lg">
+          <Info className="h-5 w-5 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-muran-dark">Insights Rápidos</h3>
+          <p className="text-gray-600">Informações importantes sobre o desempenho</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {insights.map((insight, index) => {
+          const IconComponent = insight.icon;
+          return (
+            <div
+              key={index}
+              className={`p-4 rounded-lg border-2 ${getTypeStyles(insight.type)}`}
+            >
+              <div className="flex items-start gap-3">
+                <IconComponent className={`h-5 w-5 mt-0.5 ${getIconColor(insight.type)}`} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-semibold">{insight.title}</h4>
+                    <Badge
+                      variant={insight.priority === 'high' ? 'destructive' : insight.priority === 'medium' ? 'secondary' : 'outline'}
+                      className="text-xs"
+                    >
+                      {insight.priority === 'high' ? 'Alta' : insight.priority === 'medium' ? 'Média' : 'Baixa'}
+                    </Badge>
+                  </div>
+                  <p className="text-sm">{insight.message}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
 };
