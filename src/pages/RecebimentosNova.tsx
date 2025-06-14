@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Search, DollarSign, AlertCircle } from "lucide-react";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/unifiedFormatters";
 import { useToast } from "@/hooks/use-toast";
 import { RegistroPagamentoDialog } from "@/components/recebimentos-nova/RegistroPagamentoDialog";
 import { HistoricoPagamentosDialog } from "@/components/recebimentos-nova/HistoricoPagamentosDialog";

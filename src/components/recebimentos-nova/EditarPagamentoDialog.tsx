@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/unifiedFormatters";
 
 interface EditarPagamentoDialogProps {
   open: boolean;
