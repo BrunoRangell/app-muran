@@ -1,168 +1,110 @@
 import { supabase } from "@/lib/supabase";
-import { clientProcessingService } from "./clientProcessingService";
+import { useToast } from "@/hooks/use-toast";
 import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 
+// Função para buscar os dados do cliente no Supabase
+const fetchClientData = async (clientId: string) => {
+  const { data, error } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("id", clientId)
+    .single();
+
+  if (error) {
+    console.error("Erro ao buscar dados do cliente:", error);
+    throw new Error(`Erro ao buscar dados do cliente: ${error.message}`);
+  }
+
+  return data;
+};
+
+// Função para simular a análise do cliente (substitua pela lógica real)
+const analyzeClient = async (clientId: string) => {
+  // Simulação de análise
+  await new Promise((resolve) => setTimeout(resolve, 1000)); // Espera de 1 segundo
+
+  // Simulação de dados analisados
+  return {
+    meta_daily_budget_current: Math.floor(Math.random() * 100),
+    meta_total_spent: Math.floor(Math.random() * 500),
+    meta_last_5_days_spent: Math.floor(Math.random() * 200),
+    meta_weighted_average: Math.random() * 10,
+  };
+};
+
+// Função para salvar os resultados da análise no Supabase
+const saveReviewResults = async (clientId: string, analysisResults: any, usingCustomBudget: boolean) => {
+  const reviewDate = new Date(); // Data da revisão
+  const { meta_daily_budget_current, meta_total_spent, meta_last_5_days_spent, meta_weighted_average } = analysisResults;
+
+  const { data, error } = await supabase
+    .from("daily_budget_reviews")
+    .insert([
+      {
+        client_id: clientId,
+        review_date: reviewDate.toISOString(),
+        meta_daily_budget_current,
+        meta_total_spent,
+        meta_last_5_days_spent,
+        meta_weighted_average,
+        using_custom_budget: usingCustomBudget,
+      },
+    ])
+    .select();
+
+  if (error) {
+    console.error("Erro ao salvar resultados da análise:", error);
+    throw new Error(`Erro ao salvar resultados da análise: ${error.message}`);
+  }
+
+  return data;
+};
+
+// Função para atualizar a tabela de clientes com os dados da última revisão
+const updateClientWithLastReview = async (clientId: string, reviewData: any) => {
+  const { error } = await supabase
+    .from("clients")
+    .update({ last_review_id: reviewData[0].id })
+    .eq("id", clientId);
+
+  if (error) {
+    console.error("Erro ao atualizar cliente com última revisão:", error);
+    throw new Error(`Erro ao atualizar cliente com última revisão: ${error.message}`);
+  }
+};
+
+// Serviço para realizar a revisão do cliente Google Ads
 export const googleAdsClientReviewService = {
-  /**
-   * Busca os dados detalhados de um cliente, incluindo informações do Google Ads.
-   * @param clientId ID do cliente.
-   * @returns Dados do cliente com informações do Google Ads.
-   */
-  getClientDetails: async (clientId: string) => {
+  reviewClient: async (clientId: string) => {
     try {
-      const { data: client, error } = await supabase
-        .from("clients")
-        .select(
-          `
-          id, 
-          company_name, 
-          meta_ads_budget,
-          google_accounts(
-            id, 
-            account_name, 
-            account_id
-          ),
-          daily_budget_reviews(
-            id, 
-            review_date, 
-            meta_daily_budget_current,
-            meta_total_spent,
-            updated_at
-          ),
-          meta_account_id
-        `
-        )
-        .eq("id", clientId)
-        .single();
+      // 1. Buscar dados do cliente
+      const clientData = await fetchClientData(clientId);
 
-      if (error) {
-        console.error("Erro ao buscar detalhes do cliente:", error);
-        throw error;
+      // Determinar se está usando orçamento personalizado
+      let usingCustomBudget = false;
+      if (clientData.custom_budgets && clientData.custom_budgets.length > 0) {
+        const today = new Date();
+        const activeBudget = clientData.custom_budgets.find(budget => {
+          const startDate = new Date(budget.start_date);
+          const endDate = new Date(budget.end_date);
+          return startDate <= today && endDate >= today;
+        });
+        usingCustomBudget = !!activeBudget;
       }
 
-      return client;
-    } catch (error) {
-      console.error("Erro ao buscar detalhes do cliente:", error);
-      throw error;
-    }
-  },
+      // 2. Simular análise do cliente
+      const analysisResults = await analyzeClient(clientId);
 
-  /**
-   * Realiza a análise e revisão do orçamento diário para um cliente específico do Google Ads.
-   * @param clientId ID do cliente para o qual a revisão será realizada.
-   * @returns Um objeto contendo o orçamento diário recomendado e o total gasto.
-   */
-  reviewClientBudget: async (clientId: string) => {
-    try {
-      // 1. Marcar o cliente como "em processamento"
-      await clientProcessingService.markClientAsProcessing(clientId, true);
+      // 3. Salvar resultados da análise
+      const reviewData = await saveReviewResults(clientId, analysisResults, usingCustomBudget);
 
-      // 2. Buscar os dados do cliente (incluindo contas Google Ads)
-      const client = await googleAdsClientReviewService.getClientDetails(clientId);
+      // 4. Atualizar cliente com os dados da última revisão
+      await updateClientWithLastReview(clientId, reviewData);
 
-      if (!client) {
-        throw new Error(`Cliente com ID ${clientId} não encontrado.`);
-      }
-
-      if (!client.google_accounts || client.google_accounts.length === 0) {
-        console.warn(`Cliente ${clientId} não possui contas Google Ads associadas.`);
-        return {
-          recommendedDailyBudget: 0,
-          totalSpent: 0,
-        };
-      }
-
-      // 3. Simular a coleta de dados do Google Ads (substitua pela lógica real)
-      const simulatedTotalSpent = Math.random() * 1000; // Gasto total simulado
-      const recommendedDailyBudget = Math.random() * 100; // Orçamento diário recomendado simulado
-
-      // 4. Atualizar o registro de revisão diária no Supabase
-      const reviewDate = new Date(); // Data da revisão
-      const { data, error } = await supabase
-        .from("daily_budget_reviews")
-        .upsert(
-          [
-            {
-              client_id: clientId,
-              review_date: reviewDate.toISOString(),
-              meta_daily_budget_current: recommendedDailyBudget,
-              meta_total_spent: simulatedTotalSpent,
-              platform: "google", // Especifica a plataforma como 'google'
-            },
-          ],
-          { onConflict: ["client_id", "review_date"], ignoreDuplicates: false }
-        )
-        .select()
-
-      if (error) {
-        console.error("Erro ao inserir/atualizar revisão diária:", error);
-        throw error;
-      }
-
-      // 5. Limpar o estado de "em processamento"
-      await clientProcessingService.markClientAsProcessing(clientId, false);
-
-      return {
-        recommendedDailyBudget,
-        totalSpent: simulatedTotalSpent,
-      };
-    } catch (error) {
-      console.error("Erro ao revisar orçamento do cliente:", error);
-      // Garantir que o cliente não fique preso no estado "em processamento"
-      await clientProcessingService.markClientAsProcessing(clientId, false);
-      throw error;
-    }
-  },
-
-  /**
-   * Busca o histórico de revisões de orçamento diário para um cliente específico.
-   * @param clientId ID do cliente para o qual buscar o histórico.
-   * @returns Um array de revisões de orçamento diário.
-   */
-  fetchReviewHistory: async (clientId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("daily_budget_reviews")
-        .select("*")
-        .eq("client_id", clientId)
-        .order("review_date", { ascending: false });
-
-      if (error) {
-        console.error("Erro ao buscar histórico de revisões:", error);
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Erro ao buscar histórico de revisões:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Busca a última revisão de orçamento diário para um cliente específico.
-   * @param clientId ID do cliente para o qual buscar a última revisão.
-   * @returns A última revisão de orçamento diário, se existir.
-   */
-  fetchLatestReview: async (clientId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("daily_budget_reviews")
-        .select("*")
-        .eq("client_id", clientId)
-        .order("review_date", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error) {
-        // Se não houver revisão, o erro será retornado. Não precisa logar como erro.
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Erro ao buscar última revisão:", error);
-      throw error;
+      console.log(`Análise do cliente ${clientId} concluída com sucesso.`);
+    } catch (error: any) {
+      console.error(`Erro ao analisar cliente ${clientId}:`, error);
+      throw new Error(`Erro ao analisar cliente ${clientId}: ${error.message}`);
     }
   },
 };

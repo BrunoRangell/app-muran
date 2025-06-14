@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,8 @@ import { useClientDetail } from "../hooks/useClientDetail";
 import { useClientAnalysis } from "../hooks/useClientAnalysis";
 import { ClientReviewHistory } from "../ClientReviewHistory";
 import { ClientLatestReview } from "../ClientLatestReview";
-import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
+import { ClientBudgetSettings } from "../ClientBudgetSettings";
+import { ClientMetaAccountSettings } from "../ClientMetaAccountSettings";
 import { Loader, RefreshCw, ArrowLeft } from "lucide-react";
 
 interface ClientReviewDetailsProps {
