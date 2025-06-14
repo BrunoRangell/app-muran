@@ -12,12 +12,23 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
+  onIndividualReviewComplete?: () => void; // NOVO: prop para callback
 }
 
-export function CircularBudgetCard({ client, platform = "meta" }: CircularBudgetCardProps) {
+export function CircularBudgetCard({ 
+  client, 
+  platform = "meta", 
+  onIndividualReviewComplete 
+}: CircularBudgetCardProps) {
   const { toast } = useToast();
   const { reviewClient, processingIds } = useBatchOperations({
-    platform: platform as "meta" | "google"
+    platform: platform as "meta" | "google",
+    onIndividualComplete: () => {
+      console.log(`🔄 Revisão individual ${platform} concluída - callback do card`);
+      if (onIndividualReviewComplete) {
+        onIndividualReviewComplete();
+      }
+    }
   });
   
   const isProcessing = processingIds.includes(client.id);
@@ -90,7 +101,7 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
   };
   
   const handleReviewClick = async () => {
-    console.log(`🔍 Iniciando revisão individual para cliente ${client.company_name}`);
+    console.log(`🔍 Iniciando revisão individual para cliente ${client.company_name} (${platform})`);
     
     try {
       const accountId = platform === "meta" 

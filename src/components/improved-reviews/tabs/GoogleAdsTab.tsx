@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
@@ -22,6 +21,8 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   
   const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
   const { forceDataRefresh, startPolling } = useRealTimeDataService();
+  
+  // CORREÇÃO: Adicionar callback para revisões individuais
   const { 
     reviewAllClients, 
     cancelBatchProcessing,
@@ -33,6 +34,12 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     platform: "google",
     onComplete: async () => {
       console.log("✅ Revisão em lote do Google Ads concluída. Atualizando dados...");
+      await forceDataRefresh();
+      await refreshData();
+      if (onRefreshCompleted) onRefreshCompleted();
+    },
+    onIndividualComplete: async () => {
+      console.log("✅ Revisão individual do Google Ads concluída. Atualizando dados...");
       await forceDataRefresh();
       await refreshData();
       if (onRefreshCompleted) onRefreshCompleted();

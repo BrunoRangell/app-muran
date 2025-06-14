@@ -85,9 +85,10 @@ export const usePlatformBatchReviews = () => {
 interface UseBatchOperationsProps {
   platform: "meta" | "google";
   onComplete?: () => void;
+  onIndividualComplete?: () => void; // NOVO: callback para revisões individuais
 }
 
-export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsProps) => {
+export const useBatchOperations = ({ platform, onComplete, onIndividualComplete }: UseBatchOperationsProps) => {
   const [processingIds, setProcessingIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -155,6 +156,12 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
       
       // CORREÇÃO PRINCIPAL: Invalidar queries após revisão individual
       await invalidateAllQueries();
+      
+      // NOVO: Chamar callback específico para revisões individuais
+      if (onIndividualComplete) {
+        console.log(`🔄 Executando callback de revisão individual para ${platform}`);
+        onIndividualComplete();
+      }
       
       // Mostrar toast de sucesso
       toast({
