@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
 import { useIntelligentAnalysis } from "@/components/campaign-health/hooks/useIntelligentAnalysis";
@@ -29,14 +30,6 @@ export default function CampaignHealth() {
   } = useActiveCampaignHealth();
 
   const { enhancedData, alerts, dashboardStats } = useIntelligentAnalysis(data || []);
-
-  const handleUrgencyFilterClick = (urgency: string) => {
-    if (urgency === "ok") {
-      setUrgencyFilter("ok" as AlertLevel);
-    } else {
-      setUrgencyFilter(urgency as AlertLevel);
-    }
-  };
 
   // Aplicar filtros adicionais aos dados analisados
   const filteredEnhancedData = enhancedData?.filter(client => {
@@ -120,7 +113,6 @@ export default function CampaignHealth() {
           stats={dashboardStats}
           topAlerts={filteredAlerts.slice(0, 5)}
           onAlertClick={handleAlertClick}
-          onUrgencyFilterClick={handleUrgencyFilterClick}
         />
         
         {/* Filtros Inteligentes */}
