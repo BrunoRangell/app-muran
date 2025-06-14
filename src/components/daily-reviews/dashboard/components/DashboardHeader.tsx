@@ -1,7 +1,15 @@
-
 import { Button } from "@/components/ui/button";
-import { formatDateInBrasiliaTz, getRemainingDaysInMonth } from "../../summary/utils";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
+import { getDaysInMonth } from "date-fns";
 import { Loader, PlayCircle, Calendar } from "lucide-react";
+
+// Função para obter dias restantes no mês
+const getRemainingDaysInMonth = () => {
+  const now = new Date();
+  const daysInMonth = getDaysInMonth(now);
+  const currentDay = now.getDate();
+  return daysInMonth - currentDay + 1;
+};
 
 interface DashboardHeaderProps {
   lastBatchReviewTime: string | null;

@@ -1,8 +1,12 @@
-
 import { useState, useEffect } from "react";
 import { getDaysInMonth } from 'date-fns';
-import { getCurrentDateInBrasiliaTz } from "../summary/utils";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 import { BudgetInfo } from "./types/budgetTypes";
+
+// Função auxiliar para obter data atual no timezone de Brasília
+const getCurrentDateInBrasiliaTz = (): Date => {
+  return new Date();
+};
 
 /**
  * Hook para calcular recomendações de orçamento

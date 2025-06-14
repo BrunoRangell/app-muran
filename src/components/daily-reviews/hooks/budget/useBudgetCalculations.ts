@@ -1,154 +1,132 @@
+import { useState, useEffect } from "react";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
+import { getDaysInMonth } from "date-fns";
 
-import { getCurrentDateInBrasiliaTz, getRemainingDaysInMonth } from "../../summary/utils";
-import { ClientWithReview } from "../types/reviewTypes";
+interface BudgetCalculationResult {
+  hasReview: boolean;
+  monthlyBudget: number | null;
+  totalSpent: number | null;
+  lastFiveDaysSpent: number | null;
+  weightedAverage: number | null;
+  currentDailyBudget: number | null;
+  idealDailyBudget: number | null;
+  budgetDifference: number | null;
+  isCalculating: boolean;
+  remainingDaysValue: number | null;
+  needsBudgetAdjustment: boolean;
+  usingCustomBudget: boolean;
+  customBudgetAmount: number | null;
+  customBudgetStartDate: string | null;
+  customBudgetEndDate: string | null;
+}
 
-/**
- * Hook com utilitários para cálculos de orçamento
- */
-export const useBudgetCalculations = (
-  client: ClientWithReview, 
-  customBudget: any | null, 
-  isUsingCustomBudgetInReview: boolean,
-  hasReview: boolean
-) => {
-  // Calcular orçamento total de todas as contas Meta Ads do cliente
-  const calculateTotalBudget = () => {
-    // Se o cliente não tem contas Meta, usar o valor legado do orçamento do cliente
-    if (!client.meta_accounts || client.meta_accounts.length === 0) {
-      return client.meta_ads_budget || 0;
-    }
-    
-    // Caso contrário, somar os orçamentos de todas as contas Meta
-    return client.meta_accounts.reduce((sum, account) => {
-      return sum + (account.budget_amount || 0);
-    }, 0);
-  };
-  
-  const monthlyBudget = calculateTotalBudget();
-  const totalSpentFromDB = hasReview ? (client.lastReview?.google_total_spent || 0) : 0;
-  
-  // Usar o valor do banco de dados para o total gasto
-  const totalSpent = totalSpentFromDB;
-  
-  // Obter o orçamento baseado no tipo (personalizado ou padrão)
-  const getBudgetAmount = () => {
-    // Se há orçamento personalizado na revisão, prioriza ele
-    if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_amount) {
-      console.log("Usando orçamento personalizado da revisão:", client.lastReview.custom_budget_amount);
-      return client.lastReview.custom_budget_amount;
-    }
-    
-    // Se há orçamento personalizado ativo, usa ele
-    if (customBudget) {
-      console.log("Usando orçamento personalizado:", customBudget.budget_amount);
-      return customBudget.budget_amount;
-    }
-    
-    // Caso contrário, usa o orçamento mensal padrão
-    return monthlyBudget;
-  };
+interface UseBudgetCalculationProps {
+  client: any;
+}
 
-  // Obter dias restantes com base no tipo de orçamento
-  const getRemainingDays = () => {
-    // Para orçamento personalizado ativo
-    if (customBudget) {
-      // Contar os dias entre hoje e a data de término
-      const today = getCurrentDateInBrasiliaTz();
-      const endDate = new Date(customBudget.end_date);
-      
-      // +1 para incluir o dia atual
-      const diffTime = Math.abs(endDate.getTime() - today.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      
-      // Garantir que retorne pelo menos 1 dia (hoje)
-      return Math.max(1, diffDays);
-    }
-    
-    // Para orçamento personalizado da revisão, verificar se há data de término armazenada
-    if (isUsingCustomBudgetInReview && client.lastReview?.custom_budget_end_date) {
-      const today = getCurrentDateInBrasiliaTz();
-      const endDate = new Date(client.lastReview.custom_budget_end_date);
-      
-      const diffTime = Math.abs(endDate.getTime() - today.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      
-      return Math.max(1, diffDays);
-    }
-    
-    // Para orçamento regular, usar a função padrão
-    return getRemainingDaysInMonth();
-  };
-  
-  // Calcular orçamento restante
-  const getBudgetRemaining = () => {
-    const budgetAmount = getBudgetAmount();
-    return budgetAmount - totalSpent;
-  };
-  
-  // Calcular orçamento diário ideal
-  const getDailyBudgetIdeal = () => {
-    const remaining = getBudgetRemaining();
-    const days = getRemainingDays();
-    
-    return days > 0 ? remaining / days : 0;
-  };
-  
-  const remainingBudget = getBudgetRemaining();
-  const remainingDays = getRemainingDays();
-  const idealDailyBudget = getDailyBudgetIdeal();
-  const actualBudgetAmount = getBudgetAmount();
-  
-  // Verificar se o cliente tem valor de orçamento diário atual
-  const currentDailyBudget = hasReview && client.lastReview?.google_daily_budget_current !== null
-    ? client.lastReview.google_daily_budget_current
-    : 0;
+export const useBudgetCalculations = ({ client }: UseBudgetCalculationProps): BudgetCalculationResult => {
+  const [hasReview, setHasReview] = useState<boolean>(false);
+  const [monthlyBudget, setMonthlyBudget] = useState<number | null>(null);
+  const [totalSpent, setTotalSpent] = useState<number | null>(null);
+  const [lastFiveDaysSpent, setLastFiveDaysSpent] = useState<number | null>(null);
+  const [weightedAverage, setWeightedAverage] = useState<number | null>(null);
+  const [currentDailyBudget, setCurrentDailyBudget] = useState<number | null>(null);
+  const [idealDailyBudget, setIdealDailyBudget] = useState<number | null>(null);
+  const [budgetDifference, setBudgetDifference] = useState<number | null>(null);
+  const [isCalculating, setIsCalculating] = useState<boolean>(true);
+  const [remainingDaysValue, setRemainingDaysValue] = useState<number | null>(null);
+  const [needsBudgetAdjustment, setNeedsBudgetAdjustment] = useState<boolean>(false);
+  const [usingCustomBudget, setUsingCustomBudget] = useState<boolean>(false);
+  const [customBudgetAmount, setCustomBudgetAmount] = useState<number | null>(null);
+  const [customBudgetStartDate, setCustomBudgetStartDate] = useState<string | null>(null);
+  const [customBudgetEndDate, setCustomBudgetEndDate] = useState<string | null>(null);
 
-  // Obter a média de gasto dos últimos 5 dias
-  const lastFiveDaysAverage = hasReview && client.lastReview?.google_last_five_days_spent !== null
-    ? client.lastReview.google_last_five_days_spent
-    : 0;
+  useEffect(() => {
+    setIsCalculating(true);
 
-  // Gerar recomendação com base no orçamento diário atual
-  const budgetDifference = idealDailyBudget - currentDailyBudget;
-  
-  // Gerar recomendação com base na média de gasto dos últimos 5 dias
-  const budgetDifferenceBasedOnAverage = idealDailyBudget - lastFiveDaysAverage;
-  
-  // Verificar se o cliente precisa de ajuste de orçamento significativo (diferença absoluta >= 5)
-  const needsBudgetAdjustment = hasReview && Math.abs(budgetDifference) >= 5;
-  
-  // Verificar se o cliente precisa de ajuste baseado na média dos últimos 5 dias
-  const needsAdjustmentBasedOnAverage = hasReview && Math.abs(budgetDifferenceBasedOnAverage) >= 5;
-  
-  // Log para diagnóstico
-  if (isUsingCustomBudgetInReview || customBudget) {
-    console.log(`Diagnóstico de orçamento personalizado para ${client.company_name}:`, {
-      orçamentoPersonalizado: actualBudgetAmount,
-      totalGasto: totalSpent,
-      orçamentoRestante: remainingBudget,
-      diasRestantes: remainingDays,
-      orçamentoDiárioAtual: currentDailyBudget,
-      médiaÚltimos5Dias: lastFiveDaysAverage,
-      orçamentoDiárioIdeal: idealDailyBudget,
-      diferençaOrçamentoAtual: budgetDifference,
-      diferençaMédia5Dias: budgetDifferenceBasedOnAverage,
-      precisaAjusteOrçamentoAtual: needsBudgetAdjustment,
-      precisaAjusteMédia5Dias: needsAdjustmentBasedOnAverage
-    });
-  }
-  
+    if (client) {
+      // Verificar se o cliente tem um orçamento personalizado ativo
+      if (client.custom_budgets && client.custom_budgets.length > 0) {
+        const today = new Date();
+        const activeBudget = client.custom_budgets.find(budget => {
+          const startDate = new Date(budget.start_date);
+          const endDate = new Date(budget.end_date);
+          return startDate <= today && endDate >= today;
+        });
+
+        if (activeBudget) {
+          setUsingCustomBudget(true);
+          setCustomBudgetAmount(activeBudget.budget_amount);
+          setCustomBudgetStartDate(activeBudget.start_date);
+          setCustomBudgetEndDate(activeBudget.end_date);
+        } else {
+          setUsingCustomBudget(false);
+          setCustomBudgetAmount(null);
+          setCustomBudgetStartDate(null);
+          setCustomBudgetEndDate(null);
+        }
+      } else {
+        setUsingCustomBudget(false);
+        setCustomBudgetAmount(null);
+        setCustomBudgetStartDate(null);
+        setCustomBudgetEndDate(null);
+      }
+
+      // Calcular valores
+      const review = client.lastReview;
+      setHasReview(!!review);
+
+      const clientMonthlyBudget = client.meta_ads_budget || 0;
+      setMonthlyBudget(clientMonthlyBudget);
+
+      const clientTotalSpent = review?.meta_total_spent || 0;
+      setTotalSpent(clientTotalSpent);
+
+      const clientLastFiveDaysSpent = review?.meta_last_5_days_spent || 0;
+      setLastFiveDaysSpent(clientLastFiveDaysSpent);
+
+      const clientWeightedAverage = review?.meta_weighted_average || 0;
+      setWeightedAverage(clientWeightedAverage);
+
+      const clientCurrentDailyBudget = review?.meta_daily_budget_current || 0;
+      setCurrentDailyBudget(clientCurrentDailyBudget);
+
+      // Lógica para orçamento ideal
+      const today = new Date();
+      const daysInMonth = getDaysInMonth(today);
+      const currentDay = today.getDate();
+      const remainingDays = daysInMonth - currentDay + 1;
+      setRemainingDaysValue(remainingDays);
+
+      const remainingBudget = clientMonthlyBudget - clientTotalSpent;
+      const calculatedIdealDailyBudget = remainingBudget / remainingDays;
+      setIdealDailyBudget(calculatedIdealDailyBudget);
+
+      const calculatedBudgetDifference = calculatedIdealDailyBudget - clientCurrentDailyBudget;
+      setBudgetDifference(calculatedBudgetDifference);
+
+      // Determinar se o orçamento precisa de ajuste
+      setNeedsBudgetAdjustment(Math.abs(calculatedBudgetDifference) > 5);
+    }
+
+    setIsCalculating(false);
+  }, [client]);
+
   return {
+    hasReview,
     monthlyBudget,
     totalSpent,
+    lastFiveDaysSpent,
+    weightedAverage,
     currentDailyBudget,
-    lastFiveDaysAverage,
     idealDailyBudget,
     budgetDifference,
-    budgetDifferenceBasedOnAverage,
-    remainingBudget,
-    remainingDays,
-    actualBudgetAmount,
+    isCalculating,
+    remainingDaysValue,
     needsBudgetAdjustment,
-    needsAdjustmentBasedOnAverage
+    usingCustomBudget,
+    customBudgetAmount,
+    customBudgetStartDate,
+    customBudgetEndDate
   };
 };

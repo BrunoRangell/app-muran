@@ -1,30 +1,13 @@
-
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ClientWithReview } from "../hooks/types/reviewTypes";
-import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
-import { formatCurrency } from "@/utils/formatters";
-import { formatDateInBrasiliaTz } from "../summary/utils";
-import { 
-  Loader, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle, 
-  MinusCircle, 
-  ExternalLink, 
-  BadgeDollarSign,
-  Clock 
-} from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Link } from "react-router-dom";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Loader, BadgeDollarSign } from "lucide-react";
+import { ClientWithReview } from "../hooks/types/reviewTypes";
+import { MetaAccount } from "../hooks/types/accountTypes";
+import { useClientBudgetCalculation } from "../hooks/useClientBudgetCalculation";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
+import { formatCurrency } from "@/utils/formatters";
 
-interface ClientReviewCardCompactProps {
+interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;
   onReviewClient: (clientId: string) => void;
   isProcessing: boolean;
@@ -32,367 +15,214 @@ interface ClientReviewCardCompactProps {
   inactive?: boolean;
 }
 
-export const ClientReviewCardCompact = ({ 
-  client, 
+export const GoogleAdsClientReviewCardCompact = ({
+  client,
   onReviewClient,
   isProcessing,
   compact = false,
   inactive = false
-}: ClientReviewCardCompactProps) => {
+}: GoogleAdsClientReviewCardCompactProps) => {
   const {
     hasReview,
-    calculationError,
     monthlyBudget,
     totalSpent,
+    lastFiveDaysSpent,
+    weightedAverage,
     currentDailyBudget,
-    lastFiveDaysAverage,
     idealDailyBudget,
     budgetDifference,
-    budgetDifferenceBasedOnAverage,
-    customBudget,
-    isUsingCustomBudgetInReview,
-    actualBudgetAmount,
+    isCalculating,
     remainingDaysValue,
     needsBudgetAdjustment,
-    needsAdjustmentBasedOnAverage
+    usingCustomBudget,
+    customBudgetAmount,
+    customBudgetStartDate,
+    customBudgetEndDate
   } = useClientBudgetCalculation(client);
 
-  // Flag para mostrar recomendação de orçamento - Apenas para clientes com revisão existente
-  // e diferença significativa (>=5) no contexto do orçamento atual (padrão ou personalizado)
-  const showRecommendation = hasReview && needsBudgetAdjustment;
-  const showRecommendationAverage = hasReview && needsAdjustmentBasedOnAverage && lastFiveDaysAverage > 0;
-  const needsIncrease = budgetDifference > 0;
-  const needsIncreaseAverage = budgetDifferenceBasedOnAverage > 0;
-  const lastReviewDate = client.lastReview?.updated_at;
+  const handleReviewClick = () => {
+    if (!isProcessing && !inactive) {
+      onReviewClient(client.id);
+    }
+  };
+
+  // Formatação de valores
+  const formattedMonthlyBudget = formatCurrency(monthlyBudget || 0);
+  const formattedTotalSpent = formatCurrency(totalSpent || 0);
+  const formattedLastFiveDaysSpent = formatCurrency(lastFiveDaysSpent || 0);
+  const formattedWeightedAverage = formatCurrency(weightedAverage || 0);
+  const formattedCurrentDaily = formatCurrency(currentDailyBudget || 0);
+  const formattedIdealDaily = formatCurrency(idealDailyBudget || 0);
+
+  // Formatação da data da última revisão
+  const formattedLastReviewDate = client.lastReview?.updated_at ? 
+    formatDateInBrasiliaTz(new Date(client.lastReview.updated_at), "dd/MM 'às' HH:mm") : 
+    "Sem revisão";
+
+  // Determinar se o card deve ter destaque
+  const cardBorderClass = needsBudgetAdjustment
+    ? 'border-l-4 border-l-muran-primary'
+    : '';
+
+  // Verificar se o cliente tem contas Google configuradas
+  const hasGoogleAccounts = client.google_accounts && client.google_accounts.length > 0;
   
-  // Verificar se tem orçamento personalizado
-  const hasCustomBudget = customBudget || isUsingCustomBudgetInReview;
-
-  // Valor do orçamento a exibir (personalizado ou padrão)
-  const displayBudget = hasCustomBudget ? actualBudgetAmount : monthlyBudget;
-
-  // Log para diagnóstico dos valores de orçamento e ajustes
-  console.log(`Cliente ${client.company_name} - Diagnóstico completo:`, {
-    hasReview,
-    hasCustomBudget,
-    orçamentoMensal: monthlyBudget,
-    orçamentoPersonalizado: hasCustomBudget ? actualBudgetAmount : "Não está usando",
-    orçamentoExibido: displayBudget,
-    orçamentoDiárioAtual: currentDailyBudget,
-    orçamentoDiárioIdeal: idealDailyBudget,
-    médiaÚltimos5Dias: lastFiveDaysAverage,
-    diferençaOrçamentoAtual: budgetDifference,
-    diferençaMédia5Dias: budgetDifferenceBasedOnAverage,
-    precisaAjusteOrçamentoAtual: needsBudgetAdjustment,
-    precisaAjusteMédia5Dias: needsAdjustmentBasedOnAverage,
-    tipoAjusteOrçamentoAtual: needsIncrease ? "Aumentar" : "Diminuir",
-    tipoAjusteMédia5Dias: needsIncreaseAverage ? "Aumentar" : "Diminuir"
-  });
-
-  // Determinar classes de estilo com base no status - Apenas destaque para cards que precisam de ajuste
-  const cardClasses = `overflow-hidden transition-all ${
-    inactive ? 'opacity-60 hover:opacity-80' : ''
-  } ${
-    hasReview && !inactive && (showRecommendation || showRecommendationAverage)
-      ? 'border-l-4 border-l-amber-500' 
-      : compact ? 'border' : 'border shadow-sm hover:shadow'
-  }`;
-
-  // Grid Compacto (Tabela)
-  if (compact) {
-    return (
-      <Card className={`${cardClasses} flex items-center`}>
-        <div className="flex-1 p-3">
-          <div className="font-medium text-muran-dark flex items-center gap-1">
-            {client.company_name}
-            {hasCustomBudget && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <BadgeDollarSign size={16} className="text-[#ff6e00]" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Orçamento personalizado</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          <div className="text-xs text-gray-500">
-            {lastReviewDate ? formatDateInBrasiliaTz(new Date(lastReviewDate), "dd/MM 'às' HH:mm") : "Sem revisão"}
-          </div>
-        </div>
-        
-        <div className="flex-1 p-3 border-l">
-          <div className="text-xs text-gray-500">Orçamento</div>
-          <div className="flex items-center">
-            {formatCurrency(displayBudget)}
-            {hasCustomBudget && (
-              <span className="text-xs text-[#ff6e00] ml-1">*</span>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex-1 p-3 border-l">
-          <div className="text-xs text-gray-500">Orç. diário atual / ideal</div>
-          <div className="flex items-center gap-1">
-            <span>{hasReview && currentDailyBudget ? formatCurrency(currentDailyBudget) : "-"}</span>
-            <span>/</span>
-            <span>{formatCurrency(idealDailyBudget)}</span>
-          </div>
-        </div>
-        
-        {hasReview && !inactive && (
-          <div className="p-3 flex items-center gap-2 border-l">
-            {showRecommendation && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <div className={`flex items-center ${
-                      needsIncrease 
-                        ? 'text-green-600' 
-                        : 'text-red-600'
-                    }`}>
-                      {needsIncrease 
-                        ? <TrendingUp size={16} /> 
-                        : <TrendingDown size={16} />
-                      }
-                      <span className="ml-1 font-medium">
-                        {formatCurrency(Math.abs(budgetDifference))}
-                      </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Recomendação baseada no orçamento diário atual</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {showRecommendationAverage && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <div className={`flex items-center ${
-                      needsIncreaseAverage 
-                        ? 'text-blue-600' 
-                        : 'text-orange-600'
-                    }`}>
-                      <Clock size={16} />
-                      <span className="ml-1 font-medium">
-                        {formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
-                      </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Recomendação baseada na média dos últimos 5 dias: {formatCurrency(lastFiveDaysAverage)}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {!showRecommendation && !showRecommendationAverage && (
-              <div className="text-gray-600 flex items-center">
-                <MinusCircle size={16} />
-                <span className="ml-1 font-medium">
-                  OK
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-        
-        <div className="p-3 border-l flex gap-2">
-          {hasCustomBudget && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link to="/revisao-meta?tab=custom-budgets">
-                    <Button 
-                      size="icon" 
-                      variant="ghost"
-                      className="text-[#ff6e00] hover:bg-[#ff6e00]/10 h-8 w-8 p-0"
-                    >
-                      <BadgeDollarSign size={16} />
-                    </Button>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Ver orçamentos personalizados</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          
-          <Button 
-            size="sm" 
-            onClick={() => onReviewClient(client.id)}
-            disabled={isProcessing || inactive}
-            variant={inactive ? "outline" : "default"}
-            className={inactive ? "bg-gray-100" : ""}
-          >
-            {isProcessing ? (
-              <Loader className="animate-spin" size={14} />
-            ) : inactive ? (
-              <AlertTriangle size={14} />
-            ) : (
-              "Analisar"
-            )}
-          </Button>
-        </div>
-      </Card>
-    );
+  // Definir rótulo baseado no número de contas
+  let accountsLabel = "Sem Conta";
+  if (hasGoogleAccounts) {
+    accountsLabel = client.google_accounts.length > 1 
+      ? `${client.google_accounts.length} Contas` 
+      : client.google_accounts[0].account_name || "1 Conta";
   }
-  
-  // Grid de Cartões
+
+  // Formato de datas para orçamento personalizado
+  const formatCustomBudgetDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+  };
+
+  // Formatação de datas de início e fim do orçamento personalizado
+  const formattedCustomBudgetStartDate = customBudgetStartDate ? formatCustomBudgetDate(customBudgetStartDate) : '';
+  const formattedCustomBudgetEndDate = customBudgetEndDate ? formatCustomBudgetDate(customBudgetEndDate) : '';
+
   return (
-    <Card className={cardClasses}>
-      <CardContent className="p-4 pt-4">
+    <Card 
+      className={`overflow-hidden hover:shadow-md transition-shadow ${
+        inactive ? 'opacity-60' : ''
+      } ${cardBorderClass} ${usingCustomBudget ? 'border-r-4 border-r-[#ff6e00]' : ''}`}
+    >
+      <div className="p-4">
         <div className="flex justify-between items-start mb-3">
           <div>
-            <h3 className="font-semibold text-muran-dark flex items-center gap-1">
+            <h3 className="font-semibold text-gray-800 text-sm line-clamp-1 mb-1">
               {client.company_name}
-              {hasCustomBudget && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <BadgeDollarSign size={16} className="text-[#ff6e00]" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Orçamento personalizado</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
             </h3>
-            <p className="text-xs text-gray-500">
-              {lastReviewDate ? formatDateInBrasiliaTz(new Date(lastReviewDate), "dd/MM 'às' HH:mm") : "Sem revisão"}
-            </p>
-          </div>
-          
-          {inactive && (
-            <div className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
-              Sem Meta Ads
-            </div>
-          )}
-          
-          {calculationError && !inactive && (
-            <div className="bg-red-50 text-red-600 text-xs px-2 py-1 rounded flex items-center">
-              <AlertTriangle size={12} className="mr-1" />
-              Erro
-            </div>
-          )}
-        </div>
-        
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Orçamento</div>
-            <div className="font-medium flex items-center">
-              {formatCurrency(displayBudget)}
-              {hasCustomBudget && (
-                <span className="text-xs text-[#ff6e00] ml-1">*</span>
+            <div className="flex items-center">
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                {formattedLastReviewDate}
+              </span>
+              {hasGoogleAccounts && (
+                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded ml-1">
+                  {accountsLabel}
+                </span>
+              )}
+              {usingCustomBudget && (
+                <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded ml-1 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
+                  </svg>
+                  Orç. Personalizado
+                </span>
               )}
             </div>
           </div>
           
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Gasto</div>
-            <div className="font-medium">{formatCurrency(totalSpent)}</div>
-          </div>
-          
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Orç. diário atual</div>
-            <div className="font-medium">
-              {hasReview && currentDailyBudget ? formatCurrency(currentDailyBudget) : "-"}
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 p-2 rounded">
-            <div className="text-xs text-gray-500">Média últimos 5 dias</div>
-            <div className="font-medium">
-              {hasReview && lastFiveDaysAverage > 0 ? formatCurrency(lastFiveDaysAverage) : "-"}
-            </div>
-          </div>
+          <button
+            onClick={handleReviewClick}
+            disabled={isProcessing || inactive}
+            className={`px-3 py-1 rounded text-xs font-medium ${
+              inactive
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : isProcessing
+                ? 'bg-blue-100 text-blue-700 cursor-wait'
+                : 'bg-muran-primary text-white hover:bg-muran-primary/90'
+            }`}
+          >
+            {isProcessing ? (
+              <div className="flex items-center">
+                <Loader className="animate-spin mr-1 h-3 w-3" />
+                <span>Analisando</span>
+              </div>
+            ) : inactive ? (
+              'Sem Conta'
+            ) : (
+              'Analisar'
+            )}
+          </button>
         </div>
-        
-        {hasReview && !inactive && (showRecommendation || showRecommendationAverage) && (
-          <div className="space-y-2">
-            {showRecommendation && (
-              <div className={`p-2 rounded flex items-center ${
-                needsIncrease 
-                  ? 'bg-green-50 text-green-600' 
-                  : 'bg-red-50 text-red-600'
-              }`}>
-                {needsIncrease 
-                  ? <TrendingUp size={16} className="mr-1" /> 
-                  : <TrendingDown size={16} className="mr-1" />
-                }
-                <span className="text-sm font-medium">
-                  {needsIncrease ? "Aumentar +" : "Reduzir -"}{formatCurrency(Math.abs(budgetDifference))}
-                  <span className="text-xs ml-1 opacity-75">(orç. atual)</span>
-                </span>
+
+        {usingCustomBudget && (
+          <div className="bg-orange-50 p-2 rounded mb-2 text-xs">
+            <div className="text-orange-600 font-medium mb-1">Orçamento personalizado ativo</div>
+            <div className="flex justify-between">
+              <div>
+                <span className="text-gray-600">Valor:</span>{" "}
+                <span className="font-medium">{formatCurrency(customBudgetAmount || 0)}</span>
               </div>
-            )}
-            
-            {showRecommendationAverage && (
-              <div className={`p-2 rounded flex items-center ${
-                needsIncreaseAverage 
-                  ? 'bg-blue-50 text-blue-600' 
-                  : 'bg-orange-50 text-orange-600'
-              }`}>
-                <Clock size={16} className="mr-1" />
-                <span className="text-sm font-medium">
-                  {needsIncreaseAverage ? "Aumentar +" : "Reduzir -"}{formatCurrency(Math.abs(budgetDifferenceBasedOnAverage))}
-                  <span className="text-xs ml-1 opacity-75">(média 5 dias)</span>
-                </span>
+              <div>
+                <span className="text-gray-600">Período:</span>{" "}
+                <span className="font-medium">{formattedCustomBudgetStartDate} - {formattedCustomBudgetEndDate}</span>
               </div>
-            )}
+            </div>
           </div>
         )}
-        
-        {hasReview && !inactive && !showRecommendation && !showRecommendationAverage && (
-          <div className="p-2 rounded flex items-center bg-gray-50 text-gray-600">
-            <MinusCircle size={16} className="mr-1" />
-            <span className="text-sm font-medium">
-              Nenhum ajuste necessário
+
+        {!compact && (
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Orçamento</div>
+              <div className="font-semibold">{formattedMonthlyBudget}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Gasto Total</div>
+              <div className="font-semibold">{formattedTotalSpent}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Média 5 dias</div>
+              <div className="font-semibold">{formattedLastFiveDaysSpent}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Média Pond</div>
+              <div className="font-semibold">{formattedWeightedAverage}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Orç. Diário Atual</div>
+              <div className="font-semibold">{formattedCurrentDaily}</div>
+            </div>
+            <div className="bg-gray-50 p-2 rounded">
+              <div className="text-gray-500">Orç. Diário Ideal</div>
+              <div className="font-semibold">{formattedIdealDaily}</div>
+            </div>
+          </div>
+        )}
+
+        {compact && (
+          <div className="flex justify-between items-center mt-2 text-xs gap-2">
+            <div>
+              <span className="text-gray-500 mr-1">Orçamento:</span>
+              <span className="font-semibold">{formattedMonthlyBudget}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-1">Gasto:</span>
+              <span className="font-semibold">{formattedTotalSpent}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-1">Média Pond:</span>
+              <span className="font-semibold">{formattedWeightedAverage}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-1">Atual:</span>
+              <span className="font-semibold">{formattedCurrentDaily}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 mr-1">Ideal:</span>
+              <span className="font-semibold">{formattedIdealDaily}</span>
+            </div>
+          </div>
+        )}
+
+        {needsBudgetAdjustment && budgetDifference && (
+          <div className="mt-2 text-xs p-2 rounded flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-muran-primary"></div>
+            <span className="font-medium">
+              {budgetDifference > 0 ? 
+                `Reduzir orçamento diário em -${formatCurrency(Math.abs(budgetDifference))}` : 
+                `Aumentar orçamento diário em +${formatCurrency(Math.abs(budgetDifference))}`}
             </span>
           </div>
         )}
-        
-        {hasCustomBudget && (
-          <div className="mt-2 flex justify-end">
-            <Link to="/revisao-meta?tab=custom-budgets">
-              <Button 
-                size="sm" 
-                variant="ghost"
-                className="text-[#ff6e00] hover:bg-[#ff6e00]/10 h-8"
-              >
-                <BadgeDollarSign size={14} className="mr-1" />
-                <span className="text-xs">Orçamento Personalizado</span>
-              </Button>
-            </Link>
-          </div>
-        )}
-      </CardContent>
-      
-      <CardFooter className="p-3 pt-0 border-t bg-gray-50/50">
-        <Button 
-          variant={inactive ? "outline" : "default"}
-          size="sm" 
-          onClick={() => onReviewClient(client.id)}
-          disabled={isProcessing || inactive}
-          className={`w-full ${inactive ? "bg-gray-100" : ""}`}
-        >
-          {isProcessing ? (
-            <>
-              <Loader className="animate-spin mr-2" size={14} />
-              Analisando...
-            </>
-          ) : (
-            "Analisar"
-          )}
-        </Button>
-      </CardFooter>
+      </div>
     </Card>
   );
 };

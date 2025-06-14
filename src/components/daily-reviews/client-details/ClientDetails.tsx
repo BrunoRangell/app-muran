@@ -1,176 +1,152 @@
-
 import { useState, useEffect } from "react";
-import { useClientDetails } from "../hooks/useClientDetails";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { 
-  ArrowLeft, 
-  RefreshCw, 
-  Loader 
-} from "lucide-react";
-import { formatDateInBrasiliaTz } from "../summary/utils";
-import { ClientDetailsContent } from "./ClientDetailsContent";
-import { ClientDetailsSkeleton } from "./ClientDetailsSkeleton";
-import { ReviewClientAction } from "./ReviewClientAction";
-import { SessionExpiredAlert } from "./SessionExpiredAlert";
-import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
+import { useToast } from "@/hooks/use-toast";
+import { useClientDetail } from "../hooks/useClientDetail";
+import { useClientAnalysis } from "../hooks/useClientAnalysis";
+import { ClientReviewHistory } from "../ClientReviewHistory";
+import { ClientLatestReview } from "../ClientLatestReview";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
+import { Loader, RefreshCw, ArrowLeft } from "lucide-react";
 
-export const ClientDetails = () => {
-  const { clientId } = useParams<{ clientId: string }>();
+interface ClientReviewDetailsProps {
+  clientId?: string;
+  onBack?: () => void;
+}
+
+export const ClientReviewDetails = ({ clientId: propClientId, onBack }: ClientReviewDetailsProps) => {
+  const params = useParams<{ clientId: string }>();
+  const clientId = propClientId || params.clientId;
+  const [activeTab, setActiveTab] = useState("latest");
+  const { toast } = useToast();
+  
   const { 
     client, 
-    reviewHistory, 
-    latestReview, 
-    isLoadingClient, 
-    isLoadingHistory,
-    reviewClient,
-    isReviewing,
-    error,
-    refreshClient
-  } = useClientDetails(clientId || "");
+    isLoading: isClientLoading, 
+    error: clientError,
+    refetch: refetchClient
+  } = useClientDetail(clientId);
   
-  const [showExpiredAlert, setShowExpiredAlert] = useState(false);
+  const { analyzeMutation, isAnalyzing } = useClientAnalysis();
   
-  // Usar o hook de cálculo de orçamento do Google Ads
-  const {
-    idealDailyBudget,
-    budgetDifference,
-    budgetDifferenceBasedOnAverage,
-    lastFiveDaysSpent,
-    remainingDaysValue,
-    totalSpent,
-    monthlyBudget,
-    remainingBudget = monthlyBudget - (totalSpent || 0),
-    needsBudgetAdjustment,
-    needsAdjustmentBasedOnAverage
-  } = useGoogleAdsBudgetCalculation(client || { id: "", company_name: "", status: "" });
-  
-  // Verificar a presença de token de acesso quando a página carrega
   useEffect(() => {
-    const checkToken = async () => {
-      // Lógica para verificar o token de acesso
-      const hasValidToken = localStorage.getItem("meta_access_token") !== null;
-      
-      if (!hasValidToken) {
-        setShowExpiredAlert(true);
+    if (clientError) {
+      toast({
+        title: "Erro ao carregar cliente",
+        description: clientError instanceof Error ? clientError.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  }, [clientError, toast]);
+  
+  const handleAnalyzeClient = () => {
+    if (!clientId) return;
+    
+    analyzeMutation.mutate(clientId, {
+      onSuccess: () => {
+        toast({
+          title: "Análise concluída",
+          description: "A análise do cliente foi concluída com sucesso.",
+        });
+        refetchClient();
+      },
+      onError: (error) => {
+        toast({
+          title: "Erro na análise",
+          description: error instanceof Error ? error.message : "Erro desconhecido",
+          variant: "destructive",
+        });
       }
-    };
-    
-    checkToken();
-  }, []);
-  
-  // Gerar recomendação com base na diferença do orçamento
-  const getRecommendation = () => {
-    if (!needsBudgetAdjustment) return null;
-    
-    return budgetDifference > 0 
-      ? `Aumentar ${budgetDifference.toFixed(2)} reais` 
-      : `Diminuir ${Math.abs(budgetDifference).toFixed(2)} reais`;
+    });
   };
   
-  // Gerar recomendação com base na diferença da média dos últimos 5 dias
-  const getRecommendationAverage = () => {
-    if (!needsAdjustmentBasedOnAverage || !lastFiveDaysSpent) return null;
-    
-    return budgetDifferenceBasedOnAverage > 0 
-      ? `Aumentar ${budgetDifferenceBasedOnAverage.toFixed(2)} reais` 
-      : `Diminuir ${Math.abs(budgetDifferenceBasedOnAverage).toFixed(2)} reais`;
-  };
-  
-  // Se estiver carregando, mostrar um placeholder
-  if (isLoadingClient) {
-    return <ClientDetailsSkeleton />;
+  if (isClientLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6e00]"></div>
+      </div>
+    );
   }
   
-  // Se o cliente não existir, mostrar uma mensagem
   if (!client) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="mb-6 flex justify-between items-center">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/revisao-diaria-avancada?tab=google-ads">
-              <ArrowLeft className="mr-2" size={16} />
-              Voltar
-            </Link>
-          </Button>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-          <h2 className="text-xl font-semibold mb-4">Cliente não encontrado</h2>
-          <p className="text-gray-600">O cliente solicitado não existe ou foi removido.</p>
-          <Button className="mt-4" asChild>
-            <Link to="/revisao-diaria-avancada?tab=google-ads">
-              Voltar para a lista
-            </Link>
-          </Button>
-        </div>
+      <div className="text-center p-10">
+        <h2 className="text-xl font-semibold text-gray-700">Cliente não encontrado</h2>
+        <p className="text-gray-500 mt-2">O cliente solicitado não existe ou foi removido.</p>
       </div>
     );
   }
   
   return (
-    <div className="container mx-auto py-4 space-y-6">
-      {showExpiredAlert && <SessionExpiredAlert />}
-
-      <div className="flex flex-wrap gap-2 justify-between items-center">
-        <div className="flex items-center">
-          <Button variant="ghost" size="sm" asChild className="mr-2">
-            <Link to="/revisao-diaria-avancada?tab=google-ads">
-              <ArrowLeft className="mr-2" size={16} />
-              Voltar
-            </Link>
-          </Button>
-          
-          <div>
-            <h1 className="text-2xl font-bold">{client.company_name}</h1>
-            <p className="text-sm text-gray-500">
-              Última revisão: {latestReview 
-                ? formatDateInBrasiliaTz(latestReview.updated_at, "dd 'de' MMMM 'às' HH:mm") 
-                : "Nunca revisado"}
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={refreshClient}
-            disabled={isLoadingClient}
-          >
-            {isLoadingClient ? (
-              <Loader className="animate-spin mr-2" size={14} />
-            ) : (
-              <RefreshCw className="mr-2" size={14} />
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div className="flex items-center space-x-2">
+            {onBack && (
+              <Button variant="ghost" size="sm" onClick={onBack} className="mr-2">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="ml-1">Voltar</span>
+              </Button>
             )}
-            Atualizar
+            <CardTitle className="text-xl font-bold text-[#321e32]">
+              {client.company_name}
+            </CardTitle>
+          </div>
+          <Button
+            onClick={handleAnalyzeClient}
+            disabled={isAnalyzing}
+            className="bg-[#ff6e00] hover:bg-[#e66300] text-white"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Analisando...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Analisar Agora
+              </>
+            )}
           </Button>
-          
-          <ReviewClientAction 
-            clientId={client.id} 
-            onReviewClient={reviewClient}
-            isReviewing={isReviewing}
-          />
-        </div>
-      </div>
-      
-      <ClientDetailsContent 
-        client={client}
-        latestReview={latestReview}
-        reviewHistory={reviewHistory}
-        recommendation={getRecommendation()}
-        recommendationAverage={getRecommendationAverage()}
-        idealDailyBudget={idealDailyBudget}
-        suggestedBudgetChange={budgetDifference}
-        suggestedBudgetChangeAverage={budgetDifferenceBasedOnAverage}
-        lastFiveDaysAverage={lastFiveDaysSpent}
-        isLoadingHistory={isLoadingHistory}
-        onRefresh={refreshClient}
-        remainingDays={remainingDaysValue}
-        remainingBudget={remainingBudget}
-        monthlyBudget={monthlyBudget}
-        totalSpent={totalSpent}
-      />
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="latest">Última Revisão</TabsTrigger>
+              <TabsTrigger value="history">Histórico</TabsTrigger>
+              <TabsTrigger value="settings">Configurações</TabsTrigger>
+              <TabsTrigger value="meta-account">Conta Meta</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="latest">
+              <ClientLatestReview clientId={clientId} />
+            </TabsContent>
+            
+            <TabsContent value="history">
+              <ClientReviewHistory clientId={clientId} />
+            </TabsContent>
+            
+            <TabsContent value="settings">
+              <ClientBudgetSettings 
+                clientId={clientId} 
+                clientName={client.company_name}
+                currentBudget={client.meta_ads_budget}
+              />
+            </TabsContent>
+            
+            <TabsContent value="meta-account">
+              <ClientMetaAccountSettings 
+                clientId={clientId}
+                clientName={client.company_name}
+                metaAccountId={client.meta_account_id}
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };
