@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +21,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface Token {
   name: string;
@@ -41,6 +41,7 @@ export const GoogleAdsTokenTest = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [clients, setClients] = useState<GoogleAdsClient[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [automatedSystemStatus, setAutomatedSystemStatus] = useState<any>(null);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -55,7 +56,41 @@ export const GoogleAdsTokenTest = () => {
   // Carregar tokens ao montar o componente
   useEffect(() => {
     fetchTokens();
+    checkAutomatedSystemStatus();
+    
+    // Verificar status do sistema a cada 30 segundos
+    const interval = setInterval(checkAutomatedSystemStatus, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Verificar status do sistema automatizado
+  const checkAutomatedSystemStatus = async () => {
+    try {
+      const { data: systemLogs, error } = await supabase
+        .from('system_logs')
+        .select('*')
+        .eq('event_type', 'token_renewal')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!error && systemLogs) {
+        const latestLog = systemLogs[0];
+        const now = new Date();
+        const logTime = new Date(latestLog.created_at);
+        const minutesSinceLastLog = Math.floor((now.getTime() - logTime.getTime()) / (1000 * 60));
+
+        setAutomatedSystemStatus({
+          isActive: true,
+          lastActivity: latestLog.created_at,
+          minutesSinceLastActivity: minutesSinceLastLog,
+          lastMessage: latestLog.message,
+          systemHealth: minutesSinceLastLog < 45 ? 'healthy' : minutesSinceLastLog < 60 ? 'warning' : 'critical'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao verificar status do sistema automatizado:', error);
+    }
+  };
 
   // Buscar tokens do banco de dados
   const fetchTokens = async () => {
@@ -166,6 +201,7 @@ export const GoogleAdsTokenTest = () => {
         
         // Re-buscar os tokens para atualizar a lista
         await fetchTokens();
+        await checkAutomatedSystemStatus();
         
         setTestResult({
           success: true,
@@ -229,6 +265,55 @@ export const GoogleAdsTokenTest = () => {
     }
   };
 
+  // Renderizar status do sistema automatizado
+  const renderAutomatedSystemStatus = () => {
+    if (!automatedSystemStatus) return null;
+
+    const getStatusColor = (health: string) => {
+      switch (health) {
+        case 'healthy': return 'border-green-200 bg-green-50';
+        case 'warning': return 'border-yellow-200 bg-yellow-50';
+        case 'critical': return 'border-red-200 bg-red-50';
+        default: return 'border-gray-200 bg-gray-50';
+      }
+    };
+
+    const getStatusIcon = (health: string) => {
+      switch (health) {
+        case 'healthy': return '🟢';
+        case 'warning': return '🟡';
+        case 'critical': return '🔴';
+        default: return '⚫';
+      }
+    };
+
+    return (
+      <Alert className={`mb-4 ${getStatusColor(automatedSystemStatus.systemHealth)}`}>
+        <AlertTitle className="flex items-center gap-2">
+          <span className="text-lg">{getStatusIcon(automatedSystemStatus.systemHealth)}</span>
+          Sistema de Renovação Automática
+          <Badge variant="outline" className="ml-2">
+            {automatedSystemStatus.isActive ? 'ATIVO' : 'INATIVO'}
+          </Badge>
+        </AlertTitle>
+        <AlertDescription>
+          <div className="mt-2 space-y-1 text-sm">
+            <p><strong>Status:</strong> {automatedSystemStatus.lastMessage}</p>
+            <p><strong>Última atividade:</strong> {automatedSystemStatus.minutesSinceLastActivity} minutos atrás</p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline" className="text-xs">
+                Renovação automática: 30min
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                Verificação de saúde: 15min
+              </Badge>
+            </div>
+          </div>
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
   return (
     <Card className="space-y-4 p-4 md:p-6">
       <div className="flex justify-between items-center mb-4">
@@ -257,6 +342,9 @@ export const GoogleAdsTokenTest = () => {
           </Button>
         </div>
       </div>
+
+      {/* Status do Sistema Automatizado */}
+      {renderAutomatedSystemStatus()}
 
       {testResult && (
         <Alert variant={testResult.success ? "default" : "destructive"} className="mb-4">
@@ -405,8 +493,8 @@ export const GoogleAdsTokenTest = () => {
 
       <div className="text-sm text-gray-500 mt-2">
         <p>
-          Clique em "Testar tokens" para verificar a conectividade com a API do Google Ads
-          e renovar automaticamente o token de acesso.
+          O sistema automático renova os tokens a cada 30 minutos e verifica a saúde a cada 15 minutos.
+          Clique em "Testar tokens" para verificar manualmente a conectividade com a API do Google Ads.
         </p>
       </div>
     </Card>
