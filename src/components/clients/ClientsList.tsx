@@ -5,9 +5,8 @@ import { useClientFilters } from "@/hooks/useClientFilters";
 import { useUnifiedClientData } from "@/hooks/common/useUnifiedClientData";
 import { ClientsTable } from "./table/ClientsTable";
 import { ClientsHeader } from "./components/ClientsHeader";
+import { ClientsDialog } from "./components/ClientsDialog";
 import { Client } from "./types";
-import { ClientForm } from "@/components/admin/ClientForm";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export const ClientsList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -47,14 +46,11 @@ export const ClientsList = () => {
         isLoading={isLoading}
       />
 
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-2xl">
-          <ClientForm
-            initialData={selectedClient}
-            onSuccess={() => setIsFormOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      <ClientsDialog
+        isOpen={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        selectedClient={selectedClient}
+      />
     </>
   );
 };

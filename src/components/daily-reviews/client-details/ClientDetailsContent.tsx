@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight } from "lucide-react";
-import { formatCurrency } from "@/utils/formatters";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { MetaAccount } from "../hooks/types/accountTypes";
-import { ClientReviewHistory } from "../ClientReviewHistory";
-import { ClientLatestReview } from "../ClientLatestReview";
-import { ClientBudgetSettings } from "../ClientBudgetSettings";
-import { ClientMetaAccountSettings } from "../ClientMetaAccountSettings";
+import { LatestReviewTab } from "./tabs/LatestReviewTab";
+import { HistoryTab } from "./tabs/HistoryTab";
+import { SettingsTab } from "./tabs/SettingsTab";
+import { MetaAccountTab } from "./tabs/MetaAccountTab";
 
 interface ClientDetailsContentProps {
   clientId: string;
@@ -70,24 +69,24 @@ export const ClientDetailsContent = ({
               <TabsTrigger value="meta-account">Conta Meta</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="latest" className="space-y-4">
-              <ClientLatestReview clientId={clientId} />
+            <TabsContent value="latest">
+              <LatestReviewTab clientId={clientId} />
             </TabsContent>
 
-            <TabsContent value="history" className="space-y-4">
-              <ClientReviewHistory clientId={clientId} />
+            <TabsContent value="history">
+              <HistoryTab clientId={clientId} />
             </TabsContent>
 
-            <TabsContent value="settings" className="space-y-4">
-              <ClientBudgetSettings
+            <TabsContent value="settings">
+              <SettingsTab
                 clientId={clientId}
                 clientName={client.company_name}
                 currentBudget={client.meta_ads_budget}
               />
             </TabsContent>
 
-            <TabsContent value="meta-account" className="space-y-4">
-              <ClientMetaAccountSettings
+            <TabsContent value="meta-account">
+              <MetaAccountTab
                 clientId={clientId}
                 clientName={client.company_name}
                 metaAccountId={client.meta_account_id}
