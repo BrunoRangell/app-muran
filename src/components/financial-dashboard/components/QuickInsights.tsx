@@ -1,10 +1,13 @@
+
 import { Card } from "@/components/ui/card";
 import { TrendingUp, AlertCircle, CheckCircle, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CostFilters } from "@/types/cost";
+
 interface QuickInsightsProps {
   filters: CostFilters;
 }
+
 export const QuickInsights = ({
   filters
 }: QuickInsightsProps) => {
@@ -27,6 +30,7 @@ export const QuickInsights = ({
     message: 'Ticket médio pode aumentar 20% com upselling de clientes atuais',
     priority: 'low'
   }];
+
   const getTypeStyles = (type: string) => {
     switch (type) {
       case 'success':
@@ -39,6 +43,7 @@ export const QuickInsights = ({
         return 'border-gray-200 bg-gray-50 text-gray-800';
     }
   };
+
   const getIconColor = (type: string) => {
     switch (type) {
       case 'success':
@@ -51,5 +56,48 @@ export const QuickInsights = ({
         return 'text-gray-600';
     }
   };
-  return;
+
+  return (
+    <Card className="p-6 border-l-4 border-l-muran-primary">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-muran-primary/10 rounded-lg">
+          <Info className="h-5 w-5 text-muran-primary" />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-muran-dark">Insights Rápidos</h3>
+          <p className="text-gray-600">Principais alertas e oportunidades</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {insights.map((insight, index) => {
+          const Icon = insight.icon;
+          return (
+            <div key={index} className={`rounded-lg border p-4 ${getTypeStyles(insight.type)}`}>
+              <div className="flex items-start gap-3">
+                <Icon className={`h-5 w-5 mt-0.5 ${getIconColor(insight.type)}`} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-semibold">{insight.title}</h4>
+                    <Badge 
+                      variant="secondary" 
+                      className={`text-xs ${
+                        insight.priority === 'high' ? 'bg-red-100 text-red-800' :
+                        insight.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}
+                    >
+                      {insight.priority === 'high' ? 'Alta' : 
+                       insight.priority === 'medium' ? 'Média' : 'Baixa'}
+                    </Badge>
+                  </div>
+                  <p className="text-sm opacity-90">{insight.message}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
 };

@@ -84,25 +84,45 @@ export const FinancialMetrics = () => {
       [metric]: checked
     }));
   };
-  return <div className="space-y-6">
-      
-      
-      {isLoadingAllClients ? <p className="text-gray-600">Carregando métricas...</p> : <>
-          {allClientsMetrics && <MetricsHeader metrics={allClientsMetrics} formatCurrency={formatCurrency} formatDecimal={formatDecimal} />}
+  return (
+    <div className="space-y-6">
+      {isLoadingAllClients ? (
+        <p className="text-gray-600">Carregando métricas...</p>
+      ) : (
+        <>
+          {allClientsMetrics && (
+            <MetricsHeader 
+              metrics={allClientsMetrics} 
+              formatCurrency={formatCurrency} 
+              formatDecimal={formatDecimal} 
+            />
+          )}
 
-          <div className="space-y-6">
-            <Card className="p-6">
-              <div className="flex flex-col space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">Métricas ao Longo do Tempo</h3>
-                </div>
+          <div className="space-y-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Métricas ao Longo do Tempo</h3>
+            </div>
 
-                <MetricsSwitch selectedMetrics={selectedMetrics} onMetricChange={handleMetricChange} />
+            <MetricsSwitch 
+              selectedMetrics={selectedMetrics} 
+              onMetricChange={handleMetricChange} 
+            />
 
-                <MetricsChart title="" data={filteredClientsData || []} periodFilter={periodFilter} onPeriodChange={handlePeriodChange} isCustomDateOpen={isCustomDateOpen} onCustomDateOpenChange={setIsCustomDateOpen} dateRange={dateRange} onDateRangeChange={setDateRange} lines={getActiveLines()} clients={clients} />
-              </div>
-            </Card>
+            <MetricsChart 
+              title="" 
+              data={filteredClientsData || []} 
+              periodFilter={periodFilter} 
+              onPeriodChange={handlePeriodChange} 
+              isCustomDateOpen={isCustomDateOpen} 
+              onCustomDateOpenChange={setIsCustomDateOpen} 
+              dateRange={dateRange} 
+              onDateRangeChange={setDateRange} 
+              lines={getActiveLines()} 
+              clients={clients} 
+            />
           </div>
-        </>}
-    </div>;
+        </>
+      )}
+    </div>
+  );
 };
