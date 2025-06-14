@@ -1,7 +1,6 @@
 
 import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
 import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
-import { PaymentsLoadingState } from "@/components/loading-states/PaymentsLoadingState";
 import { useLocation } from "react-router-dom";
 
 interface LoadingStateProps {
@@ -17,8 +16,9 @@ export const LoadingState = ({ message = "Carregando..." }: LoadingStateProps) =
     return <ClientsLoadingState />;
   }
 
-  if (path === "/clientes/recebimentos") {
-    return <PaymentsLoadingState />;
+  // Para recebimentos, usa o loading state padrão
+  if (path === "/recebimentos-nova" || path === "/clientes/recebimentos") {
+    return <DashboardLoadingState />;
   }
 
   // Por padrão, retorna o loading state do dashboard
