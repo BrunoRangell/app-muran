@@ -88,6 +88,9 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick, onUrgencyFilte
     }
   ];
 
+  console.log("🎯 AlertsDashboard - Stats recebidas:", stats);
+  console.log("🎯 AlertsDashboard - Métricas de urgência:", urgencyMetrics.map(m => ({ label: m.label, count: m.count })));
+
   return (
     <div className="space-y-6 mb-6">
       {/* Métricas de Urgência */}
