@@ -4,10 +4,7 @@ import { FinancialSection } from "./sections/FinancialSection";
 import { ClientsSection } from "./sections/ClientsSection";
 import { CostsSection } from "./sections/CostsSection";
 import { PerformanceSection } from "./sections/PerformanceSection";
-import { QuickInsights } from "./components/QuickInsights";
 import { InteractiveCharts } from "./components/InteractiveCharts";
-import { ComparativeAnalysis } from "./components/ComparativeAnalysis";
-import { TrendAnalysis } from "./components/TrendAnalysis";
 
 interface UnifiedDashboardProps {
   filters: CostFilters;
@@ -16,9 +13,6 @@ interface UnifiedDashboardProps {
 export const UnifiedDashboard = ({ filters }: UnifiedDashboardProps) => {
   return (
     <div className="space-y-8">
-      {/* Insights Rápidos */}
-      <QuickInsights filters={filters} />
-
       {/* Grid de Métricas Principais */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {/* Seção Financeira */}
@@ -36,12 +30,6 @@ export const UnifiedDashboard = ({ filters }: UnifiedDashboardProps) => {
 
       {/* Gráficos Interativos */}
       <InteractiveCharts filters={filters} />
-
-      {/* Análises Avançadas */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <ComparativeAnalysis filters={filters} />
-        <TrendAnalysis filters={filters} />
-      </div>
     </div>
   );
 };

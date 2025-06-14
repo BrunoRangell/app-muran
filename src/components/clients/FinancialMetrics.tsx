@@ -1,17 +1,16 @@
+
 import { useMetricsData } from "./metrics/useMetricsData";
 import { MetricsChart } from "./metrics/MetricsChart";
-import { MetricsHeader } from "./metrics/MetricsHeader";
 import { MetricsSwitch } from "./metrics/components/MetricsSwitch";
 import { useFinancialMetrics } from "./metrics/hooks/useFinancialMetrics";
 import { METRIC_COLORS } from "./metrics/constants/metricColors";
-import { Card } from "@/components/ui/card";
+
 export const FinancialMetrics = () => {
   const {
     periodFilter,
     dateRange,
     isCustomDateOpen,
     selectedMetrics,
-    allClientsMetrics,
     isLoadingAllClients,
     clients,
     handlePeriodChange,
@@ -19,21 +18,11 @@ export const FinancialMetrics = () => {
     setDateRange,
     setSelectedMetrics
   } = useFinancialMetrics();
+
   const {
     data: filteredClientsData
   } = useMetricsData(dateRange);
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(value);
-  };
-  const formatDecimal = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1
-    }).format(value);
-  };
+
   const getActiveLines = () => {
     const lines = [];
     if (selectedMetrics.mrr) {
@@ -78,50 +67,42 @@ export const FinancialMetrics = () => {
     }
     return lines;
   };
+
   const handleMetricChange = (metric: string, checked: boolean) => {
     setSelectedMetrics(prev => ({
       ...prev,
       [metric]: checked
     }));
   };
+
   return (
     <div className="space-y-6">
       {isLoadingAllClients ? (
         <p className="text-gray-600">Carregando métricas...</p>
       ) : (
-        <>
-          {allClientsMetrics && (
-            <MetricsHeader 
-              metrics={allClientsMetrics} 
-              formatCurrency={formatCurrency} 
-              formatDecimal={formatDecimal} 
-            />
-          )}
-
-          <div className="space-y-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Métricas ao Longo do Tempo</h3>
-            </div>
-
-            <MetricsSwitch 
-              selectedMetrics={selectedMetrics} 
-              onMetricChange={handleMetricChange} 
-            />
-
-            <MetricsChart 
-              title="" 
-              data={filteredClientsData || []} 
-              periodFilter={periodFilter} 
-              onPeriodChange={handlePeriodChange} 
-              isCustomDateOpen={isCustomDateOpen} 
-              onCustomDateOpenChange={setIsCustomDateOpen} 
-              dateRange={dateRange} 
-              onDateRangeChange={setDateRange} 
-              lines={getActiveLines()} 
-              clients={clients} 
-            />
+        <div className="space-y-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Métricas ao Longo do Tempo</h3>
           </div>
-        </>
+
+          <MetricsSwitch 
+            selectedMetrics={selectedMetrics} 
+            onMetricChange={handleMetricChange} 
+          />
+
+          <MetricsChart 
+            title="" 
+            data={filteredClientsData || []} 
+            periodFilter={periodFilter} 
+            onPeriodChange={handlePeriodChange} 
+            isCustomDateOpen={isCustomDateOpen} 
+            onCustomDateOpenChange={setIsCustomDateOpen} 
+            dateRange={dateRange} 
+            onDateRangeChange={setDateRange} 
+            lines={getActiveLines()} 
+            clients={clients} 
+          />
+        </div>
       )}
     </div>
   );
