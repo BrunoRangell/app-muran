@@ -14,7 +14,11 @@ interface HealthMetrics {
   status: 'healthy' | 'warning' | 'critical';
 }
 
-export function SystemHealthMonitor() {
+interface SystemHealthMonitorProps {
+  enabled?: boolean;
+}
+
+export function SystemHealthMonitor({ enabled = import.meta.env.DEV }: SystemHealthMonitorProps) {
   const [metrics, setMetrics] = useState<HealthMetrics>({
     cacheHitRate: 0,
     activeQueries: 0,
@@ -26,6 +30,8 @@ export function SystemHealthMonitor() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (!enabled || import.meta.env.PROD) return;
+
     const calculateMetrics = () => {
       const cache = queryClient.getQueryCache();
       const queries = cache.getAll();
@@ -67,7 +73,12 @@ export function SystemHealthMonitor() {
     calculateMetrics();
     const interval = setInterval(calculateMetrics, 5000);
     return () => clearInterval(interval);
-  }, [queryClient]);
+  }, [queryClient, enabled]);
+
+  // Não renderizar em produção
+  if (!enabled || import.meta.env.PROD) {
+    return null;
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {

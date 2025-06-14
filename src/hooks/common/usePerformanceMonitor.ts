@@ -1,5 +1,6 @@
 
 import { useEffect, useRef, useState } from "react";
+import { logger } from "@/utils/logger";
 
 interface PerformanceMetrics {
   renderTime: number;
@@ -27,8 +28,10 @@ export function usePerformanceMonitor(componentName: string, threshold = 16) {
     rerenderCount.current += 1;
     const renderTime = performance.now() - renderStartTime.current;
     
-    if (renderTime > threshold) {
-      console.warn(`🐌 Componente lento detectado: ${componentName} levou ${renderTime.toFixed(2)}ms para renderizar`);
+    if (renderTime > threshold && import.meta.env.DEV) {
+      logger.warn("SYSTEM", `Componente lento detectado: ${componentName}`, { 
+        renderTime: `${renderTime.toFixed(2)}ms` 
+      });
     }
 
     setMetrics({

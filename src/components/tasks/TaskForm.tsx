@@ -61,7 +61,7 @@ export const TaskForm = ({ onClose }: TaskFormProps) => {
         description: "Tarefa criada com sucesso",
       });
 
-      logger.info('TASKS', 'Nova tarefa criada', { title });
+      logger.info('TASKS', 'Nova tarefa criada', { title: title.trim() });
       onClose();
     } catch (error) {
       logger.error('TASKS', 'Erro ao criar tarefa', error);
