@@ -8,7 +8,7 @@ import { useCacheManager } from "@/utils/cacheUtils";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { useStableCallback } from "./useMemoizedCallback";
 
-interface PaymentFilters {
+export interface PaymentFilters {
   clientId?: string;
   startDate?: string;
   endDate?: string;

@@ -7,7 +7,7 @@ interface LazyComponentProps {
   error?: React.ReactNode;
 }
 
-export function createLazyComponent<T = {}>(
+export function createLazyComponent<T extends Record<string, any> = {}>(
   importFn: () => Promise<{ default: ComponentType<T> }>,
   options: LazyComponentProps = {}
 ) {
@@ -24,7 +24,7 @@ export function createLazyComponent<T = {}>(
 
     return (
       <Suspense fallback={fallback}>
-        <LazyComp {...props} />
+        <LazyComp {...(props as T)} />
       </Suspense>
     );
   };
@@ -32,13 +32,13 @@ export function createLazyComponent<T = {}>(
 
 // Componentes lazy para componentes pesados
 export const LazyMetricsChart = createLazyComponent(
-  () => import("@/components/clients/metrics/MetricsChart")
+  () => import("@/components/clients/metrics/MetricsChart").then(module => ({ default: module.MetricsChart }))
 );
 
 export const LazyPaymentsTable = createLazyComponent(
-  () => import("@/components/payments/PaymentsTable")
+  () => import("@/components/payments/PaymentsTable").then(module => ({ default: module.PaymentsTable }))
 );
 
 export const LazyFinancialReport = createLazyComponent(
-  () => import("@/pages/FinancialReport")
+  () => import("@/pages/FinancialReport").then(module => ({ default: module.default }))
 );

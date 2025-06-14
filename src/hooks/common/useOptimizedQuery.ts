@@ -44,7 +44,9 @@ export function useOptimizedQuery<T>({
       ...optimizedOptions.meta,
       onError: (error: Error) => {
         handleError(error, `Query ${queryKey[0]}`);
-        optimizedOptions.meta?.onError?.(error);
+        if (optimizedOptions.meta && 'onError' in optimizedOptions.meta && typeof optimizedOptions.meta.onError === 'function') {
+          optimizedOptions.meta.onError(error);
+        }
       }
     }
   });
