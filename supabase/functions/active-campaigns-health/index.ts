@@ -105,30 +105,52 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
   }
 }
 
-// Função melhorada para buscar dados do Google Ads
-async function fetchGoogleActiveCampaigns(clientCustomerId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
+// Função corrigida para buscar dados do Google Ads
+async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: any): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
   try {
     console.log(`🔍 Google: Buscando campanhas para conta ${clientCustomerId}`);
     
-    // Buscar token do Google Ads
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const { data: googleToken } = await supabase
+    // Buscar todos os tokens necessários da tabela api_tokens
+    const { data: tokensData, error: tokensError } = await supabase
       .from('api_tokens')
-      .select('value')
-      .eq('name', 'google_ads_access_token')
-      .maybeSingle();
+      .select('name, value')
+      .in('name', ['google_ads_access_token', 'google_ads_developer_token', 'google_ads_manager_id']);
 
-    if (!googleToken?.value) {
-      console.log(`⚠️ Google: Token não configurado, retornando dados zerados`);
+    if (tokensError) {
+      console.error(`❌ Google: Erro ao buscar tokens:`, tokensError);
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
+
+    if (!tokensData || tokensData.length === 0) {
+      console.log(`⚠️ Google: Nenhum token encontrado na tabela api_tokens`);
+      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+    }
+
+    // Organizar tokens por nome
+    const tokens: { [key: string]: string } = {};
+    tokensData.forEach(token => {
+      tokens[token.name] = token.value;
+    });
+
+    const accessToken = tokens['google_ads_access_token'];
+    const developerToken = tokens['google_ads_developer_token'];
+    const managerId = tokens['google_ads_manager_id'];
+
+    if (!accessToken) {
+      console.log(`⚠️ Google: Access token não encontrado`);
+      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+    }
+
+    if (!developerToken) {
+      console.log(`⚠️ Google: Developer token não encontrado`);
+      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+    }
+
+    console.log(`✅ Google: Tokens encontrados - Access: ${accessToken ? 'SIM' : 'NÃO'}, Developer: ${developerToken ? 'SIM' : 'NÃO'}, Manager: ${managerId || 'NÃO'}`);
     
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
     
-    // Query GAQL para buscar campanhas ativas e suas métricas
+    // Query GAQL corrigida e simplificada
     const query = `
       SELECT 
         campaign.id,
@@ -142,17 +164,33 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string): Promise<{ c
         AND segments.date = '${today}'
     `;
     
-    console.log(`📡 Google: Executando query GAQL para ${clientCustomerId}`);
+    console.log(`📡 Google: Executando query GAQL para ${clientCustomerId} na data ${today}`);
     
+    // URL corrigida para Google Ads API v15
     const googleAdsUrl = `https://googleads.googleapis.com/v15/customers/${clientCustomerId}/googleAds:searchStream`;
+    
+    // Headers corrigidos com todos os campos obrigatórios
+    const headers: { [key: string]: string } = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'developer-token': developerToken
+    };
+
+    // Adicionar login-customer-id se Manager ID estiver disponível
+    if (managerId && managerId.trim() !== '') {
+      headers['login-customer-id'] = managerId;
+      console.log(`🔧 Google: Usando Manager Customer ID: ${managerId}`);
+    }
+
+    console.log(`📡 Google: Headers preparados:`, { 
+      ...headers, 
+      'Authorization': 'Bearer TOKEN_HIDDEN',
+      'developer-token': 'DEVELOPER_TOKEN_HIDDEN'
+    });
     
     const response = await fetch(googleAdsUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${googleToken.value}`,
-        'Content-Type': 'application/json',
-        'developer-token': Deno.env.get('GOOGLE_ADS_DEVELOPER_TOKEN') || 'YOUR_DEVELOPER_TOKEN'
-      },
+      headers,
       body: JSON.stringify({ query })
     });
     
@@ -160,14 +198,14 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string): Promise<{ c
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Google: Erro HTTP ${response.status}:`, errorText);
+      console.error(`❌ Google: Erro HTTP ${response.status}:`, errorText.substring(0, 500)); // Limitar log para não poluir
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
     
     const data = await response.json();
     
     if (!data.results || !Array.isArray(data.results)) {
-      console.log(`⚠️ Google: Nenhum resultado encontrado`);
+      console.log(`⚠️ Google: Nenhum resultado encontrado para ${clientCustomerId}`);
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
     
@@ -184,7 +222,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string): Promise<{ c
       }
     });
     
-    console.log(`✅ Google: ${activeCampaigns} campanhas ativas, Custo: R$ ${totalCost}, Impressões: ${totalImpressions}`);
+    console.log(`✅ Google: ${activeCampaigns} campanhas ativas, Custo: R$ ${totalCost.toFixed(2)}, Impressões: ${totalImpressions}`);
     
     return {
       cost: totalCost,
@@ -194,8 +232,6 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string): Promise<{ c
     
   } catch (error) {
     console.error(`❌ Google: Erro de rede/exception para conta ${clientCustomerId}:`, error);
-    // Por enquanto, retornar dados mock para Google Ads
-    console.log(`🔄 Google: Usando dados mock para ${clientCustomerId}`);
     return { cost: 0, impressions: 0, activeCampaigns: 0 };
   }
 }
@@ -286,7 +322,7 @@ Deno.serve(async (req) => {
       // Processar Google Ads
       if (client.google_account_id && client.google_account_id.trim() !== '') {
         console.log(`🔄 Processando Google Ads para ${client.company_name}...`);
-        const googleData = await fetchGoogleActiveCampaigns(client.google_account_id);
+        const googleData = await fetchGoogleActiveCampaigns(client.google_account_id, supabase);
         
         healthData.push({
           clientId: client.id,
@@ -301,7 +337,7 @@ Deno.serve(async (req) => {
           accountName: `Google Ads - ${client.google_account_id}`
         });
         
-        console.log(`✅ Google processado: Campanhas=${googleData.activeCampaigns}, Custo=R$${googleData.cost}, Impressões=${googleData.impressions}`);
+        console.log(`✅ Google processado: Campanhas=${googleData.activeCampaigns}, Custo=R$${googleData.cost.toFixed(2)}, Impressões=${googleData.impressions}`);
       } else {
         healthData.push({
           clientId: client.id,
