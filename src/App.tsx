@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import { lazy, Suspense } from "react";
 import Login from "@/pages/Login";
+import { logger } from "@/utils/logger";
 
 // Pré-carregamento das rotas principais
 const Index = lazy(() => {
@@ -14,7 +15,7 @@ const Index = lazy(() => {
       import("@/pages/Clients"),
       import("@/pages/Managers")
     ]).catch(error => {
-      console.error("Erro no pré-carregamento:", error);
+      logger.error("SYSTEM", "Erro no pré-carregamento", error);
     });
   });
   return page;
@@ -30,12 +31,12 @@ const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 10
           setTimeout(() => reject(new Error('Tempo limite excedido')), timeout)
         )
       ]).catch(error => {
-        console.error(`Erro ao carregar módulo: ${error.message}, tentativas restantes: ${retriesLeft}`);
+        logger.error("SYSTEM", `Erro ao carregar módulo, tentativas restantes: ${retriesLeft}`, error);
         if (retriesLeft > 0) {
-          console.log(`Tentando novamente... ${retriesLeft} tentativas restantes`);
+          logger.info("SYSTEM", `Tentando novamente... ${retriesLeft} tentativas restantes`);
           return loadWithRetry(retriesLeft - 1);
         }
-        console.error("Falha em todas as tentativas de carregamento");
+        logger.error("SYSTEM", "Falha em todas as tentativas de carregamento");
         throw error;
       });
     };
