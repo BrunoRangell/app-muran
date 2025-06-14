@@ -6,6 +6,7 @@ import { ClientFormData } from "@/types/client";
 import { clientFormSchema } from "@/validations/clientFormSchema";
 import { verifySession, prepareClientData, saveClient } from "@/services/clientService";
 import { useUnifiedForm } from "@/hooks/common/useUnifiedForm";
+import { UseFormReturn } from "react-hook-form";
 
 interface UseClientFormProps {
   initialData?: any;
@@ -19,7 +20,7 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
   );
 
   const {
-    form,
+    form: unifiedForm,
     handleSubmit: unifiedHandleSubmit,
     isSubmitting,
   } = useUnifiedForm<typeof clientFormSchema>({
@@ -65,7 +66,7 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
 
         if (!initialData) {
           console.log("Resetando formulário após criação");
-          form.reset();
+          unifiedForm.reset();
         }
 
         if (onSuccess) {
@@ -82,6 +83,8 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
       : "Cliente cadastrado com sucesso!",
   });
 
+  // Criar um form tipado corretamente
+  const form = unifiedForm as UseFormReturn<ClientFormData>;
   const handleSubmit = unifiedHandleSubmit;
   const isLoading = isSubmitting;
 
