@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
 import { MetricsPanel } from "../dashboard/MetricsPanel";
@@ -7,6 +7,7 @@ import { useUnifiedReviewsData } from "../hooks/useUnifiedReviewsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
+import { useRealTimeDataService } from "../services/realTimeDataService";
 import { AlertTriangle } from "lucide-react";
 
 interface MetaAdsTabProps {
@@ -19,6 +20,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
+  const { forceDataRefresh, startPolling } = useRealTimeDataService();
   const { 
     reviewAllClients, 
     cancelBatchProcessing,
@@ -28,12 +30,24 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
     currentClientName 
   } = useBatchOperations({
     platform: "meta",
-    onComplete: () => {
-      console.log("Revisão em lote do Meta Ads concluída. Atualizando dados...");
-      refreshData();
+    onComplete: async () => {
+      console.log("✅ Revisão em lote do Meta Ads concluída. Atualizando dados...");
+      await forceDataRefresh();
+      await refreshData();
       if (onRefreshCompleted) onRefreshCompleted();
     }
   });
+
+  // Iniciar polling para atualizações automáticas
+  useEffect(() => {
+    const pollingInterval = startPolling(30000); // Check a cada 30 segundos
+    
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [startPolling]);
 
   // Handle search query changes
   const handleSearchChange = (query: string) => {
@@ -57,14 +71,15 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
 
   // Handle refresh
   const handleRefresh = async () => {
-    console.log("Atualizando dados do Meta Ads...");
+    console.log("🔄 Atualizando dados do Meta Ads...");
+    await forceDataRefresh();
     await refreshData();
     if (onRefreshCompleted) onRefreshCompleted();
   };
 
   // Handle batch review
   const handleBatchReview = () => {
-    console.log("Iniciando revisão em lote do Meta Ads...");
+    console.log("🚀 Iniciando revisão em lote do Meta Ads...");
     if (data && data.length > 0) {
       reviewAllClients(data);
     }

@@ -1,7 +1,8 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 interface BatchReviewInfo {
   lastBatchReviewTime: string;
@@ -92,18 +93,54 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
   const [currentClientName, setCurrentClientName] = useState<string>("");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const reviewClient = async (clientId: string, accountId?: string) => {
     if (processingIds.includes(clientId)) return;
     
+    console.log(`🔍 Iniciando revisão do cliente ${clientId} (plataforma: ${platform})`);
     setProcessingIds(prev => [...prev, clientId]);
     
     try {
-      // Simular análise do cliente
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log(`Cliente ${clientId} analisado com sucesso`);
+      let result;
+      
+      if (platform === "meta") {
+        // Chamar Edge Function do Meta Ads
+        const { data, error } = await supabase.functions.invoke("daily-meta-review", {
+          body: {
+            clientId,
+            metaAccountId: accountId,
+            reviewDate: new Date().toISOString().split('T')[0],
+            fetchRealData: true
+          }
+        });
+        
+        if (error) throw error;
+        result = data;
+      } else {
+        // Chamar Edge Function do Google Ads
+        const { data, error } = await supabase.functions.invoke("daily-google-review", {
+          body: {
+            clientId,
+            googleAccountId: accountId,
+            reviewDate: new Date().toISOString().split('T')[0],
+            fetchRealData: true
+          }
+        });
+        
+        if (error) throw error;
+        result = data;
+      }
+      
+      console.log(`✅ Cliente ${clientId} analisado com sucesso:`, result);
     } catch (error) {
-      console.error(`Erro ao analisar cliente ${clientId}:`, error);
+      console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
+      toast({
+        title: "Erro na análise",
+        description: `Erro ao analisar cliente: ${error.message}`,
+        variant: "destructive",
+      });
     } finally {
       setProcessingIds(prev => prev.filter(id => id !== clientId));
     }
@@ -112,18 +149,57 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
   const reviewAllClients = async (clients: any[]) => {
     if (isProcessing) return;
     
+    console.log(`🚀 Iniciando revisão em massa de ${clients.length} clientes (${platform})`);
     setIsProcessing(true);
     setTotal(clients.length);
     setProgress(0);
     
+    let successCount = 0;
+    let errorCount = 0;
+    
     try {
       for (let i = 0; i < clients.length; i++) {
         const client = clients[i];
-        setCurrentClientName(client.company_name);
+        setCurrentClientName(client.company_name || `Cliente ${i + 1}`);
         setProgress(i + 1);
         
-        await reviewClient(client.id, client[`${platform}_account_id`]);
+        try {
+          const accountId = platform === "meta" 
+            ? client.meta_account_id 
+            : client.google_account_id;
+            
+          await reviewClient(client.id, accountId);
+          successCount++;
+        } catch (error) {
+          console.error(`❌ Erro no cliente ${client.company_name}:`, error);
+          errorCount++;
+        }
       }
+      
+      // Registrar log da revisão em massa
+      await supabase.from('system_logs').insert({
+        event_type: 'batch_review_completed',
+        message: `Revisão em massa ${platform} concluída`,
+        details: {
+          platform,
+          successCount,
+          errorCount,
+          totalClients: clients.length,
+          completedAt: new Date().toISOString()
+        }
+      });
+      
+      // Invalidar queries para forçar atualização
+      await queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+      await queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+      await queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["last-batch-review-meta"] });
+      await queryClient.invalidateQueries({ queryKey: ["last-batch-review-google"] });
+      
+      toast({
+        title: "Revisão em massa concluída",
+        description: `${successCount} clientes analisados com sucesso, ${errorCount} falhas.`,
+      });
       
       if (onComplete) {
         onComplete();
@@ -137,6 +213,7 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
   };
 
   const cancelBatchProcessing = () => {
+    console.log("🛑 Cancelando processamento em massa");
     setIsProcessing(false);
     setProcessingIds([]);
     setCurrentClientName("");
