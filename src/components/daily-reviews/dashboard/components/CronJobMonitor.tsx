@@ -12,9 +12,9 @@ export const CronJobMonitor = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [executions, setExecutions] = useState<any[]>([]);
-  const [systemLogs, setSystemLogs] = useState<any[]>([]);
-  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState("jobs");
+  const [systemLogs, setSystemLogs = useState<any[]>([]);
+  const [lastRefreshed, setLastRefreshed = useState<Date>(new Date());
+  const [activeTab, setActiveTab = useState("jobs");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -563,11 +563,12 @@ export const CronJobMonitor = () => {
   // Corrigir o problema do spread
   const updateExecution = async (executionId: string, newValues: any) => {
     try {
-      setExecutions(prev => prev.map(exec => 
-        exec.id === executionId 
-          ? { ...exec, ...newValues }  // Garantir que exec é um objeto antes do spread
-          : exec
-      ));
+      setExecutions(prev => prev.map(exec => {
+        if (exec && typeof exec === 'object' && exec.id === executionId) {
+          return { ...exec, ...newValues };  // Garantir que exec é um objeto antes do spread
+        }
+        return exec;
+      }));
     } catch (error) {
       console.error("Erro ao atualizar execução:", error);
     }
@@ -575,14 +576,18 @@ export const CronJobMonitor = () => {
 
   // Função para atualizar uma execução específica
   const handleExecutionUpdate = (executionId: string, updates: any) => {
-    setExecutions(prev => prev.map(exec => 
-      exec.id === executionId 
-        ? { ...exec, ...updates }  // Garantir que exec é um objeto antes do spread
-        : exec
-    ));
+    setExecutions(prev => prev.map(exec => {
+      if (exec && typeof exec === 'object' && exec.id === executionId) {
+        return { ...exec, ...updates };  // Garantir que exec é um objeto antes do spread
+      }
+      return exec;
+    }));
   };
 
   // Função para atualizar o status de um job
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [cronJobs, setCronJobs] = useState(jobs);
+
   const updateJobStatus = async (jobName: string, newStatus: boolean) => {
     try {
       setIsUpdating(true);

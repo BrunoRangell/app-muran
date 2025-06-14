@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MetaAdsTab } from "@/components/improved-reviews/tabs/MetaAdsTab";
@@ -6,7 +5,7 @@ import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
-import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/useBatchOperations";
+import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/usePlatformBatchReviews";
 
 export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage

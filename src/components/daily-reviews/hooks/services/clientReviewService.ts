@@ -261,7 +261,7 @@ export const fetchLastReview = async (clientId: string, accountId?: string) => {
     
     logger.info('CLIENT_REVIEW', 'Última revisão encontrada', { data });
     
-    // Garantir que o objeto retornado tenha todas as propriedades necessárias
+    // Garantir que o objeto retornado tenha todas as propriedades necessárias para GoogleReview
     if (data) {
       return {
         ...data,

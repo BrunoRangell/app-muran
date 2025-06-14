@@ -1,7 +1,7 @@
+
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/utils/logger";
-import { Json } from "@supabase/supabase-js";
 
 interface BatchReviewInfo {
   lastBatchReviewTime: string;
@@ -14,8 +14,18 @@ interface BatchReviewInfo {
   };
 }
 
-export const useBatchOperations = () => {
+interface UseBatchOperationsProps {
+  platform: 'meta' | 'google';
+  onComplete?: () => void;
+}
+
+export const useBatchOperations = (props?: UseBatchOperationsProps) => {
   const [isBatchRunning, setIsBatchRunning] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [currentClientName, setCurrentClientName] = useState("");
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [lastMetaBatchReview, setLastMetaBatchReview] = useState<BatchReviewInfo | null>(null);
   const [lastGoogleBatchReview, setLastGoogleBatchReview] = useState<BatchReviewInfo | null>(null);
 
@@ -32,11 +42,9 @@ export const useBatchOperations = () => {
       if (error) throw error;
       
       if (data?.value) {
-        // Garantir que os dados estão no formato correto
         const parsedValue = typeof data.value === 'string' ? 
           JSON.parse(data.value) : data.value;
           
-        // Se for um objeto válido, retornar como BatchReviewInfo
         if (typeof parsedValue === 'object' && parsedValue !== null) {
           return {
             lastBatchReviewTime: parsedValue.lastBatchReviewTime || new Date().toISOString(),
@@ -93,6 +101,53 @@ export const useBatchOperations = () => {
       logger.error('BATCH_OPERATIONS', 'Erro ao buscar batch info do Google', error);
       return null;
     }
+  };
+
+  const reviewClient = async (clientId: string) => {
+    setProcessingIds(prev => new Set(prev).add(clientId));
+    try {
+      // Simular processamento individual do cliente
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } finally {
+      setProcessingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(clientId);
+        return newSet;
+      });
+    }
+  };
+
+  const reviewAllClients = async (clients: any[]) => {
+    setIsProcessing(true);
+    setTotal(clients.length);
+    setProgress(0);
+    
+    try {
+      for (let i = 0; i < clients.length; i++) {
+        const client = clients[i];
+        setCurrentClientName(client.company_name || client.name || `Cliente ${i + 1}`);
+        setProgress(i + 1);
+        
+        await reviewClient(client.id);
+      }
+      
+      if (props?.onComplete) {
+        props.onComplete();
+      }
+    } finally {
+      setIsProcessing(false);
+      setProgress(0);
+      setTotal(0);
+      setCurrentClientName("");
+    }
+  };
+
+  const cancelBatchProcessing = () => {
+    setIsProcessing(false);
+    setProgress(0);
+    setTotal(0);
+    setCurrentClientName("");
+    setProcessingIds(new Set());
   };
 
   const runBatchMetaReviews = async () => {
@@ -173,6 +228,14 @@ export const useBatchOperations = () => {
 
   return {
     isBatchRunning,
+    isProcessing,
+    progress,
+    total,
+    currentClientName,
+    processingIds,
+    reviewClient,
+    reviewAllClients,
+    cancelBatchProcessing,
     runBatchMetaReviews,
     runBatchGoogleReviews,
     saveBatchReviewInfo,
