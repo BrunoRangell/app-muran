@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -7,8 +6,8 @@ import { ClientMetrics } from "./useUnifiedReviewsData";
 import { logger } from "@/utils/logger";
 import { 
   fetchGoogleReviews, 
-  processClientAccount, 
-  createClientWithoutAccount,
+  processGoogleClientAccount, 
+  createGoogleClientWithoutAccount,
   ProcessedClientData
 } from "./services/googleAdsDataProcessor";
 import { calculateGoogleMetrics } from "./services/googleMetricsCalculator";
@@ -137,10 +136,10 @@ async function processClientsData(
     
     if (allAccounts.length > 0) {
       return allAccounts.map(account => 
-        processClientAccount(client, account, reviews, customBudget, isUsingCustomBudget, calculateBudget)
+        processGoogleClientAccount(client, account, reviews, customBudget, isUsingCustomBudget, calculateBudget)
       );
     } else {
-      return createClientWithoutAccount(client);
+      return createGoogleClientWithoutAccount(client);
     }
   }) || [];
 

@@ -1,6 +1,5 @@
-
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-type LogModule = 'AUTH' | 'API' | 'ERROR' | 'VALIDATION' | 'PAYMENT' | 'CLIENT' | 'BATCH' | 'GOOGLE_ADS' | 'META_ADS' | 'SYSTEM' | 'VALIDATOR' | 'COSTS' | 'FORM_VALIDATION' | 'COSTS_PAGE' | 'DATA_SERVICE' | 'CACHE';
+type LogModule = 'AUTH' | 'API' | 'ERROR' | 'VALIDATION' | 'PAYMENT' | 'CLIENT' | 'BATCH' | 'GOOGLE_ADS' | 'META_ADS' | 'SYSTEM' | 'VALIDATOR' | 'COSTS' | 'FORM_VALIDATION' | 'COSTS_PAGE' | 'DATA_SERVICE' | 'CACHE' | 'GOALS' | 'TASKS';
 
 interface LogEntry {
   level: LogLevel;
