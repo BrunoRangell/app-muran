@@ -1,5 +1,6 @@
+
 import { Folder } from "@/types/task";
-import { FolderItem } from "./FolderItem";
+import { FolderItem } from "@/components/tasks/FolderItem";
 
 interface FolderListProps {
   folders: Folder[];

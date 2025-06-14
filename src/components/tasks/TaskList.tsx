@@ -1,6 +1,7 @@
+
 import { Task } from "@/types/task";
-import { TaskItem } from "./TaskItem";
-import { Button } from "../ui/button";
+import { TaskItem } from "@/components/tasks/TaskItem";
+import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 

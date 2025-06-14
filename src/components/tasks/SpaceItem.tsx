@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Space, Folder as FolderType } from "@/types/task";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { FolderList } from "./FolderList";
+import { FolderList } from "@/components/tasks/FolderList";
 import { Folder, Plus } from "lucide-react";
 
 interface SpaceItemProps {
