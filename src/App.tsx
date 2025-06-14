@@ -1,3 +1,4 @@
+
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
@@ -63,8 +64,8 @@ const CampaignHealthReport = lazyWithTimeout(() => import("@/pages/CampaignHealt
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster />
       <BrowserRouter>
+        <Toaster />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
