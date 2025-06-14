@@ -48,7 +48,7 @@ export const useGoalCard = (isAdmin: boolean) => {
     isCreating,
     setIsEditing,
     setIsCreating,
-    updateGoal: (updatedGoal: Partial<any>) => updateGoal.mutate({ goalId: goal?.id, updatedGoal }),
+    updateGoal,
     createGoal,
   };
 };

@@ -52,12 +52,12 @@ export const useFinalizeGoal = () => {
   });
 };
 
-export const useUpdateGoal = (currentValue: number) => {
+export const useUpdateGoal = (currentValue?: number) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ goalId, updatedGoal }: { goalId: string; updatedGoal: Partial<Goal> }) => {
+    mutationFn: async ({ goalId, updatedGoal }: { goalId: number; updatedGoal: Partial<Goal> }) => {
       const today = new Date();
       const endDate = parseISO(updatedGoal.end_date || '');
       
@@ -68,7 +68,7 @@ export const useUpdateGoal = (currentValue: number) => {
           .update({
             ...updatedGoal,
             status: 'completed',
-            final_value: currentValue,
+            final_value: currentValue || 0,
             completed_at: updatedGoal.end_date
           })
           .eq("id", goalId)
