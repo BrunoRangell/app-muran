@@ -12,9 +12,9 @@ export const CronJobMonitor = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [executions, setExecutions] = useState<any[]>([]);
-  const [systemLogs, setSystemLogs = useState<any[]>([]);
-  const [lastRefreshed, setLastRefreshed = useState<Date>(new Date());
-  const [activeTab, setActiveTab = useState("jobs");
+  const [systemLogs, setSystemLogs] = useState<any[]>([]);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [activeTab, setActiveTab] = useState("jobs");
   const { toast } = useToast();
 
   useEffect(() => {
