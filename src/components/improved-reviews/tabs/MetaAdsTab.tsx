@@ -78,7 +78,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
       <EmptyState
         title="Erro ao carregar dados"
         description={`Ocorreu um erro ao carregar os dados: ${error.message}`}
-        icon={<AlertTriangle className="h-16 w-16 text-red-500 mb-4" />}
+        icon={AlertTriangle}
       />
     );
   }
