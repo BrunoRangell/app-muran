@@ -1,10 +1,9 @@
-
 import { Card } from "@/components/ui/card";
 import { Loader } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
-import { formatDateInBrasiliaTz } from "../summary/utils";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;

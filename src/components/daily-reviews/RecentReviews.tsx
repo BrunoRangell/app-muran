@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, ListChecks, Loader } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { formatDateInBrasiliaTz } from "./summary/utils";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 import { ptBR } from "date-fns/locale";
 
 type RecentReviewsProps = {

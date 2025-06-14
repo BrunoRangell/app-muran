@@ -1,7 +1,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { BadgeDollarSign } from "lucide-react";
-import { formatDateInBrasiliaTz } from "@/components/daily-reviews/summary/utils";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 import { ClientWithReview } from "@/components/daily-reviews/hooks/types/reviewTypes";
 import { MetaAccount } from "@/components/daily-reviews/hooks/types/accountTypes";
 

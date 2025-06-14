@@ -1,7 +1,7 @@
 import { formatCurrency } from "@/utils/formatters";
 import { AlertCircle, Calendar, Loader } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDateInBrasiliaTz } from "../summary/utils";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 
 interface ReviewHistoryTableProps {
   isLoading: boolean;

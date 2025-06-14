@@ -1,5 +1,4 @@
-
-import { formatDateInBrasiliaTz } from "../summary/utils";
+import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 
 interface CardHeaderProps {
   companyName: string;
