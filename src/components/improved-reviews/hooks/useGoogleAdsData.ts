@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -106,9 +107,6 @@ async function processClientsData(
 
   // Processar cada cliente
   const clientsWithData = clients.map(client => {
-    const customBudget = customBudgetMap.get(client.id);
-    const isUsingCustomBudget = !!customBudget;
-    
     const hasMainAccount = client.google_account_id && client.google_account_id !== '';
     const additionalClientAccounts = additionalAccounts.filter(account => 
       account.client_id === client.id
@@ -136,7 +134,7 @@ async function processClientsData(
     
     if (allAccounts.length > 0) {
       return allAccounts.map(account => 
-        processGoogleClientAccount(client, account, reviews, customBudget, isUsingCustomBudget, calculateBudget)
+        processGoogleClientAccount(client, account, reviews, customBudgetMap, calculateBudget)
       );
     } else {
       return createGoogleClientWithoutAccount(client);
