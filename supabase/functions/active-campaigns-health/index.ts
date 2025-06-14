@@ -109,7 +109,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
   }
 }
 
-// Função para buscar dados do Google Ads
+// Função CORRIGIDA para buscar dados do Google Ads (usando v20 e search)
 async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: any): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
   try {
     console.log(`🔍 Google: Buscando campanhas para conta ${clientCustomerId}`);
@@ -146,8 +146,10 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 
     console.log(`✅ Google: Tokens encontrados - Access: ${accessToken ? 'SIM' : 'NÃO'}, Developer: ${developerToken ? 'SIM' : 'NÃO'}, Manager: ${managerId || 'NÃO'}`);
     
+    // Usar formato de data correto (YYYYMMDD sem hífens)
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
     
+    // Query GAQL simplificada baseada no teste que funcionou
     const query = `
       SELECT 
         campaign.id,
@@ -162,8 +164,10 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     `;
     
     console.log(`📡 Google: Executando query GAQL para ${clientCustomerId} na data ${today}`);
+    console.log(`📋 Google: Query GAQL: ${query.trim()}`);
     
-    const googleAdsUrl = `https://googleads.googleapis.com/v15/customers/${clientCustomerId}/googleAds:searchStream`;
+    // Usar endpoint v20 e search (não searchStream)
+    const googleAdsUrl = `https://googleads.googleapis.com/v20/customers/${clientCustomerId}/googleAds:search`;
     
     const headers: { [key: string]: string } = {
       'Authorization': `Bearer ${accessToken}`,
@@ -197,6 +201,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     }
     
     const data = await response.json();
+    console.log(`📋 Google: Resposta recebida:`, JSON.stringify(data, null, 2).substring(0, 500));
     
     if (!data.results || !Array.isArray(data.results)) {
       console.log(`⚠️ Google: Nenhum resultado encontrado para ${clientCustomerId}`);
@@ -207,15 +212,22 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     let totalImpressions = 0;
     let activeCampaigns = 0;
     
+    // Processar resultados usando a estrutura correta da v20
     data.results.forEach((result: any) => {
       if (result.campaign?.status === 'ENABLED') {
         activeCampaigns++;
-        totalCost += (result.metrics?.costMicros || 0) / 1000000;
-        totalImpressions += result.metrics?.impressions || 0;
+        // Converter cost_micros para valor real (dividir por 1.000.000)
+        const campaignCost = (result.metrics?.costMicros || 0) / 1000000;
+        const campaignImpressions = result.metrics?.impressions || 0;
+        
+        totalCost += campaignCost;
+        totalImpressions += parseInt(campaignImpressions);
+        
+        console.log(`📈 Google: Campanha ${result.campaign.name}: Custo=R$${campaignCost.toFixed(2)}, Impressões=${campaignImpressions}`);
       }
     });
     
-    console.log(`✅ Google: ${activeCampaigns} campanhas ativas, Custo: R$ ${totalCost.toFixed(2)}, Impressões: ${totalImpressions}`);
+    console.log(`✅ Google: RESUMO - ${activeCampaigns} campanhas ativas, Custo total: R$ ${totalCost.toFixed(2)}, Impressões totais: ${totalImpressions}`);
     
     return {
       cost: totalCost,
