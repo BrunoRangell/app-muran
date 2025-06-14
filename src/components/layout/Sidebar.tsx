@@ -1,3 +1,4 @@
+
 import { useLocation } from "react-router-dom";
 import { 
   Users, 
@@ -7,7 +8,6 @@ import {
   Receipt,
   CreditCard,
   BarChart3,
-  Activity,
   Menu,
   ChevronLeft
 } from "lucide-react";
@@ -43,7 +43,6 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
-  { icon: Activity, label: "Saúde das Campanhas", path: "/relatorio-saude-campanhas" },
 ];
 
 const regularMenuItems: MenuItem[] = [
@@ -51,7 +50,6 @@ const regularMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
-  { icon: Activity, label: "Saúde das Campanhas", path: "/relatorio-saude-campanhas" },
 ];
 
 export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {

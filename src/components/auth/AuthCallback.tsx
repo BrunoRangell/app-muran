@@ -1,10 +1,9 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
-export default function AuthCallback() {
+export const AuthCallback = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -19,7 +18,7 @@ export default function AuthCallback() {
           description: "Não foi possível verificar seu email. Por favor, solicite um novo link de verificação.",
           variant: "destructive",
         });
-        navigate('/login');
+        navigate('/gestores');
         return;
       }
 
@@ -27,7 +26,7 @@ export default function AuthCallback() {
         title: "Email verificado",
         description: "Seu email foi verificado com sucesso. Você já pode fazer login.",
       });
-      navigate('/');
+      navigate('/gestores');
     };
 
     handleAuthCallback();
@@ -38,4 +37,4 @@ export default function AuthCallback() {
       <p className="text-lg">Verificando...</p>
     </div>
   );
-}
+};
