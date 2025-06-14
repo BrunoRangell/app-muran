@@ -5,14 +5,22 @@ import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { supabase } from "@/lib/supabase";
 import { useBatchOperations } from "@/components/improved-reviews/hooks/useBatchOperations";
 import { AnalysisProgress } from "@/components/daily-reviews/dashboard/components/AnalysisProgress";
+import { useGoogleAdsData } from "@/components/improved-reviews/hooks/useGoogleAdsData";
+import { ClientsList } from "@/components/improved-reviews/clients/ClientsList";
+import { FilterBar } from "@/components/improved-reviews/filters/FilterBar";
+import { MetricsPanel } from "@/components/improved-reviews/dashboard/MetricsPanel";
 
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
+  
+  // Usar dados unificados do Google Ads
+  const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
   
   // Usar o hook unificado de batch operations
   const { 
@@ -26,6 +34,7 @@ export const GoogleAdsDashboard = () => {
     onComplete: async () => {
       console.log("✅ Revisão em lote do Google Ads concluída");
       setLastBatchReviewTime(new Date());
+      await refreshData();
     }
   });
 
@@ -52,17 +61,11 @@ export const GoogleAdsDashboard = () => {
     fetchLastBatchReview();
   }, []);
 
-  // Calcular variáveis de progresso
-  const batchProgress = isReviewingBatch ? progress : 0;
-  const totalClientsToAnalyze = total;
-  const progressPercentage = totalClientsToAnalyze > 0 && isReviewingBatch
-    ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
-    : 0;
-
   const handleAnalyzeAllAction = async () => {
     try {
-      // VERIFICAR: Este método pode precisar ser adaptado para funcionar com dados específicos do Google Ads
-      await reviewAllClients([]);
+      if (data && data.length > 0) {
+        await reviewAllClients(data);
+      }
       
       toast({
         title: "Análise em lote iniciada",
@@ -79,47 +82,54 @@ export const GoogleAdsDashboard = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    console.log("🔄 Atualizando dados do Google Ads...");
+    await refreshData();
+  };
+
+  // Handlers para filtros
+  const handleSearchChange = (query: string) => setSearchQuery(query);
+  const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
+  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
+  const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
+
   return (
     <div className="space-y-6">
-      {/* Card de cabeçalho do dashboard com todos os controles */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-[#321e32] mb-2">Google Ads Dashboard</h2>
-          <div className="flex justify-between items-center">
-            <div>
-              {lastBatchReviewTime && (
-                <p className="text-sm text-gray-500">
-                  Última revisão: {lastBatchReviewTime.toLocaleString('pt-BR')}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={handleAnalyzeAllAction}
-              disabled={isReviewingBatch || isApiLoading}
-              className="bg-[#ff6e00] hover:bg-[#e66300] text-white px-4 py-2 rounded disabled:opacity-50"
-            >
-              {isReviewingBatch ? "Analisando..." : "Analisar Todos"}
-            </button>
-          </div>
-        </div>
-
-        {/* Adicionar barra de progresso quando estiver analisando */}
-        {isReviewingBatch && (
-          <div className="mt-4">
-            <AnalysisProgress 
-              isBatchAnalyzing={isReviewingBatch}
-              batchProgress={batchProgress}
-              totalClientsToAnalyze={totalClientsToAnalyze}
-              progressPercentage={progressPercentage}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Placeholder para cards de clientes - será implementado conforme necessário */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <p className="text-gray-500">Cards de clientes Google Ads serão renderizados aqui</p>
-      </div>
+      {/* Painel de métricas unificado */}
+      <MetricsPanel 
+        metrics={metrics} 
+        onBatchReview={handleAnalyzeAllAction}
+        isProcessing={isReviewingBatch}
+        progress={progress}
+        total={total}
+        currentClientName={currentClientName}
+        platform="google"
+      />
+      
+      {/* Barra de filtros unificada */}
+      <FilterBar 
+        searchQuery={searchQuery}
+        viewMode={viewMode}
+        showOnlyAdjustments={showOnlyAdjustments}
+        showWithoutAccount={showWithoutAccount}
+        onSearchChange={handleSearchChange}
+        onViewModeChange={handleViewModeChange}
+        onAdjustmentFilterChange={handleAdjustmentFilterChange}
+        onAccountFilterChange={handleAccountFilterChange}
+        onRefresh={handleRefresh}
+        isRefreshing={isLoading}
+        platform="google"
+      />
+      
+      {/* Lista de clientes unificada */}
+      <ClientsList 
+        data={data}
+        viewMode={viewMode}
+        searchQuery={searchQuery}
+        showOnlyAdjustments={showOnlyAdjustments}
+        showWithoutAccount={showWithoutAccount}
+        platform="google"
+      />
     </div>
   );
 };
