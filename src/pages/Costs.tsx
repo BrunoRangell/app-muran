@@ -16,7 +16,6 @@ import { DateFilter } from "@/components/costs/filters/DateFilter";
 import { Separator } from "@/components/ui/separator";
 import { ImportCostsDialog } from "@/components/costs/filters/import/ImportCostsDialog";
 import { Toaster } from "@/components/ui/toaster";
-import { logger } from "@/utils/logger";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
@@ -26,7 +25,7 @@ export default function Costs() {
   const { data: costs, isLoading } = useQuery({
     queryKey: ["costs", filters],
     queryFn: async () => {
-      logger.info("COSTS_PAGE", "Buscando custos com filtros", filters);
+      console.log('Buscando custos com filtros:', filters);
       
       let query = supabase
         .from("costs")
@@ -49,7 +48,7 @@ export default function Costs() {
       const { data, error } = await query;
 
       if (error) {
-        logger.error("COSTS_PAGE", "Erro ao buscar custos", error);
+        console.error("Erro ao buscar custos:", error);
         throw error;
       }
 
@@ -58,14 +57,10 @@ export default function Costs() {
         categories: cost.costs_categories.map((cc: any) => cc.category_id)
       }));
 
-      logger.info("COSTS_PAGE", `Custos retornados: ${processedData.length}`);
+      console.log('Custos retornados:', processedData);
       return processedData;
     },
   });
-
-  const totalCustos = (costs || []).reduce((sum, cost) => sum + cost.amount, 0);
-  const uniqueMonths = new Set((costs || []).map(c => c.date.substring(0, 7))).size;
-  const mediaMensal = totalCustos / Math.max(1, uniqueMonths);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
@@ -96,7 +91,7 @@ export default function Costs() {
             <h4 className="text-sm font-medium text-gray-500">Total de Custos</h4>
             <p className="text-2xl font-bold text-gray-900">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                .format(totalCustos)}
+                .format((costs || []).reduce((sum, cost) => sum + cost.amount, 0))}
             </p>
           </div>
           
@@ -104,7 +99,8 @@ export default function Costs() {
             <h4 className="text-sm font-medium text-gray-500">Média Mensal</h4>
             <p className="text-2xl font-bold text-gray-900">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                .format(mediaMensal)}
+                .format((costs || []).reduce((sum, cost) => sum + cost.amount, 0) / 
+                  Math.max(1, new Set((costs || []).map(c => c.date.substring(0, 7))).size))}
             </p>
           </div>
 

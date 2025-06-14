@@ -2,21 +2,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Cost, CostFilters } from "@/types/cost";
-import { showDataOperationToast } from "@/utils/toastUtils";
-import { useCacheManager } from "@/utils/cacheUtils";
-import { QUERY_KEYS } from "@/utils/queryUtils";
-import { handleError } from "@/utils/errorUtils";
-import { logger } from "@/utils/logger";
+import { toast } from "@/components/ui/use-toast";
 
 export const useCosts = (filters?: CostFilters) => {
   const queryClient = useQueryClient();
-  const cacheManager = useCacheManager(queryClient);
 
   const costsQuery = useQuery({
-    queryKey: QUERY_KEYS.costs.byFilters(filters || {}),
+    queryKey: ["costs", filters],
     queryFn: async () => {
-      logger.info("COSTS", "Buscando custos", { filters });
-
       let query = supabase
         .from("costs")
         .select(`
@@ -44,49 +37,41 @@ export const useCosts = (filters?: CostFilters) => {
 
       const { data, error } = await query;
 
-      if (error) {
-        logger.error("COSTS", "Erro ao buscar custos", error);
-        throw error;
-      }
-
-      logger.info("COSTS", `Custos encontrados: ${data?.length || 0}`);
+      if (error) throw error;
       return data as Cost[];
     },
   });
 
   const createCost = useMutation({
     mutationFn: async (newCost: Partial<Cost>) => {
-      logger.info("COSTS", "Criando custo", newCost);
-
       const { data, error } = await supabase
         .from("costs")
         .insert(newCost)
         .select()
         .single();
 
-      if (error) {
-        logger.error("COSTS", "Erro ao criar custo", error);
-        throw error;
-      }
-
-      logger.info("COSTS", "Custo criado com sucesso");
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      cacheManager.invalidateCosts();
-      showDataOperationToast('costs', 'created');
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      toast({
+        title: "Sucesso",
+        description: "Custo cadastrado com sucesso!",
+      });
     },
     onError: (error) => {
-      logger.error("COSTS", "Erro na criação", error);
-      handleError(error, "criar custo");
-      showDataOperationToast('costs', 'createError');
+      console.error("Erro ao criar custo:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível cadastrar o custo",
+        variant: "destructive",
+      });
     },
   });
 
   const updateCost = useMutation({
     mutationFn: async (updatedCost: Partial<Cost>) => {
-      logger.info("COSTS", "Atualizando custo", updatedCost);
-
       const { data, error } = await supabase
         .from("costs")
         .update(updatedCost)
@@ -94,49 +79,49 @@ export const useCosts = (filters?: CostFilters) => {
         .select()
         .single();
 
-      if (error) {
-        logger.error("COSTS", "Erro ao atualizar custo", error);
-        throw error;
-      }
-
-      logger.info("COSTS", "Custo atualizado com sucesso");
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      cacheManager.invalidateCosts();
-      showDataOperationToast('costs', 'updated');
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      toast({
+        title: "Sucesso",
+        description: "Custo atualizado com sucesso!",
+      });
     },
     onError: (error) => {
-      logger.error("COSTS", "Erro na atualização", error);
-      handleError(error, "atualizar custo");
-      showDataOperationToast('costs', 'updateError');
+      console.error("Erro ao atualizar custo:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o custo",
+        variant: "destructive",
+      });
     },
   });
 
   const deleteCost = useMutation({
     mutationFn: async (id: number) => {
-      logger.info("COSTS", "Deletando custo", { id });
-
       const { error } = await supabase
         .from("costs")
         .delete()
         .eq("id", id);
 
-      if (error) {
-        logger.error("COSTS", "Erro ao deletar custo", error);
-        throw error;
-      }
-
-      logger.info("COSTS", "Custo deletado com sucesso");
+      if (error) throw error;
     },
     onSuccess: () => {
-      cacheManager.invalidateCosts();
-      showDataOperationToast('costs', 'deleted');
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      toast({
+        title: "Sucesso",
+        description: "Custo excluído com sucesso!",
+      });
     },
     onError: (error) => {
-      logger.error("COSTS", "Erro na exclusão", error);
-      handleError(error, "excluir custo");
-      showDataOperationToast('costs', 'deleteError');
+      console.error("Erro ao excluir custo:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir o custo",
+        variant: "destructive",
+      });
     },
   });
 

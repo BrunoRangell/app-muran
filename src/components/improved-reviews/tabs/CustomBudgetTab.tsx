@@ -66,11 +66,8 @@ export function CustomBudgetTab() {
     setDialogOpen(true);
   };
 
-  const handleDelete = (budgetId: string) => {
-    const budget = budgets.find(b => b.id === budgetId);
-    if (budget) {
-      setBudgetToDelete(budget);
-    }
+  const handleDelete = (budget: CustomBudget) => {
+    setBudgetToDelete(budget);
   };
 
   const confirmDelete = () => {
@@ -139,6 +136,7 @@ export function CustomBudgetTab() {
                 budgets={budgets}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onToggleStatus={handleToggleStatus}
               />
             )}
           </CardContent>

@@ -1,5 +1,5 @@
 
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/unifiedFormatters";
 import { Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateInBrasiliaTz } from "@/utils/dateUtils";

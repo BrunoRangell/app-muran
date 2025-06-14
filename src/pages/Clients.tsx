@@ -7,7 +7,7 @@ import { AlertCircle } from "lucide-react";
 import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
 
 const Clients = () => {
-  const { clients, isLoading, error } = useUnifiedClientData({ includeInactive: true });
+  const { data: clients, isLoading, error } = useUnifiedClientData({ includeInactive: true });
 
   if (error) {
     return (

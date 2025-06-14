@@ -1,91 +1,97 @@
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { formatCurrency, formatDate } from "@/utils/formatters";
-import { Edit, Trash2 } from "lucide-react";
-import { Payment } from "@/types/payment";
+import { UnifiedTable, ColumnDef } from "@/components/common/UnifiedTable";
+import { Calendar, DollarSign } from "lucide-react";
+import { formatDate, formatCurrency } from "@/utils/unifiedFormatters";
+
+interface Payment {
+  id: string;
+  amount: number;
+  net_amount: number;
+  reference_month: string;
+  payment_date: string;
+  notes: string | null;
+  clients: {
+    company_name: string;
+  };
+}
 
 interface PaymentsTableProps {
   payments: Payment[];
-  onEdit: (payment: Payment) => void;
-  onDelete: (paymentId: string) => void;
-  isLoading?: boolean;
+  isLoading: boolean;
 }
 
-export const PaymentsTable = ({ payments, onEdit, onDelete, isLoading }: PaymentsTableProps) => {
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {Array(5).fill(0).map((_, i) => (
-          <div key={i} className="h-16 bg-muted rounded animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!payments.length) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        Nenhum pagamento encontrado
-      </div>
-    );
-  }
+export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
+  const columns: ColumnDef<Payment>[] = [
+    {
+      id: 'client',
+      label: 'Cliente',
+      accessor: 'clients',
+      sortable: true,
+      render: (clients) => clients?.company_name || 'Cliente não encontrado'
+    },
+    {
+      id: 'reference_month',
+      label: 'Mês de Referência',
+      accessor: 'reference_month',
+      sortable: true,
+      render: (value) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          {formatDate(value)}
+        </div>
+      )
+    },
+    {
+      id: 'payment_date',
+      label: 'Data do Pagamento',
+      accessor: 'payment_date',
+      sortable: true,
+      render: (value) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          {formatDate(value)}
+        </div>
+      )
+    },
+    {
+      id: 'amount',
+      label: 'Valor Bruto',
+      accessor: 'amount',
+      sortable: true,
+      render: (value) => (
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4" />
+          {formatCurrency(value)}
+        </div>
+      )
+    },
+    {
+      id: 'net_amount',
+      label: 'Valor Líquido',
+      accessor: 'net_amount',
+      sortable: true,
+      render: (value) => (
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4" />
+          {formatCurrency(value)}
+        </div>
+      )
+    },
+    {
+      id: 'notes',
+      label: 'Observações',
+      accessor: 'notes',
+      sortable: false,
+      render: (value) => value || '-'
+    }
+  ];
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Cliente</TableHead>
-          <TableHead>Valor</TableHead>
-          <TableHead>Mês de Referência</TableHead>
-          <TableHead>Data do Pagamento</TableHead>
-          <TableHead>Observações</TableHead>
-          <TableHead className="text-right">Ações</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {payments.map((payment) => (
-          <TableRow key={payment.id}>
-            <TableCell>
-              <div className="font-medium">
-                {payment.clients?.company_name || 'Cliente não encontrado'}
-              </div>
-            </TableCell>
-            <TableCell className="font-medium">
-              {formatCurrency(payment.amount)}
-            </TableCell>
-            <TableCell>
-              {formatDate(payment.reference_month)}
-            </TableCell>
-            <TableCell>
-              {formatDate(payment.created_at)}
-            </TableCell>
-            <TableCell className="max-w-xs truncate">
-              {payment.notes || '-'}
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onEdit(payment)}
-                  className="h-8 w-8"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(payment.id)}
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <UnifiedTable
+      data={payments || []}
+      columns={columns}
+      isLoading={isLoading}
+      emptyMessage="Nenhum pagamento encontrado"
+    />
   );
-};
+}

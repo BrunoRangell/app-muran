@@ -1,95 +1,123 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDate } from "@/utils/formatters";
-import { Edit, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { formatCurrency, formatDate, getStatusBadgeProps } from "@/utils/unifiedFormatters";
+import { UnifiedEmptyState } from "@/components/common/UnifiedEmptyState";
 
 interface CustomBudget {
   id: string;
+  client_id: string;
+  platform: string;
   budget_amount: number;
   start_date: string;
   end_date: string;
-  description?: string;
-  platform: string;
   is_active: boolean;
+  description?: string;
+  clients?: {
+    company_name: string;
+  };
 }
 
 interface CustomBudgetTableProps {
   budgets: CustomBudget[];
   onEdit: (budget: CustomBudget) => void;
-  onDelete: (budgetId: string) => void;
+  onDelete: (budget: CustomBudget) => void;
+  onToggleStatus: (budget: CustomBudget) => void;
 }
 
-export const CustomBudgetTable = ({ budgets, onEdit, onDelete }: CustomBudgetTableProps) => {
-  if (!budgets.length) {
+export function CustomBudgetTable({ budgets, onEdit, onDelete, onToggleStatus }: CustomBudgetTableProps) {
+  if (budgets.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        Nenhum orçamento personalizado encontrado
-      </div>
+      <UnifiedEmptyState
+        title="Nenhum orçamento personalizado encontrado"
+        description="Crie orçamentos personalizados para períodos específicos dos seus clientes."
+        size="md"
+      />
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Período</TableHead>
-          <TableHead>Valor</TableHead>
-          <TableHead>Plataforma</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Descrição</TableHead>
-          <TableHead className="text-right">Ações</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {budgets.map((budget) => (
-          <TableRow key={budget.id}>
-            <TableCell>
-              <div className="text-sm">
-                <div>{formatDate(budget.start_date)}</div>
-                <div className="text-muted-foreground">até {formatDate(budget.end_date)}</div>
-              </div>
-            </TableCell>
-            <TableCell className="font-medium">
-              {formatCurrency(budget.budget_amount)}
-            </TableCell>
-            <TableCell>
-              <Badge variant={budget.platform === 'meta' ? 'default' : 'secondary'}>
-                {budget.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              <Badge variant={budget.is_active ? 'success' : 'secondary'}>
-                {budget.is_active ? 'Ativo' : 'Inativo'}
-              </Badge>
-            </TableCell>
-            <TableCell className="max-w-xs truncate">
-              {budget.description || '-'}
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onEdit(budget)}
-                  className="h-8 w-8"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(budget.id)}
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
+    <div className="border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Cliente</TableHead>
+            <TableHead>Plataforma</TableHead>
+            <TableHead>Valor</TableHead>
+            <TableHead>Período</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Descrição</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {budgets.map((budget) => {
+            const platformProps = getStatusBadgeProps(budget.platform, 'platform');
+            const statusProps = getStatusBadgeProps(budget.is_active ? 'ativo' : 'inativo', 'activity');
+
+            return (
+              <TableRow key={budget.id}>
+                <TableCell className="font-medium">
+                  {budget.clients?.company_name || 'Cliente não encontrado'}
+                </TableCell>
+                <TableCell>
+                  <Badge {...platformProps}>
+                    {platformProps.text}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {formatCurrency(budget.budget_amount)}
+                </TableCell>
+                <TableCell>
+                  {formatDate(budget.start_date)} - {formatDate(budget.end_date)}
+                </TableCell>
+                <TableCell>
+                  <Badge {...statusProps}>
+                    {statusProps.text}
+                  </Badge>
+                </TableCell>
+                <TableCell className="max-w-xs truncate">
+                  {budget.description || '-'}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onToggleStatus(budget)}
+                      title={budget.is_active ? 'Desativar' : 'Ativar'}
+                    >
+                      {budget.is_active ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEdit(budget)}
+                      title="Editar"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDelete(budget)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
-};
+}

@@ -1,104 +1,160 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PaymentsTableHeader } from "./table/PaymentsTableHeader";
+import { PaymentsTableRow } from "./table/PaymentsTableRow";
+import { PaymentsClientListProps } from "./types";
+import { usePaymentsClients } from "./hooks/usePaymentsClients";
+import { QuickFiltersBar } from "./QuickFiltersBar";
+import { useState } from "react";
+import { formatCurrency } from "@/utils/unifiedFormatters";
+import { UnifiedTable, ColumnDef } from "@/components/common/UnifiedTable";
+import { useTableFilters } from "@/hooks/common/useTableFilters";
+import { useTableSort } from "@/hooks/common/useTableSort";
+import { Button } from "@/components/ui/button";
+import { DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Receipt } from "lucide-react";
-import { formatCurrency } from "@/utils/formatters";
-import { Client } from "@/types/client";
 
-interface PaymentsClientListProps {
-  clients: Client[];
-  onSelectClient: (client: Client) => void;
-  onNewPayment: (client: Client) => void;
-  onViewHistory: (client: Client) => void;
-}
+export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
+  const { clients, isLoading, handlePaymentUpdated } = usePaymentsClients();
+  const [activeFilter, setActiveFilter] = useState('');
+  
+  // Usar os hooks unificados
+  const { 
+    searchTerm, 
+    setSearchTerm, 
+    filteredData, 
+    setFilter 
+  } = useTableFilters({
+    data: clients || [],
+    searchFields: ['company_name'],
+    customFilters: {
+      status: (client, value) => {
+        if (value === 'active') return client.status === 'active';
+        if (value === 'paid') return client.status === 'active' && client.hasCurrentMonthPayment;
+        if (value === 'pending') return client.status === 'active' && !client.hasCurrentMonthPayment;
+        return true;
+      }
+    }
+  });
 
-export const PaymentsClientList = ({ 
-  clients, 
-  onSelectClient, 
-  onNewPayment, 
-  onViewHistory 
-}: PaymentsClientListProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
+  const { sortConfig, sortedData, handleSort } = useTableSort({
+    data: filteredData,
+    initialSort: { key: 'company_name', direction: 'asc' }
+  });
 
-  const filteredClients = clients.filter(client =>
-    client.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.contact_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleFilterChange = (filter: string) => {
+    const newFilter = activeFilter === filter ? '' : filter;
+    setActiveFilter(newFilter);
+    setFilter('status', newFilter);
+  };
+
+  // Definir colunas da tabela
+  const columns: ColumnDef[] = [
+    {
+      id: 'company_name',
+      label: 'Empresa',
+      accessor: 'company_name',
+      sortable: true,
+      render: (value, client) => (
+        <div className="flex items-center gap-2">
+          {client.status === 'active' && !client.hasCurrentMonthPayment && (
+            <div className="h-2 w-2 bg-orange-500 rounded-full" title="Pagamento pendente" />
+          )}
+          {value}
+        </div>
+      )
+    },
+    {
+      id: 'contract_value',
+      label: 'Valor Mensal',
+      accessor: 'contract_value',
+      sortable: true,
+      render: (value) => formatCurrency(value)
+    },
+    {
+      id: 'total_received',
+      label: 'Valor Total Recebido',
+      accessor: 'total_received',
+      sortable: true,
+      render: (value) => formatCurrency(Number(value) || 0)
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      accessor: 'status',
+      sortable: true,
+      render: (value) => (
+        <Badge 
+          variant={value === 'active' ? 'default' : 'destructive'}
+          className={value === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}
+        >
+          {value === 'active' ? 'Ativo' : 'Inativo'}
+        </Badge>
+      )
+    },
+    {
+      id: 'actions',
+      label: 'Ações',
+      sortable: false,
+      className: 'text-right',
+      render: (value, client) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPaymentClick(client.id)}
+          className="gap-2"
+        >
+          <DollarSign className="h-4 w-4" />
+          Registrar Pagamento
+        </Button>
+      )
+    }
+  ];
+
+  // Calcular totais
+  const totals = sortedData.reduce((acc, client) => ({
+    monthlyTotal: acc.monthlyTotal + (Number(client?.contract_value) || 0),
+    receivedTotal: acc.receivedTotal + (Number(client?.total_received) || 0)
+  }), { monthlyTotal: 0, receivedTotal: 0 });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Clientes</CardTitle>
+    <Card className="p-2 md:p-6">
+      <div className="flex flex-col space-y-4">
+        <QuickFiltersBar 
+          activeFilter={activeFilter}
+          onFilterChange={handleFilterChange}
+        />
+        
         <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar cliente..."
+            placeholder="Pesquisar cliente..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-8"
           />
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {filteredClients.map(client => (
-            <div 
-              key={client.id} 
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-              onClick={() => onSelectClient(client)}
-            >
-              <div className="flex-1">
-                <div className="font-medium">{client.company_name}</div>
-                <div className="text-sm text-muted-foreground">{client.contact_name}</div>
-                <div className="text-sm font-medium mt-1">
-                  {formatCurrency(client.contract_value)}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Badge variant={client.status === 'active' ? 'success' : 'secondary'}>
-                  {client.status === 'active' ? 'Ativo' : 'Inativo'}
-                </Badge>
-                
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNewPayment(client);
-                    }}
-                    className="h-8 w-8"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewHistory(client);
-                    }}
-                    className="h-8 w-8"
-                  >
-                    <Receipt className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+
+        <UnifiedTable
+          data={sortedData}
+          columns={columns}
+          isLoading={isLoading}
+          sortConfig={sortConfig}
+          onSort={handleSort}
+          emptyMessage="Nenhum cliente encontrado"
+        />
+
+        {sortedData.length > 0 && (
+          <div className="border-t pt-4 mt-4">
+            <div className="flex justify-between text-sm font-medium">
+              <span>Total Mensal: {formatCurrency(totals.monthlyTotal)}</span>
+              <span>Total Recebido: {formatCurrency(totals.receivedTotal)}</span>
             </div>
-          ))}
-          
-          {filteredClients.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
-            </div>
-          )}
-        </div>
-      </CardContent>
+          </div>
+        )}
+      </div>
     </Card>
   );
-};
+}
