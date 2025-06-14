@@ -3,172 +3,160 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
-// Estrutura de dados de saúde de campanhas com dados reais
-type Platform = "Meta Ads" | "Google Ads";
+// Estrutura reformulada para separar Meta e Google Ads
 export type CampaignStatus = "ok" | "warning" | "error" | "nodata";
+
+export interface PlatformData {
+  costToday: number;
+  impressionsToday?: number;
+  errors: string[];
+  status: CampaignStatus;
+  accountId?: string;
+  accountName?: string;
+}
 
 export interface CampaignHealth {
   clientId: string;
   clientName: string;
   companyEmail?: string;
-  platforms: Array<{
-    name: Platform;
-    costToday: number;
-    impressionsToday?: number;
-    errors: string[];
-    status: CampaignStatus;
-    accountId?: string;
-    accountName?: string;
-  }>;
+  metaAds?: PlatformData;
+  googleAds?: PlatformData;
+}
+
+// Função auxiliar para determinar status baseado nos dados
+function determineStatus(
+  costToday: number, 
+  hasAccount: boolean, 
+  hasReviewData: boolean
+): { status: CampaignStatus; errors: string[] } {
+  if (!hasAccount) {
+    return { status: "nodata", errors: ["Conta não configurada"] };
+  }
+  
+  if (!hasReviewData) {
+    return { status: "nodata", errors: ["Dados não disponíveis"] };
+  }
+  
+  if (costToday > 0) {
+    return { status: "ok", errors: [] };
+  } else {
+    return { status: "error", errors: ["Sem veiculação hoje"] };
+  }
 }
 
 // Busca dados reais de saúde das campanhas
-async function fetchRealHealthData(): Promise<CampaignHealth[]> {
-  console.log("🔍 Buscando dados reais de saúde das campanhas...");
+async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
+  console.log("🔍 Buscando dados de saúde das campanhas...");
   
   try {
-    // Buscar dados consolidados com JOINs para obter dados do dia atual
-    const { data: clientsData, error: clientsError } = await supabase
+    // Buscar TODOS os clientes ativos
+    const { data: clients, error: clientsError } = await supabase
       .from('clients')
-      .select(`
-        id,
-        company_name,
-        contact_name,
-        daily_budget_reviews!left (
-          meta_total_spent,
-          meta_daily_budget_current,
-          meta_account_id,
-          meta_account_name,
-          review_date
-        ),
-        google_ads_reviews!left (
-          google_total_spent,
-          google_daily_budget_current,
-          google_account_id,
-          google_account_name,
-          review_date
-        ),
-        client_meta_accounts!left (
-          account_id,
-          account_name,
-          status
-        ),
-        client_google_accounts!left (
-          account_id,
-          account_name,
-          status
-        )
-      `)
+      .select('id, company_name, contact_name')
       .eq('status', 'active')
-      .eq('daily_budget_reviews.review_date', new Date().toISOString().split('T')[0])
-      .eq('google_ads_reviews.review_date', new Date().toISOString().split('T')[0])
-      .eq('client_meta_accounts.status', 'active')
-      .eq('client_google_accounts.status', 'active');
+      .order('company_name');
 
     if (clientsError) {
-      console.error("❌ Erro ao buscar dados dos clientes:", clientsError);
+      console.error("❌ Erro ao buscar clientes:", clientsError);
       throw clientsError;
     }
 
-    console.log(`✅ Dados brutos obtidos: ${clientsData?.length || 0} clientes`);
+    console.log(`✅ Encontrados ${clients?.length || 0} clientes ativos`);
 
-    // Processar dados para o formato esperado
-    const healthData: CampaignHealth[] = (clientsData || []).map(client => {
-      const metaReview = Array.isArray(client.daily_budget_reviews) 
-        ? client.daily_budget_reviews[0] 
-        : client.daily_budget_reviews;
+    // Para cada cliente, buscar dados das duas plataformas
+    const healthData: CampaignHealth[] = [];
+    const today = new Date().toISOString().split('T')[0];
+
+    for (const client of clients || []) {
+      console.log(`📊 Processando cliente: ${client.company_name}`);
       
-      const googleReview = Array.isArray(client.google_ads_reviews)
-        ? client.google_ads_reviews[0]
-        : client.google_ads_reviews;
+      // Buscar dados do Meta Ads
+      const { data: metaReview } = await supabase
+        .from('daily_budget_reviews')
+        .select(`
+          meta_total_spent,
+          meta_daily_budget_current,
+          meta_account_id,
+          meta_account_name
+        `)
+        .eq('client_id', client.id)
+        .eq('review_date', today)
+        .maybeSingle();
 
-      const metaAccount = Array.isArray(client.client_meta_accounts)
-        ? client.client_meta_accounts[0]
-        : client.client_meta_accounts;
+      // Buscar dados do Google Ads
+      const { data: googleReview } = await supabase
+        .from('google_ads_reviews')
+        .select(`
+          google_total_spent,
+          google_daily_budget_current,
+          google_account_id,
+          google_account_name
+        `)
+        .eq('client_id', client.id)
+        .eq('review_date', today)
+        .maybeSingle();
 
-      const googleAccount = Array.isArray(client.client_google_accounts)
-        ? client.client_google_accounts[0]
-        : client.client_google_accounts;
+      // Buscar contas configuradas
+      const { data: metaAccounts } = await supabase
+        .from('client_meta_accounts')
+        .select('account_id, account_name, status')
+        .eq('client_id', client.id)
+        .eq('status', 'active');
 
-      // Determinar status e erros para Meta Ads
-      const metaCostToday = metaReview?.meta_total_spent || 0;
-      const metaHasAccount = !!metaAccount?.account_id;
-      let metaErrors: string[] = [];
-      let metaStatus: CampaignStatus = "nodata";
+      const { data: googleAccounts } = await supabase
+        .from('client_google_accounts')
+        .select('account_id, account_name, status')
+        .eq('client_id', client.id)
+        .eq('status', 'active');
 
-      if (metaHasAccount) {
-        if (metaCostToday > 0) {
-          metaStatus = "ok";
-          metaErrors = [];
-        } else if (metaReview && metaCostToday === 0) {
-          metaStatus = "error";
-          metaErrors = ["Sem veiculação"];
-        } else {
-          metaStatus = "nodata";
-          metaErrors = ["Dados não disponíveis"];
-        }
-      }
-
-      // Determinar status e erros para Google Ads
-      const googleCostToday = googleReview?.google_total_spent || 0;
-      const googleHasAccount = !!googleAccount?.account_id;
-      let googleErrors: string[] = [];
-      let googleStatus: CampaignStatus = "nodata";
-
-      if (googleHasAccount) {
-        if (googleCostToday > 0) {
-          googleStatus = "ok";
-          googleErrors = [];
-        } else if (googleReview && googleCostToday === 0) {
-          googleStatus = "error";
-          googleErrors = ["Sem veiculação"];
-        } else {
-          googleStatus = "nodata";
-          googleErrors = ["Dados não disponíveis"];
-        }
-      }
-
-      const platforms = [];
-
-      // Adicionar Meta Ads se o cliente tem conta configurada
-      if (metaHasAccount) {
-        platforms.push({
-          name: "Meta Ads" as Platform,
-          costToday: metaCostToday,
-          impressionsToday: undefined, // TODO: Buscar via API quando necessário
-          errors: metaErrors,
-          status: metaStatus,
-          accountId: metaAccount.account_id,
-          accountName: metaAccount.account_name
-        });
-      }
-
-      // Adicionar Google Ads se o cliente tem conta configurada
-      if (googleHasAccount) {
-        platforms.push({
-          name: "Google Ads" as Platform,
-          costToday: googleCostToday,
-          impressionsToday: undefined, // TODO: Buscar via API quando necessário
-          errors: googleErrors,
-          status: googleStatus,
-          accountId: googleAccount.account_id,
-          accountName: googleAccount.account_name
-        });
-      }
-
-      return {
+      let clientData: CampaignHealth = {
         clientId: client.id,
         clientName: client.company_name,
         companyEmail: client.contact_name || undefined,
-        platforms
       };
-    });
 
-    // Filtrar apenas clientes que têm pelo menos uma plataforma configurada
-    const filteredData = healthData.filter(client => client.platforms.length > 0);
-    
-    console.log(`📊 Dados processados: ${filteredData.length} clientes com campanhas ativas`);
-    return filteredData;
+      // Processar dados do Meta Ads
+      const hasMetaAccount = metaAccounts && metaAccounts.length > 0;
+      if (hasMetaAccount) {
+        const metaCostToday = metaReview?.meta_total_spent || 0;
+        const hasMetaReviewData = !!metaReview;
+        const metaStatus = determineStatus(metaCostToday, hasMetaAccount, hasMetaReviewData);
+        
+        clientData.metaAds = {
+          costToday: metaCostToday,
+          impressionsToday: undefined, // TODO: Buscar via API quando necessário
+          errors: metaStatus.errors,
+          status: metaStatus.status,
+          accountId: metaReview?.meta_account_id || metaAccounts[0]?.account_id,
+          accountName: metaReview?.meta_account_name || metaAccounts[0]?.account_name
+        };
+      }
+
+      // Processar dados do Google Ads
+      const hasGoogleAccount = googleAccounts && googleAccounts.length > 0;
+      if (hasGoogleAccount) {
+        const googleCostToday = googleReview?.google_total_spent || 0;
+        const hasGoogleReviewData = !!googleReview;
+        const googleStatus = determineStatus(googleCostToday, hasGoogleAccount, hasGoogleReviewData);
+        
+        clientData.googleAds = {
+          costToday: googleCostToday,
+          impressionsToday: undefined, // TODO: Buscar via API quando necessário
+          errors: googleStatus.errors,
+          status: googleStatus.status,
+          accountId: googleReview?.google_account_id || googleAccounts[0]?.account_id,
+          accountName: googleReview?.google_account_name || googleAccounts[0]?.account_name
+        };
+      }
+
+      // Adicionar cliente apenas se tiver pelo menos uma plataforma configurada
+      if (clientData.metaAds || clientData.googleAds) {
+        healthData.push(clientData);
+      }
+    }
+
+    console.log(`📈 Dados processados: ${healthData.length} clientes com campanhas`);
+    return healthData;
 
   } catch (error) {
     console.error("❌ Erro ao processar dados de saúde:", error);
@@ -181,18 +169,11 @@ async function triggerMassReview() {
   console.log("🔄 Iniciando revisão em massa...");
   
   try {
-    // Buscar todos os clientes ativos com contas configuradas
+    // Buscar todos os clientes ativos
     const { data: clients, error } = await supabase
       .from('clients')
-      .select(`
-        id,
-        company_name,
-        client_meta_accounts!left (account_id, status),
-        client_google_accounts!left (account_id, status)
-      `)
-      .eq('status', 'active')
-      .eq('client_meta_accounts.status', 'active')
-      .eq('client_google_accounts.status', 'active');
+      .select('id, company_name')
+      .eq('status', 'active');
 
     if (error) throw error;
 
@@ -200,35 +181,28 @@ async function triggerMassReview() {
     
     console.log(`📋 Processando revisão para ${results.total} clientes...`);
 
-    // Processar clientes em lotes para não sobrecarregar as APIs
+    // Processar clientes em lotes
     for (const client of clients || []) {
       try {
-        const hasMetaAccount = client.client_meta_accounts?.some(acc => acc.status === 'active');
-        const hasGoogleAccount = client.client_google_accounts?.some(acc => acc.status === 'active');
+        const today = new Date().toISOString().split('T')[0];
 
-        // Chamar edge functions para atualizar dados (usando period do mês atual)
-        const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        
-        if (hasMetaAccount) {
-          await supabase.functions.invoke('daily-meta-review', {
+        // Chamar edge functions para atualizar dados
+        await Promise.all([
+          supabase.functions.invoke('daily-meta-review', {
             body: {
               clientId: client.id,
-              reviewDate: today.toISOString().split('T')[0],
+              reviewDate: today,
               fetchRealData: true
             }
-          });
-        }
-
-        if (hasGoogleAccount) {
-          await supabase.functions.invoke('daily-google-review', {
+          }),
+          supabase.functions.invoke('daily-google-review', {
             body: {
               clientId: client.id,
-              reviewDate: today.toISOString().split('T')[0],
+              reviewDate: today,
               fetchRealData: true
             }
-          });
-        }
+          })
+        ]);
 
         results.success++;
         console.log(`✅ Cliente ${client.company_name} processado com sucesso`);
@@ -254,14 +228,14 @@ export function useCampaignHealthData() {
 
   // Query para buscar dados com cache de 5 minutos
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["campaign-health-real"],
-    queryFn: fetchRealHealthData,
+    queryKey: ["campaign-health-new"],
+    queryFn: fetchCampaignHealthData,
     staleTime: 5 * 60 * 1000, // 5 minutos
     refetchInterval: 5 * 60 * 1000 // Auto-refresh a cada 5 minutos
   });
 
   // Função para ações dos botões
-  function handleAction(action: "details" | "review" | "mass-review", clientId?: string, platform?: Platform) {
+  function handleAction(action: "details" | "review" | "mass-review", clientId?: string, platform?: string) {
     if (action === "details" && clientId && platform) {
       const platformParam = encodeURIComponent(platform.toLowerCase().replace(' ', ''));
       window.open(`/clientes/${clientId}?platform=${platformParam}`, "_blank");
