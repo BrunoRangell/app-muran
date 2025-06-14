@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter } from "lucide-react";
 import { useActiveCampaignHealth } from "./hooks/useActiveCampaignHealth";
+import { CampaignStatus } from "./types";
 
 export function NewHealthFilters() {
   const {
@@ -18,11 +19,11 @@ export function NewHealthFilters() {
 
   // Wrapper functions para fazer cast correto dos tipos
   const handleStatusChange = (value: string) => {
-    setStatusFilter(value as typeof statusFilter);
+    setStatusFilter(value as CampaignStatus | "all");
   };
 
   const handlePlatformChange = (value: string) => {
-    setPlatformFilter(value as typeof platformFilter);
+    setPlatformFilter(value as 'meta' | 'google' | 'all');
   };
 
   return (

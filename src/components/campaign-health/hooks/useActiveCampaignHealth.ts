@@ -1,26 +1,11 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-
-export type CampaignStatus = "funcionando" | "sem-veiculacao" | "sem-campanhas" | "nao-configurado";
-
-export interface CampaignHealthRow {
-  clientId: string;
-  clientName: string;
-  platform: 'meta' | 'google';
-  hasAccount: boolean;
-  hasActiveCampaigns: boolean;
-  costToday: number;
-  impressionsToday: number;
-  activeCampaignsCount: number;
-  accountId?: string;
-  accountName?: string;
-  status: CampaignStatus;
-}
+import { ClientHealthData, CampaignStatus, PlatformHealthData, HealthStats } from "../types";
 
 // Função para determinar o status baseado nos dados
-function determineStatus(data: Omit<CampaignHealthRow, 'status'>): CampaignStatus {
+function determineStatus(data: Omit<PlatformHealthData, 'status'>): CampaignStatus {
   if (!data.hasAccount) {
     return "nao-configurado";
   }
@@ -36,8 +21,26 @@ function determineStatus(data: Omit<CampaignHealthRow, 'status'>): CampaignStatu
   }
 }
 
-// Busca dados da edge function
-async function fetchActiveCampaignHealth(): Promise<CampaignHealthRow[]> {
+// Função para determinar status geral do cliente
+function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: PlatformHealthData): CampaignStatus {
+  const platforms = [metaAds, googleAds].filter(Boolean);
+  
+  if (platforms.length === 0) return "nao-configurado";
+  
+  // Se alguma plataforma está funcionando, cliente está funcionando
+  if (platforms.some(p => p?.status === "funcionando")) return "funcionando";
+  
+  // Se alguma plataforma tem campanhas mas sem veiculação
+  if (platforms.some(p => p?.status === "sem-veiculacao")) return "sem-veiculacao";
+  
+  // Se alguma plataforma tem contas mas sem campanhas
+  if (platforms.some(p => p?.status === "sem-campanhas")) return "sem-campanhas";
+  
+  return "nao-configurado";
+}
+
+// Busca dados da edge function e agrupa por cliente
+async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
   console.log("🔍 Buscando dados de campanhas ativas...");
   
   try {
@@ -54,13 +57,47 @@ async function fetchActiveCampaignHealth(): Promise<CampaignHealthRow[]> {
       throw new Error("Resposta inválida da edge function");
     }
 
-    // Processar dados e adicionar status
-    const processedData: CampaignHealthRow[] = data.data.map((row: any) => ({
-      ...row,
-      status: determineStatus(row)
+    // Agrupar dados por cliente
+    const clientMap = new Map<string, ClientHealthData>();
+
+    data.data.forEach((row: any) => {
+      const clientId = row.clientId;
+      
+      if (!clientMap.has(clientId)) {
+        clientMap.set(clientId, {
+          clientId: row.clientId,
+          clientName: row.clientName,
+          overallStatus: "nao-configurado"
+        });
+      }
+
+      const client = clientMap.get(clientId)!;
+      
+      const platformData: PlatformHealthData = {
+        hasAccount: row.hasAccount,
+        hasActiveCampaigns: row.hasActiveCampaigns,
+        costToday: row.costToday,
+        impressionsToday: row.impressionsToday,
+        activeCampaignsCount: row.activeCampaignsCount,
+        accountId: row.accountId,
+        accountName: row.accountName,
+        status: determineStatus(row)
+      };
+
+      if (row.platform === 'meta') {
+        client.metaAds = platformData;
+      } else if (row.platform === 'google') {
+        client.googleAds = platformData;
+      }
+    });
+
+    // Calcular status geral para cada cliente
+    const processedData = Array.from(clientMap.values()).map(client => ({
+      ...client,
+      overallStatus: determineOverallStatus(client.metaAds, client.googleAds)
     }));
 
-    console.log(`✅ Processados ${processedData.length} registros de saúde`);
+    console.log(`✅ Processados ${processedData.length} clientes agrupados`);
     return processedData;
 
   } catch (error) {
@@ -73,26 +110,47 @@ export function useActiveCampaignHealth() {
   const [filterValue, setFilterValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | "all">("all");
   const [platformFilter, setPlatformFilter] = useState<'meta' | 'google' | 'all'>("all");
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+  const queryClient = useQueryClient();
+  const queryKey = ["active-campaign-health"];
 
   // Query para buscar dados com cache de 10 minutos
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["active-campaign-health"],
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey,
     queryFn: fetchActiveCampaignHealth,
     staleTime: 10 * 60 * 1000, // 10 minutos
-    refetchInterval: 10 * 60 * 1000 // Auto-refresh a cada 10 minutos
+    refetchInterval: 10 * 60 * 1000, // Auto-refresh a cada 10 minutos
+    refetchOnWindowFocus: false
   });
 
   // Filtrar dados
-  const filteredData = data?.filter(row => {
+  const filteredData = data?.filter(client => {
     const matchesName = filterValue === "" || 
-      row.clientName.toLowerCase().includes(filterValue.toLowerCase());
+      client.clientName.toLowerCase().includes(filterValue.toLowerCase());
     
-    const matchesStatus = statusFilter === "all" || row.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || client.overallStatus === statusFilter;
     
-    const matchesPlatform = platformFilter === "all" || row.platform === platformFilter;
+    let matchesPlatform = true;
+    if (platformFilter !== "all") {
+      if (platformFilter === "meta") {
+        matchesPlatform = !!client.metaAds;
+      } else if (platformFilter === "google") {
+        matchesPlatform = !!client.googleAds;
+      }
+    }
     
     return matchesName && matchesStatus && matchesPlatform;
   }) || [];
+
+  // Função para atualizar dados (invalidar cache e buscar novos dados)
+  const handleRefresh = async () => {
+    console.log("🔄 Atualizando dados de campanhas...");
+    await queryClient.invalidateQueries({ queryKey });
+    await refetch();
+    setLastRefresh(new Date());
+    console.log("✅ Dados atualizados com sucesso");
+  };
 
   // Função para ações dos botões
   function handleAction(action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') {
@@ -112,17 +170,18 @@ export function useActiveCampaignHealth() {
   }
 
   // Estatísticas para dashboard
-  const stats = {
-    totalClients: data ? new Set(data.map(row => row.clientId)).size : 0,
-    functioning: filteredData.filter(row => row.status === "funcionando").length,
-    noSpend: filteredData.filter(row => row.status === "sem-veiculacao").length,
-    noCampaigns: filteredData.filter(row => row.status === "sem-campanhas").length,
-    notConfigured: filteredData.filter(row => row.status === "nao-configurado").length,
+  const stats: HealthStats = {
+    totalClients: data?.length || 0,
+    functioning: filteredData.filter(client => client.overallStatus === "funcionando").length,
+    noSpend: filteredData.filter(client => client.overallStatus === "sem-veiculacao").length,
+    noCampaigns: filteredData.filter(client => client.overallStatus === "sem-campanhas").length,
+    notConfigured: filteredData.filter(client => client.overallStatus === "nao-configurado").length,
   };
 
   return {
     data: filteredData,
     isLoading,
+    isFetching,
     error: error ? "Erro ao carregar dados de saúde das campanhas." : null,
     filterValue,
     setFilterValue,
@@ -131,7 +190,8 @@ export function useActiveCampaignHealth() {
     platformFilter,
     setPlatformFilter,
     handleAction,
-    refetch,
+    handleRefresh,
+    lastRefresh,
     stats
   };
 }
