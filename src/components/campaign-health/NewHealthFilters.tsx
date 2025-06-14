@@ -16,6 +16,15 @@ export function NewHealthFilters() {
     stats
   } = useActiveCampaignHealth();
 
+  // Wrapper functions para fazer cast correto dos tipos
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value as typeof statusFilter);
+  };
+
+  const handlePlatformChange = (value: string) => {
+    setPlatformFilter(value as typeof platformFilter);
+  };
+
   return (
     <div className="space-y-4 mb-6">
       {/* Estatísticas rápidas */}
@@ -49,7 +58,7 @@ export function NewHealthFilters() {
           />
         </div>
         
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-48">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Status" />
@@ -63,7 +72,7 @@ export function NewHealthFilters() {
           </SelectContent>
         </Select>
 
-        <Select value={platformFilter} onValueChange={setPlatformFilter}>
+        <Select value={platformFilter} onValueChange={handlePlatformChange}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Plataforma" />
           </SelectTrigger>
