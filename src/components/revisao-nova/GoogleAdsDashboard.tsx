@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { supabase } from "@/lib/supabase";
-import { GoogleAdsDashboardCard } from "@/components/daily-reviews/dashboard/GoogleAdsDashboardCard";
-import { GoogleAdsDashboardHeader } from "@/components/daily-reviews/dashboard/components/GoogleAdsDashboardHeader";
+// Removido import do GoogleAdsDashboardCard que foi deletado
 import { useGoogleAdsBatchReview } from "@/components/daily-reviews/hooks/useGoogleAdsBatchReview";
 import { AnalysisProgress } from "@/components/daily-reviews/dashboard/components/AnalysisProgress";
 
@@ -85,18 +84,26 @@ export const GoogleAdsDashboard = () => {
     <div className="space-y-6">
       {/* Card de cabeçalho do dashboard com todos os controles */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <GoogleAdsDashboardHeader 
-          lastBatchReviewTime={lastBatchReviewTime}
-          isBatchAnalyzing={isReviewingBatch}
-          isLoading={isApiLoading}
-          onAnalyzeAll={handleAnalyzeAll}
-          searchQuery={searchQuery}
-          onSearchChange={(e) => setSearchQuery(e.target.value)}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          showOnlyAdjustments={showOnlyAdjustments}
-          onShowOnlyAdjustmentsChange={setShowOnlyAdjustments}
-        />
+        {/* Componente de cabeçalho será implementado se necessário */}
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-[#321e32] mb-2">Google Ads Dashboard</h2>
+          <div className="flex justify-between items-center">
+            <div>
+              {lastBatchReviewTime && (
+                <p className="text-sm text-gray-500">
+                  Última revisão: {lastBatchReviewTime.toLocaleString('pt-BR')}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={handleAnalyzeAll}
+              disabled={isReviewingBatch || isApiLoading}
+              className="bg-[#ff6e00] hover:bg-[#e66300] text-white px-4 py-2 rounded disabled:opacity-50"
+            >
+              {isReviewingBatch ? "Analisando..." : "Analisar Todos"}
+            </button>
+          </div>
+        </div>
 
         {/* Adicionar barra de progresso quando estiver analisando */}
         {isReviewingBatch && (
@@ -115,13 +122,10 @@ export const GoogleAdsDashboard = () => {
         )}
       </div>
 
-      {/* Cards de clientes */}
-      <GoogleAdsDashboardCard 
-        onViewClientDetails={() => {}}
-        searchQuery={searchQuery}
-        viewMode={viewMode}
-        showOnlyAdjustments={showOnlyAdjustments}
-      />
+      {/* Placeholder para cards de clientes - será implementado conforme necessário */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <p className="text-gray-500">Cards de clientes Google Ads serão renderizados aqui</p>
+      </div>
     </div>
   );
 };
