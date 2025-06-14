@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -37,15 +38,11 @@ export const usePlatformBatchReviews = () => {
         lastGoogleReviewTime: googleReview,
       };
     },
-    onSuccess: (data) => {
-      setLastMetaReviewTime(data.lastMetaReviewTime);
-      setLastGoogleReviewTime(data.lastGoogleReviewTime);
-    },
   });
 
   // Mutation to update last review time for a platform
-  const updateLastReviewTimeMutation = useMutation(
-    async ({ platform, last_review_time }: { platform: string; last_review_time: string }) => {
+  const updateLastReviewTimeMutation = useMutation({
+    mutationFn: async ({ platform, last_review_time }: { platform: string; last_review_time: string }) => {
       const { data, error } = await supabase
         .from("platform_last_review")
         .upsert(
@@ -60,13 +57,11 @@ export const usePlatformBatchReviews = () => {
       }
       return data;
     },
-    {
-      onSuccess: () => {
-        // Invalidate the query to refetch the data
-        queryClient.invalidateQueries(["platform-review-times"]);
-      },
-    }
-  );
+    onSuccess: () => {
+      // Invalidate the query to refetch the data
+      queryClient.invalidateQueries({ queryKey: ["platform-review-times"] });
+    },
+  });
 
   const refetchBoth = () => {
     fetchReviewTimes();
@@ -78,5 +73,81 @@ export const usePlatformBatchReviews = () => {
     fetchReviewTimes,
     updateLastReviewTimeMutation,
     refetchBoth
+  };
+};
+
+interface UseBatchOperationsProps {
+  platform: "meta" | "google";
+  onComplete?: () => void;
+}
+
+export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsProps) => {
+  const [processingIds, setProcessingIds] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [currentClientName, setCurrentClientName] = useState<string>("");
+  const queryClient = useQueryClient();
+
+  const reviewClient = async (clientId: string, accountId?: string) => {
+    if (processingIds.includes(clientId)) return;
+    
+    setProcessingIds(prev => [...prev, clientId]);
+    
+    try {
+      // Simular análise do cliente
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log(`Cliente ${clientId} analisado com sucesso`);
+    } catch (error) {
+      console.error(`Erro ao analisar cliente ${clientId}:`, error);
+    } finally {
+      setProcessingIds(prev => prev.filter(id => id !== clientId));
+    }
+  };
+
+  const reviewAllClients = async (clients: any[]) => {
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    setTotal(clients.length);
+    setProgress(0);
+    
+    try {
+      for (let i = 0; i < clients.length; i++) {
+        const client = clients[i];
+        setCurrentClientName(client.company_name);
+        setProgress(i + 1);
+        
+        await reviewClient(client.id, client[`${platform}_account_id`]);
+      }
+      
+      if (onComplete) {
+        onComplete();
+      }
+    } finally {
+      setIsProcessing(false);
+      setCurrentClientName("");
+      setProgress(0);
+      setTotal(0);
+    }
+  };
+
+  const cancelBatchProcessing = () => {
+    setIsProcessing(false);
+    setProcessingIds([]);
+    setCurrentClientName("");
+    setProgress(0);
+    setTotal(0);
+  };
+
+  return {
+    processingIds,
+    reviewClient,
+    reviewAllClients,
+    cancelBatchProcessing,
+    isProcessing,
+    progress,
+    total,
+    currentClientName
   };
 };
