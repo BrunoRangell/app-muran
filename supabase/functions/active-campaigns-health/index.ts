@@ -6,17 +6,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface CampaignHealthData {
-  clientId: string;
-  clientName: string;
-  platform: 'meta' | 'google';
-  hasAccount: boolean;
-  hasActiveCampaigns: boolean;
-  costToday: number;
-  impressionsToday: number;
-  activeCampaignsCount: number;
-  accountId?: string;
-  accountName?: string;
+interface CampaignHealthSnapshot {
+  client_id: string;
+  snapshot_date: string;
+  meta_account_id?: string;
+  meta_account_name?: string;
+  meta_has_account: boolean;
+  meta_active_campaigns_count: number;
+  meta_cost_today: number;
+  meta_impressions_today: number;
+  google_account_id?: string;
+  google_account_name?: string;
+  google_has_account: boolean;
+  google_active_campaigns_count: number;
+  google_cost_today: number;
+  google_impressions_today: number;
 }
 
 // Função melhorada para buscar dados do Meta Ads
@@ -60,7 +64,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
     
-    // Segunda chamada: buscar insights da conta (mais simples e eficiente)
+    // Segunda chamada: buscar insights da conta
     const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
     console.log(`📡 Meta: Chamando URL de insights: ${insightsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
     
@@ -84,7 +88,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     let totalImpressions = 0;
     
     if (insightsData.data && Array.isArray(insightsData.data) && insightsData.data.length > 0) {
-      const todayInsights = insightsData.data[0]; // Dados do dia de hoje
+      const todayInsights = insightsData.data[0];
       totalCost = parseFloat(todayInsights.spend || '0');
       totalImpressions = parseInt(todayInsights.impressions || '0');
       
@@ -105,12 +109,12 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
   }
 }
 
-// Função corrigida para buscar dados do Google Ads
+// Função para buscar dados do Google Ads
 async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: any): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
   try {
     console.log(`🔍 Google: Buscando campanhas para conta ${clientCustomerId}`);
     
-    // Buscar todos os tokens necessários da tabela api_tokens
+    // Buscar tokens do Google Ads
     const { data: tokensData, error: tokensError } = await supabase
       .from('api_tokens')
       .select('name, value')
@@ -126,7 +130,6 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
 
-    // Organizar tokens por nome
     const tokens: { [key: string]: string } = {};
     tokensData.forEach(token => {
       tokens[token.name] = token.value;
@@ -136,13 +139,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     const developerToken = tokens['google_ads_developer_token'];
     const managerId = tokens['google_ads_manager_id'];
 
-    if (!accessToken) {
-      console.log(`⚠️ Google: Access token não encontrado`);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
-    }
-
-    if (!developerToken) {
-      console.log(`⚠️ Google: Developer token não encontrado`);
+    if (!accessToken || !developerToken) {
+      console.log(`⚠️ Google: Tokens necessários não encontrados`);
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
 
@@ -150,7 +148,6 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
     
-    // Query GAQL corrigida e simplificada
     const query = `
       SELECT 
         campaign.id,
@@ -166,17 +163,14 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     
     console.log(`📡 Google: Executando query GAQL para ${clientCustomerId} na data ${today}`);
     
-    // URL corrigida para Google Ads API v15
     const googleAdsUrl = `https://googleads.googleapis.com/v15/customers/${clientCustomerId}/googleAds:searchStream`;
     
-    // Headers corrigidos com todos os campos obrigatórios
     const headers: { [key: string]: string } = {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       'developer-token': developerToken
     };
 
-    // Adicionar login-customer-id se Manager ID estiver disponível
     if (managerId && managerId.trim() !== '') {
       headers['login-customer-id'] = managerId;
       console.log(`🔧 Google: Usando Manager Customer ID: ${managerId}`);
@@ -198,7 +192,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Google: Erro HTTP ${response.status}:`, errorText.substring(0, 500)); // Limitar log para não poluir
+      console.error(`❌ Google: Erro HTTP ${response.status}:`, errorText.substring(0, 500));
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
     
@@ -209,7 +203,6 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
     
-    // Processar resultados
     let totalCost = 0;
     let totalImpressions = 0;
     let activeCampaigns = 0;
@@ -217,7 +210,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     data.results.forEach((result: any) => {
       if (result.campaign?.status === 'ENABLED') {
         activeCampaigns++;
-        totalCost += (result.metrics?.costMicros || 0) / 1000000; // Converter de micros para valor real
+        totalCost += (result.metrics?.costMicros || 0) / 1000000;
         totalImpressions += result.metrics?.impressions || 0;
       }
     });
@@ -237,7 +230,6 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -263,7 +255,7 @@ Deno.serve(async (req) => {
 
     console.log('✅ Token Meta Ads encontrado');
 
-    // Buscar todos os clientes ativos com seus account_ids diretamente da tabela clients
+    // Buscar clientes ativos
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
       .select('id, company_name, meta_account_id, google_account_id')
@@ -277,105 +269,91 @@ Deno.serve(async (req) => {
 
     console.log(`✅ Encontrados ${clients?.length || 0} clientes ativos`);
 
-    const healthData: CampaignHealthData[] = [];
+    const today = new Date().toISOString().split('T')[0];
+    const snapshots: CampaignHealthSnapshot[] = [];
 
     // Processar cada cliente
     for (const client of clients || []) {
       console.log(`\n📊 Processando cliente: ${client.company_name}`);
-      console.log(`📋 Meta Account ID: ${client.meta_account_id || 'NÃO CONFIGURADO'}`);
-      console.log(`📋 Google Account ID: ${client.google_account_id || 'NÃO CONFIGURADO'}`);
+
+      let metaData = { cost: 0, impressions: 0, activeCampaigns: 0 };
+      let googleData = { cost: 0, impressions: 0, activeCampaigns: 0 };
 
       // Processar Meta Ads
       if (client.meta_account_id && client.meta_account_id.trim() !== '') {
         console.log(`🔄 Processando Meta Ads para ${client.company_name}...`);
-        const metaData = await fetchMetaActiveCampaigns(metaToken.value, client.meta_account_id);
-        
-        healthData.push({
-          clientId: client.id,
-          clientName: client.company_name,
-          platform: 'meta',
-          hasAccount: true,
-          hasActiveCampaigns: metaData.activeCampaigns > 0,
-          costToday: metaData.cost,
-          impressionsToday: metaData.impressions,
-          activeCampaignsCount: metaData.activeCampaigns,
-          accountId: client.meta_account_id,
-          accountName: `Meta Ads - ${client.meta_account_id}`
-        });
-        
+        metaData = await fetchMetaActiveCampaigns(metaToken.value, client.meta_account_id);
         console.log(`✅ Meta processado: Campanhas=${metaData.activeCampaigns}, Custo=R$${metaData.cost}, Impressões=${metaData.impressions}`);
       } else {
-        healthData.push({
-          clientId: client.id,
-          clientName: client.company_name,
-          platform: 'meta',
-          hasAccount: false,
-          hasActiveCampaigns: false,
-          costToday: 0,
-          impressionsToday: 0,
-          activeCampaignsCount: 0
-        });
-        
         console.log(`⚪ Meta não configurado para ${client.company_name}`);
       }
 
       // Processar Google Ads
       if (client.google_account_id && client.google_account_id.trim() !== '') {
         console.log(`🔄 Processando Google Ads para ${client.company_name}...`);
-        const googleData = await fetchGoogleActiveCampaigns(client.google_account_id, supabase);
-        
-        healthData.push({
-          clientId: client.id,
-          clientName: client.company_name,
-          platform: 'google',
-          hasAccount: true,
-          hasActiveCampaigns: googleData.activeCampaigns > 0,
-          costToday: googleData.cost,
-          impressionsToday: googleData.impressions,
-          activeCampaignsCount: googleData.activeCampaigns,
-          accountId: client.google_account_id,
-          accountName: `Google Ads - ${client.google_account_id}`
-        });
-        
+        googleData = await fetchGoogleActiveCampaigns(client.google_account_id, supabase);
         console.log(`✅ Google processado: Campanhas=${googleData.activeCampaigns}, Custo=R$${googleData.cost.toFixed(2)}, Impressões=${googleData.impressions}`);
       } else {
-        healthData.push({
-          clientId: client.id,
-          clientName: client.company_name,
-          platform: 'google',
-          hasAccount: false,
-          hasActiveCampaigns: false,
-          costToday: 0,
-          impressionsToday: 0,
-          activeCampaignsCount: 0
-        });
-        
         console.log(`⚪ Google não configurado para ${client.company_name}`);
       }
+
+      // Criar snapshot para este cliente
+      const snapshot: CampaignHealthSnapshot = {
+        client_id: client.id,
+        snapshot_date: today,
+        meta_account_id: client.meta_account_id || null,
+        meta_account_name: client.meta_account_id ? `Meta Ads - ${client.meta_account_id}` : null,
+        meta_has_account: !!(client.meta_account_id && client.meta_account_id.trim() !== ''),
+        meta_active_campaigns_count: metaData.activeCampaigns,
+        meta_cost_today: metaData.cost,
+        meta_impressions_today: metaData.impressions,
+        google_account_id: client.google_account_id || null,
+        google_account_name: client.google_account_id ? `Google Ads - ${client.google_account_id}` : null,
+        google_has_account: !!(client.google_account_id && client.google_account_id.trim() !== ''),
+        google_active_campaigns_count: googleData.activeCampaigns,
+        google_cost_today: googleData.cost,
+        google_impressions_today: googleData.impressions
+      };
+
+      snapshots.push(snapshot);
     }
 
+    // Salvar todos os snapshots na nova tabela
+    console.log(`\n💾 Salvando ${snapshots.length} snapshots na tabela campaign_health_snapshots...`);
+    
+    // Usar upsert para evitar duplicatas
+    const { error: upsertError } = await supabase
+      .from('campaign_health_snapshots')
+      .upsert(snapshots, { 
+        onConflict: 'client_id,snapshot_date',
+        ignoreDuplicates: false 
+      });
+
+    if (upsertError) {
+      console.error('❌ Erro ao salvar snapshots:', upsertError);
+      throw upsertError;
+    }
+
+    console.log('✅ Snapshots salvos com sucesso!');
+
     // Estatísticas finais
-    const metaRecords = healthData.filter(h => h.platform === 'meta');
-    const googleRecords = healthData.filter(h => h.platform === 'google');
-    const metaWithData = metaRecords.filter(h => h.costToday > 0);
-    const googleWithData = googleRecords.filter(h => h.costToday > 0);
+    const metaWithData = snapshots.filter(s => s.meta_cost_today > 0);
+    const googleWithData = snapshots.filter(s => s.google_cost_today > 0);
 
     console.log(`\n📈 Resumo dos dados processados:`);
-    console.log(`📊 Total de registros: ${healthData.length}`);
-    console.log(`🟦 Meta Ads: ${metaRecords.length} registros (${metaWithData.length} com dados)`);
-    console.log(`🟥 Google Ads: ${googleRecords.length} registros (${googleWithData.length} com dados)`);
+    console.log(`📊 Total de snapshots: ${snapshots.length}`);
+    console.log(`🟦 Meta Ads: ${snapshots.length} registros (${metaWithData.length} com dados)`);
+    console.log(`🟥 Google Ads: ${snapshots.length} registros (${googleWithData.length} com dados)`);
     console.log(`👥 Clientes únicos: ${clients?.length || 0}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        data: healthData,
+        data: snapshots,
         timestamp: new Date().toISOString(),
         totalClients: clients?.length || 0,
-        totalRecords: healthData.length,
+        totalSnapshots: snapshots.length,
         debug: {
-          metaRecords: metaRecords.length,
-          googleRecords: googleRecords.length,
           metaWithData: metaWithData.length,
           googleWithData: googleWithData.length
         }

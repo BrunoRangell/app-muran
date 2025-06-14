@@ -5,16 +5,16 @@ import { supabase } from "@/lib/supabase";
 import { ClientHealthData, CampaignStatus, PlatformHealthData, HealthStats } from "../types";
 
 // Função para determinar o status baseado nos dados
-function determineStatus(data: Omit<PlatformHealthData, 'status'>): CampaignStatus {
-  if (!data.hasAccount) {
+function determineStatus(hasAccount: boolean, activeCampaigns: number, costToday: number, impressionsToday: number): CampaignStatus {
+  if (!hasAccount) {
     return "nao-configurado";
   }
   
-  if (!data.hasActiveCampaigns) {
+  if (activeCampaigns === 0) {
     return "sem-campanhas";
   }
   
-  if (data.costToday > 0 && data.impressionsToday > 0) {
+  if (costToday > 0 && impressionsToday > 0) {
     return "funcionando";
   } else {
     return "sem-veiculacao";
@@ -39,71 +39,145 @@ function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: Platfo
   return "nao-configurado";
 }
 
-// Busca dados da edge function e agrupa por cliente
+// Busca dados da nova tabela campaign_health_snapshots
 async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
-  console.log("🔍 Buscando dados de campanhas ativas...");
+  console.log("🔍 Buscando dados de snapshots de saúde de campanhas...");
   
   try {
-    const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
-      body: { timestamp: new Date().toISOString() }
-    });
+    // Buscar snapshots do dia atual
+    const today = new Date().toISOString().split('T')[0];
+    
+    const { data: snapshots, error } = await supabase
+      .from('campaign_health_snapshots')
+      .select(`
+        *,
+        clients!inner(id, company_name)
+      `)
+      .eq('snapshot_date', today)
+      .order('clients.company_name');
 
     if (error) {
-      console.error("❌ Erro na edge function:", error);
+      console.error("❌ Erro ao buscar snapshots:", error);
       throw error;
     }
 
-    if (!data?.success || !data?.data) {
-      throw new Error("Resposta inválida da edge function");
+    if (!snapshots || snapshots.length === 0) {
+      console.log("⚠️ Nenhum snapshot encontrado para hoje. Tentando buscar dados da edge function...");
+      
+      // Se não há snapshots para hoje, chamar a edge function para gerar
+      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('active-campaigns-health', {
+        body: { timestamp: new Date().toISOString() }
+      });
+
+      if (edgeError) {
+        console.error("❌ Erro na edge function:", edgeError);
+        throw edgeError;
+      }
+
+      if (!edgeData?.success) {
+        throw new Error("Erro ao gerar dados de saúde");
+      }
+
+      // Buscar novamente os snapshots após a geração
+      const { data: newSnapshots, error: newError } = await supabase
+        .from('campaign_health_snapshots')
+        .select(`
+          *,
+          clients!inner(id, company_name)
+        `)
+        .eq('snapshot_date', today)
+        .order('clients.company_name');
+
+      if (newError) {
+        console.error("❌ Erro ao buscar novos snapshots:", newError);
+        throw newError;
+      }
+
+      if (!newSnapshots || newSnapshots.length === 0) {
+        console.log("⚠️ Ainda não há snapshots após gerar dados");
+        return [];
+      }
+
+      return processSnapshots(newSnapshots);
     }
 
-    // Agrupar dados por cliente
-    const clientMap = new Map<string, ClientHealthData>();
-
-    data.data.forEach((row: any) => {
-      const clientId = row.clientId;
-      
-      if (!clientMap.has(clientId)) {
-        clientMap.set(clientId, {
-          clientId: row.clientId,
-          clientName: row.clientName,
-          overallStatus: "nao-configurado"
-        });
-      }
-
-      const client = clientMap.get(clientId)!;
-      
-      const platformData: PlatformHealthData = {
-        hasAccount: row.hasAccount,
-        hasActiveCampaigns: row.hasActiveCampaigns,
-        costToday: row.costToday,
-        impressionsToday: row.impressionsToday,
-        activeCampaignsCount: row.activeCampaignsCount,
-        accountId: row.accountId,
-        accountName: row.accountName,
-        status: determineStatus(row)
-      };
-
-      if (row.platform === 'meta') {
-        client.metaAds = platformData;
-      } else if (row.platform === 'google') {
-        client.googleAds = platformData;
-      }
-    });
-
-    // Calcular status geral para cada cliente
-    const processedData = Array.from(clientMap.values()).map(client => ({
-      ...client,
-      overallStatus: determineOverallStatus(client.metaAds, client.googleAds)
-    }));
-
-    console.log(`✅ Processados ${processedData.length} clientes agrupados`);
-    return processedData;
+    return processSnapshots(snapshots);
 
   } catch (error) {
     console.error("❌ Erro ao buscar dados de saúde:", error);
     throw error;
   }
+}
+
+// Processa os snapshots e converte para ClientHealthData
+function processSnapshots(snapshots: any[]): ClientHealthData[] {
+  const clientMap = new Map<string, ClientHealthData>();
+
+  snapshots.forEach((snapshot) => {
+    const clientId = snapshot.client_id;
+    const clientName = snapshot.clients.company_name;
+    
+    if (!clientMap.has(clientId)) {
+      clientMap.set(clientId, {
+        clientId,
+        clientName,
+        overallStatus: "nao-configurado"
+      });
+    }
+
+    const client = clientMap.get(clientId)!;
+    
+    // Processar Meta Ads
+    if (snapshot.meta_has_account) {
+      const metaStatus = determineStatus(
+        snapshot.meta_has_account,
+        snapshot.meta_active_campaigns_count,
+        snapshot.meta_cost_today,
+        snapshot.meta_impressions_today
+      );
+
+      client.metaAds = {
+        hasAccount: snapshot.meta_has_account,
+        hasActiveCampaigns: snapshot.meta_active_campaigns_count > 0,
+        costToday: snapshot.meta_cost_today,
+        impressionsToday: snapshot.meta_impressions_today,
+        activeCampaignsCount: snapshot.meta_active_campaigns_count,
+        accountId: snapshot.meta_account_id,
+        accountName: snapshot.meta_account_name,
+        status: metaStatus
+      };
+    }
+
+    // Processar Google Ads
+    if (snapshot.google_has_account) {
+      const googleStatus = determineStatus(
+        snapshot.google_has_account,
+        snapshot.google_active_campaigns_count,
+        snapshot.google_cost_today,
+        snapshot.google_impressions_today
+      );
+
+      client.googleAds = {
+        hasAccount: snapshot.google_has_account,
+        hasActiveCampaigns: snapshot.google_active_campaigns_count > 0,
+        costToday: snapshot.google_cost_today,
+        impressionsToday: snapshot.google_impressions_today,
+        activeCampaignsCount: snapshot.google_active_campaigns_count,
+        accountId: snapshot.google_account_id,
+        accountName: snapshot.google_account_name,
+        status: googleStatus
+      };
+    }
+  });
+
+  // Calcular status geral para cada cliente
+  const processedData = Array.from(clientMap.values()).map(client => ({
+    ...client,
+    overallStatus: determineOverallStatus(client.metaAds, client.googleAds)
+  }));
+
+  console.log(`✅ Processados ${processedData.length} clientes dos snapshots`);
+  return processedData;
 }
 
 export function useActiveCampaignHealth() {
