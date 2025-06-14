@@ -1,47 +1,50 @@
 
-type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG';
+type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+type LogModule = 'AUTH' | 'API' | 'ERROR' | 'VALIDATION' | 'PAYMENT' | 'CLIENT' | 'BATCH' | 'GOOGLE_ADS' | 'META_ADS' | 'SYSTEM';
 
 interface LogEntry {
   level: LogLevel;
-  module: string;
+  module: LogModule;
   message: string;
-  context?: any;
+  data?: any;
+  timestamp: string;
 }
 
 class Logger {
-  private isDevelopment = import.meta.env.MODE === 'development';
-  private enabledModules = new Set(['AUTH', 'API', 'ERROR', 'PAYMENT', 'CLIENT']);
-
-  private formatMessage(entry: LogEntry): string {
-    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-    const contextStr = entry.context ? ` | ${JSON.stringify(entry.context)}` : '';
-    return `[${timestamp}] [${entry.module}] ${entry.message}${contextStr}`;
-  }
-
-  private shouldLog(module: string): boolean {
-    return this.isDevelopment && this.enabledModules.has(module);
-  }
-
-  info(module: string, message: string, context?: any) {
-    if (this.shouldLog(module)) {
-      console.log(this.formatMessage({ level: 'INFO', module, message, context }));
+  private isDev = import.meta.env.DEV;
+  
+  private formatMessage(module: LogModule, message: string, data?: any): string {
+    const timestamp = new Date().toISOString();
+    let formattedMessage = `[${module}] ${message}`;
+    
+    if (data) {
+      formattedMessage += ` - ${JSON.stringify(data)}`;
     }
+    
+    return formattedMessage;
   }
 
-  warn(module: string, message: string, context?: any) {
-    if (this.shouldLog(module)) {
-      console.warn(this.formatMessage({ level: 'WARN', module, message, context }));
-    }
+  info(module: LogModule, message: string, data?: any): void {
+    if (!this.isDev) return;
+    console.info(this.formatMessage(module, message, data));
   }
 
-  error(module: string, message: string, context?: any) {
-    console.error(this.formatMessage({ level: 'ERROR', module, message, context }));
+  warn(module: LogModule, message: string, data?: any): void {
+    console.warn(this.formatMessage(module, message, data));
   }
 
-  debug(module: string, message: string, context?: any) {
-    if (this.isDevelopment && this.shouldLog(module)) {
-      console.debug(this.formatMessage({ level: 'DEBUG', module, message, context }));
-    }
+  error(module: LogModule, message: string, error?: any): void {
+    const errorData = error instanceof Error ? { 
+      message: error.message, 
+      stack: error.stack 
+    } : error;
+    
+    console.error(this.formatMessage(module, message, errorData));
+  }
+
+  debug(module: LogModule, message: string, data?: any): void {
+    if (!this.isDev) return;
+    console.debug(this.formatMessage(module, message, data));
   }
 }
 

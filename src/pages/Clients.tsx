@@ -5,11 +5,13 @@ import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
 import { useUnifiedClientData } from "@/hooks/common/useUnifiedClientData";
 import { AlertCircle } from "lucide-react";
 import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
+import { logger } from "@/utils/logger";
 
 const Clients = () => {
   const { clients, isLoading, error } = useUnifiedClientData({ includeInactive: true });
 
   if (error) {
+    logger.error('CLIENT', 'Failed to load clients page', error);
     return (
       <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4">
         <AlertCircle className="h-12 w-12" />

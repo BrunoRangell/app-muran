@@ -8,7 +8,7 @@ import { logger } from "@/utils/logger";
 interface UseUnifiedClientDataOptions {
   includeInactive?: boolean;
   includePayments?: boolean;
-  filters?: any; // Adicionando propriedade filters que estava faltando
+  filters?: any;
 }
 
 export const useUnifiedClientData = (options: UseUnifiedClientDataOptions = {}) => {
@@ -24,7 +24,6 @@ export const useUnifiedClientData = (options: UseUnifiedClientDataOptions = {}) 
           query = query.eq("status", "active");
         }
 
-        // Aplicar filtros se fornecidos
         if (filters) {
           if (filters.search) {
             query = query.ilike("company_name", `%${filters.search}%`);
