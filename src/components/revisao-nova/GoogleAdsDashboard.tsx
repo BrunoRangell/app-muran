@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { supabase } from "@/lib/supabase";
-// Removido import do GoogleAdsDashboardCard que foi deletado
 import { useGoogleAdsBatchReview } from "@/components/daily-reviews/hooks/useGoogleAdsBatchReview";
 import { AnalysisProgress } from "@/components/daily-reviews/dashboard/components/AnalysisProgress";
 
@@ -15,7 +14,7 @@ export const GoogleAdsDashboard = () => {
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
   const { 
-    reviewAllClients, 
+    handleAnalyzeAll, 
     isReviewingBatch, 
     processingClients, 
     lastBatchReviewDate,
@@ -59,10 +58,10 @@ export const GoogleAdsDashboard = () => {
     ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
     : 0;
 
-  const handleAnalyzeAll = async () => {
+  const handleAnalyzeAllAction = async () => {
     try {
       // Usar o método do hook para analisar todos os clientes
-      await reviewAllClients();
+      await handleAnalyzeAll();
       
       toast({
         title: "Análise em lote iniciada",
@@ -96,7 +95,7 @@ export const GoogleAdsDashboard = () => {
               )}
             </div>
             <button
-              onClick={handleAnalyzeAll}
+              onClick={handleAnalyzeAllAction}
               disabled={isReviewingBatch || isApiLoading}
               className="bg-[#ff6e00] hover:bg-[#e66300] text-white px-4 py-2 rounded disabled:opacity-50"
             >

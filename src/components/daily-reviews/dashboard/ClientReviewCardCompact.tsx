@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,8 +30,6 @@ export const ClientReviewCardCompact = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const lastReview = client.lastReview;
   const hasReview = !!lastReview;
-  const budgetIsUnderperforming = hasReview && lastReview.budget_is_underperforming;
-  const budgetIsOverperforming = hasReview && lastReview.budget_is_overperforming;
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
@@ -46,24 +45,6 @@ export const ClientReviewCardCompact = ({
           isUsingCustomBudgetInReview={isUsingCustomBudgetInReview}
         />
 
-        {/* Indicadores de performance */}
-        {hasReview && (
-          <div className="flex items-center space-x-2 mt-2">
-            {budgetIsUnderperforming && (
-              <Badge variant="destructive" className="gap-1">
-                <TrendingDown size={16} />
-                Abaixo do ideal
-              </Badge>
-            )}
-            {budgetIsOverperforming && (
-              <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-none gap-1">
-                <TrendingUp size={16} />
-                Acima do ideal
-              </Badge>
-            )}
-          </div>
-        )}
-
         {/* Detalhes da última revisão (inicialmente escondidos) */}
         {isExpanded && hasReview && (
           <div className="mt-4">
@@ -73,7 +54,7 @@ export const ClientReviewCardCompact = ({
                   Orçamento atual:
                 </span>
                 <p className="text-sm text-gray-900 font-semibold">
-                  {formatCurrency(lastReview.meta_daily_budget_current)}
+                  {formatCurrency(lastReview.meta_daily_budget_current || 0)}
                 </p>
               </div>
               <div>
@@ -81,7 +62,7 @@ export const ClientReviewCardCompact = ({
                   Gasto total:
                 </span>
                 <p className="text-sm text-gray-900 font-semibold">
-                  {formatCurrency(lastReview.meta_total_spent)}
+                  {formatCurrency(lastReview.meta_total_spent || 0)}
                 </p>
               </div>
             </div>

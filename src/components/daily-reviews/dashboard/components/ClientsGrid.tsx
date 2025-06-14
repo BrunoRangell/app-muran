@@ -25,9 +25,11 @@ export const ClientsGrid = ({
           <ClientReviewCardCompact
             key={client.id}
             client={client}
-            onReviewClient={onReviewClient}
-            isProcessing={processingClients.includes(client.id)}
-            compact={viewMode === 'table'}
+            onAnalyzeClient={onReviewClient}
+            isAnalyzing={processingClients.includes(client.id)}
+            metaAccount={undefined}
+            customBudget={null}
+            isUsingCustomBudgetInReview={false}
           />
         ))}
         
@@ -35,10 +37,11 @@ export const ClientsGrid = ({
           <ClientReviewCardCompact
             key={client.id}
             client={client}
-            onReviewClient={onReviewClient}
-            isProcessing={processingClients.includes(client.id)}
-            compact={viewMode === 'table'}
-            inactive
+            onAnalyzeClient={onReviewClient}
+            isAnalyzing={processingClients.includes(client.id)}
+            metaAccount={undefined}
+            customBudget={null}
+            isUsingCustomBudgetInReview={false}
           />
         ))}
       </div>
