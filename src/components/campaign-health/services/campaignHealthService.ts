@@ -29,7 +29,7 @@ export class CampaignHealthService {
   static async fetchTodaySnapshots(): Promise<CampaignHealthSnapshot[]> {
     const today = new Date().toISOString().split('T')[0];
     
-    console.log(`📅 Buscando snapshots para data: ${today}`);
+    console.log(`📅 Buscando APENAS snapshots de hoje: ${today}`);
     
     const { data, error } = await supabase
       .from('campaign_health_snapshots')
@@ -37,7 +37,7 @@ export class CampaignHealthService {
         *,
         clients!inner(id, company_name)
       `)
-      .eq('snapshot_date', today)
+      .eq('snapshot_date', today) // SEMPRE apenas hoje
       .order('clients(company_name)');
 
     if (error) {
@@ -45,40 +45,22 @@ export class CampaignHealthService {
       throw new Error(`Erro ao buscar snapshots: ${error.message}`);
     }
 
-    console.log(`✅ Encontrados ${data?.length || 0} snapshots para hoje`);
+    console.log(`✅ Encontrados ${data?.length || 0} snapshots APENAS para hoje (${today})`);
     return data || [];
   }
 
-  static async fetchLatestSnapshots(): Promise<CampaignHealthSnapshot[]> {
-    console.log("📅 Buscando snapshots mais recentes...");
-    
-    const { data, error } = await supabase
-      .from('campaign_health_snapshots')
-      .select(`
-        *,
-        clients!inner(id, company_name)
-      `)
-      .order('snapshot_date', { ascending: false })
-      .order('clients(company_name)')
-      .limit(100);
+  // Método removido: fetchLatestSnapshots - não usaremos mais dados históricos
 
-    if (error) {
-      console.error("❌ Erro ao buscar snapshots recentes:", error);
-      throw new Error(`Erro ao buscar snapshots recentes: ${error.message}`);
-    }
-
-    console.log(`✅ Encontrados ${data?.length || 0} snapshots históricos`);
-    return data || [];
-  }
-
-  static async generateSnapshots(): Promise<boolean> {
+  static async generateTodaySnapshots(): Promise<boolean> {
     try {
-      console.log("🔧 Iniciando geração de snapshots...");
+      const today = new Date().toISOString().split('T')[0];
+      console.log(`🔧 Gerando snapshots APENAS para hoje: ${today}`);
       
       const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
         body: { 
           timestamp: new Date().toISOString(),
-          action: 'generate_snapshots'
+          action: 'generate_snapshots',
+          force_today_only: true // Flag para garantir apenas dados de hoje
         }
       });
 
@@ -87,36 +69,60 @@ export class CampaignHealthService {
         return false;
       }
 
-      console.log("✅ Edge function executada:", data);
+      console.log("✅ Edge function executada para dados de hoje:", data);
       return data?.success || false;
     } catch (error) {
-      console.error("❌ Erro ao gerar snapshots:", error);
+      console.error("❌ Erro ao gerar snapshots de hoje:", error);
       return false;
     }
   }
 
-  static async forceRefreshSnapshots(): Promise<boolean> {
+  static async forceRefreshTodaySnapshots(): Promise<boolean> {
     try {
-      console.log("🔄 Forçando refresh de snapshots...");
+      const today = new Date().toISOString().split('T')[0];
+      console.log(`🔄 Forçando refresh APENAS para hoje: ${today}`);
       
       const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
         body: { 
           timestamp: new Date().toISOString(),
           forceRefresh: true,
-          action: 'force_refresh'
+          action: 'force_refresh_today',
+          target_date: today // Especificar data exata
         }
       });
 
       if (error) {
-        console.error("❌ Erro ao forçar refresh:", error);
+        console.error("❌ Erro ao forçar refresh de hoje:", error);
         return false;
       }
 
-      console.log("✅ Refresh forçado executado:", data);
+      console.log("✅ Refresh forçado executado para hoje:", data);
       return data?.success || false;
     } catch (error) {
-      console.error("❌ Erro ao forçar refresh:", error);
+      console.error("❌ Erro ao forçar refresh de hoje:", error);
       return false;
     }
+  }
+
+  // Novo método para validar se dados são realmente de hoje
+  static validateDataIsFromToday(snapshots: CampaignHealthSnapshot[]): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (!snapshots || snapshots.length === 0) {
+      console.log("⚠️ Nenhum snapshot encontrado");
+      return false;
+    }
+
+    const allFromToday = snapshots.every(snapshot => 
+      snapshot.snapshot_date === today
+    );
+
+    if (!allFromToday) {
+      console.warn("❌ Alguns snapshots não são de hoje! Invalidando dados.");
+      return false;
+    }
+
+    console.log(`✅ Todos os ${snapshots.length} snapshots são de hoje (${today})`);
+    return true;
   }
 }

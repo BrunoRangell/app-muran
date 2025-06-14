@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CampaignHealthService } from "../services/campaignHealthService";
 import { ClientHealthData, CampaignStatus, PlatformHealthData } from "../types";
@@ -55,11 +55,27 @@ function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: Platfo
   return "nao-configurado";
 }
 
-// Processa os snapshots e converte para ClientHealthData
+// Função corrigida para processar APENAS dados de hoje
 function processSnapshots(snapshots: any[]): ClientHealthData[] {
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Validação rigorosa: todos os snapshots devem ser de hoje
+  const todaySnapshots = snapshots.filter(snapshot => 
+    snapshot.snapshot_date === today
+  );
+
+  if (todaySnapshots.length !== snapshots.length) {
+    console.warn(`⚠️ Removendo ${snapshots.length - todaySnapshots.length} snapshots que não são de hoje`);
+  }
+
+  if (todaySnapshots.length === 0) {
+    console.log("❌ Nenhum snapshot de hoje encontrado");
+    return [];
+  }
+
   const clientMap = new Map<string, ClientHealthData>();
 
-  snapshots.forEach((snapshot) => {
+  todaySnapshots.forEach((snapshot) => {
     const clientId = snapshot.client_id;
     const clientName = snapshot.clients.company_name;
     
@@ -122,54 +138,48 @@ function processSnapshots(snapshots: any[]): ClientHealthData[] {
     overallStatus: determineOverallStatus(client.metaAds, client.googleAds)
   }));
 
-  console.log(`✅ Processados ${processedData.length} clientes dos snapshots`);
+  console.log(`✅ Processados ${processedData.length} clientes APENAS com dados de hoje (${today})`);
   return processedData;
 }
 
-// Busca dados da tabela campaign_health_snapshots
-async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
-  console.log("🔍 Buscando dados de snapshots de saúde de campanhas...");
+// Busca dados RIGOROSAMENTE de hoje - sem fallbacks
+async function fetchTodayOnlyCampaignHealth(): Promise<ClientHealthData[]> {
+  const today = new Date().toISOString().split('T')[0];
+  console.log(`🔍 Buscando dados RIGOROSAMENTE de hoje: ${today}`);
   
   try {
-    // Buscar snapshots do dia atual primeiro
+    // Passo 1: Tentar buscar snapshots de hoje
     const todaySnapshots = await CampaignHealthService.fetchTodaySnapshots();
     
-    if (todaySnapshots && todaySnapshots.length > 0) {
-      console.log(`✅ Encontrados ${todaySnapshots.length} snapshots de hoje`);
-      return processSnapshots(todaySnapshots);
-    }
-
-    console.log("⚠️ Nenhum snapshot encontrado para hoje. Gerando dados...");
-    
-    // Se não há snapshots para hoje, tentar gerar
-    const generateSuccess = await CampaignHealthService.generateSnapshots();
-    
-    if (generateSuccess) {
-      // Aguardar um pouco para os dados serem processados
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    // Passo 2: Validar que todos os dados são realmente de hoje
+    if (!CampaignHealthService.validateDataIsFromToday(todaySnapshots)) {
+      console.log("❌ Dados não são válidos para hoje. Gerando novos dados...");
       
-      // Buscar novamente após gerar
-      const newSnapshots = await CampaignHealthService.fetchTodaySnapshots();
-      if (newSnapshots && newSnapshots.length > 0) {
-        console.log(`✅ Snapshots gerados com sucesso: ${newSnapshots.length} registros`);
-        return processSnapshots(newSnapshots);
+      // Passo 3: Se não há dados válidos de hoje, gerar
+      const generateSuccess = await CampaignHealthService.generateTodaySnapshots();
+      
+      if (generateSuccess) {
+        // Aguardar processamento
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Buscar novamente
+        const newSnapshots = await CampaignHealthService.fetchTodaySnapshots();
+        
+        if (CampaignHealthService.validateDataIsFromToday(newSnapshots)) {
+          console.log(`✅ Novos snapshots gerados com sucesso para hoje`);
+          return processSnapshots(newSnapshots);
+        }
       }
+
+      console.log("❌ Falha ao gerar dados de hoje. Retornando array vazio.");
+      return [];
     }
 
-    console.log("⚠️ Falha ao gerar dados. Usando dados históricos...");
-    
-    // Como fallback, buscar dados mais recentes disponíveis
-    const latestSnapshots = await CampaignHealthService.fetchLatestSnapshots();
-    if (latestSnapshots && latestSnapshots.length > 0) {
-      console.log(`📅 Usando dados históricos: ${latestSnapshots.length} registros`);
-      return processSnapshots(latestSnapshots);
-    }
-
-    console.log("⚠️ Nenhum dado encontrado");
-    return [];
+    console.log(`✅ Dados válidos de hoje encontrados: ${todaySnapshots.length} registros`);
+    return processSnapshots(todaySnapshots);
 
   } catch (error) {
-    console.error("❌ Erro ao buscar dados de saúde:", error);
+    console.error("❌ Erro ao buscar dados de hoje:", error);
     throw error;
   }
 }
@@ -182,18 +192,37 @@ export function useActiveCampaignHealth() {
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const queryClient = useQueryClient();
-  const queryKey = ["active-campaign-health"];
+  const today = new Date().toISOString().split('T')[0];
+  const queryKey = ["active-campaign-health", today]; // Cache baseado na data
 
-  // Query para buscar dados com cache de 5 minutos
+  // Query para buscar APENAS dados de hoje
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey,
-    queryFn: fetchActiveCampaignHealth,
+    queryFn: fetchTodayOnlyCampaignHealth,
     staleTime: 5 * 60 * 1000, // 5 minutos
     refetchInterval: 10 * 60 * 1000, // Auto-refresh a cada 10 minutos
     refetchOnWindowFocus: false,
     retry: 2,
     retryDelay: 3000
   });
+
+  // Invalidar cache automaticamente quando a data muda
+  useEffect(() => {
+    const checkDateChange = () => {
+      const currentDate = new Date().toISOString().split('T')[0];
+      const cachedDate = queryKey[1];
+      
+      if (currentDate !== cachedDate) {
+        console.log(`📅 Data mudou de ${cachedDate} para ${currentDate}. Invalidando cache...`);
+        queryClient.removeQueries({ queryKey: ["active-campaign-health"] });
+        window.location.reload(); // Force reload para garantir dados frescos
+      }
+    };
+
+    // Verificar mudança de data a cada minuto
+    const interval = setInterval(checkDateChange, 60000);
+    return () => clearInterval(interval);
+  }, [queryClient, queryKey]);
 
   // Filtrar dados com logs para debug
   const filteredData = data?.filter(client => {
@@ -225,45 +254,39 @@ export function useActiveCampaignHealth() {
     return passes;
   }) || [];
 
-  // Função melhorada para atualizar dados
+  // Função melhorada para atualizar APENAS dados de hoje
   const handleRefresh = async () => {
-    console.log("🔄 Iniciando atualização manual de dados...");
+    console.log("🔄 Iniciando atualização manual APENAS para hoje...");
     setIsManualRefreshing(true);
     
     try {
-      // Passo 1: Invalidar cache local
-      console.log("📤 Invalidando cache local...");
+      // Invalidar cache local
       await queryClient.removeQueries({ queryKey });
       
-      // Passo 2: Chamar edge function para forçar regeneração
-      console.log("🔧 Chamando edge function para regenerar dados...");
-      const forceRefreshSuccess = await CampaignHealthService.forceRefreshSnapshots();
+      // Forçar regeneração para hoje
+      const forceRefreshSuccess = await CampaignHealthService.forceRefreshTodaySnapshots();
       
       if (!forceRefreshSuccess) {
-        console.warn("⚠️ Edge function pode ter falhado, tentando refetch mesmo assim...");
+        console.warn("⚠️ Edge function pode ter falhado, tentando refetch...");
       }
       
-      // Passo 3: Aguardar um tempo para os dados serem processados
-      console.log("⏳ Aguardando processamento dos dados (5 segundos)...");
+      // Aguardar processamento
       await new Promise(resolve => setTimeout(resolve, 5000));
       
-      // Passo 4: Refetch dos dados
-      console.log("📥 Buscando dados atualizados...");
+      // Refetch dos dados
       const result = await refetch();
       
       if (result.isSuccess) {
         setLastRefresh(new Date());
-        console.log("✅ Atualização manual concluída com sucesso!");
+        console.log("✅ Atualização manual concluída para hoje!");
       } else {
-        console.error("❌ Falha no refetch após edge function");
         throw new Error("Falha ao buscar dados atualizados");
       }
       
     } catch (error) {
       console.error("❌ Erro durante atualização manual:", error);
       
-      // Tentar um refetch simples como fallback
-      console.log("🔄 Tentando refetch simples como fallback...");
+      // Fallback: refetch simples
       try {
         const fallbackResult = await refetch();
         if (fallbackResult.isSuccess) {
@@ -319,6 +342,7 @@ export function useActiveCampaignHealth() {
     handleRefresh,
     lastRefresh,
     stats,
-    isManualRefreshing
+    isManualRefreshing,
+    todayDate: today // Expor data atual para a UI
   };
 }

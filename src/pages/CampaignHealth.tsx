@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
 import { useIntelligentAnalysis } from "@/components/campaign-health/hooks/useIntelligentAnalysis";
@@ -27,7 +26,8 @@ export default function CampaignHealth() {
     handleRefresh,
     lastRefresh,
     stats,
-    isManualRefreshing
+    isManualRefreshing,
+    todayDate
   } = useActiveCampaignHealth();
 
   const { enhancedData, alerts, dashboardStats } = useIntelligentAnalysis(data || []);
@@ -75,6 +75,17 @@ export default function CampaignHealth() {
     handleAction('review', alert.clientId, alert.platform);
   };
 
+  // Formatar data para exibição em português
+  const formatTodayDate = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric'
+    });
+  };
+
   // Mapear dashboardStats para o formato esperado pelo IntelligentFilters (SEMPRE TOTAIS)
   const totalFilterStats = {
     critical: dashboardStats.criticalAlerts,
@@ -86,15 +97,22 @@ export default function CampaignHealth() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header Simplificado */}
+        {/* Header com indicação clara da data */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[#321e32] mb-2">
             Monitoramento Inteligente de Campanhas
           </h1>
-          <p className="text-gray-600 text-sm">
-            Diagnóstico em tempo real com ações prioritárias • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR')}
-            {isManualRefreshing && " • Atualização em progresso..."}
-          </p>
+          <div className="flex items-center gap-2 text-sm">
+            <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+              📅 Dados de hoje: {formatTodayDate(todayDate)}
+            </div>
+            <span className="text-gray-600">
+              • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR')}
+            </span>
+            {isManualRefreshing && (
+              <span className="text-blue-600 font-medium">• Atualizando...</span>
+            )}
+          </div>
         </div>
         
         {/* Dashboard de Alertas - SEMPRE com dados completos (sem filtros) */}
@@ -129,12 +147,14 @@ export default function CampaignHealth() {
           handleAction={handleAction}
         />
 
-        {/* Informações de Debug */}
+        {/* Informações de Debug atualizadas */}
         {filteredEnhancedData.length > 0 && (
           <div className="mt-6 text-center text-xs text-gray-500">
             Mostrando {filteredEnhancedData.length} de {enhancedData.length} clientes • 
-            {dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts} problemas detectados no total • 
-            Dados atualizados automaticamente a cada 10 minutos
+            {dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts} problemas detectados • 
+            <span className="font-medium text-green-600">
+              Dados exclusivamente de hoje ({formatTodayDate(todayDate)})
+            </span>
             {isFetching && " • Atualizando..."}
           </div>
         )}
