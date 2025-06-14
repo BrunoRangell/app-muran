@@ -5,21 +5,21 @@ type BudgetInput = {
   monthlyBudget: number;
   totalSpent: number;
   currentDailyBudget: number;
-  lastFiveDaysAverage?: number; // Adicionado campo para média dos últimos 5 dias
-  weightedAverage?: number; // NOVO: Campo para média ponderada (Google Ads)
-  customBudgetEndDate?: string; // Novo campo para data de fim do orçamento personalizado
+  lastFiveDaysAverage?: number;
+  weightedAverage?: number; // Campo para média ponderada (Google Ads)
+  customBudgetEndDate?: string;
 };
 
 type BudgetCalculation = {
   idealDailyBudget: number;
   budgetDifference: number;
-  budgetDifferenceBasedOnAverage?: number; // Nova propriedade para diferença baseada na média
-  budgetDifferenceBasedOnWeighted?: number; // NOVA: Diferença baseada na média ponderada
+  budgetDifferenceBasedOnAverage?: number;
+  budgetDifferenceBasedOnWeighted?: number;
   remainingDays: number;
   remainingBudget: number;
   needsBudgetAdjustment: boolean;
-  needsAdjustmentBasedOnAverage?: boolean; // Nova propriedade para indicar se precisa ajuste baseado na média
-  needsAdjustmentBasedOnWeighted?: boolean; // NOVA: Ajuste baseado na média ponderada
+  needsAdjustmentBasedOnAverage?: boolean;
+  needsAdjustmentBasedOnWeighted?: boolean;
   spentPercentage: number;
 };
 
@@ -28,10 +28,9 @@ export function useBudgetCalculator() {
     return (input: BudgetInput): BudgetCalculation => {
       const today = new Date();
       
-      // Calcular dias restantes com base no orçamento personalizado ou mês atual
+      // Calcular dias restantes
       let remainingDays;
       if (input.customBudgetEndDate) {
-        // Se tem orçamento personalizado, calcular até a data de fim
         const endDate = new Date(input.customBudgetEndDate);
         const timeDiff = endDate.getTime() - today.getTime();
         remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
@@ -45,7 +44,6 @@ export function useBudgetCalculator() {
           calculationUsed: 'customBudget'
         });
       } else {
-        // Caso contrário, usar o cálculo padrão (dias restantes no mês)
         const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
         
@@ -57,93 +55,73 @@ export function useBudgetCalculator() {
         });
       }
       
-      // Orçamento restante para o período (nunca negativo)
       const remainingBudget = Math.max(0, input.monthlyBudget - input.totalSpent);
-      
-      // Calcular porcentagem gasta do orçamento
       const spentPercentage = input.monthlyBudget > 0 
         ? (input.totalSpent / input.monthlyBudget) * 100 
         : 0;
       
-      // Calcular orçamento diário ideal
       const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
-      
-      // Arredondar para 2 casas decimais
       const roundedIdealDailyBudget = Math.round(idealDailyBudget * 100) / 100;
       
-      // Diferença entre o orçamento diário atual e o ideal (método tradicional)
-      const budgetDifference = roundedIdealDailyBudget - input.currentDailyBudget;
-      
-      // Diferença baseada na média dos últimos 5 dias (se disponível)
-      let budgetDifferenceBasedOnAverage;
-      let needsAdjustmentBasedOnAverage;
-      
-      if (input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0) {
-        budgetDifferenceBasedOnAverage = roundedIdealDailyBudget - input.lastFiveDaysAverage;
-        
-        const absoluteDifferenceAverage = Math.abs(budgetDifferenceBasedOnAverage);
-        needsAdjustmentBasedOnAverage = absoluteDifferenceAverage >= 5;
-
-        console.log(`🔍 DEBUG - Ajuste baseado na média (${input.lastFiveDaysAverage}):`, {
-          absoluteDifferenceAverage,
-          needsAdjustmentBasedOnAverage,
-          threshold: '≥ R$ 5'
-        });
-      }
-      
-      // NOVA LÓGICA: Diferença baseada na média ponderada (Google Ads)
-      let budgetDifferenceBasedOnWeighted;
-      let needsAdjustmentBasedOnWeighted;
+      // CORREÇÃO: Priorizar média ponderada para Google Ads
+      let primaryBudgetDifference;
+      let primaryNeedsAdjustment;
       
       if (input.weightedAverage !== undefined && input.weightedAverage > 0) {
-        budgetDifferenceBasedOnWeighted = roundedIdealDailyBudget - input.weightedAverage;
+        // Para Google Ads: usar média ponderada como base principal
+        primaryBudgetDifference = roundedIdealDailyBudget - input.weightedAverage;
+        const absoluteDifference = Math.abs(primaryBudgetDifference);
+        primaryNeedsAdjustment = absoluteDifference >= 5;
         
-        const absoluteDifferenceWeighted = Math.abs(budgetDifferenceBasedOnWeighted);
-        needsAdjustmentBasedOnWeighted = absoluteDifferenceWeighted >= 5;
-
-        console.log(`🔍 DEBUG - Ajuste baseado na média ponderada (${input.weightedAverage}):`, {
+        console.log(`🔍 DEBUG - Usando média ponderada como base principal:`, {
           idealDailyBudget: roundedIdealDailyBudget,
           weightedAverage: input.weightedAverage,
-          budgetDifferenceBasedOnWeighted,
-          absoluteDifferenceWeighted,
-          needsAdjustmentBasedOnWeighted,
+          budgetDifference: primaryBudgetDifference,
+          absoluteDifference,
+          needsAdjustment: primaryNeedsAdjustment,
+          threshold: '≥ R$ 5'
+        });
+      } else {
+        // Para Meta Ads ou quando não há média ponderada: usar método tradicional
+        primaryBudgetDifference = roundedIdealDailyBudget - input.currentDailyBudget;
+        const absoluteDifference = Math.abs(primaryBudgetDifference);
+        primaryNeedsAdjustment = input.currentDailyBudget > 0 && absoluteDifference >= 5;
+        
+        console.log(`🔍 DEBUG - Usando método tradicional:`, {
+          idealDailyBudget: roundedIdealDailyBudget,
+          currentDailyBudget: input.currentDailyBudget,
+          budgetDifference: primaryBudgetDifference,
+          absoluteDifference,
+          needsAdjustment: primaryNeedsAdjustment,
           threshold: '≥ R$ 5'
         });
       }
       
-      // Decidir qual método de ajuste usar:
-      // 1. Se há média ponderada (Google Ads), usar ela
-      // 2. Caso contrário, usar o método tradicional
-      let finalNeedsBudgetAdjustment;
+      // Cálculos adicionais para compatibilidade
+      const budgetDifferenceBasedOnAverage = input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0
+        ? roundedIdealDailyBudget - input.lastFiveDaysAverage
+        : undefined;
       
-      if (needsAdjustmentBasedOnWeighted !== undefined) {
-        // Para Google Ads: usar a média ponderada
-        finalNeedsBudgetAdjustment = needsAdjustmentBasedOnWeighted;
-        console.log(`🔍 DEBUG - Usando ajuste baseado na média ponderada para Google Ads`);
-      } else {
-        // Para outros casos: usar o método tradicional
-        const absoluteDifference = Math.abs(budgetDifference);
-        finalNeedsBudgetAdjustment = 
-          input.currentDailyBudget > 0 && // só considera se tem orçamento atual
-          absoluteDifference >= 5;
-        
-        console.log(`🔍 DEBUG - Usando ajuste tradicional:`, {
-          absoluteDifference,
-          needsBudgetAdjustment: finalNeedsBudgetAdjustment,
-          threshold: '≥ R$ 5',
-          currentDailyBudget: input.currentDailyBudget,
-          idealDailyBudget: roundedIdealDailyBudget
-        });
-      }
+      const needsAdjustmentBasedOnAverage = budgetDifferenceBasedOnAverage !== undefined
+        ? Math.abs(budgetDifferenceBasedOnAverage) >= 5
+        : undefined;
+      
+      const budgetDifferenceBasedOnWeighted = input.weightedAverage !== undefined && input.weightedAverage > 0
+        ? roundedIdealDailyBudget - input.weightedAverage
+        : undefined;
+      
+      const needsAdjustmentBasedOnWeighted = budgetDifferenceBasedOnWeighted !== undefined
+        ? Math.abs(budgetDifferenceBasedOnWeighted) >= 5
+        : undefined;
       
       return {
         idealDailyBudget: roundedIdealDailyBudget,
-        budgetDifference,
+        budgetDifference: primaryBudgetDifference, // CORREÇÃO: Agora usa a lógica priorizada
         budgetDifferenceBasedOnAverage,
         budgetDifferenceBasedOnWeighted,
         remainingDays,
         remainingBudget,
-        needsBudgetAdjustment: finalNeedsBudgetAdjustment,
+        needsBudgetAdjustment: primaryNeedsAdjustment, // CORREÇÃO: Agora usa a lógica priorizada
         needsAdjustmentBasedOnAverage,
         needsAdjustmentBasedOnWeighted,
         spentPercentage
