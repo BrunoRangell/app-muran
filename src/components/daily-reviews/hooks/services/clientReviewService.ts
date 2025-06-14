@@ -1,16 +1,18 @@
 
 import { supabase } from "@/lib/supabase";
 import { ClientWithReview } from "../types/reviewTypes";
+import { logger } from "@/utils/logger";
 
 /**
  * Busca todos os clientes com suas respectivas revisões mais recentes
  */
 export const fetchClientsWithReviews = async () => {
-  console.log("Iniciando fetchClientsWithReviews");
+  logger.info("CLIENT_REVIEW", "Iniciando fetchClientsWithReviews");
+  
   // Verificar autenticação antes de fazer a requisição
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) {
-    console.error("Sessão não encontrada");
+    logger.error("AUTH", "Sessão não encontrada");
     throw new Error("Usuário não autenticado");
   }
 
@@ -28,7 +30,7 @@ export const fetchClientsWithReviews = async () => {
     .order('company_name');
     
   if (error) {
-    console.error("Erro ao buscar clientes:", error);
+    logger.error("CLIENT_REVIEW", "Erro ao buscar clientes", error);
     throw new Error(`Erro ao buscar clientes: ${error.message}`);
   }
   
@@ -48,12 +50,12 @@ export const fetchClientsWithReviews = async () => {
       .maybeSingle();
       
     if (reviewError) {
-      console.error(`Erro ao buscar revisão para cliente ${client.company_name}:`, reviewError);
+      logger.error("CLIENT_REVIEW", `Erro ao buscar revisão para cliente ${client.company_name}`, reviewError);
       // Continuar com o próximo cliente
       processedClients.push({
         ...client,
         lastReview: null,
-        status: client.status // Adicionando a propriedade status que estava faltando
+        status: client.status as "active" | "inactive"
       });
       continue;
     }
@@ -62,7 +64,7 @@ export const fetchClientsWithReviews = async () => {
     processedClients.push({
       ...client,
       lastReview: reviewData,
-      status: client.status // Adicionando a propriedade status que estava faltando
+      status: client.status as "active" | "inactive"
     });
     
     // Atualizar o timestamp da revisão mais recente global
@@ -74,7 +76,7 @@ export const fetchClientsWithReviews = async () => {
     }
   }
   
-  console.log("Clientes processados com revisões:", processedClients?.length);
+  logger.info("CLIENT_REVIEW", "Clientes processados com revisões", { count: processedClients?.length });
   
   return processedClients;
 };
@@ -83,13 +85,13 @@ export const fetchClientsWithReviews = async () => {
  * Analisa um cliente específico
  */
 export const analyzeClient = async (clientId: string, clientsData: ClientWithReview[]) => {
-  console.log("Analisando cliente:", clientId);
+  logger.info("CLIENT_REVIEW", "Analisando cliente", { clientId });
   
   // Buscar dados do cliente
   const client = clientsData.find(c => c.id === clientId);
   
   if (!client) {
-    console.error("Cliente não encontrado na lista:", clientId);
+    logger.error("CLIENT_REVIEW", "Cliente não encontrado na lista", { clientId });
     
     // Tentar buscar diretamente do banco de dados
     const { data: dbClient, error } = await supabase
@@ -127,7 +129,7 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
   const formattedStartDate = startDate.toISOString().split('T')[0];
   
   // Chamar a função Edge para análise
-  console.log("Chamando Meta Budget Calculator para o cliente:", clientId);
+  logger.info("CLIENT_REVIEW", "Chamando Meta Budget Calculator para o cliente", { clientId });
   const metaAccountId = client?.meta_account_id || (
     await supabase.from('clients').select('meta_account_id').eq('id', clientId).single()
   ).data?.meta_account_id;
@@ -152,11 +154,11 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
   );
   
   if (error) {
-    console.error("Erro na função Edge:", error);
+    logger.error("CLIENT_REVIEW", "Erro na função Edge", error);
     throw new Error(`Erro na análise do orçamento: ${error.message}`);
   }
   
-  console.log("Resposta da função Edge:", data);
+  logger.info("CLIENT_REVIEW", "Resposta da função Edge", data);
   
   if (!data) {
     throw new Error("A resposta da API não contém dados");
@@ -168,9 +170,10 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
   
   // Buscar orçamento personalizado
   const { data: customBudgetData } = await supabase
-    .from("meta_custom_budgets")
+    .from("custom_budgets")
     .select("id, budget_amount, start_date, end_date")
     .eq("client_id", clientId)
+    .eq("platform", "meta")
     .eq("is_active", true)
     .lte("start_date", today)
     .gte("end_date", today)

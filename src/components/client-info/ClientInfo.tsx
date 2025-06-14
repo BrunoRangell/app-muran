@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { logger } from "@/utils/logger";
 
 interface ClientInfoProps {
   client: {
@@ -29,9 +30,10 @@ export function ClientInfo({ client }: ClientInfoProps) {
         // Buscar orçamento personalizado ativo para a data atual
         const today = new Date().toISOString().split('T')[0];
         const { data, error } = await supabase
-          .from("meta_custom_budgets")
+          .from("custom_budgets")
           .select("*")
           .eq("client_id", client.id)
+          .eq("platform", "meta")
           .eq("is_active", true)
           .lte("start_date", today)
           .gte("end_date", today)
@@ -39,19 +41,19 @@ export function ClientInfo({ client }: ClientInfoProps) {
           .maybeSingle();
           
         if (error) {
-          console.error("Erro ao buscar orçamento personalizado:", error);
+          logger.error("CLIENT_INFO", "Erro ao buscar orçamento personalizado", error);
           return;
         }
         
         if (data) {
-          console.log("Orçamento personalizado encontrado:", data);
+          logger.info("CLIENT_INFO", "Orçamento personalizado encontrado", data);
         } else {
-          console.log("Nenhum orçamento personalizado ativo encontrado para o cliente.");
+          logger.debug("CLIENT_INFO", "Nenhum orçamento personalizado ativo encontrado para o cliente");
         }
         
         setCustomBudget(data);
       } catch (error) {
-        console.error("Erro ao buscar orçamento personalizado:", error);
+        logger.error("CLIENT_INFO", "Erro ao buscar orçamento personalizado", error);
       } finally {
         setIsLoading(false);
       }
@@ -108,7 +110,7 @@ export function ClientInfo({ client }: ClientInfoProps) {
             <div className="text-xs text-gray-600 mb-1">
               Orçamento personalizado ativo no período: {new Date(customBudget.start_date).toLocaleDateString()} até {new Date(customBudget.end_date).toLocaleDateString()}
             </div>
-            <Link to="/revisao-meta?tab=custom-budgets">
+            <Link to="/revisao-diaria-avancada?tab=custom-budgets">
               <Button 
                 size="sm" 
                 variant="outline"

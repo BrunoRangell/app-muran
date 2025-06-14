@@ -32,11 +32,16 @@ export interface Client {
   first_payment_date: string;
   payment_type: "pre" | "post";
   status: "active" | "inactive";
-  acquisition_channel: string;
-  company_birthday: string;
-  contact_name: string;
-  contact_phone: string;
-  last_payment_date: string | null;
+  acquisition_channel?: string;
+  company_birthday?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  last_payment_date?: string | null;
+  meta_account_id?: string | null;
+  google_account_id?: string | null;
+  meta_ads_budget?: number;
+  google_ads_budget?: number;
+  created_at: string;
 }
 
 export interface Column {
