@@ -74,27 +74,13 @@ export default function CampaignHealth() {
     handleAction('review', alert.clientId, alert.platform);
   };
 
-  // Estatísticas para os filtros da tabela (apenas informativa nos filtros)
-  const filteredStats = {
-    critical: filteredEnhancedData.reduce((acc, client) => {
-      const metaCritical = client.metaAds?.alertLevel === "critical" ? 1 : 0;
-      const googleCritical = client.googleAds?.alertLevel === "critical" ? 1 : 0;
-      return acc + metaCritical + googleCritical;
-    }, 0),
-    high: filteredEnhancedData.reduce((acc, client) => {
-      const metaHigh = client.metaAds?.alertLevel === "high" ? 1 : 0;
-      const googleHigh = client.googleAds?.alertLevel === "high" ? 1 : 0;
-      return acc + metaHigh + googleHigh;
-    }, 0),
-    medium: filteredEnhancedData.reduce((acc, client) => {
-      const metaMedium = client.metaAds?.alertLevel === "medium" ? 1 : 0;
-      const googleMedium = client.googleAds?.alertLevel === "medium" ? 1 : 0;
-      return acc + metaMedium + googleMedium;
-    }, 0),
-    totalProblems: 0 // Calculado abaixo
+  // Mapear dashboardStats para o formato esperado pelo IntelligentFilters (SEMPRE TOTAIS)
+  const totalFilterStats = {
+    critical: dashboardStats.criticalAlerts,
+    high: dashboardStats.highAlerts,
+    medium: dashboardStats.mediumAlerts,
+    totalProblems: dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts
   };
-  
-  filteredStats.totalProblems = filteredStats.critical + filteredStats.high + filteredStats.medium;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,7 +102,7 @@ export default function CampaignHealth() {
           onAlertClick={handleAlertClick}
         />
         
-        {/* Filtros Inteligentes - Mostra estatísticas filtradas apenas como informação */}
+        {/* Filtros Inteligentes - Mostra SEMPRE os totais */}
         <IntelligentFilters 
           filterValue={filterValue}
           setFilterValue={setFilterValue}
@@ -130,7 +116,7 @@ export default function CampaignHealth() {
           setProblemTypeFilter={setProblemTypeFilter}
           handleRefresh={handleRefresh}
           isFetching={isFetching}
-          stats={filteredStats}
+          stats={totalFilterStats}
         />
         
         {/* Tabela Melhorada - APENAS esta seção é afetada pelos filtros */}
