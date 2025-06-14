@@ -22,7 +22,7 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
     form,
     handleSubmit: unifiedHandleSubmit,
     isSubmitting,
-  } = useUnifiedForm({
+  } = useUnifiedForm<typeof clientFormSchema>({
     schema: clientFormSchema,
     defaultValues: {
       companyName: initialData?.company_name || "",
