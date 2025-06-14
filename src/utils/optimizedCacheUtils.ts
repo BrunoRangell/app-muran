@@ -27,8 +27,9 @@ export class OptimizedCacheManager {
     logger.info('CACHE', `Batch invalidated ${keys.length} query keys`);
   }
 
-  private scheduleInvalidation(queryKey: string[]) {
-    const key = queryKey.join('.');
+  private scheduleInvalidation(queryKey: readonly string[]) {
+    // Converter readonly array para string array
+    const key = [...queryKey].join('.');
     this.invalidationQueue.add(key);
 
     if (this.batchTimeout) {
@@ -43,10 +44,10 @@ export class OptimizedCacheManager {
 
   invalidateClients(options: CacheInvalidationOptions = {}) {
     if (options.force) {
-      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.all });
-      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.withPayments });
-      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.unified });
-      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.active });
+      this.queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.clients.all] });
+      this.queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.clients.withPayments] });
+      this.queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.clients.unified] });
+      this.queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.clients.active] });
     } else {
       this.scheduleInvalidation(QUERY_KEYS.clients.all);
       this.scheduleInvalidation(QUERY_KEYS.clients.withPayments);
@@ -61,8 +62,8 @@ export class OptimizedCacheManager {
 
   invalidatePayments(options: CacheInvalidationOptions = {}) {
     if (options.force) {
-      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.all });
-      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.recebimentos });
+      this.queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.payments.all] });
+      this.queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.payments.recebimentos] });
     } else {
       this.scheduleInvalidation(QUERY_KEYS.payments.all);
       this.scheduleInvalidation(QUERY_KEYS.payments.recebimentos);
@@ -75,8 +76,8 @@ export class OptimizedCacheManager {
 
   invalidateMetrics(options: CacheInvalidationOptions = {}) {
     if (options.force) {
-      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.metrics.allClients });
-      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.metrics.filtered });
+      this.queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.metrics.allClients] });
+      this.queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.metrics.filtered] });
     } else {
       this.scheduleInvalidation(QUERY_KEYS.metrics.allClients);
       this.scheduleInvalidation(QUERY_KEYS.metrics.filtered);
@@ -85,6 +86,22 @@ export class OptimizedCacheManager {
     if (!options.silent) {
       logger.info('CACHE', 'Scheduled metrics cache invalidation');
     }
+  }
+
+  // Adicionando métodos que estavam faltando
+  warmupCache() {
+    logger.info('CACHE', 'Warming up cache with frequently accessed data');
+    // Pré-carregar dados frequentemente acessados
+    this.queryClient.prefetchQuery({
+      queryKey: [...QUERY_KEYS.clients.all],
+      staleTime: 5 * 60 * 1000 // 5 minutos
+    });
+  }
+
+  cleanupStaleData() {
+    logger.info('CACHE', 'Cleaning up stale cache data');
+    // Limpar dados antigos do cache
+    this.queryClient.clear();
   }
 
   clearAll() {

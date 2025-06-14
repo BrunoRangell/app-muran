@@ -8,10 +8,11 @@ import { logger } from "@/utils/logger";
 interface UseUnifiedClientDataOptions {
   includeInactive?: boolean;
   includePayments?: boolean;
+  filters?: any; // Adicionando propriedade filters que estava faltando
 }
 
 export const useUnifiedClientData = (options: UseUnifiedClientDataOptions = {}) => {
-  const { includeInactive = false, includePayments = false } = options;
+  const { includeInactive = false, includePayments = false, filters } = options;
 
   const clientsQuery = useQuery({
     queryKey: QUERY_KEYS.clients.unified,
@@ -21,6 +22,16 @@ export const useUnifiedClientData = (options: UseUnifiedClientDataOptions = {}) 
         
         if (!includeInactive) {
           query = query.eq("status", "active");
+        }
+
+        // Aplicar filtros se fornecidos
+        if (filters) {
+          if (filters.search) {
+            query = query.ilike("company_name", `%${filters.search}%`);
+          }
+          if (filters.status) {
+            query = query.eq("status", filters.status);
+          }
         }
 
         const { data: clients, error } = await query;
