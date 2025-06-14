@@ -1,13 +1,12 @@
 
-import { UnifiedLoadingState } from "@/components/common/UnifiedLoadingState";
+import { UnifiedLoading } from "@/components/common/UnifiedLoading";
 
-export const ImprovedLoadingState = () => {
+export function ImprovedLoadingState() {
   return (
-    <UnifiedLoadingState 
+    <UnifiedLoading 
       message="Carregando dados das revisões..."
-      size="lg"
-      variant="spinner"
-      className="min-h-[400px]"
+      size="md"
+      variant="default"
     />
   );
-};
+}
