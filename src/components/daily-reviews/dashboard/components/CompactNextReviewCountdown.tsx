@@ -1,16 +1,9 @@
-
 import { useState, useEffect, useRef } from "react";
-import { Loader, RefreshCw, AlertTriangle, Info, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMetaReviewService } from "@/components/revisao-nova/hooks/useMetaReviewService";
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
+import { useMetaReviewService } from "@/components/common/hooks/useMetaReviewService";
+import { CountdownDisplay } from "./review-countdown/CountdownDisplay";
+import { ErrorDisplay } from "./review-countdown/ErrorDisplay";
 import { 
   Dialog,
   DialogContent,
@@ -21,13 +14,15 @@ import {
   DialogClose,
   DialogFooter
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, AlertTriangle } from "lucide-react";
 
 interface CompactNextReviewCountdownProps {
   onAnalyzeAll: () => Promise<void>;
 }
 
 export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCountdownProps) {
-  const [secondsToNext, setSecondsToNext] = useState<number>(180); // 3 minutos
+  const [secondsToNext, setSecondsToNext] = useState<number>(180);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [lastRunTime, setLastRunTime] = useState<Date | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -35,6 +30,7 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
   const { 
     executeAutomaticReview, 
     isLoading, 
@@ -190,15 +186,20 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
   useEffect(() => {
     console.log("[AutoReview] Inicializando contador de revisão automática");
     
-    // Limpar qualquer intervalo existente
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
     
-    // Configurar novo intervalo
-    intervalRef.current = setInterval(updateCountdown, 1000);
+    intervalRef.current = setInterval(() => {
+      setSecondsToNext(prev => {
+        if (prev <= 1) {
+          runAutomaticReview();
+          return 180;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     
-    // Limpar o intervalo quando o componente for desmontado
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -207,84 +208,23 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
     };
   }, []);
 
-  // Formatar o tempo para exibição
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
   return (
     <div className="text-sm">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-1.5 justify-between">
-          <span className="text-xs text-gray-500">Próxima revisão:</span>
-          <span className="font-mono text-xs font-medium">{formatTime(secondsToNext)}</span>
-        </div>
-        
-        <button 
-          onClick={handleManualRun} 
-          disabled={isRunning || isLoading}
-          className="flex items-center justify-center gap-1 text-xs py-1 px-2 rounded bg-[#ff6e00] hover:bg-[#e66300] text-white disabled:opacity-50"
-        >
-          {isRunning || isLoading ? (
-            <Loader className="h-3 w-3 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3 w-3" />
-          )}
-          Executar Agora
-        </button>
-        
-        {lastConnectionStatus === "error" && (
-          <div className="text-[10px] text-red-500 flex items-center mt-1 gap-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center cursor-help">
-                    <AlertTriangle className="h-3 w-3" />
-                    <span>Problema de conexão detectado</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[250px] text-xs">
-                  <p className="font-semibold">Erro:</p>
-                  <p className="text-[10px]">{lastErrorMessage || "Erro na conexão com a função Edge"}</p>
-                  <p className="mt-1 text-[10px]">Clique no botão abaixo para resetar o status.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <button 
-              onClick={handleOpenErrorDetails}
-              className="text-[10px] text-blue-500 hover:text-blue-700 underline ml-auto"
-            >
-              Detalhes
-            </button>
-            
-            <button 
-              onClick={handleResetConnectionStatus}
-              className="text-[10px] text-blue-500 hover:text-blue-700 underline"
-            >
-              Resetar
-            </button>
-          </div>
-        )}
-        
-        {errorDetails && (
-          <div className="text-[10px] bg-red-50 border border-red-200 p-1 rounded mt-1">
-            <div className="flex items-center">
-              <Info className="h-3 w-3 text-red-500 mr-1" />
-              <span className="font-semibold text-red-600">Detalhes do erro:</span>
-            </div>
-            <p className="text-red-600 mt-0.5 break-all">{errorDetails}</p>
-          </div>
-        )}
-        
-        {lastRunTime && (
-          <div className="text-[10px] text-gray-500 mt-1">
-            Última execução: {lastRunTime.toLocaleTimeString()}
-          </div>
-        )}
-      </div>
+      <CountdownDisplay 
+        secondsToNext={secondsToNext}
+        onManualRun={handleManualRun}
+        isRunning={isRunning}
+        isLoading={isLoading}
+      />
+      
+      {lastConnectionStatus === "error" && (
+        <ErrorDisplay 
+          errorDetails={errorDetails}
+          lastRunTime={lastRunTime}
+          onOpenErrorDetails={handleOpenErrorDetails}
+          onResetConnectionStatus={handleResetConnectionStatus}
+        />
+      )}
 
       <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
         <DialogContent className="max-w-md">
@@ -332,16 +272,6 @@ export function CompactNextReviewCountdown({ onAnalyzeAll }: CompactNextReviewCo
                 )}
               </div>
             )}
-            
-            <div className="bg-blue-50 p-3 rounded border border-blue-200">
-              <h4 className="font-medium text-blue-800 mb-1">Solução para "Unexpected end of JSON input":</h4>
-              <ul className="text-sm text-blue-700 list-disc pl-5 space-y-1">
-                <li>Verifique se a função Edge está publicada corretamente</li>
-                <li>Tente republicar a função Edge no console do Supabase</li>
-                <li>Verifique os logs da função Edge para identificar o erro exato</li>
-                <li>Verifique se os parâmetros enviados estão corretos</li>
-              </ul>
-            </div>
           </div>
           
           <DialogFooter className="flex sm:justify-between">
