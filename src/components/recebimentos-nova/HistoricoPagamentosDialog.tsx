@@ -98,6 +98,16 @@ export function HistoricoPagamentosDialog({
     }
   };
 
+  const handlePagamentoEditado = () => {
+    setEditarDialogAberto(false);
+    
+    if (cliente?.payments) {
+      setPagamentos([...cliente.payments]);
+    }
+    
+    onPagamentoAtualizado();
+  };
+
   const pagamentosOrdenados = [...pagamentos].sort((a, b) => {
     const dataA = a.reference_month ? new Date(a.reference_month) : new Date(0);
     const dataB = b.reference_month ? new Date(b.reference_month) : new Date(0);
@@ -190,16 +200,7 @@ export function HistoricoPagamentosDialog({
           open={editarDialogAberto}
           onOpenChange={setEditarDialogAberto}
           pagamento={pagamentoSelecionado}
-          nomeCliente={cliente?.company_name}
-          onSuccess={() => {
-            setEditarDialogAberto(false);
-            
-            if (cliente?.payments) {
-              setPagamentos([...cliente.payments]);
-            }
-            
-            onPagamentoAtualizado();
-          }}
+          onSuccess={handlePagamentoEditado}
         />
       )}
     </>

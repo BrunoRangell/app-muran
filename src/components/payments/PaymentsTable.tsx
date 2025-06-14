@@ -49,7 +49,7 @@ export const PaymentsTable = ({ payments, onEdit, onDelete, isLoading }: Payment
           <TableRow key={payment.id}>
             <TableCell>
               <div className="font-medium">
-                {payment.client?.company_name || 'Cliente não encontrado'}
+                {payment.clients?.company_name || 'Cliente não encontrado'}
               </div>
             </TableCell>
             <TableCell className="font-medium">

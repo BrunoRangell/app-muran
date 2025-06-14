@@ -13,14 +13,14 @@ interface EditarPagamentoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pagamento: any;
-  onPagamentoAtualizado: () => void;
+  onSuccess: () => void;
 }
 
 export const EditarPagamentoDialog = ({
   open,
   onOpenChange,
   pagamento,
-  onPagamentoAtualizado
+  onSuccess
 }: EditarPagamentoDialogProps) => {
   const [valor, setValor] = useState(pagamento?.amount?.toString() || "");
   const [mesReferencia, setMesReferencia] = useState(pagamento?.reference_month || "");
@@ -55,7 +55,7 @@ export const EditarPagamentoDialog = ({
         description: "Pagamento atualizado com sucesso",
       });
       
-      onPagamentoAtualizado();
+      onSuccess();
       onOpenChange(false);
       
     } catch (error) {

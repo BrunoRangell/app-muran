@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { useOptimizedQuery } from "./useOptimizedQuery";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { QUERY_KEYS } from "@/utils/queryUtils";
+import { QUERY_KEYS, createQueryKey } from "@/utils/queryUtils";
 import { useCacheManager } from "@/utils/cacheUtils";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { useStableCallback } from "./useMemoizedCallback";
@@ -24,7 +24,7 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
 
   // Query otimizada para pagamentos
   const paymentsQuery = useOptimizedQuery({
-    queryKey: QUERY_KEYS.payments.byFilters(memoizedFilters),
+    queryKey: createQueryKey(QUERY_KEYS.payments.all, 'filters', memoizedFilters),
     queryFn: async () => {
       let query = supabase
         .from("payments")
@@ -61,7 +61,7 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
 
   // Query otimizada para clientes com pagamentos
   const clientsWithPaymentsQuery = useOptimizedQuery({
-    queryKey: QUERY_KEYS.clients.withPayments,
+    queryKey: createQueryKey(QUERY_KEYS.clients.withPayments),
     queryFn: async () => {
       // Buscar clientes e pagamentos em paralelo
       const [clientsResult, paymentsResult] = await Promise.all([
