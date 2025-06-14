@@ -1,49 +1,71 @@
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-type LogModule = 'AUTH' | 'API' | 'ERROR' | 'VALIDATION' | 'PAYMENT' | 'CLIENT' | 'BATCH' | 'GOOGLE_ADS' | 'META_ADS' | 'SYSTEM' | 'VALIDATOR' | 'COSTS' | 'FORM_VALIDATION' | 'COSTS_PAGE' | 'DATA_SERVICE' | 'CACHE' | 'GOALS' | 'TASKS';
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogModule = 
+  | 'APP' 
+  | 'AUTH' 
+  | 'CLIENT' 
+  | 'CLIENT_INFO'
+  | 'CLIENT_REVIEW'
+  | 'AUTO_REVIEW'
+  | 'GOOGLE_ADS_REVIEW'
+  | 'VALIDATION' 
+  | 'PERFORMANCE' 
+  | 'SUPABASE' 
+  | 'EDGE_FUNCTION' 
+  | 'BATCH_OPERATIONS'
+  | 'META_REVIEW'
+  | 'CRON'
+  | 'API';
 
 interface LogEntry {
+  timestamp: string;
   level: LogLevel;
   module: LogModule;
   message: string;
   data?: any;
-  timestamp: string;
 }
 
 class Logger {
-  private isDev = import.meta.env.DEV;
-  
-  private formatMessage(module: LogModule, message: string, data?: any): string {
+  private isDevelopment = import.meta.env.MODE === 'development';
+
+  private formatMessage(level: LogLevel, module: LogModule, message: string, data?: any): string {
     const timestamp = new Date().toISOString();
-    let formattedMessage = `[${module}] ${message}`;
+    const baseMessage = `[${timestamp}] [${level.toUpperCase()}] [${module}] ${message}`;
     
-    if (data) {
-      formattedMessage += ` - ${JSON.stringify(data)}`;
+    if (data && Object.keys(data).length > 0) {
+      return `${baseMessage}\nData: ${JSON.stringify(data, null, 2)}`;
     }
     
-    return formattedMessage;
+    return baseMessage;
   }
 
-  info(module: LogModule, message: string, data?: any): void {
-    if (!this.isDev) return;
-    console.info(this.formatMessage(module, message, data));
+  debug(module: LogModule, message: string, data?: any) {
+    if (this.isDevelopment) {
+      console.debug(this.formatMessage('debug', module, message, data));
+    }
   }
 
-  warn(module: LogModule, message: string, data?: any): void {
-    console.warn(this.formatMessage(module, message, data));
+  info(module: LogModule, message: string, data?: any) {
+    if (this.isDevelopment) {
+      console.info(this.formatMessage('info', module, message, data));
+    }
   }
 
-  error(module: LogModule, message: string, error?: any): void {
-    const errorData = error instanceof Error ? { 
-      message: error.message, 
-      stack: error.stack 
-    } : error;
-    
-    console.error(this.formatMessage(module, message, errorData));
+  warn(module: LogModule, message: string, data?: any) {
+    console.warn(this.formatMessage('warn', module, message, data));
   }
 
-  debug(module: LogModule, message: string, data?: any): void {
-    if (!this.isDev) return;
-    console.debug(this.formatMessage(module, message, data));
+  error(module: LogModule, message: string, error?: any) {
+    console.error(this.formatMessage('error', module, message, error));
+  }
+
+  // Método para logs em produção (apenas errors e warns críticos)
+  production(level: 'error' | 'warn', module: LogModule, message: string, data?: any) {
+    if (level === 'error') {
+      console.error(this.formatMessage('error', module, message, data));
+    } else {
+      console.warn(this.formatMessage('warn', module, message, data));
+    }
   }
 }
 

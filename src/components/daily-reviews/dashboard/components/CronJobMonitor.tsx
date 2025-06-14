@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export function CronJobMonitor() {
+export const CronJobMonitor = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [executions, setExecutions] = useState<any[]>([]);
@@ -561,6 +560,28 @@ export function CronJobMonitor() {
     }
   };
 
+  // Corrigir o problema do spread
+  const updateExecution = async (executionId: string, newValues: any) => {
+    try {
+      setExecutions(prev => prev.map(exec => 
+        exec.id === executionId 
+          ? { ...exec, ...newValues }  // Garantir que exec é um objeto antes do spread
+          : exec
+      ));
+    } catch (error) {
+      console.error("Erro ao atualizar execução:", error);
+    }
+  };
+
+  // Função para atualizar uma execução específica
+  const handleExecutionUpdate = (executionId: string, updates: any) => {
+    setExecutions(prev => prev.map(exec => 
+      exec.id === executionId 
+        ? { ...exec, ...updates }  // Garantir que exec é um objeto antes do spread
+        : exec
+    ));
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -761,4 +782,6 @@ export function CronJobMonitor() {
       </CardContent>
     </Card>
   );
-}
+};
+
+export default CronJobMonitor;

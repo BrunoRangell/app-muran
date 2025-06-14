@@ -81,12 +81,13 @@ export const useClientAnalysis = (
 
       console.log("Dados recebidos da API Meta:", data);
 
-      // Buscar orçamento personalizado
+      // Buscar orçamento personalizado (usando a tabela correta)
       const today = now.toISOString().split("T")[0];
       const { data: customBudgetData } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .select("id, budget_amount, start_date, end_date")
         .eq("client_id", clientId)
+        .eq("platform", "meta")
         .eq("is_active", true)
         .lte("start_date", today)
         .gte("end_date", today)

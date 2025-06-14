@@ -88,7 +88,14 @@ export const processClientsWithReviews = async () => {
             accountReviewsData = await fetchClientReviews(client.id, account.account_id);
           }
           
-          const accountLastReview = accountReviewsData?.[0] || null;
+          // Garantir que a revisão tenha as propriedades obrigatórias
+          const accountLastReview = accountReviewsData?.[0] ? {
+            ...accountReviewsData[0],
+            google_daily_budget_current: accountReviewsData[0].google_daily_budget_current || 0,
+            google_total_spent: accountReviewsData[0].google_total_spent || 0,
+            meta_daily_budget_current: accountReviewsData[0].meta_daily_budget_current,
+            meta_total_spent: accountReviewsData[0].meta_total_spent
+          } : null;
           
           // Log para diagnóstico
           console.log(`Conta ${account.account_name} (${account.account_id}): ${accountReviewsData?.length || 0} revisões`);
@@ -98,7 +105,7 @@ export const processClientsWithReviews = async () => {
           const processedClient: ClientWithReview = {
             ...client,
             meta_account_id: account.account_id,  // Associamos a conta Meta específica
-            lastReview: accountLastReview || null,
+            lastReview: accountLastReview,
             status: client.status
           };
           
@@ -125,12 +132,18 @@ export const processClientsWithReviews = async () => {
       // Cliente sem contas Meta específicas, comportamento padrão
       try {
         const reviewsData = await fetchClientReviews(client.id);
-        const lastReview = reviewsData?.[0];
+        const lastReview = reviewsData?.[0] ? {
+          ...reviewsData[0],
+          google_daily_budget_current: reviewsData[0].google_daily_budget_current || 0,
+          google_total_spent: reviewsData[0].google_total_spent || 0,
+          meta_daily_budget_current: reviewsData[0].meta_daily_budget_current,
+          meta_total_spent: reviewsData[0].meta_total_spent
+        } : null;
         
         processedClients.push({
           ...client,
           meta_account_id: null,
-          lastReview: lastReview || null,
+          lastReview,
           status: client.status
         });
         
