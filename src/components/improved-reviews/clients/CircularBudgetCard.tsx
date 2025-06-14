@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,11 +15,9 @@ interface CircularBudgetCardProps {
 
 export function CircularBudgetCard({ client, platform = "meta" }: CircularBudgetCardProps) {
   const { toast } = useToast();
-  const { reviewClient, processingIds } = useBatchOperations({
-    platform: platform as "meta" | "google"
-  });
+  const { processingIds, reviewClient } = useBatchOperations();
   
-  const isProcessing = processingIds.includes(client.id);
+  const isProcessing = processingIds.has(client.id);
   
   // Preparar dados para exibição
   const companyName = client.company_name;
@@ -91,7 +88,7 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
   
   const handleReviewClick = async () => {
     try {
-      await reviewClient(client.id, client[`${platform}_account_id`]);
+      await reviewClient(client.id);
       toast({
         title: "Análise completa",
         description: `O orçamento de ${client.company_name} foi analisado com sucesso.`

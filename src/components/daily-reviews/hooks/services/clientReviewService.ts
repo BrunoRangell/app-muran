@@ -1,279 +1,143 @@
+
 import { supabase } from "@/lib/supabase";
-import { ClientWithReview } from "../types/reviewTypes";
-import { logger } from "@/utils/logger";
+import { GoogleReview } from "../types/reviewTypes";
 
-/**
- * Busca todos os clientes com suas respectivas revisões mais recentes
- */
-export const fetchClientsWithReviews = async () => {
-  logger.info("CLIENT_REVIEW", "Iniciando fetchClientsWithReviews");
-  
-  // Verificar autenticação antes de fazer a requisição
-  const { data: sessionData } = await supabase.auth.getSession();
-  if (!sessionData.session) {
-    logger.error("AUTH", "Sessão não encontrada");
-    throw new Error("Usuário não autenticado");
-  }
+export class ClientReviewService {
+  static async getLatestGoogleReview(clientId: string, accountId?: string): Promise<GoogleReview | null> {
+    try {
+      let query = supabase
+        .from('google_ads_reviews')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('review_date', { ascending: false })
+        .limit(1);
 
-  // Primeiro, buscar todos os clientes ativos
-  const { data: clientsData, error } = await supabase
-    .from('clients')
-    .select(`
-      id,
-      company_name,
-      meta_account_id,
-      meta_ads_budget,
-      status
-    `)
-    .eq('status', 'active')
-    .order('company_name');
-    
-  if (error) {
-    logger.error("CLIENT_REVIEW", "Erro ao buscar clientes", error);
-    throw new Error(`Erro ao buscar clientes: ${error.message}`);
-  }
-  
-  // Agora, para cada cliente, buscar apenas a revisão mais recente
-  let lastReviewTime: Date | null = null;
-  const processedClients: ClientWithReview[] = [];
-  
-  for (const client of clientsData || []) {
-    // Buscar apenas a revisão mais recente para este cliente
-    const { data: reviewData, error: reviewError } = await supabase
-      .from('daily_budget_reviews')
-      .select('*')
-      .eq('client_id', client.id)
-      .order('review_date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-      
-    if (reviewError) {
-      logger.error("CLIENT_REVIEW", `Erro ao buscar revisão para cliente ${client.company_name}`, reviewError);
-      // Continuar com o próximo cliente
-      processedClients.push({
-        ...client,
-        lastReview: null,
-        status: client.status as "active" | "inactive"
-      });
-      continue;
-    }
-    
-    // Adicionar a revisão mais recente ao cliente
-    processedClients.push({
-      ...client,
-      lastReview: reviewData,
-      status: client.status as "active" | "inactive"
-    });
-    
-    // Atualizar o timestamp da revisão mais recente global
-    if (reviewData) {
-      const reviewDate = new Date(reviewData.created_at);
-      if (!lastReviewTime || reviewDate > lastReviewTime) {
-        lastReviewTime = reviewDate;
+      if (accountId) {
+        query = query.eq('google_account_id', accountId);
       }
-    }
-  }
-  
-  logger.info("CLIENT_REVIEW", "Clientes processados com revisões", { count: processedClients?.length });
-  
-  return processedClients;
-};
 
-/**
- * Analisa um cliente específico
- */
-export const analyzeClient = async (clientId: string, clientsData: ClientWithReview[]) => {
-  logger.info("CLIENT_REVIEW", "Analisando cliente", { clientId });
-  
-  // Buscar dados do cliente
-  const client = clientsData.find(c => c.id === clientId);
-  
-  if (!client) {
-    logger.error("CLIENT_REVIEW", "Cliente não encontrado na lista", { clientId });
-    
-    // Tentar buscar diretamente do banco de dados
-    const { data: dbClient, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', clientId)
-      .single();
-    
-    if (error) {
-      throw new Error(`Cliente não encontrado: ${error.message}`);
-    }
-    
-    if (!dbClient.meta_account_id) {
-      throw new Error("Cliente não possui configuração de Meta Ads");
-    }
-  } else if (!client.meta_account_id) {
-    throw new Error("Cliente não possui configuração de Meta Ads");
-  }
-  
-  // Buscar token do Meta Ads
-  const { data: tokenData, error: tokenError } = await supabase
-    .from('api_tokens')
-    .select('value')
-    .eq('name', 'meta_access_token')
-    .single();
-  
-  if (tokenError || !tokenData?.value) {
-    throw new Error("Token do Meta Ads não encontrado");
-  }
-  
-  // Preparar datas para análise
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-  const formattedStartDate = startDate.toISOString().split('T')[0];
-  
-  // Chamar a função Edge para análise
-  logger.info("CLIENT_REVIEW", "Chamando Meta Budget Calculator para o cliente", { clientId });
-  const metaAccountId = client?.meta_account_id || (
-    await supabase.from('clients').select('meta_account_id').eq('id', clientId).single()
-  ).data?.meta_account_id;
-  
-  if (!metaAccountId) {
-    throw new Error("ID da conta Meta não encontrado para o cliente");
-  }
-  
-  const { data, error } = await supabase.functions.invoke(
-    "meta-budget-calculator",
-    {
-      body: {
-        accountId: metaAccountId,
-        accessToken: tokenData.value,
-        dateRange: {
-          start: formattedStartDate,
-          end: today
-        },
-        fetchSeparateInsights: true
-      },
-    }
-  );
-  
-  if (error) {
-    logger.error("CLIENT_REVIEW", "Erro na função Edge", error);
-    throw new Error(`Erro na análise do orçamento: ${error.message}`);
-  }
-  
-  logger.info("CLIENT_REVIEW", "Resposta da função Edge", data);
-  
-  if (!data) {
-    throw new Error("A resposta da API não contém dados");
-  }
-  
-  // Extrair valores da resposta
-  const metaDailyBudget = data.totalDailyBudget || 0;
-  const metaTotalSpent = data.totalSpent || 0;
-  
-  // Buscar orçamento personalizado
-  const { data: customBudgetData } = await supabase
-    .from("custom_budgets")
-    .select("id, budget_amount, start_date, end_date")
-    .eq("client_id", clientId)
-    .eq("platform", "meta")
-    .eq("is_active", true)
-    .lte("start_date", today)
-    .gte("end_date", today)
-    .order("created_at", { ascending: false })
-    .maybeSingle();
-  
-  // Preparar informações do orçamento personalizado
-  const customBudgetInfo = customBudgetData
-    ? {
-        using_custom_budget: true,
-        custom_budget_id: customBudgetData.id,
-        custom_budget_amount: customBudgetData.budget_amount,
+      const { data, error } = await query.maybeSingle();
+
+      if (error) {
+        console.error('Erro ao buscar última revisão Google:', error);
+        return null;
       }
-    : {
-        using_custom_budget: false,
-        custom_budget_id: null,
-        custom_budget_amount: null,
-      };
-  
-  // Verificar se já existe revisão para hoje
-  const { data: existingReview } = await supabase
-    .from('daily_budget_reviews')
-    .select('id')
-    .eq('client_id', clientId)
-    .eq('review_date', today)
-    .maybeSingle();
-  
-  // Salvar ou atualizar a revisão
-  if (existingReview) {
-    // Atualizar revisão existente
-    await supabase
-      .from('daily_budget_reviews')
-      .update({
-        meta_daily_budget_current: metaDailyBudget,
-        meta_total_spent: metaTotalSpent,
-        ...customBudgetInfo,
-        updated_at: now.toISOString()
-      })
-      .eq('id', existingReview.id);
-  } else {
-    // Criar nova revisão
-    await supabase
-      .from('daily_budget_reviews')
-      .insert({
-        client_id: clientId,
-        review_date: today,
-        meta_daily_budget_current: metaDailyBudget,
-        meta_total_spent: metaTotalSpent,
-        meta_account_id: metaAccountId,
-        meta_account_name: `Conta ${metaAccountId}`,
-        ...customBudgetInfo
-      });
-  }
-  
-  return {
-    success: true,
-    clientId,
-    metaDailyBudget,
-    metaTotalSpent,
-    customBudgetInfo
-  };
-};
 
-export const fetchLastReview = async (clientId: string, accountId?: string) => {
-  logger.info('CLIENT_REVIEW', `Buscando última revisão para cliente ${clientId}`, { accountId });
-  
-  try {
-    let query = supabase
-      .from('daily_budget_reviews')
-      .select('*')
-      .eq('client_id', clientId);
-    
-    if (accountId) {
-      query = query.eq('meta_account_id', accountId);
-    }
-    
-    const { data, error } = await query
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    if (error) {
-      logger.error('CLIENT_REVIEW', 'Erro ao buscar última revisão', error);
-      throw error;
-    }
-    
-    logger.info('CLIENT_REVIEW', 'Última revisão encontrada', { data });
-    
-    // Garantir que o objeto retornado tenha todas as propriedades necessárias para GoogleReview
-    if (data) {
+      if (!data) return null;
+
+      // Garantir que o objeto tenha todas as propriedades necessárias do tipo GoogleReview
       return {
-        ...data,
-        google_daily_budget_current: data.meta_daily_budget_current || 0,
-        google_total_spent: data.meta_total_spent || 0,
-        id: String(data.id)
+        id: data.id,
+        client_id: data.client_id,
+        review_date: data.review_date,
+        google_daily_budget_current: data.google_daily_budget_current || 0,
+        google_total_spent: data.google_total_spent || 0,
+        google_last_five_days_spent: data.google_last_five_days_spent,
+        google_account_id: data.google_account_id,
+        google_account_name: data.google_account_name,
+        client_account_id: data.client_account_id,
+        account_display_name: data.account_display_name,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        using_custom_budget: data.using_custom_budget,
+        custom_budget_amount: data.custom_budget_amount,
+        custom_budget_id: data.custom_budget_id,
+        custom_budget_end_date: data.custom_budget_end_date,
+        custom_budget_start_date: data.custom_budget_start_date,
+        google_day_1_spent: data.google_day_1_spent,
+        google_day_2_spent: data.google_day_2_spent,
+        google_day_3_spent: data.google_day_3_spent,
+        google_day_4_spent: data.google_day_4_spent,
+        google_day_5_spent: data.google_day_5_spent,
+        // Propriedades compatíveis para evitar erros
+        meta_account_id: undefined,
+        meta_daily_budget_current: undefined,
+        meta_total_spent: undefined,
+        idealDailyBudget: undefined
       };
+
+    } catch (error) {
+      console.error('Erro inesperado ao buscar revisão Google:', error);
+      return null;
     }
-    
-    return data;
-  } catch (error) {
-    logger.error('CLIENT_REVIEW', 'Erro ao buscar última revisão', error);
-    throw error;
   }
-};
+
+  static async getLatestMetaReview(clientId: string, accountId?: string) {
+    try {
+      let query = supabase
+        .from('daily_budget_reviews')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('review_date', { ascending: false })
+        .limit(1);
+
+      if (accountId) {
+        query = query.eq('meta_account_id', accountId);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      if (error) {
+        console.error('Erro ao buscar última revisão Meta:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Erro inesperado ao buscar revisão Meta:', error);
+      return null;
+    }
+  }
+
+  static async getAllGoogleReviews(clientId: string, accountId?: string) {
+    try {
+      let query = supabase
+        .from('google_ads_reviews')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('review_date', { ascending: false });
+
+      if (accountId) {
+        query = query.eq('google_account_id', accountId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro ao buscar todas as revisões Google:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Erro inesperado ao buscar todas as revisões Google:', error);
+      return [];
+    }
+  }
+
+  static async getAllMetaReviews(clientId: string, accountId?: string) {
+    try {
+      let query = supabase
+        .from('daily_budget_reviews')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('review_date', { ascending: false });
+
+      if (accountId) {
+        query = query.eq('meta_account_id', accountId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro ao buscar todas as revisões Meta:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Erro inesperado ao buscar todas as revisões Meta:', error);
+      return [];
+    }
+  }
+}

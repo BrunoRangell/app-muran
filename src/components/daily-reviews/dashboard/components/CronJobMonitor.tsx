@@ -560,37 +560,20 @@ export const CronJobMonitor = () => {
     }
   };
 
-  // Corrigir o problema do spread
-  const updateExecution = async (executionId: string, newValues: any) => {
-    try {
-      setExecutions(prev => prev.map(exec => {
-        if (exec && typeof exec === 'object' && exec.id === executionId) {
-          return { ...exec, ...newValues };  // Garantir que exec é um objeto antes do spread
-        }
-        return exec;
-      }));
-    } catch (error) {
-      console.error("Erro ao atualizar execução:", error);
-    }
-  };
-
-  // Função para atualizar uma execução específica
+  // Função para atualizar uma execução específica - corrigida
   const handleExecutionUpdate = (executionId: string, updates: any) => {
     setExecutions(prev => prev.map(exec => {
-      if (exec && typeof exec === 'object' && exec.id === executionId) {
-        return { ...exec, ...updates };  // Garantir que exec é um objeto antes do spread
+      if (exec && typeof exec === 'object' && 'id' in exec && exec.id === executionId) {
+        return { ...exec, ...updates };
       }
       return exec;
     }));
   };
 
-  // Função para atualizar o status de um job
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [cronJobs, setCronJobs] = useState(jobs);
-
+  // Função para atualizar o status de um job - corrigida
   const updateJobStatus = async (jobName: string, newStatus: boolean) => {
     try {
-      setIsUpdating(true);
+      setIsLoading(true);
       
       const { error } = await supabase.functions.invoke('daily-meta-review', {
         body: {
@@ -602,15 +585,13 @@ export const CronJobMonitor = () => {
 
       if (error) throw error;
 
-      // Garantir que os objetos existam antes do spread
-      const updatedJobs = cronJobs.map(job => {
-        if (job && typeof job === 'object' && job.jobname === jobName) {
+      // Atualizar jobs localmente - corrigido
+      setJobs(prev => prev.map(job => {
+        if (job && typeof job === 'object' && 'jobname' in job && job.jobname === jobName) {
           return { ...job, active: newStatus };
         }
         return job;
-      });
-
-      setCronJobs(updatedJobs);
+      }));
       
       toast({
         title: "Status atualizado",
@@ -624,7 +605,7 @@ export const CronJobMonitor = () => {
         variant: "destructive",
       });
     } finally {
-      setIsUpdating(false);
+      setIsLoading(false);
     }
   };
 
