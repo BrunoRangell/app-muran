@@ -3,16 +3,17 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, TrendingUp, TrendingDown, Activity, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, AlertCircle, Zap, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { HealthDashboardStats, HealthAlert } from "./types/enhanced-types";
 
 interface AlertsDashboardProps {
   stats: HealthDashboardStats;
   topAlerts: HealthAlert[];
   onAlertClick: (alert: HealthAlert) => void;
+  onUrgencyFilterClick?: (urgency: string) => void;
 }
 
-export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashboardProps) {
+export function AlertsDashboard({ stats, topAlerts, onAlertClick, onUrgencyFilterClick }: AlertsDashboardProps) {
   const [isAlertsExpanded, setIsAlertsExpanded] = useState(false);
 
   const getSeverityColor = (severity: string) => {
@@ -44,65 +45,75 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
     }
   };
 
+  const urgencyMetrics = [
+    {
+      level: "critical",
+      icon: AlertTriangle,
+      label: "Crítico",
+      count: stats.criticalAlerts,
+      bgColor: "bg-red-50",
+      iconColor: "text-red-600",
+      textColor: "text-red-600",
+      hoverBg: "hover:bg-red-100"
+    },
+    {
+      level: "high", 
+      icon: AlertCircle,
+      label: "Alto",
+      count: stats.highAlerts,
+      bgColor: "bg-orange-50",
+      iconColor: "text-orange-600",
+      textColor: "text-orange-600",
+      hoverBg: "hover:bg-orange-100"
+    },
+    {
+      level: "medium",
+      icon: Zap,
+      label: "Médio", 
+      count: stats.mediumAlerts,
+      bgColor: "bg-yellow-50",
+      iconColor: "text-yellow-600",
+      textColor: "text-yellow-600",
+      hoverBg: "hover:bg-yellow-100"
+    },
+    {
+      level: "ok",
+      icon: CheckCircle,
+      label: "OK",
+      count: stats.functioning,
+      bgColor: "bg-green-50",
+      iconColor: "text-green-600", 
+      textColor: "text-green-600",
+      hoverBg: "hover:bg-green-100"
+    }
+  ];
+
   return (
     <div className="space-y-6 mb-6">
-      {/* Métricas Principais */}
+      {/* Métricas de Urgência */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-50">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Alertas Críticos</p>
-                <p className="text-lg font-bold text-red-600">{stats.criticalAlerts}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-50">
-                <TrendingUp className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Precisa Atenção</p>
-                <p className="text-lg font-bold text-orange-600">{stats.highAlerts + stats.mediumAlerts}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-50">
-                <Activity className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Score de Saúde</p>
-                <p className="text-lg font-bold text-green-600">{stats.trends.healthScore}%</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gray-50">
-                <DollarSign className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Perda Estimada</p>
-                <p className="text-lg font-bold text-gray-900">R$ {stats.estimatedLoss}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {urgencyMetrics.map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <Card 
+              key={metric.level}
+              className={`border-0 shadow-sm cursor-pointer transition-all duration-200 ${metric.hoverBg}`}
+              onClick={() => onUrgencyFilterClick?.(metric.level)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${metric.bgColor}`}>
+                    <Icon className={`w-5 h-5 ${metric.iconColor}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">{metric.label}</p>
+                    <p className={`text-lg font-bold ${metric.textColor}`}>{metric.count}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Alertas Prioritários */}
