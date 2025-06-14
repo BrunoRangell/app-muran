@@ -36,7 +36,7 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
       contactName: initialData?.contact_name || "",
       contactPhone: initialData?.contact_phone || "",
       lastPaymentDate: initialData?.last_payment_date || "",
-    },
+    } as ClientFormData,
     onSubmit: async (data: ClientFormData) => {
       console.log("=== INÍCIO DO PROCESSO DE SUBMISSÃO ===");
       console.log("Dados do formulário recebidos:", data);
