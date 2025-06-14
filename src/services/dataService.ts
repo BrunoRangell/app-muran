@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { logger } from "@/utils/logger";
 
 export interface DataServiceConfig {
-  tableName: 'clients' | 'payments' | 'costs' | 'team_members' | 'goals';
+  tableName: string;
   selectFields?: string;
   orderBy?: string;
   orderDirection?: 'asc' | 'desc';
@@ -158,7 +158,7 @@ export class DataService {
   }
 }
 
-// Instâncias pré-configuradas
+// Instâncias pré-configuradas simplificadas
 export const clientsService = new DataService({
   tableName: 'clients',
   orderBy: 'company_name',
