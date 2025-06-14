@@ -6,18 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Search, DollarSign, AlertCircle } from "lucide-react";
-import { formatCurrency } from "@/utils/unifiedFormatters";
+import { formatCurrency } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { RegistroPagamentoDialog } from "@/components/recebimentos-nova/RegistroPagamentoDialog";
 import { HistoricoPagamentosDialog } from "@/components/recebimentos-nova/HistoricoPagamentosDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSimplePaymentsData } from "@/hooks/common/useSimplePaymentsData";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { logger } from "@/utils/logger";
 
 export default function RecebimentosNova() {
   const [busca, setBusca] = useState("");
@@ -33,39 +29,27 @@ export default function RecebimentosNova() {
     error 
   } = useSimplePaymentsData();
 
-  console.log("🎯 Dados na página:", { 
-    clientsWithPayments, 
-    isLoadingClients, 
-    error,
-    total: clientsWithPayments?.length 
-  });
-
-  // Filtrar clientes pela busca
   const clientesFiltrados = clientsWithPayments?.filter(cliente => 
     cliente.company_name?.toLowerCase().includes(busca.toLowerCase())
   ) || [];
 
-  // Abrir diálogo de registro de pagamento
   const handleRegistrarPagamento = (cliente: any) => {
-    console.log("📝 Registrando pagamento para:", cliente.company_name);
+    logger.info("RECEBIMENTOS", "Registrando pagamento", { clienteName: cliente.company_name });
     setClienteSelecionado(cliente);
     setDialogoRegistroAberto(true);
   };
 
-  // Abrir diálogo de histórico
   const handleVerHistorico = (cliente: any) => {
-    console.log("📋 Visualizando histórico de:", cliente.company_name);
+    logger.info("RECEBIMENTOS", "Visualizando histórico", { clienteName: cliente.company_name });
     setClienteSelecionado(cliente);
     setDialogoHistoricoAberto(true);
   };
 
-  // Calcular totais
   const totais = clientesFiltrados.reduce((acc, cliente) => ({
     valorContratual: acc.valorContratual + Number(cliente.contract_value || 0),
     totalRecebido: acc.totalRecebido + Number(cliente.total_received || 0)
   }), { valorContratual: 0, totalRecebido: 0 });
 
-  // Após sucesso no registro de pagamento
   const handlePagamentoRegistrado = () => {
     setDialogoRegistroAberto(false);
     refetchClients();
@@ -76,7 +60,7 @@ export default function RecebimentosNova() {
   };
 
   if (error) {
-    console.error("❌ Erro na página:", error);
+    logger.error("RECEBIMENTOS", "Erro na página", error);
     return (
       <div className="container py-6 space-y-6">
         <div className="flex items-center justify-between">
@@ -252,7 +236,6 @@ export default function RecebimentosNova() {
         </CardContent>
       </Card>
 
-      {/* Diálogo de Registro de Pagamento */}
       {clienteSelecionado && (
         <RegistroPagamentoDialog
           open={dialogoRegistroAberto}
@@ -262,7 +245,6 @@ export default function RecebimentosNova() {
         />
       )}
 
-      {/* Diálogo de Histórico de Pagamentos */}
       {clienteSelecionado && (
         <HistoricoPagamentosDialog
           open={dialogoHistoricoAberto}

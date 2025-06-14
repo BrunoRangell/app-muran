@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useCallback } from "react";
+import { logger } from "@/utils/logger";
 
 export interface SimplePaymentFilters {
   clientId?: string;
@@ -16,14 +17,12 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Query para buscar clientes com pagamentos
   const { data: clientsWithPayments = [], isLoading, error } = useQuery({
     queryKey: ["simple-payments-clients", filters],
     queryFn: async () => {
-      console.log("🔍 Iniciando busca de dados simplificada...");
+      logger.info("PAYMENTS", "Iniciando busca de dados simplificada");
 
       try {
-        // Buscar todos os clientes
         const { data: clientsData, error: clientsError } = await supabase
           .from("clients")
           .select('*')
@@ -31,41 +30,36 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
           .order('company_name');
 
         if (clientsError) {
-          console.error("❌ Erro ao buscar clientes:", clientsError);
+          logger.error("PAYMENTS", "Erro ao buscar clientes", clientsError);
           throw clientsError;
         }
 
-        console.log("👥 Clientes encontrados:", clientsData?.length || 0);
+        logger.info("PAYMENTS", `Clientes encontrados: ${clientsData?.length || 0}`);
 
-        // Buscar todos os pagamentos
         const { data: paymentsData, error: paymentsError } = await supabase
           .from('payments')
           .select('*')
           .order('reference_month', { ascending: false });
 
         if (paymentsError) {
-          console.error("❌ Erro ao buscar pagamentos:", paymentsError);
+          logger.error("PAYMENTS", "Erro ao buscar pagamentos", paymentsError);
           throw paymentsError;
         }
 
-        console.log("💰 Pagamentos encontrados:", paymentsData?.length || 0);
+        logger.info("PAYMENTS", `Pagamentos encontrados: ${paymentsData?.length || 0}`);
 
-        // Processar dados
         const currentMonthStart = startOfMonth(new Date());
         const currentMonthEnd = endOfMonth(new Date());
         
         const processedClients = (clientsData || []).map(client => {
-          // Filtrar pagamentos deste cliente
           const clientPayments = (paymentsData || []).filter(payment => 
             payment.client_id === client.id
           );
           
-          // Calcular total recebido
           const total_received = clientPayments.reduce((sum, payment) => {
             return sum + (Number(payment.amount) || 0);
           }, 0);
           
-          // Verificar pagamento do mês atual
           const hasCurrentMonthPayment = clientPayments.some(payment => {
             if (!payment.reference_month) return false;
             
@@ -76,7 +70,7 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
                 end: currentMonthEnd
               });
             } catch (error) {
-              console.error("Erro ao processar data:", error);
+              logger.error("PAYMENTS", "Erro ao processar data", error);
               return false;
             }
           });
@@ -89,14 +83,10 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
           };
         });
 
-        console.log("✅ Processamento finalizado:", {
-          total_clients: processedClients.length,
-          exemplo_cliente: processedClients[0]
-        });
-
+        logger.info("PAYMENTS", `Processamento finalizado: ${processedClients.length} clientes`);
         return processedClients;
       } catch (error) {
-        console.error("❌ Erro durante o processamento:", error);
+        logger.error("PAYMENTS", "Erro durante o processamento", error);
         toast({
           title: "Erro ao carregar dados",
           description: "Não foi possível carregar os dados de clientes e pagamentos.",
@@ -105,15 +95,14 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
         throw error;
       }
     },
-    staleTime: 1000 * 60, // 1 minuto
+    staleTime: 1000 * 60,
     retry: 3,
     retryDelay: 1000,
   });
 
-  // Mutations para criar pagamento
   const createPayment = useMutation({
     mutationFn: async (paymentData: any) => {
-      console.log("📝 Criando pagamento:", paymentData);
+      logger.info("PAYMENTS", "Criando pagamento", paymentData);
       
       const { data, error } = await supabase
         .from("payments")
@@ -122,11 +111,11 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
         .single();
 
       if (error) {
-        console.error("❌ Erro ao criar pagamento:", error);
+        logger.error("PAYMENTS", "Erro ao criar pagamento", error);
         throw error;
       }
       
-      console.log("✅ Pagamento criado:", data);
+      logger.info("PAYMENTS", "Pagamento criado com sucesso");
       return data;
     },
     onSuccess: () => {
@@ -137,7 +126,7 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
       });
     },
     onError: (error) => {
-      console.error("❌ Erro na mutation:", error);
+      logger.error("PAYMENTS", "Erro na mutation", error);
       toast({
         title: "Erro",
         description: "Não foi possível registrar o pagamento",
@@ -146,10 +135,9 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
     }
   });
 
-  // Mutation para atualizar pagamento
   const updatePayment = useMutation({
     mutationFn: async (paymentData: any) => {
-      console.log("📝 Atualizando pagamento:", paymentData);
+      logger.info("PAYMENTS", "Atualizando pagamento", paymentData);
       
       const { data, error } = await supabase
         .from("payments")
@@ -159,11 +147,11 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
         .single();
 
       if (error) {
-        console.error("❌ Erro ao atualizar pagamento:", error);
+        logger.error("PAYMENTS", "Erro ao atualizar pagamento", error);
         throw error;
       }
       
-      console.log("✅ Pagamento atualizado:", data);
+      logger.info("PAYMENTS", "Pagamento atualizado com sucesso");
       return data;
     },
     onSuccess: () => {
@@ -175,10 +163,9 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
     }
   });
 
-  // Mutation para deletar pagamento
   const deletePayment = useMutation({
     mutationFn: async (paymentId: string) => {
-      console.log("🗑️ Deletando pagamento:", paymentId);
+      logger.info("PAYMENTS", "Deletando pagamento", { paymentId });
       
       const { error } = await supabase
         .from("payments")
@@ -186,11 +173,11 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
         .eq("id", paymentId);
 
       if (error) {
-        console.error("❌ Erro ao deletar pagamento:", error);
+        logger.error("PAYMENTS", "Erro ao deletar pagamento", error);
         throw error;
       }
       
-      console.log("✅ Pagamento deletado");
+      logger.info("PAYMENTS", "Pagamento deletado com sucesso");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["simple-payments-clients"] });
@@ -201,28 +188,18 @@ export const useSimplePaymentsData = (filters?: SimplePaymentFilters) => {
     }
   });
 
-  // Callback para refetch
   const refetchClients = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["simple-payments-clients"] });
   }, [queryClient]);
 
   return {
-    // Dados
     clientsWithPayments,
-    
-    // Estados de loading
     isLoadingClients: isLoading,
     isLoading,
-    
-    // Errors
     error,
-    
-    // Mutations
     createPayment,
     updatePayment,
     deletePayment,
-    
-    // Refetch functions
     refetchClients,
   };
 };

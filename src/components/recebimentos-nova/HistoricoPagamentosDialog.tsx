@@ -4,12 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, AlertCircle } from "lucide-react";
-import { formatCurrency } from "@/utils/unifiedFormatters";
+import { formatCurrency } from "@/utils/formatters";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarPagamentoDialog } from "./EditarPagamentoDialog";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/utils/logger";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -41,36 +42,33 @@ export function HistoricoPagamentosDialog({
   const [pagamentos, setPagamentos] = useState<any[]>([]);
   const { toast } = useToast();
 
-  // Atualiza a lista de pagamentos quando o diálogo é aberto ou quando o cliente muda
   useEffect(() => {
     if (cliente?.payments) {
       setPagamentos([...cliente.payments]);
     }
   }, [cliente?.payments, open]);
 
-  // Formata a data de referência do pagamento
   const formatarData = (data: string) => {
     try {
       if (!data) return "";
       return format(parseISO(data), "MMMM 'de' yyyy", { locale: ptBR });
     } catch (error) {
-      console.error("Erro ao formatar data:", error);
+      logger.error("HISTORICO", "Erro ao formatar data", error);
       return data;
     }
   };
 
-  // Abre o diálogo de edição de pagamento
   const handleEditarPagamento = (pagamento: any) => {
     setPagamentoSelecionado(pagamento);
     setEditarDialogAberto(true);
   };
 
-  // Exclui um pagamento
   const handleExcluirPagamento = async (pagamento: any) => {
     if (!pagamento || excluindoPagamento) return;
     
     try {
       setExcluindoPagamento(true);
+      logger.info("HISTORICO", "Excluindo pagamento", { paymentId: pagamento.id });
       
       const { error } = await supabase
         .from("payments")
@@ -79,7 +77,6 @@ export function HistoricoPagamentosDialog({
       
       if (error) throw error;
       
-      // Atualiza a lista local de pagamentos removendo o pagamento excluído
       setPagamentos(pagamentos.filter(p => p.id !== pagamento.id));
       
       toast({
@@ -87,11 +84,10 @@ export function HistoricoPagamentosDialog({
         description: "Pagamento excluído com sucesso"
       });
       
-      // Notifica o componente pai para atualizar
       onPagamentoAtualizado();
       
     } catch (error) {
-      console.error("Erro ao excluir pagamento:", error);
+      logger.error("HISTORICO", "Erro ao excluir pagamento", error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir o pagamento",
@@ -102,7 +98,6 @@ export function HistoricoPagamentosDialog({
     }
   };
 
-  // Organiza os pagamentos por data (mais recentes primeiro)
   const pagamentosOrdenados = [...pagamentos].sort((a, b) => {
     const dataA = a.reference_month ? new Date(a.reference_month) : new Date(0);
     const dataB = b.reference_month ? new Date(b.reference_month) : new Date(0);
@@ -190,7 +185,6 @@ export function HistoricoPagamentosDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo para editar pagamento */}
       {pagamentoSelecionado && (
         <EditarPagamentoDialog
           open={editarDialogAberto}
@@ -200,7 +194,6 @@ export function HistoricoPagamentosDialog({
           onSuccess={() => {
             setEditarDialogAberto(false);
             
-            // Recarrega os pagamentos do cliente após a edição
             if (cliente?.payments) {
               setPagamentos([...cliente.payments]);
             }
