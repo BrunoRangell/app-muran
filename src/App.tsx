@@ -1,6 +1,6 @@
 
 import { Routes, Route, Navigate } from "react-router-dom";
-import { ModernLayout } from "@/components/layout/ModernLayout";
+import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import { lazy, Suspense } from "react";
 import Login from "@/pages/Login";
@@ -61,7 +61,7 @@ function App() {
       <Route
         element={
           <PrivateRoute>
-            <ModernLayout />
+            <Layout />
           </PrivateRoute>
         }
       >
