@@ -1,6 +1,6 @@
 
 import { CheckCircle2, AlertCircle, AlertTriangle, MinusCircle } from "lucide-react";
-import { CampaignStatus } from "./hooks/useActiveCampaignHealth";
+import { CampaignStatus } from "./types";
 
 interface StatusIndicatorProps {
   status: CampaignStatus;
