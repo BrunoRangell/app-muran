@@ -39,7 +39,7 @@ function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: Platfo
   return "nao-configurado";
 }
 
-// Busca dados da nova tabela campaign_health_snapshots
+// Busca dados da tabela campaign_health_snapshots
 async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
   console.log("🔍 Buscando dados de snapshots de saúde de campanhas...");
   
@@ -54,7 +54,7 @@ async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
         clients!inner(id, company_name)
       `)
       .eq('snapshot_date', today)
-      .order('clients.company_name');
+      .order('clients(company_name)');
 
     if (error) {
       console.error("❌ Erro ao buscar snapshots:", error);
@@ -62,7 +62,7 @@ async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
     }
 
     if (!snapshots || snapshots.length === 0) {
-      console.log("⚠️ Nenhum snapshot encontrado para hoje. Tentando buscar dados da edge function...");
+      console.log("⚠️ Nenhum snapshot encontrado para hoje. Gerando dados...");
       
       // Se não há snapshots para hoje, chamar a edge function para gerar
       const { data: edgeData, error: edgeError } = await supabase.functions.invoke('active-campaigns-health', {
@@ -71,7 +71,24 @@ async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
 
       if (edgeError) {
         console.error("❌ Erro na edge function:", edgeError);
-        throw edgeError;
+        // Em caso de erro, tentar buscar dados do último dia disponível
+        const { data: lastSnapshots, error: lastError } = await supabase
+          .from('campaign_health_snapshots')
+          .select(`
+            *,
+            clients!inner(id, company_name)
+          `)
+          .order('snapshot_date', { ascending: false })
+          .order('clients(company_name)')
+          .limit(50);
+
+        if (lastError || !lastSnapshots?.length) {
+          console.log("⚠️ Nenhum dado histórico encontrado");
+          return [];
+        }
+
+        console.log(`📅 Usando dados do último snapshot disponível`);
+        return processSnapshots(lastSnapshots);
       }
 
       if (!edgeData?.success) {
@@ -86,7 +103,7 @@ async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
           clients!inner(id, company_name)
         `)
         .eq('snapshot_date', today)
-        .order('clients.company_name');
+        .order('clients(company_name)');
 
       if (newError) {
         console.error("❌ Erro ao buscar novos snapshots:", newError);
@@ -189,13 +206,15 @@ export function useActiveCampaignHealth() {
   const queryClient = useQueryClient();
   const queryKey = ["active-campaign-health"];
 
-  // Query para buscar dados com cache de 10 minutos
+  // Query para buscar dados com cache de 5 minutos (mais rápido que antes)
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey,
     queryFn: fetchActiveCampaignHealth,
-    staleTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 5 * 60 * 1000, // 5 minutos
     refetchInterval: 10 * 60 * 1000, // Auto-refresh a cada 10 minutos
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    retry: 2,
+    retryDelay: 3000
   });
 
   // Filtrar dados
@@ -217,13 +236,33 @@ export function useActiveCampaignHealth() {
     return matchesName && matchesStatus && matchesPlatform;
   }) || [];
 
-  // Função para atualizar dados (invalidar cache e buscar novos dados)
+  // Função para atualizar dados (forçar regeneração de snapshots)
   const handleRefresh = async () => {
-    console.log("🔄 Atualizando dados de campanhas...");
-    await queryClient.invalidateQueries({ queryKey });
-    await refetch();
-    setLastRefresh(new Date());
-    console.log("✅ Dados atualizados com sucesso");
+    console.log("🔄 Forçando atualização de dados...");
+    
+    try {
+      // Invalidar cache local primeiro
+      await queryClient.invalidateQueries({ queryKey });
+      
+      // Chamar edge function para gerar novos dados
+      const { error: edgeError } = await supabase.functions.invoke('active-campaigns-health', {
+        body: { 
+          timestamp: new Date().toISOString(),
+          forceRefresh: true 
+        }
+      });
+
+      if (edgeError) {
+        console.error("❌ Erro ao forçar atualização:", edgeError);
+      }
+
+      // Refetch dos dados
+      await refetch();
+      setLastRefresh(new Date());
+      console.log("✅ Atualização forçada concluída");
+    } catch (error) {
+      console.error("❌ Erro durante refresh:", error);
+    }
   };
 
   // Função para ações dos botões
