@@ -6,7 +6,7 @@ import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
 import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
-import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/usePlatformBatchReviews";
+import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/useBatchOperations";
 
 export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage
@@ -29,7 +29,7 @@ export default function ImprovedDailyReviews() {
   
   const [selectedTab, setSelectedTab] = useState<string>(getInitialTab());
 
-  // Usar o hook para obter dados de revisão em lote por plataforma
+  // Usar o hook correto para obter dados de revisão em lote por plataforma
   const { 
     lastMetaReviewTime, 
     lastGoogleReviewTime,

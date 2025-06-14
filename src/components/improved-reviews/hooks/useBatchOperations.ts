@@ -1,78 +1,83 @@
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 
-interface ReviewTimes {
-  lastMetaReviewTime: string | null;
-  lastGoogleReviewTime: string | null;
+interface BatchReviewInfo {
+  lastBatchReviewTime: string;
+  details: {
+    platform: string;
+    successCount: number;
+    errorCount: number;
+    totalClients: number;
+    completedAt: string;
+  };
 }
 
 export const usePlatformBatchReviews = () => {
-  const [lastMetaReviewTime, setLastMetaReviewTime] = useState<string | null>(null);
-  const [lastGoogleReviewTime, setLastGoogleReviewTime] = useState<string | null>(null);
-  const queryClient = useQueryClient();
-
-  // Fetch last review times for both platforms
-  const { refetch: fetchReviewTimes } = useQuery({
-    queryKey: ["platform-review-times"],
-    queryFn: async (): Promise<ReviewTimes> => {
-      const { data, error } = await supabase
-        .from("platform_last_review")
-        .select("*");
-
-      if (error) {
-        console.error("Error fetching platform review times:", error);
-        throw error;
-      }
-
-      const metaReview = data?.find((item) => item.platform === "meta")?.last_review_time || null;
-      const googleReview = data?.find((item) => item.platform === "google")?.last_review_time || null;
-
-      setLastMetaReviewTime(metaReview);
-      setLastGoogleReviewTime(googleReview);
-
-      return {
-        lastMetaReviewTime: metaReview,
-        lastGoogleReviewTime: googleReview,
-      };
+  // Buscar a última revisão do Meta Ads
+  const { data: lastMetaReview, refetch: refetchMeta } = useQuery({
+    queryKey: ['last-batch-review-meta'],
+    queryFn: async (): Promise<BatchReviewInfo | null> => {
+      console.log("🔍 Buscando última revisão em massa do Meta Ads...");
+      
+      const { data } = await supabase
+        .from('system_logs')
+        .select('created_at, message, details')
+        .eq('event_type', 'batch_review_completed')
+        .or('details->>platform.eq.meta,details->platform.is.null') // Meta ou legado sem platform
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      console.log("📅 Última revisão Meta encontrada:", data);
+      
+      return data ? {
+        lastBatchReviewTime: data.created_at,
+        details: data.details || {}
+      } : null;
     },
+    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30 segundos
   });
 
-  // Mutation to update last review time for a platform
-  const updateLastReviewTimeMutation = useMutation({
-    mutationFn: async ({ platform, last_review_time }: { platform: string; last_review_time: string }) => {
-      const { data, error } = await supabase
-        .from("platform_last_review")
-        .upsert(
-          { platform, last_review_time },
-          { onConflict: "platform" }
-        )
-        .select();
-
-      if (error) {
-        console.error(`Error updating last review time for ${platform}:`, error);
-        throw error;
-      }
-      return data;
+  // Buscar a última revisão do Google Ads
+  const { data: lastGoogleReview, refetch: refetchGoogle } = useQuery({
+    queryKey: ['last-batch-review-google'],
+    queryFn: async (): Promise<BatchReviewInfo | null> => {
+      console.log("🔍 Buscando última revisão em massa do Google Ads...");
+      
+      const { data } = await supabase
+        .from('system_logs')
+        .select('created_at, message, details')
+        .eq('event_type', 'batch_review_completed')
+        .eq('details->>platform', 'google')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      console.log("📅 Última revisão Google encontrada:", data);
+      
+      return data ? {
+        lastBatchReviewTime: data.created_at,
+        details: data.details || {}
+      } : null;
     },
-    onSuccess: () => {
-      // Invalidate the query to refetch the data
-      queryClient.invalidateQueries({ queryKey: ["platform-review-times"] });
-    },
+    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30 segundos
   });
-
-  const refetchBoth = () => {
-    fetchReviewTimes();
-  };
 
   return {
-    lastMetaReviewTime,
-    lastGoogleReviewTime,
-    fetchReviewTimes,
-    updateLastReviewTimeMutation,
-    refetchBoth
+    lastMetaReviewTime: lastMetaReview?.lastBatchReviewTime || null,
+    lastGoogleReviewTime: lastGoogleReview?.lastBatchReviewTime || null,
+    metaReviewDetails: lastMetaReview?.details || null,
+    googleReviewDetails: lastGoogleReview?.details || null,
+    refetchMeta,
+    refetchGoogle,
+    refetchBoth: () => {
+      refetchMeta();
+      refetchGoogle();
+    }
   };
 };
 
@@ -87,7 +92,6 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
   const [currentClientName, setCurrentClientName] = useState<string>("");
-  const queryClient = useQueryClient();
 
   const reviewClient = async (clientId: string, accountId?: string) => {
     if (processingIds.includes(clientId)) return;
