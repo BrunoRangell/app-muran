@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, AlertCircle } from "lucide-react";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/unifiedFormatters";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarPagamentoDialog } from "./EditarPagamentoDialog";
@@ -43,10 +43,10 @@ export function HistoricoPagamentosDialog({
 
   // Atualiza a lista de pagamentos quando o diálogo é aberto ou quando o cliente muda
   useEffect(() => {
-    if (cliente?.pagamentos) {
-      setPagamentos([...cliente.pagamentos]);
+    if (cliente?.payments) {
+      setPagamentos([...cliente.payments]);
     }
-  }, [cliente?.pagamentos, open]);
+  }, [cliente?.payments, open]);
 
   // Formata a data de referência do pagamento
   const formatarData = (data: string) => {
@@ -201,8 +201,8 @@ export function HistoricoPagamentosDialog({
             setEditarDialogAberto(false);
             
             // Recarrega os pagamentos do cliente após a edição
-            if (cliente?.pagamentos) {
-              setPagamentos([...cliente.pagamentos]);
+            if (cliente?.payments) {
+              setPagamentos([...cliente.payments]);
             }
             
             onPagamentoAtualizado();

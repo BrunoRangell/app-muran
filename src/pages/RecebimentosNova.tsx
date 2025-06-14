@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RegistroPagamentoDialog } from "@/components/recebimentos-nova/RegistroPagamentoDialog";
 import { HistoricoPagamentosDialog } from "@/components/recebimentos-nova/HistoricoPagamentosDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUnifiedPaymentsData } from "@/hooks/common/useUnifiedPaymentsData";
+import { useSimplePaymentsData } from "@/hooks/common/useSimplePaymentsData";
 import {
   Tooltip,
   TooltipContent,
@@ -29,8 +29,16 @@ export default function RecebimentosNova() {
   const { 
     clientsWithPayments, 
     isLoadingClients, 
-    refetchClients 
-  } = useUnifiedPaymentsData();
+    refetchClients,
+    error 
+  } = useSimplePaymentsData();
+
+  console.log("🎯 Dados na página:", { 
+    clientsWithPayments, 
+    isLoadingClients, 
+    error,
+    total: clientsWithPayments?.length 
+  });
 
   // Filtrar clientes pela busca
   const clientesFiltrados = clientsWithPayments?.filter(cliente => 
@@ -39,12 +47,14 @@ export default function RecebimentosNova() {
 
   // Abrir diálogo de registro de pagamento
   const handleRegistrarPagamento = (cliente: any) => {
+    console.log("📝 Registrando pagamento para:", cliente.company_name);
     setClienteSelecionado(cliente);
     setDialogoRegistroAberto(true);
   };
 
   // Abrir diálogo de histórico
   const handleVerHistorico = (cliente: any) => {
+    console.log("📋 Visualizando histórico de:", cliente.company_name);
     setClienteSelecionado(cliente);
     setDialogoHistoricoAberto(true);
   };
@@ -64,6 +74,26 @@ export default function RecebimentosNova() {
       description: "Pagamento registrado com sucesso",
     });
   };
+
+  if (error) {
+    console.error("❌ Erro na página:", error);
+    return (
+      <div className="container py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Recebimentos</h1>
+        </div>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center text-red-500">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+              <p>Erro ao carregar dados: {error.message}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoadingClients) {
     return (
@@ -103,6 +133,9 @@ export default function RecebimentosNova() {
       <Card>
         <CardHeader>
           <CardTitle>Gerenciamento de Recebimentos</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {clientesFiltrados.length} clientes encontrados
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative">
@@ -122,6 +155,7 @@ export default function RecebimentosNova() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Valor Mensal</TableHead>
                   <TableHead>Total Recebido</TableHead>
+                  <TableHead>Qtd. Pagamentos</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -129,7 +163,7 @@ export default function RecebimentosNova() {
               <TableBody>
                 {clientesFiltrados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                       Nenhum cliente encontrado
                     </TableCell>
                   </TableRow>
@@ -171,6 +205,11 @@ export default function RecebimentosNova() {
                             <Receipt className="h-4 w-4" />
                           </Button>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {cliente.payments?.length || 0}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge 
