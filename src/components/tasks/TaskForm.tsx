@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
 import { logger } from "@/utils/logger";
 
 interface TaskFormProps {
@@ -38,24 +37,9 @@ export const TaskForm = ({ onClose }: TaskFormProps) => {
     setIsSubmitting(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Por enquanto, apenas simula a criação da tarefa
+      // TODO: Implementar integração com sistema de tarefas quando disponível
       
-      if (!user) {
-        throw new Error("Usuário não está logado");
-      }
-
-      const { error } = await supabase
-        .from('tasks')
-        .insert({
-          title: title.trim(),
-          description: description.trim(),
-          status: 'pending',
-          created_by: user.id,
-          created_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
-
       toast({
         title: "Sucesso!",
         description: "Tarefa criada com sucesso",

@@ -6,6 +6,7 @@ export type LogModule =
   | "CLIENT" 
   | "PAYMENT" 
   | "COST" 
+  | "COSTS"
   | "SYSTEM" 
   | "DATA_SERVICE" 
   | "META_ADS" 
@@ -13,8 +14,13 @@ export type LogModule =
   | "BATCH" 
   | "GOALS"
   | "VALIDATOR"
+  | "VALIDATION"
   | "COSTS_PAGE"
-  | "TASKS";
+  | "TASKS"
+  | "CLIENT_INFO"
+  | "AUTO_REVIEW"
+  | "GOOGLE_ADS_REVIEW"
+  | "BATCH_OPERATIONS";
 
 export interface LogEntry {
   timestamp: string;
