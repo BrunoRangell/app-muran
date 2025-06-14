@@ -2,7 +2,9 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, RefreshCw } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Search, RefreshCw, Filter, AlertTriangle } from "lucide-react";
 import { CampaignStatus } from "./types";
 import { AlertLevel } from "./types/enhanced-types";
 
@@ -30,8 +32,14 @@ interface IntelligentFiltersProps {
 export function IntelligentFilters({
   filterValue,
   setFilterValue,
+  statusFilter,
+  setStatusFilter,
+  platformFilter,
+  setPlatformFilter,
   urgencyFilter,
   setUrgencyFilter,
+  problemTypeFilter,
+  setProblemTypeFilter,
   handleRefresh,
   isFetching,
   stats
@@ -41,69 +49,147 @@ export function IntelligentFilters({
     setFilterValue(e.target.value);
   };
 
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value as CampaignStatus | "all");
+  };
+
+  const handlePlatformChange = (value: string) => {
+    setPlatformFilter(value as 'meta' | 'google' | 'all');
+  };
+
   const handleUrgencyChange = (value: string) => {
     setUrgencyFilter(value as AlertLevel | "all");
   };
 
-  return (
-    <div className="mb-8">
-      {/* Filtros Simplificados */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        
-        {/* Busca de Cliente */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <Input
-            placeholder="Buscar cliente..."
-            className="pl-12 h-12 text-base border-gray-300 focus:border-[#ff6e00] focus:ring-[#ff6e00] rounded-lg"
-            value={filterValue}
-            onChange={handleSearchChange}
-          />
-        </div>
+  const handleProblemTypeChange = (value: string) => {
+    setProblemTypeFilter(value);
+  };
 
-        {/* Filtros Centrais */}
-        <div className="flex gap-4 items-center">
-          {/* Filtro por Urgência */}
-          <div className="flex flex-col">
-            <label className="text-xs font-medium text-gray-600 mb-1">Urgência</label>
-            <Select value={urgencyFilter} onValueChange={handleUrgencyChange}>
-              <SelectTrigger className="w-48 h-12 border-gray-300 focus:border-[#ff6e00] focus:ring-[#ff6e00] rounded-lg">
-                <SelectValue placeholder="Todas as urgências" />
+  const clearAllFilters = () => {
+    setFilterValue("");
+    setStatusFilter("all");
+    setPlatformFilter("all");
+    setUrgencyFilter("all");
+    setProblemTypeFilter("all");
+  };
+
+  const hasActiveFilters = filterValue !== "" || 
+                          statusFilter !== "all" || 
+                          platformFilter !== "all" || 
+                          urgencyFilter !== "all" || 
+                          problemTypeFilter !== "all";
+
+  return (
+    <div className="space-y-4 mb-6">
+      {/* Filtros Detalhados */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center">
+            {/* Busca */}
+            <div className="relative flex-1 min-w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Buscar cliente..."
+                className="pl-9 h-9"
+                value={filterValue}
+                onChange={handleSearchChange}
+              />
+            </div>
+
+            {/* Filtro por Tipo de Problema */}
+            <Select value={problemTypeFilter} onValueChange={handleProblemTypeChange}>
+              <SelectTrigger className="w-48 h-9">
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Tipo de Problema" />
               </SelectTrigger>
-              <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
-                <SelectItem value="all" className="text-gray-700">
-                  Todas ({stats.totalProblems})
-                </SelectItem>
-                <SelectItem value="critical" className="text-red-600 font-medium">
-                  🚨 Crítico ({stats.critical})
-                </SelectItem>
-                <SelectItem value="high" className="text-orange-600 font-medium">
-                  ⚠️ Alto ({stats.high})
-                </SelectItem>
-                <SelectItem value="medium" className="text-yellow-600 font-medium">
-                  ⚡ Médio ({stats.medium})
-                </SelectItem>
-                <SelectItem value="ok" className="text-green-600 font-medium">
-                  ✅ OK
-                </SelectItem>
+              <SelectContent>
+                <SelectItem value="all">Todos os tipos</SelectItem>
+                <SelectItem value="budget">💰 Orçamento</SelectItem>
+                <SelectItem value="performance">📊 Performance</SelectItem>
+                <SelectItem value="technical">🔧 Técnico</SelectItem>
+                <SelectItem value="configuration">⚙️ Configuração</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Filtro por Urgência */}
+            <Select value={urgencyFilter} onValueChange={handleUrgencyChange}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Urgência" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="critical">🚨 Crítico</SelectItem>
+                <SelectItem value="high">⚠️ Alto</SelectItem>
+                <SelectItem value="medium">⚡ Médio</SelectItem>
+                <SelectItem value="ok">✅ OK</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Filtro de Status */}
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-44 h-9">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="funcionando">✅ Funcionando</SelectItem>
+                <SelectItem value="sem-veiculacao">❌ Sem veiculação</SelectItem>
+                <SelectItem value="sem-campanhas">⚠️ Sem campanhas</SelectItem>
+                <SelectItem value="nao-configurado">➖ Não configurado</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Filtro de Plataforma */}
+            <Select value={platformFilter} onValueChange={handlePlatformChange}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Plataforma" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="meta">Meta Ads</SelectItem>
+                <SelectItem value="google">Google Ads</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Botões de Ação */}
+            <div className="flex gap-2">
+              {hasActiveFilters && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearAllFilters}
+                  className="h-9 px-3"
+                >
+                  Limpar
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh}
+                disabled={isFetching}
+                className="h-9 px-3"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+                {isFetching ? "Atualizando..." : "Atualizar"}
+              </Button>
+            </div>
           </div>
 
-          {/* Botão Atualizar */}
-          <div className="flex flex-col">
-            <label className="text-xs font-medium text-gray-600 mb-1 opacity-0">Ação</label>
-            <Button 
-              onClick={handleRefresh}
-              disabled={isFetching}
-              className="h-12 px-6 bg-[#ff6e00] hover:bg-[#e55a00] text-white border-0 rounded-lg font-medium transition-colors"
-            >
-              <RefreshCw className={`w-5 h-5 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-              {isFetching ? "Atualizando..." : "Atualizar"}
-            </Button>
-          </div>
-        </div>
-      </div>
+          {/* Indicadores de Filtros Ativos */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200">
+              <span className="text-xs text-gray-500 mr-2">Filtros ativos:</span>
+              {filterValue && <Badge variant="secondary" className="text-xs">🔍 "{filterValue}"</Badge>}
+              {statusFilter !== "all" && <Badge variant="secondary" className="text-xs">Status: {statusFilter}</Badge>}
+              {platformFilter !== "all" && <Badge variant="secondary" className="text-xs">Plataforma: {platformFilter}</Badge>}
+              {urgencyFilter !== "all" && <Badge variant="secondary" className="text-xs">Urgência: {urgencyFilter}</Badge>}
+              {problemTypeFilter !== "all" && <Badge variant="secondary" className="text-xs">Problema: {problemTypeFilter}</Badge>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
