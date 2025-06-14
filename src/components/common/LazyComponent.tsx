@@ -24,7 +24,7 @@ export function createLazyComponent<T = {}>(
 
     return (
       <Suspense fallback={fallback}>
-        <LazyComp {...props} />
+        <LazyComp {...props as any} />
       </Suspense>
     );
   };
