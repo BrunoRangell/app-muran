@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { ClientFormData } from "@/types/client";
+import { parseCurrencyToNumber } from "@/utils/formatters";
 import { clientFormSchema } from "@/validations/clientFormSchema";
 import { verifySession, prepareClientData, saveClient } from "@/services/clientService";
-import { useUnifiedForm } from "@/hooks/common/useUnifiedForm";
-import { UseFormReturn } from "react-hook-form";
 
 interface UseClientFormProps {
   initialData?: any;
@@ -14,17 +15,14 @@ interface UseClientFormProps {
 }
 
 export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) => {
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [showLastPaymentDate, setShowLastPaymentDate] = useState(
     initialData?.status === "inactive"
   );
 
-  const {
-    form: unifiedForm,
-    handleSubmit: unifiedHandleSubmit,
-    isSubmitting,
-  } = useUnifiedForm<typeof clientFormSchema>({
-    schema: clientFormSchema,
+  const form = useForm<ClientFormData>({
+    resolver: zodResolver(clientFormSchema),
     defaultValues: {
       companyName: initialData?.company_name || "",
       contractValue: initialData?.contract_value || 0,
@@ -37,11 +35,22 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
       contactName: initialData?.contact_name || "",
       contactPhone: initialData?.contact_phone || "",
       lastPaymentDate: initialData?.last_payment_date || "",
-    } as ClientFormData,
-    onSubmit: async (data: ClientFormData) => {
-      console.log("=== INÍCIO DO PROCESSO DE SUBMISSÃO ===");
-      console.log("Dados do formulário recebidos:", data);
-      console.log("ID do cliente para atualização:", initialData?.id);
+    },
+  });
+
+  const handleSubmit = async (data: ClientFormData) => {
+    console.log("=== INÍCIO DO PROCESSO DE SUBMISSÃO ===");
+    console.log("Dados do formulário recebidos:", data);
+    console.log("ID do cliente para atualização:", initialData?.id);
+    
+    if (isLoading) {
+      console.log("Formulário já está em processo de submissão");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log("Estado de loading atualizado para true");
       
       console.log("Iniciando verificação de sessão...");
       const sessionResult = await verifySession();
@@ -63,10 +72,16 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
 
       if (result.success) {
         console.log("Operação realizada com sucesso");
+        toast({
+          title: "Sucesso!",
+          description: initialData 
+            ? "Cliente atualizado com sucesso!" 
+            : "Cliente cadastrado com sucesso!",
+        });
 
         if (!initialData) {
           console.log("Resetando formulário após criação");
-          unifiedForm.reset();
+          form.reset();
         }
 
         if (onSuccess) {
@@ -77,21 +92,32 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
         console.error("Falha na operação:", result.error);
         throw new Error(result.error);
       }
-    },
-    successMessage: initialData 
-      ? "Cliente atualizado com sucesso!" 
-      : "Cliente cadastrado com sucesso!",
-  });
-
-  // Criar um form tipado corretamente
-  const form = unifiedForm as UseFormReturn<ClientFormData>;
-  const handleSubmit = unifiedHandleSubmit;
-  const isLoading = isSubmitting;
+    } catch (error) {
+      console.error("=== ERRO GERAL NA SUBMISSÃO ===");
+      console.error("Detalhes do erro:", {
+        error,
+        message: error instanceof Error ? error.message : "Erro desconhecido",
+        stack: error instanceof Error ? error.stack : null
+      });
+      
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao salvar cliente",
+        variant: "destructive",
+      });
+    } finally {
+      console.log("=== FINALIZANDO PROCESSO DE SUBMISSÃO ===");
+      console.log("Atualizando estado de loading para false");
+      setIsLoading(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!initialData?.id || isLoading) return;
 
     try {
+      setIsLoading(true);
+
       const { error } = await supabase
         .from('clients')
         .delete()
@@ -115,6 +141,8 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
         description: "Não foi possível excluir o cliente",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 

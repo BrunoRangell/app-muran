@@ -1,4 +1,5 @@
 
+import { Table, TableBody, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,115 +7,83 @@ import { PaymentsTableHeader } from "./table/PaymentsTableHeader";
 import { PaymentsTableRow } from "./table/PaymentsTableRow";
 import { PaymentsClientListProps } from "./types";
 import { usePaymentsClients } from "./hooks/usePaymentsClients";
+import { usePaymentsSort } from "./hooks/usePaymentsSort";
 import { QuickFiltersBar } from "./QuickFiltersBar";
 import { useState } from "react";
-import { formatCurrency } from "@/utils/unifiedFormatters";
-import { UnifiedTable, ColumnDef } from "@/components/common/UnifiedTable";
-import { useTableFilters } from "@/hooks/common/useTableFilters";
-import { useTableSort } from "@/hooks/common/useTableSort";
-import { Button } from "@/components/ui/button";
-import { DollarSign } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/utils/formatters";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
   const { clients, isLoading, handlePaymentUpdated } = usePaymentsClients();
   const [activeFilter, setActiveFilter] = useState('');
-  
-  // Usar os hooks unificados
   const { 
+    sortConfig, 
     searchTerm, 
     setSearchTerm, 
-    filteredData, 
-    setFilter 
-  } = useTableFilters({
-    data: clients || [],
-    searchFields: ['company_name'],
-    customFilters: {
-      status: (client, value) => {
-        if (value === 'active') return client.status === 'active';
-        if (value === 'paid') return client.status === 'active' && client.hasCurrentMonthPayment;
-        if (value === 'pending') return client.status === 'active' && !client.hasCurrentMonthPayment;
-        return true;
-      }
-    }
-  });
-
-  const { sortConfig, sortedData, handleSort } = useTableSort({
-    data: filteredData,
-    initialSort: { key: 'company_name', direction: 'asc' }
-  });
+    handleSort, 
+    filteredAndSortedClients 
+  } = usePaymentsSort(clients || []); // Garantir que nunca seja undefined
 
   const handleFilterChange = (filter: string) => {
-    const newFilter = activeFilter === filter ? '' : filter;
-    setActiveFilter(newFilter);
-    setFilter('status', newFilter);
+    setActiveFilter(activeFilter === filter ? '' : filter);
   };
 
-  // Definir colunas da tabela
-  const columns: ColumnDef[] = [
-    {
-      id: 'company_name',
-      label: 'Empresa',
-      accessor: 'company_name',
-      sortable: true,
-      render: (value, client) => (
-        <div className="flex items-center gap-2">
-          {client.status === 'active' && !client.hasCurrentMonthPayment && (
-            <div className="h-2 w-2 bg-orange-500 rounded-full" title="Pagamento pendente" />
-          )}
-          {value}
-        </div>
-      )
-    },
-    {
-      id: 'contract_value',
-      label: 'Valor Mensal',
-      accessor: 'contract_value',
-      sortable: true,
-      render: (value) => formatCurrency(value)
-    },
-    {
-      id: 'total_received',
-      label: 'Valor Total Recebido',
-      accessor: 'total_received',
-      sortable: true,
-      render: (value) => formatCurrency(Number(value) || 0)
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      accessor: 'status',
-      sortable: true,
-      render: (value) => (
-        <Badge 
-          variant={value === 'active' ? 'default' : 'destructive'}
-          className={value === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}
-        >
-          {value === 'active' ? 'Ativo' : 'Inativo'}
-        </Badge>
-      )
-    },
-    {
-      id: 'actions',
-      label: 'Ações',
-      sortable: false,
-      className: 'text-right',
-      render: (value, client) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPaymentClick(client.id)}
-          className="gap-2"
-        >
-          <DollarSign className="h-4 w-4" />
-          Registrar Pagamento
-        </Button>
-      )
-    }
-  ];
+  const applyFilters = (clients: any[] | undefined) => {
+    if (!clients || !Array.isArray(clients)) return [];
+    
+    let filtered = [...clients];
 
-  // Calcular totais
-  const totals = sortedData.reduce((acc, client) => ({
+    // Aplica o filtro de pesquisa
+    filtered = filtered.filter(client => 
+      client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Aplica os filtros rápidos
+    switch (activeFilter) {
+      case 'active':
+        filtered = filtered.filter(client => client.status === 'active');
+        break;
+      case 'paid':
+        filtered = filtered.filter(client => 
+          client.status === 'active' && client.hasCurrentMonthPayment
+        );
+        break;
+      case 'pending':
+        filtered = filtered.filter(client => 
+          client.status === 'active' && !client.hasCurrentMonthPayment
+        );
+        break;
+    }
+
+    // Aplica a ordenação
+    return filtered.sort((a, b) => {
+      if (!a || !b) return 0;
+      
+      if (a.status !== b.status) {
+        return a.status === 'active' ? -1 : 1;
+      }
+
+      const direction = sortConfig.direction === 'asc' ? 1 : -1;
+      
+      switch (sortConfig.key) {
+        case 'company_name':
+          return (a.company_name || '').localeCompare(b.company_name || '') * direction;
+        case 'contract_value':
+          return ((a.contract_value || 0) - (b.contract_value || 0)) * direction;
+        case 'total_received':
+          const totalA = Number(a.total_received) || 0;
+          const totalB = Number(b.total_received) || 0;
+          return (totalA - totalB) * direction;
+        default:
+          return 0;
+      }
+    });
+  };
+
+  const finalFilteredClients = applyFilters(clients);
+
+  // Calcula os totais dos clientes filtrados com verificação de undefined
+  const totals = (finalFilteredClients || []).reduce((acc, client) => ({
     monthlyTotal: acc.monthlyTotal + (Number(client?.contract_value) || 0),
     receivedTotal: acc.receivedTotal + (Number(client?.total_received) || 0)
   }), { monthlyTotal: 0, receivedTotal: 0 });
@@ -137,23 +106,57 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
           />
         </div>
 
-        <UnifiedTable
-          data={sortedData}
-          columns={columns}
-          isLoading={isLoading}
-          sortConfig={sortConfig}
-          onSort={handleSort}
-          emptyMessage="Nenhum cliente encontrado"
-        />
-
-        {sortedData.length > 0 && (
-          <div className="border-t pt-4 mt-4">
-            <div className="flex justify-between text-sm font-medium">
-              <span>Total Mensal: {formatCurrency(totals.monthlyTotal)}</span>
-              <span>Total Recebido: {formatCurrency(totals.receivedTotal)}</span>
+        <div className="overflow-x-auto">
+          <div className="inline-block min-w-full align-middle">
+            <div className="overflow-hidden border rounded-lg">
+              <Table>
+                <PaymentsTableHeader 
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+                <TableBody>
+                  {isLoading ? (
+                    // Loading skeleton
+                    [...Array(5)].map((_, index) => (
+                      <TableRow key={index} className="animate-pulse">
+                        <td className="p-4"><Skeleton className="h-4 w-48" /></td>
+                        <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="p-4"><Skeleton className="h-4 w-24" /></td>
+                        <td className="p-4"><Skeleton className="h-8 w-8" /></td>
+                      </TableRow>
+                    ))
+                  ) : !finalFilteredClients || finalFilteredClients.length === 0 ? (
+                    <TableRow>
+                      <td colSpan={5} className="text-center py-4 text-muted-foreground">
+                        Nenhum cliente encontrado
+                      </td>
+                    </TableRow>
+                  ) : (
+                    finalFilteredClients.map((client) => (
+                      <PaymentsTableRow
+                        key={client.id}
+                        client={client}
+                        onPaymentClick={onPaymentClick}
+                        onPaymentUpdated={handlePaymentUpdated}
+                      />
+                    ))
+                  )}
+                </TableBody>
+                {finalFilteredClients && finalFilteredClients.length > 0 && (
+                  <TableFooter className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="text-left">Total</TableHead>
+                      <TableHead>{formatCurrency(totals.monthlyTotal)}</TableHead>
+                      <TableHead>{formatCurrency(totals.receivedTotal)}</TableHead>
+                      <TableHead colSpan={2}></TableHead>
+                    </TableRow>
+                  </TableFooter>
+                )}
+              </Table>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </Card>
   );

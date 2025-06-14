@@ -1,8 +1,6 @@
 
-import { UnifiedMetricCard } from "@/components/common/UnifiedMetricCard";
-import { UnifiedDashboardGrid } from "@/components/common/UnifiedDashboardGrid";
-import { TrendingUp, Users, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingUp } from "lucide-react";
 
 interface MetricsCardProps {
   clientMetrics: {
@@ -21,23 +19,20 @@ export const MetricsCard = ({ clientMetrics }: MetricsCardProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <UnifiedDashboardGrid variant="cards">
-          <UnifiedMetricCard
-            title="Clientes ativos"
-            value={clientMetrics?.activeCount || 0}
-            icon={Users}
-            color="text-muran-primary"
-            variant="compact"
-          />
-          
-          <UnifiedMetricCard
-            title="Novos clientes este mês"
-            value={clientMetrics?.newCount || 0}
-            icon={UserPlus}
-            color="text-muran-primary"
-            variant="compact"
-          />
-        </UnifiedDashboardGrid>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+            <span className="font-medium">Clientes ativos</span>
+            <span className="text-muran-primary font-bold text-xl">
+              {clientMetrics?.activeCount || 0}
+            </span>
+          </div>
+          <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+            <span className="font-medium">Novos clientes este mês</span>
+            <span className="text-muran-primary font-bold text-xl">
+              {clientMetrics?.newCount || 0}
+            </span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

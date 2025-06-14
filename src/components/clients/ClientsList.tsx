@@ -1,8 +1,8 @@
 
 import { useState } from "react";
+import { useClients } from "@/hooks/queries/useClients";
 import { useClientColumns } from "@/hooks/useClientColumns";
 import { useClientFilters } from "@/hooks/useClientFilters";
-import { useUnifiedClientData } from "@/hooks/common/useUnifiedClientData";
 import { ClientsTable } from "./table/ClientsTable";
 import { ClientsHeader } from "./components/ClientsHeader";
 import { Client } from "./types";
@@ -12,9 +12,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 export const ClientsList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
+  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' }); // Corrigido para passar o objeto correto
   const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
-  const { data: clients, isLoading } = useUnifiedClientData({ filters });
+  const { clients, isLoading } = useClients(filters);
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);

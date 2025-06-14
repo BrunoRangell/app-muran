@@ -1,13 +1,13 @@
 
-import { UnifiedLoading } from "@/components/common/UnifiedLoading";
+import { UnifiedLoadingState } from "@/components/common/UnifiedLoadingState";
 
 export const DashboardLoadingState = () => {
   return (
     <div className="space-y-6">
-      <UnifiedLoading 
+      <UnifiedLoadingState 
         message="Carregando dashboard..."
         size="lg"
-        variant="default"
+        variant="skeleton"
         className="min-h-[200px]"
       />
     </div>

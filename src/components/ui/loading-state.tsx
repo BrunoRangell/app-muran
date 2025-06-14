@@ -1,5 +1,6 @@
 
-import { UnifiedLoading } from "@/components/common/UnifiedLoading";
+import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
+import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
 import { useLocation } from "react-router-dom";
 
 interface LoadingStateProps {
@@ -12,13 +13,14 @@ export const LoadingState = ({ message = "Carregando..." }: LoadingStateProps) =
 
   // Retorna o loading state específico baseado na rota atual
   if (path === "/clientes") {
-    return <UnifiedLoading message="Carregando clientes..." size="md" />;
+    return <ClientsLoadingState />;
   }
 
+  // Para recebimentos, usa o loading state padrão
   if (path === "/recebimentos-nova" || path === "/clientes/recebimentos") {
-    return <UnifiedLoading message="Carregando recebimentos..." size="md" />;
+    return <DashboardLoadingState />;
   }
 
-  // Por padrão, retorna o loading state com a mensagem fornecida
-  return <UnifiedLoading message={message} size="md" />;
+  // Por padrão, retorna o loading state do dashboard
+  return <DashboardLoadingState />;
 };

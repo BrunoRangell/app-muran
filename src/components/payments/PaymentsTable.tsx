@@ -1,7 +1,14 @@
 
-import { UnifiedTable, ColumnDef } from "@/components/common/UnifiedTable";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Calendar, DollarSign } from "lucide-react";
-import { formatDate, formatCurrency } from "@/utils/unifiedFormatters";
+import { formatDate, formatCurrency } from "@/utils/formatters";
 
 interface Payment {
   id: string;
@@ -21,77 +28,56 @@ interface PaymentsTableProps {
 }
 
 export function PaymentsTable({ payments, isLoading }: PaymentsTableProps) {
-  const columns: ColumnDef<Payment>[] = [
-    {
-      id: 'client',
-      label: 'Cliente',
-      accessor: 'clients',
-      sortable: true,
-      render: (clients) => clients?.company_name || 'Cliente não encontrado'
-    },
-    {
-      id: 'reference_month',
-      label: 'Mês de Referência',
-      accessor: 'reference_month',
-      sortable: true,
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
-          {formatDate(value)}
-        </div>
-      )
-    },
-    {
-      id: 'payment_date',
-      label: 'Data do Pagamento',
-      accessor: 'payment_date',
-      sortable: true,
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
-          {formatDate(value)}
-        </div>
-      )
-    },
-    {
-      id: 'amount',
-      label: 'Valor Bruto',
-      accessor: 'amount',
-      sortable: true,
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4" />
-          {formatCurrency(value)}
-        </div>
-      )
-    },
-    {
-      id: 'net_amount',
-      label: 'Valor Líquido',
-      accessor: 'net_amount',
-      sortable: true,
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4" />
-          {formatCurrency(value)}
-        </div>
-      )
-    },
-    {
-      id: 'notes',
-      label: 'Observações',
-      accessor: 'notes',
-      sortable: false,
-      render: (value) => value || '-'
-    }
-  ];
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
 
   return (
-    <UnifiedTable
-      data={payments || []}
-      columns={columns}
-      isLoading={isLoading}
-      emptyMessage="Nenhum pagamento encontrado"
-    />
+    <div className="border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Cliente</TableHead>
+            <TableHead>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Mês de Referência
+              </div>
+            </TableHead>
+            <TableHead>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Data do Pagamento
+              </div>
+            </TableHead>
+            <TableHead>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Valor Bruto
+              </div>
+            </TableHead>
+            <TableHead>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Valor Líquido
+              </div>
+            </TableHead>
+            <TableHead>Observações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {payments?.map((payment) => (
+            <TableRow key={payment.id}>
+              <TableCell>{payment.clients?.company_name}</TableCell>
+              <TableCell>{formatDate(payment.reference_month)}</TableCell>
+              <TableCell>{formatDate(payment.payment_date)}</TableCell>
+              <TableCell>{formatCurrency(payment.amount)}</TableCell>
+              <TableCell>{formatCurrency(payment.net_amount)}</TableCell>
+              <TableCell>{payment.notes || '-'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

@@ -1,9 +1,9 @@
 
-import { UnifiedTable, ColumnDef } from "@/components/common/UnifiedTable";
-import { formatCurrency } from "@/utils/unifiedFormatters";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatCurrency } from "@/utils/formatters";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MetaCampaign, MetaDateRange } from "../hooks/types";
-import { Badge } from "@/components/ui/badge";
 
 interface MetaCampaignsTableProps {
   campaigns: MetaCampaign[];
@@ -13,66 +13,68 @@ interface MetaCampaignsTableProps {
 export const MetaCampaignsTable = ({ campaigns, dateRange }: MetaCampaignsTableProps) => {
   const totalSpent = campaigns.reduce((sum, campaign) => sum + campaign.spend, 0);
   
-  const StatusBadge = ({ status }: { status: string }) => {
-    const getStatusProps = (status: string) => {
-      switch (status) {
-        case "ACTIVE":
-          return { variant: "default" as const, text: "Ativa", className: "bg-green-500 hover:bg-green-600" };
-        case "PAUSED":
-          return { variant: "secondary" as const, text: "Pausada", className: "bg-yellow-500 hover:bg-yellow-600" };
-        case "ARCHIVED":
-        case "DELETED":
-          return { variant: "destructive" as const, text: status === "ARCHIVED" ? "Arquivada" : "Excluída" };
-        default:
-          return { variant: "secondary" as const, text: status };
-      }
-    };
-
-    const props = getStatusProps(status);
-    return <Badge {...props}>{props.text}</Badge>;
-  };
-
-  const columns: ColumnDef<MetaCampaign>[] = [
-    {
-      id: 'name',
-      label: 'Nome da Campanha',
-      accessor: 'name',
-      sortable: true,
-      className: 'font-medium'
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      accessor: 'status',
-      sortable: true,
-      render: (status) => <StatusBadge status={status} />
-    },
-    {
-      id: 'spend',
-      label: 'Gasto',
-      accessor: 'spend',
-      sortable: true,
-      className: 'text-right',
-      render: (value) => formatCurrency(value)
-    }
-  ];
-
   return (
     <Card className="overflow-hidden">
-      <div className="p-4 border-b">
-        <p className="text-sm text-muted-foreground">
+      <Table>
+        <TableCaption>
           {dateRange ? 
             `Dados das campanhas no período de ${dateRange.start} até ${dateRange.end}` : 
             'Dados das campanhas no mês atual'}
-        </p>
-        <p className="font-medium mt-2">Total Gasto: {formatCurrency(totalSpent)}</p>
-      </div>
-      
-      <UnifiedTable
-        data={campaigns}
-        columns={columns}
-        emptyMessage="Nenhuma campanha encontrada"
-      />
+          <div className="mt-2 font-medium">Total Gasto: {formatCurrency(totalSpent)}</div>
+        </TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome da Campanha</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Gasto</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {campaigns.map((campaign) => (
+            <TableRow key={campaign.id}>
+              <TableCell className="font-medium">{campaign.name}</TableCell>
+              <TableCell>
+                <StatusBadge status={campaign.status} />
+              </TableCell>
+              <TableCell className="text-right">{formatCurrency(campaign.spend)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </Card>
   );
 };
+
+interface StatusBadgeProps {
+  status: string;
+}
+
+const StatusBadge = ({ status }: StatusBadgeProps) => {
+  let bgColor = "bg-gray-100 text-gray-800";
+  
+  if (status === "ACTIVE") {
+    bgColor = "bg-green-100 text-green-800";
+  } else if (status === "PAUSED") {
+    bgColor = "bg-yellow-100 text-yellow-800";
+  } else if (status === "ARCHIVED" || status === "DELETED") {
+    bgColor = "bg-red-100 text-red-800";
+  }
+  
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${bgColor}`}>
+      {status === "ACTIVE" ? "Ativa" : 
+       status === "PAUSED" ? "Pausada" : 
+       status === "ARCHIVED" ? "Arquivada" : 
+       status === "DELETED" ? "Excluída" : status}
+    </span>
+  );
+};
+
+export const CampaignsTableSkeleton = () => (
+  <div className="space-y-3">
+    <Skeleton className="h-10 w-full" />
+    <Skeleton className="h-10 w-full" />
+    <Skeleton className="h-10 w-full" />
+    <Skeleton className="h-10 w-full" />
+  </div>
+);
