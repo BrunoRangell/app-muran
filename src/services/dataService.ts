@@ -24,7 +24,7 @@ export class DataService {
   async getAll(filters: Record<string, any> = {}) {
     logger.info("DATA_SERVICE", `Buscando dados de ${this.config.tableName}`, filters);
 
-    let query = supabase
+    let query = (supabase as any)
       .from(this.config.tableName)
       .select(this.config.selectFields!);
 
@@ -58,7 +58,7 @@ export class DataService {
   async getById(id: string | number) {
     logger.info("DATA_SERVICE", `Buscando item ${id} de ${this.config.tableName}`);
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(this.config.tableName)
       .select(this.config.selectFields!)
       .eq('id', id)
@@ -75,7 +75,7 @@ export class DataService {
   async create(insertData: any) {
     logger.info("DATA_SERVICE", `Criando item em ${this.config.tableName}`, insertData);
 
-    const { data: result, error } = await supabase
+    const { data: result, error } = await (supabase as any)
       .from(this.config.tableName)
       .insert([insertData])
       .select()
@@ -93,7 +93,7 @@ export class DataService {
   async update(id: string | number, updateData: any) {
     logger.info("DATA_SERVICE", `Atualizando item ${id}`, updateData);
 
-    const { data: result, error } = await supabase
+    const { data: result, error } = await (supabase as any)
       .from(this.config.tableName)
       .update(updateData)
       .eq('id', id)
@@ -112,7 +112,7 @@ export class DataService {
   async delete(id: string | number) {
     logger.info("DATA_SERVICE", `Deletando item ${id} de ${this.config.tableName}`);
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from(this.config.tableName)
       .delete()
       .eq('id', id);
@@ -129,7 +129,7 @@ export class DataService {
   async search(searchTerm: string, searchFields: string[]) {
     logger.info("DATA_SERVICE", `Buscando em ${this.config.tableName}`, { searchTerm, searchFields });
 
-    let query = supabase
+    let query = (supabase as any)
       .from(this.config.tableName)
       .select(this.config.selectFields!);
 
