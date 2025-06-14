@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { formatCurrency } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/utils/logger";
 
@@ -41,14 +40,11 @@ export const EditarPagamentoDialog = ({
     setSalvando(true);
     
     try {
-      logger.info("EDIT_PAYMENT", "Atualizando pagamento", { 
+      logger.info("PAYMENT", "Updating payment", { 
         id: pagamento.id,
         valor: parseFloat(valor),
         mesReferencia 
       });
-      
-      // Aqui você implementaria a lógica de atualização
-      // Por exemplo, chamando uma mutation ou service
       
       toast({
         title: "Sucesso",
@@ -59,7 +55,7 @@ export const EditarPagamentoDialog = ({
       onOpenChange(false);
       
     } catch (error) {
-      logger.error("EDIT_PAYMENT", "Erro ao atualizar pagamento", error);
+      logger.error("PAYMENT", "Failed to update payment", error);
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o pagamento",

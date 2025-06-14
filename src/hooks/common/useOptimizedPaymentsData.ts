@@ -7,6 +7,8 @@ import { QUERY_KEYS, createQueryKey } from "@/utils/queryUtils";
 import { useCacheManager } from "@/utils/cacheUtils";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { useStableCallback } from "./useMemoizedCallback";
+import { QUERY_STALE_TIME } from "@/constants";
+import { logger } from "@/utils/logger";
 
 export interface PaymentFilters {
   clientId?: string;
@@ -19,10 +21,8 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
   const queryClient = useQueryClient();
   const cacheManager = useCacheManager(queryClient);
 
-  // Memoizar filtros para evitar re-fetches desnecessários
   const memoizedFilters = useMemo(() => filters || {}, [JSON.stringify(filters)]);
 
-  // Query otimizada para pagamentos
   const paymentsQuery = useOptimizedQuery({
     queryKey: createQueryKey(QUERY_KEYS.payments.all, 'filters', memoizedFilters),
     queryFn: async () => {
@@ -55,14 +55,13 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 2 * 60 * 1000, // 2 minutos para dados de pagamento
+    staleTime: QUERY_STALE_TIME.MEDIUM,
+    moduleName: 'PAYMENT'
   });
 
-  // Query otimizada para clientes com pagamentos
   const clientsWithPaymentsQuery = useOptimizedQuery({
     queryKey: createQueryKey(QUERY_KEYS.clients.withPayments),
     queryFn: async () => {
-      // Buscar clientes e pagamentos em paralelo
       const [clientsResult, paymentsResult] = await Promise.all([
         supabase.from("clients").select("*"),
         supabase.from("payments").select("*")
@@ -74,12 +73,10 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
       const clients = clientsResult.data || [];
       const payments = paymentsResult.data || [];
 
-      // Processar dados de forma otimizada
       const currentDate = new Date();
       const monthStart = startOfMonth(currentDate);
       const monthEnd = endOfMonth(currentDate);
 
-      // Criar mapa de pagamentos por cliente (O(n) ao invés de O(n²))
       const paymentsByClient = payments.reduce((acc, payment) => {
         if (payment.client_id) {
           if (!acc[payment.client_id]) {
@@ -90,7 +87,6 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
         return acc;
       }, {} as Record<string, any[]>);
 
-      // Processar clientes
       const processedClients = clients.map(client => {
         const clientPayments = paymentsByClient[client.id] || [];
         
@@ -120,7 +116,6 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
         };
       });
 
-      // Ordenar de forma otimizada
       processedClients.sort((a, b) => {
         if (a.status !== b.status) {
           return a.status === 'active' ? -1 : 1;
@@ -130,10 +125,10 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
 
       return processedClients;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos para lista de clientes
+    staleTime: QUERY_STALE_TIME.LONG,
+    moduleName: 'CLIENT'
   });
 
-  // Mutations otimizadas com callbacks estáveis
   const createPayment = useMutation({
     mutationFn: async (paymentData: any) => {
       const { data, error } = await supabase
@@ -181,30 +176,24 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
     }),
   });
 
-  // Callbacks estáveis para refetch
   const refetchPayments = useStableCallback(() => paymentsQuery.refetch());
   const refetchClients = useStableCallback(() => clientsWithPaymentsQuery.refetch());
 
   return {
-    // Dados
     payments: paymentsQuery.data || [],
     clientsWithPayments: clientsWithPaymentsQuery.data || [],
     
-    // Estados de loading
     isLoadingPayments: paymentsQuery.isLoading,
     isLoadingClients: clientsWithPaymentsQuery.isLoading,
     isLoading: paymentsQuery.isLoading || clientsWithPaymentsQuery.isLoading,
     
-    // Errors
     paymentsError: paymentsQuery.error,
     clientsError: clientsWithPaymentsQuery.error,
     
-    // Mutations
     createPayment,
     updatePayment,
     deletePayment,
     
-    // Refetch functions
     refetchPayments,
     refetchClients,
   };

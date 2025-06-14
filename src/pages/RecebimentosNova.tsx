@@ -34,13 +34,13 @@ export default function RecebimentosNova() {
   ) || [];
 
   const handleRegistrarPagamento = (cliente: any) => {
-    logger.info("RECEBIMENTOS", "Registrando pagamento", { clienteName: cliente.company_name });
+    logger.info("PAYMENT", "Opening payment registration", { clienteName: cliente.company_name });
     setClienteSelecionado(cliente);
     setDialogoRegistroAberto(true);
   };
 
   const handleVerHistorico = (cliente: any) => {
-    logger.info("RECEBIMENTOS", "Visualizando histórico", { clienteName: cliente.company_name });
+    logger.info("PAYMENT", "Opening payment history", { clienteName: cliente.company_name });
     setClienteSelecionado(cliente);
     setDialogoHistoricoAberto(true);
   };
@@ -60,7 +60,7 @@ export default function RecebimentosNova() {
   };
 
   if (error) {
-    logger.error("RECEBIMENTOS", "Erro na página", error);
+    logger.error("PAYMENT", "Page error", error);
     return (
       <div className="container py-6 space-y-6">
         <div className="flex items-center justify-between">

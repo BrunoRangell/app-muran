@@ -1,102 +1,103 @@
 
 import { QueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "./queryUtils";
+import { logger } from "./logger";
+
+interface CacheInvalidationOptions {
+  silent?: boolean;
+  force?: boolean;
+}
 
 export class OptimizedCacheManager {
-  private queryClient: QueryClient;
-  private invalidationQueue: Set<string> = new Set();
-  private isProcessing = false;
+  private invalidationQueue = new Set<string>();
+  private batchTimeout: NodeJS.Timeout | null = null;
 
-  constructor(queryClient: QueryClient) {
-    this.queryClient = queryClient;
-  }
+  constructor(private queryClient: QueryClient) {}
 
-  // Invalidação em batch para evitar múltiplas operações
-  private async processBatchInvalidation() {
-    if (this.isProcessing || this.invalidationQueue.size === 0) return;
-    
-    this.isProcessing = true;
-    const queries = Array.from(this.invalidationQueue);
+  private processBatch() {
+    if (this.invalidationQueue.size === 0) return;
+
+    const keys = Array.from(this.invalidationQueue);
     this.invalidationQueue.clear();
 
-    try {
-      // Processar invalidações em paralelo
-      await Promise.all(
-        queries.map(queryPattern => 
-          this.queryClient.invalidateQueries({ 
-            predicate: (query) => 
-              query.queryKey.some(key => 
-                typeof key === 'string' && key.includes(queryPattern)
-              )
-          })
-        )
-      );
-    } finally {
-      this.isProcessing = false;
-    }
+    keys.forEach(key => {
+      this.queryClient.invalidateQueries({ queryKey: [key] });
+    });
+
+    logger.info('CACHE', `Batch invalidated ${keys.length} query keys`);
   }
 
-  // Invalidação otimizada com debounce
-  private queueInvalidation(pattern: string) {
-    this.invalidationQueue.add(pattern);
-    
-    // Debounce para evitar invalidações excessivas
-    setTimeout(() => {
-      this.processBatchInvalidation();
+  private scheduleInvalidation(queryKey: string[]) {
+    const key = queryKey.join('.');
+    this.invalidationQueue.add(key);
+
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+    }
+
+    this.batchTimeout = setTimeout(() => {
+      this.processBatch();
+      this.batchTimeout = null;
     }, 100);
   }
 
-  // Métodos otimizados de invalidação
-  invalidateClients() {
-    this.queueInvalidation('clients');
+  invalidateClients(options: CacheInvalidationOptions = {}) {
+    if (options.force) {
+      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.all });
+      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.withPayments });
+      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.unified });
+      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.active });
+    } else {
+      this.scheduleInvalidation(QUERY_KEYS.clients.all);
+      this.scheduleInvalidation(QUERY_KEYS.clients.withPayments);
+      this.scheduleInvalidation(QUERY_KEYS.clients.unified);
+      this.scheduleInvalidation(QUERY_KEYS.clients.active);
+    }
+
+    if (!options.silent) {
+      logger.info('CACHE', 'Scheduled client cache invalidation');
+    }
   }
 
-  invalidatePayments() {
-    this.queueInvalidation('payments');
-    this.queueInvalidation('recebimentos');
+  invalidatePayments(options: CacheInvalidationOptions = {}) {
+    if (options.force) {
+      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.all });
+      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments.recebimentos });
+    } else {
+      this.scheduleInvalidation(QUERY_KEYS.payments.all);
+      this.scheduleInvalidation(QUERY_KEYS.payments.recebimentos);
+    }
+
+    if (!options.silent) {
+      logger.info('CACHE', 'Scheduled payment cache invalidation');
+    }
   }
 
-  invalidateCosts() {
-    this.queueInvalidation('costs');
+  invalidateMetrics(options: CacheInvalidationOptions = {}) {
+    if (options.force) {
+      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.metrics.allClients });
+      this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.metrics.filtered });
+    } else {
+      this.scheduleInvalidation(QUERY_KEYS.metrics.allClients);
+      this.scheduleInvalidation(QUERY_KEYS.metrics.filtered);
+    }
+
+    if (!options.silent) {
+      logger.info('CACHE', 'Scheduled metrics cache invalidation');
+    }
   }
 
-  invalidateFinancialData() {
-    this.queueInvalidation('clients');
-    this.queueInvalidation('payments');
-    this.queueInvalidation('costs');
-    this.queueInvalidation('metrics');
-  }
-
-  // Cache warming para dados críticos
-  async warmupCache() {
-    const criticalQueries = [
-      QUERY_KEYS.clients.active,
-      QUERY_KEYS.payments.recebimentos,
-      QUERY_KEYS.metrics.allClients
-    ];
-
-    // Pre-fetch dados críticos em paralelo
-    await Promise.allSettled(
-      criticalQueries.map(queryKey => 
-        this.queryClient.prefetchQuery({ queryKey })
-      )
-    );
-  }
-
-  // Limpeza inteligente de cache
-  cleanupStaleData(maxAge = 30 * 60 * 1000) { // 30 minutos
-    const now = Date.now();
-    
-    this.queryClient.getQueryCache().getAll().forEach(query => {
-      const lastFetch = query.state.dataUpdatedAt;
-      if (now - lastFetch > maxAge && !query.observers.length) {
-        this.queryClient.removeQueries({ queryKey: query.queryKey });
-      }
-    });
+  clearAll() {
+    this.queryClient.clear();
+    this.invalidationQueue.clear();
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+      this.batchTimeout = null;
+    }
+    logger.info('CACHE', 'Cleared all cache and invalidation queue');
   }
 }
 
-// Hook otimizado para usar o cache manager
 export const useOptimizedCacheManager = (queryClient: QueryClient) => {
   return new OptimizedCacheManager(queryClient);
 };

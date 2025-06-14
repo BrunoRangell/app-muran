@@ -53,7 +53,7 @@ export function HistoricoPagamentosDialog({
       if (!data) return "";
       return format(parseISO(data), "MMMM 'de' yyyy", { locale: ptBR });
     } catch (error) {
-      logger.error("HISTORICO", "Erro ao formatar data", error);
+      logger.error("DATE", "Failed to format date", error);
       return data;
     }
   };
@@ -68,7 +68,7 @@ export function HistoricoPagamentosDialog({
     
     try {
       setExcluindoPagamento(true);
-      logger.info("HISTORICO", "Excluindo pagamento", { paymentId: pagamento.id });
+      logger.info("PAYMENT", "Deleting payment", { paymentId: pagamento.id });
       
       const { error } = await supabase
         .from("payments")
@@ -87,7 +87,7 @@ export function HistoricoPagamentosDialog({
       onPagamentoAtualizado();
       
     } catch (error) {
-      logger.error("HISTORICO", "Erro ao excluir pagamento", error);
+      logger.error("PAYMENT", "Failed to delete payment", error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir o pagamento",
