@@ -6,6 +6,7 @@ type BudgetInput = {
   totalSpent: number;
   currentDailyBudget: number;
   lastFiveDaysAverage?: number; // Adicionado campo para média dos últimos 5 dias
+  weightedAverage?: number; // NOVO: Campo para média ponderada (Google Ads)
   customBudgetEndDate?: string; // Novo campo para data de fim do orçamento personalizado
 };
 
@@ -13,10 +14,12 @@ type BudgetCalculation = {
   idealDailyBudget: number;
   budgetDifference: number;
   budgetDifferenceBasedOnAverage?: number; // Nova propriedade para diferença baseada na média
+  budgetDifferenceBasedOnWeighted?: number; // NOVA: Diferença baseada na média ponderada
   remainingDays: number;
   remainingBudget: number;
   needsBudgetAdjustment: boolean;
   needsAdjustmentBasedOnAverage?: boolean; // Nova propriedade para indicar se precisa ajuste baseado na média
+  needsAdjustmentBasedOnWeighted?: boolean; // NOVA: Ajuste baseado na média ponderada
   spentPercentage: number;
 };
 
@@ -68,7 +71,7 @@ export function useBudgetCalculator() {
       // Arredondar para 2 casas decimais
       const roundedIdealDailyBudget = Math.round(idealDailyBudget * 100) / 100;
       
-      // Diferença entre o orçamento diário atual e o ideal
+      // Diferença entre o orçamento diário atual e o ideal (método tradicional)
       const budgetDifference = roundedIdealDailyBudget - input.currentDailyBudget;
       
       // Diferença baseada na média dos últimos 5 dias (se disponível)
@@ -78,7 +81,6 @@ export function useBudgetCalculator() {
       if (input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0) {
         budgetDifferenceBasedOnAverage = roundedIdealDailyBudget - input.lastFiveDaysAverage;
         
-        // CORREÇÃO: Aplicar apenas o threshold de R$ 5 para consistência
         const absoluteDifferenceAverage = Math.abs(budgetDifferenceBasedOnAverage);
         needsAdjustmentBasedOnAverage = absoluteDifferenceAverage >= 5;
 
@@ -89,28 +91,61 @@ export function useBudgetCalculator() {
         });
       }
       
-      // CORREÇÃO: Aplicar apenas o threshold de R$ 5 para consistência
-      const absoluteDifference = Math.abs(budgetDifference);
-      const needsBudgetAdjustment = 
-        input.currentDailyBudget > 0 && // só considera se tem orçamento atual
-        absoluteDifference >= 5; // APENAS diferença absoluta de 5 reais
+      // NOVA LÓGICA: Diferença baseada na média ponderada (Google Ads)
+      let budgetDifferenceBasedOnWeighted;
+      let needsAdjustmentBasedOnWeighted;
+      
+      if (input.weightedAverage !== undefined && input.weightedAverage > 0) {
+        budgetDifferenceBasedOnWeighted = roundedIdealDailyBudget - input.weightedAverage;
+        
+        const absoluteDifferenceWeighted = Math.abs(budgetDifferenceBasedOnWeighted);
+        needsAdjustmentBasedOnWeighted = absoluteDifferenceWeighted >= 5;
 
-      console.log(`🔍 DEBUG - Cálculo de ajuste orçamentário:`, {
-        absoluteDifference,
-        needsBudgetAdjustment,
-        threshold: '≥ R$ 5',
-        currentDailyBudget: input.currentDailyBudget,
-        idealDailyBudget: roundedIdealDailyBudget
-      });
+        console.log(`🔍 DEBUG - Ajuste baseado na média ponderada (${input.weightedAverage}):`, {
+          idealDailyBudget: roundedIdealDailyBudget,
+          weightedAverage: input.weightedAverage,
+          budgetDifferenceBasedOnWeighted,
+          absoluteDifferenceWeighted,
+          needsAdjustmentBasedOnWeighted,
+          threshold: '≥ R$ 5'
+        });
+      }
+      
+      // Decidir qual método de ajuste usar:
+      // 1. Se há média ponderada (Google Ads), usar ela
+      // 2. Caso contrário, usar o método tradicional
+      let finalNeedsBudgetAdjustment;
+      
+      if (needsAdjustmentBasedOnWeighted !== undefined) {
+        // Para Google Ads: usar a média ponderada
+        finalNeedsBudgetAdjustment = needsAdjustmentBasedOnWeighted;
+        console.log(`🔍 DEBUG - Usando ajuste baseado na média ponderada para Google Ads`);
+      } else {
+        // Para outros casos: usar o método tradicional
+        const absoluteDifference = Math.abs(budgetDifference);
+        finalNeedsBudgetAdjustment = 
+          input.currentDailyBudget > 0 && // só considera se tem orçamento atual
+          absoluteDifference >= 5;
+        
+        console.log(`🔍 DEBUG - Usando ajuste tradicional:`, {
+          absoluteDifference,
+          needsBudgetAdjustment: finalNeedsBudgetAdjustment,
+          threshold: '≥ R$ 5',
+          currentDailyBudget: input.currentDailyBudget,
+          idealDailyBudget: roundedIdealDailyBudget
+        });
+      }
       
       return {
         idealDailyBudget: roundedIdealDailyBudget,
         budgetDifference,
         budgetDifferenceBasedOnAverage,
+        budgetDifferenceBasedOnWeighted,
         remainingDays,
         remainingBudget,
-        needsBudgetAdjustment,
+        needsBudgetAdjustment: finalNeedsBudgetAdjustment,
         needsAdjustmentBasedOnAverage,
+        needsAdjustmentBasedOnWeighted,
         spentPercentage
       };
     };

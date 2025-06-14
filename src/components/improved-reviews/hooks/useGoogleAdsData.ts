@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -198,16 +197,23 @@ export function useGoogleAdsData() {
             // Obter a média de gasto dos últimos 5 dias (se disponível)
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
             
-            // Calcular orçamento recomendado
+            // MODIFICAÇÃO: Usar weightedAverage em vez de lastFiveDaysAverage
             const budgetCalc = calculateBudget({
               monthlyBudget: budgetAmount,
               totalSpent: review?.google_total_spent || 0,
               currentDailyBudget: review?.google_daily_budget_current || 0,
-              lastFiveDaysAverage: lastFiveDaysAvg,
+              weightedAverage: weightedAverage, // NOVO: passar média ponderada
               customBudgetEndDate: customBudget?.end_date
             });
             
-            const needsAdjustment = budgetCalc.needsBudgetAdjustment;
+            // MODIFICAÇÃO: Usar needsAdjustmentBasedOnWeighted para Google Ads
+            const needsAdjustment = budgetCalc.needsAdjustmentBasedOnWeighted || budgetCalc.needsBudgetAdjustment;
+            
+            console.log(`🔍 DEBUG - Cliente ${client.company_name}:`, {
+              weightedAverage,
+              needsAdjustment,
+              budgetDifferenceBasedOnWeighted: budgetCalc.budgetDifferenceBasedOnWeighted
+            });
             
             return {
               ...client,
