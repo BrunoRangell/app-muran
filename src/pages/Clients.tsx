@@ -2,47 +2,12 @@
 import { Card } from "@/components/ui/card";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { Client } from "@/components/clients/types";
-import { useToast } from "@/hooks/use-toast";
+import { useUnifiedClientData } from "@/hooks/common/useUnifiedClientData";
 import { AlertCircle } from "lucide-react";
 import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
-import { Suspense } from "react";
 
 const Clients = () => {
-  const { toast } = useToast();
-  
-  const { data: clients, isLoading, error } = useQuery({
-    queryKey: ["clients"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .order("company_name");
-
-      if (error) {
-        console.error("Erro ao buscar clientes:", error);
-        throw new Error("Não foi possível carregar a lista de clientes");
-      }
-
-      if (!data) {
-        throw new Error("Nenhum dado retornado");
-      }
-
-      return data as Client[];
-    },
-    meta: {
-      onError: (error: Error) => {
-        console.error("Erro na query de clientes:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar clientes",
-          description: error instanceof Error ? error.message : "Tente novamente mais tarde",
-        });
-      }
-    }
-  });
+  const { data: clients, isLoading, error } = useUnifiedClientData({ includeInactive: true });
 
   if (error) {
     return (
