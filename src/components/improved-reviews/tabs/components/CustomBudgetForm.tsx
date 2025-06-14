@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarIcon } from "lucide-react";
@@ -25,7 +24,7 @@ interface CustomBudgetFormProps {
 }
 
 export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }: CustomBudgetFormProps) {
-  const { clients = [] } = useClients();
+  const { clients = [] } = useClients({ status: 'active' });
   
   const form = useForm<CustomBudgetFormData>({
     resolver: zodResolver(customBudgetSchema),
