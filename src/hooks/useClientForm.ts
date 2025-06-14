@@ -6,7 +6,8 @@ import { clientFormSchema } from "@/validations/clientFormSchema";
 import { verifySession, prepareClientData, saveClient } from "@/services/clientService";
 import { useUnifiedForm } from "@/hooks/common/useUnifiedForm";
 import { UseFormReturn } from "react-hook-form";
-import { showClientSuccessToast, showClientErrorToast } from "@/utils/toastUtils";
+import { showDataOperationToast } from "@/utils/toastUtils";
+import { handleError } from "@/utils/errorUtils";
 
 interface UseClientFormProps {
   initialData?: any;
@@ -99,14 +100,14 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
 
       if (error) throw error;
 
-      showClientSuccessToast('deleted');
+      showDataOperationToast('clients', 'deleted');
 
       if (onSuccess) {
         await onSuccess(null);
       }
     } catch (error) {
-      console.error("Erro ao excluir cliente:", error);
-      showClientErrorToast('deleteError');
+      handleError(error, "excluir cliente");
+      showDataOperationToast('clients', 'deleteError');
     }
   };
 

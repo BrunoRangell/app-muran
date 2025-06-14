@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarIcon } from "lucide-react";
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useClients } from "@/hooks/queries/useClients";
+import { useUnifiedClientData } from "@/hooks/common/useUnifiedClientData";
 import { customBudgetSchema, CustomBudgetFormData } from "../schemas/customBudgetSchema";
 
 interface CustomBudgetFormProps {
@@ -24,7 +25,7 @@ interface CustomBudgetFormProps {
 }
 
 export function CustomBudgetForm({ initialData, onSubmit, onCancel, isLoading }: CustomBudgetFormProps) {
-  const { clients = [] } = useClients({ status: 'active' });
+  const { clients = [] } = useUnifiedClientData({ filters: { status: 'active' } });
   
   const form = useForm<CustomBudgetFormData>({
     resolver: zodResolver(customBudgetSchema),

@@ -2,15 +2,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Cost, CostFilters } from "@/types/cost";
-import { showCostSuccessToast, showCostErrorToast } from "@/utils/toastUtils";
+import { showDataOperationToast } from "@/utils/toastUtils";
 import { useCacheManager } from "@/utils/cacheUtils";
+import { QUERY_KEYS } from "@/utils/queryUtils";
+import { handleError } from "@/utils/errorUtils";
 
 export const useCosts = (filters?: CostFilters) => {
   const queryClient = useQueryClient();
   const cacheManager = useCacheManager(queryClient);
 
   const costsQuery = useQuery({
-    queryKey: ["costs", filters],
+    queryKey: QUERY_KEYS.costs.byFilters(filters || {}),
     queryFn: async () => {
       let query = supabase
         .from("costs")
@@ -57,11 +59,11 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       cacheManager.invalidateCosts();
-      showCostSuccessToast('created');
+      showDataOperationToast('costs', 'created');
     },
     onError: (error) => {
-      console.error("Erro ao criar custo:", error);
-      showCostErrorToast('createError');
+      handleError(error, "criar custo");
+      showDataOperationToast('costs', 'createError');
     },
   });
 
@@ -79,11 +81,11 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       cacheManager.invalidateCosts();
-      showCostSuccessToast('updated');
+      showDataOperationToast('costs', 'updated');
     },
     onError: (error) => {
-      console.error("Erro ao atualizar custo:", error);
-      showCostErrorToast('updateError');
+      handleError(error, "atualizar custo");
+      showDataOperationToast('costs', 'updateError');
     },
   });
 
@@ -98,11 +100,11 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       cacheManager.invalidateCosts();
-      showCostSuccessToast('deleted');
+      showDataOperationToast('costs', 'deleted');
     },
     onError: (error) => {
-      console.error("Erro ao excluir custo:", error);
-      showCostErrorToast('deleteError');
+      handleError(error, "excluir custo");
+      showDataOperationToast('costs', 'deleteError');
     },
   });
 
