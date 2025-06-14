@@ -56,7 +56,6 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
       return data || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutos para dados de pagamento
-    enableBackgroundRefetch: true
   });
 
   // Query otimizada para clientes com pagamentos
@@ -132,7 +131,6 @@ export const useOptimizedPaymentsData = (filters?: PaymentFilters) => {
       return processedClients;
     },
     staleTime: 5 * 60 * 1000, // 5 minutos para lista de clientes
-    memoryOptimized: true
   });
 
   // Mutations otimizadas com callbacks estáveis
