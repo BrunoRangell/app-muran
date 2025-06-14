@@ -55,7 +55,7 @@ export const useCosts = (filters?: CostFilters) => {
   });
 
   const createCost = useMutation({
-    mutationFn: async (newCost: Partial<Cost>) => {
+    mutationFn: async (newCost: Omit<Cost, 'id' | 'created_at' | 'updated_at'>) => {
       logger.info("COSTS", "Criando custo", newCost);
 
       const { data, error } = await supabase
@@ -84,13 +84,14 @@ export const useCosts = (filters?: CostFilters) => {
   });
 
   const updateCost = useMutation({
-    mutationFn: async (updatedCost: Partial<Cost>) => {
+    mutationFn: async (updatedCost: Partial<Cost> & { id: number }) => {
       logger.info("COSTS", "Atualizando custo", updatedCost);
 
+      const { id, ...updateData } = updatedCost;
       const { data, error } = await supabase
         .from("costs")
-        .update(updatedCost)
-        .eq("id", updatedCost.id)
+        .update(updateData)
+        .eq("id", id)
         .select()
         .single();
 

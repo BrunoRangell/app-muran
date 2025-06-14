@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { logger } from "@/utils/logger";
 
 export interface DataServiceConfig {
-  tableName: string;
+  tableName: 'clients' | 'payments' | 'costs' | 'team_members' | 'goals';
   selectFields?: string;
   orderBy?: string;
   orderDirection?: 'asc' | 'desc';
