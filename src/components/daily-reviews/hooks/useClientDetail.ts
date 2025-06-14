@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
+// VERIFICAR: Este hook pode estar duplicado com useClientReviewDetails
 export const useClientDetail = (clientId?: string) => {
   const [client, setClient] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, DollarSign, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { MetaAccount } from "../hooks/types/accountTypes";
@@ -11,7 +12,6 @@ import { ClientReviewHistory } from "../ClientReviewHistory";
 import { ClientLatestReview } from "../ClientLatestReview";
 import { ClientBudgetSettings } from "../ClientBudgetSettings";
 import { ClientMetaAccountSettings } from "../ClientMetaAccountSettings";
-import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
 
 interface ClientDetailsContentProps {
   clientId: string;

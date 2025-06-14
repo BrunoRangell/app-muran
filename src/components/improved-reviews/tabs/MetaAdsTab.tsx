@@ -19,6 +19,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
+  
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
   const { forceDataRefresh, startPolling } = useRealTimeDataService();
   const { 
@@ -40,8 +41,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
 
   // Iniciar polling para atualizações automáticas
   useEffect(() => {
-    const pollingInterval = startPolling(30000); // Check a cada 30 segundos
-    
+    const pollingInterval = startPolling(30000);
     return () => {
       if (pollingInterval) {
         clearInterval(pollingInterval);
@@ -49,27 +49,12 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
     };
   }, [startPolling]);
 
-  // Handle search query changes
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-  };
+  // Handlers unificados para reduzir duplicação
+  const handleSearchChange = (query: string) => setSearchQuery(query);
+  const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
+  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
+  const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
 
-  // Handle view mode changes
-  const handleViewModeChange = (mode: "cards" | "table" | "list") => {
-    setViewMode(mode);
-  };
-
-  // Handle adjustment filter changes
-  const handleAdjustmentFilterChange = (showAdjustments: boolean) => {
-    setShowOnlyAdjustments(showAdjustments);
-  };
-
-  // Handle account filter changes
-  const handleAccountFilterChange = (showWithoutAccount: boolean) => {
-    setShowWithoutAccount(showWithoutAccount);
-  };
-
-  // Handle refresh
   const handleRefresh = async () => {
     console.log("🔄 Atualizando dados do Meta Ads...");
     await forceDataRefresh();
@@ -77,7 +62,6 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
     if (onRefreshCompleted) onRefreshCompleted();
   };
 
-  // Handle batch review
   const handleBatchReview = () => {
     console.log("🚀 Iniciando revisão em lote do Meta Ads...");
     if (data && data.length > 0) {
