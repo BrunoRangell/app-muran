@@ -37,6 +37,13 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
     setIsAlertsExpanded(!isAlertsExpanded);
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleAlertsExpansion();
+    }
+  };
+
   return (
     <div className="space-y-6 mb-6">
       {/* Métricas Principais */}
@@ -102,26 +109,27 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
       {topAlerts.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div 
+              className="flex items-center justify-between cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
+              onClick={toggleAlertsExpansion}
+              onKeyDown={handleKeyDown}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isAlertsExpanded}
+            >
               <CardTitle className="text-lg text-[#321e32] flex items-center gap-2">
                 🚨 Ações Imediatas Necessárias
                 <Badge variant="destructive" className="ml-2">
                   {topAlerts.length}
                 </Badge>
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleAlertsExpansion}
-                className="h-8 w-8 p-0 hover:bg-gray-100"
-                aria-expanded={isAlertsExpanded}
-              >
+              <div className="transition-transform duration-200">
                 {isAlertsExpanded ? (
-                  <ChevronUp className="w-4 h-4 transition-transform duration-200" />
+                  <ChevronUp className="w-4 h-4" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+                  <ChevronDown className="w-4 h-4" />
                 )}
-              </Button>
+              </div>
             </div>
           </CardHeader>
           
