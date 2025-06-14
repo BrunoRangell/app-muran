@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, RefreshCw, Filter, AlertTriangle, TrendingUp } from "lucide-react";
+import { Search, RefreshCw, Filter, AlertTriangle } from "lucide-react";
 import { CampaignStatus } from "./types";
 import { AlertLevel } from "./types/enhanced-types";
 
@@ -81,42 +81,6 @@ export function IntelligentFilters({
 
   return (
     <div className="space-y-4 mb-6">
-      {/* Filtros Rápidos por Urgência */}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant={urgencyFilter === "critical" ? "destructive" : "outline"}
-          size="sm"
-          onClick={() => setUrgencyFilter(urgencyFilter === "critical" ? "all" : "critical")}
-          className="h-8"
-        >
-          🚨 Crítico ({stats.critical})
-        </Button>
-        <Button
-          variant={urgencyFilter === "high" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setUrgencyFilter(urgencyFilter === "high" ? "all" : "high")}
-          className="h-8 bg-orange-500 hover:bg-orange-600"
-        >
-          ⚠️ Alto ({stats.high})
-        </Button>
-        <Button
-          variant={urgencyFilter === "medium" ? "secondary" : "outline"}
-          size="sm"
-          onClick={() => setUrgencyFilter(urgencyFilter === "medium" ? "all" : "medium")}
-          className="h-8"
-        >
-          ⚡ Médio ({stats.medium})
-        </Button>
-        <Button
-          variant={urgencyFilter === "ok" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setUrgencyFilter(urgencyFilter === "ok" ? "all" : "ok")}
-          className="h-8 bg-green-500 hover:bg-green-600"
-        >
-          ✅ OK
-        </Button>
-      </div>
-
       {/* Filtros Detalhados */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
@@ -144,6 +108,20 @@ export function IntelligentFilters({
                 <SelectItem value="performance">📊 Performance</SelectItem>
                 <SelectItem value="technical">🔧 Técnico</SelectItem>
                 <SelectItem value="configuration">⚙️ Configuração</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Filtro por Urgência */}
+            <Select value={urgencyFilter} onValueChange={handleUrgencyChange}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="Urgência" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="critical">🚨 Crítico</SelectItem>
+                <SelectItem value="high">⚠️ Alto</SelectItem>
+                <SelectItem value="medium">⚡ Médio</SelectItem>
+                <SelectItem value="ok">✅ OK</SelectItem>
               </SelectContent>
             </Select>
             
