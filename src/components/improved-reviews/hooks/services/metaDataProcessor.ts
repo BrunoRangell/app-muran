@@ -29,7 +29,11 @@ export async function fetchMetaReviews() {
     .gte("review_date", firstDayStr)
     .order("review_date", { ascending: false });
 
-  if (reviewsError) throw reviewsError;
+  if (reviewsError) {
+    logger.error("META_ADS", "Erro ao buscar reviews do Meta Ads", reviewsError);
+    throw reviewsError;
+  }
+  
   return reviews || [];
 }
 

@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Goal } from "@/types/goal";
 import { useToast } from "@/components/ui/use-toast";
 import { parseISO } from "date-fns";
+import { logger } from "@/utils/logger";
 
 export const useFinalizeGoal = () => {
   const { toast } = useToast();
@@ -36,13 +37,14 @@ export const useFinalizeGoal = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["current-goal"] });
+      logger.info("GOALS", "Desafio finalizado com sucesso");
       toast({
         title: "🏆 Desafio finalizado!",
         description: "O desafio foi encerrado e os resultados foram registrados.",
       });
     },
     onError: (error) => {
-      console.error("Erro ao finalizar desafio:", error);
+      logger.error("GOALS", "Erro ao finalizar desafio", error);
       toast({
         title: "Erro ao finalizar desafio",
         description: "Não foi possível finalizar o desafio. Tente novamente.",
@@ -92,13 +94,14 @@ export const useUpdateGoal = (currentValue?: number) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["current-goal"] });
+      logger.info("GOALS", "Meta atualizada com sucesso");
       toast({
         title: "🎉 Meta atualizada!",
         description: "Sua equipe está mais perto da vitória!",
       });
     },
     onError: (error) => {
-      console.error("Erro ao atualizar desafio:", error);
+      logger.error("GOALS", "Erro ao atualizar desafio", error);
       toast({
         title: "Erro ao atualizar",
         description: "Não foi possível atualizar o desafio. Tente novamente.",
@@ -133,13 +136,14 @@ export const useCreateGoal = (currentUserId: string | null) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["current-goal"] });
+      logger.info("GOALS", "Novo desafio criado com sucesso");
       toast({
         title: "🚀 Novo desafio criado!",
         description: "Vamos conquistar esse objetivo juntos!",
       });
     },
     onError: (error) => {
-      console.error("Erro ao criar desafio:", error);
+      logger.error("GOALS", "Erro ao criar desafio", error);
       toast({
         title: "Erro ao criar",
         description: error instanceof Error ? error.message : "Não foi possível criar o desafio. Tente novamente.",

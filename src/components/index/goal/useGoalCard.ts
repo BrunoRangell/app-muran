@@ -5,6 +5,7 @@ import { useGoalCalculation } from "@/hooks/useGoalCalculation";
 import { useCurrentGoal } from "./hooks/useGoalQueries";
 import { useFinalizeGoal, useUpdateGoal, useCreateGoal } from "./services/goalMutations";
 import { supabase } from "@/lib/supabase";
+import { logger } from "@/utils/logger";
 
 export const useGoalCard = (isAdmin: boolean) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -33,7 +34,7 @@ export const useGoalCard = (isAdmin: boolean) => {
       const today = new Date();
       
       if (today > endDate) {
-        console.log("Finalizando desafio automaticamente:", goal.id);
+        logger.info("GOALS", "Finalizando desafio automaticamente", { goalId: goal.id });
         finalizeGoal.mutate({ goal, currentValue });
       }
     }

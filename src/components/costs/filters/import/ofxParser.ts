@@ -38,6 +38,5 @@ export function parseOFX(ofxText: string) {
     }
   }
   
-  console.log('Transações filtradas (apenas custos):', transactions);
   return { bankAccounts: [{ transactions }] };
 }
