@@ -1,19 +1,16 @@
 
-import {
-  Table,
-  TableBody,
-} from "@/components/ui/table";
-import { Client, Column, SortConfig } from "../types";
-import { ClientsTableHeader } from "./TableHeader";
-import { ClientTableRow } from "./TableRow";
-import { calculateRetention } from "./utils";
-import { Skeleton } from "@/components/ui/skeleton";
+import { UnifiedTable, ColumnDef } from "@/components/common/UnifiedTable";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
+import { Client } from "../types";
+import { formatCellContent, calculateRetention } from "./utils";
+import { useTableSort } from "@/hooks/common/useTableSort";
 
 interface ClientsTableProps {
   clients: Client[];
-  columns: Column[];
+  columns: any[];
   onEditClick: (client: Client) => void;
-  sortConfig: SortConfig;
+  sortConfig: any;
   onSort: (key: string) => void;
   isLoading?: boolean;
 }
@@ -22,83 +19,82 @@ export const ClientsTable = ({
   clients, 
   columns, 
   onEditClick, 
-  sortConfig, 
-  onSort,
   isLoading
 }: ClientsTableProps) => {
-  const sortedColumns = [...columns].sort((a, b) => {
-    if (a.fixed && !b.fixed) return -1;
-    if (!a.fixed && b.fixed) return 1;
-    return 0;
+  const { sortConfig, sortedData, handleSort } = useTableSort({
+    data: clients || [],
+    initialSort: { key: 'company_name', direction: 'asc' }
   });
 
-  // Adiciona a retenção calculada aos clientes para ordenação
-  const clientsWithRetention = clients?.map(client => ({
+  // Adiciona a retenção calculada aos clientes
+  const clientsWithRetention = sortedData.map(client => ({
     ...client,
     calculatedRetention: calculateRetention(client)
   }));
 
-  // Ordena os clientes considerando a retenção calculada
-  const sortedClients = clientsWithRetention?.sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    
-    if (sortConfig.key === 'retention') {
-      return sortConfig.direction === 'asc' 
-        ? a.calculatedRetention - b.calculatedRetention
-        : b.calculatedRetention - a.calculatedRetention;
-    }
-    
-    const aValue = a[sortConfig.key as keyof Client];
-    const bValue = b[sortConfig.key as keyof Client];
-    
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
+  // Definir colunas da tabela
+  const tableColumns: ColumnDef<Client>[] = columns
+    .filter(col => col.show)
+    .sort((a, b) => {
+      if (a.fixed && !b.fixed) return -1;
+      if (!a.fixed && b.fixed) return 1;
+      return 0;
+    })
+    .map(column => ({
+      id: column.id,
+      label: column.label,
+      sortable: true,
+      render: (value: any, client: Client) => {
+        if (column.id === 'status') {
+          return (
+            <span
+              className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                client.status === "active"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
+              }`}
+            >
+              {client.status === "active" ? "Ativo" : "Inativo"}
+            </span>
+          );
+        }
+        return formatCellContent(client, column.id);
+      }
+    }));
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(5)].map((_, index) => (
-          <div key={index} className="flex gap-4 p-4 border-b animate-pulse">
-            {sortedColumns.filter(col => col.show).map((col, colIndex) => (
-              <div key={colIndex} className="flex-1">
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ))}
-            <div className="w-10">
-              <Skeleton className="h-8 w-8" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  // Adicionar coluna de ações
+  tableColumns.push({
+    id: 'actions',
+    label: 'Ações',
+    sortable: false,
+    className: 'text-right',
+    render: (value: any, client: Client) => (
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEditClick(client);
+        }}
+      >
+        <Pencil className="h-4 w-4" />
+      </Button>
+    )
+  });
 
   return (
     <div className="flex flex-col">
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <div className="inline-block min-w-full align-middle">
-          <div className="border rounded-md">
-            <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
-              <Table>
-                <ClientsTableHeader 
-                  columns={sortedColumns} 
-                  sortConfig={sortConfig} 
-                  onSort={onSort} 
-                />
-                <TableBody>
-                  {sortedClients?.map((client) => (
-                    <ClientTableRow
-                      key={client.id}
-                      client={client}
-                      columns={sortedColumns}
-                      onEditClick={onEditClick}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+            <UnifiedTable
+              data={clientsWithRetention}
+              columns={tableColumns}
+              isLoading={isLoading}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+              emptyMessage="Nenhum cliente encontrado"
+            />
           </div>
         </div>
       </div>

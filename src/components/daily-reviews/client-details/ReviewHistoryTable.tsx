@@ -1,7 +1,10 @@
-import { formatCurrency } from "@/utils/formatters";
-import { AlertCircle, Calendar, Loader } from "lucide-react";
+
+import { formatCurrency } from "@/utils/unifiedFormatters";
+import { Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
+import { UnifiedTable, ColumnDef } from "@/components/common/UnifiedTable";
+import { UnifiedEmptyState } from "@/components/common/UnifiedEmptyState";
 
 interface ReviewHistoryTableProps {
   isLoading: boolean;
@@ -9,10 +12,42 @@ interface ReviewHistoryTableProps {
 }
 
 export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTableProps) => {
-  console.log('Componente ReviewHistoryTable renderizado. isLoading:', isLoading, 'reviewHistory:', reviewHistory);
+  const columns: ColumnDef[] = [
+    {
+      id: 'review_date',
+      label: 'Data',
+      accessor: 'review_date',
+      sortable: true,
+      render: (value) => formatDateInBrasiliaTz(value, "dd/MM/yyyy HH:mm")
+    },
+    {
+      id: 'meta_daily_budget_current',
+      label: 'Orçamento Diário',
+      accessor: 'meta_daily_budget_current',
+      sortable: true,
+      render: (value) => formatCurrency(value || 0)
+    },
+    {
+      id: 'meta_total_spent',
+      label: 'Total Gasto',
+      accessor: 'meta_total_spent',
+      sortable: true,
+      render: (value) => formatCurrency(value || 0)
+    },
+    {
+      id: 'using_custom_budget',
+      label: 'Tipo de Orçamento',
+      accessor: 'using_custom_budget',
+      sortable: true,
+      render: (value) => value ? (
+        <span className="text-blue-600 font-medium">Personalizado</span>
+      ) : (
+        <span>Padrão</span>
+      )
+    }
+  ];
 
   if (isLoading) {
-    console.log('Exibindo estado de carregamento');
     return (
       <Card>
         <CardHeader>
@@ -22,18 +57,18 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-2">
-            {Array(5).fill(0).map((_, i) => (
-              <div key={i} className="h-12 bg-gray-100 rounded-md"></div>
-            ))}
-          </div>
+          <UnifiedTable
+            data={[]}
+            columns={columns}
+            isLoading={true}
+            loadingRows={5}
+          />
         </CardContent>
       </Card>
     );
   }
 
   if (!reviewHistory || reviewHistory.length === 0) {
-    console.log('Nenhum histórico de revisões encontrado');
     return (
       <Card>
         <CardHeader>
@@ -43,16 +78,16 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-6 text-gray-500">
-            <AlertCircle className="h-12 w-12 text-gray-300 mb-2" />
-            <p>Nenhuma revisão encontrada para este cliente</p>
-          </div>
+          <UnifiedEmptyState
+            title="Nenhuma revisão encontrada"
+            description="Nenhum histórico de revisão disponível para este cliente"
+            size="sm"
+          />
         </CardContent>
       </Card>
     );
   }
 
-  console.log('Renderizando tabela com histórico de revisões');
   return (
     <Card>
       <CardHeader>
@@ -62,39 +97,11 @@ export const ReviewHistoryTable = ({ isLoading, reviewHistory }: ReviewHistoryTa
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left border-b">
-                <th className="pb-2">Data</th>
-                <th className="pb-2">Orçamento Diário</th>
-                <th className="pb-2">Total Gasto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reviewHistory.map((review) => {
-                console.log('Antes do log da data da revisão para review.id:', review.id);
-                console.log('Tipo de review.review_date:', typeof review.review_date);
-                console.log('Data da revisão antes de formatar:', review.review_date);
-                console.log('Depois do log da data da revisão para review.id:', review.id);
-
-                return (
-                  <tr key={review.id} className="border-b">
-                    <td className="py-2">
-                      {formatDateInBrasiliaTz(review.review_date, "dd/MM/yyyy HH:mm")}
-                    </td>
-                    <td className="py-2">
-                      {formatCurrency(review.meta_daily_budget_current || 0)}
-                    </td>
-                    <td className="py-2">
-                      {formatCurrency(review.meta_total_spent || 0)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <UnifiedTable
+          data={reviewHistory}
+          columns={columns}
+          emptyMessage="Nenhuma revisão encontrada"
+        />
       </CardContent>
     </Card>
   );
