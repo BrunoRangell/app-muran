@@ -1,8 +1,9 @@
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, TrendingUp, TrendingDown, Activity, DollarSign } from "lucide-react";
+import { AlertTriangle, TrendingUp, TrendingDown, Activity, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { HealthDashboardStats, HealthAlert } from "./types/enhanced-types";
 
 interface AlertsDashboardProps {
@@ -12,6 +13,8 @@ interface AlertsDashboardProps {
 }
 
 export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashboardProps) {
+  const [isAlertsExpanded, setIsAlertsExpanded] = useState(false);
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "critical": return "bg-red-500 text-white";
@@ -28,6 +31,10 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
       case "medium": return "⚡";
       default: return "ℹ️";
     }
+  };
+
+  const toggleAlertsExpansion = () => {
+    setIsAlertsExpanded(!isAlertsExpanded);
   };
 
   return (
@@ -95,43 +102,68 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
       {topAlerts.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-[#321e32] flex items-center gap-2">
-              🚨 Ações Imediatas Necessárias
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {topAlerts.slice(0, 5).map((alert) => (
-              <div 
-                key={alert.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                onClick={() => onAlertClick(alert)}
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg text-[#321e32] flex items-center gap-2">
+                🚨 Ações Imediatas Necessárias
+                <Badge variant="destructive" className="ml-2">
+                  {topAlerts.length}
+                </Badge>
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAlertsExpansion}
+                className="h-8 w-8 p-0 hover:bg-gray-100"
+                aria-expanded={isAlertsExpanded}
               >
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="text-lg">{getSeverityIcon(alert.severity)}</div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-gray-900">{alert.clientName}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {alert.platform === 'meta' ? 'Meta' : 'Google'} Ads
-                      </Badge>
-                      <Badge className={`text-xs ${getSeverityColor(alert.severity)}`}>
-                        {alert.severity === 'critical' ? 'Crítico' : 
-                         alert.severity === 'high' ? 'Alto' : 
-                         alert.severity === 'medium' ? 'Médio' : 'Baixo'}
-                      </Badge>
+                {isAlertsExpanded ? (
+                  <ChevronUp className="w-4 h-4 transition-transform duration-200" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          
+          <div 
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              isAlertsExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <CardContent className="space-y-3">
+              {topAlerts.slice(0, 5).map((alert) => (
+                <div 
+                  key={alert.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                  onClick={() => onAlertClick(alert)}
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="text-lg">{getSeverityIcon(alert.severity)}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-gray-900">{alert.clientName}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {alert.platform === 'meta' ? 'Meta' : 'Google'} Ads
+                        </Badge>
+                        <Badge className={`text-xs ${getSeverityColor(alert.severity)}`}>
+                          {alert.severity === 'critical' ? 'Crítico' : 
+                           alert.severity === 'high' ? 'Alto' : 
+                           alert.severity === 'medium' ? 'Médio' : 'Baixo'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600">{alert.title}</p>
+                      {alert.estimatedImpact && (
+                        <p className="text-xs text-orange-600 font-medium">{alert.estimatedImpact}</p>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-600">{alert.title}</p>
-                    {alert.estimatedImpact && (
-                      <p className="text-xs text-orange-600 font-medium">{alert.estimatedImpact}</p>
-                    )}
                   </div>
+                  <Button variant="outline" size="sm" className="ml-3">
+                    {alert.severity === 'critical' ? 'Resolver Agora' : 'Investigar'}
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm" className="ml-3">
-                  {alert.severity === 'critical' ? 'Resolver Agora' : 'Investigar'}
-                </Button>
-              </div>
-            ))}
-          </CardContent>
+              ))}
+            </CardContent>
+          </div>
         </Card>
       )}
     </div>
