@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import { logger } from '@/utils/logger';
 
 interface PerformanceMetrics {
   renderCount: number;
@@ -54,12 +53,8 @@ export const PerformanceDebugger: React.FC<PerformanceDebuggerProps> = ({
           peakRenderTime: Math.max(prev.peakRenderTime, renderTime)
         };
       });
-
-      if (renderTime > 16) {
-        logger.warn('SYSTEM', `Componente ${componentName} renderizou em ${renderTime.toFixed(2)}ms (>16ms)`);
-      }
     };
-  }, [enabled, componentName]);
+  }, [enabled]);
 
   // Não renderizar em produção
   if (!enabled || import.meta.env.PROD) {

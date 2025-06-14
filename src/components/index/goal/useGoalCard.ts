@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { parseISO } from "date-fns";
 import { useGoalCalculation } from "@/hooks/useGoalCalculation";
-import { useCurrentGoal } from "@/components/index/goal/hooks/useGoalQueries";
-import { useFinalizeGoal, useUpdateGoal, useCreateGoal } from "@/components/index/goal/services/goalMutations";
+import { useCurrentGoal } from "./hooks/useGoalQueries";
+import { useFinalizeGoal, useUpdateGoal, useCreateGoal } from "./services/goalMutations";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/utils/logger";
 

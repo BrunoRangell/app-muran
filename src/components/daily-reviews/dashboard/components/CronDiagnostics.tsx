@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader, Zap } from "lucide-react";
+import { Loader, UploadCloud, Database, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
@@ -20,9 +20,11 @@ export function CronDiagnostics() {
     try {
       setIsLoading(true);
       
-      // Buscar jobs usando a função do banco de dados
+      // Buscar status atual dos jobs
       const { data: jobsData, error: jobsError } = await supabase
-        .rpc('get_cron_jobs', { job_names: ['daily-meta-review-job', 'daily-meta-review-test-job'] });
+        .from('cron.job')
+        .select('jobid, jobname, schedule, active')
+        .in('jobname', ['daily-meta-review-job', 'daily-meta-review-test-job']);
       
       // Buscar logs recentes do sistema
       const { data: logsData, error: logsError } = await supabase
@@ -83,7 +85,7 @@ export function CronDiagnostics() {
         <Button 
           onClick={runDiagnostics} 
           disabled={isLoading}
-          className="w-full bg-[#ff6e00] hover:bg-[#ff6e00]/90 text-white"
+          className="w-full bg-muran-primary hover:bg-muran-primary/90 text-white"
         >
           {isLoading ? (
             <>

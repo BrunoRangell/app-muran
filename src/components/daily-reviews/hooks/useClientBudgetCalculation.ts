@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
 import { supabase } from "@/lib/supabase";
+import { callEdgeFunction } from "./useEdgeFunction";
 
 export const useClientBudgetCalculation = (client: ClientWithReview, specificAccountId?: string) => {
   const [isCalculating, setIsCalculating] = useState(false);
@@ -45,13 +46,12 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
           }
         }
         
-        // Buscar orçamento personalizado ativo (se houver) - usando a tabela correta
+        // Buscar orçamento personalizado ativo (se houver)
         const today = new Date().toISOString().split('T')[0];
         const { data: customBudget, error: budgetError } = await supabase
-          .from('custom_budgets')
+          .from('meta_custom_budgets')
           .select('*')
           .eq('client_id', client.id)
-          .eq('platform', 'meta')
           .eq('is_active', true)
           .lte('start_date', today)
           .gte('end_date', today)
@@ -70,8 +70,8 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
         
         if (review) {
           // Usar os valores da revisão
-          currentDailyBudget = review.meta_daily_budget_current || 0;
-          totalSpent = review.meta_total_spent || 0;
+          currentDailyBudget = review.google_daily_budget_current || 0;
+          totalSpent = review.google_total_spent || 0;
           
           // Verificar se a revisão está usando um orçamento personalizado
           const isUsingCustomBudgetInReview = review.using_custom_budget || false;

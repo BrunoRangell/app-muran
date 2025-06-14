@@ -4,7 +4,6 @@ import { supabase } from "@/lib/supabase";
 import { addMonths, format } from "date-fns";
 import { calculateMonthlyMetrics } from "./utils/calculateMonthlyMetrics";
 import { logger } from "@/utils/logger";
-import { Client } from "../types";
 
 export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
   return useQuery({
@@ -29,20 +28,13 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
         return [];
       }
 
-      // Converter para tipo Client
-      const processedClients: Client[] = clients?.map(client => ({
-        ...client,
-        payment_type: client.payment_type as "pre" | "post",
-        status: client.status as "active" | "inactive"
-      })) || [];
-
       const months = [];
       let currentDate = new Date(dateRange.start);
       let monthCount = 0;
       
       while (currentDate <= dateRange.end && monthCount < 50) {
         try {
-          const monthData = calculateMonthlyMetrics(processedClients, currentDate);
+          const monthData = calculateMonthlyMetrics(clients, currentDate);
           months.push(monthData);
         } catch (error) {
           logger.error('CLIENT', `Failed to calculate metrics for month ${format(currentDate, 'yyyy-MM-dd')}`, error);

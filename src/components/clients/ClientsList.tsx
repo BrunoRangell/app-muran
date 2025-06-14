@@ -25,13 +25,6 @@ export const ClientsList = () => {
     setIsFormOpen(true);
   };
 
-  // Converter dados do Supabase para o tipo Client esperado
-  const processedClients = clients?.map(client => ({
-    ...client,
-    payment_type: client.payment_type as "pre" | "post",
-    status: client.status as "active" | "inactive"
-  })) || [];
-
   return (
     <>
       <ClientsHeader
@@ -45,7 +38,7 @@ export const ClientsList = () => {
       />
 
       <ClientsTable
-        clients={processedClients}
+        clients={clients || []}
         columns={columns}
         onEditClick={handleEditClick}
         sortConfig={{ key: "", direction: "asc" }}

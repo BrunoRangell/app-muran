@@ -12,7 +12,9 @@ interface ClientsTableProps {
 }
 
 export function ClientsTable({ data, platform = "meta" }: ClientsTableProps) {
-  const { reviewClient, processingIds } = useBatchOperations();
+  const { reviewClient, processingIds } = useBatchOperations({
+    platform: platform as "meta" | "google"
+  });
   
   return (
     <Card>
@@ -34,7 +36,7 @@ export function ClientsTable({ data, platform = "meta" }: ClientsTableProps) {
             </TableHeader>
             <TableBody>
               {data.map((client) => {
-                const isProcessing = processingIds.has(client.id);
+                const isProcessing = processingIds.includes(client.id);
                 const accountName = client[`${platform}_account_name`] || "Conta Principal";
                 const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
                 const budgetAmount = client.budget_amount || 0;
@@ -85,7 +87,7 @@ export function ClientsTable({ data, platform = "meta" }: ClientsTableProps) {
                         variant="default"
                         size="sm"
                         className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
-                        onClick={() => reviewClient(client.id)}
+                        onClick={() => reviewClient(client.id, client[`${platform}_account_id`])}
                         disabled={isProcessing}
                       >
                         {isProcessing ? "..." : "Revisar"}

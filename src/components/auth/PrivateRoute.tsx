@@ -4,7 +4,6 @@ import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
-import { logger } from "@/utils/logger";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -23,24 +22,24 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   const checkAuth = async () => {
     try {
       if (!initialCheckDone.current) {
-        logger.debug("AUTH", "Verificação inicial de autenticação");
+        console.log("Verificação inicial de autenticação...");
       }
       
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        logger.error("AUTH", "Erro ao verificar sessão", {
+        console.error("Erro ao verificar sessão:", {
           error: sessionError,
           timestamp: new Date().toISOString()
         });
         
         // Tenta renovar a sessão antes de falhar
         try {
-          logger.debug("AUTH", "Tentando renovar sessão após erro");
+          console.log("Tentando renovar sessão após erro...");
           const { data } = await supabase.auth.refreshSession();
           
           if (data.session) {
-            logger.info("AUTH", "Sessão renovada com sucesso após erro");
+            console.log("Sessão renovada com sucesso após erro.");
             setIsAuthenticated(true);
             
             if (requireAdmin) {
@@ -50,7 +49,7 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
             return;
           }
         } catch (refreshError) {
-          logger.error("AUTH", "Erro ao renovar sessão após erro inicial", refreshError);
+          console.error("Erro ao renovar sessão após erro inicial:", refreshError);
         }
         
         setIsAuthenticated(false);
@@ -65,15 +64,15 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
       }
 
       if (!session) {
-        logger.debug("AUTH", "Nenhuma sessão encontrada");
+        console.log("Nenhuma sessão encontrada");
         
         // Tenta renovar a sessão antes de falhar
         try {
-          logger.debug("AUTH", "Tentando renovar sessão inexistente");
+          console.log("Tentando renovar sessão inexistente...");
           const { data } = await supabase.auth.refreshSession();
           
           if (data.session) {
-            logger.info("AUTH", "Sessão criada com sucesso após não encontrar sessão");
+            console.log("Sessão criada com sucesso após não encontrar sessão.");
             setIsAuthenticated(true);
             
             if (requireAdmin) {
@@ -83,7 +82,7 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
             return;
           }
         } catch (refreshError) {
-          logger.error("AUTH", "Erro ao tentar renovar sessão inexistente", refreshError);
+          console.error("Erro ao tentar renovar sessão inexistente:", refreshError);
         }
         
         setIsAuthenticated(false);
@@ -92,7 +91,7 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
       }
 
       // Se chegou aqui, o usuário está autenticado
-      logger.debug("AUTH", "Sessão válida encontrada", {
+      console.log("Sessão válida encontrada", {
         user: session.user.email,
         expires: new Date(session.expires_at! * 1000)
       });
@@ -104,7 +103,7 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
       
       initialCheckDone.current = true;
     } catch (error) {
-      logger.error("AUTH", "Erro inesperado ao verificar autenticação", {
+      console.error("Erro inesperado ao verificar autenticação:", {
         error,
         timestamp: new Date().toISOString()
       });
@@ -126,7 +125,7 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
     }
     
     try {
-      logger.debug("AUTH", "Verificando permissões do usuário");
+      console.log("Verificando permissões do usuário...");
       const { data: teamMember, error: teamError } = await supabase
         .from('team_members')
         .select('role, permission')
@@ -134,7 +133,7 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
         .single();
 
       if (teamError) {
-        logger.error("AUTH", "Erro ao verificar permissões", {
+        console.error("Erro ao verificar permissões:", {
           error: teamError,
           timestamp: new Date().toISOString()
         });
@@ -148,11 +147,10 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
       }
 
       const userIsAdmin = teamMember?.permission === 'admin';
-      logger.debug("AUTH", "Status de permissão verificado", {
+      console.log("Usuário é admin?", userIsAdmin, {
         email: email,
         role: teamMember?.role,
-        permission: teamMember?.permission,
-        isAdmin: userIsAdmin
+        permission: teamMember?.permission
       });
       setIsAdmin(userIsAdmin);
 
@@ -164,7 +162,7 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
         });
       }
     } catch (error) {
-      logger.error("AUTH", "Erro ao verificar status de admin", error);
+      console.error("Erro ao verificar status de admin:", error);
       setIsAdmin(false);
     }
   };
@@ -175,7 +173,7 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
 
     // Configura listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      logger.debug("AUTH", "Mudança no estado de autenticação", {
+      console.log("Mudança no estado de autenticação:", {
         event,
         timestamp: new Date().toISOString()
       });

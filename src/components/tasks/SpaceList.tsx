@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { Space } from "@/types/task";
 import { Button } from "@/components/ui/button";
 import { Plus, Folder } from "lucide-react";
-import { SpaceItem } from "@/components/tasks/SpaceItem";
+import { SpaceItem } from "./SpaceItem";
 
 export const SpaceList = () => {
   const [spaces, setSpaces] = useState<Space[]>([

@@ -1,7 +1,6 @@
-
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
-import { logger } from "@/utils/logger";
 
 // Função para buscar os dados do cliente no Supabase
 const fetchClientData = async (clientId: string) => {
@@ -12,7 +11,7 @@ const fetchClientData = async (clientId: string) => {
     .single();
 
   if (error) {
-    logger.error("GOOGLE_ADS_REVIEW", "Erro ao buscar dados do cliente", error);
+    console.error("Erro ao buscar dados do cliente:", error);
     throw new Error(`Erro ao buscar dados do cliente: ${error.message}`);
   }
 
@@ -26,34 +25,35 @@ const analyzeClient = async (clientId: string) => {
 
   // Simulação de dados analisados
   return {
-    google_daily_budget_current: Math.floor(Math.random() * 100),
-    google_total_spent: Math.floor(Math.random() * 500),
-    google_last_five_days_spent: Math.floor(Math.random() * 200),
-    google_weighted_average: Math.random() * 10,
+    meta_daily_budget_current: Math.floor(Math.random() * 100),
+    meta_total_spent: Math.floor(Math.random() * 500),
+    meta_last_5_days_spent: Math.floor(Math.random() * 200),
+    meta_weighted_average: Math.random() * 10,
   };
 };
 
 // Função para salvar os resultados da análise no Supabase
 const saveReviewResults = async (clientId: string, analysisResults: any, usingCustomBudget: boolean) => {
   const reviewDate = new Date(); // Data da revisão
-  const { google_daily_budget_current, google_total_spent, google_last_five_days_spent } = analysisResults;
+  const { meta_daily_budget_current, meta_total_spent, meta_last_5_days_spent, meta_weighted_average } = analysisResults;
 
   const { data, error } = await supabase
-    .from("google_ads_reviews")
+    .from("daily_budget_reviews")
     .insert([
       {
         client_id: clientId,
-        review_date: reviewDate.toISOString().split('T')[0],
-        google_daily_budget_current,
-        google_total_spent,
-        google_last_five_days_spent,
+        review_date: reviewDate.toISOString(),
+        meta_daily_budget_current,
+        meta_total_spent,
+        meta_last_5_days_spent,
+        meta_weighted_average,
         using_custom_budget: usingCustomBudget,
       },
     ])
     .select();
 
   if (error) {
-    logger.error("GOOGLE_ADS_REVIEW", "Erro ao salvar resultados da análise", error);
+    console.error("Erro ao salvar resultados da análise:", error);
     throw new Error(`Erro ao salvar resultados da análise: ${error.message}`);
   }
 
@@ -62,8 +62,15 @@ const saveReviewResults = async (clientId: string, analysisResults: any, usingCu
 
 // Função para atualizar a tabela de clientes com os dados da última revisão
 const updateClientWithLastReview = async (clientId: string, reviewData: any) => {
-  // Note: removed last_review_id as it doesn't exist in the clients table schema
-  logger.info("GOOGLE_ADS_REVIEW", `Review completed for client ${clientId}`, reviewData);
+  const { error } = await supabase
+    .from("clients")
+    .update({ last_review_id: reviewData[0].id })
+    .eq("id", clientId);
+
+  if (error) {
+    console.error("Erro ao atualizar cliente com última revisão:", error);
+    throw new Error(`Erro ao atualizar cliente com última revisão: ${error.message}`);
+  }
 };
 
 // Serviço para realizar a revisão do cliente Google Ads
@@ -75,19 +82,15 @@ export const googleAdsClientReviewService = {
 
       // Determinar se está usando orçamento personalizado
       let usingCustomBudget = false;
-      
-      // Buscar orçamentos personalizados ativos
-      const today = new Date().toISOString().split('T')[0];
-      const { data: customBudgets } = await supabase
-        .from("custom_budgets")
-        .select("*")
-        .eq("client_id", clientId)
-        .eq("platform", "google")
-        .eq("is_active", true)
-        .lte("start_date", today)
-        .gte("end_date", today);
-        
-      usingCustomBudget = customBudgets && customBudgets.length > 0;
+      if (clientData.custom_budgets && clientData.custom_budgets.length > 0) {
+        const today = new Date();
+        const activeBudget = clientData.custom_budgets.find(budget => {
+          const startDate = new Date(budget.start_date);
+          const endDate = new Date(budget.end_date);
+          return startDate <= today && endDate >= today;
+        });
+        usingCustomBudget = !!activeBudget;
+      }
 
       // 2. Simular análise do cliente
       const analysisResults = await analyzeClient(clientId);
@@ -98,9 +101,9 @@ export const googleAdsClientReviewService = {
       // 4. Atualizar cliente com os dados da última revisão
       await updateClientWithLastReview(clientId, reviewData);
 
-      logger.info("GOOGLE_ADS_REVIEW", `Análise do cliente ${clientId} concluída com sucesso`);
+      console.log(`Análise do cliente ${clientId} concluída com sucesso.`);
     } catch (error: any) {
-      logger.error("GOOGLE_ADS_REVIEW", `Erro ao analisar cliente ${clientId}`, error);
+      console.error(`Erro ao analisar cliente ${clientId}:`, error);
       throw new Error(`Erro ao analisar cliente ${clientId}: ${error.message}`);
     }
   },

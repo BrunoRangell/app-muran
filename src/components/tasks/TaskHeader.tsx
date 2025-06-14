@@ -1,8 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import { TaskForm } from "@/components/tasks/TaskForm";
+import { TaskForm } from "./TaskForm";
 
 export const TaskHeader = () => {
   const [showNewTaskForm, setShowNewTaskForm] = useState(false);

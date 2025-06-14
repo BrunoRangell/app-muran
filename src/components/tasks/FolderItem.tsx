@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Folder, List as ListType } from "@/types/task";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { List, Plus } from "lucide-react";
-import { TaskList } from "@/components/tasks/TaskList";
+import { TaskList } from "./TaskList";
 
 interface FolderItemProps {
   folder: Folder;

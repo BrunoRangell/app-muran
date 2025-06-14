@@ -1,6 +1,8 @@
 
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/utils/logger";
 
 interface BatchReviewInfo {
@@ -14,234 +16,204 @@ interface BatchReviewInfo {
   };
 }
 
+export const usePlatformBatchReviews = () => {
+  const { data: lastMetaReview, refetch: refetchMeta } = useQuery({
+    queryKey: ['last-batch-review-meta'],
+    queryFn: async (): Promise<BatchReviewInfo | null> => {
+      logger.info('BATCH', 'Fetching last Meta Ads batch review');
+      
+      const { data } = await supabase
+        .from('system_logs')
+        .select('created_at, message, details')
+        .eq('event_type', 'batch_review_completed')
+        .or('details->>platform.eq.meta,details->platform.is.null')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return data ? {
+        lastBatchReviewTime: data.created_at,
+        details: data.details || {}
+      } : null;
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000,
+  });
+
+  const { data: lastGoogleReview, refetch: refetchGoogle } = useQuery({
+    queryKey: ['last-batch-review-google'],
+    queryFn: async (): Promise<BatchReviewInfo | null> => {
+      logger.info('BATCH', 'Fetching last Google Ads batch review');
+      
+      const { data } = await supabase
+        .from('system_logs')
+        .select('created_at, message, details')
+        .eq('event_type', 'batch_review_completed')
+        .eq('details->>platform', 'google')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return data ? {
+        lastBatchReviewTime: data.created_at,
+        details: data.details || {}
+      } : null;
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000,
+  });
+
+  return {
+    lastMetaReviewTime: lastMetaReview?.lastBatchReviewTime || null,
+    lastGoogleReviewTime: lastGoogleReview?.lastBatchReviewTime || null,
+    metaReviewDetails: lastMetaReview?.details || null,
+    googleReviewDetails: lastGoogleReview?.details || null,
+    refetchMeta,
+    refetchGoogle,
+    refetchBoth: () => {
+      refetchMeta();
+      refetchGoogle();
+    }
+  };
+};
+
 interface UseBatchOperationsProps {
-  platform: 'meta' | 'google';
+  platform: "meta" | "google";
   onComplete?: () => void;
 }
 
-export const useBatchOperations = (props?: UseBatchOperationsProps) => {
-  const [isBatchRunning, setIsBatchRunning] = useState(false);
+export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsProps) => {
+  const [processingIds, setProcessingIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
-  const [currentClientName, setCurrentClientName] = useState("");
-  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
-  const [lastMetaBatchReview, setLastMetaBatchReview] = useState<BatchReviewInfo | null>(null);
-  const [lastGoogleBatchReview, setLastGoogleBatchReview] = useState<BatchReviewInfo | null>(null);
+  const [currentClientName, setCurrentClientName] = useState<string>("");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const fetchBatchReviewInfo = async (platform: 'meta' | 'google'): Promise<BatchReviewInfo | null> => {
+  const reviewClient = async (clientId: string, accountId?: string) => {
+    if (processingIds.includes(clientId)) return;
+    
+    logger.info('BATCH', `Starting review for client ${clientId} (platform: ${platform})`);
+    setProcessingIds(prev => [...prev, clientId]);
+    
     try {
-      logger.info('BATCH_OPERATIONS', `Buscando informações de batch para ${platform}`);
-      
-      const { data, error } = await supabase
-        .from('system_configs')
-        .select('value')
-        .eq('key', `last_batch_review_${platform}`)
-        .maybeSingle();
+      const functionName = platform === "meta" ? "daily-meta-review" : "daily-google-review";
+      const body = {
+        clientId,
+        reviewDate: new Date().toISOString().split('T')[0],
+        fetchRealData: true,
+        ...(platform === "meta" ? { metaAccountId: accountId } : { googleAccountId: accountId })
+      };
 
+      const { data, error } = await supabase.functions.invoke(functionName, { body });
+      
       if (error) throw error;
+      logger.info('BATCH', `Client ${clientId} reviewed successfully`);
       
-      if (data?.value) {
-        const parsedValue = typeof data.value === 'string' ? 
-          JSON.parse(data.value) : data.value;
-          
-        if (typeof parsedValue === 'object' && parsedValue !== null) {
-          return {
-            lastBatchReviewTime: parsedValue.lastBatchReviewTime || new Date().toISOString(),
-            details: {
-              platform: parsedValue.details?.platform || platform,
-              successCount: parsedValue.details?.successCount || 0,
-              errorCount: parsedValue.details?.errorCount || 0,
-              totalClients: parsedValue.details?.totalClients || 0,
-              completedAt: parsedValue.details?.completedAt || new Date().toISOString()
-            }
-          };
-        }
-      }
-      
-      return null;
     } catch (error) {
-      logger.error('BATCH_OPERATIONS', `Erro ao buscar batch info para ${platform}`, error);
-      return null;
-    }
-  };
-
-  const fetchGoogleBatchReviewInfo = async (): Promise<BatchReviewInfo | null> => {
-    try {
-      logger.info('BATCH_OPERATIONS', 'Buscando informações de batch do Google');
-      
-      const { data, error } = await supabase
-        .from('system_configs')
-        .select('value')
-        .eq('key', 'last_batch_review_google')
-        .maybeSingle();
-
-      if (error) throw error;
-      
-      if (data?.value) {
-        const parsedValue = typeof data.value === 'string' ? 
-          JSON.parse(data.value) : data.value;
-          
-        if (typeof parsedValue === 'object' && parsedValue !== null) {
-          return {
-            lastBatchReviewTime: parsedValue.lastBatchReviewTime || new Date().toISOString(),
-            details: {
-              platform: parsedValue.details?.platform || 'google',
-              successCount: parsedValue.details?.successCount || 0,
-              errorCount: parsedValue.details?.errorCount || 0,
-              totalClients: parsedValue.details?.totalClients || 0,
-              completedAt: parsedValue.details?.completedAt || new Date().toISOString()
-            }
-          };
-        }
-      }
-      
-      return null;
-    } catch (error) {
-      logger.error('BATCH_OPERATIONS', 'Erro ao buscar batch info do Google', error);
-      return null;
-    }
-  };
-
-  const reviewClient = async (clientId: string) => {
-    setProcessingIds(prev => new Set(prev).add(clientId));
-    try {
-      // Simular processamento individual do cliente
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } finally {
-      setProcessingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(clientId);
-        return newSet;
+      logger.error('BATCH', `Error reviewing client ${clientId}`, error);
+      toast({
+        title: "Erro na análise",
+        description: `Erro ao analisar cliente: ${error.message}`,
+        variant: "destructive",
       });
+    } finally {
+      setProcessingIds(prev => prev.filter(id => id !== clientId));
     }
   };
 
   const reviewAllClients = async (clients: any[]) => {
+    if (isProcessing) return;
+    
+    logger.info('BATCH', `Starting batch review of ${clients.length} clients (${platform})`);
     setIsProcessing(true);
     setTotal(clients.length);
     setProgress(0);
     
+    let successCount = 0;
+    let errorCount = 0;
+    
     try {
       for (let i = 0; i < clients.length; i++) {
         const client = clients[i];
-        setCurrentClientName(client.company_name || client.name || `Cliente ${i + 1}`);
+        setCurrentClientName(client.company_name || `Cliente ${i + 1}`);
         setProgress(i + 1);
         
-        await reviewClient(client.id);
+        try {
+          const accountId = platform === "meta" 
+            ? client.meta_account_id 
+            : client.google_account_id;
+            
+          await reviewClient(client.id, accountId);
+          successCount++;
+        } catch (error) {
+          logger.error('BATCH', `Error in client ${client.company_name}`, error);
+          errorCount++;
+        }
       }
       
-      if (props?.onComplete) {
-        props.onComplete();
+      await logBatchCompletion(platform, successCount, errorCount, clients.length);
+      await invalidateQueries(queryClient);
+      
+      toast({
+        title: "Revisão em massa concluída",
+        description: `${successCount} clientes analisados com sucesso, ${errorCount} falhas.`,
+      });
+      
+      if (onComplete) {
+        onComplete();
       }
     } finally {
-      setIsProcessing(false);
-      setProgress(0);
-      setTotal(0);
-      setCurrentClientName("");
+      resetBatchState();
     }
   };
 
   const cancelBatchProcessing = () => {
+    logger.info('BATCH', 'Cancelling batch processing');
+    resetBatchState();
+  };
+
+  const resetBatchState = () => {
     setIsProcessing(false);
+    setProcessingIds([]);
+    setCurrentClientName("");
     setProgress(0);
     setTotal(0);
-    setCurrentClientName("");
-    setProcessingIds(new Set());
-  };
-
-  const runBatchMetaReviews = async () => {
-    setIsBatchRunning(true);
-    try {
-      logger.info('BATCH_OPERATIONS', 'Iniciando batch de revisões Meta');
-      const { data, error } = await supabase.functions.invoke('batch-meta-review');
-
-      if (error) {
-        logger.error('BATCH_OPERATIONS', 'Erro ao executar batch de revisões Meta', error);
-        throw new Error(error.message);
-      }
-
-      logger.info('BATCH_OPERATIONS', 'Batch de revisões Meta concluído', data);
-      setLastMetaBatchReview({
-        lastBatchReviewTime: new Date().toISOString(),
-        details: data
-      });
-      return data;
-    } catch (error: any) {
-      logger.error('BATCH_OPERATIONS', 'Erro ao rodar batch de revisões Meta', error);
-      throw new Error(error.message);
-    } finally {
-      setIsBatchRunning(false);
-    }
-  };
-
-  const runBatchGoogleReviews = async () => {
-    setIsBatchRunning(true);
-    try {
-      logger.info('BATCH_OPERATIONS', 'Iniciando batch de revisões Google Ads');
-      const { data, error } = await supabase.functions.invoke('batch-google-ads-review');
-
-      if (error) {
-        logger.error('BATCH_OPERATIONS', 'Erro ao executar batch de revisões Google Ads', error);
-        throw new Error(error.message);
-      }
-
-      logger.info('BATCH_OPERATIONS', 'Batch de revisões Google Ads concluído', data);
-       setLastGoogleBatchReview({
-        lastBatchReviewTime: new Date().toISOString(),
-        details: data
-      });
-      return data;
-    } catch (error: any) {
-      logger.error('BATCH_OPERATIONS', 'Erro ao rodar batch de revisões Google Ads', error);
-      throw new Error(error.message);
-    } finally {
-      setIsBatchRunning(false);
-    }
-  };
-
-  const saveBatchReviewInfo = async (platform: string, details: any) => {
-    try {
-      logger.info('BATCH_OPERATIONS', `Salvando informações de batch para ${platform}`, details);
-
-      const { error } = await supabase
-        .from('system_configs')
-        .upsert({
-          key: `last_batch_review_${platform}`,
-          value: {
-            lastBatchReviewTime: new Date().toISOString(),
-            details: details
-          }
-        }, { onConflict: 'key' });
-
-      if (error) {
-        logger.error('BATCH_OPERATIONS', `Erro ao salvar informações de batch para ${platform}`, error);
-        throw error;
-      }
-
-      logger.info('BATCH_OPERATIONS', `Informações de batch salvas com sucesso para ${platform}`);
-    } catch (error) {
-      logger.error('BATCH_OPERATIONS', `Erro ao salvar informações de batch para ${platform}`, error);
-      throw error;
-    }
   };
 
   return {
-    isBatchRunning,
-    isProcessing,
-    progress,
-    total,
-    currentClientName,
     processingIds,
     reviewClient,
     reviewAllClients,
     cancelBatchProcessing,
-    runBatchMetaReviews,
-    runBatchGoogleReviews,
-    saveBatchReviewInfo,
-    fetchBatchReviewInfo,
-    fetchGoogleBatchReviewInfo,
-    lastMetaBatchReview,
-    lastGoogleBatchReview
+    isProcessing,
+    progress,
+    total,
+    currentClientName
   };
 };
+
+// Função auxiliar para registrar conclusão do batch
+async function logBatchCompletion(platform: string, successCount: number, errorCount: number, totalClients: number) {
+  await supabase.from('system_logs').insert({
+    event_type: 'batch_review_completed',
+    message: `Revisão em massa ${platform} concluída`,
+    details: {
+      platform,
+      successCount,
+      errorCount,
+      totalClients,
+      completedAt: new Date().toISOString()
+    }
+  });
+}
+
+// Função auxiliar para invalidar queries
+async function invalidateQueries(queryClient: any) {
+  await queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+  await queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+  await queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+  await queryClient.invalidateQueries({ queryKey: ["last-batch-review-meta"] });
+  await queryClient.invalidateQueries({ queryKey: ["last-batch-review-google"] });
+}

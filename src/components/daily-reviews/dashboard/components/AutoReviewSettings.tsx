@@ -10,7 +10,6 @@ import { Loader, Zap, RefreshCw } from "lucide-react";
 import { useMetaReviewService } from "@/components/common/hooks/useMetaReviewService";
 import { ConnectionStatus } from "./auto-review/ConnectionStatus";
 import { TroubleshootingGuide } from "./auto-review/TroubleshootingGuide";
-import { logger } from "@/utils/logger";
 
 export function AutoReviewSettings() {
   const [isLoading, setIsLoading] = useState(false);
@@ -54,11 +53,7 @@ export function AutoReviewSettings() {
         .maybeSingle();
       
       if (configData?.value) {
-        // Converter o valor para string se necessário
-        const timeValue = typeof configData.value === 'string' 
-          ? configData.value 
-          : JSON.stringify(configData.value);
-        setLastReviewTime(timeValue);
+        setLastReviewTime(configData.value);
       }
       
       const { data: autoReviewConfig } = await supabase
@@ -68,14 +63,11 @@ export function AutoReviewSettings() {
         .maybeSingle();
       
       if (autoReviewConfig?.value !== undefined) {
-        const enabledValue = typeof autoReviewConfig.value === 'boolean' 
-          ? autoReviewConfig.value 
-          : autoReviewConfig.value === "true";
-        setIsAutoReviewEnabled(enabledValue);
+        setIsAutoReviewEnabled(autoReviewConfig.value === "true");
       }
       
     } catch (error) {
-      logger.error("AUTO_REVIEW", "Erro ao carregar configurações", error);
+      console.error("Erro ao carregar configurações:", error);
     } finally {
       setIsLoading(false);
     }
@@ -95,14 +87,14 @@ export function AutoReviewSettings() {
       if (existingConfig) {
         await supabase
           .from("system_configs")
-          .update({ value: newValue })
+          .update({ value: newValue.toString() })
           .eq("id", existingConfig.id);
       } else {
         await supabase
           .from("system_configs")
           .insert({
             key: "auto_review_enabled",
-            value: newValue
+            value: newValue.toString()
           });
       }
       
@@ -114,7 +106,7 @@ export function AutoReviewSettings() {
       });
       
     } catch (error) {
-      logger.error("AUTO_REVIEW", "Erro ao alterar configuração", error);
+      console.error("Erro ao alterar configuração:", error);
       setIsAutoReviewEnabled(!isAutoReviewEnabled);
       toast({
         title: "Erro",

@@ -24,7 +24,7 @@ export class DataService {
   async getAll(filters: Record<string, any> = {}) {
     logger.info("DATA_SERVICE", `Buscando dados de ${this.config.tableName}`, filters);
 
-    let query = (supabase as any)
+    let query = supabase
       .from(this.config.tableName)
       .select(this.config.selectFields!);
 
@@ -58,7 +58,7 @@ export class DataService {
   async getById(id: string | number) {
     logger.info("DATA_SERVICE", `Buscando item ${id} de ${this.config.tableName}`);
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from(this.config.tableName)
       .select(this.config.selectFields!)
       .eq('id', id)
@@ -72,12 +72,12 @@ export class DataService {
     return data;
   }
 
-  async create(insertData: any) {
-    logger.info("DATA_SERVICE", `Criando item em ${this.config.tableName}`, insertData);
+  async create(data: Record<string, any>) {
+    logger.info("DATA_SERVICE", `Criando item em ${this.config.tableName}`, data);
 
-    const { data: result, error } = await (supabase as any)
+    const { data: result, error } = await supabase
       .from(this.config.tableName)
-      .insert([insertData])
+      .insert(data)
       .select()
       .single();
 
@@ -90,12 +90,12 @@ export class DataService {
     return result;
   }
 
-  async update(id: string | number, updateData: any) {
-    logger.info("DATA_SERVICE", `Atualizando item ${id}`, updateData);
+  async update(id: string | number, data: Record<string, any>) {
+    logger.info("DATA_SERVICE", `Atualizando item ${id}`, data);
 
-    const { data: result, error } = await (supabase as any)
+    const { data: result, error } = await supabase
       .from(this.config.tableName)
-      .update(updateData)
+      .update(data)
       .eq('id', id)
       .select()
       .single();
@@ -112,7 +112,7 @@ export class DataService {
   async delete(id: string | number) {
     logger.info("DATA_SERVICE", `Deletando item ${id} de ${this.config.tableName}`);
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from(this.config.tableName)
       .delete()
       .eq('id', id);
@@ -129,7 +129,7 @@ export class DataService {
   async search(searchTerm: string, searchFields: string[]) {
     logger.info("DATA_SERVICE", `Buscando em ${this.config.tableName}`, { searchTerm, searchFields });
 
-    let query = (supabase as any)
+    let query = supabase
       .from(this.config.tableName)
       .select(this.config.selectFields!);
 
@@ -158,7 +158,7 @@ export class DataService {
   }
 }
 
-// Instâncias pré-configuradas simplificadas
+// Instâncias pré-configuradas
 export const clientsService = new DataService({
   tableName: 'clients',
   orderBy: 'company_name',

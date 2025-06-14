@@ -1,90 +1,49 @@
-export type LogLevel = "debug" | "info" | "warn" | "error";
+type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+type LogModule = 'AUTH' | 'API' | 'ERROR' | 'VALIDATION' | 'PAYMENT' | 'CLIENT' | 'BATCH' | 'GOOGLE_ADS' | 'META_ADS' | 'SYSTEM' | 'VALIDATOR' | 'COSTS' | 'FORM_VALIDATION' | 'COSTS_PAGE' | 'DATA_SERVICE' | 'CACHE' | 'GOALS' | 'TASKS';
 
-export type LogModule = 
-  | "AUTH" 
-  | "CLIENT" 
-  | "PAYMENT" 
-  | "COST" 
-  | "COSTS"
-  | "SYSTEM" 
-  | "DATA_SERVICE" 
-  | "META_ADS" 
-  | "GOOGLE_ADS" 
-  | "BATCH" 
-  | "GOALS"
-  | "VALIDATOR"
-  | "VALIDATION"
-  | "COSTS_PAGE"
-  | "TASKS"
-  | "CLIENT_INFO"
-  | "AUTO_REVIEW"
-  | "GOOGLE_ADS_REVIEW"
-  | "BATCH_OPERATIONS"
-  | "CACHE";
-
-export interface LogEntry {
-  timestamp: string;
+interface LogEntry {
   level: LogLevel;
   module: LogModule;
   message: string;
   data?: any;
+  timestamp: string;
 }
 
 class Logger {
-  private logs: LogEntry[] = [];
-  private maxLogs = 1000;
-
-  private log(level: LogLevel, module: LogModule, message: string, data?: any) {
-    const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
-      level,
-      module,
-      message,
-      data
-    };
-
-    this.logs.push(entry);
-    
-    if (this.logs.length > this.maxLogs) {
-      this.logs = this.logs.slice(-this.maxLogs);
-    }
-
-    const logMethod = level === "error" ? console.error : 
-                     level === "warn" ? console.warn : 
-                     level === "debug" ? console.debug : console.log;
+  private isDev = import.meta.env.DEV;
+  
+  private formatMessage(module: LogModule, message: string, data?: any): string {
+    const timestamp = new Date().toISOString();
+    let formattedMessage = `[${module}] ${message}`;
     
     if (data) {
-      logMethod(`[${module}] ${message}`, data);
-    } else {
-      logMethod(`[${module}] ${message}`);
+      formattedMessage += ` - ${JSON.stringify(data)}`;
     }
+    
+    return formattedMessage;
   }
 
-  debug(module: LogModule, message: string, data?: any) {
-    this.log("debug", module, message, data);
+  info(module: LogModule, message: string, data?: any): void {
+    if (!this.isDev) return;
+    console.info(this.formatMessage(module, message, data));
   }
 
-  info(module: LogModule, message: string, data?: any) {
-    this.log("info", module, message, data);
+  warn(module: LogModule, message: string, data?: any): void {
+    console.warn(this.formatMessage(module, message, data));
   }
 
-  warn(module: LogModule, message: string, data?: any) {
-    this.log("warn", module, message, data);
+  error(module: LogModule, message: string, error?: any): void {
+    const errorData = error instanceof Error ? { 
+      message: error.message, 
+      stack: error.stack 
+    } : error;
+    
+    console.error(this.formatMessage(module, message, errorData));
   }
 
-  error(module: LogModule, message: string, data?: any) {
-    this.log("error", module, message, data);
-  }
-
-  getLogs(module?: LogModule, level?: LogLevel): LogEntry[] {
-    return this.logs.filter(log => 
-      (!module || log.module === module) && 
-      (!level || log.level === level)
-    );
-  }
-
-  clearLogs() {
-    this.logs = [];
+  debug(module: LogModule, message: string, data?: any): void {
+    if (!this.isDev) return;
+    console.debug(this.formatMessage(module, message, data));
   }
 }
 

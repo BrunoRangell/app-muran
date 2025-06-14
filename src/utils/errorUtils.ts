@@ -1,5 +1,5 @@
 
-import { showErrorToast } from "@/utils/toastUtils";
+import { showErrorToast } from "./toastUtils";
 
 // Tipos de erro padronizados
 export enum ErrorType {
@@ -51,6 +51,8 @@ export const classifyError = (error: any): ErrorType => {
 
 // Função unificada para tratamento de erros
 export const handleError = (error: any, context?: string) => {
+  console.error(`Erro${context ? ` em ${context}` : ""}:`, error);
+  
   const errorType = classifyError(error);
   const message = ERROR_MESSAGES[errorType];
   

@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -11,9 +12,11 @@ interface ClientRowProps {
 }
 
 export function ClientRow({ client, platform = "meta" }: ClientRowProps) {
-  const { reviewClient, processingIds } = useBatchOperations();
+  const { reviewClient, processingIds } = useBatchOperations({
+    platform: platform as "meta" | "google"
+  });
   
-  const isProcessing = processingIds.has(client.id);
+  const isProcessing = processingIds.includes(client.id);
   
   // Preparar dados para exibição
   const accountName = client[`${platform}_account_name`] || "Conta Principal";
@@ -62,7 +65,7 @@ export function ClientRow({ client, platform = "meta" }: ClientRowProps) {
           variant="default"
           size="sm"
           className="bg-[#ff6e00] hover:bg-[#ff6e00]/90"
-          onClick={() => reviewClient(client.id)}
+          onClick={() => reviewClient(client.id, client[`${platform}_account_id`])}
           disabled={isProcessing}
         >
           {isProcessing ? "..." : "Revisar"}

@@ -11,7 +11,6 @@ import { supabase } from "@/lib/supabase";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { PaymentForm, PaymentFormData } from "./payment-form/PaymentForm";
-import { mapSupabaseToClient } from "@/types/client";
 
 interface NewPaymentDialogProps {
   open: boolean;
@@ -40,7 +39,7 @@ export function NewPaymentDialog({
         .single();
       
       if (error) throw error;
-      return mapSupabaseToClient(data);
+      return data;
     },
     enabled: !!clientId
   });

@@ -38,11 +38,3 @@ export const ACQUISITION_CHANNELS = [
   "Prospecção fria",
   "outro"
 ] as const;
-
-// Função helper para converter dados do Supabase para o tipo Client
-export function mapSupabaseToClient(data: any): Client {
-  return {
-    ...data,
-    payment_type: data.payment_type as "pre" | "post"
-  };
-}

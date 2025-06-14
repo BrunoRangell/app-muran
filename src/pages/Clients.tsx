@@ -1,55 +1,49 @@
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { Client, mapSupabaseToClient } from "@/types/client";
+import { Card } from "@/components/ui/card";
 import { ClientsList } from "@/components/clients/ClientsList";
-import { ClientsDialog } from "@/components/clients/components/ClientsDialog";
-import { LoadingState } from "@/components/clients/components/LoadingState";
-import { ErrorState } from "@/components/clients/components/ErrorState";
+import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
+import { useUnifiedClientData } from "@/hooks/common/useUnifiedClientData";
+import { AlertCircle } from "lucide-react";
+import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
+import { logger } from "@/utils/logger";
 
-export default function Clients() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+const Clients = () => {
+  const { clients, isLoading, error } = useUnifiedClientData({ includeInactive: true });
 
-  const {
-    data: rawClients = [],
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["clients"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .order("company_name", { ascending: true });
+  if (error) {
+    logger.error('CLIENT', 'Failed to load clients page', error);
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4">
+        <AlertCircle className="h-12 w-12" />
+        <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
+        <p className="text-center text-gray-600">
+          Não foi possível carregar a lista de clientes.
+          <br />
+          Por favor, tente novamente mais tarde.
+        </p>
+      </div>
+    );
+  }
 
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Converter dados do Supabase para o tipo Client
-  const clients: Client[] = rawClients.map(mapSupabaseToClient);
-
-  const filteredClients = clients.filter((client) =>
-    client.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.contact_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  if (isLoading) return <LoadingState />;
-  if (error) return <ErrorState error={error} onRetry={() => refetch()} />;
+  if (isLoading) {
+    return <ClientsLoadingState />;
+  }
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <ClientsList />
+    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
+          Lista de Clientes
+        </h1>
+      </div>
 
-      <ClientsDialog
-        isOpen={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        selectedClient={null}
-      />
+      <Card className="p-2 md:p-6">
+        <ClientsList />
+      </Card>
+
+      <ClientsRanking clients={clients || []} />
     </div>
   );
-}
+};
+
+export default Clients;

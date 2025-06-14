@@ -1,13 +1,7 @@
 
 import { AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
-interface ErrorStateProps {
-  error?: Error;
-  onRetry?: () => void;
-}
-
-export const ErrorState = ({ error, onRetry }: ErrorStateProps) => {
+export const ErrorState = () => {
   return (
     <div className="flex flex-col items-center justify-center p-8 gap-4">
       <AlertCircle className="h-12 w-12 text-red-500" />
@@ -15,14 +9,6 @@ export const ErrorState = ({ error, onRetry }: ErrorStateProps) => {
       <p className="text-gray-600">
         Não foi possível carregar os dados. Tente novamente mais tarde.
       </p>
-      {error && (
-        <p className="text-sm text-gray-500 mt-2">{error.message}</p>
-      )}
-      {onRetry && (
-        <Button onClick={onRetry} variant="outline" className="mt-2">
-          Tentar novamente
-        </Button>
-      )}
     </div>
   );
 };
