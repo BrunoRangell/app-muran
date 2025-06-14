@@ -1,4 +1,3 @@
-
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export type LogModule = 
@@ -20,7 +19,8 @@ export type LogModule =
   | "CLIENT_INFO"
   | "AUTO_REVIEW"
   | "GOOGLE_ADS_REVIEW"
-  | "BATCH_OPERATIONS";
+  | "BATCH_OPERATIONS"
+  | "CACHE";
 
 export interface LogEntry {
   timestamp: string;

@@ -19,12 +19,7 @@ export const useCosts = (filters?: CostFilters) => {
 
       let query = supabase
         .from("costs")
-        .select(`
-          *,
-          costs_categories (
-            category_id
-          )
-        `);
+        .select("*");
 
       if (filters?.startDate) {
         query = query.gte("date", filters.startDate);
@@ -32,10 +27,6 @@ export const useCosts = (filters?: CostFilters) => {
 
       if (filters?.endDate) {
         query = query.lte("date", filters.endDate);
-      }
-
-      if (filters?.categories?.length) {
-        query = query.in("category_id", filters.categories);
       }
 
       if (filters?.search) {
@@ -55,7 +46,12 @@ export const useCosts = (filters?: CostFilters) => {
   });
 
   const createCost = useMutation({
-    mutationFn: async (newCost: Omit<Cost, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (newCost: { 
+      name: string; 
+      amount: number; 
+      date: string; 
+      description?: string; 
+    }) => {
       logger.info("COSTS", "Criando custo", newCost);
 
       const { data, error } = await supabase
@@ -84,7 +80,13 @@ export const useCosts = (filters?: CostFilters) => {
   });
 
   const updateCost = useMutation({
-    mutationFn: async (updatedCost: Partial<Cost> & { id: number }) => {
+    mutationFn: async (updatedCost: { 
+      id: number; 
+      name?: string; 
+      amount?: number; 
+      date?: string; 
+      description?: string; 
+    }) => {
       logger.info("COSTS", "Atualizando custo", updatedCost);
 
       const { id, ...updateData } = updatedCost;

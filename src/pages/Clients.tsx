@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabase";
 import { Client, mapSupabaseToClient } from "@/types/client";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientsDialog } from "@/components/clients/components/ClientsDialog";
-import { ClientsHeader } from "@/components/clients/components/ClientsHeader";
 import { LoadingState } from "@/components/clients/components/LoadingState";
 import { ErrorState } from "@/components/clients/components/ErrorState";
 
@@ -44,23 +43,12 @@ export default function Clients() {
 
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <ClientsHeader
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        onNewClient={() => setIsDialogOpen(true)}
-        totalClients={clients.length}
-        filteredClients={filteredClients.length}
-      />
-
-      <ClientsList clients={filteredClients} />
+      <ClientsList />
 
       <ClientsDialog
-        open={isDialogOpen}
+        isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        onSuccess={() => {
-          refetch();
-          setIsDialogOpen(false);
-        }}
+        selectedClient={null}
       />
     </div>
   );

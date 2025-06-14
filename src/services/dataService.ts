@@ -72,12 +72,12 @@ export class DataService {
     return data;
   }
 
-  async create(data: Record<string, any>) {
-    logger.info("DATA_SERVICE", `Criando item em ${this.config.tableName}`, data);
+  async create(insertData: any) {
+    logger.info("DATA_SERVICE", `Criando item em ${this.config.tableName}`, insertData);
 
     const { data: result, error } = await supabase
       .from(this.config.tableName)
-      .insert(data)
+      .insert([insertData])
       .select()
       .single();
 
@@ -90,12 +90,12 @@ export class DataService {
     return result;
   }
 
-  async update(id: string | number, data: Record<string, any>) {
-    logger.info("DATA_SERVICE", `Atualizando item ${id}`, data);
+  async update(id: string | number, updateData: any) {
+    logger.info("DATA_SERVICE", `Atualizando item ${id}`, updateData);
 
     const { data: result, error } = await supabase
       .from(this.config.tableName)
-      .update(data)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
