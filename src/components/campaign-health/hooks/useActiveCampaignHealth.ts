@@ -1,8 +1,8 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { ClientHealthData, CampaignStatus, PlatformHealthData, HealthStats } from "../types";
+import { CampaignHealthService } from "../services/campaignHealthService";
+import { ClientHealthData, CampaignStatus, PlatformHealthData } from "../types";
 
 // Função para determinar o status baseado nos dados
 function determineStatus(hasAccount: boolean, activeCampaigns: number, costToday: number, impressionsToday: number): CampaignStatus {
@@ -37,93 +37,6 @@ function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: Platfo
   if (platforms.some(p => p?.status === "sem-campanhas")) return "sem-campanhas";
   
   return "nao-configurado";
-}
-
-// Busca dados da tabela campaign_health_snapshots
-async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
-  console.log("🔍 Buscando dados de snapshots de saúde de campanhas...");
-  
-  try {
-    // Buscar snapshots do dia atual
-    const today = new Date().toISOString().split('T')[0];
-    
-    const { data: snapshots, error } = await supabase
-      .from('campaign_health_snapshots')
-      .select(`
-        *,
-        clients!inner(id, company_name)
-      `)
-      .eq('snapshot_date', today)
-      .order('clients(company_name)');
-
-    if (error) {
-      console.error("❌ Erro ao buscar snapshots:", error);
-      throw error;
-    }
-
-    if (!snapshots || snapshots.length === 0) {
-      console.log("⚠️ Nenhum snapshot encontrado para hoje. Gerando dados...");
-      
-      // Se não há snapshots para hoje, chamar a edge function para gerar
-      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('active-campaigns-health', {
-        body: { timestamp: new Date().toISOString() }
-      });
-
-      if (edgeError) {
-        console.error("❌ Erro na edge function:", edgeError);
-        // Em caso de erro, tentar buscar dados do último dia disponível
-        const { data: lastSnapshots, error: lastError } = await supabase
-          .from('campaign_health_snapshots')
-          .select(`
-            *,
-            clients!inner(id, company_name)
-          `)
-          .order('snapshot_date', { ascending: false })
-          .order('clients(company_name)')
-          .limit(50);
-
-        if (lastError || !lastSnapshots?.length) {
-          console.log("⚠️ Nenhum dado histórico encontrado");
-          return [];
-        }
-
-        console.log(`📅 Usando dados do último snapshot disponível`);
-        return processSnapshots(lastSnapshots);
-      }
-
-      if (!edgeData?.success) {
-        throw new Error("Erro ao gerar dados de saúde");
-      }
-
-      // Buscar novamente os snapshots após a geração
-      const { data: newSnapshots, error: newError } = await supabase
-        .from('campaign_health_snapshots')
-        .select(`
-          *,
-          clients!inner(id, company_name)
-        `)
-        .eq('snapshot_date', today)
-        .order('clients(company_name)');
-
-      if (newError) {
-        console.error("❌ Erro ao buscar novos snapshots:", newError);
-        throw newError;
-      }
-
-      if (!newSnapshots || newSnapshots.length === 0) {
-        console.log("⚠️ Ainda não há snapshots após gerar dados");
-        return [];
-      }
-
-      return processSnapshots(newSnapshots);
-    }
-
-    return processSnapshots(snapshots);
-
-  } catch (error) {
-    console.error("❌ Erro ao buscar dados de saúde:", error);
-    throw error;
-  }
 }
 
 // Processa os snapshots e converte para ClientHealthData
@@ -197,6 +110,54 @@ function processSnapshots(snapshots: any[]): ClientHealthData[] {
   return processedData;
 }
 
+// Busca dados da tabela campaign_health_snapshots
+async function fetchActiveCampaignHealth(): Promise<ClientHealthData[]> {
+  console.log("🔍 Buscando dados de snapshots de saúde de campanhas...");
+  
+  try {
+    // Buscar snapshots do dia atual primeiro
+    const todaySnapshots = await CampaignHealthService.fetchTodaySnapshots();
+    
+    if (todaySnapshots && todaySnapshots.length > 0) {
+      console.log(`✅ Encontrados ${todaySnapshots.length} snapshots de hoje`);
+      return processSnapshots(todaySnapshots);
+    }
+
+    console.log("⚠️ Nenhum snapshot encontrado para hoje. Gerando dados...");
+    
+    // Se não há snapshots para hoje, tentar gerar
+    const generateSuccess = await CampaignHealthService.generateSnapshots();
+    
+    if (generateSuccess) {
+      // Aguardar um pouco para os dados serem processados
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Buscar novamente após gerar
+      const newSnapshots = await CampaignHealthService.fetchTodaySnapshots();
+      if (newSnapshots && newSnapshots.length > 0) {
+        console.log(`✅ Snapshots gerados com sucesso: ${newSnapshots.length} registros`);
+        return processSnapshots(newSnapshots);
+      }
+    }
+
+    console.log("⚠️ Falha ao gerar dados. Usando dados históricos...");
+    
+    // Como fallback, buscar dados mais recentes disponíveis
+    const latestSnapshots = await CampaignHealthService.fetchLatestSnapshots();
+    if (latestSnapshots && latestSnapshots.length > 0) {
+      console.log(`📅 Usando dados históricos: ${latestSnapshots.length} registros`);
+      return processSnapshots(latestSnapshots);
+    }
+
+    console.log("⚠️ Nenhum dado encontrado");
+    return [];
+
+  } catch (error) {
+    console.error("❌ Erro ao buscar dados de saúde:", error);
+    throw error;
+  }
+}
+
 export function useActiveCampaignHealth() {
   const [filterValue, setFilterValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | "all">("all");
@@ -206,7 +167,7 @@ export function useActiveCampaignHealth() {
   const queryClient = useQueryClient();
   const queryKey = ["active-campaign-health"];
 
-  // Query para buscar dados com cache de 5 minutos (mais rápido que antes)
+  // Query para buscar dados com cache de 5 minutos
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey,
     queryFn: fetchActiveCampaignHealth,
@@ -244,17 +205,8 @@ export function useActiveCampaignHealth() {
       // Invalidar cache local primeiro
       await queryClient.invalidateQueries({ queryKey });
       
-      // Chamar edge function para gerar novos dados
-      const { error: edgeError } = await supabase.functions.invoke('active-campaigns-health', {
-        body: { 
-          timestamp: new Date().toISOString(),
-          forceRefresh: true 
-        }
-      });
-
-      if (edgeError) {
-        console.error("❌ Erro ao forçar atualização:", edgeError);
-      }
+      // Chamar serviço para forçar atualização
+      await CampaignHealthService.forceRefreshSnapshots();
 
       // Refetch dos dados
       await refetch();
@@ -283,7 +235,7 @@ export function useActiveCampaignHealth() {
   }
 
   // Estatísticas para dashboard
-  const stats: HealthStats = {
+  const stats = {
     totalClients: data?.length || 0,
     functioning: filteredData.filter(client => client.overallStatus === "funcionando").length,
     noSpend: filteredData.filter(client => client.overallStatus === "sem-veiculacao").length,
