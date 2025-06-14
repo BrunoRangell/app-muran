@@ -1,4 +1,3 @@
-
 import { useMetricsData } from "./metrics/useMetricsData";
 import { MetricsChart } from "./metrics/MetricsChart";
 import { MetricsHeader } from "./metrics/MetricsHeader";
@@ -6,7 +5,6 @@ import { MetricsSwitch } from "./metrics/components/MetricsSwitch";
 import { useFinancialMetrics } from "./metrics/hooks/useFinancialMetrics";
 import { METRIC_COLORS } from "./metrics/constants/metricColors";
 import { Card } from "@/components/ui/card";
-
 export const FinancialMetrics = () => {
   const {
     periodFilter,
@@ -19,28 +17,25 @@ export const FinancialMetrics = () => {
     handlePeriodChange,
     setIsCustomDateOpen,
     setDateRange,
-    setSelectedMetrics,
+    setSelectedMetrics
   } = useFinancialMetrics();
-
-  const { data: filteredClientsData } = useMetricsData(dateRange);
-
+  const {
+    data: filteredClientsData
+  } = useMetricsData(dateRange);
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
-      currency: "BRL",
+      currency: "BRL"
     }).format(value);
   };
-
   const formatDecimal = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
       minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
+      maximumFractionDigits: 1
     }).format(value);
   };
-
   const getActiveLines = () => {
     const lines = [];
-    
     if (selectedMetrics.mrr) {
       lines.push({
         key: "mrr",
@@ -49,7 +44,6 @@ export const FinancialMetrics = () => {
         yAxisId: "mrr"
       });
     }
-    
     if (selectedMetrics.clients) {
       lines.push({
         key: "clients",
@@ -58,7 +52,6 @@ export const FinancialMetrics = () => {
         yAxisId: "clients"
       });
     }
-    
     if (selectedMetrics.churn) {
       lines.push({
         key: "churn",
@@ -67,7 +60,6 @@ export const FinancialMetrics = () => {
         yAxisId: "clients"
       });
     }
-    
     if (selectedMetrics.churnRate) {
       lines.push({
         key: "churnRate",
@@ -76,7 +68,6 @@ export const FinancialMetrics = () => {
         yAxisId: "percentage"
       });
     }
-    
     if (selectedMetrics.newClients) {
       lines.push({
         key: "newClients",
@@ -85,29 +76,19 @@ export const FinancialMetrics = () => {
         yAxisId: "clients"
       });
     }
-    
     return lines;
   };
-
   const handleMetricChange = (metric: string, checked: boolean) => {
-    setSelectedMetrics(prev => ({ ...prev, [metric]: checked }));
+    setSelectedMetrics(prev => ({
+      ...prev,
+      [metric]: checked
+    }));
   };
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-bold">Métricas Financeiras</h2>
+  return <div className="space-y-6">
       
-      {isLoadingAllClients ? (
-        <p className="text-gray-600">Carregando métricas...</p>
-      ) : (
-        <>
-          {allClientsMetrics && (
-            <MetricsHeader
-              metrics={allClientsMetrics}
-              formatCurrency={formatCurrency}
-              formatDecimal={formatDecimal}
-            />
-          )}
+      
+      {isLoadingAllClients ? <p className="text-gray-600">Carregando métricas...</p> : <>
+          {allClientsMetrics && <MetricsHeader metrics={allClientsMetrics} formatCurrency={formatCurrency} formatDecimal={formatDecimal} />}
 
           <div className="space-y-6">
             <Card className="p-6">
@@ -116,28 +97,12 @@ export const FinancialMetrics = () => {
                   <h3 className="text-lg font-semibold">Métricas ao Longo do Tempo</h3>
                 </div>
 
-                <MetricsSwitch 
-                  selectedMetrics={selectedMetrics}
-                  onMetricChange={handleMetricChange}
-                />
+                <MetricsSwitch selectedMetrics={selectedMetrics} onMetricChange={handleMetricChange} />
 
-                <MetricsChart
-                  title=""
-                  data={filteredClientsData || []}
-                  periodFilter={periodFilter}
-                  onPeriodChange={handlePeriodChange}
-                  isCustomDateOpen={isCustomDateOpen}
-                  onCustomDateOpenChange={setIsCustomDateOpen}
-                  dateRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                  lines={getActiveLines()}
-                  clients={clients}
-                />
+                <MetricsChart title="" data={filteredClientsData || []} periodFilter={periodFilter} onPeriodChange={handlePeriodChange} isCustomDateOpen={isCustomDateOpen} onCustomDateOpenChange={setIsCustomDateOpen} dateRange={dateRange} onDateRangeChange={setDateRange} lines={getActiveLines()} clients={clients} />
               </div>
             </Card>
           </div>
-        </>
-      )}
-    </div>
-  );
+        </>}
+    </div>;
 };
