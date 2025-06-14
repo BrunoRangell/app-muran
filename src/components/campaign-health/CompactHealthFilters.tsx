@@ -4,27 +4,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, RefreshCw, Filter } from "lucide-react";
-import { useActiveCampaignHealth } from "./hooks/useActiveCampaignHealth";
 import { CampaignStatus } from "./types";
 
-export function CompactHealthFilters() {
-  const {
-    filterValue,
-    setFilterValue,
-    statusFilter,
-    setStatusFilter,
-    platformFilter,
-    setPlatformFilter,
-    handleRefresh,
-    isFetching
-  } = useActiveCampaignHealth();
+interface CompactHealthFiltersProps {
+  filterValue: string;
+  setFilterValue: (value: string) => void;
+  statusFilter: CampaignStatus | "all";
+  setStatusFilter: (value: CampaignStatus | "all") => void;
+  platformFilter: 'meta' | 'google' | 'all';
+  setPlatformFilter: (value: 'meta' | 'google' | 'all') => void;
+  handleRefresh: () => void;
+  isFetching: boolean;
+}
 
+export function CompactHealthFilters({
+  filterValue,
+  setFilterValue,
+  statusFilter,
+  setStatusFilter,
+  platformFilter,
+  setPlatformFilter,
+  handleRefresh,
+  isFetching
+}: CompactHealthFiltersProps) {
   const handleStatusChange = (value: string) => {
+    console.log("🔧 Mudando filtro de status para:", value);
     setStatusFilter(value as CampaignStatus | "all");
   };
 
   const handlePlatformChange = (value: string) => {
+    console.log("🔧 Mudando filtro de plataforma para:", value);
     setPlatformFilter(value as 'meta' | 'google' | 'all');
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("🔧 Mudando filtro de busca para:", e.target.value);
+    setFilterValue(e.target.value);
   };
 
   return (
@@ -38,7 +53,7 @@ export function CompactHealthFilters() {
               placeholder="Buscar cliente..."
               className="pl-9 h-9"
               value={filterValue}
-              onChange={e => setFilterValue(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
           

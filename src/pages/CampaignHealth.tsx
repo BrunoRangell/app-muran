@@ -2,8 +2,26 @@
 import { CompactHealthFilters } from "@/components/campaign-health/CompactHealthFilters";
 import { CompactHealthMetrics } from "@/components/campaign-health/CompactHealthMetrics";
 import { HealthTableView } from "@/components/campaign-health/HealthTableView";
+import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
 
 export default function CampaignHealth() {
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    filterValue,
+    setFilterValue,
+    statusFilter,
+    setStatusFilter,
+    platformFilter,
+    setPlatformFilter,
+    handleAction,
+    handleRefresh,
+    lastRefresh,
+    stats
+  } = useActiveCampaignHealth();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -20,11 +38,25 @@ export default function CampaignHealth() {
         {/* Métricas Compactas */}
         <CompactHealthMetrics />
         
-        {/* Filtros Compactos */}
-        <CompactHealthFilters />
+        {/* Filtros Compactos - agora recebe props */}
+        <CompactHealthFilters 
+          filterValue={filterValue}
+          setFilterValue={setFilterValue}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          platformFilter={platformFilter}
+          setPlatformFilter={setPlatformFilter}
+          handleRefresh={handleRefresh}
+          isFetching={isFetching}
+        />
         
-        {/* Tabela Principal */}
-        <HealthTableView />
+        {/* Tabela Principal - agora recebe props */}
+        <HealthTableView 
+          data={data}
+          isLoading={isLoading}
+          error={error}
+          handleAction={handleAction}
+        />
       </div>
     </div>
   );

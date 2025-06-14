@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CampaignHealthService } from "../services/campaignHealthService";
@@ -21,21 +20,38 @@ function determineStatus(hasAccount: boolean, activeCampaigns: number, costToday
   }
 }
 
-// Função para determinar status geral do cliente
+// Função corrigida para determinar status geral do cliente
 function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: PlatformHealthData): CampaignStatus {
   const platforms = [metaAds, googleAds].filter(Boolean);
   
   if (platforms.length === 0) return "nao-configurado";
   
-  // Se alguma plataforma está funcionando, cliente está funcionando
-  if (platforms.some(p => p?.status === "funcionando")) return "funcionando";
+  console.log("🔍 Determinando status geral:", {
+    platforms: platforms.map(p => ({ status: p?.status, hasAccount: !!p })),
+    metaStatus: metaAds?.status,
+    googleStatus: googleAds?.status
+  });
   
-  // Se alguma plataforma tem campanhas mas sem veiculação
-  if (platforms.some(p => p?.status === "sem-veiculacao")) return "sem-veiculacao";
+  // CORREÇÃO: Cliente só está "funcionando" se TODAS as contas configuradas estiverem funcionando
+  const allFunctioning = platforms.every(p => p?.status === "funcionando");
+  if (allFunctioning) {
+    console.log("✅ Todas as plataformas funcionando");
+    return "funcionando";
+  }
   
-  // Se alguma plataforma tem contas mas sem campanhas
-  if (platforms.some(p => p?.status === "sem-campanhas")) return "sem-campanhas";
+  // Se não estão todas funcionando, priorizar o pior status
+  // Ordem de prioridade: sem-veiculacao > sem-campanhas > nao-configurado
+  if (platforms.some(p => p?.status === "sem-veiculacao")) {
+    console.log("❌ Alguma plataforma sem veiculação");
+    return "sem-veiculacao";
+  }
   
+  if (platforms.some(p => p?.status === "sem-campanhas")) {
+    console.log("⚠️ Alguma plataforma sem campanhas");
+    return "sem-campanhas";
+  }
+  
+  console.log("➖ Status padrão: não configurado");
   return "nao-configurado";
 }
 
@@ -178,7 +194,7 @@ export function useActiveCampaignHealth() {
     retryDelay: 3000
   });
 
-  // Filtrar dados
+  // Filtrar dados com logs para debug
   const filteredData = data?.filter(client => {
     const matchesName = filterValue === "" || 
       client.clientName.toLowerCase().includes(filterValue.toLowerCase());
@@ -194,7 +210,18 @@ export function useActiveCampaignHealth() {
       }
     }
     
-    return matchesName && matchesStatus && matchesPlatform;
+    const passes = matchesName && matchesStatus && matchesPlatform;
+    
+    if (filterValue || statusFilter !== "all" || platformFilter !== "all") {
+      console.log(`🔍 Filtro para ${client.clientName}:`, {
+        matchesName,
+        matchesStatus: { current: client.overallStatus, filter: statusFilter, matches: matchesStatus },
+        matchesPlatform,
+        passes
+      });
+    }
+    
+    return passes;
   }) || [];
 
   // Função para atualizar dados (forçar regeneração de snapshots)

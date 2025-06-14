@@ -1,5 +1,4 @@
 
-import { useActiveCampaignHealth } from "./hooks/useActiveCampaignHealth";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,15 +9,21 @@ import { PlatformDataCell } from "./PlatformDataCell";
 import { MoreVertical, ExternalLink, Settings, FileText } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { ClientHealthData } from "./types";
 
-export function HealthTableView() {
-  const {
-    data,
-    isLoading,
-    error,
-    handleAction
-  } = useActiveCampaignHealth();
+interface HealthTableViewProps {
+  data?: ClientHealthData[];
+  isLoading: boolean;
+  error?: string | null;
+  handleAction: (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
+}
 
+export function HealthTableView({
+  data,
+  isLoading,
+  error,
+  handleAction
+}: HealthTableViewProps) {
   if (error) {
     return (
       <Alert variant="destructive">
@@ -53,6 +58,8 @@ export function HealthTableView() {
       </Card>
     );
   }
+
+  console.log("📊 Renderizando tabela com", data.length, "clientes");
 
   return (
     <Card className="border-0 shadow-sm">
