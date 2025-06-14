@@ -7,11 +7,13 @@ export const QUERY_KEYS = {
     all: ["clients"] as const,
     unified: ["unified-clients"] as const,
     active: ["clients-active"] as const,
+    withPayments: ["clients-with-payments"] as const,
     byId: (id: string) => ["clients", id] as const,
   },
   payments: {
     all: ["payments"] as const,
     byClient: (clientId: string) => ["payments", "client", clientId] as const,
+    byFilters: (filters: Record<string, any>) => ["payments", "filters", filters] as const,
     recebimentos: ["recebimentos-nova"] as const,
   },
   costs: {
@@ -37,6 +39,7 @@ export const useQueryInvalidation = () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.all });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.unified });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.active });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.withPayments });
     },
     
     invalidatePayments: () => {

@@ -14,6 +14,7 @@ export class CacheManager {
     this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.all });
     this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.unified });
     this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.active });
+    this.queryClient.invalidateQueries({ queryKey: QUERY_KEYS.clients.withPayments });
   }
 
   invalidatePayments() {

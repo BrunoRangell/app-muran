@@ -2,10 +2,7 @@
 import { Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { PaymentsTableHeader } from "./table/PaymentsTableHeader";
-import { PaymentsTableRow } from "./table/PaymentsTableRow";
 import { PaymentsClientListProps } from "./types";
-import { usePaymentsClients } from "./hooks/usePaymentsClients";
 import { QuickFiltersBar } from "./QuickFiltersBar";
 import { useState } from "react";
 import { formatCurrency } from "@/utils/unifiedFormatters";
@@ -15,9 +12,10 @@ import { useTableSort } from "@/hooks/common/useTableSort";
 import { Button } from "@/components/ui/button";
 import { DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useUnifiedPaymentsData } from "@/hooks/common/useUnifiedPaymentsData";
 
 export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) {
-  const { clients, isLoading, handlePaymentUpdated } = usePaymentsClients();
+  const { clientsWithPayments, isLoadingClients } = useUnifiedPaymentsData();
   const [activeFilter, setActiveFilter] = useState('');
   
   // Usar os hooks unificados
@@ -27,7 +25,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
     filteredData, 
     setFilter 
   } = useTableFilters({
-    data: clients || [],
+    data: clientsWithPayments || [],
     searchFields: ['company_name'],
     customFilters: {
       status: (client, value) => {
@@ -140,7 +138,7 @@ export function PaymentsClientList({ onPaymentClick }: PaymentsClientListProps) 
         <UnifiedTable
           data={sortedData}
           columns={columns}
-          isLoading={isLoading}
+          isLoading={isLoadingClients}
           sortConfig={sortConfig}
           onSort={handleSort}
           emptyMessage="Nenhum cliente encontrado"

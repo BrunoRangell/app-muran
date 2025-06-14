@@ -34,11 +34,14 @@ export const sanitizeInput = (input: string): string => {
 };
 
 export const sanitizeObject = <T extends Record<string, any>>(obj: T): T => {
-  const sanitized = { ...obj };
+  const sanitized = {} as T;
   
-  Object.keys(sanitized).forEach(key => {
-    if (typeof sanitized[key] === 'string') {
-      sanitized[key] = sanitizeInput(sanitized[key]);
+  Object.keys(obj).forEach(key => {
+    const value = obj[key];
+    if (typeof value === 'string') {
+      (sanitized as any)[key] = sanitizeInput(value);
+    } else {
+      (sanitized as any)[key] = value;
     }
   });
   
