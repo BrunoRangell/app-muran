@@ -62,7 +62,12 @@ export function CustomBudgetTable({ budgets, onEdit, onDelete, onToggleStatus }:
                 {budget.clients?.company_name || 'Cliente não encontrado'}
               </TableCell>
               <TableCell>
-                <Badge variant={budget.platform === 'meta' ? 'default' : 'secondary'}>
+                <Badge 
+                  className={budget.platform === 'meta' 
+                    ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                    : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                  }
+                >
                   {budget.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
                 </Badge>
               </TableCell>
@@ -73,7 +78,7 @@ export function CustomBudgetTable({ budgets, onEdit, onDelete, onToggleStatus }:
                 {formatDate(budget.start_date)} - {formatDate(budget.end_date)}
               </TableCell>
               <TableCell>
-                <Badge variant={budget.is_active ? 'default' : 'secondary'}>
+                <Badge variant={budget.is_active ? 'success' : 'secondary'}>
                   {budget.is_active ? 'Ativo' : 'Inativo'}
                 </Badge>
               </TableCell>
