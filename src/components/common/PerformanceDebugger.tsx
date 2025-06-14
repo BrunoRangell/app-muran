@@ -1,91 +1,110 @@
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { PerformanceTracker } from "@/utils/performanceUtils";
-import { Activity, RefreshCw, Trash2 } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
-export function PerformanceDebugger() {
+interface PerformanceMetrics {
+  renderCount: number;
+  averageRenderTime: number;
+  lastRenderTime: number;
+  peakRenderTime: number;
+  componentName: string;
+}
+
+interface PerformanceDebuggerProps {
+  componentName: string;
+  enabled?: boolean;
+}
+
+export const PerformanceDebugger: React.FC<PerformanceDebuggerProps> = ({
+  componentName,
+  enabled = process.env.NODE_ENV === 'development'
+}) => {
+  const [metrics, setMetrics] = useState<PerformanceMetrics>({
+    renderCount: 0,
+    averageRenderTime: 0,
+    lastRenderTime: 0,
+    peakRenderTime: 0,
+    componentName
+  });
+
   const [isVisible, setIsVisible] = useState(false);
-  const [report, setReport] = useState<Record<string, any>>({});
-  
-  const tracker = PerformanceTracker.getInstance();
-
-  const updateReport = () => {
-    setReport(tracker.getFullReport());
-  };
 
   useEffect(() => {
-    updateReport();
-    const interval = setInterval(updateReport, 5000); // Atualizar a cada 5s
-    return () => clearInterval(interval);
-  }, []);
+    if (!enabled) return;
 
-  // Mostrar apenas em desenvolvimento
-  if (process.env.NODE_ENV === 'production') return null;
+    const startTime = performance.now();
+    
+    return () => {
+      const endTime = performance.now();
+      const renderTime = endTime - startTime;
+      
+      setMetrics(prev => {
+        const newRenderCount = prev.renderCount + 1;
+        const newAverageTime = ((prev.averageRenderTime * prev.renderCount) + renderTime) / newRenderCount;
+        
+        return {
+          ...prev,
+          renderCount: newRenderCount,
+          averageRenderTime: newAverageTime,
+          lastRenderTime: renderTime,
+          peakRenderTime: Math.max(prev.peakRenderTime, renderTime)
+        };
+      });
+    };
+  }, [enabled]);
+
+  if (!enabled || !isVisible) {
+    return enabled ? (
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => setIsVisible(true)}
+        className="fixed bottom-4 right-4 z-50"
+      >
+        Debug Performance
+      </Button>
+    ) : null;
+  }
+
+  const getPerformanceStatus = () => {
+    if (metrics.lastRenderTime > 16) return { icon: AlertTriangle, color: 'destructive', text: 'Lento' };
+    if (metrics.lastRenderTime > 8) return { icon: Clock, color: 'warning', text: 'Moderado' };
+    return { icon: CheckCircle, color: 'success', text: 'Rápido' };
+  };
+
+  const status = getPerformanceStatus();
+  const StatusIcon = status.icon;
 
   return (
-    <>
-      <Button
-        onClick={() => setIsVisible(!isVisible)}
-        className="fixed bottom-4 right-4 z-50"
-        size="sm"
-        variant="outline"
-      >
-        <Activity className="h-4 w-4" />
-      </Button>
-
-      {isVisible && (
-        <Card className="fixed bottom-16 right-4 w-96 max-h-96 overflow-auto z-50 bg-white shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center justify-between">
-              Performance Monitor
-              <div className="flex gap-1">
-                <Button size="sm" variant="ghost" onClick={updateReport}>
-                  <RefreshCw className="h-3 w-3" />
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  onClick={() => {
-                    tracker.clearMetrics();
-                    updateReport();
-                  }}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs space-y-2">
-            {Object.keys(report).length === 0 ? (
-              <p className="text-muted-foreground">Nenhuma métrica disponível</p>
-            ) : (
-              Object.entries(report).map(([componentName, stats]) => (
-                <div key={componentName} className="border-b pb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium truncate">{componentName}</span>
-                    <Badge 
-                      variant={stats?.isSlowComponent ? "destructive" : "default"}
-                      className="text-xs"
-                    >
-                      {stats?.isSlowComponent ? "Lento" : "OK"}
-                    </Badge>
-                  </div>
-                  {stats && (
-                    <div className="grid grid-cols-3 gap-1 text-xs text-muted-foreground">
-                      <span>Avg: {stats.average}ms</span>
-                      <span>Max: {stats.maximum}ms</span>
-                      <span>Samples: {stats.samples}</span>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </>
+    <Card className="fixed bottom-4 right-4 z-50 w-80">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm">Performance: {componentName}</CardTitle>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setIsVisible(false)}
+          >
+            ×
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="flex items-center gap-2">
+          <StatusIcon className="h-4 w-4" />
+          <Badge variant={status.color as any}>{status.text}</Badge>
+        </div>
+        
+        <div className="text-xs space-y-1">
+          <div>Renders: {metrics.renderCount}</div>
+          <div>Último: {metrics.lastRenderTime.toFixed(2)}ms</div>
+          <div>Média: {metrics.averageRenderTime.toFixed(2)}ms</div>
+          <div>Pico: {metrics.peakRenderTime.toFixed(2)}ms</div>
+        </div>
+      </CardContent>
+    </Card>
   );
-}
+};

@@ -1,53 +1,51 @@
 
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { handleError } from "@/utils/errorUtils";
+import { logger } from "@/utils/logger";
+import { QUERY_STALE_TIME } from "@/constants";
 
 interface OptimizedQueryOptions<T> extends Omit<UseQueryOptions<T>, 'queryKey' | 'queryFn'> {
-  queryKey: readonly unknown[];
+  queryKey: string[];
   queryFn: () => Promise<T>;
-  enableBackgroundRefetch?: boolean;
-  memoryOptimized?: boolean;
+  moduleName?: string;
 }
 
 export function useOptimizedQuery<T>({
   queryKey,
   queryFn,
-  enableBackgroundRefetch = false,
-  memoryOptimized = true,
-  staleTime = 5 * 60 * 1000, // 5 minutos padrão
-  gcTime = 10 * 60 * 1000, // 10 minutos padrão
-  refetchOnWindowFocus = false,
-  retry = 2,
+  moduleName = 'QUERY',
+  staleTime = QUERY_STALE_TIME.MEDIUM,
+  retry = 3,
+  retryDelay = 1000,
   ...options
 }: OptimizedQueryOptions<T>) {
   
-  // Memoizar queryKey para evitar re-renders desnecessários
-  const memoizedQueryKey = useMemo(() => queryKey, [JSON.stringify(queryKey)]);
-  
-  // Configurações otimizadas baseadas no tipo de query
-  const optimizedOptions = useMemo(() => ({
-    staleTime,
-    gcTime: memoryOptimized ? gcTime : 30 * 60 * 1000, // Mais tempo se não for memory optimized
-    refetchOnWindowFocus: enableBackgroundRefetch ? refetchOnWindowFocus : false,
-    refetchOnMount: enableBackgroundRefetch ? 'always' as const : false,
-    retry,
-    retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    ...options
-  }), [staleTime, gcTime, memoryOptimized, enableBackgroundRefetch, refetchOnWindowFocus, retry, options]);
+  const optimizedQueryFn = async (): Promise<T> => {
+    const startTime = performance.now();
+    
+    try {
+      logger.info(moduleName, `Iniciando query: ${queryKey.join('.')}`);
+      
+      const result = await queryFn();
+      
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      logger.info(moduleName, `Query concluída em ${duration.toFixed(2)}ms`);
+      
+      return result;
+      
+    } catch (error) {
+      logger.error(moduleName, `Erro na query: ${queryKey.join('.')}`, error);
+      throw error;
+    }
+  };
 
   return useQuery({
-    queryKey: memoizedQueryKey,
-    queryFn,
-    ...optimizedOptions,
-    meta: {
-      ...optimizedOptions.meta,
-      onError: (error: Error) => {
-        handleError(error, `Query ${queryKey[0]}`);
-        if (optimizedOptions.meta && 'onError' in optimizedOptions.meta && typeof optimizedOptions.meta.onError === 'function') {
-          optimizedOptions.meta.onError(error);
-        }
-      }
-    }
+    queryKey,
+    queryFn: optimizedQueryFn,
+    staleTime,
+    retry,
+    retryDelay,
+    ...options
   });
 }

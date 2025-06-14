@@ -1,6 +1,6 @@
 
 import { UnifiedTable, ColumnDef } from "@/components/common/UnifiedTable";
-import { formatCurrency } from "@/utils/unifiedFormatters";
+import { formatCurrency } from "@/utils/formatters";
 import { Card } from "@/components/ui/card";
 import { MetaCampaign, MetaDateRange } from "../hooks/types";
 import { Badge } from "@/components/ui/badge";

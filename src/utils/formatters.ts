@@ -36,6 +36,9 @@ export function formatPhone(value: string): string {
   return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7, 11)}`;
 }
 
+// Alias para compatibilidade
+export const formatPhoneNumber = formatPhone;
+
 export function parseCurrencyToNumber(value: string): number {
   const cleanValue = value.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
   return parseFloat(cleanValue) || 0;
