@@ -1,30 +1,22 @@
 
-export type PaymentStatus = 'RECEIVED' | 'CONFIRMED' | 'PENDING' | 'OVERDUE' | 'REFUNDED' | 'CANCELLED';
-
-export interface PaymentSummary {
-  title: string;
-  grossAmount: number;
-  netAmount: number;
-  clientCount: number;
-  paymentCount: number;
-  color: string;
-  status: PaymentStatus;
-}
-
 export interface Payment {
   id: string;
   client_id: string;
   amount: number;
   reference_month: string;
-  notes: string | null;
+  notes?: string;
   created_at: string;
-  clients: {
+  updated_at?: string;
+  clients?: {
+    id: string;
     company_name: string;
+    status?: string;
   };
 }
 
-export interface PaymentFilters {
-  startDate?: string;
-  endDate?: string;
-  clientId?: string;
+export interface PaymentFormData {
+  client_id: string;
+  amount: number;
+  reference_month: string;
+  notes?: string;
 }
