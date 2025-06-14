@@ -14,7 +14,7 @@ export const ClientsList = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
   const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
-  const { data: clients, isLoading } = useUnifiedClientData({ filters });
+  const { clients, isLoading } = useUnifiedClientData({ filters });
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);

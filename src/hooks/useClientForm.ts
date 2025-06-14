@@ -1,12 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { ClientFormData } from "@/types/client";
 import { clientFormSchema } from "@/validations/clientFormSchema";
 import { verifySession, prepareClientData, saveClient } from "@/services/clientService";
 import { useUnifiedForm } from "@/hooks/common/useUnifiedForm";
 import { UseFormReturn } from "react-hook-form";
+import { showClientSuccessToast, showClientErrorToast } from "@/utils/toastUtils";
 
 interface UseClientFormProps {
   initialData?: any;
@@ -14,7 +14,6 @@ interface UseClientFormProps {
 }
 
 export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) => {
-  const { toast } = useToast();
   const [showLastPaymentDate, setShowLastPaymentDate] = useState(
     initialData?.status === "inactive"
   );
@@ -100,21 +99,14 @@ export const useClientForm = ({ initialData, onSuccess }: UseClientFormProps) =>
 
       if (error) throw error;
 
-      toast({
-        title: "Sucesso",
-        description: "Cliente excluído com sucesso!",
-      });
+      showClientSuccessToast('deleted');
 
       if (onSuccess) {
         await onSuccess(null);
       }
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o cliente",
-        variant: "destructive",
-      });
+      showClientErrorToast('deleteError');
     }
   };
 

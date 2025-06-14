@@ -2,10 +2,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Cost, CostFilters } from "@/types/cost";
-import { toast } from "@/components/ui/use-toast";
+import { showCostSuccessToast, showCostErrorToast } from "@/utils/toastUtils";
+import { useCacheManager } from "@/utils/cacheUtils";
 
 export const useCosts = (filters?: CostFilters) => {
   const queryClient = useQueryClient();
+  const cacheManager = useCacheManager(queryClient);
 
   const costsQuery = useQuery({
     queryKey: ["costs", filters],
@@ -54,19 +56,12 @@ export const useCosts = (filters?: CostFilters) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo cadastrado com sucesso!",
-      });
+      cacheManager.invalidateCosts();
+      showCostSuccessToast('created');
     },
     onError: (error) => {
       console.error("Erro ao criar custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível cadastrar o custo",
-        variant: "destructive",
-      });
+      showCostErrorToast('createError');
     },
   });
 
@@ -83,19 +78,12 @@ export const useCosts = (filters?: CostFilters) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo atualizado com sucesso!",
-      });
+      cacheManager.invalidateCosts();
+      showCostSuccessToast('updated');
     },
     onError: (error) => {
       console.error("Erro ao atualizar custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o custo",
-        variant: "destructive",
-      });
+      showCostErrorToast('updateError');
     },
   });
 
@@ -109,19 +97,12 @@ export const useCosts = (filters?: CostFilters) => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo excluído com sucesso!",
-      });
+      cacheManager.invalidateCosts();
+      showCostSuccessToast('deleted');
     },
     onError: (error) => {
       console.error("Erro ao excluir custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o custo",
-        variant: "destructive",
-      });
+      showCostErrorToast('deleteError');
     },
   });
 
