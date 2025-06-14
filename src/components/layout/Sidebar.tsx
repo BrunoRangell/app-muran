@@ -1,4 +1,3 @@
-
 import { useLocation } from "react-router-dom";
 import { 
   Users, 
@@ -9,7 +8,8 @@ import {
   CreditCard,
   BarChart3,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  Activity
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
@@ -52,6 +52,14 @@ const regularMenuItems: MenuItem[] = [
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
 ];
 
+const customMenuItems: MenuItem[] = [
+  { icon: Home, label: "Início", path: "/" },
+  { icon: Users, label: "Equipe", path: "/equipe" },
+  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
+  { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
+  { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
+];
+
 export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -80,7 +88,8 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
     checkAdminStatus();
   }, []);
 
-  const menuItems = isAdmin ? adminMenuItems : regularMenuItems;
+  // Para todos os usuários, exibir "Saúde das Campanhas"
+  const menuItems = customMenuItems;
 
   const isPathActive = (path: string, submenu?: MenuItem[]) => {
     if (submenu) {
