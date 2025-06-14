@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,7 +42,6 @@ export const GoogleAdsTokenTest = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [clients, setClients] = useState<GoogleAdsClient[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [automatedSystemStatus, setAutomatedSystemStatus] = useState<any>(null);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -56,48 +56,13 @@ export const GoogleAdsTokenTest = () => {
   // Carregar tokens ao montar o componente
   useEffect(() => {
     fetchTokens();
-    checkAutomatedSystemStatus();
-    
-    // Verificar status do sistema a cada 30 segundos
-    const interval = setInterval(checkAutomatedSystemStatus, 30000);
-    return () => clearInterval(interval);
   }, []);
-
-  // Verificar status do sistema automatizado
-  const checkAutomatedSystemStatus = async () => {
-    try {
-      const { data: systemLogs, error } = await supabase
-        .from('system_logs')
-        .select('*')
-        .eq('event_type', 'token_renewal')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (!error && systemLogs) {
-        const latestLog = systemLogs[0];
-        const now = new Date();
-        const logTime = new Date(latestLog.created_at);
-        const minutesSinceLastLog = Math.floor((now.getTime() - logTime.getTime()) / (1000 * 60));
-
-        setAutomatedSystemStatus({
-          isActive: true,
-          lastActivity: latestLog.created_at,
-          minutesSinceLastActivity: minutesSinceLastLog,
-          lastMessage: latestLog.message,
-          systemHealth: minutesSinceLastLog < 45 ? 'healthy' : minutesSinceLastLog < 60 ? 'warning' : 'critical'
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao verificar status do sistema automatizado:', error);
-    }
-  };
 
   // Buscar tokens do banco de dados
   const fetchTokens = async () => {
     setIsLoading(true);
     
     try {
-      // Buscar tokens do Google Ads
       const { data, error } = await supabase
         .from('api_tokens')
         .select('name, value')
@@ -107,7 +72,6 @@ export const GoogleAdsTokenTest = () => {
         throw error;
       }
 
-      // Mapear para o formato de tokens
       const formattedTokens: Token[] = [
         {
           name: 'google_ads_access_token',
@@ -141,7 +105,6 @@ export const GoogleAdsTokenTest = () => {
         }
       ];
 
-      // Preencher com os valores do banco de dados
       data?.forEach(token => {
         const tokenIndex = formattedTokens.findIndex(t => t.name === token.name);
         if (tokenIndex !== -1) {
@@ -199,9 +162,7 @@ export const GoogleAdsTokenTest = () => {
       } else {
         console.log('Resposta da função:', data);
         
-        // Re-buscar os tokens para atualizar a lista
         await fetchTokens();
-        await checkAutomatedSystemStatus();
         
         setTestResult({
           success: true,
@@ -212,7 +173,6 @@ export const GoogleAdsTokenTest = () => {
           },
         });
         
-        // Se houver clientes na resposta, armazenar para exibição
         if (data.clients && Array.isArray(data.clients)) {
           setClients(data.clients);
         }
@@ -265,59 +225,16 @@ export const GoogleAdsTokenTest = () => {
     }
   };
 
-  // Renderizar status do sistema automatizado
-  const renderAutomatedSystemStatus = () => {
-    if (!automatedSystemStatus) return null;
-
-    const getStatusColor = (health: string) => {
-      switch (health) {
-        case 'healthy': return 'border-green-200 bg-green-50';
-        case 'warning': return 'border-yellow-200 bg-yellow-50';
-        case 'critical': return 'border-red-200 bg-red-50';
-        default: return 'border-gray-200 bg-gray-50';
-      }
-    };
-
-    const getStatusIcon = (health: string) => {
-      switch (health) {
-        case 'healthy': return '🟢';
-        case 'warning': return '🟡';
-        case 'critical': return '🔴';
-        default: return '⚫';
-      }
-    };
-
-    return (
-      <Alert className={`mb-4 ${getStatusColor(automatedSystemStatus.systemHealth)}`}>
-        <AlertTitle className="flex items-center gap-2">
-          <span className="text-lg">{getStatusIcon(automatedSystemStatus.systemHealth)}</span>
-          Sistema de Renovação Automática
-          <Badge variant="outline" className="ml-2">
-            {automatedSystemStatus.isActive ? 'ATIVO' : 'INATIVO'}
-          </Badge>
-        </AlertTitle>
-        <AlertDescription>
-          <div className="mt-2 space-y-1 text-sm">
-            <p><strong>Status:</strong> {automatedSystemStatus.lastMessage}</p>
-            <p><strong>Última atividade:</strong> {automatedSystemStatus.minutesSinceLastActivity} minutos atrás</p>
-            <div className="flex gap-2 mt-2">
-              <Badge variant="outline" className="text-xs">
-                Renovação automática: 30min
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                Verificação de saúde: 15min
-              </Badge>
-            </div>
-          </div>
-        </AlertDescription>
-      </Alert>
-    );
-  };
-
   return (
     <Card className="space-y-4 p-4 md:p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">Tokens do Google Ads</h3>
+        <div>
+          <h3 className="text-lg font-semibold">Tokens do Google Ads</h3>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-xs text-gray-600">Sistema automatizado ativo</span>
+          </div>
+        </div>
         <div className="flex space-x-2">
           <Button
             variant="outline"
@@ -342,9 +259,6 @@ export const GoogleAdsTokenTest = () => {
           </Button>
         </div>
       </div>
-
-      {/* Status do Sistema Automatizado */}
-      {renderAutomatedSystemStatus()}
 
       {testResult && (
         <Alert variant={testResult.success ? "default" : "destructive"} className="mb-4">
@@ -377,7 +291,7 @@ export const GoogleAdsTokenTest = () => {
         </Alert>
       )}
 
-      {/* Exibir clientes retornados da API */}
+      {/* Exibir contas encontradas */}
       {clients.length > 0 && (
         <Accordion type="single" collapsible className="w-full bg-white border rounded-md">
           <AccordionItem value="clients">
@@ -417,18 +331,13 @@ export const GoogleAdsTokenTest = () => {
                       ) : (
                         <TableRow>
                           <TableCell colSpan={2} className="text-center py-4 text-gray-500">
-                            Nenhuma conta encontrada com esse termo de pesquisa
+                            Nenhuma conta encontrada
                           </TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </div>
-                {clients.length > 10 && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    {filteredClients.length} de {clients.length} contas exibidas
-                  </p>
-                )}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -446,7 +355,6 @@ export const GoogleAdsTokenTest = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Estado de carregamento
               Array(6).fill(0).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell>
@@ -461,7 +369,6 @@ export const GoogleAdsTokenTest = () => {
                 </TableRow>
               ))
             ) : (
-              // Dados dos tokens
               tokens.map((token) => (
                 <TableRow key={token.name}>
                   <TableCell className="font-medium">
@@ -493,8 +400,7 @@ export const GoogleAdsTokenTest = () => {
 
       <div className="text-sm text-gray-500 mt-2">
         <p>
-          O sistema automático renova os tokens a cada 30 minutos e verifica a saúde a cada 15 minutos.
-          Clique em "Testar tokens" para verificar manualmente a conectividade com a API do Google Ads.
+          Sistema com renovação automática ativa. Use "Testar tokens" para verificar manualmente a conectividade.
         </p>
       </div>
     </Card>
