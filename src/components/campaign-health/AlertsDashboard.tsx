@@ -10,10 +10,9 @@ interface AlertsDashboardProps {
   stats: HealthDashboardStats;
   topAlerts: HealthAlert[];
   onAlertClick: (alert: HealthAlert) => void;
-  onUrgencyFilterClick?: (urgency: string) => void;
 }
 
-export function AlertsDashboard({ stats, topAlerts, onAlertClick, onUrgencyFilterClick }: AlertsDashboardProps) {
+export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashboardProps) {
   const [isAlertsExpanded, setIsAlertsExpanded] = useState(false);
 
   const getSeverityColor = (severity: string) => {
@@ -53,8 +52,7 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick, onUrgencyFilte
       count: stats.criticalAlerts,
       bgColor: "bg-red-50",
       iconColor: "text-red-600",
-      textColor: "text-red-600",
-      hoverBg: "hover:bg-red-100"
+      textColor: "text-red-600"
     },
     {
       level: "high", 
@@ -63,8 +61,7 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick, onUrgencyFilte
       count: stats.highAlerts,
       bgColor: "bg-orange-50",
       iconColor: "text-orange-600",
-      textColor: "text-orange-600",
-      hoverBg: "hover:bg-orange-100"
+      textColor: "text-orange-600"
     },
     {
       level: "medium",
@@ -73,8 +70,7 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick, onUrgencyFilte
       count: stats.mediumAlerts,
       bgColor: "bg-yellow-50",
       iconColor: "text-yellow-600",
-      textColor: "text-yellow-600",
-      hoverBg: "hover:bg-yellow-100"
+      textColor: "text-yellow-600"
     },
     {
       level: "ok",
@@ -83,22 +79,20 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick, onUrgencyFilte
       count: stats.functioning,
       bgColor: "bg-green-50",
       iconColor: "text-green-600", 
-      textColor: "text-green-600",
-      hoverBg: "hover:bg-green-100"
+      textColor: "text-green-600"
     }
   ];
 
   return (
     <div className="space-y-6 mb-6">
-      {/* Métricas de Urgência */}
+      {/* Métricas de Urgência - Apenas Informativas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {urgencyMetrics.map((metric) => {
           const Icon = metric.icon;
           return (
             <Card 
               key={metric.level}
-              className={`border-0 shadow-sm cursor-pointer transition-all duration-200 ${metric.hoverBg}`}
-              onClick={() => onUrgencyFilterClick?.(metric.level)}
+              className="border-0 shadow-sm"
             >
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
