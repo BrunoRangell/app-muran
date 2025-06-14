@@ -155,31 +155,9 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
       return acc + metaCost + googleCost;
     }, 0);
 
-    // Calcular clientes "OK" - aqueles que têm pelo menos uma plataforma funcionando sem problemas críticos/altos/médios
-    const functioning = enhancedData.filter(client => {
-      const metaIsOk = client.metaAds && client.metaAds.alertLevel === "ok";
-      const googleIsOk = client.googleAds && client.googleAds.alertLevel === "ok";
-      const hasOkPlatform = metaIsOk || googleIsOk;
-      
-      // Verificar se não tem alertas críticos, altos ou médios
-      const hasProblems = alerts.some(alert => 
-        alert.clientId === client.clientId && 
-        (alert.severity === "critical" || alert.severity === "high" || alert.severity === "medium")
-      );
-      
-      return hasOkPlatform && !hasProblems;
-    }).length;
+    const functioning = enhancedData.filter(client => client.overallStatus === "funcionando").length;
     
     const healthScore = Math.max(0, 100 - (criticalAlerts * 20) - (highAlerts * 10) - (mediumAlerts * 5));
-
-    console.log("📊 Dashboard Stats:", {
-      totalClients: enhancedData.length,
-      criticalAlerts,
-      highAlerts,
-      mediumAlerts,
-      functioning,
-      totalAlerts: alerts.length
-    });
 
     return {
       totalClients: enhancedData.length,
