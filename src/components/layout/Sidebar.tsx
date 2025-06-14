@@ -1,3 +1,4 @@
+
 import { useLocation } from "react-router-dom";
 import { 
   Users, 
@@ -43,16 +44,10 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
+  { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
 ];
 
 const regularMenuItems: MenuItem[] = [
-  { icon: Home, label: "Início", path: "/" },
-  { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
-  { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
-];
-
-const customMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
@@ -88,8 +83,8 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
     checkAdminStatus();
   }, []);
 
-  // Para todos os usuários, exibir "Saúde das Campanhas"
-  const menuItems = customMenuItems;
+  // Selecionar menu baseado na permissão do usuário
+  const menuItems = isAdmin ? adminMenuItems : regularMenuItems;
 
   const isPathActive = (path: string, submenu?: MenuItem[]) => {
     if (submenu) {
