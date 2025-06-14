@@ -7,7 +7,7 @@ interface LazyComponentProps {
   error?: React.ReactNode;
 }
 
-export function createLazyComponent<T extends Record<string, any> = {}>(
+export function createLazyComponent<T = {}>(
   importFn: () => Promise<{ default: ComponentType<T> }>,
   options: LazyComponentProps = {}
 ) {
@@ -24,7 +24,7 @@ export function createLazyComponent<T extends Record<string, any> = {}>(
 
     return (
       <Suspense fallback={fallback}>
-        <LazyComp {...(props as T)} />
+        <LazyComp {...props} />
       </Suspense>
     );
   };
