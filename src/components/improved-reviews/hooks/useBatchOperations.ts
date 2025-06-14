@@ -96,10 +96,26 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const invalidateAllQueries = async () => {
+    console.log("🔄 Invalidando todas as queries relevantes...");
+    
+    // Invalidar queries principais
+    await queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+    await queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+    await queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+    await queryClient.invalidateQueries({ queryKey: ["last-batch-review-meta"] });
+    await queryClient.invalidateQueries({ queryKey: ["last-batch-review-google"] });
+    
+    // Invalidar queries do sistema unificado
+    await queryClient.invalidateQueries({ queryKey: ["real-time-data"] });
+    
+    console.log("✅ Queries invalidadas com sucesso");
+  };
+
   const reviewClient = async (clientId: string, accountId?: string) => {
     if (processingIds.includes(clientId)) return;
     
-    console.log(`🔍 Iniciando revisão do cliente ${clientId} (plataforma: ${platform})`);
+    console.log(`🔍 Iniciando revisão individual do cliente ${clientId} (plataforma: ${platform})`);
     setProcessingIds(prev => [...prev, clientId]);
     
     try {
@@ -112,7 +128,8 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
             clientId,
             metaAccountId: accountId,
             reviewDate: new Date().toISOString().split('T')[0],
-            fetchRealData: true
+            fetchRealData: true,
+            source: "ui_individual_review"
           }
         });
         
@@ -125,7 +142,8 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
             clientId,
             googleAccountId: accountId,
             reviewDate: new Date().toISOString().split('T')[0],
-            fetchRealData: true
+            fetchRealData: true,
+            source: "ui_individual_review"
           }
         });
         
@@ -134,6 +152,16 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
       }
       
       console.log(`✅ Cliente ${clientId} analisado com sucesso:`, result);
+      
+      // CORREÇÃO PRINCIPAL: Invalidar queries após revisão individual
+      await invalidateAllQueries();
+      
+      // Mostrar toast de sucesso
+      toast({
+        title: "Revisão concluída",
+        description: `Cliente analisado com sucesso`,
+      });
+      
     } catch (error) {
       console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
       toast({
@@ -189,12 +217,8 @@ export const useBatchOperations = ({ platform, onComplete }: UseBatchOperationsP
         }
       });
       
-      // Invalidar queries para forçar atualização
-      await queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
-      await queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
-      await queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
-      await queryClient.invalidateQueries({ queryKey: ["last-batch-review-meta"] });
-      await queryClient.invalidateQueries({ queryKey: ["last-batch-review-google"] });
+      // Invalidar queries após revisão em massa
+      await invalidateAllQueries();
       
       toast({
         title: "Revisão em massa concluída",

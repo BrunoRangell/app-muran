@@ -2,7 +2,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
@@ -90,13 +90,19 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
   };
   
   const handleReviewClick = async () => {
+    console.log(`🔍 Iniciando revisão individual para cliente ${client.company_name}`);
+    
     try {
-      await reviewClient(client.id, client[`${platform}_account_id`]);
-      toast({
-        title: "Análise completa",
-        description: `O orçamento de ${client.company_name} foi analisado com sucesso.`
-      });
+      const accountId = platform === "meta" 
+        ? client.meta_account_id 
+        : client.google_account_id;
+        
+      await reviewClient(client.id, accountId);
+      
+      console.log(`✅ Revisão do cliente ${client.company_name} concluída com sucesso`);
+      
     } catch (error: any) {
+      console.error(`❌ Erro na revisão do cliente ${client.company_name}:`, error);
       toast({
         title: "Erro na análise",
         description: error.message || "Ocorreu um erro ao analisar o cliente",
@@ -290,8 +296,17 @@ export function CircularBudgetCard({ client, platform = "meta" }: CircularBudget
             onClick={handleReviewClick}
             disabled={isProcessing}
           >
-            {isProcessing ? "Processando..." : "Analisar"}
-            {!isProcessing && <ChevronRight className="ml-2 h-4 w-4" />}
+            {isProcessing ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              <>
+                Analisar
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </>
+            )}
           </Button>
         </div>
       </CardContent>
