@@ -31,7 +31,7 @@ export default function CampaignHealth() {
 
   const { enhancedData, alerts, dashboardStats } = useIntelligentAnalysis(data || []);
 
-  // Aplicar filtros adicionais aos dados analisados
+  // Aplicar filtros APENAS aos dados da tabela
   const filteredEnhancedData = enhancedData?.filter(client => {
     // Filtros existentes (já aplicados no hook)
     const matchesName = filterValue === "" || 
@@ -48,7 +48,7 @@ export default function CampaignHealth() {
       }
     }
 
-    // Novos filtros de urgência
+    // Novos filtros de urgência - APENAS para a tabela
     let matchesUrgency = true;
     if (urgencyFilter !== "all") {
       const metaMatch = client.metaAds?.alertLevel === urgencyFilter;
@@ -56,7 +56,7 @@ export default function CampaignHealth() {
       matchesUrgency = metaMatch || googleMatch;
     }
 
-    // Filtro por tipo de problema
+    // Filtro por tipo de problema - APENAS para a tabela
     let matchesProblemType = true;
     if (problemTypeFilter !== "all") {
       const metaProblems = client.metaAds?.problems || [];
@@ -68,32 +68,33 @@ export default function CampaignHealth() {
     return matchesName && matchesStatus && matchesPlatform && matchesUrgency && matchesProblemType;
   }) || [];
 
-  // Filtrar alertas com base nos filtros ativos
-  const filteredAlerts = alerts.filter(alert => {
-    if (urgencyFilter !== "all" && alert.severity !== urgencyFilter) return false;
-    if (problemTypeFilter !== "all") {
-      // Buscar o cliente correspondente para verificar o tipo de problema
-      const client = enhancedData.find(c => c.clientId === alert.clientId);
-      const platform = alert.platform === 'meta' ? client?.metaAds : client?.googleAds;
-      const hasMatchingProblem = platform?.problems.some(p => p.type === problemTypeFilter);
-      if (!hasMatchingProblem) return false;
-    }
-    return true;
-  });
-
   const handleAlertClick = (alert: HealthAlert) => {
     console.log("🚨 Clique no alerta:", alert);
     // Redirecionar para o cliente específico com foco no problema
     handleAction('review', alert.clientId, alert.platform);
   };
 
-  // Estatísticas para filtros
-  const filterStats = {
-    critical: alerts.filter(a => a.severity === "critical").length,
-    high: alerts.filter(a => a.severity === "high").length,
-    medium: alerts.filter(a => a.severity === "medium").length,
-    totalProblems: alerts.length
+  // Estatísticas para os filtros da tabela (apenas informativa nos filtros)
+  const filteredStats = {
+    critical: filteredEnhancedData.reduce((acc, client) => {
+      const metaCritical = client.metaAds?.alertLevel === "critical" ? 1 : 0;
+      const googleCritical = client.googleAds?.alertLevel === "critical" ? 1 : 0;
+      return acc + metaCritical + googleCritical;
+    }, 0),
+    high: filteredEnhancedData.reduce((acc, client) => {
+      const metaHigh = client.metaAds?.alertLevel === "high" ? 1 : 0;
+      const googleHigh = client.googleAds?.alertLevel === "high" ? 1 : 0;
+      return acc + metaHigh + googleHigh;
+    }, 0),
+    medium: filteredEnhancedData.reduce((acc, client) => {
+      const metaMedium = client.metaAds?.alertLevel === "medium" ? 1 : 0;
+      const googleMedium = client.googleAds?.alertLevel === "medium" ? 1 : 0;
+      return acc + metaMedium + googleMedium;
+    }, 0),
+    totalProblems: 0 // Calculado abaixo
   };
+  
+  filteredStats.totalProblems = filteredStats.critical + filteredStats.high + filteredStats.medium;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -108,14 +109,14 @@ export default function CampaignHealth() {
           </p>
         </div>
         
-        {/* Dashboard de Alertas - Apenas Informativos */}
+        {/* Dashboard de Alertas - SEMPRE com dados completos (sem filtros) */}
         <AlertsDashboard 
           stats={dashboardStats}
-          topAlerts={filteredAlerts.slice(0, 5)}
+          topAlerts={alerts.slice(0, 5)}
           onAlertClick={handleAlertClick}
         />
         
-        {/* Filtros Inteligentes */}
+        {/* Filtros Inteligentes - Mostra estatísticas filtradas apenas como informação */}
         <IntelligentFilters 
           filterValue={filterValue}
           setFilterValue={setFilterValue}
@@ -129,10 +130,10 @@ export default function CampaignHealth() {
           setProblemTypeFilter={setProblemTypeFilter}
           handleRefresh={handleRefresh}
           isFetching={isFetching}
-          stats={filterStats}
+          stats={filteredStats}
         />
         
-        {/* Tabela Melhorada */}
+        {/* Tabela Melhorada - APENAS esta seção é afetada pelos filtros */}
         <EnhancedHealthTable 
           data={filteredEnhancedData}
           isLoading={isLoading}
@@ -144,7 +145,7 @@ export default function CampaignHealth() {
         {filteredEnhancedData.length > 0 && (
           <div className="mt-6 text-center text-xs text-gray-500">
             Mostrando {filteredEnhancedData.length} de {enhancedData.length} clientes • 
-            {filterStats.totalProblems} problemas detectados • 
+            {dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts} problemas detectados no total • 
             Dados atualizados automaticamente a cada 10 minutos
             {isFetching && " • Atualizando..."}
           </div>
