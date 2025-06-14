@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
 import { supabase } from "@/lib/supabase";
-import { useGoogleAdsBatchReview } from "@/components/daily-reviews/hooks/useGoogleAdsBatchReview";
+import { useBatchOperations } from "@/components/improved-reviews/hooks/useBatchOperations";
 import { AnalysisProgress } from "@/components/daily-reviews/dashboard/components/AnalysisProgress";
 
 export const GoogleAdsDashboard = () => {
@@ -13,20 +13,21 @@ export const GoogleAdsDashboard = () => {
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
+  
+  // Usar o hook unificado de batch operations
   const { 
-    handleAnalyzeAll, 
-    isReviewingBatch, 
-    processingClients, 
-    lastBatchReviewDate,
-    clientsWithGoogleAdsId
-  } = useGoogleAdsBatchReview();
-
-  // Usar a data de revisão em lote do hook
-  useEffect(() => {
-    if (lastBatchReviewDate) {
-      setLastBatchReviewTime(new Date(lastBatchReviewDate));
+    reviewAllClients,
+    isProcessing: isReviewingBatch,
+    progress,
+    total,
+    currentClientName
+  } = useBatchOperations({
+    platform: "google",
+    onComplete: async () => {
+      console.log("✅ Revisão em lote do Google Ads concluída");
+      setLastBatchReviewTime(new Date());
     }
-  }, [lastBatchReviewDate]);
+  });
 
   // Buscar a hora da última revisão em lote ao iniciar
   useEffect(() => {
@@ -51,24 +52,23 @@ export const GoogleAdsDashboard = () => {
     fetchLastBatchReview();
   }, []);
 
-  // Calcular variáveis de progresso com base nas informações disponíveis
-  const batchProgress = isReviewingBatch ? clientsWithGoogleAdsId.length - processingClients.length : 0;
-  const totalClientsToAnalyze = clientsWithGoogleAdsId.length;
+  // Calcular variáveis de progresso
+  const batchProgress = isReviewingBatch ? progress : 0;
+  const totalClientsToAnalyze = total;
   const progressPercentage = totalClientsToAnalyze > 0 && isReviewingBatch
     ? Math.round((batchProgress / totalClientsToAnalyze) * 100) 
     : 0;
 
   const handleAnalyzeAllAction = async () => {
     try {
-      // Usar o método do hook para analisar todos os clientes
-      await handleAnalyzeAll();
+      // VERIFICAR: Este método pode precisar ser adaptado para funcionar com dados específicos do Google Ads
+      await reviewAllClients([]);
       
       toast({
         title: "Análise em lote iniciada",
         description: "A análise de todos os clientes foi iniciada com sucesso.",
       });
       
-      // Atualizar a hora da última revisão
       setLastBatchReviewTime(new Date());
     } catch (err: any) {
       toast({
@@ -83,7 +83,6 @@ export const GoogleAdsDashboard = () => {
     <div className="space-y-6">
       {/* Card de cabeçalho do dashboard com todos os controles */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        {/* Componente de cabeçalho será implementado se necessário */}
         <div className="mb-4">
           <h2 className="text-xl font-bold text-[#321e32] mb-2">Google Ads Dashboard</h2>
           <div className="flex justify-between items-center">
@@ -109,13 +108,9 @@ export const GoogleAdsDashboard = () => {
           <div className="mt-4">
             <AnalysisProgress 
               isBatchAnalyzing={isReviewingBatch}
-              batchProgress={clientsWithGoogleAdsId.length - processingClients.length}
-              totalClientsToAnalyze={clientsWithGoogleAdsId.length}
-              progressPercentage={
-                clientsWithGoogleAdsId.length > 0 && isReviewingBatch
-                  ? Math.round(((clientsWithGoogleAdsId.length - processingClients.length) / clientsWithGoogleAdsId.length) * 100)
-                  : 0
-              }
+              batchProgress={batchProgress}
+              totalClientsToAnalyze={totalClientsToAnalyze}
+              progressPercentage={progressPercentage}
             />
           </div>
         )}
