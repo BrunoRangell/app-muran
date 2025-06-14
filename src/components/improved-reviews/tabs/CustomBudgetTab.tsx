@@ -3,10 +3,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 import { Calendar, Plus, Search } from "lucide-react";
 import { CustomBudgetTable } from "./components/CustomBudgetTable";
+import { CustomBudgetDialog } from "./components/CustomBudgetDialog";
 import { useCustomBudgets } from "./hooks/useCustomBudgets";
+import { useCustomBudgetForm } from "./hooks/useCustomBudgetForm";
+import { CustomBudgetFormData } from "./schemas/customBudgetSchema";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +37,8 @@ interface CustomBudget {
 export function CustomBudgetTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [budgetToDelete, setBudgetToDelete] = useState<CustomBudget | null>(null);
-  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [budgetToEdit, setBudgetToEdit] = useState<CustomBudget | null>(null);
 
   const { 
     budgets, 
@@ -46,18 +49,21 @@ export function CustomBudgetTab() {
     isToggling
   } = useCustomBudgets(searchQuery);
 
+  const {
+    createBudget,
+    updateBudget,
+    isCreating,
+    isUpdating
+  } = useCustomBudgetForm();
+
   const handleCreateCustomBudget = () => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "A funcionalidade de criação de orçamentos personalizados será implementada em breve.",
-    });
+    setBudgetToEdit(null);
+    setDialogOpen(true);
   };
 
   const handleEdit = (budget: CustomBudget) => {
-    toast({
-      title: "Funcionalidade em desenvolvimento",
-      description: "A funcionalidade de edição será implementada em breve.",
-    });
+    setBudgetToEdit(budget);
+    setDialogOpen(true);
   };
 
   const handleDelete = (budget: CustomBudget) => {
@@ -73,6 +79,21 @@ export function CustomBudgetTab() {
 
   const handleToggleStatus = (budget: CustomBudget) => {
     toggleStatus({ budgetId: budget.id, isActive: budget.is_active });
+  };
+
+  const handleSubmit = async (data: CustomBudgetFormData) => {
+    if (budgetToEdit) {
+      await updateBudget({ id: budgetToEdit.id, data });
+    } else {
+      await createBudget(data);
+    }
+    setDialogOpen(false);
+    setBudgetToEdit(null);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setBudgetToEdit(null);
   };
 
   return (
@@ -121,6 +142,14 @@ export function CustomBudgetTab() {
           </CardContent>
         </Card>
       </div>
+
+      <CustomBudgetDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        budget={budgetToEdit}
+        onSubmit={handleSubmit}
+        isLoading={isCreating || isUpdating}
+      />
 
       <AlertDialog 
         open={!!budgetToDelete} 
