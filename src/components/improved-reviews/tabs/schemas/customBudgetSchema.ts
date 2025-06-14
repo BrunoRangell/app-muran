@@ -23,3 +23,9 @@ export const customBudgetSchema = z.object({
 });
 
 export type CustomBudgetFormData = z.infer<typeof customBudgetSchema>;
+
+// Opções para select de plataforma
+export const platformOptions = [
+  { label: "Meta Ads", value: "meta" },
+  { label: "Google Ads", value: "google" },
+];

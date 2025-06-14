@@ -24,3 +24,16 @@ export const socialMediaSchema = z.object({
 });
 
 export type SocialMediaSchemaType = z.infer<typeof socialMediaSchema>;
+
+// Opções para permissões
+export const permissionOptions = [
+  { label: "Administrador", value: "admin" },
+  { label: "Membro", value: "member" },
+];
+
+// Opções para redes sociais
+export const socialMediaFields = [
+  { name: "instagram" as const, label: "Instagram", placeholder: "https://www.instagram.com/seu.perfil/" },
+  { name: "linkedin" as const, label: "LinkedIn", placeholder: "https://www.linkedin.com/in/seu-perfil/" },
+  { name: "tiktok" as const, label: "TikTok", placeholder: "https://www.tiktok.com/@seu.perfil" },
+];

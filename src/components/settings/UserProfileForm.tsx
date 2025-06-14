@@ -1,7 +1,4 @@
-
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
@@ -13,15 +10,19 @@ import { PersonalInfoSection } from "./PersonalInfoSection";
 import { ProfessionalInfoSection } from "./ProfessionalInfoSection";
 import { SocialMediaSection } from "./SocialMediaSection";
 import { Save } from "lucide-react";
+import { useUnifiedForm } from "@/hooks/common/useUnifiedForm";
 
 export const UserProfileForm = () => {
   const { data: currentUser, refetch } = useCurrentUser();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   const [currentEmail, setCurrentEmail] = useState("");
 
-  const form = useForm<SocialMediaSchemaType>({
-    resolver: zodResolver(socialMediaSchema),
+  const {
+    form,
+    handleSubmit,
+    isSubmitting,
+  } = useUnifiedForm({
+    schema: socialMediaSchema,
     defaultValues: {
       name: '',
       role: '',
@@ -33,7 +34,51 @@ export const UserProfileForm = () => {
       tiktok: '',
       permission: '',
       start_date: ''
-    }
+    },
+    onSubmit: async (data: SocialMediaSchemaType) => {
+      if (!currentUser) return;
+
+      console.log("Salvando dados do perfil:", data);
+
+      // Para membros, apenas campos permitidos podem ser atualizados
+      const isAdmin = currentUser?.permission === 'admin';
+      const isMember = currentUser?.permission === 'member' || !isAdmin;
+
+      const updateData = isMember ? {
+        name: data.name,
+        photo_url: data.photo_url,
+        birthday: data.birthday,
+        bio: data.bio,
+        instagram: data.instagram,
+        linkedin: data.linkedin,
+        tiktok: data.tiktok
+      } : {
+        name: data.name,
+        role: data.role,
+        photo_url: data.photo_url,
+        birthday: data.birthday,
+        bio: data.bio,
+        instagram: data.instagram,
+        linkedin: data.linkedin,
+        tiktok: data.tiktok,
+        permission: data.permission,
+        start_date: data.start_date
+      };
+
+      const { error } = await supabase
+        .from('team_members')
+        .update(updateData)
+        .eq('id', currentUser.id);
+
+      if (error) {
+        console.error("Erro ao atualizar perfil:", error);
+        throw error;
+      }
+
+      // Atualizar os dados do usuário
+      refetch();
+    },
+    successMessage: "Suas informações foram atualizadas com sucesso.",
   });
 
   useEffect(() => {
@@ -68,64 +113,6 @@ export const UserProfileForm = () => {
 
   const isAdmin = currentUser?.permission === 'admin';
   const isMember = currentUser?.permission === 'member' || !isAdmin;
-
-  const handleSubmit = async (data: SocialMediaSchemaType) => {
-    if (!currentUser) return;
-
-    try {
-      setIsLoading(true);
-      console.log("Salvando dados do perfil:", data);
-
-      // Para membros, apenas campos permitidos podem ser atualizados
-      const updateData = isMember ? {
-        name: data.name,
-        photo_url: data.photo_url,
-        birthday: data.birthday,
-        bio: data.bio,
-        instagram: data.instagram,
-        linkedin: data.linkedin,
-        tiktok: data.tiktok
-      } : {
-        name: data.name,
-        role: data.role,
-        photo_url: data.photo_url,
-        birthday: data.birthday,
-        bio: data.bio,
-        instagram: data.instagram,
-        linkedin: data.linkedin,
-        tiktok: data.tiktok,
-        permission: data.permission,
-        start_date: data.start_date
-      };
-
-      const { error } = await supabase
-        .from('team_members')
-        .update(updateData)
-        .eq('id', currentUser.id);
-
-      if (error) {
-        console.error("Erro ao atualizar perfil:", error);
-        throw error;
-      }
-
-      toast({
-        title: "Sucesso!",
-        description: "Suas informações foram atualizadas com sucesso.",
-      });
-
-      // Atualizar os dados do usuário
-      refetch();
-    } catch (error) {
-      console.error("Erro ao salvar perfil:", error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao salvar suas informações.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   if (!currentUser) {
     return (
@@ -182,15 +169,15 @@ export const UserProfileForm = () => {
 
       {/* Botão de Salvar - Centralizado */}
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
+        <form onSubmit={handleSubmit}>
           <div className="flex justify-center pt-6 border-t border-gray-200">
             <Button 
               type="submit" 
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="bg-[#ff6e00] hover:bg-[#e56200] min-w-[200px] h-12 text-white font-medium text-lg"
             >
               <Save className="h-5 w-5 mr-2" />
-              {isLoading ? "Salvando..." : "Salvar Todas as Alterações"}
+              {isSubmitting ? "Salvando..." : "Salvar Todas as Alterações"}
             </Button>
           </div>
         </form>
