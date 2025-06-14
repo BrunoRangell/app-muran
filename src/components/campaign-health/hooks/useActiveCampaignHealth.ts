@@ -179,6 +179,7 @@ export function useActiveCampaignHealth() {
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | "all">("all");
   const [platformFilter, setPlatformFilter] = useState<'meta' | 'google' | 'all'>("all");
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const queryClient = useQueryClient();
   const queryKey = ["active-campaign-health"];
@@ -224,23 +225,56 @@ export function useActiveCampaignHealth() {
     return passes;
   }) || [];
 
-  // Função para atualizar dados (forçar regeneração de snapshots)
+  // Função melhorada para atualizar dados
   const handleRefresh = async () => {
-    console.log("🔄 Forçando atualização de dados...");
+    console.log("🔄 Iniciando atualização manual de dados...");
+    setIsManualRefreshing(true);
     
     try {
-      // Invalidar cache local primeiro
-      await queryClient.invalidateQueries({ queryKey });
+      // Passo 1: Invalidar cache local
+      console.log("📤 Invalidando cache local...");
+      await queryClient.removeQueries({ queryKey });
       
-      // Chamar serviço para forçar atualização
-      await CampaignHealthService.forceRefreshSnapshots();
-
-      // Refetch dos dados
-      await refetch();
-      setLastRefresh(new Date());
-      console.log("✅ Atualização forçada concluída");
+      // Passo 2: Chamar edge function para forçar regeneração
+      console.log("🔧 Chamando edge function para regenerar dados...");
+      const forceRefreshSuccess = await CampaignHealthService.forceRefreshSnapshots();
+      
+      if (!forceRefreshSuccess) {
+        console.warn("⚠️ Edge function pode ter falhado, tentando refetch mesmo assim...");
+      }
+      
+      // Passo 3: Aguardar um tempo para os dados serem processados
+      console.log("⏳ Aguardando processamento dos dados (5 segundos)...");
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Passo 4: Refetch dos dados
+      console.log("📥 Buscando dados atualizados...");
+      const result = await refetch();
+      
+      if (result.isSuccess) {
+        setLastRefresh(new Date());
+        console.log("✅ Atualização manual concluída com sucesso!");
+      } else {
+        console.error("❌ Falha no refetch após edge function");
+        throw new Error("Falha ao buscar dados atualizados");
+      }
+      
     } catch (error) {
-      console.error("❌ Erro durante refresh:", error);
+      console.error("❌ Erro durante atualização manual:", error);
+      
+      // Tentar um refetch simples como fallback
+      console.log("🔄 Tentando refetch simples como fallback...");
+      try {
+        const fallbackResult = await refetch();
+        if (fallbackResult.isSuccess) {
+          setLastRefresh(new Date());
+          console.log("✅ Fallback refetch bem-sucedido");
+        }
+      } catch (fallbackError) {
+        console.error("❌ Fallback também falhou:", fallbackError);
+      }
+    } finally {
+      setIsManualRefreshing(false);
     }
   };
 
@@ -273,7 +307,7 @@ export function useActiveCampaignHealth() {
   return {
     data: filteredData,
     isLoading,
-    isFetching,
+    isFetching: isFetching || isManualRefreshing,
     error: error ? "Erro ao carregar dados de saúde das campanhas." : null,
     filterValue,
     setFilterValue,
@@ -284,6 +318,7 @@ export function useActiveCampaignHealth() {
     handleAction,
     handleRefresh,
     lastRefresh,
-    stats
+    stats,
+    isManualRefreshing
   };
 }

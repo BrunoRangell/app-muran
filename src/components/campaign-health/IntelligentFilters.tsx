@@ -2,7 +2,7 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Loader2 } from "lucide-react";
 import { CampaignStatus } from "./types";
 import { AlertLevel } from "./types/enhanced-types";
 
@@ -90,20 +90,46 @@ export function IntelligentFilters({
             </Select>
           </div>
 
-          {/* Botão Atualizar */}
+          {/* Botão Atualizar Melhorado */}
           <div className="flex flex-col">
             <label className="text-xs font-medium text-gray-600 mb-1 opacity-0">Ação</label>
             <Button 
               onClick={handleRefresh}
               disabled={isFetching}
-              className="h-12 px-6 bg-[#ff6e00] hover:bg-[#e55a00] text-white border-0 rounded-lg font-medium transition-colors"
+              className="h-12 px-6 bg-[#ff6e00] hover:bg-[#e55a00] text-white border-0 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className={`w-5 h-5 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-              {isFetching ? "Atualizando..." : "Atualizar"}
+              {isFetching ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Atualizando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-5 h-5 mr-2" />
+                  Atualizar
+                </>
+              )}
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Indicador de Progresso durante Atualização */}
+      {isFetching && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <div>
+              <p className="text-sm font-medium text-blue-800">
+                Atualizando dados das campanhas...
+              </p>
+              <p className="text-xs text-blue-600">
+                Isso pode levar alguns minutos. Os dados estão sendo coletados em tempo real das APIs.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

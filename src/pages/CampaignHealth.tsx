@@ -26,7 +26,8 @@ export default function CampaignHealth() {
     handleAction,
     handleRefresh,
     lastRefresh,
-    stats
+    stats,
+    isManualRefreshing
   } = useActiveCampaignHealth();
 
   const { enhancedData, alerts, dashboardStats } = useIntelligentAnalysis(data || []);
@@ -92,6 +93,7 @@ export default function CampaignHealth() {
           </h1>
           <p className="text-gray-600 text-sm">
             Diagnóstico em tempo real com ações prioritárias • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR')}
+            {isManualRefreshing && " • Atualização em progresso..."}
           </p>
         </div>
         
