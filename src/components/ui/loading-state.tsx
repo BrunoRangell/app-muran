@@ -10,6 +10,7 @@ export const LoadingState = ({ message = "Carregando..." }: LoadingStateProps) =
   const location = useLocation();
   const path = location.pathname;
 
+  // Retorna o loading state específico baseado na rota atual
   if (path === "/clientes") {
     return <UnifiedLoading message="Carregando clientes..." size="md" />;
   }
@@ -18,5 +19,6 @@ export const LoadingState = ({ message = "Carregando..." }: LoadingStateProps) =
     return <UnifiedLoading message="Carregando recebimentos..." size="md" />;
   }
 
+  // Por padrão, retorna o loading state com a mensagem fornecida
   return <UnifiedLoading message={message} size="md" />;
 };

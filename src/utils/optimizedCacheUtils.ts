@@ -28,6 +28,7 @@ export class OptimizedCacheManager {
   }
 
   private scheduleInvalidation(queryKey: readonly string[]) {
+    // Converter readonly array para string array
     const key = [...queryKey].join('.');
     this.invalidationQueue.add(key);
 
@@ -87,16 +88,19 @@ export class OptimizedCacheManager {
     }
   }
 
+  // Adicionando métodos que estavam faltando
   warmupCache() {
     logger.info('CACHE', 'Warming up cache with frequently accessed data');
+    // Pré-carregar dados frequentemente acessados
     this.queryClient.prefetchQuery({
       queryKey: [...QUERY_KEYS.clients.all],
-      staleTime: 5 * 60 * 1000
+      staleTime: 5 * 60 * 1000 // 5 minutos
     });
   }
 
   cleanupStaleData() {
     logger.info('CACHE', 'Cleaning up stale cache data');
+    // Limpar dados antigos do cache
     this.queryClient.clear();
   }
 

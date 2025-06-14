@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { GoalForm } from "./GoalForm";
 import { GoalProgress } from "./goal/GoalProgress";
@@ -25,7 +24,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
     if (isCreating) {
       createGoal.mutate(formData);
     } else {
-      updateGoal.mutate({ goalId: goal?.id, updatedGoal: formData });
+      updateGoal.mutate(formData);
     }
   };
 

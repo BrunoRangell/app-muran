@@ -1,12 +1,12 @@
 
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/utils/logger';
 
 export const reviewClient = async (clientId: string, metaAccountId?: string) => {
   try {
-    logger.info('META_ADS', `Starting review for client ${clientId}`, { metaAccountId });
+    console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` com conta Meta ${metaAccountId}` : ''}`);
 
+    // Se for fornecido um ID de conta Meta específica, buscar os detalhes dessa conta
     let metaAccountName: string | undefined;
     let metaBudgetAmount: number | undefined;
 
@@ -26,6 +26,7 @@ export const reviewClient = async (clientId: string, metaAccountId?: string) => 
       }
     }
 
+    // Montar payload da requisição com as informações da conta específica, se fornecida
     const reviewDate = new Date().toISOString().split('T')[0];
     
     interface ReviewPayload {
@@ -42,6 +43,7 @@ export const reviewClient = async (clientId: string, metaAccountId?: string) => 
       reviewDate
     };
     
+    // Adicionar informações opcionais ao payload, se disponíveis
     if (metaAccountName) {
       payload.metaAccountName = metaAccountName;
     }
@@ -50,13 +52,14 @@ export const reviewClient = async (clientId: string, metaAccountId?: string) => 
       payload.metaBudgetAmount = metaBudgetAmount;
     }
 
+    // Fazer chamada para a edge function
     const url = `${window.location.origin}/api/daily-meta-review`;
     const response = await axios.post(url, payload);
 
-    logger.info('META_ADS', 'Client review completed successfully', { clientId, responseData: response.data });
+    console.log("Resposta da função Edge:", response.data);
     return response.data;
   } catch (error) {
-    logger.error('META_ADS', 'Failed to review client', error);
+    console.error("Erro ao revisar cliente:", error);
     throw error;
   }
 };

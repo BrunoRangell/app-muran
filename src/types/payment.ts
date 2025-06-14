@@ -20,17 +20,3 @@ export interface PaymentFormData {
   reference_month: string;
   notes?: string;
 }
-
-export interface PaymentFilters {
-  search?: string;
-  clientId?: string;
-  startDate?: string;
-  endDate?: string;
-  status?: string;
-}
-
-export interface PaymentSummary {
-  title: string;
-  grossAmount: number;
-  color: string;
-}

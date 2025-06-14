@@ -26,11 +26,13 @@ export const ClientsTable = ({
     initialSort: { key: 'company_name', direction: 'asc' }
   });
 
+  // Adiciona a retenção calculada aos clientes
   const clientsWithRetention = sortedData.map(client => ({
     ...client,
     calculatedRetention: calculateRetention(client)
   }));
 
+  // Definir colunas da tabela
   const tableColumns: ColumnDef<Client>[] = columns
     .filter(col => col.show)
     .sort((a, b) => {
@@ -60,6 +62,7 @@ export const ClientsTable = ({
       }
     }));
 
+  // Adicionar coluna de ações
   tableColumns.push({
     id: 'actions',
     label: 'Ações',

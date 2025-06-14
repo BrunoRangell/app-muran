@@ -24,7 +24,7 @@ export function useOptimizedQuery<T>({
       const result = await queryFn();
       return result;
     } catch (error) {
-      logger.error(moduleName as any, `Query failed: ${queryKey.join('.')}`, error);
+      logger.error(moduleName, `Query failed: ${queryKey.join('.')}`, error);
       throw error;
     }
   };

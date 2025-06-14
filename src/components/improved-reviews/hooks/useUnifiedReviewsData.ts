@@ -4,13 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useBudgetCalculator } from "./useBudgetCalculator";
 import { logger } from "@/utils/logger";
-import {
-  fetchMetaReviews,
-  processMetaClientAccount,
-  createMetaClientWithoutAccount,
-  ProcessedMetaClientData
-} from "./services/metaDataProcessor";
-import { calculateMetaMetrics } from "./services/metaMetricsCalculator";
 
 export type ClientMetrics = {
   totalClients: number;
@@ -55,10 +48,19 @@ export function useUnifiedReviewsData() {
         if (accountsError) throw accountsError;
 
         // Buscar revisões desde o início do mês
-        const reviews = await fetchMetaReviews();
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const firstDayStr = firstDay.toISOString().split("T")[0];
+        
+        const { data: reviews, error: reviewsError } = await supabase
+          .from("daily_budget_reviews")
+          .select(`*`)
+          .gte("review_date", firstDayStr)
+          .order("review_date", { ascending: false });
+
+        if (reviewsError) throw reviewsError;
         
         // Buscar orçamentos personalizados ativos
-        const today = new Date();
         const todayStr = today.toISOString().split("T")[0];
         const { data: activeCustomBudgets, error: budgetsError } = await supabase
           .from("custom_budgets")
@@ -74,7 +76,7 @@ export function useUnifiedReviewsData() {
         const processedData = await processMetaClientsData(
           clients || [],
           additionalMetaAccounts || [],
-          reviews,
+          reviews || [],
           activeCustomBudgets || [],
           calculateBudget
         );
@@ -100,6 +102,7 @@ export function useUnifiedReviewsData() {
   };
 }
 
+// Função auxiliar para processar dados dos clientes Meta
 async function processMetaClientsData(
   clients: any[], 
   additionalMetaAccounts: any[], 
@@ -164,4 +167,118 @@ async function processMetaClientsData(
   }) || [];
 
   return clientsWithData.flat();
+}
+
+// Função auxiliar para processar conta Meta do cliente
+function processMetaClientAccount(
+  client: any, 
+  account: any, 
+  reviews: any[], 
+  customBudgetsByClientId: Map<any, any>, 
+  calculateBudget: any
+) {
+  const clientReviews = reviews.filter(r => 
+    r.client_id === client.id && r.meta_account_id === account.account_id
+  ) || [];
+  
+  const review = clientReviews.length > 0 ? clientReviews[0] : null;
+  
+  let customBudget = null;
+  let monthlyBudget = account.budget_amount;
+  let isUsingCustomBudget = false;
+  let customBudgetEndDate = null;
+  
+  // Verificar orçamento personalizado na revisão
+  if (review?.using_custom_budget && review?.custom_budget_amount) {
+    isUsingCustomBudget = true;
+    monthlyBudget = review.custom_budget_amount;
+    customBudgetEndDate = review.custom_budget_end_date;
+    
+    if (review.custom_budget_id) {
+      customBudget = {
+        id: review.custom_budget_id,
+        budget_amount: review.custom_budget_amount,
+        start_date: review.custom_budget_start_date,
+        end_date: review.custom_budget_end_date
+      };
+    }
+  } 
+  // Verificar orçamento personalizado ativo
+  else if (customBudgetsByClientId.has(client.id)) {
+    const budget = customBudgetsByClientId.get(client.id);
+    customBudget = budget;
+    monthlyBudget = budget.budget_amount;
+    isUsingCustomBudget = true;
+    customBudgetEndDate = budget.end_date;
+  }
+  
+  const budgetCalc = calculateBudget({
+    monthlyBudget: monthlyBudget,
+    totalSpent: review?.meta_total_spent || 0,
+    currentDailyBudget: review?.meta_daily_budget_current || 0,
+    customBudgetEndDate: customBudgetEndDate
+  });
+  
+  const needsAdjustment = budgetCalc.needsBudgetAdjustment;
+  
+  return {
+    ...client,
+    meta_account_id: account.account_id,
+    meta_account_name: account.account_name,
+    budget_amount: monthlyBudget,
+    original_budget_amount: account.budget_amount,
+    review: review || null,
+    budgetCalculation: budgetCalc,
+    needsAdjustment: needsAdjustment,
+    customBudget: customBudget,
+    isUsingCustomBudget: isUsingCustomBudget,
+    hasAccount: true
+  };
+}
+
+// Função auxiliar para cliente Meta sem conta
+function createMetaClientWithoutAccount(client: any) {
+  return {
+    ...client,
+    meta_account_id: null,
+    meta_account_name: "Sem conta cadastrada",
+    budget_amount: 0,
+    original_budget_amount: 0,
+    review: null,
+    budgetCalculation: {
+      idealDailyBudget: 0,
+      budgetDifference: 0,
+      remainingDays: 0,
+      remainingBudget: 0,
+      needsBudgetAdjustment: false,
+      spentPercentage: 0
+    },
+    needsAdjustment: false,
+    customBudget: null,
+    isUsingCustomBudget: false,
+    hasAccount: false
+  };
+}
+
+// Função auxiliar para calcular métricas Meta
+function calculateMetaMetrics(flattenedClients: any[]) {
+  const clientsWithAccounts = new Set();
+  const clientsWithoutAccount = flattenedClients.filter(client => !client.hasAccount).length;
+  
+  flattenedClients.forEach(client => {
+    if (client.hasAccount) {
+      clientsWithAccounts.add(client.id);
+    }
+  });
+  
+  const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
+  const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.meta_total_spent || 0), 0);
+  
+  return {
+    totalClients: clientsWithAccounts.size,
+    clientsWithoutAccount: clientsWithoutAccount,
+    totalBudget: totalBudget,
+    totalSpent: totalSpent,
+    spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
+  };
 }

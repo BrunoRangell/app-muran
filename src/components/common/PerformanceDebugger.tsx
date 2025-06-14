@@ -20,7 +20,7 @@ interface PerformanceDebuggerProps {
 
 export const PerformanceDebugger: React.FC<PerformanceDebuggerProps> = ({
   componentName,
-  enabled = import.meta.env.DEV
+  enabled = process.env.NODE_ENV === 'development'
 }) => {
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
     renderCount: 0,
@@ -56,13 +56,8 @@ export const PerformanceDebugger: React.FC<PerformanceDebuggerProps> = ({
     };
   }, [enabled]);
 
-  // Não renderizar em produção
-  if (!enabled || import.meta.env.PROD) {
-    return null;
-  }
-
-  if (!isVisible) {
-    return (
+  if (!enabled || !isVisible) {
+    return enabled ? (
       <Button 
         variant="outline" 
         size="sm" 
@@ -71,7 +66,7 @@ export const PerformanceDebugger: React.FC<PerformanceDebuggerProps> = ({
       >
         Debug Performance
       </Button>
-    );
+    ) : null;
   }
 
   const getPerformanceStatus = () => {
