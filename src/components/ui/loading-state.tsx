@@ -16,6 +16,11 @@ export const LoadingState = ({ message = "Carregando..." }: LoadingStateProps) =
     return <ClientsLoadingState />;
   }
 
+  // Para a página de revisão diária avançada, usa o loading state padrão
+  if (path === "/revisao-diaria-avancada") {
+    return <DashboardLoadingState />;
+  }
+
   // Para recebimentos, usa o loading state padrão
   if (path === "/recebimentos-nova" || path === "/clientes/recebimentos") {
     return <DashboardLoadingState />;
