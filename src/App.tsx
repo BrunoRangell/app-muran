@@ -1,9 +1,10 @@
-
-import { Routes, Route, Navigate } from "react-router-dom";
+import "./App.css";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/sonner";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
-import { lazy, Suspense } from "react";
-import Login from "@/pages/Login";
+import { OptimizedApp } from "@/components/common/OptimizedApp";
 
 // Pré-carregamento das rotas principais
 const Index = lazy(() => {
@@ -54,65 +55,88 @@ const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
 
+// Configuração otimizada do QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutos
+      gcTime: 10 * 60 * 1000,   // 10 minutos
+      retry: 2,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
+
 function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        element={
-          <PrivateRoute>
-            <Layout />
-          </PrivateRoute>
-        }
-      >
-        <Route path="/" element={<Index />} />
-        <Route path="/equipe" element={<Managers />} />
-        <Route path="/configuracoes" element={<Settings />} />
-        <Route
-          path="/clientes"
-          element={
-            <PrivateRoute requireAdmin>
-              <Clients />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/clientes/relatorio"
-          element={
-            <PrivateRoute requireAdmin>
-              <FinancialReport />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/recebimentos-nova"
-          element={
-            <PrivateRoute requireAdmin>
-              <RecebimentosNova />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/clientes/custos"
-          element={
-            <PrivateRoute requireAdmin>
-              <Costs />
-            </PrivateRoute>
-          }
-        />
-        {/* Página principal de revisão diária */}
-        <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
-        
-        {/* Redirecionamentos das páginas antigas */}
-        <Route path="/revisoes-diarias" element={<Navigate to="/revisao-diaria-avancada" replace />} />
-        <Route path="/revisao-meta" element={<Navigate to="/revisao-diaria-avancada" replace />} />
-        
-        {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
-        <Route path="/financeiro" element={<Navigate to="/" replace />} />
-        <Route path="/tarefas" element={<Tasks />} />
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+    <QueryClientProvider client={queryClient}>
+      <OptimizedApp>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              element={
+                <PrivateRoute>
+                  <Layout />
+                </PrivateRoute>
+              }
+            >
+              <Route path="/" element={<Index />} />
+              <Route path="/equipe" element={<Managers />} />
+              <Route path="/configuracoes" element={<Settings />} />
+              <Route
+                path="/clientes"
+                element={
+                  <PrivateRoute requireAdmin>
+                    <Clients />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/clientes/relatorio"
+                element={
+                  <PrivateRoute requireAdmin>
+                    <FinancialReport />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/recebimentos-nova"
+                element={
+                  <PrivateRoute requireAdmin>
+                    <RecebimentosNova />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/clientes/custos"
+                element={
+                  <PrivateRoute requireAdmin>
+                    <Costs />
+                  </PrivateRoute>
+                }
+              />
+              {/* Página principal de revisão diária */}
+              <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
+              
+              {/* Redirecionamentos das páginas antigas */}
+              <Route path="/revisoes-diarias" element={<Navigate to="/revisao-diaria-avancada" replace />} />
+              <Route path="/revisao-meta" element={<Navigate to="/revisao-diaria-avancada" replace />} />
+              
+              {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
+              <Route path="/financeiro" element={<Navigate to="/" replace />} />
+              <Route path="/tarefas" element={<Tasks />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+          <Toaster />
+        </Router>
+      </OptimizedApp>
+    </QueryClientProvider>
   );
 }
 
