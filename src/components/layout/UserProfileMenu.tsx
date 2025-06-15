@@ -45,9 +45,9 @@ export const UserProfileMenu = ({ isCollapsed }: { isCollapsed?: boolean }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="focus:outline-none w-full">
-        <div className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
+        <div className="flex items-center justify-between w-full p-2 h-14 rounded-lg hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
           <div className={cn(
-            "grid items-center gap-x-3 transition-all duration-300",
+            "grid items-center gap-x-3 transition-all duration-300 ease-in-out",
             isCollapsed ? "grid-cols-[40px_0fr]" : "grid-cols-[40px_1fr]"
           )}>
             <Avatar className="h-10 w-10">
@@ -62,7 +62,7 @@ export const UserProfileMenu = ({ isCollapsed }: { isCollapsed?: boolean }) => {
             </div>
           </div>
           <ChevronDown className={cn(
-            "h-4 w-4 text-gray-400 transition-all duration-300",
+            "h-4 w-4 text-gray-400 transition-all duration-300 ease-in-out",
             isCollapsed && "opacity-0 w-0"
           )} />
         </div>
