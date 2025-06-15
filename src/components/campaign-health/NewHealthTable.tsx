@@ -1,11 +1,10 @@
-
 import { useActiveCampaignHealth } from "./hooks/useActiveCampaignHealth";
 import { StatusIndicator } from "./StatusIndicator";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, ExternalLink, Settings, Loader2 } from "lucide-react";
+import { RefreshCw, Settings, Loader2, Eye } from "lucide-react";
 import { PlatformHealthData } from "./types";
 
 function PlatformCell({ 
@@ -17,7 +16,7 @@ function PlatformCell({
   platformData?: PlatformHealthData;
   platformName: 'meta' | 'google';
   clientId: string;
-  onAction: (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
+  onAction: (action: "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
 }) {
   if (!platformData) {
     return (
@@ -59,20 +58,13 @@ function PlatformCell({
 
         <div className="flex gap-1">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onAction('details', clientId, platformName)}
-            className="text-xs h-6 px-2"
-          >
-            <ExternalLink className="w-3 h-3" />
-          </Button>
-          <Button
             variant="default"
             size="sm"
             onClick={() => onAction('review', clientId, platformName)}
-            className="text-xs h-6 px-2"
+            className="text-xs h-6 px-2 w-full"
           >
-            Revisar
+            <Eye className="w-3 h-3 mr-1" />
+            Ver Detalhes
           </Button>
         </div>
       </div>

@@ -1,14 +1,13 @@
-
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Settings, TrendingUp, Eye } from "lucide-react";
+import { Settings, TrendingUp, Eye } from "lucide-react";
 import { StatusIndicator } from "./StatusIndicator";
 import { ClientHealthData, PlatformHealthData } from "./types";
 
 interface ClientHealthCardProps {
   client: ClientHealthData;
-  onAction: (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
+  onAction: (action: "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
 }
 
 function PlatformSection({ 
@@ -21,7 +20,7 @@ function PlatformSection({
   platformData?: PlatformHealthData;
   platformName: 'meta' | 'google';
   clientId: string;
-  onAction: (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
+  onAction: (action: "review" | "configure", clientId: string, platform: 'meta' | 'google') => void;
   icon: string;
 }) {
   if (!platformData) {
@@ -56,6 +55,10 @@ function PlatformSection({
     );
   }
 
+  const unservedCampaigns = (platformData.costToday === 0 && platformData.impressionsToday === 0) 
+    ? platformData.activeCampaignsCount 
+    : 0;
+
   return (
     <div className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-3">
@@ -68,6 +71,22 @@ function PlatformSection({
       
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="bg-gray-100 rounded-lg p-3">
+            <div className="text-gray-800 font-medium">
+              {platformData.activeCampaignsCount}
+            </div>
+            <div className="text-gray-600 text-xs">Campanhas ativas</div>
+          </div>
+          
+          <div className={`rounded-lg p-3 ${unservedCampaigns > 0 ? 'bg-orange-50' : 'bg-gray-100'}`}>
+            <div className={`font-medium ${unservedCampaigns > 0 ? 'text-orange-600' : 'text-gray-800'}`}>
+              {unservedCampaigns}
+            </div>
+            <div className={`text-xs ${unservedCampaigns > 0 ? 'text-orange-700' : 'text-gray-600'}`}>
+              Sem veiculação
+            </div>
+          </div>
+
           <div className="bg-green-50 rounded-lg p-3">
             <div className="text-green-600 font-medium">
               R$ {platformData.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -83,30 +102,15 @@ function PlatformSection({
           </div>
         </div>
         
-        <div className="flex items-center justify-between">
-          <Badge variant="secondary" className="text-xs">
-            {platformData.activeCampaignsCount} campanhas ativas
-          </Badge>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onAction('details', clientId, platformName)}
-            className="flex-1 text-xs h-8"
-          >
-            <Eye className="w-3 h-3 mr-1" />
-            Detalhes
-          </Button>
+        <div className="flex gap-2 pt-1">
           <Button
             variant="default"
             size="sm"
             onClick={() => onAction('review', clientId, platformName)}
             className="flex-1 text-xs h-8 bg-[#ff6e00] hover:bg-[#e55a00]"
           >
-            <TrendingUp className="w-3 h-3 mr-1" />
-            Revisar
+            <Eye className="w-3 h-3 mr-1" />
+            Ver Detalhes
           </Button>
         </div>
       </div>

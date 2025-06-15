@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { ClientHealthData } from "../types";
 import { AlertLevel, ProblemDiagnostic, EnhancedPlatformData, HealthAlert, HealthDashboardStats } from "../types/enhanced-types";
@@ -14,8 +13,9 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
     if (!hasAccount) return "medium";
     if (activeCampaigns === 0) return "medium";
     if (costToday > 0 && impressionsToday > 0) return "ok";
+    if (costToday === 0 && impressionsToday > 0) return "ok"; // Impressões grátis é bom
     if (costToday > 0 && impressionsToday === 0) return "critical";
-    if (costToday === 0 && activeCampaigns > 0) return "high";
+    if (costToday === 0 && impressionsToday === 0 && activeCampaigns > 0) return "high";
     return "medium";
   };
 
@@ -53,12 +53,12 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         estimatedImpact: "Perda: R$ " + costToday.toFixed(2),
         affectedCampaigns: activeCampaigns
       });
-    } else if (costToday === 0 && activeCampaigns > 0) {
+    } else if (costToday === 0 && impressionsToday === 0 && activeCampaigns > 0) {
       problems.push({
         type: "budget",
         severity: "high",
-        description: "Campanhas ativas sem gasto",
-        suggestedAction: "Verificar orçamento e aprovação",
+        description: "Campanhas ativas sem gasto ou impressões",
+        suggestedAction: "Verificar orçamento, lances e aprovação de anúncios",
         estimatedImpact: "Sem alcance atual",
         affectedCampaigns: activeCampaigns
       });

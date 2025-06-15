@@ -310,12 +310,7 @@ export function useActiveCampaignHealth() {
   };
 
   // Função para ações dos botões
-  function handleAction(action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') {
-    if (action === "details") {
-      const platformParam = encodeURIComponent(platform);
-      window.open(`/clientes/${clientId}?platform=${platformParam}`, "_blank");
-    }
-    
+  function handleAction(action: "review" | "configure", clientId: string, platform: 'meta' | 'google') {
     if (action === "review") {
       const platformParam = encodeURIComponent(platform);
       window.open(`/revisao-diaria-avancada?clienteId=${clientId}&platform=${platformParam}`, "_blank");
