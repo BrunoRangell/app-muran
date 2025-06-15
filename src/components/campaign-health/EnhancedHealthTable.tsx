@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Eye, Settings, ExternalLink } from "lucide-react";
+import { AlertCircle, Eye, Settings, ExternalLink, AlertTriangle, Zap, CheckCircle } from "lucide-react";
 import { EnhancedPlatformData } from "./types/enhanced-types";
 
 interface EnhancedClientData {
@@ -67,13 +67,13 @@ function EnhancedPlatformCell({
     }
   };
 
-  const getStatusIcon = (alertLevel: string) => {
+  const getStatusIconComponent = (alertLevel: string) => {
     switch (alertLevel) {
-      case 'critical': return '🚨';
-      case 'high': return '⚠️';
-      case 'medium': return '⚡';
-      case 'ok': return '✅';
-      default: return '⚪';
+      case 'critical': return <AlertTriangle className="w-6 h-6 text-red-600" />;
+      case 'high': return <AlertCircle className="w-6 h-6 text-orange-600" />;
+      case 'medium': return <Zap className="w-6 h-6 text-yellow-600" />;
+      case 'ok': return <CheckCircle className="w-6 h-6 text-green-600" />;
+      default: return <div className="w-6 h-6 rounded-full bg-gray-300" />;
     }
   };
 
@@ -83,7 +83,7 @@ function EnhancedPlatformCell({
         {/* Header com Status */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-lg">{getStatusIcon(platformData.alertLevel)}</span>
+            {getStatusIconComponent(platformData.alertLevel)}
             <span className="text-sm font-medium text-gray-900">
               Status Geral
             </span>
