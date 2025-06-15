@@ -1,3 +1,4 @@
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +37,7 @@ function EnhancedPlatformCell({
 }) {
   if (!platformData) {
     return (
-      <TableCell className="py-4 w-[350px] align-top">
+      <TableCell className="py-4 w-[382px] align-top">
         <div className="bg-gray-50 rounded-lg p-3 space-y-2 h-full">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Não configurado</span>
@@ -105,7 +106,7 @@ function EnhancedPlatformCell({
   const alertStyling = getAlertStyling(platformData.alertLevel);
 
   return (
-    <TableCell className="py-4 w-[350px] align-top">
+    <TableCell className="py-4 w-[382px] align-top">
       <div className={`rounded-lg p-3 space-y-3 border ${alertStyling.cardClasses} h-full`}>
         {/* Header com Status */}
         <div className="flex items-center justify-between">
@@ -216,9 +217,9 @@ export function EnhancedHealthTable({
           <Table>
             <TableHeader>
               <TableRow className="border-b border-gray-200">
-                <TableHead className="w-64 font-semibold text-gray-700">Cliente</TableHead>
-                <TableHead className="w-[350px] text-center font-semibold text-gray-700">Meta Ads</TableHead>
-                <TableHead className="w-[350px] text-center font-semibold text-gray-700">Google Ads</TableHead>
+                <TableHead className="w-48 font-semibold text-gray-700">Cliente</TableHead>
+                <TableHead className="w-[382px] text-center font-semibold text-gray-700">Meta Ads</TableHead>
+                <TableHead className="w-[382px] text-center font-semibold text-gray-700">Google Ads</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
