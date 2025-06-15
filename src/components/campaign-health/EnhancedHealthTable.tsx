@@ -1,3 +1,4 @@
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,8 +37,8 @@ function EnhancedPlatformCell({
 }) {
   if (!platformData) {
     return (
-      <TableCell className="py-4">
-        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+      <TableCell className="py-4 w-[350px] align-top">
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2 h-full">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Não configurado</span>
             <Badge variant="outline" className="text-xs">Setup</Badge>
@@ -57,13 +58,38 @@ function EnhancedPlatformCell({
     );
   }
 
-  const getAlertColor = (alertLevel: string) => {
+  const getAlertStyling = (alertLevel: string) => {
     switch (alertLevel) {
-      case 'critical': return 'border-red-200 bg-red-50';
-      case 'high': return 'border-orange-200 bg-orange-50';
-      case 'medium': return 'border-yellow-200 bg-yellow-50';
-      case 'ok': return 'border-green-200 bg-green-50';
-      default: return 'border-gray-200 bg-gray-50';
+      case 'critical':
+        return {
+          cardClasses: 'border-red-200 bg-red-50',
+          textClass: 'text-red-700 font-semibold',
+          label: 'Crítico'
+        };
+      case 'high':
+        return {
+          cardClasses: 'border-orange-200 bg-orange-50',
+          textClass: 'text-orange-700 font-semibold',
+          label: 'Alto'
+        };
+      case 'medium':
+        return {
+          cardClasses: 'border-yellow-200 bg-yellow-50',
+          textClass: 'text-yellow-700 font-semibold',
+          label: 'Médio'
+        };
+      case 'ok':
+        return {
+          cardClasses: 'border-green-200 bg-green-50',
+          textClass: 'text-green-700 font-semibold',
+          label: 'OK'
+        };
+      default:
+        return {
+          cardClasses: 'border-gray-200 bg-gray-50',
+          textClass: 'text-gray-600',
+          label: 'Indefinido'
+        };
     }
   };
 
@@ -76,24 +102,20 @@ function EnhancedPlatformCell({
       default: return <div className="w-6 h-6 rounded-full bg-gray-300" />;
     }
   };
+  
+  const alertStyling = getAlertStyling(platformData.alertLevel);
 
   return (
-    <TableCell className="py-4">
-      <div className={`rounded-lg p-3 space-y-3 border ${getAlertColor(platformData.alertLevel)}`}>
+    <TableCell className="py-4 w-[350px] align-top">
+      <div className={`rounded-lg p-3 space-y-3 border ${alertStyling.cardClasses} h-full`}>
         {/* Header com Status */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${alertStyling.textClass}`}>
             {getStatusIconComponent(platformData.alertLevel)}
-            <span className="text-sm font-medium text-gray-900">
-              Status Geral
+            <span className="text-sm">
+              {alertStyling.label}
             </span>
           </div>
-          <Badge 
-            variant={platformData.alertLevel === 'ok' ? 'default' : 'destructive'} 
-            className="text-xs capitalize"
-          >
-            {platformData.alertLevel}
-          </Badge>
         </div>
 
         {/* Métricas */}
@@ -206,15 +228,15 @@ export function EnhancedHealthTable({
             <TableHeader>
               <TableRow className="border-b border-gray-200">
                 <TableHead className="w-64 font-semibold text-gray-700">Cliente</TableHead>
-                <TableHead className="text-center font-semibold text-gray-700">Meta Ads</TableHead>
-                <TableHead className="text-center font-semibold text-gray-700">Google Ads</TableHead>
+                <TableHead className="w-[350px] text-center font-semibold text-gray-700">Meta Ads</TableHead>
+                <TableHead className="w-[350px] text-center font-semibold text-gray-700">Google Ads</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.map((client) => (
                 <TableRow key={client.clientId} className="hover:bg-gray-50 transition-colors">
                   {/* Cliente */}
-                  <TableCell className="py-4">
+                  <TableCell className="py-4 align-top">
                     <div>
                       <p className="font-medium text-gray-900 mb-1">{client.clientName}</p>
                       <div className="flex gap-1">
