@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
 const corsHeaders = {
@@ -22,14 +23,26 @@ interface CampaignHealthSnapshot {
   google_impressions_today: number;
 }
 
-// Função para obter a data atual no timezone brasileiro
+// CORREÇÃO: Função para obter a data atual no timezone brasileiro
 function getTodayInBrazil(): string {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date()).split('/').reverse().join('-');
+  // Criar uma nova data com timezone brasileiro específico
+  const now = new Date();
+  
+  // Obter timestamp UTC e ajustar para timezone brasileiro (UTC-3)
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const brazilTime = new Date(utcTime + (-3 * 3600000)); // UTC-3 para Brasil
+  
+  // Formatação manual para YYYY-MM-DD
+  const year = brazilTime.getFullYear();
+  const month = String(brazilTime.getMonth() + 1).padStart(2, '0');
+  const day = String(brazilTime.getDate()).padStart(2, '0');
+  
+  const result = `${year}-${month}-${day}`;
+  console.log(`🇧🇷 Data atual no timezone brasileiro calculada: ${result}`);
+  console.log(`🕐 Hora UTC original: ${now.toISOString()}`);
+  console.log(`🕐 Hora Brasil calculada: ${brazilTime.toISOString()}`);
+  
+  return result;
 }
 
 // Função para obter a data no formato que o Google Ads espera (YYYYMMDD no timezone brasileiro)
@@ -37,11 +50,12 @@ function getTodayForGoogleAds(): string {
   return getTodayInBrazil().replace(/-/g, '');
 }
 
-// Função melhorada para buscar dados do Meta Ads
+// CORREÇÃO: Função melhorada para buscar dados do Meta Ads usando data brasileira
 async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    console.log(`🔍 Meta: Buscando campanhas para conta ${accountId} na data ${today}`);
+    // CORREÇÃO: Usar data do timezone brasileiro, não UTC
+    const today = getTodayInBrazil();
+    console.log(`🔍 Meta: Buscando campanhas para conta ${accountId} na data BRASILEIRA ${today}`);
     
     // Primeira chamada: buscar campanhas ativas
     const campaignsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/campaigns?fields=id,name,effective_status&access_token=${accessToken}`;
@@ -78,9 +92,9 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
     
-    // Segunda chamada: buscar insights da conta
+    // CORREÇÃO: Segunda chamada usando data brasileira
     const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
-    console.log(`📡 Meta: Chamando URL de insights: ${insightsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
+    console.log(`📡 Meta: Chamando URL de insights com data BRASILEIRA: ${insightsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
     
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
@@ -106,9 +120,9 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       totalCost = parseFloat(todayInsights.spend || '0');
       totalImpressions = parseInt(todayInsights.impressions || '0');
       
-      console.log(`💰 Meta: Custo hoje: R$ ${totalCost}, Impressões: ${totalImpressions}`);
+      console.log(`💰 Meta: Custo hoje (data brasileira ${today}): R$ ${totalCost}, Impressões: ${totalImpressions}`);
     } else {
-      console.log(`⚠️ Meta: Nenhum insight encontrado para hoje`);
+      console.log(`⚠️ Meta: Nenhum insight encontrado para hoje (data brasileira ${today})`);
     }
     
     return {
@@ -265,7 +279,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🔍 Iniciando busca de saúde de campanhas ativas (timezone brasileiro)...');
+    console.log('🔍 CORREÇÃO IMPLEMENTADA: Iniciando busca de saúde de campanhas ativas com timezone brasileiro correto...');
 
     // Buscar token do Meta Ads
     const { data: metaToken } = await supabase
@@ -295,10 +309,10 @@ Deno.serve(async (req) => {
 
     console.log(`✅ Encontrados ${clients?.length || 0} clientes ativos`);
 
-    const today = getTodayInBrazil(); // Usar timezone brasileiro
+    const today = getTodayInBrazil(); // CORREÇÃO: Usar função corrigida
     const snapshots: CampaignHealthSnapshot[] = [];
 
-    console.log(`📅 Processando dados para o dia: ${today} (timezone brasileiro)`);
+    console.log(`📅 CORREÇÃO: Processando dados para o dia CORRETO: ${today} (timezone brasileiro CORRIGIDO)`);
 
     // Processar cada cliente
     for (const client of clients || []) {
@@ -307,11 +321,11 @@ Deno.serve(async (req) => {
       let metaData = { cost: 0, impressions: 0, activeCampaigns: 0 };
       let googleData = { cost: 0, impressions: 0, activeCampaigns: 0 };
 
-      // Processar Meta Ads
+      // Processar Meta Ads com função corrigida
       if (client.meta_account_id && client.meta_account_id.trim() !== '') {
-        console.log(`🔄 Processando Meta Ads para ${client.company_name}...`);
+        console.log(`🔄 CORREÇÃO: Processando Meta Ads para ${client.company_name} com data brasileira...`);
         metaData = await fetchMetaActiveCampaigns(metaToken.value, client.meta_account_id);
-        console.log(`✅ Meta processado: Campanhas=${metaData.activeCampaigns}, Custo=R$${metaData.cost}, Impressões=${metaData.impressions}`);
+        console.log(`✅ Meta processado com data CORRIGIDA: Campanhas=${metaData.activeCampaigns}, Custo=R$${metaData.cost}, Impressões=${metaData.impressions}`);
       } else {
         console.log(`⚪ Meta não configurado para ${client.company_name}`);
       }
@@ -328,7 +342,7 @@ Deno.serve(async (req) => {
       // Criar snapshot para este cliente
       const snapshot: CampaignHealthSnapshot = {
         client_id: client.id,
-        snapshot_date: today, // Usar data no timezone brasileiro
+        snapshot_date: today, // CORREÇÃO: Usar data brasileira corrigida
         meta_account_id: client.meta_account_id || null,
         meta_account_name: client.meta_account_id ? `Meta Ads - ${client.meta_account_id}` : null,
         meta_has_account: !!(client.meta_account_id && client.meta_account_id.trim() !== ''),
@@ -347,7 +361,7 @@ Deno.serve(async (req) => {
     }
 
     // Salvar todos os snapshots na nova tabela
-    console.log(`\n💾 Salvando ${snapshots.length} snapshots para ${today} (timezone brasileiro)...`);
+    console.log(`\n💾 CORREÇÃO: Salvando ${snapshots.length} snapshots para ${today} (timezone brasileiro CORRIGIDO)...`);
     
     // Usar upsert para evitar duplicatas
     const { error: upsertError } = await supabase
@@ -362,15 +376,15 @@ Deno.serve(async (req) => {
       throw upsertError;
     }
 
-    console.log('✅ Snapshots salvos com sucesso (timezone brasileiro)!');
+    console.log('✅ CORREÇÃO: Snapshots salvos com sucesso com timezone brasileiro correto!');
 
     // Estatísticas finais
     const metaWithData = snapshots.filter(s => s.meta_cost_today > 0);
     const googleWithData = snapshots.filter(s => s.google_cost_today > 0);
 
-    console.log(`\n📈 Resumo dos dados processados (timezone brasileiro):`);
-    console.log(`📊 Total de snapshots: ${snapshots.length} para ${today}`);
-    console.log(`🟦 Meta Ads: ${snapshots.length} registros (${metaWithData.length} com dados)`);
+    console.log(`\n📈 CORREÇÃO: Resumo dos dados processados com timezone brasileiro correto:`);
+    console.log(`📊 Total de snapshots: ${snapshots.length} para ${today} (data CORRIGIDA)`);
+    console.log(`🟦 Meta Ads: ${snapshots.length} registros (${metaWithData.length} com dados usando data CORRIGIDA)`);
     console.log(`🟥 Google Ads: ${snapshots.length} registros (${googleWithData.length} com dados)`);
     console.log(`👥 Clientes únicos: ${clients?.length || 0}`);
 
@@ -379,13 +393,14 @@ Deno.serve(async (req) => {
         success: true, 
         data: snapshots,
         timestamp: new Date().toISOString(),
-        brazil_date: today,
+        brazil_date_corrected: today,
         totalClients: clients?.length || 0,
         totalSnapshots: snapshots.length,
+        correction_applied: true,
         debug: {
-          metaWithData: metaWithData.length,
+          metaWithDataAfterCorrection: metaWithData.length,
           googleWithData: googleWithData.length,
-          timezone: 'America/Sao_Paulo'
+          timezone: 'America/Sao_Paulo - CORRIGIDO'
         }
       }),
       { 
@@ -395,13 +410,14 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Erro na edge function:', error);
+    console.error('❌ CORREÇÃO: Erro na edge function:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: error.message,
         timestamp: new Date().toISOString(),
-        brazil_date: getTodayInBrazil()
+        brazil_date_corrected: getTodayInBrazil(),
+        correction_applied: false
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
