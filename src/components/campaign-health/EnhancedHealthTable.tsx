@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Eye, Settings } from "lucide-react";
+import { AlertCircle, Eye, Settings, ExternalLink } from "lucide-react";
 import { EnhancedPlatformData } from "./types/enhanced-types";
 
 interface EnhancedClientData {
@@ -147,8 +147,9 @@ function EnhancedPlatformCell({
             onClick={() => onAction('review', clientId, platformKey)}
             className="flex-1 h-8 text-xs bg-[#ff6e00] hover:bg-[#e55a00]"
           >
-            <Eye className="w-4 h-4 mr-2" />
-            Ver Detalhes
+            <Eye />
+            <span>Ver Detalhes</span>
+            <ExternalLink />
           </Button>
         </div>
       </div>

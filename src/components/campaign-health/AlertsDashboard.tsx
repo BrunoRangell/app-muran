@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, AlertCircle, Zap, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, AlertCircle, Zap, CheckCircle, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { HealthDashboardStats, HealthAlert } from "./types/enhanced-types";
 
 interface AlertsDashboardProps {
@@ -171,7 +170,10 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="ml-3">
-                    {alert.severity === 'critical' ? 'Resolver Agora' : 'Investigar'}
+                    <span>
+                      {alert.severity === 'critical' ? 'Resolver Agora' : 'Investigar'}
+                    </span>
+                    <ExternalLink />
                   </Button>
                 </div>
               ))}
