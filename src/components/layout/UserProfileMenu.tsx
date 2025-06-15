@@ -45,16 +45,16 @@ export const UserProfileMenu = ({ isCollapsed }: { isCollapsed?: boolean }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="focus:outline-none w-full">
-        <div className="flex items-center justify-between w-full p-3 h-14 rounded-lg hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
-          <div className="flex items-center gap-x-3 overflow-hidden">
-            <Avatar className="h-10 w-10 flex-shrink-0">
+        <div className="flex items-center justify-between w-full p-2 h-14 rounded-lg hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
+          <div className={cn(
+            "grid items-center gap-x-3 transition-all duration-300 ease-in-out",
+            isCollapsed ? "grid-cols-[40px_0fr]" : "grid-cols-[40px_1fr]"
+          )}>
+            <Avatar className="h-10 w-10">
               <AvatarImage src={user.photo_url || ""} alt={user.name} />
               <AvatarFallback className="bg-muran-primary text-white">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className={cn(
-              "flex flex-col items-start transition-all duration-300 ease-in-out",
-              isCollapsed ? "w-0 opacity-0" : "w-full opacity-100"
-            )}>
+            <div className="overflow-hidden">
               <div className="flex flex-col items-start">
                 <span className="text-sm font-medium text-white whitespace-nowrap">{user.name}</span>
                 <span className="text-xs text-gray-400 whitespace-nowrap">{user.role}</span>
@@ -62,8 +62,8 @@ export const UserProfileMenu = ({ isCollapsed }: { isCollapsed?: boolean }) => {
             </div>
           </div>
           <ChevronDown className={cn(
-            "h-4 w-4 text-gray-400 transition-opacity duration-300 ease-in-out flex-shrink-0",
-            isCollapsed && "opacity-0"
+            "h-4 w-4 text-gray-400 transition-all duration-300 ease-in-out",
+            isCollapsed && "opacity-0 w-0"
           )} />
         </div>
       </DropdownMenuTrigger>

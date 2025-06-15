@@ -46,7 +46,7 @@ export const Layout = () => {
           isMobile 
             ? "mt-16" 
             : isCollapsed 
-              ? "md:ml-24" 
+              ? "md:ml-16" 
               : "md:ml-64"
         )}
       >
