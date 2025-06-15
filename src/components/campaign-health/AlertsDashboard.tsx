@@ -165,9 +165,6 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-600">{alert.title}</p>
-                      {alert.estimatedImpact && (
-                        <p className="text-xs text-orange-600 font-medium">{alert.estimatedImpact}</p>
-                      )}
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="ml-3">

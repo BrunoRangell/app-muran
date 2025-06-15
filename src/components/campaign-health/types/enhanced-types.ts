@@ -1,4 +1,3 @@
-
 import { CampaignStatus } from "../types";
 
 export type AlertLevel = "critical" | "high" | "medium" | "low" | "ok";
@@ -8,7 +7,6 @@ export interface ProblemDiagnostic {
   severity: AlertLevel;
   description: string;
   suggestedAction: string;
-  estimatedImpact?: string;
   lastActivity?: Date;
   affectedCampaigns?: number;
 }
@@ -47,7 +45,6 @@ export interface HealthAlert {
   title: string;
   description: string;
   suggestedAction: string;
-  estimatedImpact?: string;
   createdAt: Date;
 }
 

@@ -34,7 +34,6 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         severity: "medium",
         description: "Conta não configurada",
         suggestedAction: "Conectar conta para monitoramento.",
-        estimatedImpact: "Risco de não identificar problemas."
       });
     } else if (activeCampaigns === 0) {
       problems.push({
@@ -42,7 +41,6 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         severity: "medium", 
         description: "Nenhuma campanha ativa",
         suggestedAction: "Verificar se campanhas deveriam estar ativas ou criar novas.",
-        estimatedImpact: "Cliente sem anúncios em veiculação."
       });
     } else if (costToday > 0 && impressionsToday === 0) {
       problems.push({
@@ -50,7 +48,6 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         severity: "critical",
         description: `Gasto de R$ ${costToday.toFixed(2)} sem impressões`,
         suggestedAction: "Verificar aprovação de anúncios, público e lances.",
-        estimatedImpact: `Perda direta de R$ ${costToday.toFixed(2)} hoje.`
       });
     } else if (activeCampaigns > 0 && costToday === 0 && impressionsToday === 0) {
       problems.push({
@@ -58,7 +55,6 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         severity: "high",
         description: "Campanhas ativas sem veiculação",
         suggestedAction: "Verificar orçamento, lances e status de aprovação dos anúncios.",
-        estimatedImpact: "Potencial de perda de vendas."
       });
     }
 
@@ -138,7 +134,6 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
               title: problem.description,
               description: problem.suggestedAction,
               suggestedAction: problem.suggestedAction,
-              estimatedImpact: problem.estimatedImpact,
               createdAt: new Date()
             });
           });
