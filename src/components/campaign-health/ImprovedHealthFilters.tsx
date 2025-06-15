@@ -18,7 +18,7 @@ export function ImprovedHealthFilters() {
     stats,
     handleRefresh,
     isFetching,
-    lastRefresh
+    lastRefreshTimestamp
   } = useActiveCampaignHealth();
 
   const handleStatusChange = (value: string) => {
@@ -94,7 +94,7 @@ export function ImprovedHealthFilters() {
         {/* Informação da última atualização */}
         <div className="text-xs text-gray-500 mt-4 text-center">
           Dados atualizados automaticamente a cada 10 minutos • 
-          Última atualização: {lastRefresh.toLocaleTimeString('pt-BR')}
+          Última atualização: {lastRefreshTimestamp > 0 ? new Date(lastRefreshTimestamp).toLocaleTimeString('pt-BR') : 'Carregando...'}
           {isFetching && " • Atualizando..."}
         </div>
       </div>

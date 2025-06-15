@@ -88,7 +88,7 @@ export function NewHealthTable() {
     error,
     handleAction,
     handleRefresh,
-    lastRefresh
+    lastRefreshTimestamp
   } = useActiveCampaignHealth();
 
   if (error) {
@@ -210,7 +210,7 @@ export function NewHealthTable() {
       {/* Informações da última atualização */}
       <div className="text-xs text-muted-foreground text-center">
         Dados atualizados automaticamente a cada 10 minutos • 
-        Última atualização: {lastRefresh.toLocaleTimeString('pt-BR')}
+        Última atualização: {lastRefreshTimestamp > 0 ? new Date(lastRefreshTimestamp).toLocaleTimeString('pt-BR') : 'Carregando...'}
         {isFetching && " • Atualizando..."}
       </div>
     </div>
