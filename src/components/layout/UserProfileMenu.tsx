@@ -12,8 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
-export const UserProfileMenu = () => {
+export const UserProfileMenu = ({ isCollapsed }: { isCollapsed?: boolean }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: user, isLoading } = useCurrentUser();
@@ -45,17 +46,25 @@ export const UserProfileMenu = () => {
     <DropdownMenu>
       <DropdownMenuTrigger className="focus:outline-none w-full">
         <div className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-muran-complementary/10 transition-colors data-[state=open]:bg-muran-primary/10">
-          <div className="flex items-center gap-3">
+          <div className={cn(
+            "grid items-center gap-x-3 transition-all duration-300",
+            isCollapsed ? "grid-cols-[40px_0fr]" : "grid-cols-[40px_1fr]"
+          )}>
             <Avatar className="h-10 w-10">
               <AvatarImage src={user.photo_url || ""} alt={user.name} />
               <AvatarFallback className="bg-muran-primary text-white">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="flex flex-col items-start">
-              <span className="text-sm font-medium text-white">{user.name}</span>
-              <span className="text-xs text-gray-400">{user.role}</span>
+            <div className="overflow-hidden">
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-medium text-white whitespace-nowrap">{user.name}</span>
+                <span className="text-xs text-gray-400 whitespace-nowrap">{user.role}</span>
+              </div>
             </div>
           </div>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
+          <ChevronDown className={cn(
+            "h-4 w-4 text-gray-400 transition-all duration-300",
+            isCollapsed && "opacity-0 w-0"
+          )} />
         </div>
       </DropdownMenuTrigger>
       

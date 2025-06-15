@@ -96,7 +96,7 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
     <div 
       className={cn(
         "h-screen bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-16" : "w-64"
+        isCollapsed ? "w-20" : "w-64"
       )}
     >
       {/* Header com logo e botão de toggle */}
@@ -115,12 +115,9 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
         </Button>
       </div>
 
-      {/* Profile menu - apenas quando expandido */}
-      <div className={cn(
-        "transition-all duration-300 ease-in-out overflow-hidden",
-        isCollapsed ? 'max-h-0 opacity-0' : 'max-h-40 opacity-100 mb-4'
-      )}>
-        <UserProfileMenu />
+      {/* Profile menu */}
+      <div className="mb-4">
+        <UserProfileMenu isCollapsed={isCollapsed} />
       </div>
 
       {/* Navigation menu */}
