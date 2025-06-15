@@ -1,4 +1,3 @@
-
 import { useLocation } from "react-router-dom";
 import { 
   Users, 
@@ -117,11 +116,12 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
       </div>
 
       {/* Profile menu - apenas quando expandido */}
-      {!isCollapsed && (
-        <div className="mb-4">
-          <UserProfileMenu />
-        </div>
-      )}
+      <div className={cn(
+        "transition-all duration-300 ease-in-out overflow-hidden",
+        isCollapsed ? 'max-h-0 opacity-0' : 'max-h-40 opacity-100 mb-4'
+      )}>
+        <UserProfileMenu />
+      </div>
 
       {/* Navigation menu */}
       <nav className="flex-1 space-y-2">

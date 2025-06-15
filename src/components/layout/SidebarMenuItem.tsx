@@ -49,23 +49,29 @@ export const SidebarMenuItem = ({
         if (!hasSubmenu && onClick) onClick();
       }}
       className={cn(
-        "flex items-center transition-colors rounded-lg",
+        "flex items-center transition-colors rounded-lg w-full",
         isCollapsed ? "p-2 justify-center" : "p-3 justify-between",
         isItemActive
           ? "bg-muran-primary text-white" 
           : "hover:bg-muran-complementary/80 text-gray-300",
       )}
     >
-      <div className={cn("flex items-center", isCollapsed ? "" : "space-x-2")}>
+      <div className={cn(
+        "grid items-center transition-all duration-200",
+        isCollapsed ? "grid-cols-[20px_0fr]" : "grid-cols-[20px_1fr] gap-x-2"
+      )}>
         <Icon size={20} />
-        {!isCollapsed && <span>{label}</span>}
+        <div className="overflow-hidden">
+          <span className="whitespace-nowrap">{label}</span>
+        </div>
       </div>
-      {hasSubmenu && !isCollapsed && (
+      {hasSubmenu && (
         <ChevronDown 
           size={16} 
           className={cn(
-            "transition-transform duration-200",
-            isOpen && "transform rotate-180"
+            "transition-all duration-200",
+            isOpen && "transform rotate-180",
+            isCollapsed && "opacity-0 w-0"
           )}
         />
       )}
