@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CampaignHealthService } from "../services/campaignHealthService";
 import { ClientHealthData, CampaignStatus, PlatformHealthData } from "../types";
+import { getTodayInBrazil } from "@/utils/brazilTimezone";
 
 // Função para determinar o status baseado nos dados
 function determineStatus(hasAccount: boolean, activeCampaigns: number, costToday: number, impressionsToday: number): CampaignStatus {
@@ -55,21 +56,21 @@ function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: Platfo
   return "nao-configurado";
 }
 
-// Função corrigida para processar APENAS dados de hoje
+// Função corrigida para processar APENAS dados de hoje (timezone brasileiro)
 function processSnapshots(snapshots: any[]): ClientHealthData[] {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayInBrazil();
   
-  // Validação rigorosa: todos os snapshots devem ser de hoje
+  // Validação rigorosa: todos os snapshots devem ser de hoje (timezone brasileiro)
   const todaySnapshots = snapshots.filter(snapshot => 
     snapshot.snapshot_date === today
   );
 
   if (todaySnapshots.length !== snapshots.length) {
-    console.warn(`⚠️ Removendo ${snapshots.length - todaySnapshots.length} snapshots que não são de hoje`);
+    console.warn(`⚠️ Removendo ${snapshots.length - todaySnapshots.length} snapshots que não são de hoje (timezone brasileiro)`);
   }
 
   if (todaySnapshots.length === 0) {
-    console.log("❌ Nenhum snapshot de hoje encontrado");
+    console.log("❌ Nenhum snapshot de hoje encontrado (timezone brasileiro)");
     return [];
   }
 
@@ -138,14 +139,14 @@ function processSnapshots(snapshots: any[]): ClientHealthData[] {
     overallStatus: determineOverallStatus(client.metaAds, client.googleAds)
   }));
 
-  console.log(`✅ Processados ${processedData.length} clientes APENAS com dados de hoje (${today})`);
+  console.log(`✅ Processados ${processedData.length} clientes APENAS com dados de hoje (timezone brasileiro: ${today})`);
   return processedData;
 }
 
-// Busca dados RIGOROSAMENTE de hoje - sem fallbacks
+// Busca dados RIGOROSAMENTE de hoje - sem fallbacks (timezone brasileiro)
 async function fetchTodayOnlyCampaignHealth(): Promise<ClientHealthData[]> {
-  const today = new Date().toISOString().split('T')[0];
-  console.log(`🔍 Buscando dados RIGOROSAMENTE de hoje: ${today}`);
+  const today = getTodayInBrazil();
+  console.log(`🔍 Buscando dados RIGOROSAMENTE de hoje (timezone brasileiro): ${today}`);
   
   try {
     // Passo 1: Tentar buscar snapshots de hoje
@@ -153,7 +154,7 @@ async function fetchTodayOnlyCampaignHealth(): Promise<ClientHealthData[]> {
     
     // Passo 2: Validar que todos os dados são realmente de hoje
     if (!CampaignHealthService.validateDataIsFromToday(todaySnapshots)) {
-      console.log("❌ Dados não são válidos para hoje. Gerando novos dados...");
+      console.log("❌ Dados não são válidos para hoje (timezone brasileiro). Gerando novos dados...");
       
       // Passo 3: Se não há dados válidos de hoje, gerar
       const generateSuccess = await CampaignHealthService.generateTodaySnapshots();
@@ -166,20 +167,20 @@ async function fetchTodayOnlyCampaignHealth(): Promise<ClientHealthData[]> {
         const newSnapshots = await CampaignHealthService.fetchTodaySnapshots();
         
         if (CampaignHealthService.validateDataIsFromToday(newSnapshots)) {
-          console.log(`✅ Novos snapshots gerados com sucesso para hoje`);
+          console.log(`✅ Novos snapshots gerados com sucesso para hoje (timezone brasileiro)`);
           return processSnapshots(newSnapshots);
         }
       }
 
-      console.log("❌ Falha ao gerar dados de hoje. Retornando array vazio.");
+      console.log("❌ Falha ao gerar dados de hoje (timezone brasileiro). Retornando array vazio.");
       return [];
     }
 
-    console.log(`✅ Dados válidos de hoje encontrados: ${todaySnapshots.length} registros`);
+    console.log(`✅ Dados válidos de hoje encontrados (timezone brasileiro): ${todaySnapshots.length} registros`);
     return processSnapshots(todaySnapshots);
 
   } catch (error) {
-    console.error("❌ Erro ao buscar dados de hoje:", error);
+    console.error("❌ Erro ao buscar dados de hoje (timezone brasileiro):", error);
     throw error;
   }
 }
@@ -192,10 +193,10 @@ export function useActiveCampaignHealth() {
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const queryClient = useQueryClient();
-  const today = new Date().toISOString().split('T')[0];
-  const queryKey = ["active-campaign-health", today]; // Cache baseado na data
+  const today = getTodayInBrazil();
+  const queryKey = ["active-campaign-health", today]; // Cache baseado na data (timezone brasileiro)
 
-  // Query para buscar APENAS dados de hoje
+  // Query para buscar APENAS dados de hoje (timezone brasileiro)
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey,
     queryFn: fetchTodayOnlyCampaignHealth,
@@ -206,14 +207,14 @@ export function useActiveCampaignHealth() {
     retryDelay: 3000
   });
 
-  // Invalidar cache automaticamente quando a data muda
+  // Invalidar cache automaticamente quando a data muda (timezone brasileiro)
   useEffect(() => {
     const checkDateChange = () => {
-      const currentDate = new Date().toISOString().split('T')[0];
+      const currentDate = getTodayInBrazil();
       const cachedDate = queryKey[1];
       
       if (currentDate !== cachedDate) {
-        console.log(`📅 Data mudou de ${cachedDate} para ${currentDate}. Invalidando cache...`);
+        console.log(`📅 Data mudou de ${cachedDate} para ${currentDate} (timezone brasileiro). Invalidando cache...`);
         queryClient.removeQueries({ queryKey: ["active-campaign-health"] });
         window.location.reload(); // Force reload para garantir dados frescos
       }
@@ -254,9 +255,9 @@ export function useActiveCampaignHealth() {
     return passes;
   }) || [];
 
-  // Função melhorada para atualizar APENAS dados de hoje
+  // Função melhorada para atualizar APENAS dados de hoje (timezone brasileiro)
   const handleRefresh = async () => {
-    console.log("🔄 Iniciando atualização manual APENAS para hoje...");
+    console.log("🔄 Iniciando atualização manual APENAS para hoje (timezone brasileiro)...");
     setIsManualRefreshing(true);
     
     try {
@@ -278,7 +279,7 @@ export function useActiveCampaignHealth() {
       
       if (result.isSuccess) {
         setLastRefresh(new Date());
-        console.log("✅ Atualização manual concluída para hoje!");
+        console.log("✅ Atualização manual concluída para hoje (timezone brasileiro)!");
       } else {
         throw new Error("Falha ao buscar dados atualizados");
       }
@@ -343,6 +344,6 @@ export function useActiveCampaignHealth() {
     lastRefresh,
     stats,
     isManualRefreshing,
-    todayDate: today // Expor data atual para a UI
+    todayDate: today // Expor data atual para a UI (timezone brasileiro)
   };
 }
