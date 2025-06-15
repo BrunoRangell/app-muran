@@ -189,7 +189,6 @@ export function useActiveCampaignHealth() {
   const [filterValue, setFilterValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | "all">("all");
   const [platformFilter, setPlatformFilter] = useState<'meta' | 'google' | 'all'>("all");
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const queryClient = useQueryClient();
@@ -197,12 +196,12 @@ export function useActiveCampaignHealth() {
   const queryKey = ["active-campaign-health", today]; // Cache baseado na data (timezone brasileiro)
 
   // Query para buscar APENAS dados de hoje (timezone brasileiro)
-  const { data, isLoading, error, refetch, isFetching } = useQuery({
+  const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useQuery({
     queryKey,
     queryFn: fetchTodayOnlyCampaignHealth,
     staleTime: 5 * 60 * 1000, // 5 minutos
     refetchInterval: 10 * 60 * 1000, // Auto-refresh a cada 10 minutos
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true, // Habilitado para melhor experiência do usuário
     retry: 2,
     retryDelay: 3000
   });
@@ -278,7 +277,6 @@ export function useActiveCampaignHealth() {
       const result = await refetch();
       
       if (result.isSuccess) {
-        setLastRefresh(new Date());
         console.log("✅ Atualização manual concluída para hoje (timezone brasileiro)!");
       } else {
         throw new Error("Falha ao buscar dados atualizados");
@@ -291,7 +289,6 @@ export function useActiveCampaignHealth() {
       try {
         const fallbackResult = await refetch();
         if (fallbackResult.isSuccess) {
-          setLastRefresh(new Date());
           console.log("✅ Fallback refetch bem-sucedido");
         }
       } catch (fallbackError) {
@@ -341,7 +338,7 @@ export function useActiveCampaignHealth() {
     setPlatformFilter,
     handleAction,
     handleRefresh,
-    lastRefresh,
+    lastRefreshTimestamp: dataUpdatedAt,
     stats,
     isManualRefreshing,
     todayDate: today // Expor data atual para a UI (timezone brasileiro)

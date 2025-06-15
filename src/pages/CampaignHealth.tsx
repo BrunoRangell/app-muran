@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
 import { useIntelligentAnalysis } from "@/components/campaign-health/hooks/useIntelligentAnalysis";
@@ -28,7 +27,7 @@ export default function CampaignHealth() {
     setPlatformFilter,
     handleAction,
     handleRefresh,
-    lastRefresh,
+    lastRefreshTimestamp,
     stats,
     isManualRefreshing,
     todayDate
@@ -75,17 +74,6 @@ export default function CampaignHealth() {
     handleAction('review', alert.clientId, alert.platform);
   };
 
-  // Formatar data para exibição em português
-  const formatTodayDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric'
-    });
-  };
-
   // Mapear dashboardStats para o formato esperado pelo IntelligentFilters
   const totalFilterStats = {
     critical: dashboardStats.criticalAlerts,
@@ -109,7 +97,9 @@ export default function CampaignHealth() {
                 📅 {formatDateForDisplay(todayDate)}
               </div>
               <span className="text-gray-600">
-                • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                • Última atualização: {lastRefreshTimestamp > 0
+                  ? new Date(lastRefreshTimestamp).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+                  : 'Carregando...'}
               </span>
               {isManualRefreshing && (
                 <span className="text-blue-600 font-medium">• Atualizando...</span>
