@@ -1,5 +1,6 @@
 
 import { supabase } from "@/lib/supabase";
+import { getTodayInBrazil } from "@/utils/brazilTimezone";
 
 export interface CampaignHealthSnapshot {
   id: string;
@@ -53,9 +54,9 @@ export class CampaignHealthService {
       // Verificar autenticação primeiro
       await this.checkAuthAndTeamMembership();
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayInBrazil();
       
-      console.log(`📅 Buscando snapshots de hoje: ${today}`);
+      console.log(`📅 Buscando snapshots de hoje (timezone brasileiro): ${today}`);
       
       const { data, error } = await supabase
         .from('campaign_health_snapshots')
@@ -71,7 +72,7 @@ export class CampaignHealthService {
         throw new Error(`Erro ao buscar snapshots: ${error.message}`);
       }
 
-      console.log(`✅ Encontrados ${data?.length || 0} snapshots para hoje`);
+      console.log(`✅ Encontrados ${data?.length || 0} snapshots para hoje (timezone brasileiro)`);
       return data || [];
     } catch (error) {
       console.error("❌ Erro na busca de snapshots:", error);
@@ -89,14 +90,15 @@ export class CampaignHealthService {
         throw new Error('Apenas administradores podem gerar snapshots manualmente.');
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      console.log(`🔧 Gerando snapshots para hoje: ${today}`);
+      const today = getTodayInBrazil();
+      console.log(`🔧 Gerando snapshots para hoje (timezone brasileiro): ${today}`);
       
       const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
         body: { 
           timestamp: new Date().toISOString(),
           action: 'generate_snapshots',
-          force_today_only: true
+          force_today_only: true,
+          brazil_timezone: true
         }
       });
 
@@ -123,15 +125,16 @@ export class CampaignHealthService {
         throw new Error('Apenas administradores podem forçar refresh dos snapshots.');
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      console.log(`🔄 Forçando refresh para hoje: ${today}`);
+      const today = getTodayInBrazil();
+      console.log(`🔄 Forçando refresh para hoje (timezone brasileiro): ${today}`);
       
       const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
         body: { 
           timestamp: new Date().toISOString(),
           forceRefresh: true,
           action: 'force_refresh_today',
-          target_date: today
+          target_date: today,
+          brazil_timezone: true
         }
       });
 
@@ -149,7 +152,7 @@ export class CampaignHealthService {
   }
 
   static validateDataIsFromToday(snapshots: CampaignHealthSnapshot[]): boolean {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayInBrazil();
     
     if (!snapshots || snapshots.length === 0) {
       console.log("⚠️ Nenhum snapshot encontrado");
@@ -161,11 +164,11 @@ export class CampaignHealthService {
     );
 
     if (!allFromToday) {
-      console.warn("❌ Alguns snapshots não são de hoje!");
+      console.warn("❌ Alguns snapshots não são de hoje (timezone brasileiro)!");
       return false;
     }
 
-    console.log(`✅ Todos os ${snapshots.length} snapshots são de hoje`);
+    console.log(`✅ Todos os ${snapshots.length} snapshots são de hoje (timezone brasileiro)`);
     return true;
   }
 }

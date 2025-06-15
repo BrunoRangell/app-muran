@@ -9,6 +9,7 @@ import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
 import { AuthErrorHandler } from "@/components/auth/AuthErrorHandler";
 import { CampaignStatus } from "@/components/campaign-health/types";
 import { AlertLevel, HealthAlert } from "@/components/campaign-health/types/enhanced-types";
+import { formatDateForDisplay } from "@/utils/brazilTimezone";
 
 export default function CampaignHealth() {
   const [urgencyFilter, setUrgencyFilter] = useState<AlertLevel | "all">("all");
@@ -105,10 +106,10 @@ export default function CampaignHealth() {
             </h1>
             <div className="flex items-center gap-2 text-sm">
               <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
-                📅 {formatTodayDate(todayDate)}
+                📅 {formatDateForDisplay(todayDate)}
               </div>
               <span className="text-gray-600">
-                • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR')}
+                • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
               </span>
               {isManualRefreshing && (
                 <span className="text-blue-600 font-medium">• Atualizando...</span>
