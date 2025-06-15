@@ -1,4 +1,3 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -144,20 +143,10 @@ function EnhancedPlatformCell({
           </div>
         </div>
 
-        {/* Problemas e Ações */}
+        {/* Problema */}
         {platformData.problems.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs text-gray-600">
-              <strong>{platformData.problems[0].description}</strong>
-            </div>
-            <div className="text-xs text-gray-500">
-              💡 {platformData.problems[0].suggestedAction}
-            </div>
-            {platformData.problems[0].estimatedImpact && (
-              <div className="text-xs font-medium text-orange-600">
-                {platformData.problems[0].estimatedImpact}
-              </div>
-            )}
+          <div className="text-xs text-gray-700 font-medium pt-1">
+            {platformData.problems[0].description}
           </div>
         )}
 

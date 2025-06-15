@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { ClientHealthData } from "../types";
 import { AlertLevel, ProblemDiagnostic, EnhancedPlatformData, HealthAlert, HealthDashboardStats } from "../types/enhanced-types";
@@ -34,34 +33,32 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         type: "configuration",
         severity: "medium",
         description: "Conta não configurada",
-        suggestedAction: "Conectar conta publicitária",
-        estimatedImpact: "Potencial de +R$ 1.500/mês"
+        suggestedAction: "Conectar conta para monitoramento.",
+        estimatedImpact: "Risco de não identificar problemas."
       });
     } else if (activeCampaigns === 0) {
       problems.push({
         type: "configuration",
         severity: "medium", 
         description: "Nenhuma campanha ativa",
-        suggestedAction: "Criar e ativar campanhas",
-        estimatedImpact: "Sem veiculação ativa"
+        suggestedAction: "Verificar se campanhas deveriam estar ativas ou criar novas.",
+        estimatedImpact: "Cliente sem anúncios em veiculação."
       });
     } else if (costToday > 0 && impressionsToday === 0) {
       problems.push({
         type: "performance",
         severity: "critical",
-        description: "Gastando sem impressões",
-        suggestedAction: "Verificar aprovação de anúncios",
-        estimatedImpact: "Perda: R$ " + costToday.toFixed(2),
-        affectedCampaigns: activeCampaigns
+        description: `Gasto de R$ ${costToday.toFixed(2)} sem impressões`,
+        suggestedAction: "Verificar aprovação de anúncios, público e lances.",
+        estimatedImpact: `Perda direta de R$ ${costToday.toFixed(2)} hoje.`
       });
-    } else if (costToday === 0 && impressionsToday === 0 && activeCampaigns > 0) {
+    } else if (activeCampaigns > 0 && costToday === 0 && impressionsToday === 0) {
       problems.push({
         type: "budget",
         severity: "high",
-        description: "Campanhas ativas sem gasto ou impressões",
-        suggestedAction: "Verificar orçamento, lances e aprovação de anúncios",
-        estimatedImpact: "Sem alcance atual",
-        affectedCampaigns: activeCampaigns
+        description: "Campanhas ativas sem veiculação",
+        suggestedAction: "Verificar orçamento, lances e status de aprovação dos anúncios.",
+        estimatedImpact: "Potencial de perda de vendas."
       });
     }
 
