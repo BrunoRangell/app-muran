@@ -1,4 +1,3 @@
-
 import { useLocation } from "react-router-dom";
 import { 
   Users, 
@@ -97,28 +96,29 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
     <div 
       className={cn(
         "h-screen bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col transition-all duration-300 ease-in-out",
-        isCollapsed ? "w-16" : "w-64"
+        isCollapsed ? "w-20" : "w-64"
       )}
     >
-      {/* Header com botão de toggle */}
-      <div className="flex items-center justify-between mb-4">
-        {!isCollapsed && <SidebarLogo />}
+      {/* Header com logo e botão de toggle */}
+      <div className={cn("mb-8", isCollapsed ? 'flex flex-col items-center space-y-4' : 'relative flex items-center justify-center')}>
+        <SidebarLogo isCollapsed={isCollapsed} />
         <Button
           variant="ghost"
           size="sm"
           onClick={toggleCollapse}
-          className="text-white hover:bg-muran-complementary/80 p-2 h-8 w-8"
+          className={cn(
+            "text-white hover:bg-muran-complementary/80 p-2 h-8 w-8",
+            !isCollapsed && "absolute right-0 top-1/2 -translate-y-1/2"
+          )}
         >
           {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
         </Button>
       </div>
 
-      {/* Profile menu - apenas quando expandido */}
-      {!isCollapsed && (
-        <div className="mb-4">
-          <UserProfileMenu />
-        </div>
-      )}
+      {/* Profile menu */}
+      <div className="mb-4">
+        <UserProfileMenu isCollapsed={isCollapsed} />
+      </div>
 
       {/* Navigation menu */}
       <nav className="flex-1 space-y-2">

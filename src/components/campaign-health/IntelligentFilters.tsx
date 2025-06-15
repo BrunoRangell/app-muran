@@ -1,8 +1,7 @@
-
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, RefreshCw, Loader2 } from "lucide-react";
+import { Search, RefreshCw, Loader2, AlertTriangle, AlertCircle, Zap, CheckCircle } from "lucide-react";
 import { CampaignStatus } from "./types";
 import { AlertLevel } from "./types/enhanced-types";
 
@@ -75,16 +74,28 @@ export function IntelligentFilters({
                   Todas ({stats.totalProblems})
                 </SelectItem>
                 <SelectItem value="critical" className="text-red-600 font-medium">
-                  🚨 Crítico ({stats.critical})
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>Crítico ({stats.critical})</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="high" className="text-orange-600 font-medium">
-                  ⚠️ Alto ({stats.high})
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>Alto ({stats.high})</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="medium" className="text-yellow-600 font-medium">
-                  ⚡ Médio ({stats.medium})
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4" />
+                    <span>Médio ({stats.medium})</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="ok" className="text-green-600 font-medium">
-                  ✅ OK
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>OK</span>
+                  </div>
                 </SelectItem>
               </SelectContent>
             </Select>

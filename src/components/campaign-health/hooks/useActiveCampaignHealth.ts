@@ -57,7 +57,7 @@ function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: Platfo
 }
 
 // Função corrigida para processar APENAS dados de hoje (timezone brasileiro)
-function processSnapshots(snapshots: any[]): ClientHealthData[] {
+function processSnapshots(snapshots: any[]): { processedData: ClientHealthData[], latestUpdatedAt: number } {
   const today = getTodayInBrazil();
   
   // Validação rigorosa: todos os snapshots devem ser de hoje (timezone brasileiro)
@@ -71,8 +71,18 @@ function processSnapshots(snapshots: any[]): ClientHealthData[] {
 
   if (todaySnapshots.length === 0) {
     console.log("❌ Nenhum snapshot de hoje encontrado (timezone brasileiro)");
-    return [];
+    return { processedData: [], latestUpdatedAt: 0 };
   }
+
+  let latestUpdatedAt = 0;
+  todaySnapshots.forEach(snapshot => {
+    if (snapshot.updated_at) {
+      const updatedAtTimestamp = new Date(snapshot.updated_at).getTime();
+      if (updatedAtTimestamp > latestUpdatedAt) {
+        latestUpdatedAt = updatedAtTimestamp;
+      }
+    }
+  });
 
   const clientMap = new Map<string, ClientHealthData>();
 
@@ -140,11 +150,11 @@ function processSnapshots(snapshots: any[]): ClientHealthData[] {
   }));
 
   console.log(`✅ Processados ${processedData.length} clientes APENAS com dados de hoje (timezone brasileiro: ${today})`);
-  return processedData;
+  return { processedData, latestUpdatedAt };
 }
 
 // Busca dados RIGOROSAMENTE de hoje - sem fallbacks (timezone brasileiro)
-async function fetchTodayOnlyCampaignHealth(): Promise<ClientHealthData[]> {
+async function fetchTodayOnlyCampaignHealth(): Promise<{ processedData: ClientHealthData[], latestUpdatedAt: number }> {
   const today = getTodayInBrazil();
   console.log(`🔍 Buscando dados RIGOROSAMENTE de hoje (timezone brasileiro): ${today}`);
   
@@ -173,7 +183,7 @@ async function fetchTodayOnlyCampaignHealth(): Promise<ClientHealthData[]> {
       }
 
       console.log("❌ Falha ao gerar dados de hoje (timezone brasileiro). Retornando array vazio.");
-      return [];
+      return { processedData: [], latestUpdatedAt: 0 };
     }
 
     console.log(`✅ Dados válidos de hoje encontrados (timezone brasileiro): ${todaySnapshots.length} registros`);
@@ -189,7 +199,6 @@ export function useActiveCampaignHealth() {
   const [filterValue, setFilterValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | "all">("all");
   const [platformFilter, setPlatformFilter] = useState<'meta' | 'google' | 'all'>("all");
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const queryClient = useQueryClient();
@@ -197,12 +206,12 @@ export function useActiveCampaignHealth() {
   const queryKey = ["active-campaign-health", today]; // Cache baseado na data (timezone brasileiro)
 
   // Query para buscar APENAS dados de hoje (timezone brasileiro)
-  const { data, isLoading, error, refetch, isFetching } = useQuery({
+  const { data: queryResult, isLoading, error, refetch, isFetching } = useQuery({
     queryKey,
     queryFn: fetchTodayOnlyCampaignHealth,
     staleTime: 5 * 60 * 1000, // 5 minutos
     refetchInterval: 10 * 60 * 1000, // Auto-refresh a cada 10 minutos
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true, // Habilitado para melhor experiência do usuário
     retry: 2,
     retryDelay: 3000
   });
@@ -226,7 +235,7 @@ export function useActiveCampaignHealth() {
   }, [queryClient, queryKey]);
 
   // Filtrar dados com logs para debug
-  const filteredData = data?.filter(client => {
+  const filteredData = queryResult?.processedData?.filter(client => {
     const matchesName = filterValue === "" || 
       client.clientName.toLowerCase().includes(filterValue.toLowerCase());
     
@@ -278,7 +287,6 @@ export function useActiveCampaignHealth() {
       const result = await refetch();
       
       if (result.isSuccess) {
-        setLastRefresh(new Date());
         console.log("✅ Atualização manual concluída para hoje (timezone brasileiro)!");
       } else {
         throw new Error("Falha ao buscar dados atualizados");
@@ -291,7 +299,6 @@ export function useActiveCampaignHealth() {
       try {
         const fallbackResult = await refetch();
         if (fallbackResult.isSuccess) {
-          setLastRefresh(new Date());
           console.log("✅ Fallback refetch bem-sucedido");
         }
       } catch (fallbackError) {
@@ -303,12 +310,7 @@ export function useActiveCampaignHealth() {
   };
 
   // Função para ações dos botões
-  function handleAction(action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') {
-    if (action === "details") {
-      const platformParam = encodeURIComponent(platform);
-      window.open(`/clientes/${clientId}?platform=${platformParam}`, "_blank");
-    }
-    
+  function handleAction(action: "review" | "configure", clientId: string, platform: 'meta' | 'google') {
     if (action === "review") {
       const platformParam = encodeURIComponent(platform);
       window.open(`/revisao-diaria-avancada?clienteId=${clientId}&platform=${platformParam}`, "_blank");
@@ -321,7 +323,7 @@ export function useActiveCampaignHealth() {
 
   // Estatísticas para dashboard
   const stats = {
-    totalClients: data?.length || 0,
+    totalClients: queryResult?.processedData?.length || 0,
     functioning: filteredData.filter(client => client.overallStatus === "funcionando").length,
     noSpend: filteredData.filter(client => client.overallStatus === "sem-veiculacao").length,
     noCampaigns: filteredData.filter(client => client.overallStatus === "sem-campanhas").length,
@@ -341,7 +343,7 @@ export function useActiveCampaignHealth() {
     setPlatformFilter,
     handleAction,
     handleRefresh,
-    lastRefresh,
+    lastRefreshTimestamp: queryResult?.latestUpdatedAt || 0,
     stats,
     isManualRefreshing,
     todayDate: today // Expor data atual para a UI (timezone brasileiro)

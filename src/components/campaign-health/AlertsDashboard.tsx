@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, AlertCircle, Zap, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, AlertCircle, Zap, CheckCircle, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { HealthDashboardStats, HealthAlert } from "./types/enhanced-types";
 
 interface AlertsDashboardProps {
@@ -24,12 +23,12 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
     }
   };
 
-  const getSeverityIcon = (severity: string) => {
+  const getSeverityIconComponent = (severity: string) => {
     switch (severity) {
-      case "critical": return "🚨";
-      case "high": return "⚠️";
-      case "medium": return "⚡";
-      default: return "ℹ️";
+      case "critical": return <AlertTriangle className="w-5 h-5 text-red-600" />;
+      case "high": return <AlertCircle className="w-5 h-5 text-orange-600" />;
+      case "medium": return <Zap className="w-5 h-5 text-yellow-600" />;
+      default: return <CheckCircle className="w-5 h-5 text-gray-500" />;
     }
   };
 
@@ -123,7 +122,8 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
               aria-expanded={isAlertsExpanded}
             >
               <CardTitle className="text-lg text-[#321e32] flex items-center gap-2">
-                🚨 Ações Imediatas Necessárias
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                Ações Imediatas Necessárias
                 <Badge variant="destructive" className="ml-2">
                   {topAlerts.length}
                 </Badge>
@@ -151,7 +151,7 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
                   onClick={() => onAlertClick(alert)}
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="text-lg">{getSeverityIcon(alert.severity)}</div>
+                    {getSeverityIconComponent(alert.severity)}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-gray-900">{alert.clientName}</span>
@@ -165,13 +165,13 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-600">{alert.title}</p>
-                      {alert.estimatedImpact && (
-                        <p className="text-xs text-orange-600 font-medium">{alert.estimatedImpact}</p>
-                      )}
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="ml-3">
-                    {alert.severity === 'critical' ? 'Resolver Agora' : 'Investigar'}
+                    <span>
+                      {alert.severity === 'critical' ? 'Resolver Agora' : 'Investigar'}
+                    </span>
+                    <ExternalLink />
                   </Button>
                 </div>
               ))}

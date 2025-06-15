@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { ClientHealthData } from "../types";
 import { AlertLevel, ProblemDiagnostic, EnhancedPlatformData, HealthAlert, HealthDashboardStats } from "../types/enhanced-types";
@@ -14,8 +13,9 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
     if (!hasAccount) return "medium";
     if (activeCampaigns === 0) return "medium";
     if (costToday > 0 && impressionsToday > 0) return "ok";
+    if (costToday === 0 && impressionsToday > 0) return "ok"; // Impressões grátis é bom
     if (costToday > 0 && impressionsToday === 0) return "critical";
-    if (costToday === 0 && activeCampaigns > 0) return "high";
+    if (costToday === 0 && impressionsToday === 0 && activeCampaigns > 0) return "high";
     return "medium";
   };
 
@@ -33,34 +33,28 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         type: "configuration",
         severity: "medium",
         description: "Conta não configurada",
-        suggestedAction: "Conectar conta publicitária",
-        estimatedImpact: "Potencial de +R$ 1.500/mês"
+        suggestedAction: "Conectar conta para monitoramento.",
       });
     } else if (activeCampaigns === 0) {
       problems.push({
         type: "configuration",
         severity: "medium", 
         description: "Nenhuma campanha ativa",
-        suggestedAction: "Criar e ativar campanhas",
-        estimatedImpact: "Sem veiculação ativa"
+        suggestedAction: "Verificar se campanhas deveriam estar ativas ou criar novas.",
       });
     } else if (costToday > 0 && impressionsToday === 0) {
       problems.push({
         type: "performance",
         severity: "critical",
-        description: "Gastando sem impressões",
-        suggestedAction: "Verificar aprovação de anúncios",
-        estimatedImpact: "Perda: R$ " + costToday.toFixed(2),
-        affectedCampaigns: activeCampaigns
+        description: `Gasto de R$ ${costToday.toFixed(2)} sem impressões`,
+        suggestedAction: "Verificar aprovação de anúncios, público e lances.",
       });
-    } else if (costToday === 0 && activeCampaigns > 0) {
+    } else if (activeCampaigns > 0 && costToday === 0 && impressionsToday === 0) {
       problems.push({
         type: "budget",
         severity: "high",
-        description: "Campanhas ativas sem gasto",
-        suggestedAction: "Verificar orçamento e aprovação",
-        estimatedImpact: "Sem alcance atual",
-        affectedCampaigns: activeCampaigns
+        description: "Campanhas ativas sem veiculação",
+        suggestedAction: "Verificar orçamento, lances e status de aprovação dos anúncios.",
       });
     }
 
@@ -69,8 +63,13 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
 
   const enhancedData = useMemo(() => {
     return data.map(client => {
+      const metaUnservedCampaigns = (client.metaAds && client.metaAds.costToday === 0 && client.metaAds.impressionsToday === 0 && client.metaAds.activeCampaignsCount > 0) 
+        ? client.metaAds.activeCampaignsCount 
+        : 0;
+
       const enhancedMeta: EnhancedPlatformData | undefined = client.metaAds ? {
         ...client.metaAds,
+        unservedCampaignsCount: metaUnservedCampaigns,
         alertLevel: analyzeAlertLevel(
           client.metaAds.hasAccount,
           client.metaAds.activeCampaignsCount,
@@ -87,8 +86,13 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         quickActions: [] // Will be populated based on problems
       } : undefined;
 
+      const googleUnservedCampaigns = (client.googleAds && client.googleAds.costToday === 0 && client.googleAds.impressionsToday === 0 && client.googleAds.activeCampaignsCount > 0) 
+        ? client.googleAds.activeCampaignsCount
+        : 0;
+
       const enhancedGoogle: EnhancedPlatformData | undefined = client.googleAds ? {
         ...client.googleAds,
+        unservedCampaignsCount: googleUnservedCampaigns,
         alertLevel: analyzeAlertLevel(
           client.googleAds.hasAccount,
           client.googleAds.activeCampaignsCount,
@@ -130,7 +134,6 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
               title: problem.description,
               description: problem.suggestedAction,
               suggestedAction: problem.suggestedAction,
-              estimatedImpact: problem.estimatedImpact,
               createdAt: new Date()
             });
           });

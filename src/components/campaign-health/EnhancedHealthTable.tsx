@@ -1,10 +1,9 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ExternalLink, Settings, Zap, TrendingUp } from "lucide-react";
+import { AlertCircle, Eye, Settings, ExternalLink, AlertTriangle, Zap, CheckCircle } from "lucide-react";
 import { EnhancedPlatformData } from "./types/enhanced-types";
 
 interface EnhancedClientData {
@@ -37,8 +36,8 @@ function EnhancedPlatformCell({
 }) {
   if (!platformData) {
     return (
-      <TableCell className="py-4">
-        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+      <TableCell className="py-4 w-[382px] align-top">
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2 h-full">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Não configurado</span>
             <Badge variant="outline" className="text-xs">Setup</Badge>
@@ -58,66 +57,78 @@ function EnhancedPlatformCell({
     );
   }
 
-  const getAlertColor = (alertLevel: string) => {
+  const getAlertStyling = (alertLevel: string) => {
     switch (alertLevel) {
-      case 'critical': return 'border-red-200 bg-red-50';
-      case 'high': return 'border-orange-200 bg-orange-50';
-      case 'medium': return 'border-yellow-200 bg-yellow-50';
-      case 'ok': return 'border-green-200 bg-green-50';
-      default: return 'border-gray-200 bg-gray-50';
+      case 'critical':
+        return {
+          cardClasses: 'border-red-200 bg-red-50',
+          textClass: 'text-red-700 font-semibold',
+          label: 'Crítico'
+        };
+      case 'high':
+        return {
+          cardClasses: 'border-orange-200 bg-orange-50',
+          textClass: 'text-orange-700 font-semibold',
+          label: 'Alto'
+        };
+      case 'medium':
+        return {
+          cardClasses: 'border-yellow-200 bg-yellow-50',
+          textClass: 'text-yellow-700 font-semibold',
+          label: 'Médio'
+        };
+      case 'ok':
+        return {
+          cardClasses: 'border-green-200 bg-green-50',
+          textClass: 'text-green-700 font-semibold',
+          label: 'OK'
+        };
+      default:
+        return {
+          cardClasses: 'border-gray-200 bg-gray-50',
+          textClass: 'text-gray-600',
+          label: 'Indefinido'
+        };
     }
   };
 
-  const getStatusIcon = (alertLevel: string) => {
+  const getStatusIconComponent = (alertLevel: string) => {
     switch (alertLevel) {
-      case 'critical': return '🚨';
-      case 'high': return '⚠️';
-      case 'medium': return '⚡';
-      case 'ok': return '✅';
-      default: return '⚪';
+      case 'critical': return <AlertTriangle className="w-6 h-6 text-red-600" />;
+      case 'high': return <AlertCircle className="w-6 h-6 text-orange-600" />;
+      case 'medium': return <Zap className="w-6 h-6 text-yellow-600" />;
+      case 'ok': return <CheckCircle className="w-6 h-6 text-green-600" />;
+      default: return <div className="w-6 h-6 rounded-full bg-gray-300" />;
     }
   };
-
-  const getPrimaryAction = () => {
-    if (platformData.problems.length > 0) {
-      const mainProblem = platformData.problems[0];
-      if (mainProblem.severity === 'critical') {
-        return { label: 'Resolver', icon: Zap, variant: 'destructive' as const };
-      } else if (mainProblem.severity === 'high') {
-        return { label: 'Investigar', icon: AlertCircle, variant: 'default' as const };
-      } else {
-        return { label: 'Revisar', icon: TrendingUp, variant: 'outline' as const };
-      }
-    }
-    return { label: 'Ver Detalhes', icon: ExternalLink, variant: 'outline' as const };
-  };
-
-  const primaryAction = getPrimaryAction();
+  
+  const alertStyling = getAlertStyling(platformData.alertLevel);
 
   return (
-    <TableCell className="py-4">
-      <div className={`rounded-lg p-3 space-y-3 border ${getAlertColor(platformData.alertLevel)}`}>
+    <TableCell className="py-4 w-[382px] align-top">
+      <div className={`rounded-lg p-3 space-y-3 border ${alertStyling.cardClasses} h-full`}>
         {/* Header com Status */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{getStatusIcon(platformData.alertLevel)}</span>
-            <span className="text-sm font-medium text-gray-900">
-              {platformData.activeCampaignsCount} campanhas
+          <div className={`flex items-center gap-2 ${alertStyling.textClass}`}>
+            {getStatusIconComponent(platformData.alertLevel)}
+            <span className="text-sm">
+              {alertStyling.label}
             </span>
           </div>
-          <Badge 
-            variant={platformData.alertLevel === 'ok' ? 'default' : 'destructive'} 
-            className="text-xs"
-          >
-            {platformData.alertLevel === 'critical' ? 'Crítico' :
-             platformData.alertLevel === 'high' ? 'Alto' :
-             platformData.alertLevel === 'medium' ? 'Médio' :
-             platformData.alertLevel === 'ok' ? 'OK' : 'Baixo'}
-          </Badge>
         </div>
 
         {/* Métricas */}
         <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-white rounded p-2">
+            <div className="font-medium text-gray-800">{platformData.activeCampaignsCount}</div>
+            <div className="text-gray-500">Campanhas ativas</div>
+          </div>
+          <div className="bg-white rounded p-2">
+            <div className={`font-medium ${platformData.unservedCampaignsCount > 0 ? 'text-orange-600' : 'text-gray-800'}`}>
+              {platformData.unservedCampaignsCount}
+            </div>
+            <div className={`text-gray-500 ${platformData.unservedCampaignsCount > 0 ? 'text-orange-700' : ''}`}>Sem veiculação</div>
+          </div>
           <div className="bg-white rounded p-2">
             <div className={`font-medium ${platformData.costToday > 0 ? 'text-green-600' : 'text-gray-400'}`}>
               R$ {platformData.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -132,41 +143,24 @@ function EnhancedPlatformCell({
           </div>
         </div>
 
-        {/* Problemas e Ações */}
+        {/* Problema */}
         {platformData.problems.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs text-gray-600">
-              <strong>{platformData.problems[0].description}</strong>
-            </div>
-            <div className="text-xs text-gray-500">
-              💡 {platformData.problems[0].suggestedAction}
-            </div>
-            {platformData.problems[0].estimatedImpact && (
-              <div className="text-xs font-medium text-orange-600">
-                {platformData.problems[0].estimatedImpact}
-              </div>
-            )}
+          <div className="text-xs text-gray-700 font-medium pt-1">
+            {platformData.problems[0].description}
           </div>
         )}
 
-        {/* Botões de Ação */}
-        <div className="flex gap-2">
-          <Button
-            variant={primaryAction.variant}
+        {/* Botão de Ação */}
+        <div className="flex gap-2 pt-1">
+           <Button
+            variant="default"
             size="sm"
-            onClick={() => onAction(platformData.problems.length > 0 ? 'review' : 'details', clientId, platformKey)}
-            className="flex-1 h-7 text-xs"
+            onClick={() => onAction('review', clientId, platformKey)}
+            className="flex-1 h-8 text-xs bg-[#ff6e00] hover:bg-[#e55a00]"
           >
-            <primaryAction.icon className="w-3 h-3 mr-1" />
-            {primaryAction.label}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onAction('details', clientId, platformKey)}
-            className="h-7 px-2"
-          >
-            <ExternalLink className="w-3 h-3" />
+            <Eye />
+            <span>Ver Detalhes</span>
+            <ExternalLink />
           </Button>
         </div>
       </div>
@@ -222,19 +216,19 @@ export function EnhancedHealthTable({
           <Table>
             <TableHeader>
               <TableRow className="border-b border-gray-200">
-                <TableHead className="w-64 font-semibold text-gray-700">Cliente</TableHead>
-                <TableHead className="text-center font-semibold text-gray-700">Meta Ads</TableHead>
-                <TableHead className="text-center font-semibold text-gray-700">Google Ads</TableHead>
+                <TableHead className="w-48 font-semibold text-gray-700">Cliente</TableHead>
+                <TableHead className="w-[382px] text-center font-semibold text-gray-700">Meta Ads</TableHead>
+                <TableHead className="w-[382px] text-center font-semibold text-gray-700">Google Ads</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.map((client) => (
                 <TableRow key={client.clientId} className="hover:bg-gray-50 transition-colors">
                   {/* Cliente */}
-                  <TableCell className="py-4">
+                  <TableCell className="py-4 align-top">
                     <div>
                       <p className="font-medium text-gray-900 mb-1">{client.clientName}</p>
-                      <div className="flex gap-1">
+                      <div className="flex flex-col gap-1">
                         {client.metaAds && (
                           <Badge variant="outline" className="text-xs px-2 py-0">
                             Meta: {client.metaAds.accountId}

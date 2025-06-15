@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
 import { useIntelligentAnalysis } from "@/components/campaign-health/hooks/useIntelligentAnalysis";
 import { AlertsDashboard } from "@/components/campaign-health/AlertsDashboard";
@@ -10,8 +11,10 @@ import { AuthErrorHandler } from "@/components/auth/AuthErrorHandler";
 import { CampaignStatus } from "@/components/campaign-health/types";
 import { AlertLevel, HealthAlert } from "@/components/campaign-health/types/enhanced-types";
 import { formatDateForDisplay } from "@/utils/brazilTimezone";
+import { buildPlatformUrl } from "@/utils/platformUrls";
 
 export default function CampaignHealth() {
+  const navigate = useNavigate();
   const [urgencyFilter, setUrgencyFilter] = useState<AlertLevel | "all">("all");
   const [problemTypeFilter, setProblemTypeFilter] = useState<string>("all");
 
@@ -26,15 +29,39 @@ export default function CampaignHealth() {
     setStatusFilter,
     platformFilter,
     setPlatformFilter,
-    handleAction,
     handleRefresh,
-    lastRefresh,
+    lastRefreshTimestamp,
     stats,
     isManualRefreshing,
     todayDate
   } = useActiveCampaignHealth();
 
   const { enhancedData, alerts, dashboardStats } = useIntelligentAnalysis(data || []);
+
+  const handlePlatformAction = (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => {
+    if (action === 'configure') {
+      navigate('/revisao-diaria-avancada#budgets');
+      return;
+    }
+
+    const client = enhancedData.find(c => c.clientId === clientId);
+    if (!client) {
+      console.error("Cliente não encontrado para a ação:", clientId);
+      return;
+    }
+
+    const platformData = platform === 'meta' ? client.metaAds : client.googleAds;
+    const accountId = platformData?.accountId;
+
+    const url = buildPlatformUrl(platform, accountId);
+    
+    if (url !== '#') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      console.error(`Não foi possível gerar URL para ${platform} com ID ${accountId}`);
+    }
+  };
+
 
   // Aplicar filtros APENAS aos dados da tabela
   const filteredEnhancedData = enhancedData?.filter(client => {
@@ -72,18 +99,7 @@ export default function CampaignHealth() {
 
   const handleAlertClick = (alert: HealthAlert) => {
     console.log("🚨 Clique no alerta:", alert);
-    handleAction('review', alert.clientId, alert.platform);
-  };
-
-  // Formatar data para exibição em português
-  const formatTodayDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric'
-    });
+    handlePlatformAction('review', alert.clientId, alert.platform);
   };
 
   // Mapear dashboardStats para o formato esperado pelo IntelligentFilters
@@ -109,7 +125,9 @@ export default function CampaignHealth() {
                 📅 {formatDateForDisplay(todayDate)}
               </div>
               <span className="text-gray-600">
-                • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                • Última atualização: {lastRefreshTimestamp > 0
+                  ? new Date(lastRefreshTimestamp).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+                  : 'Carregando...'}
               </span>
               {isManualRefreshing && (
                 <span className="text-blue-600 font-medium">• Atualizando...</span>
@@ -146,7 +164,7 @@ export default function CampaignHealth() {
             data={filteredEnhancedData}
             isLoading={isLoading}
             error={error}
-            handleAction={handleAction}
+            handleAction={handlePlatformAction}
           />
 
           {/* Footer discreto */}
