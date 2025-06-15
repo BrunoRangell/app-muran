@@ -1,4 +1,3 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -229,7 +228,7 @@ export function EnhancedHealthTable({
                   <TableCell className="py-4 align-top">
                     <div>
                       <p className="font-medium text-gray-900 mb-1">{client.clientName}</p>
-                      <div className="flex gap-1">
+                      <div className="flex flex-col gap-1">
                         {client.metaAds && (
                           <Badge variant="outline" className="text-xs px-2 py-0">
                             Meta: {client.metaAds.accountId}
