@@ -993,6 +993,10 @@ export type Database = {
           active: boolean
         }[]
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       insert_daily_budget_review: {
         Args: {
           p_client_id: string
@@ -1003,6 +1007,14 @@ export type Database = {
           p_meta_account_name: string
         }
         Returns: number
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_team_member: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
       review_all_google_ads_clients: {
         Args: Record<PropertyKey, never>

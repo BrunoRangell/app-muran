@@ -5,6 +5,8 @@ import { useIntelligentAnalysis } from "@/components/campaign-health/hooks/useIn
 import { AlertsDashboard } from "@/components/campaign-health/AlertsDashboard";
 import { IntelligentFilters } from "@/components/campaign-health/IntelligentFilters";
 import { EnhancedHealthTable } from "@/components/campaign-health/EnhancedHealthTable";
+import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
+import { AuthErrorHandler } from "@/components/auth/AuthErrorHandler";
 import { CampaignStatus } from "@/components/campaign-health/types";
 import { AlertLevel, HealthAlert } from "@/components/campaign-health/types/enhanced-types";
 
@@ -92,67 +94,70 @@ export default function CampaignHealth() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header limpo */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#321e32] mb-2">
-            Monitoramento de Campanhas
-          </h1>
-          <div className="flex items-center gap-2 text-sm">
-            <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
-              📅 {formatTodayDate(todayDate)}
+    <TeamMemberCheck>
+      <AuthErrorHandler />
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Header limpo */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-[#321e32] mb-2">
+              Monitoramento de Campanhas
+            </h1>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                📅 {formatTodayDate(todayDate)}
+              </div>
+              <span className="text-gray-600">
+                • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR')}
+              </span>
+              {isManualRefreshing && (
+                <span className="text-blue-600 font-medium">• Atualizando...</span>
+              )}
             </div>
-            <span className="text-gray-600">
-              • Última atualização: {lastRefresh.toLocaleTimeString('pt-BR')}
-            </span>
-            {isManualRefreshing && (
-              <span className="text-blue-600 font-medium">• Atualizando...</span>
-            )}
           </div>
-        </div>
-        
-        {/* Dashboard de Alertas */}
-        <AlertsDashboard 
-          stats={dashboardStats}
-          topAlerts={alerts.slice(0, 5)}
-          onAlertClick={handleAlertClick}
-        />
-        
-        {/* Filtros Inteligentes */}
-        <IntelligentFilters 
-          filterValue={filterValue}
-          setFilterValue={setFilterValue}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          platformFilter={platformFilter}
-          setPlatformFilter={setPlatformFilter}
-          urgencyFilter={urgencyFilter}
-          setUrgencyFilter={setUrgencyFilter}
-          problemTypeFilter={problemTypeFilter}
-          setProblemTypeFilter={setProblemTypeFilter}
-          handleRefresh={handleRefresh}
-          isFetching={isFetching}
-          stats={totalFilterStats}
-        />
-        
-        {/* Tabela */}
-        <EnhancedHealthTable 
-          data={filteredEnhancedData}
-          isLoading={isLoading}
-          error={error}
-          handleAction={handleAction}
-        />
+          
+          {/* Dashboard de Alertas */}
+          <AlertsDashboard 
+            stats={dashboardStats}
+            topAlerts={alerts.slice(0, 5)}
+            onAlertClick={handleAlertClick}
+          />
+          
+          {/* Filtros Inteligentes */}
+          <IntelligentFilters 
+            filterValue={filterValue}
+            setFilterValue={setFilterValue}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            platformFilter={platformFilter}
+            setPlatformFilter={setPlatformFilter}
+            urgencyFilter={urgencyFilter}
+            setUrgencyFilter={setUrgencyFilter}
+            problemTypeFilter={problemTypeFilter}
+            setProblemTypeFilter={setProblemTypeFilter}
+            handleRefresh={handleRefresh}
+            isFetching={isFetching}
+            stats={totalFilterStats}
+          />
+          
+          {/* Tabela */}
+          <EnhancedHealthTable 
+            data={filteredEnhancedData}
+            isLoading={isLoading}
+            error={error}
+            handleAction={handleAction}
+          />
 
-        {/* Footer discreto */}
-        {filteredEnhancedData.length > 0 && (
-          <div className="mt-6 text-center text-xs text-gray-500">
-            Mostrando {filteredEnhancedData.length} de {enhancedData.length} clientes • 
-            {dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts} problemas detectados
-            {isFetching && " • Atualizando..."}
-          </div>
-        )}
+          {/* Footer discreto */}
+          {filteredEnhancedData.length > 0 && (
+            <div className="mt-6 text-center text-xs text-gray-500">
+              Mostrando {filteredEnhancedData.length} de {enhancedData.length} clientes • 
+              {dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts} problemas detectados
+              {isFetching && " • Atualizando..."}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </TeamMemberCheck>
   );
 }
