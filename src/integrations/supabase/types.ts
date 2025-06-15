@@ -84,6 +84,7 @@ export type Database = {
           google_cost_today: number | null
           google_has_account: boolean | null
           google_impressions_today: number | null
+          google_unserved_campaigns_count: number
           id: string
           meta_account_id: string | null
           meta_account_name: string | null
@@ -91,6 +92,7 @@ export type Database = {
           meta_cost_today: number | null
           meta_has_account: boolean | null
           meta_impressions_today: number | null
+          meta_unserved_campaigns_count: number
           snapshot_date: string
           updated_at: string | null
         }
@@ -103,6 +105,7 @@ export type Database = {
           google_cost_today?: number | null
           google_has_account?: boolean | null
           google_impressions_today?: number | null
+          google_unserved_campaigns_count?: number
           id?: string
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -110,6 +113,7 @@ export type Database = {
           meta_cost_today?: number | null
           meta_has_account?: boolean | null
           meta_impressions_today?: number | null
+          meta_unserved_campaigns_count?: number
           snapshot_date?: string
           updated_at?: string | null
         }
@@ -122,6 +126,7 @@ export type Database = {
           google_cost_today?: number | null
           google_has_account?: boolean | null
           google_impressions_today?: number | null
+          google_unserved_campaigns_count?: number
           id?: string
           meta_account_id?: string | null
           meta_account_name?: string | null
@@ -129,6 +134,7 @@ export type Database = {
           meta_cost_today?: number | null
           meta_has_account?: boolean | null
           meta_impressions_today?: number | null
+          meta_unserved_campaigns_count?: number
           snapshot_date?: string
           updated_at?: string | null
         }

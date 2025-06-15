@@ -1,10 +1,9 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ExternalLink, Settings, Zap, TrendingUp } from "lucide-react";
+import { AlertCircle, Eye, Settings } from "lucide-react";
 import { EnhancedPlatformData } from "./types/enhanced-types";
 
 interface EnhancedClientData {
@@ -78,22 +77,6 @@ function EnhancedPlatformCell({
     }
   };
 
-  const getPrimaryAction = () => {
-    if (platformData.problems.length > 0) {
-      const mainProblem = platformData.problems[0];
-      if (mainProblem.severity === 'critical') {
-        return { label: 'Resolver', icon: Zap, variant: 'destructive' as const };
-      } else if (mainProblem.severity === 'high') {
-        return { label: 'Investigar', icon: AlertCircle, variant: 'default' as const };
-      } else {
-        return { label: 'Revisar', icon: TrendingUp, variant: 'outline' as const };
-      }
-    }
-    return { label: 'Ver Detalhes', icon: ExternalLink, variant: 'outline' as const };
-  };
-
-  const primaryAction = getPrimaryAction();
-
   return (
     <TableCell className="py-4">
       <div className={`rounded-lg p-3 space-y-3 border ${getAlertColor(platformData.alertLevel)}`}>
@@ -102,22 +85,29 @@ function EnhancedPlatformCell({
           <div className="flex items-center gap-2">
             <span className="text-lg">{getStatusIcon(platformData.alertLevel)}</span>
             <span className="text-sm font-medium text-gray-900">
-              {platformData.activeCampaignsCount} campanhas
+              Status Geral
             </span>
           </div>
           <Badge 
             variant={platformData.alertLevel === 'ok' ? 'default' : 'destructive'} 
-            className="text-xs"
+            className="text-xs capitalize"
           >
-            {platformData.alertLevel === 'critical' ? 'Crítico' :
-             platformData.alertLevel === 'high' ? 'Alto' :
-             platformData.alertLevel === 'medium' ? 'Médio' :
-             platformData.alertLevel === 'ok' ? 'OK' : 'Baixo'}
+            {platformData.alertLevel}
           </Badge>
         </div>
 
         {/* Métricas */}
         <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-white rounded p-2">
+            <div className="font-medium text-gray-800">{platformData.activeCampaignsCount}</div>
+            <div className="text-gray-500">Campanhas ativas</div>
+          </div>
+          <div className="bg-white rounded p-2">
+            <div className={`font-medium ${platformData.unservedCampaignsCount > 0 ? 'text-orange-600' : 'text-gray-800'}`}>
+              {platformData.unservedCampaignsCount}
+            </div>
+            <div className={`text-gray-500 ${platformData.unservedCampaignsCount > 0 ? 'text-orange-700' : ''}`}>Sem veiculação</div>
+          </div>
           <div className="bg-white rounded p-2">
             <div className={`font-medium ${platformData.costToday > 0 ? 'text-green-600' : 'text-gray-400'}`}>
               R$ {platformData.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -149,24 +139,16 @@ function EnhancedPlatformCell({
           </div>
         )}
 
-        {/* Botões de Ação */}
-        <div className="flex gap-2">
-          <Button
-            variant={primaryAction.variant}
+        {/* Botão de Ação */}
+        <div className="flex gap-2 pt-1">
+           <Button
+            variant="default"
             size="sm"
-            onClick={() => onAction(platformData.problems.length > 0 ? 'review' : 'details', clientId, platformKey)}
-            className="flex-1 h-7 text-xs"
+            onClick={() => onAction('review', clientId, platformKey)}
+            className="flex-1 h-8 text-xs bg-[#ff6e00] hover:bg-[#e55a00]"
           >
-            <primaryAction.icon className="w-3 h-3 mr-1" />
-            {primaryAction.label}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onAction('details', clientId, platformKey)}
-            className="h-7 px-2"
-          >
-            <ExternalLink className="w-3 h-3" />
+            <Eye className="w-4 h-4 mr-2" />
+            Ver Detalhes
           </Button>
         </div>
       </div>

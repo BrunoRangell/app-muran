@@ -19,6 +19,7 @@ export interface EnhancedPlatformData {
   costToday: number;
   impressionsToday: number;
   activeCampaignsCount: number;
+  unservedCampaignsCount: number;
   accountId?: string;
   accountName?: string;
   status: CampaignStatus;

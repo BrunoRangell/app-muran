@@ -1,3 +1,4 @@
+
 import { useMemo } from "react";
 import { ClientHealthData } from "../types";
 import { AlertLevel, ProblemDiagnostic, EnhancedPlatformData, HealthAlert, HealthDashboardStats } from "../types/enhanced-types";
@@ -69,8 +70,13 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
 
   const enhancedData = useMemo(() => {
     return data.map(client => {
+      const metaUnservedCampaigns = (client.metaAds && client.metaAds.costToday === 0 && client.metaAds.impressionsToday === 0 && client.metaAds.activeCampaignsCount > 0) 
+        ? client.metaAds.activeCampaignsCount 
+        : 0;
+
       const enhancedMeta: EnhancedPlatformData | undefined = client.metaAds ? {
         ...client.metaAds,
+        unservedCampaignsCount: metaUnservedCampaigns,
         alertLevel: analyzeAlertLevel(
           client.metaAds.hasAccount,
           client.metaAds.activeCampaignsCount,
@@ -87,8 +93,13 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         quickActions: [] // Will be populated based on problems
       } : undefined;
 
+      const googleUnservedCampaigns = (client.googleAds && client.googleAds.costToday === 0 && client.googleAds.impressionsToday === 0 && client.googleAds.activeCampaignsCount > 0) 
+        ? client.googleAds.activeCampaignsCount
+        : 0;
+
       const enhancedGoogle: EnhancedPlatformData | undefined = client.googleAds ? {
         ...client.googleAds,
+        unservedCampaignsCount: googleUnservedCampaigns,
         alertLevel: analyzeAlertLevel(
           client.googleAds.hasAccount,
           client.googleAds.activeCampaignsCount,
