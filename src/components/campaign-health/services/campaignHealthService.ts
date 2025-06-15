@@ -26,31 +26,69 @@ export interface CampaignHealthSnapshot {
 }
 
 export class CampaignHealthService {
-  static async fetchTodaySnapshots(): Promise<CampaignHealthSnapshot[]> {
-    const today = new Date().toISOString().split('T')[0];
+  // Verificar se o usuário está autenticado antes de fazer qualquer operação
+  private static async checkAuthAndTeamMembership() {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    console.log(`📅 Buscando snapshots de hoje: ${today}`);
-    
-    const { data, error } = await supabase
-      .from('campaign_health_snapshots')
-      .select(`
-        *,
-        clients!inner(id, company_name)
-      `)
-      .eq('snapshot_date', today)
-      .order('clients(company_name)');
-
-    if (error) {
-      console.error("❌ Erro ao buscar snapshots:", error);
-      throw new Error(`Erro ao buscar snapshots: ${error.message}`);
+    if (sessionError || !session) {
+      throw new Error('Usuário não autenticado. Faça login para continuar.');
     }
 
-    console.log(`✅ Encontrados ${data?.length || 0} snapshots para hoje`);
-    return data || [];
+    // Verificar se o usuário é membro da equipe
+    const { data: teamMember, error: teamError } = await supabase
+      .from('team_members')
+      .select('id, permission, role')
+      .eq('manager_id', session.user.id)
+      .single();
+
+    if (teamError || !teamMember) {
+      throw new Error('Acesso negado. Usuário não é membro da equipe.');
+    }
+
+    return { session, teamMember };
+  }
+
+  static async fetchTodaySnapshots(): Promise<CampaignHealthSnapshot[]> {
+    try {
+      // Verificar autenticação primeiro
+      await this.checkAuthAndTeamMembership();
+
+      const today = new Date().toISOString().split('T')[0];
+      
+      console.log(`📅 Buscando snapshots de hoje: ${today}`);
+      
+      const { data, error } = await supabase
+        .from('campaign_health_snapshots')
+        .select(`
+          *,
+          clients!inner(id, company_name)
+        `)
+        .eq('snapshot_date', today)
+        .order('clients(company_name)');
+
+      if (error) {
+        console.error("❌ Erro ao buscar snapshots:", error);
+        throw new Error(`Erro ao buscar snapshots: ${error.message}`);
+      }
+
+      console.log(`✅ Encontrados ${data?.length || 0} snapshots para hoje`);
+      return data || [];
+    } catch (error) {
+      console.error("❌ Erro na busca de snapshots:", error);
+      throw error;
+    }
   }
 
   static async generateTodaySnapshots(): Promise<boolean> {
     try {
+      // Verificar autenticação primeiro
+      const { teamMember } = await this.checkAuthAndTeamMembership();
+
+      // Apenas admins podem gerar snapshots manualmente
+      if (teamMember.permission !== 'admin') {
+        throw new Error('Apenas administradores podem gerar snapshots manualmente.');
+      }
+
       const today = new Date().toISOString().split('T')[0];
       console.log(`🔧 Gerando snapshots para hoje: ${today}`);
       
@@ -71,12 +109,20 @@ export class CampaignHealthService {
       return data?.success || false;
     } catch (error) {
       console.error("❌ Erro ao gerar snapshots:", error);
-      return false;
+      throw error;
     }
   }
 
   static async forceRefreshTodaySnapshots(): Promise<boolean> {
     try {
+      // Verificar autenticação primeiro
+      const { teamMember } = await this.checkAuthAndTeamMembership();
+
+      // Apenas admins podem forçar refresh
+      if (teamMember.permission !== 'admin') {
+        throw new Error('Apenas administradores podem forçar refresh dos snapshots.');
+      }
+
       const today = new Date().toISOString().split('T')[0];
       console.log(`🔄 Forçando refresh para hoje: ${today}`);
       
@@ -98,7 +144,7 @@ export class CampaignHealthService {
       return data?.success || false;
     } catch (error) {
       console.error("❌ Erro ao forçar refresh:", error);
-      return false;
+      throw error;
     }
   }
 
