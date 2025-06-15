@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
 import { useIntelligentAnalysis } from "@/components/campaign-health/hooks/useIntelligentAnalysis";
 import { AlertsDashboard } from "@/components/campaign-health/AlertsDashboard";
@@ -13,6 +14,7 @@ import { formatDateForDisplay } from "@/utils/brazilTimezone";
 import { buildPlatformUrl } from "@/utils/platformUrls";
 
 export default function CampaignHealth() {
+  const navigate = useNavigate();
   const [urgencyFilter, setUrgencyFilter] = useState<AlertLevel | "all">("all");
   const [problemTypeFilter, setProblemTypeFilter] = useState<string>("all");
 
@@ -38,7 +40,7 @@ export default function CampaignHealth() {
 
   const handlePlatformAction = (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => {
     if (action === 'configure') {
-      console.log(`Ação: ${action}, Cliente: ${clientId}, Plataforma: ${platform}`);
+      navigate('/revisao-diaria-avancada#budgets');
       return;
     }
 
