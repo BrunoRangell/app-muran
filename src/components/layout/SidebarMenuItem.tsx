@@ -10,6 +10,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface SidebarMenuItemProps extends MenuItem {
   isActive: boolean;
@@ -27,6 +32,7 @@ export const SidebarMenuItem = ({
   isCollapsed = false
 }: SidebarMenuItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const location = useLocation();
   const hasSubmenu = submenu && submenu.length > 0;
 
@@ -78,19 +84,65 @@ export const SidebarMenuItem = ({
     </Link>
   );
 
+  // Componente do submenu para o popover
+  const SubmenuContent = () => (
+    <div className="w-48 p-2">
+      <div className="text-sm font-medium text-muran-primary mb-2">{label}</div>
+      <div className="space-y-1">
+        {submenu?.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            onClick={() => {
+              setIsPopoverOpen(false);
+              if (onClick) onClick();
+            }}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors",
+              location.pathname === item.path
+                ? "bg-muran-primary text-white"
+                : "hover:bg-muran-secondary text-gray-700 hover:text-gray-900"
+            )}
+          >
+            <item.icon size={16} />
+            <span>{item.label}</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+
   if (isCollapsed) {
     return (
       <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div>
-              <MenuLink />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="bg-muran-dark text-white">
-            <p>{label}</p>
-          </TooltipContent>
-        </Tooltip>
+        {hasSubmenu ? (
+          <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+            <PopoverTrigger asChild>
+              <div>
+                <MenuLink />
+              </div>
+            </PopoverTrigger>
+            <PopoverContent 
+              side="right" 
+              align="start" 
+              className="bg-white border border-gray-200 shadow-lg"
+              sideOffset={8}
+            >
+              <SubmenuContent />
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <MenuLink />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-muran-dark text-white">
+              <p>{label}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </TooltipProvider>
     );
   }
