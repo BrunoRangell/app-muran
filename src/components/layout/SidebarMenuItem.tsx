@@ -47,11 +47,32 @@ export const SidebarMenuItem = ({
     ? isActive || (isOpen && submenu?.some(item => item.path === location.pathname))
     : isActive;
 
+  // Para modo retraído com submenu, criar um botão ao invés de Link
+  const CollapsedSubmenuButton = () => (
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        setIsPopoverOpen(!isPopoverOpen);
+      }}
+      className={cn(
+        "flex items-center transition-colors rounded-lg w-full h-12 p-2 justify-center",
+        isItemActive
+          ? "bg-muran-primary text-white" 
+          : "hover:bg-muran-complementary/80 text-gray-300",
+      )}
+    >
+      <Icon size={20} />
+    </button>
+  );
+
+  // Para modo normal ou items sem submenu
   const MenuLink = () => (
     <Link
       to={hasSubmenu ? "#" : path}
       onClick={(e) => {
-        toggleSubmenu(e);
+        if (hasSubmenu && !isCollapsed) {
+          toggleSubmenu(e);
+        }
         if (!hasSubmenu && onClick) onClick();
       }}
       className={cn(
@@ -119,13 +140,13 @@ export const SidebarMenuItem = ({
           <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
             <PopoverTrigger asChild>
               <div>
-                <MenuLink />
+                <CollapsedSubmenuButton />
               </div>
             </PopoverTrigger>
             <PopoverContent 
               side="right" 
               align="start" 
-              className="bg-white border border-gray-200 shadow-lg"
+              className="bg-white border border-gray-200 shadow-lg z-50"
               sideOffset={8}
             >
               <SubmenuContent />
@@ -138,7 +159,7 @@ export const SidebarMenuItem = ({
                 <MenuLink />
               </div>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-muran-dark text-white">
+            <TooltipContent side="right" className="bg-muran-dark text-white z-50">
               <p>{label}</p>
             </TooltipContent>
           </Tooltip>

@@ -3,7 +3,7 @@ import { UnifiedLoadingState } from "@/components/common/UnifiedLoadingState";
 
 export const DashboardLoadingState = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative z-10">
       <UnifiedLoadingState 
         message="Carregando dashboard..."
         size="lg"

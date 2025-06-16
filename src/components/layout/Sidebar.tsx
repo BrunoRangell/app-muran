@@ -1,3 +1,4 @@
+
 import { useLocation } from "react-router-dom";
 import { 
   Users, 
@@ -95,7 +96,7 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
   return (
     <div 
       className={cn(
-        "h-screen bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col transition-all duration-300 ease-in-out",
+        "h-screen bg-muran-complementary text-white p-4 fixed left-0 top-0 flex flex-col transition-all duration-300 ease-in-out z-40",
         isCollapsed ? "w-20" : "w-64"
       )}
     >
