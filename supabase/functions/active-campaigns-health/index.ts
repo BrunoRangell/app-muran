@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
 const corsHeaders = {
@@ -137,24 +136,122 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
   }
 }
 
-// Função CORRIGIDA para buscar dados do Google Ads (usando timezone brasileiro)
+// NOVA FUNÇÃO: Gerencia a renovação de tokens do Google Ads para garantir que estejam sempre válidos.
+async function manageGoogleAdsTokens(supabase: any): Promise<string> {
+  console.log('🔄 Iniciando gerenciamento de token do Google Ads...');
+
+  const { data: tokensData, error: tokensError } = await supabase
+    .from('api_tokens')
+    .select('name, value')
+    .in('name', [
+      'google_ads_access_token',
+      'google_ads_refresh_token',
+      'google_ads_token_expires_at',
+      'google_ads_client_id',
+      'google_ads_client_secret'
+    ]);
+
+  if (tokensError) {
+    console.error('❌ Google Tokens: Erro ao buscar tokens da base de dados:', tokensError);
+    throw new Error('Falha ao buscar tokens do Google Ads da base de dados.');
+  }
+
+  const tokens: { [key: string]: any } = {};
+  tokensData.forEach((token: any) => {
+    tokens[token.name] = token.value;
+  });
+
+  const expiresAt = parseInt(tokens['google_ads_token_expires_at'] || '0');
+  const fiveMinutesInMs = 5 * 60 * 1000;
+
+  if (expiresAt > Date.now() + fiveMinutesInMs) {
+    console.log('✅ Google Token: Token de acesso ainda é válido.');
+    return tokens['google_ads_access_token'];
+  }
+
+  console.log('⚠️ Google Token: Token expirado ou prestes a expirar. Iniciando renovação...');
+  
+  const {
+    google_ads_refresh_token: refreshToken,
+    google_ads_client_id: clientId,
+    google_ads_client_secret: clientSecret
+  } = tokens;
+
+  if (!refreshToken || !clientId || !clientSecret) {
+    const missing = [
+      !refreshToken && "'google_ads_refresh_token'",
+      !clientId && "'google_ads_client_id'",
+      !clientSecret && "'google_ads_client_secret'"
+    ].filter(Boolean).join(', ');
+    console.error(`❌ Google Tokens: Configuração para renovação de token incompleta. Faltando: ${missing}`);
+    throw new Error(`Configuração para renovação de token do Google Ads está incompleta. Faltando: ${missing}.`);
+  }
+
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Google Tokens: Falha ao renovar token. Resposta da API:', data);
+      throw new Error(`Erro da API do Google ao renovar token: ${data.error_description || data.error || 'Erro desconhecido'}`);
+    }
+
+    const newAccessToken = data.access_token;
+    const newExpiresAt = Date.now() + ((data.expires_in - 60) * 1000); // Reduz 1 minuto por segurança
+
+    console.log('✅ Google Token: Token de acesso renovado com sucesso!');
+
+    const { error: updateError } = await supabase
+      .from('api_tokens')
+      .upsert([
+        { name: 'google_ads_access_token', value: newAccessToken },
+        { name: 'google_ads_token_expires_at', value: newExpiresAt.toString() }
+      ], { onConflict: 'name', ignoreDuplicates: false });
+
+    if (updateError) {
+      console.error('❌ Google Tokens: Erro ao salvar o novo token e expiração na base de dados:', updateError);
+    } else {
+      console.log('💾 Google Token: Token e data de expiração atualizados na base de dados.');
+    }
+
+    return newAccessToken;
+  } catch (error) {
+    console.error('❌ Google Tokens: Erro crítico durante o processo de renovação:', error);
+    throw error;
+  }
+}
+
+// Função CORRIGIDA para buscar dados do Google Ads (usando timezone brasileiro e renovação de token)
 async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: any): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
   try {
     console.log(`🔍 Google: Buscando campanhas para conta ${clientCustomerId}`);
     
-    // Buscar tokens do Google Ads
+    // ETAPA DE RENOVAÇÃO DE TOKEN ADICIONADA
+    const accessToken = await manageGoogleAdsTokens(supabase);
+    
+    // Buscar outros tokens necessários (developer token, manager id)
     const { data: tokensData, error: tokensError } = await supabase
       .from('api_tokens')
       .select('name, value')
-      .in('name', ['google_ads_access_token', 'google_ads_developer_token', 'google_ads_manager_id']);
+      .in('name', ['google_ads_developer_token', 'google_ads_manager_id']);
 
     if (tokensError) {
-      console.error(`❌ Google: Erro ao buscar tokens:`, tokensError);
+      console.error(`❌ Google: Erro ao buscar developer token e manager id:`, tokensError);
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
 
-    if (!tokensData || tokensData.length === 0) {
-      console.log(`⚠️ Google: Nenhum token encontrado na tabela api_tokens`);
+    if (!tokensData) {
+      console.log(`⚠️ Google: Nenhum developer token ou manager id encontrado na tabela api_tokens`);
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
 
@@ -163,16 +260,15 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
       tokens[token.name] = token.value;
     });
 
-    const accessToken = tokens['google_ads_access_token'];
     const developerToken = tokens['google_ads_developer_token'];
     const managerId = tokens['google_ads_manager_id'];
 
     if (!accessToken || !developerToken) {
-      console.log(`⚠️ Google: Tokens necessários não encontrados`);
+      console.log(`⚠️ Google: Tokens necessários não encontrados (Access Token ou Developer Token)`);
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
 
-    console.log(`✅ Google: Tokens encontrados - Access: ${accessToken ? 'SIM' : 'NÃO'}, Developer: ${developerToken ? 'SIM' : 'NÃO'}, Manager: ${managerId || 'NÃO'}`);
+    console.log(`✅ Google: Tokens prontos - Access: ${accessToken ? 'VÁLIDO' : 'NÃO'}, Developer: ${developerToken ? 'SIM' : 'NÃO'}, Manager: ${managerId || 'NÃO'}`);
     
     // Usar formato de data correto (YYYYMMDD sem hífens) no timezone brasileiro
     const today = getTodayForGoogleAds();

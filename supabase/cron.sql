@@ -1,4 +1,3 @@
-
 -- Verificar e criar extensões necessárias se não existirem
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
@@ -70,19 +69,6 @@ VALUES (
   jsonb_build_object(
     'timestamp', now(),
     'message', 'Registro de teste para inicializar o monitoramento',
-    'source', 'manual_update'
-  )
-);
-
--- Registrar uma execução de teste para o job de verificação de tokens do Google Ads
-INSERT INTO public.cron_execution_logs (job_name, execution_time, status, details)
-VALUES (
-  'google-ads-token-check-job',
-  now(),
-  'completed', 
-  jsonb_build_object(
-    'timestamp', now(),
-    'message', 'Registro de teste para inicializar o monitoramento de tokens',
     'source', 'manual_update'
   )
 );
@@ -538,6 +524,6 @@ VALUES (
   jsonb_build_object(
     'timestamp', now(),
     'source', 'manual_update',
-    'jobs', ARRAY['daily-meta-review-job', 'daily-meta-review-test-job', 'cron-health-check', 'cron-status-keeper', 'google-ads-token-check-job']
+    'jobs', ARRAY['daily-meta-review-job', 'daily-meta-review-test-job', 'cron-health-check', 'cron-status-keeper']
   )
 );

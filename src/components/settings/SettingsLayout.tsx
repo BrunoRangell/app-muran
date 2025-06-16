@@ -63,7 +63,7 @@ export const SettingsLayout = ({
 }: SettingsLayoutProps) => {
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="flex h-screen">
+      <div className="flex min-h-screen">
         {/* Sidebar */}
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
           {/* Header da Sidebar */}
