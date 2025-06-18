@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -214,14 +213,14 @@ export function useGoogleAdsData() {
             // Obter a média de gasto dos últimos 5 dias (se disponível)
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
             
-            // MODIFICAÇÃO: Usar weightedAverage em vez de lastFiveDaysAverage
+            // CORREÇÃO: Passar warningIgnoredToday como parâmetro
             const budgetCalc = calculateBudget({
               monthlyBudget: budgetAmount,
               totalSpent: review?.google_total_spent || 0,
               currentDailyBudget: review?.google_daily_budget_current || 0,
-              weightedAverage: weightedAverage, // NOVO: passar média ponderada
+              weightedAverage: weightedAverage,
               customBudgetEndDate: customBudget?.end_date,
-              warningIgnoredToday: warningIgnoredToday // NOVO: passar status do aviso ignorado
+              warningIgnoredToday: warningIgnoredToday // CORREÇÃO: Passar como parâmetro
             });
             
             // MODIFICAÇÃO: Usar needsAdjustmentBasedOnWeighted para Google Ads e considerar aviso ignorado
@@ -249,7 +248,7 @@ export function useGoogleAdsData() {
               },
               needsAdjustment: needsAdjustment,
               lastFiveDaysAvg: lastFiveDaysAvg,
-              weightedAverage: weightedAverage, // NOVA MÉTRICA ADICIONADA
+              weightedAverage: weightedAverage,
               hasAccount: true
             };
           });
@@ -276,7 +275,7 @@ export function useGoogleAdsData() {
             },
             needsAdjustment: false,
             lastFiveDaysAvg: 0,
-            weightedAverage: 0, // NOVA MÉTRICA ZERADA PARA CLIENTES SEM CONTA
+            weightedAverage: 0,
             hasAccount: false
           };
         }

@@ -8,6 +8,7 @@ type BudgetInput = {
   lastFiveDaysAverage?: number;
   weightedAverage?: number; // Campo para média ponderada (Google Ads)
   customBudgetEndDate?: string;
+  warningIgnoredToday?: boolean; // NOVO: Campo para controlar avisos ignorados
 };
 
 type BudgetCalculation = {
@@ -21,6 +22,7 @@ type BudgetCalculation = {
   needsAdjustmentBasedOnAverage?: boolean;
   needsAdjustmentBasedOnWeighted?: boolean;
   spentPercentage: number;
+  warningIgnoredToday?: boolean; // NOVO: Retornar o status do aviso ignorado
 };
 
 export function useBudgetCalculator() {
@@ -124,7 +126,8 @@ export function useBudgetCalculator() {
         needsBudgetAdjustment: primaryNeedsAdjustment, // CORREÇÃO: Agora usa a lógica priorizada
         needsAdjustmentBasedOnAverage,
         needsAdjustmentBasedOnWeighted,
-        spentPercentage
+        spentPercentage,
+        warningIgnoredToday: input.warningIgnoredToday || false // NOVO: Retornar o status do aviso ignorado
       };
     };
   }, []);
