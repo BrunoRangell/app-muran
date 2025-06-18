@@ -1,10 +1,12 @@
 
 import { Card } from "@/components/ui/card";
-import { Loader } from "lucide-react";
+import { Loader, EyeOff } from "lucide-react";
 import { ClientWithReview } from "../hooks/types/reviewTypes";
 import { useGoogleAdsBudgetCalculation } from "../hooks/useGoogleAdsBudgetCalculation";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
+import { IgnoreWarningButton } from "./components/IgnoreWarningButton";
+import { useState } from "react";
 
 interface GoogleAdsClientReviewCardCompactProps {
   client: ClientWithReview;
@@ -21,6 +23,8 @@ export const GoogleAdsClientReviewCardCompact = ({
   compact = false,
   inactive = false
 }: GoogleAdsClientReviewCardCompactProps) => {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   const {
     hasReview,
     monthlyBudget,
@@ -36,13 +40,19 @@ export const GoogleAdsClientReviewCardCompact = ({
     usingCustomBudget,
     customBudgetAmount,
     customBudgetStartDate,
-    customBudgetEndDate
+    customBudgetEndDate,
+    warningIgnoredToday
   } = useGoogleAdsBudgetCalculation(client);
 
   const handleReviewClick = () => {
     if (!isProcessing && !inactive) {
       onReviewClient(client.id);
     }
+  };
+
+  const handleWarningIgnored = () => {
+    // Forçar re-render do componente para refletir mudanças
+    setRefreshTrigger(prev => prev + 1);
   };
 
   // Formatação de valores
@@ -58,8 +68,8 @@ export const GoogleAdsClientReviewCardCompact = ({
     formatDateInBrasiliaTz(new Date(client.lastReview.updated_at), "dd/MM 'às' HH:mm") : 
     "Sem revisão";
 
-  // Determinar se o card deve ter destaque
-  const cardBorderClass = needsBudgetAdjustment
+  // Determinar se o card deve ter destaque (só se não estiver ignorado)
+  const cardBorderClass = needsBudgetAdjustment && !warningIgnoredToday
     ? 'border-l-4 border-l-[#ff6e00]'
     : '';
 
@@ -112,6 +122,12 @@ export const GoogleAdsClientReviewCardCompact = ({
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clipRule="evenodd" />
                   </svg>
                   Orç. Personalizado
+                </span>
+              )}
+              {warningIgnoredToday && (
+                <span className="text-xs bg-gray-50 text-gray-500 px-2 py-0.5 rounded ml-1 flex items-center">
+                  <EyeOff className="h-3 w-3 mr-1" />
+                  Ajuste ocultado
                 </span>
               )}
             </div>
@@ -211,14 +227,21 @@ export const GoogleAdsClientReviewCardCompact = ({
           </div>
         )}
 
-        {needsBudgetAdjustment && budgetDifference && (
-          <div className="mt-2 text-xs p-2 rounded flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-[#ff6e00]"></div>
-            <span className="font-medium">
-              {budgetDifference > 0 ? 
-                `Reduzir orçamento diário em -${formatCurrency(Math.abs(budgetDifference))}` : 
-                `Aumentar orçamento diário em +${formatCurrency(Math.abs(budgetDifference))}`}
-            </span>
+        {needsBudgetAdjustment && budgetDifference && !warningIgnoredToday && (
+          <div className="mt-2 text-xs p-2 rounded flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-[#ff6e00]"></div>
+              <span className="font-medium">
+                {budgetDifference > 0 ? 
+                  `Reduzir orçamento diário em -${formatCurrency(Math.abs(budgetDifference))}` : 
+                  `Aumentar orçamento diário em +${formatCurrency(Math.abs(budgetDifference))}`}
+              </span>
+            </div>
+            <IgnoreWarningButton
+              clientId={client.id}
+              clientName={client.company_name}
+              onWarningIgnored={handleWarningIgnored}
+            />
           </div>
         )}
       </div>

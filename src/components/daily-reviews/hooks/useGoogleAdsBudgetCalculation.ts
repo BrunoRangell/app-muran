@@ -1,3 +1,4 @@
+
 import { useMemo } from "react";
 import { ClientWithReview, GoogleAccount } from "./types/reviewTypes";
 
@@ -19,6 +20,17 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
   const customBudgetEndDate = useMemo(() => {
     return usingCustomBudget ? client.lastReview?.custom_budget_end_date : null;
   }, [usingCustomBudget, client.lastReview]);
+
+  // Verificar se o aviso foi ignorado hoje
+  const warningIgnoredToday = useMemo(() => {
+    if (!hasReview || !client.lastReview) return false;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const ignoredDate = client.lastReview.warning_ignored_date;
+    const isIgnored = client.lastReview.warning_ignored_today;
+    
+    return isIgnored && ignoredDate === today;
+  }, [hasReview, client.lastReview]);
   
   const calculateTotalGoogleBudget = () => {
     if (usingCustomBudget && customBudgetAmount) {
@@ -153,8 +165,9 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     return idealDailyBudget - lastFiveDaysSpent;
   }, [hasReview, idealDailyBudget, lastFiveDaysSpent]);
   
+  // MODIFICAÇÃO: Considerar se o aviso foi ignorado
   const needsBudgetAdjustment = useMemo(() => {
-    if (!hasReview || weightedAverage === 0) return false;
+    if (!hasReview || weightedAverage === 0 || warningIgnoredToday) return false;
     
     const absoluteDifference = Math.abs(budgetDifference);
     
@@ -163,21 +176,22 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
       idealDailyBudget,
       budgetDifference,
       absoluteDifference,
+      warningIgnoredToday,
       needsAdjustment: absoluteDifference >= 5,
       method: 'weightedAverage'
     });
     
     return absoluteDifference >= 5;
-  }, [hasReview, budgetDifference, weightedAverage, idealDailyBudget, client.company_name]);
+  }, [hasReview, budgetDifference, weightedAverage, idealDailyBudget, client.company_name, warningIgnoredToday]);
   
   const needsAdjustmentBasedOnAverage = useMemo(() => {
-    if (!hasReview || lastFiveDaysSpent === 0) return false;
+    if (!hasReview || lastFiveDaysSpent === 0 || warningIgnoredToday) return false;
     
     const absoluteDifference = Math.abs(budgetDifferenceBasedOnAverage);
     const percentageDifference = lastFiveDaysSpent > 0 ? absoluteDifference / lastFiveDaysSpent : 0;
     
     return absoluteDifference >= 5 && percentageDifference >= 0.05;
-  }, [hasReview, budgetDifferenceBasedOnAverage, lastFiveDaysSpent]);
+  }, [hasReview, budgetDifferenceBasedOnAverage, lastFiveDaysSpent, warningIgnoredToday]);
   
   return {
     hasReview,
@@ -197,6 +211,7 @@ export const useGoogleAdsBudgetCalculation = (client: ClientWithReview) => {
     usingCustomBudget,
     customBudgetAmount,
     customBudgetStartDate,
-    customBudgetEndDate
+    customBudgetEndDate,
+    warningIgnoredToday
   };
 };
