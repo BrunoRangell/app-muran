@@ -8,11 +8,12 @@ import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { IgnoreWarningButton } from "@/components/daily-reviews/dashboard/components/IgnoreWarningButton";
 
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
-  onIndividualReviewComplete?: () => void; // NOVO: prop para callback
+  onIndividualReviewComplete?: () => void;
 }
 
 export function CircularBudgetCard({ 
@@ -46,11 +47,25 @@ export function CircularBudgetCard({
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   const customBudget = client.customBudget;
   
+  // Verificar se o aviso foi ignorado hoje (especialmente para Google Ads)
+  const warningIgnoredToday = platform === "google" ? 
+    client.budgetCalculation?.warningIgnoredToday || false : false;
+  
   // NOVA MÉTRICA: Média Ponderada (só para Google Ads)
   const weightedAverage = client.weightedAverage || 0;
   
   // Determinar cor e status baseado na porcentagem e necessidade de ajuste
   const getStatusInfo = () => {
+    if (warningIgnoredToday) {
+      return {
+        color: "stroke-gray-400",
+        borderColor: "border-gray-200",
+        textColor: "text-gray-500",
+        status: "Ajuste ocultado",
+        statusColor: "text-gray-500"
+      };
+    }
+    
     if (needsAdjustment) {
       if (spentPercentage > 85) {
         return {
@@ -121,6 +136,13 @@ export function CircularBudgetCard({
       });
     }
   };
+
+  const handleWarningIgnored = () => {
+    console.log(`✅ Aviso ignorado para cliente ${client.company_name}`);
+    if (onIndividualReviewComplete) {
+      onIndividualReviewComplete();
+    }
+  };
   
   // Calcular coordenadas do círculo
   const radius = 40;
@@ -160,7 +182,7 @@ export function CircularBudgetCard({
                 </Tooltip>
               </TooltipProvider>
             )}
-            {needsAdjustment && (
+            {needsAdjustment && !warningIgnoredToday && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -171,6 +193,14 @@ export function CircularBudgetCard({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+            )}
+            {/* Botão "Ignorar aviso" - só para Google Ads com ajuste necessário */}
+            {platform === "google" && needsAdjustment && !warningIgnoredToday && (
+              <IgnoreWarningButton
+                clientId={client.id}
+                clientName={companyName}
+                onWarningIgnored={handleWarningIgnored}
+              />
             )}
           </div>
         </div>
@@ -279,8 +309,8 @@ export function CircularBudgetCard({
           </div>
         </div>
 
-        {/* Recomendação de ajuste (se houver) */}
-        {needsAdjustment && budgetDifference !== 0 && (
+        {/* Recomendação de ajuste (se houver e não foi ignorada) */}
+        {needsAdjustment && budgetDifference !== 0 && !warningIgnoredToday && (
           <div className="mb-4 p-3 rounded-lg bg-gray-50 border">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Ajuste recomendado:</span>
