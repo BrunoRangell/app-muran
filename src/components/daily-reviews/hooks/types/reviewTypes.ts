@@ -48,6 +48,10 @@ export interface GoogleReview {
   google_day_4_spent?: number;
   google_day_5_spent?: number;
   
+  // Novos campos para controlar avisos ignorados
+  warning_ignored_today?: boolean;
+  warning_ignored_date?: string;
+  
   // Adicionando campos compatíveis para evitar erros no código existente
   meta_account_id?: string;
   meta_daily_budget_current?: number;
