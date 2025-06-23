@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -204,14 +203,6 @@ export function CircularBudgetCard({
                 </Tooltip>
               </TooltipProvider>
             )}
-            {/* Botão "Ignorar aviso" - só para Google Ads com ajuste necessário */}
-            {platform === "google" && needsAdjustment && !warningIgnoredToday && (
-              <IgnoreWarningButton
-                clientId={client.id}
-                clientName={companyName}
-                onWarningIgnored={handleWarningIgnored}
-              />
-            )}
           </div>
         </div>
 
@@ -328,6 +319,17 @@ export function CircularBudgetCard({
                 {budgetDifference > 0 ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}
               </span>
             </div>
+          </div>
+        )}
+
+        {/* CORREÇÃO: Botão "Ignorar aviso" separado para Google Ads */}
+        {platform === "google" && needsAdjustment && !warningIgnoredToday && (
+          <div className="mb-4 flex justify-center">
+            <IgnoreWarningButton
+              clientId={client.id}
+              clientName={companyName}
+              onWarningIgnored={handleWarningIgnored}
+            />
           </div>
         )}
 
