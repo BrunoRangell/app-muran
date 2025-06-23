@@ -54,6 +54,16 @@ export function CircularBudgetCard({
   // NOVA MÉTRICA: Média Ponderada (só para Google Ads)
   const weightedAverage = client.weightedAverage || 0;
   
+  // LOG de debugging para verificar se o botão deve aparecer
+  console.log(`🔍 CircularBudgetCard DEBUG - ${companyName}:`, {
+    platform,
+    needsAdjustment,
+    warningIgnoredToday,
+    budgetDifference,
+    weightedAverage,
+    shouldShowButton: platform === "google" && needsAdjustment && !warningIgnoredToday
+  });
+  
   // Determinar cor e status baseado na porcentagem e necessidade de ajuste
   const getStatusInfo = () => {
     if (warningIgnoredToday) {

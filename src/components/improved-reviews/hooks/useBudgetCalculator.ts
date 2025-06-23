@@ -108,6 +108,7 @@ export function useBudgetCalculator() {
         ? Math.abs(budgetDifferenceBasedOnAverage) >= 5
         : undefined;
       
+      // CORREÇÃO: Garantir que needsAdjustmentBasedOnWeighted seja calculado corretamente
       const budgetDifferenceBasedOnWeighted = input.weightedAverage !== undefined && input.weightedAverage > 0
         ? roundedIdealDailyBudget - input.weightedAverage
         : undefined;
@@ -116,18 +117,34 @@ export function useBudgetCalculator() {
         ? Math.abs(budgetDifferenceBasedOnWeighted) >= 5
         : undefined;
       
+      // LOG DETALHADO para debugging
+      console.log(`🔍 DEBUG FINAL - Resultado do cálculo:`, {
+        roundedIdealDailyBudget,
+        primaryBudgetDifference,
+        primaryNeedsAdjustment,
+        budgetDifferenceBasedOnWeighted,
+        needsAdjustmentBasedOnWeighted,
+        warningIgnoredToday: input.warningIgnoredToday,
+        input: {
+          monthlyBudget: input.monthlyBudget,
+          totalSpent: input.totalSpent,
+          weightedAverage: input.weightedAverage,
+          currentDailyBudget: input.currentDailyBudget
+        }
+      });
+      
       return {
         idealDailyBudget: roundedIdealDailyBudget,
-        budgetDifference: primaryBudgetDifference, // CORREÇÃO: Agora usa a lógica priorizada
+        budgetDifference: primaryBudgetDifference,
         budgetDifferenceBasedOnAverage,
         budgetDifferenceBasedOnWeighted,
         remainingDays,
         remainingBudget,
-        needsBudgetAdjustment: primaryNeedsAdjustment, // CORREÇÃO: Agora usa a lógica priorizada
+        needsBudgetAdjustment: primaryNeedsAdjustment,
         needsAdjustmentBasedOnAverage,
         needsAdjustmentBasedOnWeighted,
         spentPercentage,
-        warningIgnoredToday: input.warningIgnoredToday || false // NOVO: Retornar o status do aviso ignorado
+        warningIgnoredToday: input.warningIgnoredToday || false
       };
     };
   }, []);

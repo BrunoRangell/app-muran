@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -220,17 +221,25 @@ export function useGoogleAdsData() {
               currentDailyBudget: review?.google_daily_budget_current || 0,
               weightedAverage: weightedAverage,
               customBudgetEndDate: customBudget?.end_date,
-              warningIgnoredToday: warningIgnoredToday // CORREÇÃO: Passar como parâmetro
+              warningIgnoredToday: warningIgnoredToday
             });
             
-            // MODIFICAÇÃO: Usar needsAdjustmentBasedOnWeighted para Google Ads e considerar aviso ignorado
-            const needsAdjustment = !warningIgnoredToday && (budgetCalc.needsAdjustmentBasedOnWeighted || budgetCalc.needsBudgetAdjustment);
+            // CORREÇÃO: Verificar se realmente precisa de ajuste baseado na média ponderada
+            const needsAdjustment = !warningIgnoredToday && budgetCalc.needsAdjustmentBasedOnWeighted;
             
-            console.log(`🔍 DEBUG - Cliente ${client.company_name}:`, {
+            // LOG DETALHADO para debugging
+            console.log(`🔍 DEBUG DETALHADO - Cliente ${client.company_name}:`, {
               weightedAverage,
-              needsAdjustment,
+              idealDailyBudget: budgetCalc.idealDailyBudget,
+              budgetDifferenceBasedOnWeighted: budgetCalc.budgetDifferenceBasedOnWeighted,
+              needsAdjustmentBasedOnWeighted: budgetCalc.needsAdjustmentBasedOnWeighted,
               warningIgnoredToday,
-              budgetDifferenceBasedOnWeighted: budgetCalc.budgetDifferenceBasedOnWeighted
+              needsAdjustment,
+              hasReview: !!review,
+              budgetAmount,
+              totalSpent: review?.google_total_spent || 0,
+              remainingDays: budgetCalc.remainingDays,
+              threshold: '≥ R$ 5'
             });
             
             return {
@@ -283,6 +292,16 @@ export function useGoogleAdsData() {
 
       // Achatar o array
       const flattenedClients = clientsWithData.flat().filter(Boolean);
+      
+      // LOG FINAL para verificar clientes com ajuste necessário
+      const clientsNeedingAdjustment = flattenedClients.filter(client => client.needsAdjustment);
+      console.log(`🚨 RESUMO - Clientes que precisam de ajuste: ${clientsNeedingAdjustment.length}`, 
+        clientsNeedingAdjustment.map(c => ({
+          name: c.company_name,
+          needsAdjustment: c.needsAdjustment,
+          warningIgnored: c.budgetCalculation?.warningIgnoredToday
+        }))
+      );
       
       // Calcular métricas - CORREÇÃO: usar clientsWithAccounts.size para clientes monitorados
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
