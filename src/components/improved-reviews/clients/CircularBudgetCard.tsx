@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { IgnoreWarningButton } from "@/components/daily-reviews/dashboard/components/IgnoreWarningButton";
+import { useState } from "react";
 
 interface CircularBudgetCardProps {
   client: any;
@@ -21,6 +23,7 @@ export function CircularBudgetCard({
   onIndividualReviewComplete 
 }: CircularBudgetCardProps) {
   const { toast } = useToast();
+  const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
   const { reviewClient, processingIds } = useBatchOperations({
     platform: platform as "meta" | "google",
     onIndividualComplete: () => {
@@ -47,8 +50,8 @@ export function CircularBudgetCard({
   const customBudget = client.customBudget;
   
   // Verificar se o aviso foi ignorado hoje (especialmente para Google Ads)
-  const warningIgnoredToday = platform === "google" ? 
-    client.budgetCalculation?.warningIgnoredToday || false : false;
+  const warningIgnoredToday = localWarningIgnored || (platform === "google" ? 
+    client.budgetCalculation?.warningIgnoredToday || false : false);
   
   // NOVA MÉTRICA: Média Ponderada (só para Google Ads)
   const weightedAverage = client.weightedAverage || 0;
@@ -148,6 +151,17 @@ export function CircularBudgetCard({
 
   const handleWarningIgnored = () => {
     console.log(`✅ Aviso ignorado para cliente ${client.company_name}`);
+    
+    // Atualizar estado local para fazer o botão desaparecer imediatamente
+    setLocalWarningIgnored(true);
+    
+    // Toast de confirmação
+    toast({
+      title: "Aviso ignorado",
+      description: `O aviso de ajuste para ${companyName} foi ocultado por hoje.`,
+    });
+    
+    // Chamar callback se fornecido
     if (onIndividualReviewComplete) {
       onIndividualReviewComplete();
     }
@@ -322,7 +336,7 @@ export function CircularBudgetCard({
           </div>
         )}
 
-        {/* CORREÇÃO: Botão "Ignorar aviso" separado para Google Ads */}
+        {/* Botão "Ignorar aviso" - melhorado e com atualização local */}
         {platform === "google" && needsAdjustment && !warningIgnoredToday && (
           <div className="mb-4 flex justify-center">
             <IgnoreWarningButton

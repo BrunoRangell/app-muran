@@ -1,16 +1,13 @@
 
 import { useState } from "react";
-import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { EyeOff, Loader } from "lucide-react";
 import { IgnoreWarningDialog } from "./IgnoreWarningDialog";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/hooks/use-toast";
 
 interface IgnoreWarningButtonProps {
   clientId: string;
   clientName: string;
-  onWarningIgnored: () => void;
+  onWarningIgnored?: () => void;
 }
 
 export function IgnoreWarningButton({ 
@@ -18,93 +15,55 @@ export function IgnoreWarningButton({
   clientName, 
   onWarningIgnored 
 }: IgnoreWarningButtonProps) {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleIgnoreWarning = async () => {
-    setIsLoading(true);
-    
+  const handleConfirm = async () => {
+    setIsProcessing(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // A lógica de ignorar o aviso está no IgnoreWarningDialog
+      setIsDialogOpen(false);
       
-      // Buscar a revisão mais recente do cliente
-      const { data: latestReview, error: fetchError } = await supabase
-        .from('google_ads_reviews')
-        .select('id')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (fetchError) {
-        console.error('Erro ao buscar revisão:', fetchError);
-        throw new Error('Erro ao buscar revisão do cliente');
+      // Chama o callback para atualizar a interface
+      if (onWarningIgnored) {
+        onWarningIgnored();
       }
-
-      if (!latestReview) {
-        throw new Error('Nenhuma revisão encontrada para este cliente');
-      }
-
-      // Atualizar a revisão com o aviso ignorado
-      const { error: updateError } = await supabase
-        .from('google_ads_reviews')
-        .update({
-          warning_ignored_today: true,
-          warning_ignored_date: today,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', latestReview.id);
-
-      if (updateError) {
-        console.error('Erro ao atualizar revisão:', updateError);
-        throw new Error('Erro ao ignorar aviso');
-      }
-
-      toast({
-        title: "Aviso ignorado com sucesso",
-        description: `A recomendação para ${clientName} foi ocultada até amanhã.`,
-      });
-
-      onWarningIgnored();
-    } catch (error: any) {
-      console.error('Erro ao ignorar aviso:', error);
-      toast({
-        title: "Erro ao ignorar aviso",
-        description: error.message || "Ocorreu um erro inesperado",
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error("Erro ao processar:", error);
     } finally {
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
   return (
     <>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDialogOpen(true)}
-              disabled={isLoading}
-              className="h-6 w-6 p-0 hover:bg-gray-100"
-            >
-              <X className="h-3 w-3 text-gray-500" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Oculta este aviso por hoje</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setIsDialogOpen(true)}
+        disabled={isProcessing}
+        className="text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-gray-700"
+      >
+        {isProcessing ? (
+          <>
+            <Loader className="mr-2 h-3 w-3 animate-spin" />
+            Processando...
+          </>
+        ) : (
+          <>
+            <EyeOff className="mr-2 h-3 w-3" />
+            Ignorar aviso
+          </>
+        )}
+      </Button>
 
       <IgnoreWarningDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onConfirm={handleIgnoreWarning}
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onConfirm={handleConfirm}
+        clientId={clientId}
         clientName={clientName}
+        onWarningIgnored={onWarningIgnored}
       />
     </>
   );
