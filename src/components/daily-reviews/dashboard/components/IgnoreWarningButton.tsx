@@ -58,12 +58,10 @@ export function IgnoreWarningButton({
       </Button>
 
       <IgnoreWarningDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
         onConfirm={handleConfirm}
-        clientId={clientId}
         clientName={clientName}
-        onWarningIgnored={onWarningIgnored}
       />
     </>
   );
