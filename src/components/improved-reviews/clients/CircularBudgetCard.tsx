@@ -2,13 +2,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { IgnoreWarningButton } from "@/components/daily-reviews/dashboard/components/IgnoreWarningButton";
 import { useState } from "react";
 
 interface CircularBudgetCardProps {
@@ -56,17 +55,7 @@ export function CircularBudgetCard({
   // NOVA MÉTRICA: Média Ponderada (só para Google Ads)
   const weightedAverage = client.weightedAverage || 0;
   
-  // LOG de debugging para verificar se o botão deve aparecer
-  console.log(`🔍 CircularBudgetCard DEBUG - ${companyName}:`, {
-    platform,
-    needsAdjustment,
-    warningIgnoredToday,
-    budgetDifference,
-    weightedAverage,
-    shouldShowButton: platform === "google" && needsAdjustment && !warningIgnoredToday
-  });
-  
-  // Determinar cor e status baseado na porcentagem e necessidade de ajuste
+  // Determinar cor e status baseado APENAS em needsAdjustment e se foi ignorado
   const getStatusInfo = () => {
     if (warningIgnoredToday) {
       return {
@@ -79,41 +68,21 @@ export function CircularBudgetCard({
     }
     
     if (needsAdjustment) {
-      if (spentPercentage > 85) {
-        return {
-          color: "stroke-red-500",
-          borderColor: "border-red-200",
-          textColor: "text-red-600",
-          status: "Reduzir orçamento",
-          statusColor: "text-red-600"
-        };
-      } else {
-        return {
-          color: "stroke-amber-500",
-          borderColor: "border-amber-200",
-          textColor: "text-amber-600",
-          status: budgetDifference > 0 ? "Aumentar orçamento" : "Reduzir orçamento",
-          statusColor: "text-amber-600"
-        };
-      }
+      return {
+        color: "stroke-amber-500",
+        borderColor: "border-amber-200",
+        textColor: "text-amber-600",
+        status: budgetDifference > 0 ? "Aumentar orçamento" : "Reduzir orçamento",
+        statusColor: "text-amber-600"
+      };
     } else {
-      if (spentPercentage < 50) {
-        return {
-          color: "stroke-emerald-500",
-          borderColor: "border-emerald-200",
-          textColor: "text-emerald-600",
-          status: "Sem ação necessária",
-          statusColor: "text-emerald-600"
-        };
-      } else {
-        return {
-          color: "stroke-blue-500",
-          borderColor: "border-blue-200",
-          textColor: "text-blue-600",
-          status: "Monitorar",
-          statusColor: "text-blue-600"
-        };
-      }
+      return {
+        color: "stroke-emerald-500",
+        borderColor: "border-emerald-200",
+        textColor: "text-emerald-600",
+        status: "Sem ação necessária",
+        statusColor: "text-emerald-600"
+      };
     }
   };
   
@@ -176,7 +145,7 @@ export function CircularBudgetCard({
   return (
     <Card className={`w-full max-w-sm bg-white ${statusInfo.borderColor} border-2 transition-all hover:shadow-md`}>
       <CardContent className="p-5">
-        {/* Header com nome e ícones */}
+        {/* Header com nome e ícones - INCLUINDO o botão de ignorar aviso */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900 text-base line-clamp-1 mb-1">
@@ -213,6 +182,26 @@ export function CircularBudgetCard({
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Ajuste de orçamento recomendado</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {/* Botão "Ignorar aviso" no header - apenas para Google Ads */}
+            {platform === "google" && needsAdjustment && !warningIgnoredToday && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleWarningIgnored}
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    >
+                      <EyeOff className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Ignorar aviso de ajuste por hoje</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -333,17 +322,6 @@ export function CircularBudgetCard({
                 {budgetDifference > 0 ? "+" : "-"}{formatCurrency(Math.abs(budgetDifference))}
               </span>
             </div>
-          </div>
-        )}
-
-        {/* Botão "Ignorar aviso" - melhorado e com atualização local */}
-        {platform === "google" && needsAdjustment && !warningIgnoredToday && (
-          <div className="mb-4 flex justify-center">
-            <IgnoreWarningButton
-              clientId={client.id}
-              clientName={companyName}
-              onWarningIgnored={handleWarningIgnored}
-            />
           </div>
         )}
 
