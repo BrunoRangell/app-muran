@@ -25,6 +25,8 @@ export function CircularBudgetCard({
 }: CircularBudgetCardProps) {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
+  
   const { reviewClient, processingIds } = useBatchOperations({
     platform: platform as "meta" | "google",
     onIndividualComplete: () => {
@@ -50,8 +52,8 @@ export function CircularBudgetCard({
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   const customBudget = client.customBudget;
   
-  // Verificar se o aviso foi ignorado hoje (obtido do banco de dados)
-  const warningIgnoredToday = client.budgetCalculation?.warningIgnoredToday || false;
+  // Verificar se o aviso foi ignorado hoje (obtido do banco de dados OU estado local)
+  const warningIgnoredToday = localWarningIgnored || client.budgetCalculation?.warningIgnoredToday || false;
   
   // NOVA MÉTRICA: Média Ponderada (só para Google Ads)
   const weightedAverage = client.weightedAverage || 0;
@@ -63,7 +65,7 @@ export function CircularBudgetCard({
         color: "stroke-gray-400",
         borderColor: "border-gray-200",
         textColor: "text-gray-500",
-        status: "Ajuste ocultado",
+        status: "Ajuste ocultado hoje",
         statusColor: "text-gray-500"
       };
     }
@@ -156,6 +158,9 @@ export function CircularBudgetCard({
           throw error;
         }
       }
+      
+      // Atualizar estado local imediatamente para refletir mudança
+      setLocalWarningIgnored(true);
       
       // Toast de confirmação
       toast({
