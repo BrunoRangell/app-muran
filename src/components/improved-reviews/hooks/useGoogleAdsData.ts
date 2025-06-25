@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -110,7 +111,9 @@ export function useGoogleAdsData() {
           google_day_2_spent,
           google_day_3_spent,
           google_day_4_spent,
-          google_day_5_spent
+          google_day_5_spent,
+          warning_ignored_today,
+          warning_ignored_date
         `)
         .gte("review_date", firstDayStr)
         .order("review_date", { ascending: false });
@@ -137,6 +140,17 @@ export function useGoogleAdsData() {
         });
         
         return weightedAverage;
+      };
+
+      // Verificar se o aviso foi ignorado hoje
+      const checkWarningIgnored = (review: any) => {
+        if (!review) return false;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const ignoredDate = review.warning_ignored_date;
+        const isIgnored = review.warning_ignored_today;
+        
+        return isIgnored && ignoredDate === today;
       };
 
       // Combinar os dados - incluir TODOS os clientes
@@ -190,6 +204,9 @@ export function useGoogleAdsData() {
             // Calcular média ponderada dos últimos 5 dias
             const weightedAverage = calculateWeightedAverage(review);
             
+            // Verificar se o aviso foi ignorado hoje
+            const warningIgnoredToday = checkWarningIgnored(review);
+            
             // Determinar o orçamento a ser usado
             const originalBudgetAmount = account.budget_amount;
             const budgetAmount = isUsingCustomBudget ? customBudget.budget_amount : originalBudgetAmount;
@@ -197,22 +214,32 @@ export function useGoogleAdsData() {
             // Obter a média de gasto dos últimos 5 dias (se disponível)
             const lastFiveDaysAvg = review?.google_last_five_days_spent || 0;
             
-            // MODIFICAÇÃO: Usar weightedAverage em vez de lastFiveDaysAverage
+            // CORREÇÃO: Passar warningIgnoredToday como parâmetro
             const budgetCalc = calculateBudget({
               monthlyBudget: budgetAmount,
               totalSpent: review?.google_total_spent || 0,
               currentDailyBudget: review?.google_daily_budget_current || 0,
-              weightedAverage: weightedAverage, // NOVO: passar média ponderada
-              customBudgetEndDate: customBudget?.end_date
+              weightedAverage: weightedAverage,
+              customBudgetEndDate: customBudget?.end_date,
+              warningIgnoredToday: warningIgnoredToday
             });
             
-            // MODIFICAÇÃO: Usar needsAdjustmentBasedOnWeighted para Google Ads
-            const needsAdjustment = budgetCalc.needsAdjustmentBasedOnWeighted || budgetCalc.needsBudgetAdjustment;
+            // CORREÇÃO: Verificar se realmente precisa de ajuste baseado na média ponderada
+            const needsAdjustment = !warningIgnoredToday && budgetCalc.needsAdjustmentBasedOnWeighted;
             
-            console.log(`🔍 DEBUG - Cliente ${client.company_name}:`, {
+            // LOG DETALHADO para debugging
+            console.log(`🔍 DEBUG DETALHADO - Cliente ${client.company_name}:`, {
               weightedAverage,
+              idealDailyBudget: budgetCalc.idealDailyBudget,
+              budgetDifferenceBasedOnWeighted: budgetCalc.budgetDifferenceBasedOnWeighted,
+              needsAdjustmentBasedOnWeighted: budgetCalc.needsAdjustmentBasedOnWeighted,
+              warningIgnoredToday,
               needsAdjustment,
-              budgetDifferenceBasedOnWeighted: budgetCalc.budgetDifferenceBasedOnWeighted
+              hasReview: !!review,
+              budgetAmount,
+              totalSpent: review?.google_total_spent || 0,
+              remainingDays: budgetCalc.remainingDays,
+              threshold: '≥ R$ 5'
             });
             
             return {
@@ -224,10 +251,13 @@ export function useGoogleAdsData() {
               isUsingCustomBudget,
               customBudget,
               review: review || null,
-              budgetCalculation: budgetCalc,
+              budgetCalculation: {
+                ...budgetCalc,
+                warningIgnoredToday: warningIgnoredToday
+              },
               needsAdjustment: needsAdjustment,
               lastFiveDaysAvg: lastFiveDaysAvg,
-              weightedAverage: weightedAverage, // NOVA MÉTRICA ADICIONADA
+              weightedAverage: weightedAverage,
               hasAccount: true
             };
           });
@@ -249,11 +279,12 @@ export function useGoogleAdsData() {
               remainingDays: 0,
               remainingBudget: 0,
               needsBudgetAdjustment: false,
-              spentPercentage: 0
+              spentPercentage: 0,
+              warningIgnoredToday: false
             },
             needsAdjustment: false,
             lastFiveDaysAvg: 0,
-            weightedAverage: 0, // NOVA MÉTRICA ZERADA PARA CLIENTES SEM CONTA
+            weightedAverage: 0,
             hasAccount: false
           };
         }
@@ -261,6 +292,16 @@ export function useGoogleAdsData() {
 
       // Achatar o array
       const flattenedClients = clientsWithData.flat().filter(Boolean);
+      
+      // LOG FINAL para verificar clientes com ajuste necessário
+      const clientsNeedingAdjustment = flattenedClients.filter(client => client.needsAdjustment);
+      console.log(`🚨 RESUMO - Clientes que precisam de ajuste: ${clientsNeedingAdjustment.length}`, 
+        clientsNeedingAdjustment.map(c => ({
+          name: c.company_name,
+          needsAdjustment: c.needsAdjustment,
+          warningIgnored: c.budgetCalculation?.warningIgnoredToday
+        }))
+      );
       
       // Calcular métricas - CORREÇÃO: usar clientsWithAccounts.size para clientes monitorados
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);

@@ -628,6 +628,8 @@ export type Database = {
           review_date: string
           updated_at: string
           using_custom_budget: boolean | null
+          warning_ignored_date: string | null
+          warning_ignored_today: boolean | null
         }
         Insert: {
           account_display_name?: string | null
@@ -652,6 +654,8 @@ export type Database = {
           review_date?: string
           updated_at?: string
           using_custom_budget?: boolean | null
+          warning_ignored_date?: string | null
+          warning_ignored_today?: boolean | null
         }
         Update: {
           account_display_name?: string | null
@@ -676,6 +680,8 @@ export type Database = {
           review_date?: string
           updated_at?: string
           using_custom_budget?: boolean | null
+          warning_ignored_date?: string | null
+          warning_ignored_today?: boolean | null
         }
         Relationships: [
           {
