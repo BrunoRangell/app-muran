@@ -11,7 +11,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/components/IgnoreWarningDialog";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface CircularBudgetCardProps {
   client: any;
@@ -25,7 +24,6 @@ export function CircularBudgetCard({
   onIndividualReviewComplete 
 }: CircularBudgetCardProps) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
   
@@ -163,14 +161,6 @@ export function CircularBudgetCard({
       
       // Atualizar estado local imediatamente para refletir mudança
       setLocalWarningIgnored(true);
-      
-      // INVALIDAR CACHE para atualizar filtros imediatamente
-      queryClient.invalidateQueries({ 
-        queryKey: ["improved-meta-reviews"] 
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: ["improved-google-reviews"] 
-      });
       
       // Toast de confirmação
       toast({

@@ -76,11 +76,7 @@ export function useUnifiedReviewsData() {
       
       const { data: reviews, error: reviewsError } = await supabase
         .from("daily_budget_reviews")
-        .select(`
-          *,
-          warning_ignored_today,
-          warning_ignored_date
-        `)
+        .select(`*`)
         .gte("review_date", firstDayStr)
         .order("review_date", { ascending: false }); // Mais recente primeiro
 
@@ -135,14 +131,6 @@ export function useUnifiedReviewsData() {
 
       console.log("📊 Clientes com conta Meta:", clientsWithAccounts.size);
       console.log("📊 Clientes sem conta Meta:", clientsWithoutAccount);
-
-      // Função para verificar se o warning foi ignorado hoje
-      const checkWarningIgnored = (review: any): boolean => {
-        if (!review) return false;
-        
-        const today = new Date().toISOString().split('T')[0];
-        return review.warning_ignored_today && review.warning_ignored_date === today;
-      };
 
       // Combinar os dados - incluir TODOS os clientes
       const clientsWithData = clients?.map(client => {
@@ -221,15 +209,11 @@ export function useUnifiedReviewsData() {
             
             console.log(`🔍 DEBUG - Cliente ${client.company_name}: customBudgetEndDate = ${customBudgetEndDate}`);
             
-            // NOVO: Verificar se o warning foi ignorado hoje
-            const warningIgnoredToday = checkWarningIgnored(review);
-            
             const budgetCalc = calculateBudget({
               monthlyBudget: monthlyBudget,
               totalSpent: review?.meta_total_spent || 0,
               currentDailyBudget: review?.meta_daily_budget_current || 0,
-              customBudgetEndDate: customBudgetEndDate,
-              warningIgnoredToday: warningIgnoredToday // PASSAR PARA O CALCULADOR
+              customBudgetEndDate: customBudgetEndDate
             });
             
             const needsAdjustment = budgetCalc.needsBudgetAdjustment;
@@ -241,10 +225,7 @@ export function useUnifiedReviewsData() {
               budget_amount: monthlyBudget,
               original_budget_amount: account.budget_amount,
               review: review || null,
-              budgetCalculation: {
-                ...budgetCalc,
-                warningIgnoredToday: warningIgnoredToday // INCLUIR NO RESULTADO
-              },
+              budgetCalculation: budgetCalc,
               needsAdjustment: needsAdjustment,
               customBudget: customBudget,
               isUsingCustomBudget: isUsingCustomBudget,
@@ -261,8 +242,7 @@ export function useUnifiedReviewsData() {
               reviewDate: review?.review_date,
               sourceTable: account.is_primary ? "clients" : "client_meta_accounts",
               customBudgetEndDate: customBudgetEndDate,
-              remainingDays: budgetCalc.remainingDays,
-              warningIgnoredToday: warningIgnoredToday // LOG
+              remainingDays: budgetCalc.remainingDays
             });
             
             return clientData;
@@ -283,8 +263,7 @@ export function useUnifiedReviewsData() {
               remainingDays: 0,
               remainingBudget: 0,
               needsBudgetAdjustment: false,
-              spentPercentage: 0,
-              warningIgnoredToday: false
+              spentPercentage: 0
             },
             needsAdjustment: false,
             customBudget: null,
