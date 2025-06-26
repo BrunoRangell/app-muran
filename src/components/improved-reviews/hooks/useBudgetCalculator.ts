@@ -8,7 +8,7 @@ type BudgetInput = {
   lastFiveDaysAverage?: number;
   weightedAverage?: number; // Campo para média ponderada (Google Ads)
   customBudgetEndDate?: string;
-  warningIgnoredToday?: boolean; // NOVO: Campo para controlar avisos ignorados
+  warningIgnoredToday?: boolean; // Campo para controlar avisos ignorados
 };
 
 type BudgetCalculation = {
@@ -22,7 +22,7 @@ type BudgetCalculation = {
   needsAdjustmentBasedOnAverage?: boolean;
   needsAdjustmentBasedOnWeighted?: boolean;
   spentPercentage: number;
-  warningIgnoredToday?: boolean; // NOVO: Retornar o status do aviso ignorado
+  warningIgnoredToday?: boolean; // Retornar o status do aviso ignorado
 };
 
 export function useBudgetCalculator() {
@@ -73,13 +73,14 @@ export function useBudgetCalculator() {
         // Para Google Ads: usar média ponderada como base principal
         primaryBudgetDifference = roundedIdealDailyBudget - input.weightedAverage;
         const absoluteDifference = Math.abs(primaryBudgetDifference);
-        primaryNeedsAdjustment = absoluteDifference >= 5;
+        primaryNeedsAdjustment = !input.warningIgnoredToday && absoluteDifference >= 5;
         
         console.log(`🔍 DEBUG - Usando média ponderada como base principal:`, {
           idealDailyBudget: roundedIdealDailyBudget,
           weightedAverage: input.weightedAverage,
           budgetDifference: primaryBudgetDifference,
           absoluteDifference,
+          warningIgnoredToday: input.warningIgnoredToday,
           needsAdjustment: primaryNeedsAdjustment,
           threshold: '≥ R$ 5'
         });
@@ -87,13 +88,14 @@ export function useBudgetCalculator() {
         // Para Meta Ads ou quando não há média ponderada: usar método tradicional
         primaryBudgetDifference = roundedIdealDailyBudget - input.currentDailyBudget;
         const absoluteDifference = Math.abs(primaryBudgetDifference);
-        primaryNeedsAdjustment = input.currentDailyBudget > 0 && absoluteDifference >= 5;
+        primaryNeedsAdjustment = !input.warningIgnoredToday && input.currentDailyBudget > 0 && absoluteDifference >= 5;
         
         console.log(`🔍 DEBUG - Usando método tradicional:`, {
           idealDailyBudget: roundedIdealDailyBudget,
           currentDailyBudget: input.currentDailyBudget,
           budgetDifference: primaryBudgetDifference,
           absoluteDifference,
+          warningIgnoredToday: input.warningIgnoredToday,
           needsAdjustment: primaryNeedsAdjustment,
           threshold: '≥ R$ 5'
         });
@@ -105,7 +107,7 @@ export function useBudgetCalculator() {
         : undefined;
       
       const needsAdjustmentBasedOnAverage = budgetDifferenceBasedOnAverage !== undefined
-        ? Math.abs(budgetDifferenceBasedOnAverage) >= 5
+        ? !input.warningIgnoredToday && Math.abs(budgetDifferenceBasedOnAverage) >= 5
         : undefined;
       
       // CORREÇÃO: Garantir que needsAdjustmentBasedOnWeighted seja calculado corretamente
@@ -114,7 +116,7 @@ export function useBudgetCalculator() {
         : undefined;
       
       const needsAdjustmentBasedOnWeighted = budgetDifferenceBasedOnWeighted !== undefined
-        ? Math.abs(budgetDifferenceBasedOnWeighted) >= 5
+        ? !input.warningIgnoredToday && Math.abs(budgetDifferenceBasedOnWeighted) >= 5
         : undefined;
       
       // LOG DETALHADO para debugging

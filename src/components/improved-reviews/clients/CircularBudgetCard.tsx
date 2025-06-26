@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/components/IgnoreWarningDialog";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface CircularBudgetCardProps {
   client: any;
@@ -24,6 +25,7 @@ export function CircularBudgetCard({
   onIndividualReviewComplete 
 }: CircularBudgetCardProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
   
@@ -159,6 +161,15 @@ export function CircularBudgetCard({
         }
       }
       
+      // CORREÇÃO PRINCIPAL: Invalidar cache do React Query para atualização imediata
+      console.log(`🔄 Invalidando cache do React Query para ${platform}...`);
+      
+      if (platform === "meta") {
+        await queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
+      } else {
+        await queryClient.invalidateQueries({ queryKey: ["improved-google-reviews"] });
+      }
+      
       // Atualizar estado local imediatamente para refletir mudança
       setLocalWarningIgnored(true);
       
@@ -167,6 +178,8 @@ export function CircularBudgetCard({
         title: "Aviso ignorado",
         description: `O aviso de ajuste para ${companyName} foi ocultado por hoje.`,
       });
+      
+      console.log(`✅ Cache invalidado e interface atualizada para ${platform}`);
       
       // Chamar callback se fornecido para atualizar a interface
       if (onIndividualReviewComplete) {
