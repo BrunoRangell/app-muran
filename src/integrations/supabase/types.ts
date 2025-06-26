@@ -515,6 +515,8 @@ export type Database = {
           review_date: string
           updated_at: string | null
           using_custom_budget: boolean | null
+          warning_ignored_date: string | null
+          warning_ignored_today: boolean | null
         }
         Insert: {
           account_display_name?: string | null
@@ -533,6 +535,8 @@ export type Database = {
           review_date?: string
           updated_at?: string | null
           using_custom_budget?: boolean | null
+          warning_ignored_date?: string | null
+          warning_ignored_today?: boolean | null
         }
         Update: {
           account_display_name?: string | null
@@ -551,6 +555,8 @@ export type Database = {
           review_date?: string
           updated_at?: string | null
           using_custom_budget?: boolean | null
+          warning_ignored_date?: string | null
+          warning_ignored_today?: boolean | null
         }
         Relationships: [
           {
@@ -806,74 +812,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      salaries: {
-        Row: {
-          amount: number
-          created_at: string
-          id: string
-          manager_id: string
-          month: string
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          id?: string
-          manager_id: string
-          month: string
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: string
-          manager_id?: string
-          month?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "salaries_manager_id_fkey"
-            columns: ["manager_id"]
-            isOneToOne: false
-            referencedRelation: "team_members"
-            referencedColumns: ["manager_id"]
-          },
-        ]
-      }
-      scheduled_tasks: {
-        Row: {
-          config: Json | null
-          created_at: string
-          id: string
-          is_active: boolean | null
-          last_run: string | null
-          schedule: string
-          task_name: string
-          updated_at: string
-        }
-        Insert: {
-          config?: Json | null
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          last_run?: string | null
-          schedule: string
-          task_name: string
-          updated_at?: string
-        }
-        Update: {
-          config?: Json | null
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          last_run?: string | null
-          schedule?: string
-          task_name?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       system_configs: {
         Row: {
