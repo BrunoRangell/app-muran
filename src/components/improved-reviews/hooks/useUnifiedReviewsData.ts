@@ -74,9 +74,14 @@ export function useUnifiedReviewsData() {
       
       console.log(`🔍 Buscando revisões Meta desde ${firstDayStr} (início do mês)`);
       
+      // CORREÇÃO: Incluir campos de warning ignorado
       const { data: reviews, error: reviewsError } = await supabase
         .from("daily_budget_reviews")
-        .select(`*`)
+        .select(`
+          *,
+          warning_ignored_today,
+          warning_ignored_date
+        `)
         .gte("review_date", firstDayStr)
         .order("review_date", { ascending: false }); // Mais recente primeiro
 
@@ -109,6 +114,26 @@ export function useUnifiedReviewsData() {
       activeCustomBudgets?.forEach(budget => {
         customBudgetsByClientId.set(budget.client_id, budget);
       });
+
+      // NOVA FUNÇÃO: Verificar se o aviso foi ignorado hoje (igual ao Google Ads)
+      const checkWarningIgnored = (review: any) => {
+        if (!review) return false;
+        
+        const today = new Date().toISOString().split('T')[0];
+        const ignoredDate = review.warning_ignored_date;
+        const isIgnored = review.warning_ignored_today;
+        
+        const result = isIgnored && ignoredDate === today;
+        
+        console.log(`🔍 DEBUG - Verificação de warning ignorado:`, {
+          isIgnored,
+          ignoredDate,
+          today,
+          result
+        });
+        
+        return result;
+      };
 
       // Criar Set de clientes com contas Meta
       const clientsWithAccounts = new Set();
@@ -176,7 +201,10 @@ export function useUnifiedReviewsData() {
             // Usar a revisão mais recente (primeira no array ordenado)
             const review = clientReviews.length > 0 ? clientReviews[0] : null;
             
-            console.log(`🔍 Cliente ${client.company_name} (${account.account_name}): ${clientReviews.length} revisões encontradas, usando: ${review?.review_date || 'nenhuma'}`);
+            // NOVA VERIFICAÇÃO: Verificar se warning foi ignorado hoje
+            const warningIgnoredToday = checkWarningIgnored(review);
+            
+            console.log(`🔍 Cliente ${client.company_name} (${account.account_name}): ${clientReviews.length} revisões encontradas, usando: ${review?.review_date || 'nenhuma'}, warning ignorado: ${warningIgnoredToday}`);
             
             let customBudget = null;
             let monthlyBudget = account.budget_amount;
@@ -209,13 +237,16 @@ export function useUnifiedReviewsData() {
             
             console.log(`🔍 DEBUG - Cliente ${client.company_name}: customBudgetEndDate = ${customBudgetEndDate}`);
             
+            // CORREÇÃO PRINCIPAL: Passar warningIgnoredToday para calculateBudget
             const budgetCalc = calculateBudget({
               monthlyBudget: monthlyBudget,
               totalSpent: review?.meta_total_spent || 0,
               currentDailyBudget: review?.meta_daily_budget_current || 0,
-              customBudgetEndDate: customBudgetEndDate
+              customBudgetEndDate: customBudgetEndDate,
+              warningIgnoredToday: warningIgnoredToday
             });
             
+            // CORREÇÃO: needsAdjustment já considera warnings ignorados dentro de calculateBudget
             const needsAdjustment = budgetCalc.needsBudgetAdjustment;
             
             const clientData = {
@@ -225,7 +256,10 @@ export function useUnifiedReviewsData() {
               budget_amount: monthlyBudget,
               original_budget_amount: account.budget_amount,
               review: review || null,
-              budgetCalculation: budgetCalc,
+              budgetCalculation: {
+                ...budgetCalc,
+                warningIgnoredToday: warningIgnoredToday
+              },
               needsAdjustment: needsAdjustment,
               customBudget: customBudget,
               isUsingCustomBudget: isUsingCustomBudget,
@@ -238,6 +272,7 @@ export function useUnifiedReviewsData() {
               needsAdjustment: needsAdjustment,
               budgetDifference: budgetCalc.budgetDifference,
               needsBudgetAdjustment: budgetCalc.needsBudgetAdjustment,
+              warningIgnoredToday: warningIgnoredToday,
               hasReview: !!review,
               reviewDate: review?.review_date,
               sourceTable: account.is_primary ? "clients" : "client_meta_accounts",
@@ -263,7 +298,8 @@ export function useUnifiedReviewsData() {
               remainingDays: 0,
               remainingBudget: 0,
               needsBudgetAdjustment: false,
-              spentPercentage: 0
+              spentPercentage: 0,
+              warningIgnoredToday: false
             },
             needsAdjustment: false,
             customBudget: null,
