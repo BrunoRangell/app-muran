@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +11,8 @@ import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/compon
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { useMetaAccountInfo } from "../hooks/useMetaAccountInfo";
+import { useGoogleAccountInfo } from "../hooks/useGoogleAccountInfo";
 
 interface CircularBudgetCardProps {
   client: any;
@@ -39,6 +40,19 @@ export function CircularBudgetCard({
     }
   });
   
+  // Buscar informações da conta
+  const accountId = platform === "meta" 
+    ? client.meta_account_id 
+    : client.google_account_id;
+    
+  const { data: metaAccountInfo, isLoading: metaLoading } = useMetaAccountInfo(
+    platform === "meta" ? accountId : null
+  );
+  
+  const { data: googleAccountInfo, isLoading: googleLoading } = useGoogleAccountInfo(
+    platform === "google" ? accountId : null
+  );
+  
   const isProcessing = processingIds.includes(client.id);
   
   // Preparar dados para exibição
@@ -53,6 +67,23 @@ export function CircularBudgetCard({
   const idealDailyBudget = client.budgetCalculation?.idealDailyBudget || 0;
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   const customBudget = client.customBudget;
+  
+  // NOVA FUNÇÃO: Obter informações da conta
+  const getAccountInfo = () => {
+    if (platform === "meta") {
+      if (metaLoading) return "Carregando informações...";
+      if (metaAccountInfo) {
+        return `${metaAccountInfo.name} - ID: ${metaAccountInfo.account_id}`;
+      }
+      return "Informações indisponíveis";
+    } else {
+      if (googleLoading) return "Carregando informações...";
+      if (googleAccountInfo) {
+        return `${googleAccountInfo.descriptiveName} - ID: ${googleAccountInfo.id}`;
+      }
+      return "Informações indisponíveis";
+    }
+  };
   
   // Verificar se o aviso foi ignorado hoje (obtido do banco de dados OU estado local)
   const warningIgnoredToday = localWarningIgnored || client.budgetCalculation?.warningIgnoredToday || false;
@@ -212,7 +243,7 @@ export function CircularBudgetCard({
               <h3 className="font-semibold text-gray-900 text-base line-clamp-1 mb-1">
                 {companyName}
               </h3>
-              <p className="text-sm text-gray-600">{getBudgetType()}</p>
+              <p className="text-sm text-gray-600">{getAccountInfo()}</p>
             </div>
             
             <div className="flex items-center gap-2 ml-3">
