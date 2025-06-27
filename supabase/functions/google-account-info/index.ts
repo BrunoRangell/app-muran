@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,13 +26,42 @@ serve(async (req: Request) => {
       );
     }
 
-    const googleAccessToken = Deno.env.get('GOOGLE_ACCESS_TOKEN');
-    const googleCustomerId = Deno.env.get('GOOGLE_CUSTOMER_ID');
-    
-    if (!googleAccessToken || !googleCustomerId) {
-      console.error("GOOGLE_ACCESS_TOKEN ou GOOGLE_CUSTOMER_ID não configurados");
+    // Criar cliente Supabase para buscar tokens
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Buscar tokens Google Ads da tabela api_tokens
+    const { data: tokens, error: tokensError } = await supabase
+      .from('api_tokens')
+      .select('name, value')
+      .in('name', ['google_ads_access_token', 'google_ads_manager_id', 'google_ads_developer_token']);
+
+    if (tokensError || !tokens || tokens.length === 0) {
+      console.error("Erro ao buscar tokens Google Ads:", tokensError);
       return new Response(
-        JSON.stringify({ error: "Tokens de acesso não configurados" }), 
+        JSON.stringify({ error: "Tokens Google Ads não encontrados no banco de dados" }), 
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Organizar tokens
+    const tokenMap = tokens.reduce((acc, token) => {
+      acc[token.name] = token.value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    const googleAccessToken = tokenMap['google_ads_access_token'];
+    const googleCustomerId = tokenMap['google_ads_manager_id'];
+    const googleDeveloperToken = tokenMap['google_ads_developer_token'];
+    
+    if (!googleAccessToken || !googleCustomerId || !googleDeveloperToken) {
+      console.error("Tokens Google Ads incompletos");
+      return new Response(
+        JSON.stringify({ error: "Tokens de acesso Google Ads não configurados completamente" }), 
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -59,7 +89,7 @@ serve(async (req: Request) => {
         headers: {
           'Authorization': `Bearer ${googleAccessToken}`,
           'Content-Type': 'application/json',
-          'developer-token': Deno.env.get('GOOGLE_DEVELOPER_TOKEN') || '',
+          'developer-token': googleDeveloperToken,
         },
         body: JSON.stringify({ query })
       }

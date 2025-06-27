@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,12 +26,22 @@ serve(async (req: Request) => {
       );
     }
 
-    const metaAccessToken = Deno.env.get('META_ACCESS_TOKEN');
-    
-    if (!metaAccessToken) {
-      console.error("META_ACCESS_TOKEN não configurado");
+    // Criar cliente Supabase para buscar token
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Buscar token Meta Ads da tabela api_tokens
+    const { data: tokenData, error: tokenError } = await supabase
+      .from('api_tokens')
+      .select('value')
+      .eq('name', 'meta_access_token')
+      .single();
+
+    if (tokenError || !tokenData?.value) {
+      console.error("Erro ao buscar token Meta Ads:", tokenError);
       return new Response(
-        JSON.stringify({ error: "Token de acesso não configurado" }), 
+        JSON.stringify({ error: "Token Meta Ads não encontrado no banco de dados" }), 
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -38,6 +49,8 @@ serve(async (req: Request) => {
       );
     }
 
+    const metaAccessToken = tokenData.value;
+    
     console.log(`🔍 Buscando informações da conta Meta: act_${accountId}`);
     
     const response = await fetch(
