@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -432,6 +431,67 @@ export const useBudgetManager = () => {
     });
   };
 
+  // Remover conta secundária
+  const removeSecondaryAccount = async (clientId: string) => {
+    try {
+      console.log(`Removendo conta secundária para cliente ${clientId}`);
+      
+      // Remover do banco de dados - Meta Ads
+      const { error: metaError } = await supabase
+        .from("client_meta_accounts")
+        .delete()
+        .eq("client_id", clientId)
+        .eq("is_primary", false);
+      
+      if (metaError) {
+        console.error("Erro ao remover conta Meta secundária:", metaError);
+      }
+      
+      // Remover do banco de dados - Google Ads
+      const { error: googleError } = await supabase
+        .from("client_google_accounts")
+        .delete()
+        .eq("client_id", clientId)
+        .eq("is_primary", false);
+      
+      if (googleError) {
+        console.error("Erro ao remover conta Google secundária:", googleError);
+      }
+      
+      // Remover do estado local
+      setBudgets(prev => ({
+        ...prev,
+        [clientId]: {
+          ...prev[clientId],
+          hasSecondary: false,
+          secondaryFormattedValue: "",
+          secondaryAccountId: "",
+          secondaryRawValue: 0,
+          secondaryGoogleFormattedValue: "",
+          secondaryGoogleAccountId: "",
+          secondaryGoogleRawValue: 0
+        }
+      }));
+      
+      // Invalidar cache
+      queryClient.invalidateQueries({ queryKey: ["client-meta-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["client-google-accounts"] });
+      
+      toast({
+        title: "Conta secundária removida",
+        description: "A conta secundária foi removida com sucesso.",
+      });
+      
+    } catch (error) {
+      console.error("Erro ao remover conta secundária:", error);
+      toast({
+        title: "Erro ao remover conta",
+        description: "Não foi possível remover a conta secundária.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Manipulador para alteração de orçamento Meta - sem limitar entrada do usuário
   const handleBudgetChange = (clientId: string, value: string, accountType: AccountType = 'primary') => {
     setBudgets((prev) => ({
@@ -660,6 +720,7 @@ export const useBudgetManager = () => {
     handleGoogleAccountIdChange,
     handleSave,
     addSecondaryAccount,
+    removeSecondaryAccount,
     isSaving: saveBudgetsMutation.isPending,
     totalBudget,
     totalGoogleBudget

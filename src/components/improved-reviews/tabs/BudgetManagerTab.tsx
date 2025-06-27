@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Save, Loader, Info, Plus } from "lucide-react";
+import { Search, Save, Loader, Info, Plus, Trash2 } from "lucide-react";
 import { useBudgetManager } from "../hooks/useBudgetManager";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,7 +38,8 @@ export const BudgetManagerTab = () => {
     isSaving,
     totalBudget,
     totalGoogleBudget,
-    addSecondaryAccount
+    addSecondaryAccount,
+    removeSecondaryAccount
   } = useBudgetManager();
 
   // Filtrar clientes com base no termo de busca
@@ -51,6 +52,12 @@ export const BudgetManagerTab = () => {
       title: "Dica de uso",
       description: "Digite os valores diretamente no campo de orçamento. O valor será formatado automaticamente quando você clicar fora do campo.",
     });
+  };
+
+  const handleRemoveSecondaryAccount = (clientId: string, clientName: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir a conta secundária de ${clientName}?`)) {
+      removeSecondaryAccount(clientId);
+    }
   };
 
   return (
@@ -168,7 +175,7 @@ export const BudgetManagerTab = () => {
                         {budgets[client.id]?.hasSecondary && (
                           <TableRow className="bg-gray-50/50">
                             <TableCell className="text-xs text-gray-500 pl-8">
-                              Conta secundária
+                              Conta secundária - {client.company_name}
                             </TableCell>
                             <TableCell>
                               <Input
@@ -207,7 +214,15 @@ export const BudgetManagerTab = () => {
                               />
                             </TableCell>
                             <TableCell className="text-right">
-                              {/* Espaço para botão de remover conta secundária (opcional) */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveSecondaryAccount(client.id, client.company_name)}
+                                title="Remover Conta Secundária"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-100"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         )}
