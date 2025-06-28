@@ -62,6 +62,12 @@ export function HealthTable() {
     filterValue === "" || client.clientName.toLowerCase().includes(filterValue.toLowerCase())
   );
 
+  // Helper para lidar com single ou multiple accounts
+  const getFirstAccount = (platformData: any) => {
+    if (!platformData) return null;
+    return Array.isArray(platformData) ? platformData[0] : platformData;
+  };
+
   return (
     <div className="space-y-4">
       {/* Botão de Revisão em Massa */}
@@ -96,165 +102,170 @@ export function HealthTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredData.map((client) => (
-              <TableRow key={client.clientId}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{client.clientName}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {client.companyEmail || ""}
-                    </span>
-                  </div>
-                </TableCell>
-                
-                {/* Meta Ads Column */}
-                <TableCell>
-                  {client.metaAds ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <HealthStatusIndicator status={client.metaAds.status} />
-                        <span className="text-sm font-medium">Meta Ads</span>
-                      </div>
-                      
-                      <div className="text-sm space-y-1">
+            {filteredData.map((client) => {
+              const metaAccount = getFirstAccount(client.metaAds);
+              const googleAccount = getFirstAccount(client.googleAds);
+              
+              return (
+                <TableRow key={client.clientId}>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{client.clientName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {client.companyEmail || ""}
+                      </span>
+                    </div>
+                  </TableCell>
+                  
+                  {/* Meta Ads Column */}
+                  <TableCell>
+                    {metaAccount ? (
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Custo:</span>
-                          <span className={client.metaAds.costToday > 0 ? "text-green-600 font-medium" : "text-gray-500"}>
-                            R$ {client.metaAds.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
+                          <HealthStatusIndicator status={metaAccount.status} />
+                          <span className="text-sm font-medium">Meta Ads</span>
                         </div>
                         
-                        {client.metaAds.impressionsToday && (
+                        <div className="text-sm space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Impressões:</span>
-                            <span className="text-xs">
-                              {client.metaAds.impressionsToday.toLocaleString('pt-BR')}
+                            <span className="text-xs text-muted-foreground">Custo:</span>
+                            <span className={metaAccount.costToday > 0 ? "text-green-600 font-medium" : "text-gray-500"}>
+                              R$ {metaAccount.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </span>
                           </div>
-                        )}
-                        
-                        {client.metaAds.errors.length > 0 ? (
-                          <div className="text-xs">
-                            {client.metaAds.errors.map((error, i) => (
-                              <div key={i} className="text-red-600 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                {error}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-emerald-600 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                            Funcionando
-                          </div>
-                        )}
+                          
+                          {metaAccount.impressionsToday && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Impressões:</span>
+                              <span className="text-xs">
+                                {metaAccount.impressionsToday.toLocaleString('pt-BR')}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {metaAccount.errors.length > 0 ? (
+                            <div className="text-xs">
+                              {metaAccount.errors.map((error, i) => (
+                                <div key={i} className="text-red-600 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                  {error}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-emerald-600 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                              Funcionando
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      Não configurado
-                    </div>
-                  )}
-                </TableCell>
-                
-                {/* Google Ads Column */}
-                <TableCell>
-                  {client.googleAds ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <HealthStatusIndicator status={client.googleAds.status} />
-                        <span className="text-sm font-medium">Google Ads</span>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        Não configurado
                       </div>
-                      
-                      <div className="text-sm space-y-1">
+                    )}
+                  </TableCell>
+                  
+                  {/* Google Ads Column */}
+                  <TableCell>
+                    {googleAccount ? (
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Custo:</span>
-                          <span className={client.googleAds.costToday > 0 ? "text-green-600 font-medium" : "text-gray-500"}>
-                            R$ {client.googleAds.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
+                          <HealthStatusIndicator status={googleAccount.status} />
+                          <span className="text-sm font-medium">Google Ads</span>
                         </div>
                         
-                        {client.googleAds.impressionsToday && (
+                        <div className="text-sm space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Impressões:</span>
-                            <span className="text-xs">
-                              {client.googleAds.impressionsToday.toLocaleString('pt-BR')}
+                            <span className="text-xs text-muted-foreground">Custo:</span>
+                            <span className={googleAccount.costToday > 0 ? "text-green-600 font-medium" : "text-gray-500"}>
+                              R$ {googleAccount.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </span>
                           </div>
-                        )}
-                        
-                        {client.googleAds.errors.length > 0 ? (
-                          <div className="text-xs">
-                            {client.googleAds.errors.map((error, i) => (
-                              <div key={i} className="text-red-600 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                {error}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-emerald-600 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                            Funcionando
-                          </div>
-                        )}
+                          
+                          {googleAccount.impressionsToday && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Impressões:</span>
+                              <span className="text-xs">
+                                {googleAccount.impressionsToday.toLocaleString('pt-BR')}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {googleAccount.errors.length > 0 ? (
+                            <div className="text-xs">
+                              {googleAccount.errors.map((error, i) => (
+                                <div key={i} className="text-red-600 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                  {error}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-emerald-600 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                              Funcionando
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      Não configurado
-                    </div>
-                  )}
-                </TableCell>
-                
-                {/* Actions Column */}
-                <TableCell>
-                  <div className="flex flex-col gap-2">
-                    {client.metaAds && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAction('details', client.clientId, 'Meta Ads')}
-                          className="text-xs"
-                        >
-                          Meta
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleAction('review', client.clientId, 'Meta Ads')}
-                          className="text-xs"
-                        >
-                          Revisar
-                        </Button>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        Não configurado
                       </div>
                     )}
-                    
-                    {client.googleAds && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAction('details', client.clientId, 'Google Ads')}
-                          className="text-xs"
-                        >
-                          Google
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleAction('review', client.clientId, 'Google Ads')}
-                          className="text-xs"
-                        >
-                          Revisar
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  
+                  {/* Actions Column */}
+                  <TableCell>
+                    <div className="flex flex-col gap-2">
+                      {metaAccount && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAction('details', client.clientId, 'Meta Ads')}
+                            className="text-xs"
+                          >
+                            Meta
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleAction('review', client.clientId, 'Meta Ads')}
+                            className="text-xs"
+                          >
+                            Revisar
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {googleAccount && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAction('details', client.clientId, 'Google Ads')}
+                            className="text-xs"
+                          >
+                            Google
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleAction('review', client.clientId, 'Google Ads')}
+                            className="text-xs"
+                          >
+                            Revisar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

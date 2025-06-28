@@ -116,7 +116,7 @@ function EnhancedPlatformCell({
                     {alertStyling.label}
                   </span>
                   {account.isPrimary && (
-                    <Crown className="w-3 h-3 text-yellow-600" title="Conta Principal" />
+                    <Crown className="w-3 h-3 text-yellow-600" />
                   )}
                 </div>
               </div>
