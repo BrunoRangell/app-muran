@@ -1,6 +1,6 @@
 
 import { useMemo } from "react";
-import { CampaignHealth } from "./useCampaignHealthData";
+import { ClientHealthData } from "./useCampaignHealthData";
 import { 
   EnhancedClientData, 
   EnhancedPlatformData, 
@@ -69,7 +69,7 @@ function generateProblems(
   return problems;
 }
 
-export function useIntelligentAnalysis(data: CampaignHealth[]) {
+export function useIntelligentAnalysis(data: ClientHealthData[]) {
   return useMemo(() => {
     const enhancedData: EnhancedClientData[] = [];
     const alerts: HealthAlert[] = [];
@@ -90,15 +90,15 @@ export function useIntelligentAnalysis(data: CampaignHealth[]) {
           const alertLevel = determineAlertLevel(
             account.costToday,
             account.impressionsToday || 0,
-            1, // Assumindo 1 campanha ativa para compatibilidade
-            account.costToday === 0 ? 1 : 0
+            account.hasActiveCampaigns ? 1 : 0, // Usar hasActiveCampaigns
+            account.costToday === 0 && account.hasActiveCampaigns ? 1 : 0
           );
           
           const problems = generateProblems(
             account.costToday,
             account.impressionsToday || 0,
-            1,
-            account.costToday === 0 ? 1 : 0
+            account.hasActiveCampaigns ? 1 : 0,
+            account.costToday === 0 && account.hasActiveCampaigns ? 1 : 0
           );
           
           if (problems.length > 0) {
@@ -118,9 +118,9 @@ export function useIntelligentAnalysis(data: CampaignHealth[]) {
           return {
             accountId: account.accountId || '',
             accountName: account.accountName,
-            hasAccount: true,
-            activeCampaignsCount: 1,
-            unservedCampaignsCount: account.costToday === 0 ? 1 : 0,
+            hasAccount: account.hasAccount,
+            activeCampaignsCount: account.hasActiveCampaigns ? 1 : 0,
+            unservedCampaignsCount: account.costToday === 0 && account.hasActiveCampaigns ? 1 : 0,
             costToday: account.costToday,
             impressionsToday: account.impressionsToday || 0,
             alertLevel,
@@ -139,15 +139,15 @@ export function useIntelligentAnalysis(data: CampaignHealth[]) {
           const alertLevel = determineAlertLevel(
             account.costToday,
             account.impressionsToday || 0,
-            1, // Assumindo 1 campanha ativa para compatibilidade
-            account.costToday === 0 ? 1 : 0
+            account.hasActiveCampaigns ? 1 : 0, // Usar hasActiveCampaigns
+            account.costToday === 0 && account.hasActiveCampaigns ? 1 : 0
           );
           
           const problems = generateProblems(
             account.costToday,
             account.impressionsToday || 0,
-            1,
-            account.costToday === 0 ? 1 : 0
+            account.hasActiveCampaigns ? 1 : 0,
+            account.costToday === 0 && account.hasActiveCampaigns ? 1 : 0
           );
           
           if (problems.length > 0) {
@@ -167,9 +167,9 @@ export function useIntelligentAnalysis(data: CampaignHealth[]) {
           return {
             accountId: account.accountId || '',
             accountName: account.accountName,
-            hasAccount: true,
-            activeCampaignsCount: 1,
-            unservedCampaignsCount: account.costToday === 0 ? 1 : 0,
+            hasAccount: account.hasAccount,
+            activeCampaignsCount: account.hasActiveCampaigns ? 1 : 0,
+            unservedCampaignsCount: account.costToday === 0 && account.hasActiveCampaigns ? 1 : 0,
             costToday: account.costToday,
             impressionsToday: account.impressionsToday || 0,
             alertLevel,
