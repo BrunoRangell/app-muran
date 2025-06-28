@@ -1,185 +1,220 @@
+
 import { useMemo } from "react";
-import { ClientHealthData } from "../types";
-import { AlertLevel, ProblemDiagnostic, EnhancedPlatformData, HealthAlert, HealthDashboardStats } from "../types/enhanced-types";
+import { CampaignHealth } from "./useCampaignHealthData";
+import { 
+  EnhancedClientData, 
+  EnhancedPlatformData, 
+  AlertLevel, 
+  HealthProblem, 
+  HealthAlert, 
+  DashboardStats 
+} from "../types/enhanced-types";
 
-export function useIntelligentAnalysis(data: ClientHealthData[]) {
+function determineAlertLevel(
+  costToday: number,
+  impressionsToday: number,
+  activeCampaignsCount: number,
+  unservedCampaignsCount: number
+): AlertLevel {
+  // Crítico: sem veiculação com campanhas ativas
+  if (activeCampaignsCount > 0 && costToday === 0) {
+    return "critical";
+  }
   
-  const analyzeAlertLevel = (
-    hasAccount: boolean, 
-    activeCampaigns: number, 
-    costToday: number, 
-    impressionsToday: number
-  ): AlertLevel => {
-    if (!hasAccount) return "medium";
-    if (activeCampaigns === 0) return "medium";
-    if (costToday > 0 && impressionsToday > 0) return "ok";
-    if (costToday === 0 && impressionsToday > 0) return "ok"; // Impressões grátis é bom
-    if (costToday > 0 && impressionsToday === 0) return "critical";
-    if (costToday === 0 && impressionsToday === 0 && activeCampaigns > 0) return "high";
+  // Alto: campanhas sem veiculação
+  if (unservedCampaignsCount > 0) {
+    return "high";
+  }
+  
+  // Médio: baixa performance
+  if (costToday > 0 && impressionsToday < 100) {
     return "medium";
-  };
+  }
+  
+  return "ok";
+}
 
-  const generateProblems = (
-    hasAccount: boolean,
-    activeCampaigns: number,
-    costToday: number,
-    impressionsToday: number,
-    accountName?: string
-  ): ProblemDiagnostic[] => {
-    const problems: ProblemDiagnostic[] = [];
-
-    if (!hasAccount) {
-      problems.push({
-        type: "configuration",
-        severity: "medium",
-        description: "Conta não configurada",
-        suggestedAction: "Conectar conta para monitoramento.",
-      });
-    } else if (activeCampaigns === 0) {
-      problems.push({
-        type: "configuration",
-        severity: "medium", 
-        description: "Nenhuma campanha ativa",
-        suggestedAction: "Verificar se campanhas deveriam estar ativas ou criar novas.",
-      });
-    } else if (costToday > 0 && impressionsToday === 0) {
-      problems.push({
-        type: "performance",
-        severity: "critical",
-        description: `Gasto de R$ ${costToday.toFixed(2)} sem impressões`,
-        suggestedAction: "Verificar aprovação de anúncios, público e lances.",
-      });
-    } else if (activeCampaigns > 0 && costToday === 0 && impressionsToday === 0) {
-      problems.push({
-        type: "budget",
-        severity: "high",
-        description: "Campanhas ativas sem veiculação",
-        suggestedAction: "Verificar orçamento, lances e status de aprovação dos anúncios.",
-      });
-    }
-
-    return problems;
-  };
-
-  const enhancedData = useMemo(() => {
-    return data.map(client => {
-      const metaUnservedCampaigns = (client.metaAds && client.metaAds.costToday === 0 && client.metaAds.impressionsToday === 0 && client.metaAds.activeCampaignsCount > 0) 
-        ? client.metaAds.activeCampaignsCount 
-        : 0;
-
-      const enhancedMeta: EnhancedPlatformData | undefined = client.metaAds ? {
-        ...client.metaAds,
-        unservedCampaignsCount: metaUnservedCampaigns,
-        alertLevel: analyzeAlertLevel(
-          client.metaAds.hasAccount,
-          client.metaAds.activeCampaignsCount,
-          client.metaAds.costToday,
-          client.metaAds.impressionsToday
-        ),
-        problems: generateProblems(
-          client.metaAds.hasAccount,
-          client.metaAds.activeCampaignsCount,
-          client.metaAds.costToday,
-          client.metaAds.impressionsToday,
-          client.metaAds.accountName
-        ),
-        quickActions: [] // Will be populated based on problems
-      } : undefined;
-
-      const googleUnservedCampaigns = (client.googleAds && client.googleAds.costToday === 0 && client.googleAds.impressionsToday === 0 && client.googleAds.activeCampaignsCount > 0) 
-        ? client.googleAds.activeCampaignsCount
-        : 0;
-
-      const enhancedGoogle: EnhancedPlatformData | undefined = client.googleAds ? {
-        ...client.googleAds,
-        unservedCampaignsCount: googleUnservedCampaigns,
-        alertLevel: analyzeAlertLevel(
-          client.googleAds.hasAccount,
-          client.googleAds.activeCampaignsCount,
-          client.googleAds.costToday,
-          client.googleAds.impressionsToday
-        ),
-        problems: generateProblems(
-          client.googleAds.hasAccount,
-          client.googleAds.activeCampaignsCount,
-          client.googleAds.costToday,
-          client.googleAds.impressionsToday,
-          client.googleAds.accountName
-        ),
-        quickActions: [] // Will be populated based on problems
-      } : undefined;
-
-      return {
-        ...client,
-        metaAds: enhancedMeta,
-        googleAds: enhancedGoogle
-      };
+function generateProblems(
+  costToday: number,
+  impressionsToday: number,
+  activeCampaignsCount: number,
+  unservedCampaignsCount: number
+): HealthProblem[] {
+  const problems: HealthProblem[] = [];
+  
+  if (activeCampaignsCount > 0 && costToday === 0) {
+    problems.push({
+      type: "no-spend",
+      description: "Sem veiculação com campanhas ativas",
+      severity: "critical"
     });
-  }, [data]);
+  }
+  
+  if (unservedCampaignsCount > 0) {
+    problems.push({
+      type: "unserved-campaigns",
+      description: `${unservedCampaignsCount} campanhas sem veiculação`,
+      severity: "high"
+    });
+  }
+  
+  if (costToday > 0 && impressionsToday < 100) {
+    problems.push({
+      type: "low-impressions",
+      description: "Baixo volume de impressões",
+      severity: "medium"
+    });
+  }
+  
+  return problems;
+}
 
-  const alerts = useMemo((): HealthAlert[] => {
-    const alertsList: HealthAlert[] = [];
+export function useIntelligentAnalysis(data: CampaignHealth[]) {
+  return useMemo(() => {
+    const enhancedData: EnhancedClientData[] = [];
+    const alerts: HealthAlert[] = [];
     
-    enhancedData.forEach(client => {
-      [client.metaAds, client.googleAds].forEach((platform, index) => {
-        if (platform && platform.problems.length > 0) {
-          const platformName = index === 0 ? 'meta' : 'google';
-          platform.problems.forEach(problem => {
-            alertsList.push({
-              id: `${client.clientId}-${platformName}-${problem.type}`,
+    data.forEach(client => {
+      const enhancedClient: EnhancedClientData = {
+        clientId: client.clientId,
+        clientName: client.clientName,
+        overallStatus: "ok"
+      };
+      
+      // Processar contas Meta Ads (agora assumindo múltiplas contas)
+      if (client.metaAds) {
+        // Se for uma única conta, converter para array
+        const metaAccounts = Array.isArray(client.metaAds) ? client.metaAds : [client.metaAds];
+        
+        enhancedClient.metaAds = metaAccounts.map((account, index) => {
+          const alertLevel = determineAlertLevel(
+            account.costToday,
+            account.impressionsToday || 0,
+            1, // Assumindo 1 campanha ativa para compatibilidade
+            account.costToday === 0 ? 1 : 0
+          );
+          
+          const problems = generateProblems(
+            account.costToday,
+            account.impressionsToday || 0,
+            1,
+            account.costToday === 0 ? 1 : 0
+          );
+          
+          if (problems.length > 0) {
+            alerts.push({
+              id: `${client.clientId}-meta-${account.accountId || index}`,
               clientId: client.clientId,
               clientName: client.clientName,
-              platform: platformName,
-              severity: problem.severity,
-              title: problem.description,
-              description: problem.suggestedAction,
-              suggestedAction: problem.suggestedAction,
-              createdAt: new Date()
+              platform: 'meta',
+              accountId: account.accountId || '',
+              accountName: account.accountName,
+              alertLevel,
+              problems,
+              timestamp: new Date()
             });
-          });
-        }
-      });
-    });
-
-    return alertsList.sort((a, b) => {
-      const severityOrder = { critical: 4, high: 3, medium: 2, low: 1, ok: 0 };
-      return severityOrder[b.severity] - severityOrder[a.severity];
-    });
-  }, [enhancedData]);
-
-  const dashboardStats = useMemo((): HealthDashboardStats => {
-    const criticalAlerts = alerts.filter(a => a.severity === "critical").length;
-    const highAlerts = alerts.filter(a => a.severity === "high").length;
-    const mediumAlerts = alerts.filter(a => a.severity === "medium").length;
-    
-    const totalSpend = enhancedData.reduce((acc, client) => {
-      const metaCost = client.metaAds?.costToday || 0;
-      const googleCost = client.googleAds?.costToday || 0;
-      return acc + metaCost + googleCost;
-    }, 0);
-
-    const functioning = enhancedData.filter(client => client.overallStatus === "funcionando").length;
-    
-    const healthScore = Math.max(0, 100 - (criticalAlerts * 20) - (highAlerts * 10) - (mediumAlerts * 5));
-
-    return {
-      totalClients: enhancedData.length,
-      criticalAlerts,
-      highAlerts, 
-      mediumAlerts,
-      estimatedLoss: criticalAlerts * 500 + highAlerts * 200, // Simplified calculation
-      functioning,
-      trends: {
-        criticalTrend: 0, // Would need historical data
-        totalSpendTrend: 0, // Would need historical data  
-        healthScore
+          }
+          
+          return {
+            accountId: account.accountId || '',
+            accountName: account.accountName,
+            hasAccount: true,
+            activeCampaignsCount: 1,
+            unservedCampaignsCount: account.costToday === 0 ? 1 : 0,
+            costToday: account.costToday,
+            impressionsToday: account.impressionsToday || 0,
+            alertLevel,
+            problems,
+            isPrimary: index === 0 // Primeira conta é considerada principal
+          };
+        });
       }
+      
+      // Processar contas Google Ads (agora assumindo múltiplas contas)
+      if (client.googleAds) {
+        // Se for uma única conta, converter para array
+        const googleAccounts = Array.isArray(client.googleAds) ? client.googleAds : [client.googleAds];
+        
+        enhancedClient.googleAds = googleAccounts.map((account, index) => {
+          const alertLevel = determineAlertLevel(
+            account.costToday,
+            account.impressionsToday || 0,
+            1, // Assumindo 1 campanha ativa para compatibilidade
+            account.costToday === 0 ? 1 : 0
+          );
+          
+          const problems = generateProblems(
+            account.costToday,
+            account.impressionsToday || 0,
+            1,
+            account.costToday === 0 ? 1 : 0
+          );
+          
+          if (problems.length > 0) {
+            alerts.push({
+              id: `${client.clientId}-google-${account.accountId || index}`,
+              clientId: client.clientId,
+              clientName: client.clientName,
+              platform: 'google',
+              accountId: account.accountId || '',
+              accountName: account.accountName,
+              alertLevel,
+              problems,
+              timestamp: new Date()
+            });
+          }
+          
+          return {
+            accountId: account.accountId || '',
+            accountName: account.accountName,
+            hasAccount: true,
+            activeCampaignsCount: 1,
+            unservedCampaignsCount: account.costToday === 0 ? 1 : 0,
+            costToday: account.costToday,
+            impressionsToday: account.impressionsToday || 0,
+            alertLevel,
+            problems,
+            isPrimary: index === 0 // Primeira conta é considerada principal
+          };
+        });
+      }
+      
+      // Determinar status geral do cliente
+      const allAccounts = [
+        ...(enhancedClient.metaAds || []),
+        ...(enhancedClient.googleAds || [])
+      ];
+      
+      if (allAccounts.some(acc => acc.alertLevel === "critical")) {
+        enhancedClient.overallStatus = "critical";
+      } else if (allAccounts.some(acc => acc.alertLevel === "high")) {
+        enhancedClient.overallStatus = "high";
+      } else if (allAccounts.some(acc => acc.alertLevel === "medium")) {
+        enhancedClient.overallStatus = "medium";
+      }
+      
+      enhancedData.push(enhancedClient);
+    });
+    
+    // Calcular estatísticas do dashboard
+    const dashboardStats: DashboardStats = {
+      totalClients: enhancedData.length,
+      criticalAlerts: alerts.filter(a => a.alertLevel === "critical").length,
+      highAlerts: alerts.filter(a => a.alertLevel === "high").length,
+      mediumAlerts: alerts.filter(a => a.alertLevel === "medium").length,
+      totalActiveAccounts: enhancedData.reduce((acc, client) => {
+        return acc + (client.metaAds?.length || 0) + (client.googleAds?.length || 0);
+      }, 0),
+      accountsWithIssues: alerts.length
     };
-  }, [alerts, enhancedData]);
-
-  return {
-    enhancedData,
-    alerts,
-    dashboardStats
-  };
+    
+    return {
+      enhancedData,
+      alerts: alerts.sort((a, b) => {
+        const severityOrder = { critical: 3, high: 2, medium: 1, ok: 0 };
+        return severityOrder[b.alertLevel] - severityOrder[a.alertLevel];
+      }),
+      dashboardStats
+    };
+  }, [data]);
 }
