@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 
 // Tipos para operações de banco de dados
@@ -168,25 +169,39 @@ export async function fetchActiveCustomBudget(
   return customBudget;
 }
 
-// Verificar revisão existente
+// Verificar revisão existente - CORRIGIDO para usar a nova constraint
 export async function checkExistingReview(
   supabase: any, 
   clientId: string, 
   accountId: string | null, 
   reviewDate: string
 ) {
-  console.log(`Verificando revisão existente para cliente ${clientId} e conta ${accountId || ""} na data ${reviewDate}`);
+  console.log(`Verificando revisão existente para cliente ${clientId}, conta ${accountId || "null"} na data ${reviewDate}`);
   
-  const { data: existingReview, error: existingReviewError } = await supabase
+  // Construir query com filtros apropriados
+  let query = supabase
     .from("daily_budget_reviews")
     .select("*")
     .eq("client_id", clientId)
-    .eq("review_date", reviewDate)
-    .or(`meta_account_id.eq.${accountId || ""},meta_account_id.is.null`)
-    .maybeSingle();
+    .eq("review_date", reviewDate);
+    
+  // Adicionar filtro de conta se especificado
+  if (accountId) {
+    query = query.eq("meta_account_id", accountId);
+  } else {
+    query = query.is("meta_account_id", null);
+  }
+  
+  const { data: existingReview, error: existingReviewError } = await query.maybeSingle();
 
   if (existingReviewError && existingReviewError.code !== "PGRST116") {
     console.error(`Erro ao verificar revisão existente: ${existingReviewError.message}`);
+  }
+
+  if (existingReview) {
+    console.log(`✅ Revisão existente encontrada: ID ${existingReview.id}`);
+  } else {
+    console.log(`ℹ️ Nenhuma revisão existente encontrada para estes parâmetros`);
   }
 
   return existingReview;
@@ -211,6 +226,8 @@ export async function updateExistingReview(
   if (updateError) {
     throw new Error(`Erro ao atualizar revisão: ${updateError.message}`);
   }
+  
+  console.log(`✅ Revisão ${reviewId} atualizada com sucesso`);
 }
 
 // Criar nova revisão
@@ -220,7 +237,7 @@ export async function createNewReview(
   reviewDate: string,
   reviewData: ReviewData
 ): Promise<number> {
-  console.log("Criando nova revisão");
+  console.log(`Criando nova revisão para cliente ${clientId}, conta ${reviewData.meta_account_id}`);
   
   const { data: newReview, error: insertError } = await supabase
     .from("daily_budget_reviews")
@@ -233,13 +250,15 @@ export async function createNewReview(
     .single();
 
   if (insertError) {
+    console.error(`Erro ao inserir nova revisão:`, insertError);
     throw new Error(`Erro ao inserir nova revisão: ${insertError.message}`);
   }
   
+  console.log(`✅ Nova revisão criada: ID ${newReview.id}`);
   return newReview.id;
 }
 
-// Atualizar ou criar revisão atual do cliente
+// Atualizar ou criar revisão atual do cliente - MODIFICADO para suportar múltiplas contas
 export async function updateClientCurrentReview(
   supabase: any, 
   clientId: string, 
@@ -247,15 +266,26 @@ export async function updateClientCurrentReview(
   reviewData: ReviewData
 ): Promise<void> {
   try {
-    // Verificar se já existe revisão atual para este cliente
-    const { data: currentReview, error: currentReviewError } = await supabase
+    console.log(`Atualizando revisão atual para cliente ${clientId}, conta ${reviewData.meta_account_id}`);
+    
+    // Verificar se já existe revisão atual para este cliente e conta específica
+    let query = supabase
       .from("client_current_reviews")
       .select("*")
-      .eq("client_id", clientId)
-      .maybeSingle();
+      .eq("client_id", clientId);
+      
+    // Filtrar por conta específica se fornecida
+    if (reviewData.meta_account_id) {
+      query = query.eq("meta_account_id", reviewData.meta_account_id);
+    } else {
+      query = query.is("meta_account_id", null);
+    }
+    
+    const { data: currentReview, error: currentReviewError } = await query.maybeSingle();
 
     if (currentReviewError && currentReviewError.code !== "PGRST116") {
       console.error(`Erro ao verificar revisão atual: ${currentReviewError.message}`);
+      return;
     }
 
     // Preparar dados apenas com campos que existem na tabela
@@ -272,7 +302,7 @@ export async function updateClientCurrentReview(
     };
 
     if (currentReview) {
-      // Atualizar revisão atual
+      // Atualizar revisão atual existente
       const { error: updateCurrentError } = await supabase
         .from("client_current_reviews")
         .update(currentReviewData)
@@ -281,7 +311,7 @@ export async function updateClientCurrentReview(
       if (updateCurrentError) {
         console.error(`Erro ao atualizar revisão atual: ${updateCurrentError.message}`);
       } else {
-        console.log(`✅ Revisão atual atualizada para cliente ${clientId}`);
+        console.log(`✅ Revisão atual atualizada para cliente ${clientId}, conta ${reviewData.meta_account_id}`);
       }
     } else {
       // Inserir nova revisão atual
@@ -292,7 +322,7 @@ export async function updateClientCurrentReview(
       if (insertCurrentError) {
         console.error(`Erro ao inserir revisão atual: ${insertCurrentError.message}`);
       } else {
-        console.log(`✅ Nova revisão atual criada para cliente ${clientId}`);
+        console.log(`✅ Nova revisão atual criada para cliente ${clientId}, conta ${reviewData.meta_account_id}`);
       }
     }
   } catch (error) {

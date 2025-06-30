@@ -82,100 +82,112 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         overallStatus: "ok"
       };
       
-      // Processar contas Meta Ads
+      // Processar contas Meta Ads - SUPORTE A MÚLTIPLAS CONTAS
       if (client.metaAds) {
-        const metaData = client.metaAds;
-        const activeCampaignsCount = metaData.hasActiveCampaigns ? 1 : 0;
-        const unservedCampaignsCount = metaData.costToday === 0 && metaData.hasActiveCampaigns ? 1 : 0;
+        const metaAccountsArray = Array.isArray(client.metaAds) ? client.metaAds : [client.metaAds];
+        const metaDataArray: EnhancedPlatformData[] = [];
         
-        const alertLevel = determineAlertLevel(
-          metaData.costToday,
-          metaData.impressionsToday || 0,
-          activeCampaignsCount,
-          unservedCampaignsCount
-        );
-        
-        const problems = generateProblems(
-          metaData.costToday,
-          metaData.impressionsToday || 0,
-          activeCampaignsCount,
-          unservedCampaignsCount
-        );
-        
-        if (problems.length > 0) {
-          alerts.push({
-            id: `${client.clientId}-meta`,
-            clientId: client.clientId,
-            clientName: client.clientName,
-            platform: 'meta',
+        metaAccountsArray.forEach((metaData, index) => {
+          const activeCampaignsCount = metaData.hasActiveCampaigns ? 1 : 0;
+          const unservedCampaignsCount = metaData.costToday === 0 && metaData.hasActiveCampaigns ? 1 : 0;
+          
+          const alertLevel = determineAlertLevel(
+            metaData.costToday,
+            metaData.impressionsToday || 0,
+            activeCampaignsCount,
+            unservedCampaignsCount
+          );
+          
+          const problems = generateProblems(
+            metaData.costToday,
+            metaData.impressionsToday || 0,
+            activeCampaignsCount,
+            unservedCampaignsCount
+          );
+          
+          if (problems.length > 0) {
+            alerts.push({
+              id: `${client.clientId}-meta-${metaData.accountId || index}`,
+              clientId: client.clientId,
+              clientName: client.clientName,
+              platform: 'meta',
+              accountId: metaData.accountId || '',
+              accountName: metaData.accountName,
+              alertLevel,
+              problems,
+              timestamp: new Date()
+            });
+          }
+          
+          metaDataArray.push({
             accountId: metaData.accountId || '',
             accountName: metaData.accountName,
+            hasAccount: metaData.hasAccount,
+            activeCampaignsCount,
+            unservedCampaignsCount,
+            costToday: metaData.costToday,
+            impressionsToday: metaData.impressionsToday || 0,
             alertLevel,
             problems,
-            timestamp: new Date()
+            isPrimary: index === 0 // Primeira conta é considerada principal
           });
-        }
+        });
         
-        enhancedClient.metaAds = [{
-          accountId: metaData.accountId || '',
-          accountName: metaData.accountName,
-          hasAccount: metaData.hasAccount,
-          activeCampaignsCount,
-          unservedCampaignsCount,
-          costToday: metaData.costToday,
-          impressionsToday: metaData.impressionsToday || 0,
-          alertLevel,
-          problems,
-          isPrimary: true
-        }];
+        enhancedClient.metaAds = metaDataArray;
       }
       
-      // Processar contas Google Ads
+      // Processar contas Google Ads - SUPORTE A MÚLTIPLAS CONTAS
       if (client.googleAds) {
-        const googleData = client.googleAds;
-        const activeCampaignsCount = googleData.hasActiveCampaigns ? 1 : 0;
-        const unservedCampaignsCount = googleData.costToday === 0 && googleData.hasActiveCampaigns ? 1 : 0;
+        const googleAccountsArray = Array.isArray(client.googleAds) ? client.googleAds : [client.googleAds];
+        const googleDataArray: EnhancedPlatformData[] = [];
         
-        const alertLevel = determineAlertLevel(
-          googleData.costToday,
-          googleData.impressionsToday || 0,
-          activeCampaignsCount,
-          unservedCampaignsCount
-        );
-        
-        const problems = generateProblems(
-          googleData.costToday,
-          googleData.impressionsToday || 0,
-          activeCampaignsCount,
-          unservedCampaignsCount
-        );
-        
-        if (problems.length > 0) {
-          alerts.push({
-            id: `${client.clientId}-google`,
-            clientId: client.clientId,
-            clientName: client.clientName,
-            platform: 'google',
+        googleAccountsArray.forEach((googleData, index) => {
+          const activeCampaignsCount = googleData.hasActiveCampaigns ? 1 : 0;
+          const unservedCampaignsCount = googleData.costToday === 0 && googleData.hasActiveCampaigns ? 1 : 0;
+          
+          const alertLevel = determineAlertLevel(
+            googleData.costToday,
+            googleData.impressionsToday || 0,
+            activeCampaignsCount,
+            unservedCampaignsCount
+          );
+          
+          const problems = generateProblems(
+            googleData.costToday,
+            googleData.impressionsToday || 0,
+            activeCampaignsCount,
+            unservedCampaignsCount
+          );
+          
+          if (problems.length > 0) {
+            alerts.push({
+              id: `${client.clientId}-google-${googleData.accountId || index}`,
+              clientId: client.clientId,
+              clientName: client.clientName,
+              platform: 'google',
+              accountId: googleData.accountId || '',
+              accountName: googleData.accountName,
+              alertLevel,
+              problems,
+              timestamp: new Date()
+            });
+          }
+          
+          googleDataArray.push({
             accountId: googleData.accountId || '',
             accountName: googleData.accountName,
+            hasAccount: googleData.hasAccount,
+            activeCampaignsCount,
+            unservedCampaignsCount,
+            costToday: googleData.costToday,
+            impressionsToday: googleData.impressionsToday || 0,
             alertLevel,
             problems,
-            timestamp: new Date()
+            isPrimary: index === 0 // Primeira conta é considerada principal
           });
-        }
+        });
         
-        enhancedClient.googleAds = [{
-          accountId: googleData.accountId || '',
-          accountName: googleData.accountName,
-          hasAccount: googleData.hasAccount,
-          activeCampaignsCount,
-          unservedCampaignsCount,
-          costToday: googleData.costToday,
-          impressionsToday: googleData.impressionsToday || 0,
-          alertLevel,
-          problems,
-          isPrimary: true
-        }];
+        enhancedClient.googleAds = googleDataArray;
       }
       
       // Determinar status geral do cliente

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -12,6 +13,8 @@ export interface PlatformData {
   status: CampaignStatus;
   accountId?: string;
   accountName?: string;
+  hasAccount?: boolean;
+  hasActiveCampaigns?: boolean;
 }
 
 export interface CampaignHealth {
@@ -86,18 +89,23 @@ async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
         const metaAccountsData: PlatformData[] = [];
         
         for (const metaAccount of metaAccounts) {
-          // Buscar dados de review para esta conta específica
+          console.log(`  📱 Processando conta Meta: ${metaAccount.account_id} (${metaAccount.account_name})`);
+          
+          // Buscar dados de review mais recentes para esta conta específica (não apenas hoje)
           const { data: metaReview } = await supabase
             .from('daily_budget_reviews')
-            .select('meta_total_spent, meta_daily_budget_current')
+            .select('meta_total_spent, meta_daily_budget_current, review_date')
             .eq('client_id', client.id)
             .eq('meta_account_id', metaAccount.account_id)
-            .eq('review_date', today)
+            .order('review_date', { ascending: false })
+            .limit(1)
             .maybeSingle();
 
           const metaCostToday = metaReview?.meta_total_spent || 0;
           const hasMetaReviewData = !!metaReview;
           const metaStatus = determineStatus(metaCostToday, true, hasMetaReviewData);
+          
+          console.log(`    💰 Conta ${metaAccount.account_id}: Custo=${metaCostToday}, Status=${metaStatus.status}`);
           
           metaAccountsData.push({
             costToday: metaCostToday,
@@ -105,11 +113,13 @@ async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
             errors: metaStatus.errors,
             status: metaStatus.status,
             accountId: metaAccount.account_id,
-            accountName: metaAccount.account_name
+            accountName: metaAccount.account_name,
+            hasAccount: true,
+            hasActiveCampaigns: metaCostToday > 0
           });
         }
         
-        clientData.metaAds = metaAccountsData.length === 1 ? metaAccountsData[0] : metaAccountsData;
+        clientData.metaAds = metaAccountsData;
       }
 
       // Buscar TODAS as contas Google do cliente
@@ -124,18 +134,23 @@ async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
         const googleAccountsData: PlatformData[] = [];
         
         for (const googleAccount of googleAccounts) {
-          // Buscar dados de review para esta conta específica
+          console.log(`  🔍 Processando conta Google: ${googleAccount.account_id} (${googleAccount.account_name})`);
+          
+          // Buscar dados de review mais recentes para esta conta específica
           const { data: googleReview } = await supabase
             .from('google_ads_reviews')
-            .select('google_total_spent, google_daily_budget_current')
+            .select('google_total_spent, google_daily_budget_current, review_date')
             .eq('client_id', client.id)
             .eq('google_account_id', googleAccount.account_id)
-            .eq('review_date', today)
+            .order('review_date', { ascending: false })
+            .limit(1)
             .maybeSingle();
 
           const googleCostToday = googleReview?.google_total_spent || 0;
           const hasGoogleReviewData = !!googleReview;
           const googleStatus = determineStatus(googleCostToday, true, hasGoogleReviewData);
+          
+          console.log(`    💰 Conta ${googleAccount.account_id}: Custo=${googleCostToday}, Status=${googleStatus.status}`);
           
           googleAccountsData.push({
             costToday: googleCostToday,
@@ -143,16 +158,19 @@ async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
             errors: googleStatus.errors,
             status: googleStatus.status,
             accountId: googleAccount.account_id,
-            accountName: googleAccount.account_name
+            accountName: googleAccount.account_name,
+            hasAccount: true,
+            hasActiveCampaigns: googleCostToday > 0
           });
         }
         
-        clientData.googleAds = googleAccountsData.length === 1 ? googleAccountsData[0] : googleAccountsData;
+        clientData.googleAds = googleAccountsData;
       }
 
-      // Adicionar cliente apenas se tiver pelo menos uma plataforma configurada
+      // Adicionar cliente se tiver pelo menos uma plataforma configurada
       if (clientData.metaAds || clientData.googleAds) {
         healthData.push(clientData);
+        console.log(`✅ Cliente ${client.company_name} adicionado com ${(clientData.metaAds as PlatformData[])?.length || 0} contas Meta e ${(clientData.googleAds as PlatformData[])?.length || 0} contas Google`);
       }
     }
 
@@ -165,56 +183,62 @@ async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
   }
 }
 
-// Hook para buscar dados com refresh em massa
+// Hook para buscar dados com refresh em massa - CORRIGIDO para processar múltiplas contas
 async function triggerMassReview() {
   console.log("🔄 Iniciando revisão em massa...");
   
   try {
-    // Buscar todos os clientes ativos
+    // Buscar todos os clientes ativos com suas contas
     const { data: clients, error } = await supabase
       .from('clients')
-      .select('id, company_name')
-      .eq('status', 'active');
+      .select(`
+        id, 
+        company_name,
+        client_meta_accounts!inner(account_id, is_primary)
+      `)
+      .eq('status', 'active')
+      .eq('client_meta_accounts.status', 'active');
 
     if (error) throw error;
 
-    const results = { success: 0, failed: 0, total: clients?.length || 0 };
+    const results = { success: 0, failed: 0, total: 0 };
     
-    console.log(`📋 Processando revisão para ${results.total} clientes...`);
-
-    // Processar clientes em lotes
+    // Contar total de contas a processar
     for (const client of clients || []) {
-      try {
-        const today = new Date().toISOString().split('T')[0];
+      results.total += (client as any).client_meta_accounts?.length || 0;
+    }
+    
+    console.log(`📋 Processando revisão para ${results.total} contas de ${clients?.length || 0} clientes...`);
 
-        // Chamar edge functions para atualizar dados
-        await Promise.all([
-          supabase.functions.invoke('daily-meta-review', {
+    // Processar cada cliente e suas contas
+    for (const client of clients || []) {
+      const metaAccounts = (client as any).client_meta_accounts || [];
+      
+      for (const metaAccount of metaAccounts) {
+        try {
+          const today = new Date().toISOString().split('T')[0];
+
+          // Chamar edge function para cada conta específica
+          await supabase.functions.invoke('daily-meta-review', {
             body: {
               clientId: client.id,
+              accountId: metaAccount.account_id,
               reviewDate: today,
               fetchRealData: true
             }
-          }),
-          supabase.functions.invoke('daily-google-review', {
-            body: {
-              clientId: client.id,
-              reviewDate: today,
-              fetchRealData: true
-            }
-          })
-        ]);
+          });
 
-        results.success++;
-        console.log(`✅ Cliente ${client.company_name} processado com sucesso`);
-        
-      } catch (clientError) {
-        console.error(`❌ Erro ao processar cliente ${client.company_name}:`, clientError);
-        results.failed++;
+          results.success++;
+          console.log(`✅ Conta ${metaAccount.account_id} do cliente ${client.company_name} processada com sucesso`);
+          
+        } catch (accountError) {
+          console.error(`❌ Erro ao processar conta ${metaAccount.account_id} do cliente ${client.company_name}:`, accountError);
+          results.failed++;
+        }
       }
     }
 
-    console.log(`📈 Revisão em massa concluída: ${results.success} sucessos, ${results.failed} falhas`);
+    console.log(`📈 Revisão em massa concluída: ${results.success} sucessos, ${results.failed} falhas de ${results.total} contas`);
     return results;
 
   } catch (error) {
@@ -229,7 +253,7 @@ export function useCampaignHealthData() {
 
   // Query para buscar dados com cache de 5 minutos
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["campaign-health-new"],
+    queryKey: ["campaign-health-multiple-accounts"],
     queryFn: fetchCampaignHealthData,
     staleTime: 5 * 60 * 1000, // 5 minutos
     refetchInterval: 5 * 60 * 1000 // Auto-refresh a cada 5 minutos
@@ -261,7 +285,7 @@ export function useCampaignHealthData() {
       // Refetch dos dados após a revisão
       await refetch();
       
-      console.log(`🎉 Revisão concluída: ${results.success}/${results.total} clientes processados`);
+      console.log(`🎉 Revisão concluída: ${results.success}/${results.total} contas processadas`);
       
     } catch (error) {
       console.error("❌ Erro na revisão em massa:", error);
