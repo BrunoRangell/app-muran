@@ -17,6 +17,7 @@ export interface ClientHealthData {
   clientName: string;
   metaAds?: PlatformAccountData[];
   googleAds?: PlatformAccountData[];
+  overallStatus?: string; // Adicionado para compatibilidade
 }
 
 export interface HealthStats {
