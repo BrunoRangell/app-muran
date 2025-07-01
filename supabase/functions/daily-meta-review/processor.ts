@@ -1,6 +1,96 @@
 
 import { createSupabaseClient, fetchMetaAccessToken, fetchClientData, fetchPrimaryMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview } from "./database.ts";
 
+// Função para buscar dados reais da Meta Graph API
+async function fetchMetaApiData(accountId: string, accessToken: string, customBudget: any) {
+  console.log(`🔍 Buscando dados reais da Meta Graph API para conta ${accountId}`);
+  
+  try {
+    // 1. Buscar campanhas ativas para calcular orçamento diário total
+    const campaignsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=daily_budget,status,effective_status&access_token=${accessToken}&limit=1000`;
+    console.log(`📞 Chamando API de campanhas: ${campaignsUrl.replace(accessToken, '[TOKEN_HIDDEN]')}`);
+    
+    const campaignsResponse = await fetch(campaignsUrl);
+    
+    if (!campaignsResponse.ok) {
+      const errorData = await campaignsResponse.json();
+      console.error("❌ Erro ao buscar campanhas da Meta API:", errorData);
+      return { daily_budget: 0, total_spent: 0 };
+    }
+
+    const campaignsData = await campaignsResponse.json();
+    const campaigns = campaignsData.data || [];
+    console.log(`✅ Encontradas ${campaigns.length} campanhas na conta`);
+
+    // Calcular orçamento diário total das campanhas ativas
+    let totalDailyBudget = 0;
+    const activeCampaigns = campaigns.filter(campaign => 
+      campaign.effective_status === 'ACTIVE' && 
+      campaign.daily_budget && 
+      parseFloat(campaign.daily_budget) > 0
+    );
+    
+    console.log(`📊 Campanhas ativas encontradas: ${activeCampaigns.length}`);
+    
+    activeCampaigns.forEach(campaign => {
+      const budget = parseFloat(campaign.daily_budget) / 100; // Meta retorna em centavos
+      totalDailyBudget += budget;
+      console.log(`💰 Campanha ${campaign.id}: Orçamento diário R$ ${budget.toFixed(2)}`);
+    });
+
+    console.log(`💰 Orçamento diário total calculado: R$ ${totalDailyBudget.toFixed(2)}`);
+
+    // 2. Buscar insights de gasto para o período atual
+    const today = new Date();
+    const startDate = customBudget 
+      ? customBudget.start_date 
+      : `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`; // Início do mês atual
+    const endDate = customBudget 
+      ? customBudget.end_date 
+      : today.toISOString().split('T')[0]; // Hoje
+
+    console.log(`📅 Buscando gastos do período: ${startDate} até ${endDate}`);
+
+    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend&time_range={"since":"${startDate}","until":"${endDate}"}&access_token=${accessToken}`;
+    console.log(`📞 Chamando API de insights: ${insightsUrl.replace(accessToken, '[TOKEN_HIDDEN]')}`);
+    
+    const insightsResponse = await fetch(insightsUrl);
+    
+    if (!insightsResponse.ok) {
+      const insightsError = await insightsResponse.json();
+      console.error("❌ Erro ao buscar insights da Meta API:", insightsError);
+      return { daily_budget: totalDailyBudget, total_spent: 0 };
+    }
+
+    const insightsData = await insightsResponse.json();
+    console.log(`✅ Resposta de insights recebida:`, JSON.stringify(insightsData));
+
+    // Calcular gasto total
+    let totalSpent = 0;
+    if (insightsData.data && insightsData.data.length > 0) {
+      insightsData.data.forEach(insight => {
+        if (insight.spend) {
+          const spendValue = parseFloat(insight.spend);
+          if (!isNaN(spendValue)) {
+            totalSpent += spendValue;
+          }
+        }
+      });
+    }
+
+    console.log(`💸 Gasto total calculado: R$ ${totalSpent.toFixed(2)}`);
+
+    return {
+      daily_budget: totalDailyBudget,
+      total_spent: totalSpent
+    };
+
+  } catch (error) {
+    console.error("❌ Erro inesperado ao buscar dados da Meta API:", error);
+    return { daily_budget: 0, total_spent: 0 };
+  }
+}
+
 export async function processReviewRequest(req: Request) {
   const supabase = createSupabaseClient();
   
@@ -36,13 +126,16 @@ export async function processReviewRequest(req: Request) {
     // 4. Buscar orçamento personalizado ativo
     const customBudget = await fetchActiveCustomBudget(supabase, clientId, today);
     
-    // 5. Simular dados da API Meta (substituir por chamada real depois)
-    const metaApiData = {
-      daily_budget: 50.0,
-      total_spent: 300.0,
+    // 5. BUSCAR DADOS REAIS DA META API (substituindo dados simulados)
+    console.log(`🚀 Buscando dados reais da Meta Graph API...`);
+    const metaApiData = await fetchMetaApiData(metaAccount.account_id, metaToken, customBudget);
+    
+    console.log(`✅ Dados reais da Meta API obtidos:`, {
+      daily_budget: metaApiData.daily_budget,
+      total_spent: metaApiData.total_spent,
       account_id: metaAccount.account_id,
       account_name: metaAccount.account_name
-    };
+    });
     
     // 6. Preparar dados da revisão
     const reviewData = {
@@ -62,11 +155,11 @@ export async function processReviewRequest(req: Request) {
     if (existingReview) {
       // Atualizar revisão existente
       await updateExistingReview(supabase, existingReview.id, reviewData);
-      console.log(`✅ Revisão atualizada para cliente ${clientData.company_name}`);
+      console.log(`✅ Revisão atualizada para cliente ${clientData.company_name} com dados reais da API`);
     } else {
       // Criar nova revisão
       await createNewReview(supabase, clientId, today, reviewData);
-      console.log(`✅ Nova revisão criada para cliente ${clientData.company_name}`);
+      console.log(`✅ Nova revisão criada para cliente ${clientData.company_name} com dados reais da API`);
     }
     
     return {
@@ -77,7 +170,7 @@ export async function processReviewRequest(req: Request) {
         name: metaAccount.account_name
       },
       review_data: reviewData,
-      message: "Revisão processada com sucesso"
+      message: "Revisão processada com sucesso usando dados reais da Meta API"
     };
     
   } catch (error) {
