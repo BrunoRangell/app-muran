@@ -66,7 +66,7 @@ export const useBudgetManager = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Buscar todas as contas dos clientes da nova estrutura unificada
+  // Buscar todas as contas dos clientes da nova estrutura unificada - CORREÇÃO AQUI
   const { data: clientAccounts, isLoading: isLoadingAccounts } = useQuery({
     queryKey: ["client-accounts-unified"],
     queryFn: async () => {
@@ -74,14 +74,16 @@ export const useBudgetManager = () => {
         .from("client_accounts")
         .select("*")
         .eq("status", "active")
-        .order("client_id, platform, is_primary DESC");
+        .order("client_id")
+        .order("platform")
+        .order("is_primary", { ascending: false }); // CORRIGIDO: usar múltiplas chamadas .order()
 
       if (error) {
-        console.error("Erro ao buscar contas dos clientes:", error);
+        console.error("❌ ERRO SQL ao buscar contas dos clientes:", error);
         return [];
       }
       
-      console.log("🔍 Contas carregadas:", data?.length, data?.map(acc => ({ 
+      console.log("✅ SUCESSO: Contas carregadas:", data?.length, data?.map(acc => ({ 
         client_id: acc.client_id, 
         platform: acc.platform, 
         account_id: acc.account_id,
@@ -142,9 +144,14 @@ export const useBudgetManager = () => {
   useEffect(() => {
     // Condição mais robusta - verificar se clients tem dados E clientAccounts é um array válido
     if (clients?.length > 0 && Array.isArray(clientAccounts)) {
-      console.log("🚀 INICIANDO INICIALIZAÇÃO DOS ORÇAMENTOS");
+      console.log("🚀 INICIANDO INICIALIZAÇÃO DOS ORÇAMENTOS - VERSÃO CORRIGIDA");
       console.log("📊 Clientes encontrados:", clients.length);
       console.log("🏦 Contas encontradas:", clientAccounts.length);
+      
+      // DEBUG ADICIONAL: Mostrar algumas contas encontradas
+      if (clientAccounts.length > 0) {
+        console.log("🔍 PRIMEIRAS 3 CONTAS:", clientAccounts.slice(0, 3));
+      }
       
       const initialBudgets: Record<string, BudgetValues> = {};
       

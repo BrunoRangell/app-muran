@@ -171,9 +171,9 @@ export const BudgetManagerTab = () => {
                           </TableCell>
                         </TableRow>
                         
-                        {/* Conta secundária se existir */}
+                        {/* Conta secundária se existir - CORRIGIDO o warning do React.Fragment */}
                         {budgets[client.id]?.hasSecondary && (
-                          <TableRow className="bg-gray-50/50">
+                          <TableRow key={`${client.id}-secondary`} className="bg-gray-50/50">
                             <TableCell className="text-xs text-gray-500 pl-8">
                               Conta secundária - {client.company_name}
                             </TableCell>
