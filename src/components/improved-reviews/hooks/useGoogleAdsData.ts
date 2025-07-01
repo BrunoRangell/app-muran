@@ -228,7 +228,7 @@ export const useGoogleAdsData = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['google-ads-unified-data'],
+    queryKey: ['improved-google-reviews'], // CORREÇÃO: Padronizando query key
     queryFn: fetchGoogleAdsData,
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
