@@ -376,7 +376,7 @@ async function processGoogleReview(req: Request) {
     const client = clients[0];
     
     // Buscar ou criar conta do Google Ads específica
-    let accountName = "Conta Principal";
+    let accountName = "Conta não identificada"; // ALTERADO: usar fallback padrão
     let accountIdUuid = null;
     
     const accountResponse = await fetch(
@@ -391,7 +391,7 @@ async function processGoogleReview(req: Request) {
     if (accountResponse.ok) {
       const accounts = await accountResponse.json();
       if (accounts && accounts.length > 0) {
-        accountName = accounts[0].account_name || "Conta Google";
+        accountName = accounts[0].account_name || "Conta não identificada"; // ALTERADO: usar fallback
         accountIdUuid = accounts[0].id;
       } else {
         // Criar nova conta se não existir
@@ -461,7 +461,7 @@ async function processGoogleReview(req: Request) {
     let lastFiveDaysSpent = 0;
     let currentDailyBudget = 0;
     let apiErrorDetails = null;
-    let realAccountName = accountName; // Usar nome atual como padrão
+    let realAccountName = accountName; // Usar nome atual como padrão (agora "Conta não identificada")
     
     // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
     let googleDay1Spent = 0;
@@ -514,7 +514,7 @@ async function processGoogleReview(req: Request) {
         headers['login-customer-id'] = googleTokens.google_ads_manager_id;
       }
       
-      // NOVA IMPLEMENTAÇÃO: Buscar nome real da conta Google Ads
+      // IMPLEMENTAÇÃO: Buscar nome real da conta Google Ads
       console.log("🏷️ Buscando nome real da conta Google Ads...");
       const fetchedAccountName = await fetchRealAccountName(googleAccountId, headers);
       
@@ -528,6 +528,10 @@ async function processGoogleReview(req: Request) {
             console.log(`✅ Nome da conta atualizado no banco: "${realAccountName}"`);
           }
         }
+      } else if (!fetchedAccountName) {
+        // NOVO: Se não conseguir buscar o nome, manter "Conta não identificada"
+        console.log("⚠️ Não foi possível obter o nome real da conta - usando fallback");
+        realAccountName = "Conta não identificada";
       }
       
       // NOVA IMPLEMENTAÇÃO: Calcular as datas dos últimos 5 dias e buscar gastos individuais
@@ -679,6 +683,9 @@ async function processGoogleReview(req: Request) {
       googleDay3Spent = 0;
       googleDay4Spent = 0;
       googleDay5Spent = 0;
+      
+      // IMPORTANTE: Se houve erro na API, manter "Conta não identificada"
+      realAccountName = "Conta não identificada";
       
       apiErrorDetails = apiErrorDetails || {
         message: apiError.message,
@@ -883,7 +890,7 @@ async function processGoogleReview(req: Request) {
       reviewId,
       clientId,
       accountId: googleAccountId,
-      accountName: realAccountName, // RETORNAR O NOME REAL DA CONTA
+      accountName: realAccountName, // RETORNAR O NOME REAL DA CONTA OU "Conta não identificada"
       currentDailyBudget,
       totalSpent,
       lastFiveDaysSpent,
