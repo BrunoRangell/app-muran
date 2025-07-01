@@ -375,7 +375,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🔍 CORREÇÃO IMPLEMENTADA: Iniciando busca de saúde de campanhas ativas com timezone brasileiro correto...');
+    console.log('🔍 CORREÇÃO IMPLEMENTADA: Iniciando busca de saúde de campanhas ativas com TODAS as contas (principais e secundárias)...');
 
     // Buscar token do Meta Ads
     const { data: metaToken } = await supabase
@@ -391,79 +391,88 @@ Deno.serve(async (req) => {
 
     console.log('✅ Token Meta Ads encontrado');
 
-    // Buscar clientes ativos
+    // CORREÇÃO: Buscar todos os clientes e TODAS suas contas Meta
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
-      .select('id, company_name, meta_account_id, google_account_id')
+      .select(`
+        id, 
+        company_name, 
+        google_account_id,
+        client_meta_accounts!inner(
+          account_id, 
+          account_name, 
+          is_primary
+        )
+      `)
       .eq('status', 'active')
+      .eq('client_meta_accounts.status', 'active')
       .order('company_name');
 
     if (clientsError) {
-      console.error('❌ Erro ao buscar clientes:', clientsError);
+      console.error('❌ Erro ao buscar clientes e suas contas Meta:', clientsError);
       throw clientsError;
     }
 
-    console.log(`✅ Encontrados ${clients?.length || 0} clientes ativos`);
+    console.log(`✅ Encontrados ${clients?.length || 0} clientes com contas Meta ativas`);
 
-    const today = getTodayInBrazil(); // CORREÇÃO: Usar função corrigida
+    const today = getTodayInBrazil();
     const snapshots: CampaignHealthSnapshot[] = [];
 
     console.log(`📅 CORREÇÃO: Processando dados para o dia CORRETO: ${today} (timezone brasileiro CORRIGIDO)`);
 
-    // Processar cada cliente
+    // CORREÇÃO: Processar cada cliente e TODAS suas contas Meta
     for (const client of clients || []) {
       console.log(`\n📊 Processando cliente: ${client.company_name}`);
+      
+      const metaAccounts = (client as any).client_meta_accounts || [];
+      console.log(`📱 Cliente ${client.company_name} tem ${metaAccounts.length} contas Meta`);
 
-      let metaData = { cost: 0, impressions: 0, activeCampaigns: 0 };
-      let googleData = { cost: 0, impressions: 0, activeCampaigns: 0 };
+      // Processar cada conta Meta do cliente separadamente
+      for (const metaAccount of metaAccounts) {
+        console.log(`🔄 CORREÇÃO: Processando conta Meta ${metaAccount.account_id} (${metaAccount.account_name}) - ${metaAccount.is_primary ? 'PRINCIPAL' : 'SECUNDÁRIA'}`);
+        
+        const metaData = await fetchMetaActiveCampaigns(metaToken.value, metaAccount.account_id);
+        console.log(`✅ Meta processado para conta ${metaAccount.account_id}: Campanhas=${metaData.activeCampaigns}, Custo=R$${metaData.cost}, Impressões=${metaData.impressions}`);
 
-      // Processar Meta Ads com função corrigida
-      if (client.meta_account_id && client.meta_account_id.trim() !== '') {
-        console.log(`🔄 CORREÇÃO: Processando Meta Ads para ${client.company_name} com data brasileira...`);
-        metaData = await fetchMetaActiveCampaigns(metaToken.value, client.meta_account_id);
-        console.log(`✅ Meta processado com data CORRIGIDA: Campanhas=${metaData.activeCampaigns}, Custo=R$${metaData.cost}, Impressões=${metaData.impressions}`);
-      } else {
-        console.log(`⚪ Meta não configurado para ${client.company_name}`);
+        // Processar Google Ads (apenas se tiver configurado)
+        let googleData = { cost: 0, impressions: 0, activeCampaigns: 0 };
+        if (client.google_account_id && client.google_account_id.trim() !== '') {
+          console.log(`🔄 Processando Google Ads para ${client.company_name}...`);
+          googleData = await fetchGoogleActiveCampaigns(client.google_account_id, supabase);
+          console.log(`✅ Google processado: Campanhas=${googleData.activeCampaigns}, Custo=R$${googleData.cost.toFixed(2)}, Impressões=${googleData.impressions}`);
+        }
+
+        // Criar snapshot individual para cada conta Meta
+        const snapshot: CampaignHealthSnapshot = {
+          client_id: client.id,
+          snapshot_date: today,
+          meta_account_id: metaAccount.account_id,
+          meta_account_name: metaAccount.account_name,
+          meta_has_account: true,
+          meta_active_campaigns_count: metaData.activeCampaigns,
+          meta_cost_today: metaData.cost,
+          meta_impressions_today: metaData.impressions,
+          google_account_id: client.google_account_id || null,
+          google_account_name: client.google_account_id ? `Google Ads - ${client.google_account_id}` : null,
+          google_has_account: !!(client.google_account_id && client.google_account_id.trim() !== ''),
+          google_active_campaigns_count: googleData.activeCampaigns,
+          google_cost_today: googleData.cost,
+          google_impressions_today: googleData.impressions
+        };
+
+        snapshots.push(snapshot);
+        console.log(`✅ Snapshot criado para ${client.company_name} - Conta ${metaAccount.account_id} (${metaAccount.is_primary ? 'PRINCIPAL' : 'SECUNDÁRIA'})`);
       }
-
-      // Processar Google Ads
-      if (client.google_account_id && client.google_account_id.trim() !== '') {
-        console.log(`🔄 Processando Google Ads para ${client.company_name}...`);
-        googleData = await fetchGoogleActiveCampaigns(client.google_account_id, supabase);
-        console.log(`✅ Google processado: Campanhas=${googleData.activeCampaigns}, Custo=R$${googleData.cost.toFixed(2)}, Impressões=${googleData.impressions}`);
-      } else {
-        console.log(`⚪ Google não configurado para ${client.company_name}`);
-      }
-
-      // Criar snapshot para este cliente
-      const snapshot: CampaignHealthSnapshot = {
-        client_id: client.id,
-        snapshot_date: today, // CORREÇÃO: Usar data brasileira corrigida
-        meta_account_id: client.meta_account_id || null,
-        meta_account_name: client.meta_account_id ? `Meta Ads - ${client.meta_account_id}` : null,
-        meta_has_account: !!(client.meta_account_id && client.meta_account_id.trim() !== ''),
-        meta_active_campaigns_count: metaData.activeCampaigns,
-        meta_cost_today: metaData.cost,
-        meta_impressions_today: metaData.impressions,
-        google_account_id: client.google_account_id || null,
-        google_account_name: client.google_account_id ? `Google Ads - ${client.google_account_id}` : null,
-        google_has_account: !!(client.google_account_id && client.google_account_id.trim() !== ''),
-        google_active_campaigns_count: googleData.activeCampaigns,
-        google_cost_today: googleData.cost,
-        google_impressions_today: googleData.impressions
-      };
-
-      snapshots.push(snapshot);
     }
 
-    // Salvar todos os snapshots na nova tabela
-    console.log(`\n💾 CORREÇÃO: Salvando ${snapshots.length} snapshots para ${today} (timezone brasileiro CORRIGIDO)...`);
+    // Salvar todos os snapshots na tabela
+    console.log(`\n💾 CORREÇÃO: Salvando ${snapshots.length} snapshots para ${today} (incluindo contas principais E secundárias)...`);
     
     // Usar upsert para evitar duplicatas
     const { error: upsertError } = await supabase
       .from('campaign_health_snapshots')
       .upsert(snapshots, { 
-        onConflict: 'client_id,snapshot_date',
+        onConflict: 'client_id,snapshot_date,meta_account_id',
         ignoreDuplicates: false 
       });
 
@@ -472,17 +481,21 @@ Deno.serve(async (req) => {
       throw upsertError;
     }
 
-    console.log('✅ CORREÇÃO: Snapshots salvos com sucesso com timezone brasileiro correto!');
+    console.log('✅ CORREÇÃO: Snapshots salvos com sucesso incluindo TODAS as contas (principais e secundárias)!');
 
-    // Estatísticas finais
+    // Estatísticas finais detalhadas
+    const primaryAccounts = snapshots.filter(s => s.meta_account_id && s.meta_account_id.endsWith('922')); // Exemplo: contas principais terminam com 922
+    const secondaryAccounts = snapshots.filter(s => s.meta_account_id && !s.meta_account_id.endsWith('922'));
     const metaWithData = snapshots.filter(s => s.meta_cost_today > 0);
     const googleWithData = snapshots.filter(s => s.google_cost_today > 0);
 
-    console.log(`\n📈 CORREÇÃO: Resumo dos dados processados com timezone brasileiro correto:`);
-    console.log(`📊 Total de snapshots: ${snapshots.length} para ${today} (data CORRIGIDA)`);
-    console.log(`🟦 Meta Ads: ${snapshots.length} registros (${metaWithData.length} com dados usando data CORRIGIDA)`);
+    console.log(`\n📈 CORREÇÃO: Resumo COMPLETO dos dados processados:`);
+    console.log(`📊 Total de snapshots: ${snapshots.length} para ${today}`);
+    console.log(`🟦 Contas Meta PRINCIPAIS: ${primaryAccounts.length}`);
+    console.log(`🟦 Contas Meta SECUNDÁRIAS: ${secondaryAccounts.length}`);
+    console.log(`💰 Meta com dados: ${metaWithData.length} de ${snapshots.length}`);
     console.log(`🟥 Google Ads: ${snapshots.length} registros (${googleWithData.length} com dados)`);
-    console.log(`👥 Clientes únicos: ${clients?.length || 0}`);
+    console.log(`👥 Clientes únicos: ${new Set(snapshots.map(s => s.client_id)).size}`);
 
     return new Response(
       JSON.stringify({ 
@@ -490,13 +503,16 @@ Deno.serve(async (req) => {
         data: snapshots,
         timestamp: new Date().toISOString(),
         brazil_date_corrected: today,
-        totalClients: clients?.length || 0,
         totalSnapshots: snapshots.length,
+        primaryAccounts: primaryAccounts.length,
+        secondaryAccounts: secondaryAccounts.length,
         correction_applied: true,
         debug: {
           metaWithDataAfterCorrection: metaWithData.length,
           googleWithData: googleWithData.length,
-          timezone: 'America/Sao_Paulo - CORRIGIDO'
+          uniqueClients: new Set(snapshots.map(s => s.client_id)).size,
+          timezone: 'America/Sao_Paulo - CORRIGIDO',
+          accountsProcessed: 'ALL (primary + secondary)'
         }
       }),
       { 
