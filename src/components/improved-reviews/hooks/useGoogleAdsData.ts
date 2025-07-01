@@ -25,7 +25,7 @@ export interface GoogleAdsMetrics {
   clientsWithAdjustments: number;
   clientsWithoutAccount: number;
   averageSpend: number;
-  totalSpend: number;
+  totalSpent: number;
   totalBudget: number;
   spentPercentage: number;
 }
@@ -123,12 +123,12 @@ export const useGoogleAdsData = () => {
       clientsWithAdjustments: 0,
       clientsWithoutAccount: 0,
       averageSpend: 0,
-      totalSpend: 0,
+      totalSpent: 0,
       totalBudget: 0,
       spentPercentage: 0
     };
 
-    const totalSpend = data.reduce((sum, client) => sum + (client.totalSpent || 0), 0);
+    const totalSpent = data.reduce((sum, client) => sum + (client.totalSpent || 0), 0);
     const totalBudget = data.reduce((sum, client) => sum + (client.budgetAmount || 0), 0);
     const clientsWithAdjustments = data.filter(client => client.needsBudgetAdjustment).length;
 
@@ -136,10 +136,10 @@ export const useGoogleAdsData = () => {
       totalClients: data.length,
       clientsWithAdjustments,
       clientsWithoutAccount: 0, // Todos têm conta pois filtramos na query
-      averageSpend: data.length > 0 ? totalSpend / data.length : 0,
-      totalSpend,
+      averageSpend: data.length > 0 ? totalSpent / data.length : 0,
+      totalSpent,
       totalBudget,
-      spentPercentage: totalBudget > 0 ? (totalSpend / totalBudget) * 100 : 0
+      spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
     };
   }, [data]);
 
