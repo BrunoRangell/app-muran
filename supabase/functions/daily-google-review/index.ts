@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { formatResponse, formatErrorResponse } from "./response.ts";
@@ -148,6 +147,100 @@ async function validateCustomBudget(supabaseUrl: string, supabaseKey: string, bu
     return budgets && budgets.length > 0;
   } catch (error) {
     console.error("Erro ao validar orçamento personalizado:", error);
+    return false;
+  }
+}
+
+// Função para buscar o nome real da conta Google Ads
+async function fetchRealAccountName(
+  googleAccountId: string,
+  headers: Record<string, string>
+): Promise<string | null> {
+  try {
+    console.log(`🏷️ Buscando nome real da conta Google Ads: ${googleAccountId}`);
+    
+    const query = `
+      SELECT
+          customer_client.descriptive_name
+      FROM
+          customer_client
+      WHERE
+          customer_client.id = ${googleAccountId}
+    `;
+    
+    const response = await fetch(
+      `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ query })
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Erro ao buscar nome da conta ${googleAccountId}:`, errorText);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (!data || !data.results || data.results.length === 0) {
+      console.log(`📋 Nenhum nome encontrado para a conta ${googleAccountId}`);
+      return null;
+    }
+    
+    const accountName = data.results[0]?.customerClient?.descriptiveName;
+    
+    if (accountName) {
+      console.log(`✅ Nome real da conta obtido: "${accountName}"`);
+      return accountName;
+    }
+    
+    return null;
+    
+  } catch (error) {
+    console.error(`❌ Erro ao buscar nome da conta ${googleAccountId}:`, error);
+    return null;
+  }
+}
+
+// Função para atualizar o nome da conta no banco de dados
+async function updateAccountName(
+  supabaseUrl: string,
+  supabaseKey: string,
+  accountIdUuid: string,
+  realAccountName: string
+): Promise<boolean> {
+  try {
+    console.log(`💾 Atualizando nome da conta no banco: "${realAccountName}"`);
+    
+    const updateResponse = await fetch(
+      `${supabaseUrl}/rest/v1/client_accounts?id=eq.${accountIdUuid}`, {
+      method: "PATCH",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        account_name: realAccountName,
+        updated_at: new Date().toISOString()
+      })
+    });
+    
+    if (!updateResponse.ok) {
+      const errorText = await updateResponse.text();
+      console.error("❌ Erro ao atualizar nome da conta:", errorText);
+      return false;
+    }
+    
+    console.log(`✅ Nome da conta atualizado com sucesso: "${realAccountName}"`);
+    return true;
+    
+  } catch (error) {
+    console.error("❌ Erro ao atualizar nome da conta:", error);
     return false;
   }
 }
@@ -368,6 +461,7 @@ async function processGoogleReview(req: Request) {
     let lastFiveDaysSpent = 0;
     let currentDailyBudget = 0;
     let apiErrorDetails = null;
+    let realAccountName = accountName; // Usar nome atual como padrão
     
     // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
     let googleDay1Spent = 0;
@@ -418,6 +512,22 @@ async function processGoogleReview(req: Request) {
       
       if (googleTokens.google_ads_manager_id) {
         headers['login-customer-id'] = googleTokens.google_ads_manager_id;
+      }
+      
+      // NOVA IMPLEMENTAÇÃO: Buscar nome real da conta Google Ads
+      console.log("🏷️ Buscando nome real da conta Google Ads...");
+      const fetchedAccountName = await fetchRealAccountName(googleAccountId, headers);
+      
+      if (fetchedAccountName && fetchedAccountName !== accountName) {
+        realAccountName = fetchedAccountName;
+        
+        // Atualizar nome da conta no banco de dados se necessário
+        if (accountIdUuid) {
+          const updateSuccess = await updateAccountName(supabaseUrl, supabaseKey, accountIdUuid, realAccountName);
+          if (updateSuccess) {
+            console.log(`✅ Nome da conta atualizado no banco: "${realAccountName}"`);
+          }
+        }
       }
       
       // NOVA IMPLEMENTAÇÃO: Calcular as datas dos últimos 5 dias e buscar gastos individuais
@@ -773,7 +883,7 @@ async function processGoogleReview(req: Request) {
       reviewId,
       clientId,
       accountId: googleAccountId,
-      accountName,
+      accountName: realAccountName, // RETORNAR O NOME REAL DA CONTA
       currentDailyBudget,
       totalSpent,
       lastFiveDaysSpent,
