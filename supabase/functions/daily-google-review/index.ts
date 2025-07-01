@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { formatResponse, formatErrorResponse } from "./response.ts";
@@ -226,12 +225,12 @@ async function processGoogleReview(req: Request) {
 
     const client = clients[0];
     
-    // Buscar conta do Google Ads específica
+    // Buscar ou criar conta do Google Ads específica
     let accountName = "Conta Principal";
-    let budgetAmount = client.google_ads_budget || 0;
+    let accountIdUuid = null;
     
     const accountResponse = await fetch(
-      `${supabaseUrl}/rest/v1/client_google_accounts?client_id=eq.${clientId}&account_id=eq.${googleAccountId}&select=*`, {
+      `${supabaseUrl}/rest/v1/client_accounts?client_id=eq.${clientId}&account_id=eq.${googleAccountId}&platform=eq.google&select=*`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -243,11 +242,37 @@ async function processGoogleReview(req: Request) {
       const accounts = await accountResponse.json();
       if (accounts && accounts.length > 0) {
         accountName = accounts[0].account_name || "Conta Google";
-        budgetAmount = accounts[0].budget_amount || client.google_ads_budget || 0;
+        accountIdUuid = accounts[0].id;
+      } else {
+        // Criar nova conta se não existir
+        const createAccountResponse = await fetch(
+          `${supabaseUrl}/rest/v1/client_accounts`, {
+          method: "POST",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+          },
+          body: JSON.stringify({
+            client_id: clientId,
+            platform: "google",
+            account_id: googleAccountId,
+            account_name: accountName,
+            budget_amount: 0,
+            status: "active"
+          })
+        });
+        
+        if (createAccountResponse.ok) {
+          const newAccount = await createAccountResponse.json();
+          accountIdUuid = newAccount[0].id;
+          console.log(`✅ Nova conta Google Ads criada: ${accountIdUuid}`);
+        }
       }
     }
 
-    // CORREÇÃO: Verificar se existe um orçamento personalizado ativo para Google Ads
+    // Verificar orçamento personalizado
     const today = new Date().toISOString().split('T')[0];
     const customBudgetResponse = await fetch(
       `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&is_active=eq.true&platform=eq.google&start_date=lte.${today}&end_date=gte.${today}&order=created_at.desc&limit=1`, {
@@ -264,24 +289,13 @@ async function processGoogleReview(req: Request) {
       const customBudgets = await customBudgetResponse.json();
       if (customBudgets && customBudgets.length > 0) {
         customBudget = customBudgets[0];
-        
-        // VALIDAÇÃO CRÍTICA: Verificar se o orçamento personalizado realmente existe
-        const isValidBudget = await validateCustomBudget(supabaseUrl, supabaseKey, customBudget.id);
-        if (isValidBudget) {
-          budgetAmount = customBudget.budget_amount || budgetAmount;
-          console.log(`✅ Usando orçamento personalizado VÁLIDO (ID: ${customBudget.id}) - Valor: ${budgetAmount}`);
-        } else {
-          console.warn(`⚠️ Orçamento personalizado inválido (ID: ${customBudget.id}) - usando orçamento padrão`);
-          customBudget = null; // Reset para não usar orçamento inválido
-        }
+        console.log(`✅ Usando orçamento personalizado (ID: ${customBudget.id})`);
       }
     }
 
-    console.log(`💰 Orçamento final usado: ${budgetAmount} para conta ${accountName} (${googleAccountId})`);
-
-    // Verificar revisão existente
+    // Verificar revisão existente na nova tabela budget_reviews
     const existingReviewResponse = await fetch(
-      `${supabaseUrl}/rest/v1/google_ads_reviews?client_id=eq.${clientId}&google_account_id=eq.${googleAccountId}&review_date=eq.${reviewDate}&select=id`, {
+      `${supabaseUrl}/rest/v1/budget_reviews?client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&platform=eq.google&review_date=eq.${reviewDate}&select=id`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
