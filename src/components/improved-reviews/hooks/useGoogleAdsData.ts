@@ -1,7 +1,7 @@
-
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getDaysInMonth } from "date-fns";
 
 export interface GoogleAdsClientData {
   id: string; // Mapeado de clientId
@@ -108,6 +108,17 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
         
         const latestReview = accountReviews.find((r: any) => r.review_date === today) || accountReviews[0];
         
+        // CÁLCULO DO DIÁRIO IDEAL
+        const currentDate = new Date();
+        const daysInMonth = getDaysInMonth(currentDate);
+        const currentDay = currentDate.getDate();
+        const remainingDays = daysInMonth - currentDay + 1;
+        
+        const totalSpent = latestReview?.total_spent || 0;
+        const budgetAmount = latestReview?.custom_budget_amount || account.budget_amount || 0;
+        const remainingBudget = budgetAmount - totalSpent;
+        const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+        
         // ESTRUTURA PADRONIZADA - igual ao Meta Ads
         const clientData: GoogleAdsClientData = {
           // IDs padronizados
@@ -121,12 +132,12 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
           
           // Estrutura de revisão padronizada
           review: {
-            total_spent: latestReview?.total_spent || 0,
+            total_spent: totalSpent,
             daily_budget_current: latestReview?.daily_budget_current || account.budget_amount || 0
           },
           
           // Campos de orçamento padronizados
-          budget_amount: latestReview?.custom_budget_amount || account.budget_amount || 0,
+          budget_amount: budgetAmount,
           original_budget_amount: account.budget_amount || 0,
           
           // Cálculos básicos para determinar se precisa ajuste
@@ -136,11 +147,11 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
           weightedAverage: latestReview?.daily_budget_current || account.budget_amount || 0,
           isUsingCustomBudget: latestReview?.using_custom_budget || false,
           
-          // Estrutura de cálculo padronizada
+          // Estrutura de cálculo padronizada COM DIÁRIO IDEAL CORRETO
           budgetCalculation: {
             budgetDifference: 0, // Será calculado se necessário
-            remainingDays: 30, // Valor padrão
-            idealDailyBudget: latestReview?.daily_budget_current || account.budget_amount || 0,
+            remainingDays: remainingDays,
+            idealDailyBudget: idealDailyBudget,
             needsBudgetAdjustment: false,
             needsAdjustmentBasedOnAverage: false,
             warningIgnoredToday: latestReview?.warning_ignored_today || false
@@ -164,6 +175,8 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
           hasAccount: true,
           totalSpent: clientData.review?.total_spent,
           budgetAmount: clientData.budget_amount,
+          idealDailyBudget: idealDailyBudget,
+          remainingDays: remainingDays,
           needsAdjustment: clientData.needsAdjustment
         });
       }
