@@ -4,20 +4,33 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface GoogleAdsClientData {
-  clientId: string;
-  clientName: string;
-  googleAccountId?: string;
-  googleAccountName?: string;
-  totalSpent?: number;
-  dailyBudget?: number;
-  lastReviewDate?: string;
-  needsBudgetAdjustment?: boolean;
+  id: string; // Mapeado de clientId
+  company_name: string; // Mapeado de clientName
+  google_account_id?: string;
+  google_account_name?: string;
   hasAccount: boolean;
-  lastFiveDaysSpent?: number;
-  customBudgetActive?: boolean;
-  customBudgetAmount?: number;
-  usingCustomBudget?: boolean;
-  budgetAmount?: number;
+  // Estrutura de revisão padronizada
+  review?: {
+    total_spent: number;
+    daily_budget_current: number;
+  };
+  // Campos de orçamento padronizados
+  budget_amount: number;
+  original_budget_amount: number;
+  // Campos de cálculo padronizados
+  needsAdjustment: boolean;
+  budgetCalculation?: {
+    budgetDifference: number;
+    remainingDays: number;
+    idealDailyBudget: number;
+    needsBudgetAdjustment: boolean;
+    needsAdjustmentBasedOnAverage: boolean;
+    warningIgnoredToday: boolean;
+  };
+  // Campos específicos do Google Ads
+  weightedAverage?: number;
+  isUsingCustomBudget?: boolean;
+  customBudget?: any;
 }
 
 export interface GoogleAdsMetrics {
@@ -31,7 +44,7 @@ export interface GoogleAdsMetrics {
 }
 
 const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
-  console.log("🔍 Buscando dados do Google Ads com estrutura inclusiva...");
+  console.log("🔍 Buscando dados do Google Ads com estrutura padronizada...");
   
   const today = new Date().toISOString().split('T')[0];
   
@@ -58,7 +71,9 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
         last_five_days_spent,
         platform,
         account_id,
-        client_id
+        client_id,
+        warning_ignored_today,
+        warning_ignored_date
       )
     `)
     .eq('status', 'active');
@@ -93,49 +108,118 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
         
         const latestReview = accountReviews.find((r: any) => r.review_date === today) || accountReviews[0];
         
+        // ESTRUTURA PADRONIZADA - igual ao Meta Ads
         const clientData: GoogleAdsClientData = {
-          clientId: client.id,
-          clientName: client.company_name,
-          googleAccountId: account.account_id,
-          googleAccountName: account.account_name,
+          // IDs padronizados
+          id: client.id,
+          company_name: client.company_name,
+          
+          // Informações da conta Google
+          google_account_id: account.account_id,
+          google_account_name: account.account_name,
           hasAccount: true,
-          totalSpent: latestReview?.total_spent || 0,
-          dailyBudget: latestReview?.daily_budget_current || account.budget_amount || 0,
-          budgetAmount: latestReview?.custom_budget_amount || account.budget_amount || 0,
-          lastReviewDate: latestReview?.review_date,
-          lastFiveDaysSpent: latestReview?.last_five_days_spent || 0,
-          usingCustomBudget: latestReview?.using_custom_budget || false,
-          customBudgetAmount: latestReview?.custom_budget_amount,
-          needsBudgetAdjustment: false // Será calculado baseado na lógica de negócio
+          
+          // Estrutura de revisão padronizada
+          review: {
+            total_spent: latestReview?.total_spent || 0,
+            daily_budget_current: latestReview?.daily_budget_current || account.budget_amount || 0
+          },
+          
+          // Campos de orçamento padronizados
+          budget_amount: latestReview?.custom_budget_amount || account.budget_amount || 0,
+          original_budget_amount: account.budget_amount || 0,
+          
+          // Cálculos básicos para determinar se precisa ajuste
+          needsAdjustment: false, // Será calculado abaixo
+          
+          // Campos específicos do Google Ads
+          weightedAverage: latestReview?.daily_budget_current || account.budget_amount || 0,
+          isUsingCustomBudget: latestReview?.using_custom_budget || false,
+          
+          // Estrutura de cálculo padronizada
+          budgetCalculation: {
+            budgetDifference: 0, // Será calculado se necessário
+            remainingDays: 30, // Valor padrão
+            idealDailyBudget: latestReview?.daily_budget_current || account.budget_amount || 0,
+            needsBudgetAdjustment: false,
+            needsAdjustmentBasedOnAverage: false,
+            warningIgnoredToday: latestReview?.warning_ignored_today || false
+          }
         };
 
-        // Manter cálculo específico do Google Ads
-        if (clientData.totalSpent && clientData.dailyBudget) {
-          const spentPercentage = (clientData.totalSpent / clientData.dailyBudget) * 100;
-          clientData.needsBudgetAdjustment = spentPercentage > 80 || spentPercentage < 20;
+        // Cálculo específico do Google Ads para ajuste
+        if (clientData.review && clientData.budget_amount > 0) {
+          const spentPercentage = (clientData.review.total_spent / clientData.budget_amount) * 100;
+          clientData.needsAdjustment = spentPercentage > 80 || spentPercentage < 20;
+          
+          if (clientData.budgetCalculation) {
+            clientData.budgetCalculation.needsBudgetAdjustment = clientData.needsAdjustment;
+            clientData.budgetCalculation.needsAdjustmentBasedOnAverage = clientData.needsAdjustment;
+          }
         }
 
         result.push(clientData);
+        
+        console.log(`✅ Cliente processado: ${client.company_name} (COM conta Google)`, {
+          hasAccount: true,
+          totalSpent: clientData.review?.total_spent,
+          budgetAmount: clientData.budget_amount,
+          needsAdjustment: clientData.needsAdjustment
+        });
       }
     } else {
-      // Cliente SEM conta Google Ads (igual ao Meta Ads)
+      // Cliente SEM conta Google Ads - estrutura padronizada
       const clientData: GoogleAdsClientData = {
-        clientId: client.id,
-        clientName: client.company_name,
+        // IDs padronizados
+        id: client.id,
+        company_name: client.company_name,
+        
+        // Sem conta
         hasAccount: false,
-        totalSpent: 0,
-        dailyBudget: 0,
-        budgetAmount: 0,
-        lastFiveDaysSpent: 0,
-        usingCustomBudget: false,
-        needsBudgetAdjustment: false
+        
+        // Estrutura de revisão padronizada (zerada)
+        review: {
+          total_spent: 0,
+          daily_budget_current: 0
+        },
+        
+        // Campos de orçamento padronizados (zerados)
+        budget_amount: 0,
+        original_budget_amount: 0,
+        
+        // Sem necessidade de ajuste
+        needsAdjustment: false,
+        
+        // Campos específicos do Google Ads (zerados)
+        weightedAverage: 0,
+        isUsingCustomBudget: false,
+        
+        // Estrutura de cálculo padronizada (zerada)
+        budgetCalculation: {
+          budgetDifference: 0,
+          remainingDays: 0,
+          idealDailyBudget: 0,
+          needsBudgetAdjustment: false,
+          needsAdjustmentBasedOnAverage: false,
+          warningIgnoredToday: false
+        }
       };
 
       result.push(clientData);
+      
+      console.log(`✅ Cliente processado: ${client.company_name} (SEM conta Google)`, {
+        hasAccount: false,
+        allFieldsZeroed: true
+      });
     }
   }
 
-  console.log(`✅ Processados ${result.length} dados do Google Ads (incluindo clientes sem conta)`);
+  console.log(`✅ Estrutura de dados padronizada - Total: ${result.length} clientes`, {
+    comConta: result.filter(c => c.hasAccount).length,
+    semConta: result.filter(c => !c.hasAccount).length,
+    precisamAjuste: result.filter(c => c.needsAdjustment).length
+  });
+  
   return result;
 };
 
@@ -161,9 +245,9 @@ export const useGoogleAdsData = () => {
       spentPercentage: 0
     };
 
-    const totalSpent = data.reduce((sum, client) => sum + (client.totalSpent || 0), 0);
-    const totalBudget = data.reduce((sum, client) => sum + (client.budgetAmount || 0), 0);
-    const clientsWithAdjustments = data.filter(client => client.needsBudgetAdjustment).length;
+    const totalSpent = data.reduce((sum, client) => sum + (client.review?.total_spent || 0), 0);
+    const totalBudget = data.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
+    const clientsWithAdjustments = data.filter(client => client.needsAdjustment).length;
     const clientsWithoutAccount = data.filter(client => !client.hasAccount).length;
 
     return {
