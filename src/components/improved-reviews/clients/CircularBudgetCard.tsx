@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +12,6 @@ import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/compon
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMetaAccountInfo } from "../hooks/useMetaAccountInfo";
-import { useGoogleAccountInfo } from "../hooks/useGoogleAccountInfo";
 
 interface CircularBudgetCardProps {
   client: any;
@@ -40,19 +39,6 @@ export function CircularBudgetCard({
     }
   });
   
-  // Buscar informações da conta
-  const accountId = platform === "meta" 
-    ? client.meta_account_id 
-    : client.google_account_id;
-    
-  const { data: metaAccountInfo, isLoading: metaLoading } = useMetaAccountInfo(
-    platform === "meta" ? accountId : null
-  );
-  
-  const { data: googleAccountInfo, isLoading: googleLoading } = useGoogleAccountInfo(
-    platform === "google" ? accountId : null
-  );
-  
   const isProcessing = processingIds.includes(client.id);
   
   // Preparar dados para exibição - CORRIGIDO: usar nomes de campos unificados
@@ -68,20 +54,18 @@ export function CircularBudgetCard({
   const isUsingCustomBudget = client.isUsingCustomBudget || false;
   const customBudget = client.customBudget;
   
-  // NOVA FUNÇÃO: Obter informações da conta
+  // OTIMIZADO: Obter informações da conta diretamente dos dados do cliente
   const getAccountInfo = () => {
     if (platform === "meta") {
-      if (metaLoading) return "Carregando informações...";
-      if (metaAccountInfo) {
-        return `${metaAccountInfo.name} - ID: ${metaAccountInfo.account_id}`;
-      }
-      return "Informações indisponíveis";
+      // Para Meta Ads, usar o account_name da tabela client_accounts
+      const accountName = client.meta_account_name || "Conta Principal";
+      const accountId = client.meta_account_id || "N/A";
+      return `${accountName} - ID: ${accountId}`;
     } else {
-      if (googleLoading) return "Carregando informações...";
-      if (googleAccountInfo) {
-        return `${googleAccountInfo.descriptiveName} - ID: ${googleAccountInfo.id}`;
-      }
-      return "Informações indisponíveis";
+      // Para Google Ads, manter comportamento existente
+      const accountName = client.google_account_name || "Conta Principal";
+      const accountId = client.google_account_id || "N/A";
+      return `${accountName} - ID: ${accountId}`;
     }
   };
   

@@ -15,7 +15,7 @@ async function fetchMetaApiData(accountId: string, accessToken: string, customBu
     if (!campaignsResponse.ok) {
       const errorData = await campaignsResponse.json();
       console.error("❌ Erro ao buscar campanhas da Meta API:", errorData);
-      return { daily_budget: 0, total_spent: 0 };
+      return { daily_budget: 0, total_spent: 0, account_name: null };
     }
 
     const campaignsData = await campaignsResponse.json();
@@ -59,7 +59,7 @@ async function fetchMetaApiData(accountId: string, accessToken: string, customBu
     if (!insightsResponse.ok) {
       const insightsError = await insightsResponse.json();
       console.error("❌ Erro ao buscar insights da Meta API:", insightsError);
-      return { daily_budget: totalDailyBudget, total_spent: 0 };
+      return { daily_budget: totalDailyBudget, total_spent: 0, account_name: null };
     }
 
     const insightsData = await insightsResponse.json();
@@ -80,14 +80,36 @@ async function fetchMetaApiData(accountId: string, accessToken: string, customBu
 
     console.log(`💸 Gasto total calculado: R$ ${totalSpent.toFixed(2)}`);
 
+    // 3. Buscar informações detalhadas da conta Meta (nome da conta)
+    console.log(`🔍 Buscando informações da conta Meta ${accountId}...`);
+    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,account_id&access_token=${accessToken}`;
+    console.log(`📞 Chamando API de informações da conta: ${accountUrl.replace(accessToken, '[TOKEN_HIDDEN]')}`);
+    
+    let accountName = null;
+    try {
+      const accountResponse = await fetch(accountUrl);
+      if (accountResponse.ok) {
+        const accountData = await accountResponse.json();
+        accountName = accountData.name || "Conta principal";
+        console.log(`✅ Nome da conta obtido: ${accountName}`);
+      } else {
+        console.log(`⚠️ Não foi possível obter o nome da conta, usando padrão`);
+        accountName = "Conta principal";
+      }
+    } catch (error) {
+      console.log(`⚠️ Erro ao buscar nome da conta: ${error.message}, usando padrão`);
+      accountName = "Conta principal";
+    }
+
     return {
       daily_budget: totalDailyBudget,
-      total_spent: totalSpent
+      total_spent: totalSpent,
+      account_name: accountName
     };
 
   } catch (error) {
     console.error("❌ Erro inesperado ao buscar dados da Meta API:", error);
-    return { daily_budget: 0, total_spent: 0 };
+    return { daily_budget: 0, total_spent: 0, account_name: null };
   }
 }
 
@@ -134,10 +156,29 @@ export async function processReviewRequest(req: Request) {
       daily_budget: metaApiData.daily_budget,
       total_spent: metaApiData.total_spent,
       account_id: metaAccount.account_id,
-      account_name: metaAccount.account_name
+      account_name: metaApiData.account_name
     });
     
-    // 6. Preparar dados da revisão
+    // 6. Atualizar nome da conta na tabela client_accounts (se obtido da API)
+    if (metaApiData.account_name && metaApiData.account_name !== metaAccount.account_name) {
+      console.log(`🔄 Atualizando nome da conta de "${metaAccount.account_name}" para "${metaApiData.account_name}"`);
+      
+      const { error: updateError } = await supabase
+        .from("client_accounts")
+        .update({ 
+          account_name: metaApiData.account_name,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", metaAccount.id);
+      
+      if (updateError) {
+        console.error(`❌ Erro ao atualizar nome da conta: ${updateError.message}`);
+      } else {
+        console.log(`✅ Nome da conta atualizado com sucesso na tabela client_accounts`);
+      }
+    }
+    
+    // 7. Preparar dados da revisão
     const reviewData = {
       daily_budget_current: metaApiData.daily_budget,
       total_spent: metaApiData.total_spent,
@@ -149,7 +190,7 @@ export async function processReviewRequest(req: Request) {
       custom_budget_end_date: customBudget?.end_date || null
     };
     
-    // 7. Verificar se já existe revisão para hoje
+    // 8. Verificar se já existe revisão para hoje
     const existingReview = await checkExistingReview(supabase, clientId, metaAccount.id, today);
     
     if (existingReview) {
@@ -167,7 +208,7 @@ export async function processReviewRequest(req: Request) {
       client: clientData,
       meta_account: {
         id: metaAccount.account_id,
-        name: metaAccount.account_name
+        name: metaApiData.account_name || metaAccount.account_name
       },
       review_data: reviewData,
       message: "Revisão processada com sucesso usando dados reais da Meta API"
