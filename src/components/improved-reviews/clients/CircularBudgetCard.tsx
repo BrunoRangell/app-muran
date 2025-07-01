@@ -60,12 +60,12 @@ export function CircularBudgetCard({
       // Para Meta Ads, usar o account_name da tabela client_accounts
       const accountName = client.meta_account_name || "Conta Principal";
       const accountId = client.meta_account_id || "N/A";
-      return `${accountName} - ID: ${accountId}`;
+      return { name: accountName, id: accountId };
     } else {
       // Para Google Ads, manter comportamento existente
       const accountName = client.google_account_name || "Conta Principal";
       const accountId = client.google_account_id || "N/A";
-      return `${accountName} - ID: ${accountId}`;
+      return { name: accountName, id: accountId };
     }
   };
   
@@ -107,6 +107,7 @@ export function CircularBudgetCard({
   };
   
   const statusInfo = getStatusInfo();
+  const accountInfo = getAccountInfo();
   
   // Determinar tipo de orçamento
   const getBudgetType = () => {
@@ -227,7 +228,8 @@ export function CircularBudgetCard({
               <h3 className="font-semibold text-gray-900 text-base line-clamp-1 mb-1">
                 {companyName}
               </h3>
-              <p className="text-sm text-gray-600">{getAccountInfo()}</p>
+              <p className="text-sm text-gray-600 mb-1">{accountInfo.name}</p>
+              <p className="text-xs text-gray-500">ID: {accountInfo.id}</p>
             </div>
             
             <div className="flex items-center gap-2 ml-3">
