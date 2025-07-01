@@ -49,7 +49,6 @@ export const useBudgetManager = () => {
   const { data: clients, isLoading: isLoadingClients } = useQuery({
     queryKey: ["clients-active-budgets"],
     queryFn: async () => {
-      console.log("🔍 Buscando clientes ativos...");
       const { data, error } = await supabase
         .from("clients")
         .select("id, company_name, status")
@@ -61,7 +60,6 @@ export const useBudgetManager = () => {
         throw error;
       }
 
-      console.log(`✅ Encontrados ${data?.length || 0} clientes ativos:`, data);
       return data as Client[];
     },
     staleTime: 5 * 60 * 1000,
@@ -71,7 +69,6 @@ export const useBudgetManager = () => {
   const { data: clientAccounts, isLoading: isLoadingAccounts } = useQuery({
     queryKey: ["client-accounts-unified"],
     queryFn: async () => {
-      console.log("🔍 Buscando contas dos clientes...");
       const { data, error } = await supabase
         .from("client_accounts")
         .select("*")
@@ -82,8 +79,6 @@ export const useBudgetManager = () => {
         console.error("Erro ao buscar contas dos clientes:", error);
         return [];
       }
-      
-      console.log(`✅ Encontradas ${data?.length || 0} contas ativas:`, data);
       return data as ClientAccount[];
     },
     staleTime: 5 * 60 * 1000,
@@ -135,17 +130,12 @@ export const useBudgetManager = () => {
 
   // Inicializar orçamentos com dados das contas existentes
   useEffect(() => {
-    // Corrigir a condição para garantir execução adequada
-    if (clients && clients.length > 0 && clientAccounts !== null && clientAccounts !== undefined) {
-      console.log("🚀 Inicializando orçamentos...");
-      console.log("Clientes disponíveis:", clients.length);
-      console.log("Contas disponíveis:", clientAccounts.length);
+    if (clients?.length && clientAccounts !== undefined) {
+      console.log("Inicializando orçamentos com dados das contas:", { clients: clients.length, accounts: clientAccounts.length });
       
       const initialBudgets: Record<string, BudgetValues> = {};
       
       clients.forEach((client) => {
-        console.log(`📋 Processando cliente: ${client.company_name} (ID: ${client.id})`);
-        
         // Buscar contas Meta para este cliente
         const metaAccounts = clientAccounts.filter(acc => 
           acc.client_id === client.id && acc.platform === 'meta'
@@ -155,9 +145,6 @@ export const useBudgetManager = () => {
         const googleAccounts = clientAccounts.filter(acc => 
           acc.client_id === client.id && acc.platform === 'google'
         );
-        
-        console.log(`  - Contas Meta encontradas: ${metaAccounts.length}`, metaAccounts);
-        console.log(`  - Contas Google encontradas: ${googleAccounts.length}`, googleAccounts);
         
         // Conta Meta primária
         const primaryMetaAccount = metaAccounts.find(acc => acc.is_primary) || metaAccounts[0];
@@ -169,7 +156,7 @@ export const useBudgetManager = () => {
         const secondaryMetaAccount = metaAccounts.find(acc => !acc.is_primary);
         const secondaryGoogleAccount = googleAccounts.find(acc => !acc.is_primary);
         
-        const budgetData = {
+        initialBudgets[client.id] = {
           // Conta Meta primária
           formattedValue: primaryMetaAccount?.budget_amount 
             ? formatCurrency(primaryMetaAccount.budget_amount) 
@@ -197,21 +184,10 @@ export const useBudgetManager = () => {
           secondaryGoogleAccountId: secondaryGoogleAccount?.account_id || "",
           secondaryGoogleRawValue: secondaryGoogleAccount?.budget_amount || 0
         };
-        
-        initialBudgets[client.id] = budgetData;
-        
-        console.log(`  ✅ Orçamento configurado para ${client.company_name}:`, budgetData);
       });
       
       setBudgets(initialBudgets);
-      console.log("🎉 Inicialização de orçamentos concluída:", initialBudgets);
-    } else {
-      console.log("⏳ Aguardando dados...", {
-        clientsLength: clients?.length || 0,
-        clientAccountsNull: clientAccounts === null,
-        clientAccountsUndefined: clientAccounts === undefined,
-        clientAccountsLength: clientAccounts?.length || 0
-      });
+      console.log("Orçamentos inicializados:", initialBudgets);
     }
   }, [clients, clientAccounts]);
 
@@ -219,10 +195,10 @@ export const useBudgetManager = () => {
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
       try {
-        console.log("💾 Iniciando salvamento de orçamentos na nova estrutura...");
+        console.log("Iniciando salvamento de orçamentos na nova estrutura...");
         
         for (const [clientId, values] of Object.entries(budgets)) {
-          console.log(`📝 Processando cliente ${clientId}:`, values);
+          console.log(`Processando cliente ${clientId}:`, values);
           
           // 1. Processar conta Meta primária
           if (values.accountId || values.rawValue > 0) {
@@ -263,10 +239,10 @@ export const useBudgetManager = () => {
           }
         }
         
-        console.log("✅ Salvamento concluído com sucesso!");
+        console.log("Salvamento concluído com sucesso!");
         return true;
       } catch (error) {
-        console.error("❌ Erro durante o processo de salvamento:", error);
+        console.error("Erro durante o processo de salvamento:", error);
         throw error;
       }
     },
@@ -275,10 +251,8 @@ export const useBudgetManager = () => {
         title: "Orçamentos salvos",
         description: "Orçamentos e contas atualizados com sucesso.",
       });
-      // Invalidar ambas as queries para forçar recarregamento
       queryClient.invalidateQueries({ queryKey: ["clients-active-budgets"] });
       queryClient.invalidateQueries({ queryKey: ["client-accounts-unified"] });
-      console.log("🔄 Cache invalidado - dados serão recarregados");
     },
     onError: (error: any) => {
       toast({
@@ -326,14 +300,14 @@ export const useBudgetManager = () => {
       if (updateError) {
         throw updateError;
       }
-    } else if (accountData.account_id || accountData.budget_amount > 0) {
-      // Criar nova conta se tiver account_id OU budget_amount > 0
+    } else if (accountData.account_id) {
+      // Criar nova conta apenas se tiver account_id
       const { error: insertError } = await supabase
         .from("client_accounts")
         .insert({
           client_id: clientId,
           platform,
-          account_id: accountData.account_id || '',
+          account_id: accountData.account_id,
           account_name: accountData.is_primary ? "Conta principal" : "Conta secundária",
           budget_amount: accountData.budget_amount,
           is_primary: accountData.is_primary,
@@ -365,7 +339,7 @@ export const useBudgetManager = () => {
   // Remover conta secundária
   const removeSecondaryAccount = async (clientId: string) => {
     try {
-      console.log(`🗑️ Removendo conta secundária para cliente ${clientId}`);
+      console.log(`Removendo conta secundária para cliente ${clientId}`);
       
       // Remover contas secundárias do banco de dados
       const { error: deleteError } = await supabase
@@ -623,7 +597,7 @@ export const useBudgetManager = () => {
     });
     
     // Iniciar o processo de salvamento
-    console.log("💾 Iniciando salvamento com dados:", budgets);
+    console.log("Iniciando salvamento com dados:", budgets);
     saveBudgetsMutation.mutate();
   };
 
