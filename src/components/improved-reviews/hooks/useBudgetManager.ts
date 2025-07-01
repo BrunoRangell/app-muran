@@ -60,6 +60,7 @@ export const useBudgetManager = () => {
         throw error;
       }
 
+      console.log("🔍 Clientes carregados:", data?.length, data?.map(c => ({ id: c.id, name: c.company_name })));
       return data as Client[];
     },
     staleTime: 5 * 60 * 1000,
@@ -79,6 +80,15 @@ export const useBudgetManager = () => {
         console.error("Erro ao buscar contas dos clientes:", error);
         return [];
       }
+      
+      console.log("🔍 Contas carregadas:", data?.length, data?.map(acc => ({ 
+        client_id: acc.client_id, 
+        platform: acc.platform, 
+        account_id: acc.account_id,
+        budget_amount: acc.budget_amount,
+        is_primary: acc.is_primary 
+      })));
+      
       return data as ClientAccount[];
     },
     staleTime: 5 * 60 * 1000,
@@ -128,14 +138,19 @@ export const useBudgetManager = () => {
     return formatCurrency(total);
   }, [budgets]);
 
-  // Inicializar orçamentos com dados das contas existentes
+  // Inicializar orçamentos com dados das contas existentes - CORRIGIDA A CONDIÇÃO
   useEffect(() => {
-    if (clients?.length && clientAccounts !== undefined) {
-      console.log("Inicializando orçamentos com dados das contas:", { clients: clients.length, accounts: clientAccounts.length });
+    // Condição mais robusta - verificar se clients tem dados E clientAccounts é um array válido
+    if (clients?.length > 0 && Array.isArray(clientAccounts)) {
+      console.log("🚀 INICIANDO INICIALIZAÇÃO DOS ORÇAMENTOS");
+      console.log("📊 Clientes encontrados:", clients.length);
+      console.log("🏦 Contas encontradas:", clientAccounts.length);
       
       const initialBudgets: Record<string, BudgetValues> = {};
       
       clients.forEach((client) => {
+        console.log(`\n🔍 Processando cliente: ${client.company_name} (ID: ${client.id})`);
+        
         // Buscar contas Meta para este cliente
         const metaAccounts = clientAccounts.filter(acc => 
           acc.client_id === client.id && acc.platform === 'meta'
@@ -145,6 +160,16 @@ export const useBudgetManager = () => {
         const googleAccounts = clientAccounts.filter(acc => 
           acc.client_id === client.id && acc.platform === 'google'
         );
+        
+        console.log(`   📱 Meta Ads: ${metaAccounts.length} contas encontradas`);
+        console.log(`   🌐 Google Ads: ${googleAccounts.length} contas encontradas`);
+        
+        // Debug específico para Ana Cruz e Andreia Star
+        if (client.company_name.includes('Ana Cruz') || client.company_name.includes('Andreia Star')) {
+          console.log(`🎯 DEBUG ESPECÍFICO - ${client.company_name}:`);
+          console.log('   Meta accounts:', metaAccounts);
+          console.log('   Google accounts:', googleAccounts);
+        }
         
         // Conta Meta primária
         const primaryMetaAccount = metaAccounts.find(acc => acc.is_primary) || metaAccounts[0];
@@ -184,10 +209,28 @@ export const useBudgetManager = () => {
           secondaryGoogleAccountId: secondaryGoogleAccount?.account_id || "",
           secondaryGoogleRawValue: secondaryGoogleAccount?.budget_amount || 0
         };
+        
+        // Log específico para clientes com dados
+        if (primaryMetaAccount?.budget_amount || primaryGoogleAccount?.budget_amount) {
+          console.log(`✅ ${client.company_name} - Meta: ${primaryMetaAccount?.budget_amount || 0}, Google: ${primaryGoogleAccount?.budget_amount || 0}`);
+        }
       });
       
+      console.log("📋 Orçamentos inicializados:", Object.keys(initialBudgets).length);
+      console.log("🎯 Estado final dos orçamentos:", initialBudgets);
+      
       setBudgets(initialBudgets);
-      console.log("Orçamentos inicializados:", initialBudgets);
+      
+      // Forçar re-renderização do componente
+      setTimeout(() => {
+        console.log("🔄 Estado atualizado após timeout");
+      }, 100);
+    } else {
+      console.log("⏳ Aguardando dados:", { 
+        clientsLength: clients?.length, 
+        clientAccountsType: typeof clientAccounts,
+        clientAccountsLength: Array.isArray(clientAccounts) ? clientAccounts.length : 'not array'
+      });
     }
   }, [clients, clientAccounts]);
 
@@ -195,10 +238,10 @@ export const useBudgetManager = () => {
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
       try {
-        console.log("Iniciando salvamento de orçamentos na nova estrutura...");
+        console.log("💾 Iniciando salvamento de orçamentos na nova estrutura...");
         
         for (const [clientId, values] of Object.entries(budgets)) {
-          console.log(`Processando cliente ${clientId}:`, values);
+          console.log(`🔄 Processando cliente ${clientId}:`, values);
           
           // 1. Processar conta Meta primária
           if (values.accountId || values.rawValue > 0) {
@@ -239,10 +282,10 @@ export const useBudgetManager = () => {
           }
         }
         
-        console.log("Salvamento concluído com sucesso!");
+        console.log("✅ Salvamento concluído com sucesso!");
         return true;
       } catch (error) {
-        console.error("Erro durante o processo de salvamento:", error);
+        console.error("❌ Erro durante o processo de salvamento:", error);
         throw error;
       }
     },
@@ -251,8 +294,16 @@ export const useBudgetManager = () => {
         title: "Orçamentos salvos",
         description: "Orçamentos e contas atualizados com sucesso.",
       });
+      
+      // Invalidar e recarregar dados imediatamente
+      console.log("🔄 Invalidando cache e recarregando dados...");
       queryClient.invalidateQueries({ queryKey: ["clients-active-budgets"] });
       queryClient.invalidateQueries({ queryKey: ["client-accounts-unified"] });
+      
+      // Forçar refetch imediato
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["client-accounts-unified"] });
+      }, 500);
     },
     onError: (error: any) => {
       toast({
@@ -597,7 +648,7 @@ export const useBudgetManager = () => {
     });
     
     // Iniciar o processo de salvamento
-    console.log("Iniciando salvamento com dados:", budgets);
+    console.log("💾 Iniciando salvamento com dados:", budgets);
     saveBudgetsMutation.mutate();
   };
 
