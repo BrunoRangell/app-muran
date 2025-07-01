@@ -17,6 +17,7 @@ export interface GoogleAdsClientData {
   customBudgetActive?: boolean;
   customBudgetAmount?: number;
   usingCustomBudget?: boolean;
+  budgetAmount?: number;
 }
 
 export interface GoogleAdsMetrics {
@@ -25,6 +26,8 @@ export interface GoogleAdsMetrics {
   clientsWithoutAccount: number;
   averageSpend: number;
   totalSpend: number;
+  totalBudget: number;
+  spentPercentage: number;
 }
 
 const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
@@ -81,6 +84,7 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
         hasAccount: true,
         totalSpent: latestReview?.total_spent || 0,
         dailyBudget: latestReview?.daily_budget_current || account.budget_amount || 0,
+        budgetAmount: latestReview?.custom_budget_amount || account.budget_amount || 0,
         lastReviewDate: latestReview?.review_date,
         lastFiveDaysSpent: latestReview?.last_five_days_spent || 0,
         usingCustomBudget: latestReview?.using_custom_budget || false,
@@ -119,10 +123,13 @@ export const useGoogleAdsData = () => {
       clientsWithAdjustments: 0,
       clientsWithoutAccount: 0,
       averageSpend: 0,
-      totalSpend: 0
+      totalSpend: 0,
+      totalBudget: 0,
+      spentPercentage: 0
     };
 
     const totalSpend = data.reduce((sum, client) => sum + (client.totalSpent || 0), 0);
+    const totalBudget = data.reduce((sum, client) => sum + (client.budgetAmount || 0), 0);
     const clientsWithAdjustments = data.filter(client => client.needsBudgetAdjustment).length;
 
     return {
@@ -130,7 +137,9 @@ export const useGoogleAdsData = () => {
       clientsWithAdjustments,
       clientsWithoutAccount: 0, // Todos têm conta pois filtramos na query
       averageSpend: data.length > 0 ? totalSpend / data.length : 0,
-      totalSpend
+      totalSpend,
+      totalBudget,
+      spentPercentage: totalBudget > 0 ? (totalSpend / totalBudget) * 100 : 0
     };
   }, [data]);
 
