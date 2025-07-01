@@ -27,11 +27,11 @@ interface UnifiedAccountData {
 }
 
 const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
-  console.log("🔍 Buscando dados de saúde das campanhas da nova estrutura...");
+  console.log("🔍 Buscando dados de saúde das campanhas da estrutura unificada...");
   
   const today = new Date().toISOString().split('T')[0];
   
-  // Buscar dados da nova estrutura unificada
+  // Buscar dados da estrutura unificada
   const { data: accountsData, error } = await supabase
     .from('client_accounts')
     .select(`
@@ -60,16 +60,16 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
     .order('clients.company_name');
 
   if (error) {
-    console.error("❌ Erro ao buscar dados da nova estrutura:", error);
+    console.error("❌ Erro ao buscar dados da estrutura unificada:", error);
     throw error;
   }
 
   if (!accountsData || accountsData.length === 0) {
-    console.log("⚠️ Nenhum dado encontrado para hoje na nova estrutura");
+    console.log("⚠️ Nenhum dado encontrado para hoje na estrutura unificada");
     return [];
   }
 
-  console.log(`✅ Nova estrutura: ${accountsData.length} contas encontradas`);
+  console.log(`✅ Estrutura unificada: ${accountsData.length} contas encontradas`);
 
   // Agrupar dados por cliente
   const clientsMap = new Map<string, ClientHealthData>();
@@ -82,7 +82,8 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
         clientId,
         clientName: account.clients.company_name,
         metaAds: [],
-        googleAds: []
+        googleAds: [],
+        overallStatus: "ok"
       });
     }
 
@@ -111,7 +112,7 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
 
   const result = Array.from(clientsMap.values());
   
-  console.log(`✅ Nova estrutura: Processados ${result.length} clientes`);
+  console.log(`✅ Estrutura unificada: Processados ${result.length} clientes`);
   return result;
 };
 
@@ -168,7 +169,7 @@ export function useActiveCampaignHealth() {
     setIsManualRefreshing(true);
     
     try {
-      // Primeiro, executar a edge function para buscar dados atualizados das APIs
+      // Executar a edge function para buscar dados atualizados das APIs
       const { data: refreshResult, error: refreshError } = await supabase.functions.invoke('active-campaigns-health');
       
       if (refreshError) {
@@ -177,7 +178,7 @@ export function useActiveCampaignHealth() {
         console.log("✅ Edge function executada com sucesso:", refreshResult);
       }
       
-      // Depois, refetch os dados locais
+      // Refetch os dados locais
       await refetch();
       setLastRefreshTimestamp(Date.now());
       
@@ -188,7 +189,7 @@ export function useActiveCampaignHealth() {
     }
   };
 
-  // Calcular estatísticas corrigidas
+  // Calcular estatísticas corrigidas usando o hook useCampaignHealthMetrics
   const stats = {
     totalClients: data?.length || 0,
     clientsWithMeta: data?.filter(c => c.metaAds && c.metaAds.length > 0).length || 0,

@@ -1,23 +1,18 @@
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { getTodayInBrazil } from "@/utils/brazilTimezone";
 
 export interface CampaignHealthSnapshot {
   id: string;
   client_id: string;
   snapshot_date: string;
-  meta_has_account: boolean;
-  meta_active_campaigns_count: number;
-  meta_cost_today: number;
-  meta_impressions_today: number;
-  meta_account_id?: string;
-  meta_account_name?: string;
-  google_has_account: boolean;
-  google_active_campaigns_count: number;
-  google_cost_today: number;
-  google_impressions_today: number;
-  google_account_id?: string;
-  google_account_name?: string;
+  platform: string;
+  has_account: boolean;
+  active_campaigns_count: number;
+  cost_today: number;
+  impressions_today: number;
+  account_id: string;
+  account_name: string;
   created_at: string;
   updated_at: string;
   clients: {
@@ -56,24 +51,48 @@ export class CampaignHealthService {
 
       const today = getTodayInBrazil();
       
-      console.log(`📅 Buscando snapshots de hoje (timezone brasileiro): ${today}`);
+      console.log(`📅 Buscando snapshots de hoje da estrutura unificada (timezone brasileiro): ${today}`);
       
       const { data, error } = await supabase
-        .from('campaign_health_snapshots')
+        .from('campaign_health')
         .select(`
           *,
-          clients!inner(id, company_name)
+          client_accounts!inner(
+            account_id,
+            account_name,
+            clients!inner(id, company_name)
+          )
         `)
         .eq('snapshot_date', today)
-        .order('clients(company_name)');
+        .order('client_accounts.clients.company_name');
 
       if (error) {
         console.error("❌ Erro ao buscar snapshots:", error);
         throw new Error(`Erro ao buscar snapshots: ${error.message}`);
       }
 
-      console.log(`✅ Encontrados ${data?.length || 0} snapshots para hoje (timezone brasileiro)`);
-      return data || [];
+      // Transformar dados para o formato esperado
+      const snapshots = data?.map((item: any) => ({
+        id: item.id,
+        client_id: item.client_id,
+        snapshot_date: item.snapshot_date,
+        platform: item.platform,
+        has_account: item.has_account,
+        active_campaigns_count: item.active_campaigns_count,
+        cost_today: item.cost_today,
+        impressions_today: item.impressions_today,
+        account_id: item.client_accounts.account_id,
+        account_name: item.client_accounts.account_name,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        clients: {
+          id: item.client_accounts.clients.id,
+          company_name: item.client_accounts.clients.company_name
+        }
+      })) || [];
+
+      console.log(`✅ Encontrados ${snapshots.length} snapshots para hoje (timezone brasileiro)`);
+      return snapshots;
     } catch (error) {
       console.error("❌ Erro na busca de snapshots:", error);
       throw error;
