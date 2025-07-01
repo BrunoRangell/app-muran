@@ -37,3 +37,51 @@ export const formatNumber = (value: number): string => {
   
   return new Intl.NumberFormat('pt-BR').format(value);
 };
+
+export const formatDate = (dateString: string | Date | null | undefined): string => {
+  if (!dateString) return '';
+  
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) {
+      console.error("Data inválida:", dateString);
+      return typeof dateString === 'string' ? dateString : '';
+    }
+    
+    // Formatar a data no padrão brasileiro
+    return new Intl.DateTimeFormat('pt-BR').format(date);
+  } catch (error) {
+    console.error("Erro ao formatar data:", error);
+    return typeof dateString === 'string' ? dateString : '';
+  }
+};
+
+export const formatPercentage = (value: number): string => {
+  if (isNaN(value) || value === null || value === undefined) {
+    return "0%";
+  }
+  
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  }).format(value);
+};
+
+export const formatPhoneNumber = (value: string): string => {
+  if (!value) return '';
+  
+  // Remove todos os caracteres não numéricos
+  const cleanValue = value.replace(/\D/g, '');
+  
+  // Aplica a máscara do telefone brasileiro
+  if (cleanValue.length <= 10) {
+    // Telefone fixo: (XX) XXXX-XXXX
+    return cleanValue.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  } else {
+    // Celular: (XX) XXXXX-XXXX
+    return cleanValue.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+};
