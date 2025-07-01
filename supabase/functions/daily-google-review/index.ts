@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { formatResponse, formatErrorResponse } from "./response.ts";
@@ -485,30 +484,16 @@ async function processGoogleReview(req: Request) {
         console.log("📊 Nenhum resultado de gasto encontrado - mantendo valores zerados");
       }
       
-      // Calcular a média dos últimos 5 dias APENAS COM DADOS REAIS (excluindo hoje)
-      let totalDaysWithData = 0;
-      let totalSpentLastFiveDays = 0;
+      // IMPLEMENTAÇÃO DA MÉDIA PONDERADA
+      console.log("🧮 Calculando média ponderada dos últimos 5 dias...");
       
-      // Percorrer do dia anterior até 5 dias atrás
-      for (let i = 1; i <= 5; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        if (dailySpends[dateStr] !== undefined) {
-          totalSpentLastFiveDays += dailySpends[dateStr];
-          totalDaysWithData++;
-        }
-      }
+      // Aplicar a fórmula: (day1 * 0.1) + (day2 * 0.15) + (day3 * 0.2) + (day4 * 0.25) + (day5 * 0.3)
+      lastFiveDaysSpent = (googleDay1Spent * 0.1) + (googleDay2Spent * 0.15) + (googleDay3Spent * 0.2) + (googleDay4Spent * 0.25) + (googleDay5Spent * 0.3);
       
-      // Calcular a média diária dos últimos 5 dias APENAS se tivermos dados reais
-      if (totalDaysWithData > 0) {
-        lastFiveDaysSpent = totalSpentLastFiveDays / totalDaysWithData;
-        console.log(`📊 Média REAL de gastos dos últimos ${totalDaysWithData} dias: ${lastFiveDaysSpent.toFixed(2)}`);
-      } else {
-        console.log("📊 Sem dados reais para média dos últimos 5 dias - mantendo valor zerado");
-        lastFiveDaysSpent = 0;
-      }
+      console.log(`📊 Média ponderada CALCULADA: ${lastFiveDaysSpent.toFixed(2)}`, {
+        formula: `(${googleDay1Spent} * 0.1) + (${googleDay2Spent} * 0.15) + (${googleDay3Spent} * 0.2) + (${googleDay4Spent} * 0.25) + (${googleDay5Spent} * 0.3)`,
+        resultado: lastFiveDaysSpent
+      });
       
       // Query para obter orçamentos das campanhas ativas APENAS DADOS REAIS
       const campaignsQuery = `
@@ -599,7 +584,7 @@ async function processGoogleReview(req: Request) {
       review_date: reviewDate,
       daily_budget_current: currentDailyBudget,
       total_spent: totalSpent,
-      last_five_days_spent: lastFiveDaysSpent,
+      last_five_days_spent: lastFiveDaysSpent, // AGORA É A MÉDIA PONDERADA
       // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
       day_1_spent: googleDay1Spent,
       day_2_spent: googleDay2Spent,
@@ -611,10 +596,10 @@ async function processGoogleReview(req: Request) {
       updated_at: new Date().toISOString()
     };
     
-    console.log("📋 Dados FINAIS para revisão (incluindo gastos individuais):", {
+    console.log("📋 Dados FINAIS para revisão (com média ponderada):", {
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
-      gastoMédiaCincoDias: lastFiveDaysSpent,
+      médiaPonderada: lastFiveDaysSpent, // AGORA É A MÉDIA PONDERADA
       gastosIndividuais: {
         dia1: googleDay1Spent,
         dia2: googleDay2Spent,
@@ -645,7 +630,7 @@ async function processGoogleReview(req: Request) {
           body: JSON.stringify({
             daily_budget_current: currentDailyBudget,
             total_spent: totalSpent,
-            last_five_days_spent: lastFiveDaysSpent,
+            last_five_days_spent: lastFiveDaysSpent, // MÉDIA PONDERADA
             // NOVOS CAMPOS: Gastos individuais
             day_1_spent: googleDay1Spent,
             day_2_spent: googleDay2Spent,
@@ -677,7 +662,7 @@ async function processGoogleReview(req: Request) {
               body: JSON.stringify({
                 daily_budget_current: currentDailyBudget,
                 total_spent: totalSpent,
-                last_five_days_spent: lastFiveDaysSpent,
+                last_five_days_spent: lastFiveDaysSpent, // MÉDIA PONDERADA
                 // NOVOS CAMPOS: Gastos individuais
                 day_1_spent: googleDay1Spent,
                 day_2_spent: googleDay2Spent,
@@ -698,12 +683,12 @@ async function processGoogleReview(req: Request) {
               throw new Error(`Erro ao atualizar revisão (fallback): ${fallbackUpdateResponse.status} - ${fallbackErrorText}`);
             }
             
-            console.log(`✅ Revisão existente atualizada com dados reais e gastos individuais (sem orçamento personalizado): ${reviewId}`);
+            console.log(`✅ Revisão existente atualizada com média ponderada (sem orçamento personalizado): ${reviewId}`);
           } else {
             throw new Error(`Erro ao atualizar revisão: ${updateResponse.status} - ${errorText}`);
           }
         } else {
-          console.log(`✅ Revisão existente atualizada com dados reais e gastos individuais: ${reviewId}`);
+          console.log(`✅ Revisão existente atualizada com média ponderada: ${reviewId}`);
         }
       } else {
         // Criar nova revisão
@@ -756,7 +741,7 @@ async function processGoogleReview(req: Request) {
             const newReview = await fallbackInsertResponse.json();
             reviewId = newReview[0].id;
             
-            console.log(`✅ Nova revisão criada com dados reais e gastos individuais (sem orçamento personalizado): ${reviewId}`);
+            console.log(`✅ Nova revisão criada com média ponderada (sem orçamento personalizado): ${reviewId}`);
           } else {
             throw new Error(`Erro ao criar revisão: ${insertResponse.status} - ${errorText}`);
           }
@@ -764,7 +749,7 @@ async function processGoogleReview(req: Request) {
           const newReview = await insertResponse.json();
           reviewId = newReview[0].id;
           
-          console.log(`✅ Nova revisão criada com dados reais e gastos individuais: ${reviewId}`);
+          console.log(`✅ Nova revisão criada com média ponderada: ${reviewId}`);
         }
       }
     } catch (dbError: any) {
@@ -780,7 +765,7 @@ async function processGoogleReview(req: Request) {
       accountName,
       currentDailyBudget,
       totalSpent,
-      lastFiveDaysSpent,
+      lastFiveDaysSpent, // AGORA É A MÉDIA PONDERADA
       // NOVOS DADOS RETORNADOS: Gastos individuais
       individualDaysSpent: {
         day1: googleDay1Spent,
