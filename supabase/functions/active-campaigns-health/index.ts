@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
 const corsHeaders = {
@@ -5,138 +6,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface CampaignHealthSnapshot {
+interface CampaignHealthData {
   client_id: string;
+  account_id: string;
   snapshot_date: string;
-  meta_account_id?: string;
-  meta_account_name?: string;
-  meta_has_account: boolean;
-  meta_active_campaigns_count: number;
-  meta_cost_today: number;
-  meta_impressions_today: number;
-  google_account_id?: string;
-  google_account_name?: string;
-  google_has_account: boolean;
-  google_active_campaigns_count: number;
-  google_cost_today: number;
-  google_impressions_today: number;
+  platform: 'meta' | 'google';
+  has_account: boolean;
+  active_campaigns_count: number;
+  unserved_campaigns_count: number;
+  cost_today: number;
+  impressions_today: number;
 }
 
-// CORREÇÃO: Função para obter a data atual no timezone brasileiro
+// Função para obter a data atual no timezone brasileiro
 function getTodayInBrazil(): string {
-  // Criar uma nova data com timezone brasileiro específico
   const now = new Date();
-  
-  // Obter timestamp UTC e ajustar para timezone brasileiro (UTC-3)
   const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const brazilTime = new Date(utcTime + (-3 * 3600000)); // UTC-3 para Brasil
+  const brazilTime = new Date(utcTime + (-3 * 3600000));
   
-  // Formatação manual para YYYY-MM-DD
   const year = brazilTime.getFullYear();
   const month = String(brazilTime.getMonth() + 1).padStart(2, '0');
   const day = String(brazilTime.getDate()).padStart(2, '0');
   
   const result = `${year}-${month}-${day}`;
-  console.log(`🇧🇷 Data atual no timezone brasileiro calculada: ${result}`);
-  console.log(`🕐 Hora UTC original: ${now.toISOString()}`);
-  console.log(`🕐 Hora Brasil calculada: ${brazilTime.toISOString()}`);
-  
+  console.log(`🇧🇷 Data atual no timezone brasileiro: ${result}`);
   return result;
 }
 
-// Função para obter a data no formato que o Google Ads espera (YYYYMMDD no timezone brasileiro)
 function getTodayForGoogleAds(): string {
   return getTodayInBrazil().replace(/-/g, '');
 }
 
-// CORREÇÃO: Função melhorada para buscar dados do Meta Ads usando data brasileira
-async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
-  try {
-    // CORREÇÃO: Usar data do timezone brasileiro, não UTC
-    const today = getTodayInBrazil();
-    console.log(`🔍 Meta: Buscando campanhas para conta ${accountId} na data BRASILEIRA ${today}`);
-    
-    // Primeira chamada: buscar campanhas ativas
-    const campaignsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/campaigns?fields=id,name,effective_status&access_token=${accessToken}`;
-    console.log(`📡 Meta: Chamando URL de campanhas: ${campaignsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
-    
-    const campaignsResponse = await fetch(campaignsUrl);
-    const campaignsData = await campaignsResponse.json();
-    
-    console.log(`📊 Meta: Status da resposta de campanhas: ${campaignsResponse.status}`);
-    
-    if (!campaignsResponse.ok) {
-      console.error(`❌ Meta: Erro HTTP ${campaignsResponse.status} ao buscar campanhas:`, campaignsData);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
-    }
-    
-    if (campaignsData.error) {
-      console.error(`❌ Meta: Erro da API ao buscar campanhas:`, campaignsData.error);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
-    }
-    
-    if (!campaignsData.data || !Array.isArray(campaignsData.data)) {
-      console.log(`⚠️ Meta: Nenhuma campanha encontrada para conta ${accountId}`);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
-    }
-    
-    // Filtrar apenas campanhas ativas
-    const activeCampaigns = campaignsData.data.filter((campaign: any) => 
-      campaign.effective_status === 'ACTIVE'
-    );
-    
-    console.log(`✅ Meta: Encontradas ${activeCampaigns.length} campanhas ativas de ${campaignsData.data.length} total`);
-    
-    if (activeCampaigns.length === 0) {
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
-    }
-    
-    // CORREÇÃO: Segunda chamada usando data brasileira
-    const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
-    console.log(`📡 Meta: Chamando URL de insights com data BRASILEIRA: ${insightsUrl.replace(accessToken, 'TOKEN_HIDDEN')}`);
-    
-    const insightsResponse = await fetch(insightsUrl);
-    const insightsData = await insightsResponse.json();
-    
-    console.log(`📊 Meta: Status da resposta de insights: ${insightsResponse.status}`);
-    
-    if (!insightsResponse.ok) {
-      console.error(`❌ Meta: Erro HTTP ${insightsResponse.status} ao buscar insights:`, insightsData);
-      return { cost: 0, impressions: 0, activeCampaigns: activeCampaigns.length };
-    }
-    
-    if (insightsData.error) {
-      console.error(`❌ Meta: Erro da API ao buscar insights:`, insightsData.error);
-      return { cost: 0, impressions: 0, activeCampaigns: activeCampaigns.length };
-    }
-    
-    // Processar dados de insights
-    let totalCost = 0;
-    let totalImpressions = 0;
-    
-    if (insightsData.data && Array.isArray(insightsData.data) && insightsData.data.length > 0) {
-      const todayInsights = insightsData.data[0];
-      totalCost = parseFloat(todayInsights.spend || '0');
-      totalImpressions = parseInt(todayInsights.impressions || '0');
-      
-      console.log(`💰 Meta: Custo hoje (data brasileira ${today}): R$ ${totalCost}, Impressões: ${totalImpressions}`);
-    } else {
-      console.log(`⚠️ Meta: Nenhum insight encontrado para hoje (data brasileira ${today})`);
-    }
-    
-    return {
-      cost: totalCost,
-      impressions: totalImpressions,
-      activeCampaigns: activeCampaigns.length
-    };
-    
-  } catch (error) {
-    console.error(`❌ Meta: Erro de rede/exception para conta ${accountId}:`, error);
-    return { cost: 0, impressions: 0, activeCampaigns: 0 };
-  }
-}
-
-// NOVA FUNÇÃO: Gerencia a renovação de tokens do Google Ads para garantir que estejam sempre válidos.
+// Renovação de tokens do Google Ads
 async function manageGoogleAdsTokens(supabase: any): Promise<string> {
   console.log('🔄 Iniciando gerenciamento de token do Google Ads...');
 
@@ -152,8 +53,8 @@ async function manageGoogleAdsTokens(supabase: any): Promise<string> {
     ]);
 
   if (tokensError) {
-    console.error('❌ Google Tokens: Erro ao buscar tokens da base de dados:', tokensError);
-    throw new Error('Falha ao buscar tokens do Google Ads da base de dados.');
+    console.error('❌ Google Tokens: Erro ao buscar tokens:', tokensError);
+    throw new Error('Falha ao buscar tokens do Google Ads.');
   }
 
   const tokens: { [key: string]: any } = {};
@@ -165,11 +66,11 @@ async function manageGoogleAdsTokens(supabase: any): Promise<string> {
   const fiveMinutesInMs = 5 * 60 * 1000;
 
   if (expiresAt > Date.now() + fiveMinutesInMs) {
-    console.log('✅ Google Token: Token de acesso ainda é válido.');
+    console.log('✅ Google Token: Token ainda válido.');
     return tokens['google_ads_access_token'];
   }
 
-  console.log('⚠️ Google Token: Token expirado ou prestes a expirar. Iniciando renovação...');
+  console.log('⚠️ Google Token: Renovando token...');
   
   const {
     google_ads_refresh_token: refreshToken,
@@ -178,80 +79,119 @@ async function manageGoogleAdsTokens(supabase: any): Promise<string> {
   } = tokens;
 
   if (!refreshToken || !clientId || !clientSecret) {
-    const missing = [
-      !refreshToken && "'google_ads_refresh_token'",
-      !clientId && "'google_ads_client_id'",
-      !clientSecret && "'google_ads_client_secret'"
-    ].filter(Boolean).join(', ');
-    console.error(`❌ Google Tokens: Configuração para renovação de token incompleta. Faltando: ${missing}`);
-    throw new Error(`Configuração para renovação de token do Google Ads está incompleta. Faltando: ${missing}.`);
+    throw new Error('Configuração para renovação de token incompleta.');
   }
 
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error('❌ Google Tokens: Falha ao renovar token:', data);
+    throw new Error(`Erro ao renovar token: ${data.error_description || data.error}`);
+  }
+
+  const newAccessToken = data.access_token;
+  const newExpiresAt = Date.now() + ((data.expires_in - 60) * 1000);
+
+  await supabase
+    .from('api_tokens')
+    .upsert([
+      { name: 'google_ads_access_token', value: newAccessToken },
+      { name: 'google_ads_token_expires_at', value: newExpiresAt.toString() }
+    ], { onConflict: 'name', ignoreDuplicates: false });
+
+  console.log('✅ Google Token: Token renovado com sucesso!');
+  return newAccessToken;
+}
+
+// Buscar dados do Meta Ads
+async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
   try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('❌ Google Tokens: Falha ao renovar token. Resposta da API:', data);
-      throw new Error(`Erro da API do Google ao renovar token: ${data.error_description || data.error || 'Erro desconhecido'}`);
+    const today = getTodayInBrazil();
+    console.log(`🔍 Meta: Buscando campanhas para conta ${accountId} na data ${today}`);
+    
+    const campaignsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/campaigns?fields=id,name,effective_status&access_token=${accessToken}`;
+    
+    const campaignsResponse = await fetch(campaignsUrl);
+    const campaignsData = await campaignsResponse.json();
+    
+    if (!campaignsResponse.ok || campaignsData.error) {
+      console.error(`❌ Meta: Erro ao buscar campanhas:`, campaignsData.error || campaignsResponse.status);
+      return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
-
-    const newAccessToken = data.access_token;
-    const newExpiresAt = Date.now() + ((data.expires_in - 60) * 1000); // Reduz 1 minuto por segurança
-
-    console.log('✅ Google Token: Token de acesso renovado com sucesso!');
-
-    const { error: updateError } = await supabase
-      .from('api_tokens')
-      .upsert([
-        { name: 'google_ads_access_token', value: newAccessToken },
-        { name: 'google_ads_token_expires_at', value: newExpiresAt.toString() }
-      ], { onConflict: 'name', ignoreDuplicates: false });
-
-    if (updateError) {
-      console.error('❌ Google Tokens: Erro ao salvar o novo token e expiração na base de dados:', updateError);
-    } else {
-      console.log('💾 Google Token: Token e data de expiração atualizados na base de dados.');
+    
+    if (!campaignsData.data || !Array.isArray(campaignsData.data)) {
+      console.log(`⚠️ Meta: Nenhuma campanha encontrada para conta ${accountId}`);
+      return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
-
-    return newAccessToken;
+    
+    const activeCampaigns = campaignsData.data.filter((campaign: any) => 
+      campaign.effective_status === 'ACTIVE'
+    );
+    
+    console.log(`✅ Meta: ${activeCampaigns.length} campanhas ativas encontradas`);
+    
+    if (activeCampaigns.length === 0) {
+      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+    }
+    
+    const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+    
+    const insightsResponse = await fetch(insightsUrl);
+    const insightsData = await insightsResponse.json();
+    
+    if (!insightsResponse.ok || insightsData.error) {
+      console.error(`❌ Meta: Erro ao buscar insights:`, insightsData.error || insightsResponse.status);
+      return { cost: 0, impressions: 0, activeCampaigns: activeCampaigns.length };
+    }
+    
+    let totalCost = 0;
+    let totalImpressions = 0;
+    
+    if (insightsData.data && Array.isArray(insightsData.data) && insightsData.data.length > 0) {
+      const todayInsights = insightsData.data[0];
+      totalCost = parseFloat(todayInsights.spend || '0');
+      totalImpressions = parseInt(todayInsights.impressions || '0');
+      
+      console.log(`💰 Meta: Custo: R$ ${totalCost}, Impressões: ${totalImpressions}`);
+    }
+    
+    return {
+      cost: totalCost,
+      impressions: totalImpressions,
+      activeCampaigns: activeCampaigns.length
+    };
+    
   } catch (error) {
-    console.error('❌ Google Tokens: Erro crítico durante o processo de renovação:', error);
-    throw error;
+    console.error(`❌ Meta: Erro para conta ${accountId}:`, error);
+    return { cost: 0, impressions: 0, activeCampaigns: 0 };
   }
 }
 
-// Função CORRIGIDA para buscar dados do Google Ads (usando timezone brasileiro e renovação de token)
+// Buscar dados do Google Ads
 async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: any): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
   try {
     console.log(`🔍 Google: Buscando campanhas para conta ${clientCustomerId}`);
     
-    // ETAPA DE RENOVAÇÃO DE TOKEN ADICIONADA
     const accessToken = await manageGoogleAdsTokens(supabase);
     
-    // Buscar outros tokens necessários (developer token, manager id)
     const { data: tokensData, error: tokensError } = await supabase
       .from('api_tokens')
       .select('name, value')
       .in('name', ['google_ads_developer_token', 'google_ads_manager_id']);
 
     if (tokensError) {
-      console.error(`❌ Google: Erro ao buscar developer token e manager id:`, tokensError);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
-    }
-
-    if (!tokensData) {
-      console.log(`⚠️ Google: Nenhum developer token ou manager id encontrado na tabela api_tokens`);
+      console.error(`❌ Google: Erro ao buscar tokens:`, tokensError);
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
 
@@ -263,17 +203,13 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     const developerToken = tokens['google_ads_developer_token'];
     const managerId = tokens['google_ads_manager_id'];
 
-    if (!accessToken || !developerToken) {
-      console.log(`⚠️ Google: Tokens necessários não encontrados (Access Token ou Developer Token)`);
+    if (!developerToken) {
+      console.log(`⚠️ Google: Developer token não encontrado`);
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
 
-    console.log(`✅ Google: Tokens prontos - Access: ${accessToken ? 'VÁLIDO' : 'NÃO'}, Developer: ${developerToken ? 'SIM' : 'NÃO'}, Manager: ${managerId || 'NÃO'}`);
-    
-    // Usar formato de data correto (YYYYMMDD sem hífens) no timezone brasileiro
     const today = getTodayForGoogleAds();
     
-    // Query GAQL simplificada baseada no teste que funcionou
     const query = `
       SELECT 
         campaign.id,
@@ -287,10 +223,6 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         AND segments.date = '${today}'
     `;
     
-    console.log(`📡 Google: Executando query GAQL para ${clientCustomerId} na data ${today} (timezone brasileiro)`);
-    console.log(`📋 Google: Query GAQL: ${query.trim()}`);
-    
-    // Usar endpoint v20 e search (não searchStream)
     const googleAdsUrl = `https://googleads.googleapis.com/v20/customers/${clientCustomerId}/googleAds:search`;
     
     const headers: { [key: string]: string } = {
@@ -301,22 +233,13 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 
     if (managerId && managerId.trim() !== '') {
       headers['login-customer-id'] = managerId;
-      console.log(`🔧 Google: Usando Manager Customer ID: ${managerId}`);
     }
-
-    console.log(`📡 Google: Headers preparados:`, { 
-      ...headers, 
-      'Authorization': 'Bearer TOKEN_HIDDEN',
-      'developer-token': 'DEVELOPER_TOKEN_HIDDEN'
-    });
     
     const response = await fetch(googleAdsUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({ query })
     });
-    
-    console.log(`📊 Google: Status da resposta: ${response.status}`);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -325,7 +248,6 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     }
     
     const data = await response.json();
-    console.log(`📋 Google: Resposta recebida:`, JSON.stringify(data, null, 2).substring(0, 500));
     
     if (!data.results || !Array.isArray(data.results)) {
       console.log(`⚠️ Google: Nenhum resultado encontrado para ${clientCustomerId}`);
@@ -336,22 +258,18 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     let totalImpressions = 0;
     let activeCampaigns = 0;
     
-    // Processar resultados usando a estrutura correta da v20
     data.results.forEach((result: any) => {
       if (result.campaign?.status === 'ENABLED') {
         activeCampaigns++;
-        // Converter cost_micros para valor real (dividir por 1.000.000)
         const campaignCost = (result.metrics?.costMicros || 0) / 1000000;
         const campaignImpressions = result.metrics?.impressions || 0;
         
         totalCost += campaignCost;
         totalImpressions += parseInt(campaignImpressions);
-        
-        console.log(`📈 Google: Campanha ${result.campaign.name}: Custo=R$${campaignCost.toFixed(2)}, Impressões=${campaignImpressions}`);
       }
     });
     
-    console.log(`✅ Google: RESUMO - ${activeCampaigns} campanhas ativas, Custo total: R$ ${totalCost.toFixed(2)}, Impressões totais: ${totalImpressions}`);
+    console.log(`✅ Google: ${activeCampaigns} campanhas ativas, Custo: R$ ${totalCost.toFixed(2)}, Impressões: ${totalImpressions}`);
     
     return {
       cost: totalCost,
@@ -360,7 +278,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     };
     
   } catch (error) {
-    console.error(`❌ Google: Erro de rede/exception para conta ${clientCustomerId}:`, error);
+    console.error(`❌ Google: Erro para conta ${clientCustomerId}:`, error);
     return { cost: 0, impressions: 0, activeCampaigns: 0 };
   }
 }
@@ -375,7 +293,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🔍 CORREÇÃO IMPLEMENTADA: Iniciando busca de saúde de campanhas ativas com TODAS as contas (principais e secundárias)...');
+    console.log('🔍 NOVA ESTRUTURA: Iniciando busca de saúde de campanhas com tabela unificada...');
 
     // Buscar token do Meta Ads
     const { data: metaToken } = await supabase
@@ -391,128 +309,115 @@ Deno.serve(async (req) => {
 
     console.log('✅ Token Meta Ads encontrado');
 
-    // CORREÇÃO: Buscar todos os clientes e TODAS suas contas Meta
-    const { data: clients, error: clientsError } = await supabase
-      .from('clients')
+    // NOVA ESTRUTURA: Buscar todas as contas ativas da tabela unificada
+    const { data: accounts, error: accountsError } = await supabase
+      .from('client_accounts')
       .select(`
-        id, 
-        company_name, 
-        google_account_id,
-        client_meta_accounts!inner(
-          account_id, 
-          account_name, 
-          is_primary
+        id,
+        client_id,
+        platform,
+        account_id,
+        account_name,
+        is_primary,
+        clients!inner(
+          id,
+          company_name,
+          status
         )
       `)
       .eq('status', 'active')
-      .eq('client_meta_accounts.status', 'active')
-      .order('company_name');
+      .eq('clients.status', 'active')
+      .order('client_id')
+      .order('platform')
+      .order('is_primary', { ascending: false });
 
-    if (clientsError) {
-      console.error('❌ Erro ao buscar clientes e suas contas Meta:', clientsError);
-      throw clientsError;
+    if (accountsError) {
+      console.error('❌ Erro ao buscar contas da nova estrutura:', accountsError);
+      throw accountsError;
     }
 
-    console.log(`✅ Encontrados ${clients?.length || 0} clientes com contas Meta ativas`);
+    console.log(`✅ Nova estrutura: Encontradas ${accounts?.length || 0} contas ativas`);
 
     const today = getTodayInBrazil();
-    const snapshots: CampaignHealthSnapshot[] = [];
+    const healthData: CampaignHealthData[] = [];
 
-    console.log(`📅 CORREÇÃO: Processando dados para o dia CORRETO: ${today} (timezone brasileiro CORRIGIDO)`);
-
-    // CORREÇÃO: Processar cada cliente e TODAS suas contas Meta
-    for (const client of clients || []) {
-      console.log(`\n📊 Processando cliente: ${client.company_name}`);
+    // Processar cada conta individualmente
+    for (const account of accounts || []) {
+      console.log(`\n📊 Processando conta ${account.platform}: ${account.account_id} (${account.account_name})`);
       
-      const metaAccounts = (client as any).client_meta_accounts || [];
-      console.log(`📱 Cliente ${client.company_name} tem ${metaAccounts.length} contas Meta`);
-
-      // Processar cada conta Meta do cliente separadamente
-      for (const metaAccount of metaAccounts) {
-        console.log(`🔄 CORREÇÃO: Processando conta Meta ${metaAccount.account_id} (${metaAccount.account_name}) - ${metaAccount.is_primary ? 'PRINCIPAL' : 'SECUNDÁRIA'}`);
-        
-        const metaData = await fetchMetaActiveCampaigns(metaToken.value, metaAccount.account_id);
-        console.log(`✅ Meta processado para conta ${metaAccount.account_id}: Campanhas=${metaData.activeCampaigns}, Custo=R$${metaData.cost}, Impressões=${metaData.impressions}`);
-
-        // Processar Google Ads (apenas se tiver configurado)
-        let googleData = { cost: 0, impressions: 0, activeCampaigns: 0 };
-        if (client.google_account_id && client.google_account_id.trim() !== '') {
-          console.log(`🔄 Processando Google Ads para ${client.company_name}...`);
-          googleData = await fetchGoogleActiveCampaigns(client.google_account_id, supabase);
-          console.log(`✅ Google processado: Campanhas=${googleData.activeCampaigns}, Custo=R$${googleData.cost.toFixed(2)}, Impressões=${googleData.impressions}`);
-        }
-
-        // Criar snapshot individual para cada conta Meta
-        const snapshot: CampaignHealthSnapshot = {
-          client_id: client.id,
-          snapshot_date: today,
-          meta_account_id: metaAccount.account_id,
-          meta_account_name: metaAccount.account_name,
-          meta_has_account: true,
-          meta_active_campaigns_count: metaData.activeCampaigns,
-          meta_cost_today: metaData.cost,
-          meta_impressions_today: metaData.impressions,
-          google_account_id: client.google_account_id || null,
-          google_account_name: client.google_account_id ? `Google Ads - ${client.google_account_id}` : null,
-          google_has_account: !!(client.google_account_id && client.google_account_id.trim() !== ''),
-          google_active_campaigns_count: googleData.activeCampaigns,
-          google_cost_today: googleData.cost,
-          google_impressions_today: googleData.impressions
-        };
-
-        snapshots.push(snapshot);
-        console.log(`✅ Snapshot criado para ${client.company_name} - Conta ${metaAccount.account_id} (${metaAccount.is_primary ? 'PRINCIPAL' : 'SECUNDÁRIA'})`);
+      let campaignData = { cost: 0, impressions: 0, activeCampaigns: 0 };
+      
+      if (account.platform === 'meta') {
+        campaignData = await fetchMetaActiveCampaigns(metaToken.value, account.account_id);
+      } else if (account.platform === 'google') {
+        campaignData = await fetchGoogleActiveCampaigns(account.account_id, supabase);
       }
+      
+      console.log(`✅ ${account.platform.toUpperCase()}: Campanhas=${campaignData.activeCampaigns}, Custo=R$${campaignData.cost.toFixed(2)}, Impressões=${campaignData.impressions}`);
+
+      // Calcular campanhas sem veiculação
+      const unservedCampaigns = campaignData.activeCampaigns > 0 && campaignData.cost === 0 ? campaignData.activeCampaigns : 0;
+
+      const healthSnapshot: CampaignHealthData = {
+        client_id: account.client_id,
+        account_id: account.id,
+        snapshot_date: today,
+        platform: account.platform as 'meta' | 'google',
+        has_account: true,
+        active_campaigns_count: campaignData.activeCampaigns,
+        unserved_campaigns_count: unservedCampaigns,
+        cost_today: campaignData.cost,
+        impressions_today: campaignData.impressions
+      };
+
+      healthData.push(healthSnapshot);
     }
 
-    // Salvar todos os snapshots na tabela
-    console.log(`\n💾 CORREÇÃO: Salvando ${snapshots.length} snapshots para ${today} (incluindo contas principais E secundárias)...`);
+    // Salvar dados na nova tabela unificada
+    console.log(`\n💾 NOVA ESTRUTURA: Salvando ${healthData.length} snapshots na tabela campaign_health...`);
     
-    // Usar upsert para evitar duplicatas
     const { error: upsertError } = await supabase
-      .from('campaign_health_snapshots')
-      .upsert(snapshots, { 
-        onConflict: 'client_id,snapshot_date,meta_account_id',
+      .from('campaign_health')
+      .upsert(healthData, { 
+        onConflict: 'account_id,snapshot_date',
         ignoreDuplicates: false 
       });
 
     if (upsertError) {
-      console.error('❌ Erro ao salvar snapshots:', upsertError);
+      console.error('❌ Erro ao salvar na nova estrutura:', upsertError);
       throw upsertError;
     }
 
-    console.log('✅ CORREÇÃO: Snapshots salvos com sucesso incluindo TODAS as contas (principais e secundárias)!');
+    console.log('✅ NOVA ESTRUTURA: Dados salvos com sucesso na tabela unificada!');
 
-    // Estatísticas finais detalhadas
-    const primaryAccounts = snapshots.filter(s => s.meta_account_id && s.meta_account_id.endsWith('922')); // Exemplo: contas principais terminam com 922
-    const secondaryAccounts = snapshots.filter(s => s.meta_account_id && !s.meta_account_id.endsWith('922'));
-    const metaWithData = snapshots.filter(s => s.meta_cost_today > 0);
-    const googleWithData = snapshots.filter(s => s.google_cost_today > 0);
+    // Estatísticas finais
+    const metaAccounts = healthData.filter(d => d.platform === 'meta');
+    const googleAccounts = healthData.filter(d => d.platform === 'google');
+    const accountsWithData = healthData.filter(d => d.cost_today > 0);
+    const uniqueClients = new Set(healthData.map(d => d.client_id)).size;
 
-    console.log(`\n📈 CORREÇÃO: Resumo COMPLETO dos dados processados:`);
-    console.log(`📊 Total de snapshots: ${snapshots.length} para ${today}`);
-    console.log(`🟦 Contas Meta PRINCIPAIS: ${primaryAccounts.length}`);
-    console.log(`🟦 Contas Meta SECUNDÁRIAS: ${secondaryAccounts.length}`);
-    console.log(`💰 Meta com dados: ${metaWithData.length} de ${snapshots.length}`);
-    console.log(`🟥 Google Ads: ${snapshots.length} registros (${googleWithData.length} com dados)`);
-    console.log(`👥 Clientes únicos: ${new Set(snapshots.map(s => s.client_id)).size}`);
+    console.log(`\n📈 NOVA ESTRUTURA: Resumo dos dados processados:`);
+    console.log(`📊 Total de snapshots: ${healthData.length} para ${today}`);
+    console.log(`🟦 Contas Meta: ${metaAccounts.length}`);
+    console.log(`🟥 Contas Google: ${googleAccounts.length}`);
+    console.log(`💰 Contas com dados: ${accountsWithData.length} de ${healthData.length}`);
+    console.log(`👥 Clientes únicos: ${uniqueClients}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        data: snapshots,
+        data: healthData,
         timestamp: new Date().toISOString(),
-        brazil_date_corrected: today,
-        totalSnapshots: snapshots.length,
-        primaryAccounts: primaryAccounts.length,
-        secondaryAccounts: secondaryAccounts.length,
-        correction_applied: true,
+        brazil_date: today,
+        totalSnapshots: healthData.length,
+        metaAccounts: metaAccounts.length,
+        googleAccounts: googleAccounts.length,
+        new_structure: true,
         debug: {
-          metaWithDataAfterCorrection: metaWithData.length,
-          googleWithData: googleWithData.length,
-          uniqueClients: new Set(snapshots.map(s => s.client_id)).size,
-          timezone: 'America/Sao_Paulo - CORRIGIDO',
-          accountsProcessed: 'ALL (primary + secondary)'
+          accountsWithData: accountsWithData.length,
+          uniqueClients: uniqueClients,
+          timezone: 'America/Sao_Paulo',
+          unified_structure: 'client_accounts + campaign_health tables'
         }
       }),
       { 
@@ -522,14 +427,14 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ CORREÇÃO: Erro na edge function:', error);
+    console.error('❌ NOVA ESTRUTURA: Erro na edge function:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: error.message,
         timestamp: new Date().toISOString(),
-        brazil_date_corrected: getTodayInBrazil(),
-        correction_applied: false
+        brazil_date: getTodayInBrazil(),
+        new_structure: false
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,351 +1,218 @@
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CampaignHealthService } from "../services/campaignHealthService";
-import { ClientHealthData, CampaignStatus, PlatformHealthData } from "../types";
-import { getTodayInBrazil } from "@/utils/brazilTimezone";
 
-// Função para determinar o status baseado nos dados
-function determineStatus(hasAccount: boolean, activeCampaigns: number, costToday: number, impressionsToday: number): CampaignStatus {
-  if (!hasAccount) {
-    return "nao-configurado";
-  }
-  
-  if (activeCampaigns === 0) {
-    return "sem-campanhas";
-  }
-  
-  if (costToday > 0 && impressionsToday > 0) {
-    return "funcionando";
-  } else {
-    return "sem-veiculacao";
-  }
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { formatDateForDisplay } from "@/utils/brazilTimezone";
+import { ClientHealthData, CampaignStatus } from "../types";
+
+interface UnifiedAccountData {
+  id: string;
+  client_id: string;
+  platform: 'meta' | 'google';
+  account_id: string;
+  account_name: string;
+  is_primary: boolean;
+  clients: {
+    id: string;
+    company_name: string;
+  };
+  campaign_health: Array<{
+    has_account: boolean;
+    active_campaigns_count: number;
+    unserved_campaigns_count: number;
+    cost_today: number;
+    impressions_today: number;
+    snapshot_date: string;
+  }>;
 }
 
-// Função corrigida para determinar status geral do cliente
-function determineOverallStatus(metaAds?: PlatformHealthData, googleAds?: PlatformHealthData): CampaignStatus {
-  const platforms = [metaAds, googleAds].filter(Boolean);
+const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
+  console.log("🔍 Buscando dados de saúde das campanhas da nova estrutura...");
   
-  if (platforms.length === 0) return "nao-configurado";
+  const today = new Date().toISOString().split('T')[0];
   
-  console.log("🔍 Determinando status geral:", {
-    platforms: platforms.map(p => ({ status: p?.status, hasAccount: !!p })),
-    metaStatus: metaAds?.status,
-    googleStatus: googleAds?.status
-  });
-  
-  // CORREÇÃO: Cliente só está "funcionando" se TODAS as contas configuradas estiverem funcionando
-  const allFunctioning = platforms.every(p => p?.status === "funcionando");
-  if (allFunctioning) {
-    console.log("✅ Todas as plataformas funcionando");
-    return "funcionando";
-  }
-  
-  // Se não estão todas funcionando, priorizar o pior status
-  // Ordem de prioridade: sem-veiculacao > sem-campanhas > nao-configurado
-  if (platforms.some(p => p?.status === "sem-veiculacao")) {
-    console.log("❌ Alguma plataforma sem veiculação");
-    return "sem-veiculacao";
-  }
-  
-  if (platforms.some(p => p?.status === "sem-campanhas")) {
-    console.log("⚠️ Alguma plataforma sem campanhas");
-    return "sem-campanhas";
-  }
-  
-  console.log("➖ Status padrão: não configurado");
-  return "nao-configurado";
-}
+  // Buscar dados da nova estrutura unificada
+  const { data: accountsData, error } = await supabase
+    .from('client_accounts')
+    .select(`
+      id,
+      client_id,
+      platform,
+      account_id,
+      account_name,
+      is_primary,
+      clients!inner(
+        id,
+        company_name
+      ),
+      campaign_health!inner(
+        has_account,
+        active_campaigns_count,
+        unserved_campaigns_count,
+        cost_today,
+        impressions_today,
+        snapshot_date
+      )
+    `)
+    .eq('status', 'active')
+    .eq('clients.status', 'active')
+    .eq('campaign_health.snapshot_date', today)
+    .order('clients.company_name');
 
-// Função corrigida para processar APENAS dados de hoje (timezone brasileiro)
-function processSnapshots(snapshots: any[]): { processedData: ClientHealthData[], latestUpdatedAt: number } {
-  const today = getTodayInBrazil();
-  
-  // Validação rigorosa: todos os snapshots devem ser de hoje (timezone brasileiro)
-  const todaySnapshots = snapshots.filter(snapshot => 
-    snapshot.snapshot_date === today
-  );
-
-  if (todaySnapshots.length !== snapshots.length) {
-    console.warn(`⚠️ Removendo ${snapshots.length - todaySnapshots.length} snapshots que não são de hoje (timezone brasileiro)`);
+  if (error) {
+    console.error("❌ Erro ao buscar dados da nova estrutura:", error);
+    throw error;
   }
 
-  if (todaySnapshots.length === 0) {
-    console.log("❌ Nenhum snapshot de hoje encontrado (timezone brasileiro)");
-    return { processedData: [], latestUpdatedAt: 0 };
+  if (!accountsData || accountsData.length === 0) {
+    console.log("⚠️ Nenhum dado encontrado para hoje na nova estrutura");
+    return [];
   }
 
-  let latestUpdatedAt = 0;
-  todaySnapshots.forEach(snapshot => {
-    if (snapshot.updated_at) {
-      const updatedAtTimestamp = new Date(snapshot.updated_at).getTime();
-      if (updatedAtTimestamp > latestUpdatedAt) {
-        latestUpdatedAt = updatedAtTimestamp;
-      }
-    }
-  });
+  console.log(`✅ Nova estrutura: ${accountsData.length} contas encontradas`);
 
-  const clientMap = new Map<string, ClientHealthData>();
+  // Agrupar dados por cliente
+  const clientsMap = new Map<string, ClientHealthData>();
 
-  todaySnapshots.forEach((snapshot) => {
-    const clientId = snapshot.client_id;
-    const clientName = snapshot.clients.company_name;
+  accountsData.forEach((account: UnifiedAccountData) => {
+    const clientId = account.client_id;
     
-    if (!clientMap.has(clientId)) {
-      clientMap.set(clientId, {
+    if (!clientsMap.has(clientId)) {
+      clientsMap.set(clientId, {
         clientId,
-        clientName,
-        overallStatus: "nao-configurado"
+        clientName: account.clients.company_name,
+        metaAds: [],
+        googleAds: []
       });
     }
 
-    const client = clientMap.get(clientId)!;
-    
-    // Processar Meta Ads
-    if (snapshot.meta_has_account) {
-      const metaStatus = determineStatus(
-        snapshot.meta_has_account,
-        snapshot.meta_active_campaigns_count,
-        snapshot.meta_cost_today,
-        snapshot.meta_impressions_today
-      );
+    const client = clientsMap.get(clientId)!;
+    const healthData = account.campaign_health[0]; // Sempre haverá um item devido ao inner join
 
-      client.metaAds = {
-        hasAccount: snapshot.meta_has_account,
-        hasActiveCampaigns: snapshot.meta_active_campaigns_count > 0,
-        costToday: snapshot.meta_cost_today,
-        impressionsToday: snapshot.meta_impressions_today,
-        activeCampaignsCount: snapshot.meta_active_campaigns_count,
-        accountId: snapshot.meta_account_id,
-        accountName: snapshot.meta_account_name,
-        status: metaStatus
-      };
-    }
+    const accountData = {
+      accountId: account.account_id,
+      accountName: account.account_name,
+      hasAccount: healthData.has_account,
+      hasActiveCampaigns: healthData.active_campaigns_count > 0,
+      costToday: healthData.cost_today,
+      impressionsToday: healthData.impressions_today,
+      status: determineAccountStatus(healthData),
+      errors: generateErrors(healthData)
+    };
 
-    // Processar Google Ads
-    if (snapshot.google_has_account) {
-      const googleStatus = determineStatus(
-        snapshot.google_has_account,
-        snapshot.google_active_campaigns_count,
-        snapshot.google_cost_today,
-        snapshot.google_impressions_today
-      );
-
-      client.googleAds = {
-        hasAccount: snapshot.google_has_account,
-        hasActiveCampaigns: snapshot.google_active_campaigns_count > 0,
-        costToday: snapshot.google_cost_today,
-        impressionsToday: snapshot.google_impressions_today,
-        activeCampaignsCount: snapshot.google_active_campaigns_count,
-        accountId: snapshot.google_account_id,
-        accountName: snapshot.google_account_name,
-        status: googleStatus
-      };
+    if (account.platform === 'meta') {
+      client.metaAds = client.metaAds || [];
+      client.metaAds.push(accountData);
+    } else if (account.platform === 'google') {
+      client.googleAds = client.googleAds || [];
+      client.googleAds.push(accountData);
     }
   });
 
-  // Calcular status geral para cada cliente
-  const processedData = Array.from(clientMap.values()).map(client => ({
-    ...client,
-    overallStatus: determineOverallStatus(client.metaAds, client.googleAds)
-  }));
-
-  console.log(`✅ Processados ${processedData.length} clientes APENAS com dados de hoje (timezone brasileiro: ${today})`);
-  return { processedData, latestUpdatedAt };
-}
-
-// Busca dados RIGOROSAMENTE de hoje - sem fallbacks (timezone brasileiro)
-async function fetchTodayOnlyCampaignHealth(): Promise<{ processedData: ClientHealthData[], latestUpdatedAt: number }> {
-  const today = getTodayInBrazil();
-  console.log(`🔍 Buscando dados RIGOROSAMENTE de hoje (timezone brasileiro): ${today}`);
+  const result = Array.from(clientsMap.values());
   
-  try {
-    // Passo 1: Tentar buscar snapshots de hoje
-    const todaySnapshots = await CampaignHealthService.fetchTodaySnapshots();
-    
-    // Passo 2: Validar que todos os dados são realmente de hoje
-    if (!CampaignHealthService.validateDataIsFromToday(todaySnapshots)) {
-      console.log("❌ Dados não são válidos para hoje (timezone brasileiro). Gerando novos dados...");
-      
-      // Passo 3: Se não há dados válidos de hoje, gerar
-      const generateSuccess = await CampaignHealthService.generateTodaySnapshots();
-      
-      if (generateSuccess) {
-        // Aguardar processamento
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Buscar novamente
-        const newSnapshots = await CampaignHealthService.fetchTodaySnapshots();
-        
-        if (CampaignHealthService.validateDataIsFromToday(newSnapshots)) {
-          console.log(`✅ Novos snapshots gerados com sucesso para hoje (timezone brasileiro)`);
-          return processSnapshots(newSnapshots);
-        }
-      }
+  console.log(`✅ Nova estrutura: Processados ${result.length} clientes`);
+  return result;
+};
 
-      console.log("❌ Falha ao gerar dados de hoje (timezone brasileiro). Retornando array vazio.");
-      return { processedData: [], latestUpdatedAt: 0 };
-    }
+const determineAccountStatus = (healthData: any): CampaignStatus => {
+  if (!healthData.has_account) return "no-account";
+  if (healthData.active_campaigns_count === 0) return "no-campaigns";
+  if (healthData.cost_today === 0) return "no-spend";
+  if (healthData.cost_today > 0 && healthData.impressions_today < 100) return "low-performance";
+  return "active";
+};
 
-    console.log(`✅ Dados válidos de hoje encontrados (timezone brasileiro): ${todaySnapshots.length} registros`);
-    return processSnapshots(todaySnapshots);
-
-  } catch (error) {
-    console.error("❌ Erro ao buscar dados de hoje (timezone brasileiro):", error);
-    throw error;
+const generateErrors = (healthData: any): string[] => {
+  const errors: string[] = [];
+  
+  if (!healthData.has_account) {
+    errors.push("Conta não configurada");
+  } else if (healthData.active_campaigns_count === 0) {
+    errors.push("Nenhuma campanha ativa");
+  } else if (healthData.cost_today === 0) {
+    errors.push("Sem veiculação hoje");
+  } else if (healthData.impressions_today < 100) {
+    errors.push("Baixo volume de impressões");
   }
-}
+  
+  return errors;
+};
 
 export function useActiveCampaignHealth() {
   const [filterValue, setFilterValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | "all">("all");
-  const [platformFilter, setPlatformFilter] = useState<'meta' | 'google' | 'all'>("all");
+  const [platformFilter, setPlatformFilter] = useState<"all" | "meta" | "google">("all");
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState(Date.now());
 
-  const queryClient = useQueryClient();
-  const today = getTodayInBrazil();
-  const queryKey = ["active-campaign-health", today]; // Cache baseado na data (timezone brasileiro)
+  const todayDate = new Date().toISOString().split('T')[0];
 
-  // Query para buscar APENAS dados de hoje (timezone brasileiro)
-  const { data: queryResult, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey,
-    queryFn: fetchTodayOnlyCampaignHealth,
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['active-campaign-health-unified', todayDate],
+    queryFn: fetchActiveCampaignHealth,
     staleTime: 5 * 60 * 1000, // 5 minutos
-    refetchInterval: 10 * 60 * 1000, // Auto-refresh a cada 10 minutos
-    refetchOnWindowFocus: true, // Habilitado para melhor experiência do usuário
-    retry: 2,
-    retryDelay: 3000
+    gcTime: 10 * 60 * 1000, // 10 minutos
+    refetchInterval: 5 * 60 * 1000, // Auto refresh a cada 5 minutos
+    retry: 2
   });
 
-  // Invalidar cache automaticamente quando a data muda (timezone brasileiro)
-  useEffect(() => {
-    const checkDateChange = () => {
-      const currentDate = getTodayInBrazil();
-      const cachedDate = queryKey[1];
-      
-      if (currentDate !== cachedDate) {
-        console.log(`📅 Data mudou de ${cachedDate} para ${currentDate} (timezone brasileiro). Invalidando cache...`);
-        queryClient.removeQueries({ queryKey: ["active-campaign-health"] });
-        window.location.reload(); // Force reload para garantir dados frescos
-      }
-    };
-
-    // Verificar mudança de data a cada minuto
-    const interval = setInterval(checkDateChange, 60000);
-    return () => clearInterval(interval);
-  }, [queryClient, queryKey]);
-
-  // Filtrar dados com logs para debug
-  const filteredData = queryResult?.processedData?.filter(client => {
-    const matchesName = filterValue === "" || 
-      client.clientName.toLowerCase().includes(filterValue.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || client.overallStatus === statusFilter;
-    
-    let matchesPlatform = true;
-    if (platformFilter !== "all") {
-      if (platformFilter === "meta") {
-        matchesPlatform = !!client.metaAds;
-      } else if (platformFilter === "google") {
-        matchesPlatform = !!client.googleAds;
-      }
-    }
-    
-    const passes = matchesName && matchesStatus && matchesPlatform;
-    
-    if (filterValue || statusFilter !== "all" || platformFilter !== "all") {
-      console.log(`🔍 Filtro para ${client.clientName}:`, {
-        matchesName,
-        matchesStatus: { current: client.overallStatus, filter: statusFilter, matches: matchesStatus },
-        matchesPlatform,
-        passes
-      });
-    }
-    
-    return passes;
-  }) || [];
-
-  // Função melhorada para atualizar APENAS dados de hoje (timezone brasileiro)
   const handleRefresh = async () => {
-    console.log("🔄 Iniciando atualização manual APENAS para hoje (timezone brasileiro)...");
+    console.log("🔄 Executando refresh manual dos dados...");
     setIsManualRefreshing(true);
     
     try {
-      // Invalidar cache local
-      await queryClient.removeQueries({ queryKey });
+      // Primeiro, executar a edge function para buscar dados atualizados das APIs
+      const { data: refreshResult, error: refreshError } = await supabase.functions.invoke('active-campaigns-health');
       
-      // Forçar regeneração para hoje
-      const forceRefreshSuccess = await CampaignHealthService.forceRefreshTodaySnapshots();
-      
-      if (!forceRefreshSuccess) {
-        console.warn("⚠️ Edge function pode ter falhado, tentando refetch...");
-      }
-      
-      // Aguardar processamento
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Refetch dos dados
-      const result = await refetch();
-      
-      if (result.isSuccess) {
-        console.log("✅ Atualização manual concluída para hoje (timezone brasileiro)!");
+      if (refreshError) {
+        console.error("❌ Erro ao executar edge function:", refreshError);
       } else {
-        throw new Error("Falha ao buscar dados atualizados");
+        console.log("✅ Edge function executada com sucesso:", refreshResult);
       }
+      
+      // Depois, refetch os dados locais
+      await refetch();
+      setLastRefreshTimestamp(Date.now());
       
     } catch (error) {
-      console.error("❌ Erro durante atualização manual:", error);
-      
-      // Fallback: refetch simples
-      try {
-        const fallbackResult = await refetch();
-        if (fallbackResult.isSuccess) {
-          console.log("✅ Fallback refetch bem-sucedido");
-        }
-      } catch (fallbackError) {
-        console.error("❌ Fallback também falhou:", fallbackError);
-      }
+      console.error("❌ Erro no refresh manual:", error);
     } finally {
       setIsManualRefreshing(false);
     }
   };
 
-  // Função para ações dos botões
-  function handleAction(action: "review" | "configure", clientId: string, platform: 'meta' | 'google') {
-    if (action === "review") {
-      const platformParam = encodeURIComponent(platform);
-      window.open(`/revisao-diaria-avancada?clienteId=${clientId}&platform=${platformParam}`, "_blank");
-    }
-    
-    if (action === "configure") {
-      window.open(`/clientes/${clientId}`, "_blank");
-    }
-  }
-
-  // Estatísticas para dashboard
+  // Calcular estatísticas
   const stats = {
-    totalClients: queryResult?.processedData?.length || 0,
-    functioning: filteredData.filter(client => client.overallStatus === "funcionando").length,
-    noSpend: filteredData.filter(client => client.overallStatus === "sem-veiculacao").length,
-    noCampaigns: filteredData.filter(client => client.overallStatus === "sem-campanhas").length,
-    notConfigured: filteredData.filter(client => client.overallStatus === "nao-configurado").length,
+    totalClients: data?.length || 0,
+    clientsWithMeta: data?.filter(c => c.metaAds && c.metaAds.length > 0).length || 0,
+    clientsWithGoogle: data?.filter(c => c.googleAds && c.googleAds.length > 0).length || 0,
+    totalAccounts: data?.reduce((acc, client) => {
+      return acc + (client.metaAds?.length || 0) + (client.googleAds?.length || 0);
+    }, 0) || 0
   };
 
   return {
-    data: filteredData,
+    data,
     isLoading,
-    isFetching: isFetching || isManualRefreshing,
-    error: error ? "Erro ao carregar dados de saúde das campanhas." : null,
+    isFetching,
+    error: error?.message,
     filterValue,
     setFilterValue,
     statusFilter,
     setStatusFilter,
     platformFilter,
     setPlatformFilter,
-    handleAction,
     handleRefresh,
-    lastRefreshTimestamp: queryResult?.latestUpdatedAt || 0,
+    lastRefreshTimestamp,
     stats,
     isManualRefreshing,
-    todayDate: today // Expor data atual para a UI (timezone brasileiro)
+    todayDate
   };
 }

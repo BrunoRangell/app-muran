@@ -1,6 +1,5 @@
 
 import { useMemo } from "react";
-import { CampaignHealth } from "./useCampaignHealthData";
 import { ClientHealthData } from "../types";
 import { 
   EnhancedClientData, 
@@ -82,12 +81,12 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         overallStatus: "ok"
       };
       
-      // Processar contas Meta Ads - SUPORTE A MÚLTIPLAS CONTAS
-      if (client.metaAds) {
-        const metaAccountsArray = Array.isArray(client.metaAds) ? client.metaAds : [client.metaAds];
+      // Processar contas Meta Ads
+      if (client.metaAds && client.metaAds.length > 0) {
         const metaDataArray: EnhancedPlatformData[] = [];
         
-        metaAccountsArray.forEach((metaData, index) => {
+        client.metaAds.forEach((metaData, index) => {
+          // Usar dados reais da nova estrutura
           const activeCampaignsCount = metaData.hasActiveCampaigns ? 1 : 0;
           const unservedCampaignsCount = metaData.costToday === 0 && metaData.hasActiveCampaigns ? 1 : 0;
           
@@ -136,12 +135,12 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         enhancedClient.metaAds = metaDataArray;
       }
       
-      // Processar contas Google Ads - SUPORTE A MÚLTIPLAS CONTAS
-      if (client.googleAds) {
-        const googleAccountsArray = Array.isArray(client.googleAds) ? client.googleAds : [client.googleAds];
+      // Processar contas Google Ads
+      if (client.googleAds && client.googleAds.length > 0) {
         const googleDataArray: EnhancedPlatformData[] = [];
         
-        googleAccountsArray.forEach((googleData, index) => {
+        client.googleAds.forEach((googleData, index) => {
+          // Usar dados reais da nova estrutura
           const activeCampaignsCount = googleData.hasActiveCampaigns ? 1 : 0;
           const unservedCampaignsCount = googleData.costToday === 0 && googleData.hasActiveCampaigns ? 1 : 0;
           
