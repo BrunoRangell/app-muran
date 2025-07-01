@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { formatResponse, formatErrorResponse } from "./response.ts";
@@ -293,7 +294,7 @@ async function processGoogleReview(req: Request) {
       }
     }
 
-    // Verificar revisão existente na nova tabela budget_reviews
+    // CORREÇÃO: Verificar revisão existente na tabela budget_reviews unificada
     const existingReviewResponse = await fetch(
       `${supabaseUrl}/rest/v1/budget_reviews?client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&platform=eq.google&review_date=eq.${reviewDate}&select=id`, {
       headers: {
@@ -590,22 +591,21 @@ async function processGoogleReview(req: Request) {
       custom_budget_end_date: null
     };
 
-    // Dados para a revisão - APENAS DADOS REAIS OU ZERADOS + GASTOS INDIVIDUAIS
+    // CORREÇÃO: Dados para a revisão na tabela budget_reviews unificada
     const reviewData = {
       client_id: clientId,
+      account_id: accountIdUuid,
+      platform: 'google',
       review_date: reviewDate,
-      google_daily_budget_current: currentDailyBudget,
-      google_total_spent: totalSpent,
-      google_last_five_days_spent: lastFiveDaysSpent,
-      google_account_id: googleAccountId,
-      google_account_name: accountName,
-      account_display_name: accountName,
+      daily_budget_current: currentDailyBudget,
+      total_spent: totalSpent,
+      last_five_days_spent: lastFiveDaysSpent,
       // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
-      google_day_1_spent: googleDay1Spent,
-      google_day_2_spent: googleDay2Spent,
-      google_day_3_spent: googleDay3Spent,
-      google_day_4_spent: googleDay4Spent,
-      google_day_5_spent: googleDay5Spent,
+      day_1_spent: googleDay1Spent,
+      day_2_spent: googleDay2Spent,
+      day_3_spent: googleDay3Spent,
+      day_4_spent: googleDay4Spent,
+      day_5_spent: googleDay5Spent,
       ...customBudgetInfo,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -627,14 +627,14 @@ async function processGoogleReview(req: Request) {
       apiErrorDetails
     });
     
-    // TRATAMENTO DEFENSIVO: Atualizar ou criar revisão com validação de erro
+    // CORREÇÃO: Atualizar ou criar revisão na tabela budget_reviews unificada
     try {
       if (existingReviews && existingReviews.length > 0) {
         reviewId = existingReviews[0].id;
         
         // Atualizar revisão existente
         const updateResponse = await fetch(
-          `${supabaseUrl}/rest/v1/google_ads_reviews?id=eq.${reviewId}`, {
+          `${supabaseUrl}/rest/v1/budget_reviews?id=eq.${reviewId}`, {
           method: "PATCH",
           headers: {
             "apikey": supabaseKey,
@@ -643,15 +643,15 @@ async function processGoogleReview(req: Request) {
             "Prefer": "return=minimal"
           },
           body: JSON.stringify({
-            google_daily_budget_current: currentDailyBudget,
-            google_total_spent: totalSpent,
-            google_last_five_days_spent: lastFiveDaysSpent,
+            daily_budget_current: currentDailyBudget,
+            total_spent: totalSpent,
+            last_five_days_spent: lastFiveDaysSpent,
             // NOVOS CAMPOS: Gastos individuais
-            google_day_1_spent: googleDay1Spent,
-            google_day_2_spent: googleDay2Spent,
-            google_day_3_spent: googleDay3Spent,
-            google_day_4_spent: googleDay4Spent,
-            google_day_5_spent: googleDay5Spent,
+            day_1_spent: googleDay1Spent,
+            day_2_spent: googleDay2Spent,
+            day_3_spent: googleDay3Spent,
+            day_4_spent: googleDay4Spent,
+            day_5_spent: googleDay5Spent,
             ...customBudgetInfo,
             updated_at: new Date().toISOString()
           })
@@ -666,7 +666,7 @@ async function processGoogleReview(req: Request) {
             console.warn("⚠️ Erro de chave estrangeira com orçamento personalizado - tentando sem orçamento personalizado");
             
             const fallbackUpdateResponse = await fetch(
-              `${supabaseUrl}/rest/v1/google_ads_reviews?id=eq.${reviewId}`, {
+              `${supabaseUrl}/rest/v1/budget_reviews?id=eq.${reviewId}`, {
               method: "PATCH",
               headers: {
                 "apikey": supabaseKey,
@@ -675,15 +675,15 @@ async function processGoogleReview(req: Request) {
                 "Prefer": "return=minimal"
               },
               body: JSON.stringify({
-                google_daily_budget_current: currentDailyBudget,
-                google_total_spent: totalSpent,
-                google_last_five_days_spent: lastFiveDaysSpent,
+                daily_budget_current: currentDailyBudget,
+                total_spent: totalSpent,
+                last_five_days_spent: lastFiveDaysSpent,
                 // NOVOS CAMPOS: Gastos individuais
-                google_day_1_spent: googleDay1Spent,
-                google_day_2_spent: googleDay2Spent,
-                google_day_3_spent: googleDay3Spent,
-                google_day_4_spent: googleDay4Spent,
-                google_day_5_spent: googleDay5Spent,
+                day_1_spent: googleDay1Spent,
+                day_2_spent: googleDay2Spent,
+                day_3_spent: googleDay3Spent,
+                day_4_spent: googleDay4Spent,
+                day_5_spent: googleDay5Spent,
                 using_custom_budget: false,
                 custom_budget_id: null,
                 custom_budget_amount: null,
@@ -708,7 +708,7 @@ async function processGoogleReview(req: Request) {
       } else {
         // Criar nova revisão
         const insertResponse = await fetch(
-          `${supabaseUrl}/rest/v1/google_ads_reviews`, {
+          `${supabaseUrl}/rest/v1/budget_reviews`, {
           method: "POST",
           headers: {
             "apikey": supabaseKey,
@@ -737,7 +737,7 @@ async function processGoogleReview(req: Request) {
             };
             
             const fallbackInsertResponse = await fetch(
-              `${supabaseUrl}/rest/v1/google_ads_reviews`, {
+              `${supabaseUrl}/rest/v1/budget_reviews`, {
               method: "POST",
               headers: {
                 "apikey": supabaseKey,
