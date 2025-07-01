@@ -34,15 +34,13 @@ export function useUnifiedReviewsData() {
     queryFn: async () => {
       console.log("🔍 Buscando dados dos clientes Meta Ads consolidados...");
       
-      // Buscar clientes ativos - FONTE ÚNICA DE VERDADE para orçamentos
+      // Buscar clientes ativos - CORRIGIDO: sem campos inexistentes
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
         .select(`
           id,
           company_name,
-          status,
-          meta_ads_budget,
-          meta_account_id
+          status
         `)
         .eq("status", "active");
 
@@ -53,37 +51,37 @@ export function useUnifiedReviewsData() {
 
       console.log("✅ Clientes encontrados:", clients?.length || 0);
 
-      // Buscar contas Meta adicionais (apenas para múltiplas contas)
-      const { data: additionalMetaAccounts, error: accountsError } = await supabase
-        .from("client_meta_accounts")
+      // Buscar contas Meta da tabela unificada client_accounts
+      const { data: metaAccounts, error: accountsError } = await supabase
+        .from("client_accounts")
         .select("*")
         .eq("status", "active")
-        .eq("is_primary", false); // Apenas contas secundárias
+        .eq("platform", "meta")
+        .order("client_id")
+        .order("is_primary", { ascending: false });
 
       if (accountsError) {
-        console.error("❌ Erro ao buscar contas Meta adicionais:", accountsError);
+        console.error("❌ Erro ao buscar contas Meta:", accountsError);
         throw accountsError;
       }
 
-      console.log("✅ Contas Meta adicionais encontradas:", additionalMetaAccounts?.length || 0);
+      console.log("✅ Contas Meta encontradas:", metaAccounts?.length || 0);
 
-      // MUDANÇA PRINCIPAL: Buscar revisões desde o início do mês, igual ao Google Ads
+      // Buscar revisões desde o início do mês
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const firstDayStr = firstDay.toISOString().split("T")[0];
       
       console.log(`🔍 Buscando revisões Meta desde ${firstDayStr} (início do mês)`);
       
-      // CORREÇÃO: Incluir campos de warning ignorado
       const { data: reviews, error: reviewsError } = await supabase
-        .from("daily_budget_reviews")
+        .from("budget_reviews")
         .select(`
-          *,
-          warning_ignored_today,
-          warning_ignored_date
+          *
         `)
+        .eq("platform", "meta")
         .gte("review_date", firstDayStr)
-        .order("review_date", { ascending: false }); // Mais recente primeiro
+        .order("review_date", { ascending: false });
 
       if (reviewsError) {
         console.error("❌ Erro ao buscar revisões:", reviewsError);
@@ -92,7 +90,7 @@ export function useUnifiedReviewsData() {
       
       console.log("✅ Revisões encontradas desde início do mês:", reviews?.length || 0);
       
-      // Buscar orçamentos personalizados ativos - TABELA UNIFICADA
+      // Buscar orçamentos personalizados ativos
       const todayStr = today.toISOString().split("T")[0];
       const { data: activeCustomBudgets, error: budgetsError } = await supabase
         .from("custom_budgets")
@@ -115,7 +113,7 @@ export function useUnifiedReviewsData() {
         customBudgetsByClientId.set(budget.client_id, budget);
       });
 
-      // NOVA FUNÇÃO: Verificar se o aviso foi ignorado hoje (igual ao Google Ads)
+      // Verificar se o aviso foi ignorado hoje
       const checkWarningIgnored = (review: any) => {
         if (!review) return false;
         
@@ -138,15 +136,8 @@ export function useUnifiedReviewsData() {
       // Criar Set de clientes com contas Meta
       const clientsWithAccounts = new Set();
       
-      // Processar clientes com conta principal (da tabela clients)
-      clients?.forEach(client => {
-        if (client.meta_account_id) {
-          clientsWithAccounts.add(client.id);
-        }
-      });
-      
-      // Adicionar clientes com contas adicionais
-      additionalMetaAccounts?.forEach(account => {
+      // Adicionar clientes que têm contas Meta
+      metaAccounts?.forEach(account => {
         clientsWithAccounts.add(account.client_id);
       });
       
@@ -159,49 +150,30 @@ export function useUnifiedReviewsData() {
 
       // Combinar os dados - incluir TODOS os clientes
       const clientsWithData = clients?.map(client => {
-        // Verificar se tem conta principal (da tabela clients)
-        const hasMainAccount = client.meta_account_id && client.meta_account_id !== '';
+        // VALIDAÇÃO: garantir que company_name existe
+        if (!client.company_name) {
+          console.warn(`⚠️ Cliente sem nome da empresa:`, client);
+          client.company_name = `Cliente ${client.id.slice(0, 8)}`;
+        }
         
-        // Buscar contas adicionais
-        const additionalAccounts = additionalMetaAccounts?.filter(account => 
+        // Buscar contas Meta para este cliente
+        const clientMetaAccounts = metaAccounts?.filter(account => 
           account.client_id === client.id
         ) || [];
         
-        const allAccounts = [];
-        
-        // Adicionar conta principal se existir
-        if (hasMainAccount) {
-          allAccounts.push({
-            account_id: client.meta_account_id,
-            account_name: "Conta Principal",
-            budget_amount: client.meta_ads_budget || 0, // FONTE ÚNICA: clients.meta_ads_budget
-            is_primary: true
-          });
-        }
-        
-        // Adicionar contas secundárias
-        additionalAccounts.forEach(account => {
-          allAccounts.push({
-            account_id: account.account_id,
-            account_name: account.account_name,
-            budget_amount: account.budget_amount,
-            is_primary: false
-          });
-        });
-        
         // Se o cliente tem contas Meta configuradas
-        if (allAccounts.length > 0) {
-          return allAccounts.map(account => {
-            // MUDANÇA PRINCIPAL: Buscar a revisão mais recente para esta conta
+        if (clientMetaAccounts.length > 0) {
+          return clientMetaAccounts.map(account => {
+            // Buscar a revisão mais recente para esta conta
             const clientReviews = reviews?.filter(r => 
               r.client_id === client.id && 
-              r.meta_account_id === account.account_id
+              r.account_id === account.id
             ) || [];
             
-            // Usar a revisão mais recente (primeira no array ordenado)
+            // Usar a revisão mais recente
             const review = clientReviews.length > 0 ? clientReviews[0] : null;
             
-            // NOVA VERIFICAÇÃO: Verificar se warning foi ignorado hoje
+            // Verificar se warning foi ignorado hoje
             const warningIgnoredToday = checkWarningIgnored(review);
             
             console.log(`🔍 Cliente ${client.company_name} (${account.account_name}): ${clientReviews.length} revisões encontradas, usando: ${review?.review_date || 'nenhuma'}, warning ignorado: ${warningIgnoredToday}`);
@@ -237,16 +209,15 @@ export function useUnifiedReviewsData() {
             
             console.log(`🔍 DEBUG - Cliente ${client.company_name}: customBudgetEndDate = ${customBudgetEndDate}`);
             
-            // CORREÇÃO PRINCIPAL: Passar warningIgnoredToday para calculateBudget
+            // Calcular orçamento
             const budgetCalc = calculateBudget({
               monthlyBudget: monthlyBudget,
-              totalSpent: review?.meta_total_spent || 0,
-              currentDailyBudget: review?.meta_daily_budget_current || 0,
+              totalSpent: review?.total_spent || 0,
+              currentDailyBudget: review?.daily_budget_current || 0,
               customBudgetEndDate: customBudgetEndDate,
               warningIgnoredToday: warningIgnoredToday
             });
             
-            // CORREÇÃO: needsAdjustment já considera warnings ignorados dentro de calculateBudget
             const needsAdjustment = budgetCalc.needsBudgetAdjustment;
             
             const clientData = {
@@ -267,7 +238,7 @@ export function useUnifiedReviewsData() {
             };
             
             console.log(`📝 Cliente processado: ${client.company_name} (${account.account_name})`, {
-              totalSpent: review?.meta_total_spent || 0,
+              totalSpent: review?.total_spent || 0,
               budgetAmount: monthlyBudget,
               needsAdjustment: needsAdjustment,
               budgetDifference: budgetCalc.budgetDifference,
@@ -275,7 +246,6 @@ export function useUnifiedReviewsData() {
               warningIgnoredToday: warningIgnoredToday,
               hasReview: !!review,
               reviewDate: review?.review_date,
-              sourceTable: account.is_primary ? "clients" : "client_meta_accounts",
               customBudgetEndDate: customBudgetEndDate,
               remainingDays: budgetCalc.remainingDays
             });
@@ -318,7 +288,7 @@ export function useUnifiedReviewsData() {
       
       // Calcular métricas
       const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
-      const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.meta_total_spent || 0), 0);
+      const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.total_spent || 0), 0);
       
       console.log("📊 Métricas calculadas:", {
         totalClients: clientsWithAccounts.size,

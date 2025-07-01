@@ -27,6 +27,12 @@ export function ClientsList({
     if (!data) return [];
     
     return data.filter(client => {
+      // VALIDAÇÃO: verificar se client e company_name existem
+      if (!client || typeof client.company_name !== 'string') {
+        console.warn('⚠️ Cliente inválido ou sem company_name:', client);
+        return false; // Filtrar clientes inválidos
+      }
+      
       // Filtro de texto
       const matchesSearch = 
         searchQuery === "" || 
@@ -55,15 +61,26 @@ export function ClientsList({
     });
   }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, platform]);
   
-  // Ordenar clientes - PRIORIDADE DE CONTA + ORDEM ALFABÉTICA
+  // Ordenar clientes - PRIORIDADE DE CONTA + ORDEM ALFABÉTICA com validação
   const sortedClients = useMemo(() => {
     return [...filteredData].sort((a, b) => {
+      // VALIDAÇÃO: verificar se ambos os clientes têm company_name
+      const aName = a?.company_name || '';
+      const bName = b?.company_name || '';
+      
       // Primeiro critério: clientes COM conta aparecem primeiro
       if (a.hasAccount !== b.hasAccount) {
         return a.hasAccount ? -1 : 1;
       }
-      // Segundo critério: ordem alfabética por nome da empresa
-      return a.company_name.localeCompare(b.company_name);
+      
+      // Segundo critério: ordem alfabética por nome da empresa (com validação)
+      try {
+        return aName.localeCompare(bName);
+      } catch (error) {
+        console.error('❌ Erro no sort localeCompare:', error, { a: aName, b: bName });
+        // Fallback para sort básico se localeCompare falhar
+        return aName < bName ? -1 : aName > bName ? 1 : 0;
+      }
     });
   }, [filteredData]);
 
