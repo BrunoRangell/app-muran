@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { formatDateForDisplay } from "@/utils/brazilTimezone";
-import { ClientHealthData, CampaignStatus } from "../types";
+import { ClientHealthData, CampaignStatus, PlatformAccountData } from "../types";
 
 interface UnifiedAccountData {
   id: string;
@@ -89,7 +89,7 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
     const client = clientsMap.get(clientId)!;
     const healthData = account.campaign_health[0]; // Sempre haverá um item devido ao inner join
 
-    const accountData = {
+    const accountData: PlatformAccountData = {
       accountId: account.account_id,
       accountName: account.account_name,
       hasAccount: healthData.has_account,
@@ -188,14 +188,34 @@ export function useActiveCampaignHealth() {
     }
   };
 
-  // Calcular estatísticas
+  // Calcular estatísticas corrigidas
   const stats = {
     totalClients: data?.length || 0,
     clientsWithMeta: data?.filter(c => c.metaAds && c.metaAds.length > 0).length || 0,
     clientsWithGoogle: data?.filter(c => c.googleAds && c.googleAds.length > 0).length || 0,
     totalAccounts: data?.reduce((acc, client) => {
       return acc + (client.metaAds?.length || 0) + (client.googleAds?.length || 0);
-    }, 0) || 0
+    }, 0) || 0,
+    functioning: data?.filter(client => {
+      const metaActive = client.metaAds?.some(acc => acc.status === "active") || false;
+      const googleActive = client.googleAds?.some(acc => acc.status === "active") || false;
+      return metaActive || googleActive;
+    }).length || 0,
+    noSpend: data?.filter(client => {
+      const metaNoSpend = client.metaAds?.some(acc => acc.status === "no-spend") || false;
+      const googleNoSpend = client.googleAds?.some(acc => acc.status === "no-spend") || false;
+      return metaNoSpend || googleNoSpend;
+    }).length || 0,
+    noCampaigns: data?.filter(client => {
+      const metaNoCampaigns = client.metaAds?.some(acc => acc.status === "no-campaigns") || false;
+      const googleNoCampaigns = client.googleAds?.some(acc => acc.status === "no-campaigns") || false;
+      return metaNoCampaigns || googleNoCampaigns;
+    }).length || 0,
+    notConfigured: data?.filter(client => {
+      const metaNotConfigured = client.metaAds?.some(acc => acc.status === "no-account") || false;
+      const googleNotConfigured = client.googleAds?.some(acc => acc.status === "no-account") || false;
+      return metaNotConfigured || googleNotConfigured;
+    }).length || 0
   };
 
   return {

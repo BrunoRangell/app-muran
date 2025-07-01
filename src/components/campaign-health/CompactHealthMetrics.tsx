@@ -8,8 +8,8 @@ export function CompactHealthMetrics() {
 
   // Calcular investimento total do dia
   const totalInvestment = data?.reduce((acc, client) => {
-    const metaCost = client.metaAds?.costToday || 0;
-    const googleCost = client.googleAds?.costToday || 0;
+    const metaCost = client.metaAds?.reduce((sum, acc) => sum + acc.costToday, 0) || 0;
+    const googleCost = client.googleAds?.reduce((sum, acc) => sum + acc.costToday, 0) || 0;
     return acc + metaCost + googleCost;
   }, 0) || 0;
 

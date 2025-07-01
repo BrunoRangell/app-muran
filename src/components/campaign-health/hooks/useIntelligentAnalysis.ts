@@ -85,33 +85,32 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
       if (client.metaAds && client.metaAds.length > 0) {
         const metaDataArray: EnhancedPlatformData[] = [];
         
-        client.metaAds.forEach((metaData, index) => {
-          // Usar dados reais da nova estrutura
-          const activeCampaignsCount = metaData.hasActiveCampaigns ? 1 : 0;
-          const unservedCampaignsCount = metaData.costToday === 0 && metaData.hasActiveCampaigns ? 1 : 0;
+        client.metaAds.forEach((metaAccount, index) => {
+          const activeCampaignsCount = metaAccount.hasActiveCampaigns ? 1 : 0;
+          const unservedCampaignsCount = metaAccount.costToday === 0 && metaAccount.hasActiveCampaigns ? 1 : 0;
           
           const alertLevel = determineAlertLevel(
-            metaData.costToday,
-            metaData.impressionsToday || 0,
+            metaAccount.costToday,
+            metaAccount.impressionsToday || 0,
             activeCampaignsCount,
             unservedCampaignsCount
           );
           
           const problems = generateProblems(
-            metaData.costToday,
-            metaData.impressionsToday || 0,
+            metaAccount.costToday,
+            metaAccount.impressionsToday || 0,
             activeCampaignsCount,
             unservedCampaignsCount
           );
           
           if (problems.length > 0) {
             alerts.push({
-              id: `${client.clientId}-meta-${metaData.accountId || index}`,
+              id: `${client.clientId}-meta-${metaAccount.accountId || index}`,
               clientId: client.clientId,
               clientName: client.clientName,
               platform: 'meta',
-              accountId: metaData.accountId || '',
-              accountName: metaData.accountName,
+              accountId: metaAccount.accountId || '',
+              accountName: metaAccount.accountName,
               alertLevel,
               problems,
               timestamp: new Date()
@@ -119,13 +118,13 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
           }
           
           metaDataArray.push({
-            accountId: metaData.accountId || '',
-            accountName: metaData.accountName,
-            hasAccount: metaData.hasAccount,
+            accountId: metaAccount.accountId || '',
+            accountName: metaAccount.accountName,
+            hasAccount: metaAccount.hasAccount,
             activeCampaignsCount,
             unservedCampaignsCount,
-            costToday: metaData.costToday,
-            impressionsToday: metaData.impressionsToday || 0,
+            costToday: metaAccount.costToday,
+            impressionsToday: metaAccount.impressionsToday || 0,
             alertLevel,
             problems,
             isPrimary: index === 0 // Primeira conta é considerada principal
@@ -139,33 +138,32 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
       if (client.googleAds && client.googleAds.length > 0) {
         const googleDataArray: EnhancedPlatformData[] = [];
         
-        client.googleAds.forEach((googleData, index) => {
-          // Usar dados reais da nova estrutura
-          const activeCampaignsCount = googleData.hasActiveCampaigns ? 1 : 0;
-          const unservedCampaignsCount = googleData.costToday === 0 && googleData.hasActiveCampaigns ? 1 : 0;
+        client.googleAds.forEach((googleAccount, index) => {
+          const activeCampaignsCount = googleAccount.hasActiveCampaigns ? 1 : 0;
+          const unservedCampaignsCount = googleAccount.costToday === 0 && googleAccount.hasActiveCampaigns ? 1 : 0;
           
           const alertLevel = determineAlertLevel(
-            googleData.costToday,
-            googleData.impressionsToday || 0,
+            googleAccount.costToday,
+            googleAccount.impressionsToday || 0,
             activeCampaignsCount,
             unservedCampaignsCount
           );
           
           const problems = generateProblems(
-            googleData.costToday,
-            googleData.impressionsToday || 0,
+            googleAccount.costToday,
+            googleAccount.impressionsToday || 0,
             activeCampaignsCount,
             unservedCampaignsCount
           );
           
           if (problems.length > 0) {
             alerts.push({
-              id: `${client.clientId}-google-${googleData.accountId || index}`,
+              id: `${client.clientId}-google-${googleAccount.accountId || index}`,
               clientId: client.clientId,
               clientName: client.clientName,
               platform: 'google',
-              accountId: googleData.accountId || '',
-              accountName: googleData.accountName,
+              accountId: googleAccount.accountId || '',
+              accountName: googleAccount.accountName,
               alertLevel,
               problems,
               timestamp: new Date()
@@ -173,13 +171,13 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
           }
           
           googleDataArray.push({
-            accountId: googleData.accountId || '',
-            accountName: googleData.accountName,
-            hasAccount: googleData.hasAccount,
+            accountId: googleAccount.accountId || '',
+            accountName: googleAccount.accountName,
+            hasAccount: googleAccount.hasAccount,
             activeCampaignsCount,
             unservedCampaignsCount,
-            costToday: googleData.costToday,
-            impressionsToday: googleData.impressionsToday || 0,
+            costToday: googleAccount.costToday,
+            impressionsToday: googleAccount.impressionsToday || 0,
             alertLevel,
             problems,
             isPrimary: index === 0 // Primeira conta é considerada principal
