@@ -1,4 +1,5 @@
 
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 
 // Tipos para operações de banco de dados
@@ -8,6 +9,7 @@ export interface ClientData {
 }
 
 export interface MetaAccount {
+  id: string;
   account_id: string;
   account_name: string;
   budget_amount: number;
@@ -21,10 +23,9 @@ export interface CustomBudget {
 }
 
 export interface ReviewData {
-  meta_daily_budget_current: number;
-  meta_total_spent: number;
-  meta_account_id: string | null;
-  meta_account_name: string;
+  daily_budget_current: number;
+  total_spent: number;
+  account_id: string;
   using_custom_budget: boolean;
   custom_budget_id: string | null;
   custom_budget_amount: number | null;
@@ -68,7 +69,7 @@ export async function fetchMetaAccessToken(supabase: any): Promise<string | null
   }
 }
 
-// Buscar dados do cliente (simplificado - sem campos Meta específicos)
+// Buscar dados do cliente
 export async function fetchClientData(supabase: any, clientId: string): Promise<ClientData> {
   console.log(`Buscando dados para cliente ${clientId}`);
   
@@ -85,7 +86,7 @@ export async function fetchClientData(supabase: any, clientId: string): Promise<
   return client;
 }
 
-// Buscar detalhes da conta Meta específica (única fonte de verdade)
+// Buscar detalhes da conta Meta específica usando a tabela client_accounts
 export async function fetchMetaAccountDetails(
   supabase: any, 
   clientId: string, 
@@ -94,10 +95,11 @@ export async function fetchMetaAccountDetails(
   console.log(`Buscando detalhes de conta Meta específica: ${accountId} para cliente ${clientId}`);
   
   const { data: metaAccount, error: accountError } = await supabase
-    .from("client_meta_accounts")
+    .from("client_accounts")
     .select("*")
     .eq("client_id", clientId)
     .eq("account_id", accountId)
+    .eq("platform", "meta")
     .eq("status", "active")
     .maybeSingle();
 
@@ -109,7 +111,7 @@ export async function fetchMetaAccountDetails(
   return metaAccount;
 }
 
-// Buscar conta Meta principal do cliente (se não especificar account_id)
+// Buscar conta Meta principal do cliente usando a tabela client_accounts
 export async function fetchPrimaryMetaAccount(
   supabase: any, 
   clientId: string
@@ -117,9 +119,10 @@ export async function fetchPrimaryMetaAccount(
   console.log(`Buscando conta Meta principal para cliente ${clientId}`);
   
   const { data: metaAccount, error: accountError } = await supabase
-    .from("client_meta_accounts")
+    .from("client_accounts")
     .select("*")
     .eq("client_id", clientId)
+    .eq("platform", "meta")
     .eq("status", "active")
     .order("is_primary", { ascending: false })
     .order("created_at", { ascending: true })
@@ -133,7 +136,7 @@ export async function fetchPrimaryMetaAccount(
   return metaAccount;
 }
 
-// Buscar orçamento personalizado ativo - ATUALIZADO PARA TABELA UNIFICADA
+// Buscar orçamento personalizado ativo
 export async function fetchActiveCustomBudget(
   supabase: any, 
   clientId: string,
@@ -169,30 +172,23 @@ export async function fetchActiveCustomBudget(
   return customBudget;
 }
 
-// Verificar revisão existente - CORRIGIDO para usar a nova constraint
+// Verificar revisão existente na tabela budget_reviews
 export async function checkExistingReview(
   supabase: any, 
   clientId: string, 
-  accountId: string | null, 
+  accountId: string, 
   reviewDate: string
 ) {
-  console.log(`Verificando revisão existente para cliente ${clientId}, conta ${accountId || "null"} na data ${reviewDate}`);
+  console.log(`Verificando revisão existente para cliente ${clientId}, conta ${accountId} na data ${reviewDate}`);
   
-  // Construir query com filtros apropriados
-  let query = supabase
-    .from("daily_budget_reviews")
+  const { data: existingReview, error: existingReviewError } = await supabase
+    .from("budget_reviews")
     .select("*")
     .eq("client_id", clientId)
-    .eq("review_date", reviewDate);
-    
-  // Adicionar filtro de conta se especificado
-  if (accountId) {
-    query = query.eq("meta_account_id", accountId);
-  } else {
-    query = query.is("meta_account_id", null);
-  }
-  
-  const { data: existingReview, error: existingReviewError } = await query.maybeSingle();
+    .eq("account_id", accountId)
+    .eq("review_date", reviewDate)
+    .eq("platform", "meta")
+    .maybeSingle();
 
   if (existingReviewError && existingReviewError.code !== "PGRST116") {
     console.error(`Erro ao verificar revisão existente: ${existingReviewError.message}`);
@@ -207,18 +203,24 @@ export async function checkExistingReview(
   return existingReview;
 }
 
-// Atualizar revisão existente
+// Atualizar revisão existente na tabela budget_reviews
 export async function updateExistingReview(
   supabase: any, 
-  reviewId: number, 
+  reviewId: string, 
   reviewData: ReviewData
 ): Promise<void> {
   console.log(`Atualizando revisão existente: ${reviewId}`);
   
   const { error: updateError } = await supabase
-    .from("daily_budget_reviews")
+    .from("budget_reviews")
     .update({
-      ...reviewData,
+      daily_budget_current: reviewData.daily_budget_current,
+      total_spent: reviewData.total_spent,
+      using_custom_budget: reviewData.using_custom_budget,
+      custom_budget_id: reviewData.custom_budget_id,
+      custom_budget_amount: reviewData.custom_budget_amount,
+      custom_budget_start_date: reviewData.custom_budget_start_date,
+      custom_budget_end_date: reviewData.custom_budget_end_date,
       updated_at: new Date().toISOString()
     })
     .eq("id", reviewId);
@@ -230,21 +232,29 @@ export async function updateExistingReview(
   console.log(`✅ Revisão ${reviewId} atualizada com sucesso`);
 }
 
-// Criar nova revisão
+// Criar nova revisão na tabela budget_reviews
 export async function createNewReview(
   supabase: any, 
   clientId: string,
   reviewDate: string,
   reviewData: ReviewData
-): Promise<number> {
-  console.log(`Criando nova revisão para cliente ${clientId}, conta ${reviewData.meta_account_id}`);
+): Promise<string> {
+  console.log(`Criando nova revisão para cliente ${clientId}, conta ${reviewData.account_id}`);
   
   const { data: newReview, error: insertError } = await supabase
-    .from("daily_budget_reviews")
+    .from("budget_reviews")
     .insert({
-      ...reviewData,
       client_id: clientId,
-      review_date: reviewDate
+      account_id: reviewData.account_id,
+      review_date: reviewDate,
+      platform: "meta",
+      daily_budget_current: reviewData.daily_budget_current,
+      total_spent: reviewData.total_spent,
+      using_custom_budget: reviewData.using_custom_budget,
+      custom_budget_id: reviewData.custom_budget_id,
+      custom_budget_amount: reviewData.custom_budget_amount,
+      custom_budget_start_date: reviewData.custom_budget_start_date,
+      custom_budget_end_date: reviewData.custom_budget_end_date
     })
     .select()
     .single();
@@ -258,74 +268,3 @@ export async function createNewReview(
   return newReview.id;
 }
 
-// Atualizar ou criar revisão atual do cliente - MODIFICADO para suportar múltiplas contas
-export async function updateClientCurrentReview(
-  supabase: any, 
-  clientId: string, 
-  reviewDate: string,
-  reviewData: ReviewData
-): Promise<void> {
-  try {
-    console.log(`Atualizando revisão atual para cliente ${clientId}, conta ${reviewData.meta_account_id}`);
-    
-    // Verificar se já existe revisão atual para este cliente e conta específica
-    let query = supabase
-      .from("client_current_reviews")
-      .select("*")
-      .eq("client_id", clientId);
-      
-    // Filtrar por conta específica se fornecida
-    if (reviewData.meta_account_id) {
-      query = query.eq("meta_account_id", reviewData.meta_account_id);
-    } else {
-      query = query.is("meta_account_id", null);
-    }
-    
-    const { data: currentReview, error: currentReviewError } = await query.maybeSingle();
-
-    if (currentReviewError && currentReviewError.code !== "PGRST116") {
-      console.error(`Erro ao verificar revisão atual: ${currentReviewError.message}`);
-      return;
-    }
-
-    // Preparar dados apenas com campos que existem na tabela
-    const currentReviewData = {
-      client_id: clientId,
-      review_date: reviewDate,
-      meta_daily_budget_current: reviewData.meta_daily_budget_current,
-      meta_total_spent: reviewData.meta_total_spent,
-      meta_account_id: reviewData.meta_account_id,
-      meta_account_name: reviewData.meta_account_name,
-      using_custom_budget: reviewData.using_custom_budget,
-      custom_budget_id: reviewData.custom_budget_id,
-      custom_budget_amount: reviewData.custom_budget_amount
-    };
-
-    if (currentReview) {
-      // Atualizar revisão atual existente
-      const { error: updateCurrentError } = await supabase
-        .from("client_current_reviews")
-        .update(currentReviewData)
-        .eq("id", currentReview.id);
-
-      if (updateCurrentError) {
-        console.error(`Erro ao atualizar revisão atual: ${updateCurrentError.message}`);
-      } else {
-        console.log(`✅ Revisão atual atualizada para cliente ${clientId}, conta ${reviewData.meta_account_id}`);
-      }
-    } else {
-      // Inserir nova revisão atual
-      const { error: insertCurrentError } = await supabase
-        .from("client_current_reviews")
-        .insert(currentReviewData);
-
-      if (insertCurrentError) {
-        console.error(`Erro ao inserir revisão atual: ${insertCurrentError.message}`);
-      } else {
-        console.log(`✅ Nova revisão atual criada para cliente ${clientId}, conta ${reviewData.meta_account_id}`);
-      }
-    }
-  } catch (error) {
-    console.error(`Erro ao atualizar revisão atual do cliente: ${error.message}`);
-  }
-}
