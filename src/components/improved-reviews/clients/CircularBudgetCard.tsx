@@ -55,9 +55,9 @@ export function CircularBudgetCard({
   
   const isProcessing = processingIds.includes(client.id);
   
-  // Preparar dados para exibição
+  // Preparar dados para exibição - CORRIGIDO: usar nomes de campos unificados
   const companyName = client.company_name;
-  const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
+  const spentAmount = client.review?.total_spent || 0;
   const budgetAmount = client.budget_amount || 0;
   const originalBudgetAmount = client.original_budget_amount || budgetAmount;
   const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
@@ -384,17 +384,18 @@ export function CircularBudgetCard({
                 </div>
               ) : null}
               
-              {/* Para Meta Ads, manter a lógica atual */}
+              {/* Para Meta Ads, mostrar diário atual - CORRIGIDO: usar campo unificado */}
               {platform === "meta" && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Diário atual</p>
                   <p className="text-sm font-semibold text-gray-700">
-                    {formatCurrency(client.review?.meta_daily_budget_current || 0)}
+                    {formatCurrency(client.review?.daily_budget_current || 0)}
                   </p>
                 </div>
               )}
               
-              {platform === "meta" && idealDailyBudget !== (client.review?.meta_daily_budget_current || 0) ? (
+              {/* Para Meta Ads, mostrar diário ideal quando diferente do atual - CORRIGIDO */}
+              {platform === "meta" && idealDailyBudget !== (client.review?.daily_budget_current || 0) ? (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
                   <p className="text-sm font-semibold text-gray-700">
@@ -405,7 +406,7 @@ export function CircularBudgetCard({
             </div>
           </div>
 
-          {/* Recomendação de ajuste (se houver e não foi ignorada) */}
+          {/* Resto do componente permanece igual */}
           {needsAdjustment && budgetDifference !== 0 && !warningIgnoredToday && (
             <div className="mb-4 p-3 rounded-lg bg-gray-50 border">
               <div className="flex items-center justify-between">
@@ -449,7 +450,7 @@ export function CircularBudgetCard({
         </CardContent>
       </Card>
 
-      {/* Diálogo de confirmação para ignorar aviso */}
+      {/* Diálogo de confirmação */}
       <IgnoreWarningDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}

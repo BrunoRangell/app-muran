@@ -38,12 +38,13 @@ export function ClientsTable({ data, platform = "meta" }: ClientsTableProps) {
               {data.map((client) => {
                 const isProcessing = processingIds.includes(client.id);
                 const accountName = client[`${platform}_account_name`] || "Conta Principal";
-                const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
+                // CORRIGIDO: usar nomes de campos unificados
+                const spentAmount = client.review?.total_spent || 0;
                 const budgetAmount = client.budget_amount || 0;
                 const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
                 const needsAdjustment = client.needsAdjustment;
                 const budgetDifference = client.budgetCalculation?.budgetDifference || 0;
-                const currentDailyBudget = client.review?.[`${platform}_daily_budget_current`] || 0;
+                const currentDailyBudget = client.review?.daily_budget_current || 0;
                 const idealDailyBudget = client.budgetCalculation?.idealDailyBudget || 0;
 
                 return (
