@@ -43,50 +43,6 @@ export interface GoogleAdsMetrics {
   spentPercentage: number;
 }
 
-// Função para calcular média ponderada dos últimos 5 dias
-const calculateWeightedAverage = (day1: number, day2: number, day3: number, day4: number, day5: number): number => {
-  // Pesos: dia mais recente tem maior peso
-  // day5 = ontem (30%), day4 = anteontem (25%), etc.
-  const weightedSum = (day1 * 0.1) + (day2 * 0.15) + (day3 * 0.2) + (day4 * 0.25) + (day5 * 0.3);
-  
-  console.log(`🔍 Calculando média ponderada:`, {
-    day1, day2, day3, day4, day5,
-    weightedSum,
-    formula: 'day1*0.1 + day2*0.15 + day3*0.2 + day4*0.25 + day5*0.3'
-  });
-  
-  return weightedSum;
-};
-
-// Função para calcular orçamento diário ideal
-const calculateIdealDailyBudget = (budgetAmount: number, totalSpent: number, customBudgetEndDate?: string): number => {
-  const today = new Date();
-  let remainingDays: number;
-  
-  if (customBudgetEndDate) {
-    const endDate = new Date(customBudgetEndDate);
-    const timeDiff = endDate.getTime() - today.getTime();
-    remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
-  } else {
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
-  }
-  
-  const remainingBudget = Math.max(0, budgetAmount - totalSpent);
-  const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
-  
-  console.log(`📊 Calculando orçamento diário ideal:`, {
-    budgetAmount,
-    totalSpent,
-    remainingBudget,
-    remainingDays,
-    idealDailyBudget,
-    customBudgetEndDate
-  });
-  
-  return Math.round(idealDailyBudget * 100) / 100;
-};
-
 const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
   console.log("🔍 Buscando dados do Google Ads com estrutura padronizada...");
   
@@ -117,13 +73,7 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
         account_id,
         client_id,
         warning_ignored_today,
-        warning_ignored_date,
-        day_1_spent,
-        day_2_spent,
-        day_3_spent,
-        day_4_spent,
-        day_5_spent,
-        custom_budget_end_date
+        warning_ignored_date
       )
     `)
     .eq('status', 'active');
@@ -158,43 +108,6 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
         
         const latestReview = accountReviews.find((r: any) => r.review_date === today) || accountReviews[0];
         
-        // Calcular média ponderada dos últimos 5 dias
-        const day1Spent = latestReview?.day_1_spent || 0;
-        const day2Spent = latestReview?.day_2_spent || 0;
-        const day3Spent = latestReview?.day_3_spent || 0;
-        const day4Spent = latestReview?.day_4_spent || 0;
-        const day5Spent = latestReview?.day_5_spent || 0;
-        
-        const weightedAverage = calculateWeightedAverage(day1Spent, day2Spent, day3Spent, day4Spent, day5Spent);
-        
-        // Determinar orçamento atual (personalizado ou padrão)
-        const budgetAmount = latestReview?.custom_budget_amount || account.budget_amount || 0;
-        const totalSpent = latestReview?.total_spent || 0;
-        
-        // Calcular orçamento diário ideal
-        const idealDailyBudget = calculateIdealDailyBudget(
-          budgetAmount, 
-          totalSpent, 
-          latestReview?.custom_budget_end_date
-        );
-        
-        // Calcular diferença para determinar necessidade de ajuste
-        const budgetDifference = idealDailyBudget - weightedAverage;
-        const needsAdjustment = !latestReview?.warning_ignored_today && Math.abs(budgetDifference) >= 5;
-        
-        // Calcular dias restantes
-        const today = new Date();
-        let remainingDays: number;
-        
-        if (latestReview?.custom_budget_end_date) {
-          const endDate = new Date(latestReview.custom_budget_end_date);
-          const timeDiff = endDate.getTime() - today.getTime();
-          remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
-        } else {
-          const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-          remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
-        }
-        
         // ESTRUTURA PADRONIZADA - igual ao Meta Ads
         const clientData: GoogleAdsClientData = {
           // IDs padronizados
@@ -208,31 +121,42 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
           
           // Estrutura de revisão padronizada
           review: {
-            total_spent: totalSpent,
+            total_spent: latestReview?.total_spent || 0,
             daily_budget_current: latestReview?.daily_budget_current || account.budget_amount || 0
           },
           
           // Campos de orçamento padronizados
-          budget_amount: budgetAmount,
+          budget_amount: latestReview?.custom_budget_amount || account.budget_amount || 0,
           original_budget_amount: account.budget_amount || 0,
           
           // Cálculos básicos para determinar se precisa ajuste
-          needsAdjustment,
+          needsAdjustment: false, // Será calculado abaixo
           
           // Campos específicos do Google Ads
-          weightedAverage,
+          weightedAverage: latestReview?.daily_budget_current || account.budget_amount || 0,
           isUsingCustomBudget: latestReview?.using_custom_budget || false,
           
-          // Estrutura de cálculo padronizada - CORRIGIDA
+          // Estrutura de cálculo padronizada
           budgetCalculation: {
-            budgetDifference,
-            remainingDays,
-            idealDailyBudget,
-            needsBudgetAdjustment: needsAdjustment,
-            needsAdjustmentBasedOnAverage: needsAdjustment,
+            budgetDifference: 0, // Será calculado se necessário
+            remainingDays: 30, // Valor padrão
+            idealDailyBudget: latestReview?.daily_budget_current || account.budget_amount || 0,
+            needsBudgetAdjustment: false,
+            needsAdjustmentBasedOnAverage: false,
             warningIgnoredToday: latestReview?.warning_ignored_today || false
           }
         };
+
+        // Cálculo específico do Google Ads para ajuste
+        if (clientData.review && clientData.budget_amount > 0) {
+          const spentPercentage = (clientData.review.total_spent / clientData.budget_amount) * 100;
+          clientData.needsAdjustment = spentPercentage > 80 || spentPercentage < 20;
+          
+          if (clientData.budgetCalculation) {
+            clientData.budgetCalculation.needsBudgetAdjustment = clientData.needsAdjustment;
+            clientData.budgetCalculation.needsAdjustmentBasedOnAverage = clientData.needsAdjustment;
+          }
+        }
 
         result.push(clientData);
         
@@ -240,9 +164,6 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
           hasAccount: true,
           totalSpent: clientData.review?.total_spent,
           budgetAmount: clientData.budget_amount,
-          weightedAverage,
-          idealDailyBudget,
-          budgetDifference,
           needsAdjustment: clientData.needsAdjustment
         });
       }
