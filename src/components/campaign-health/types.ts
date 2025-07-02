@@ -37,3 +37,15 @@ export interface CampaignHealthStats {
   noCampaigns: number;
   notConfigured: number;
 }
+
+// Adicionar interface HealthStats que estava faltando
+export interface HealthStats {
+  totalClients: number;
+  clientsWithMeta: number;
+  clientsWithGoogle: number;
+  totalAccounts: number;
+  functioning: number;
+  noSpend: number;
+  noCampaigns: number;
+  notConfigured: number;
+}

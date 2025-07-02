@@ -5,27 +5,6 @@ import { useState } from "react";
 import { formatDateForDisplay } from "@/utils/brazilTimezone";
 import { ClientHealthData, CampaignStatus, PlatformAccountData } from "../types";
 
-interface UnifiedAccountData {
-  id: string;
-  client_id: string;
-  platform: 'meta' | 'google';
-  account_id: string;
-  account_name: string;
-  is_primary: boolean;
-  clients: {
-    id: string;
-    company_name: string;
-  };
-  campaign_health: Array<{
-    has_account: boolean;
-    active_campaigns_count: number;
-    unserved_campaigns_count: number;
-    cost_today: number;
-    impressions_today: number;
-    snapshot_date: string;
-  }>;
-}
-
 const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
   console.log("🔍 Iniciando busca de dados de saúde das campanhas...");
   
@@ -33,8 +12,9 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
   console.log("📅 Data de hoje:", today);
   
   try {
-    // Primeiro, vamos buscar os dados de forma mais simples
-    const { data: accountsData, error } = await supabase
+    // Primeiro, buscar todas as contas de clientes ativos
+    console.log("🔍 Buscando contas de clientes...");
+    const { data: accountsData, error: accountsError } = await supabase
       .from('client_accounts')
       .select(`
         id,
@@ -51,9 +31,9 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
       .eq('status', 'active')
       .eq('clients.status', 'active');
 
-    if (error) {
-      console.error("❌ Erro ao buscar contas de clientes:", error);
-      throw error;
+    if (accountsError) {
+      console.error("❌ Erro ao buscar contas de clientes:", accountsError);
+      throw accountsError;
     }
 
     console.log(`📊 Encontradas ${accountsData?.length || 0} contas de clientes`);
@@ -63,7 +43,8 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
       return [];
     }
 
-    // Agora buscar os dados de saúde das campanhas separadamente
+    // Buscar dados de saúde das campanhas para hoje
+    console.log("🔍 Buscando dados de saúde das campanhas...");
     const { data: healthData, error: healthError } = await supabase
       .from('campaign_health')
       .select('*')
@@ -71,12 +52,12 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
 
     if (healthError) {
       console.error("❌ Erro ao buscar dados de saúde:", healthError);
-      // Continuar mesmo com erro, mostrando contas sem dados de saúde
+      // Continuar mesmo com erro, mas mostrar que não há dados
     }
 
     console.log(`📈 Encontrados ${healthData?.length || 0} registros de saúde para hoje`);
 
-    // Agrupar dados por cliente
+    // Agrupar dados por cliente  
     const clientsMap = new Map<string, ClientHealthData>();
 
     accountsData.forEach((account: any) => {
@@ -88,7 +69,7 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
           clientName: account.clients.company_name,
           metaAds: [],
           googleAds: [],
-          overallStatus: "ok"
+          overallStatus: "no-data" // Corrigido: usar valor válido da enum
         });
       }
 
@@ -103,11 +84,11 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
         accountId: account.account_id,
         accountName: account.account_name,
         hasAccount: accountHealth?.has_account ?? true,
-        hasActiveCampaigns: accountHealth?.active_campaigns_count > 0,
+        hasActiveCampaigns: (accountHealth?.active_campaigns_count || 0) > 0,
         costToday: accountHealth?.cost_today ?? 0,
         impressionsToday: accountHealth?.impressions_today ?? 0,
         status: accountHealth ? determineAccountStatus(accountHealth) : "no-data",
-        errors: accountHealth ? generateErrors(accountHealth) : ["Dados não disponíveis"]
+        errors: accountHealth ? generateErrors(accountHealth) : ["Dados não disponíveis para hoje"]
       };
 
       if (account.platform === 'meta') {
@@ -116,6 +97,23 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
       } else if (account.platform === 'google') {
         client.googleAds = client.googleAds || [];
         client.googleAds.push(accountData);
+      }
+    });
+
+    // Determinar status geral de cada cliente
+    clientsMap.forEach((client) => {
+      const allAccounts = [...(client.metaAds || []), ...(client.googleAds || [])];
+      
+      if (allAccounts.some(acc => acc.status === "active")) {
+        client.overallStatus = "active";
+      } else if (allAccounts.some(acc => acc.status === "no-spend")) {
+        client.overallStatus = "no-spend";
+      } else if (allAccounts.some(acc => acc.status === "no-campaigns")) {
+        client.overallStatus = "no-campaigns";
+      } else if (allAccounts.some(acc => acc.status === "no-account")) {
+        client.overallStatus = "no-account";
+      } else {
+        client.overallStatus = "no-data";
       }
     });
 
@@ -134,6 +132,7 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
       console.log(`📋 Cliente: ${client.clientName}`);
       console.log(`  - Meta Ads: ${client.metaAds?.length || 0} contas`);
       console.log(`  - Google Ads: ${client.googleAds?.length || 0} contas`);
+      console.log(`  - Status geral: ${client.overallStatus}`);
     });
     
     return result;
