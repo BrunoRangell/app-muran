@@ -3,16 +3,18 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { parseCurrencyToNumber } from "@/utils/formatters";
 
-type ClientBudget = {
+type ClientWithAccounts = {
   id: string;
   company_name: string;
-  meta_ads_budget: number;
-  meta_account_id: string | null;
-  google_ads_budget: number;
-  google_account_id: string | null;
   status: string;
+  client_accounts: Array<{
+    id: string;
+    platform: 'meta' | 'google';
+    account_id: string;
+    budget_amount: number;
+    is_primary: boolean;
+  }>;
 };
 
 type BudgetValues = {
@@ -28,38 +30,69 @@ export const useBudgetSetup = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Buscar todos os clientes
+  // Buscar clientes com suas contas
   const { data: clients, isLoading } = useQuery({
-    queryKey: ["clients-budget-setup"],
+    queryKey: ["clients-with-accounts-setup"],
     queryFn: async () => {
+      console.log("🔍 Buscando clientes com contas para configuração...");
+      
       const { data, error } = await supabase
         .from("clients")
-        .select("id, company_name, meta_ads_budget, meta_account_id, google_ads_budget, google_account_id, status")
+        .select(`
+          id,
+          company_name,
+          status,
+          client_accounts!inner (
+            id,
+            platform,
+            account_id,
+            budget_amount,
+            is_primary,
+            status
+          )
+        `)
         .eq("status", "active")
+        .eq("client_accounts.status", "active")
         .order("company_name");
 
       if (error) {
-        console.error("Erro ao buscar clientes:", error);
+        console.error("❌ Erro ao buscar clientes com contas:", error);
         throw error;
       }
-      console.log("Clientes carregados:", data);
-      return data as ClientBudget[];
+
+      console.log("✅ Clientes carregados:", data?.length, data);
+      return data as ClientWithAccounts[];
     },
   });
 
   // Inicializar orçamentos a partir dos dados obtidos
   useEffect(() => {
     if (clients) {
-      console.log("Inicializando orçamentos a partir dos clientes carregados");
+      console.log("🚀 Inicializando orçamentos a partir dos clientes carregados");
+      
       const initialBudgets: Record<string, BudgetValues> = {};
+      
       clients.forEach((client) => {
+        // Buscar conta Meta primária
+        const metaAccount = client.client_accounts.find(acc => 
+          acc.platform === 'meta' && acc.is_primary
+        );
+        
+        // Buscar conta Google primária
+        const googleAccount = client.client_accounts.find(acc => 
+          acc.platform === 'google' && acc.is_primary
+        );
+        
         initialBudgets[client.id] = {
-          meta: client.meta_ads_budget ? client.meta_ads_budget.toString() : "",
-          accountId: client.meta_account_id || "",
-          googleMeta: client.google_ads_budget ? client.google_ads_budget.toString() : "",
-          googleAccountId: client.google_account_id || ""
+          meta: metaAccount?.budget_amount ? metaAccount.budget_amount.toString() : "",
+          accountId: metaAccount?.account_id || "",
+          googleMeta: googleAccount?.budget_amount ? googleAccount.budget_amount.toString() : "",
+          googleAccountId: googleAccount?.account_id || ""
         };
+        
+        console.log(`✅ Inicializado para ${client.company_name}:`, initialBudgets[client.id]);
       });
+      
       setBudgets(initialBudgets);
     }
   }, [clients]);
@@ -67,106 +100,124 @@ export const useBudgetSetup = () => {
   // Mutation para salvar orçamentos
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
-      console.log("Iniciando salvamento de orçamentos...");
+      console.log("💾 Iniciando salvamento de orçamentos...");
       
-      // Filtrar apenas os clientes que possuem dados em budgets para atualizar
       const clientsToUpdate = Object.entries(budgets).filter(([clientId, values]) => {
         return clientId && (values.meta || values.accountId || values.googleMeta || values.googleAccountId);
       });
       
-      console.log("Clientes a serem atualizados:", clientsToUpdate);
+      console.log("📋 Clientes a serem atualizados:", clientsToUpdate.length);
       
       if (clientsToUpdate.length === 0) {
-        console.log("Nenhum cliente para atualizar");
+        console.log("⚠️ Nenhum cliente para atualizar");
         return true;
       }
 
-      // Preparar os dados para atualização
-      const updates = clientsToUpdate.map(([clientId, values]) => {
-        // Tratar o valor do orçamento Meta Ads corretamente
-        let metaBudget = 0;
+      for (const [clientId, values] of clientsToUpdate) {
+        console.log(`🔄 Processando cliente ${clientId}:`, values);
         
-        if (values.meta) {
-          // Remover símbolos de moeda, pontos e converter vírgulas para pontos
-          const cleanValue = values.meta.replace(/[^\d,.-]/g, '').replace(',', '.');
-          metaBudget = parseFloat(cleanValue);
+        // Processar conta Meta
+        if (values.meta || values.accountId) {
+          const metaBudget = values.meta ? parseFloat(values.meta.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
           
-          // Verificar se o valor precisa ser multiplicado por 100 (se for em centavos)
-          // Isso garante que 6000 seja salvo como 6000 e não como 60.00 ou 6
-          if (cleanValue.indexOf(',') === -1 && cleanValue.indexOf('.') === -1) {
-            // Se não tiver vírgula nem ponto, é valor inteiro em reais
-            metaBudget = parseInt(cleanValue);
+          // Verificar se já existe conta Meta para este cliente
+          const { data: existingMeta } = await supabase
+            .from("client_accounts")
+            .select("id")
+            .eq("client_id", clientId)
+            .eq("platform", "meta")
+            .eq("is_primary", true)
+            .single();
+          
+          if (existingMeta) {
+            // Atualizar conta existente
+            const { error } = await supabase
+              .from("client_accounts")
+              .update({
+                account_id: values.accountId || "",
+                budget_amount: metaBudget
+              })
+              .eq("id", existingMeta.id);
+            
+            if (error) throw error;
+            console.log(`✅ Conta Meta atualizada para cliente ${clientId}`);
+          } else if (values.accountId) {
+            // Criar nova conta Meta
+            const { error } = await supabase
+              .from("client_accounts")
+              .insert({
+                client_id: clientId,
+                platform: "meta",
+                account_id: values.accountId,
+                account_name: "Conta Meta Ads",
+                budget_amount: metaBudget,
+                is_primary: true,
+                status: "active"
+              });
+            
+            if (error) throw error;
+            console.log(`✅ Nova conta Meta criada para cliente ${clientId}`);
           }
         }
         
-        // Tratar o valor do orçamento Google Ads corretamente
-        let googleBudget = 0;
-        
-        if (values.googleMeta) {
-          // Remover símbolos de moeda, pontos e converter vírgulas para pontos
-          const cleanValue = values.googleMeta.replace(/[^\d,.-]/g, '').replace(',', '.');
-          googleBudget = parseFloat(cleanValue);
+        // Processar conta Google
+        if (values.googleMeta || values.googleAccountId) {
+          const googleBudget = values.googleMeta ? parseFloat(values.googleMeta.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
           
-          // Verificar se o valor precisa ser multiplicado por 100 (se for em centavos)
-          if (cleanValue.indexOf(',') === -1 && cleanValue.indexOf('.') === -1) {
-            // Se não tiver vírgula nem ponto, é valor inteiro em reais
-            googleBudget = parseInt(cleanValue);
+          // Verificar se já existe conta Google para este cliente
+          const { data: existingGoogle } = await supabase
+            .from("client_accounts")
+            .select("id")
+            .eq("client_id", clientId)
+            .eq("platform", "google")
+            .eq("is_primary", true)
+            .single();
+          
+          if (existingGoogle) {
+            // Atualizar conta existente
+            const { error } = await supabase
+              .from("client_accounts")
+              .update({
+                account_id: values.googleAccountId || "",
+                budget_amount: googleBudget
+              })
+              .eq("id", existingGoogle.id);
+            
+            if (error) throw error;
+            console.log(`✅ Conta Google atualizada para cliente ${clientId}`);
+          } else if (values.googleAccountId) {
+            // Criar nova conta Google
+            const { error } = await supabase
+              .from("client_accounts")
+              .insert({
+                client_id: clientId,
+                platform: "google",
+                account_id: values.googleAccountId,
+                account_name: "Conta Google Ads",
+                budget_amount: googleBudget,
+                is_primary: true,
+                status: "active"
+              });
+            
+            if (error) throw error;
+            console.log(`✅ Nova conta Google criada para cliente ${clientId}`);
           }
         }
-        
-        console.log(`Preparando atualização para cliente ${clientId}:`, {
-          valorOriginalMeta: values.meta,
-          metaBudget: metaBudget,
-          accountId: values.accountId,
-          valorOriginalGoogle: values.googleMeta,
-          googleBudget: googleBudget,
-          googleAccountId: values.googleAccountId
-        });
-        
-        // Retornar objeto formatado para update
-        return {
-          id: clientId,
-          meta_ads_budget: metaBudget || 0,
-          meta_account_id: values.accountId || null,
-          google_ads_budget: googleBudget || 0,
-          google_account_id: values.googleAccountId || null
-        };
-      });
-
-      console.log("Objetos preparados para atualização:", updates);
-
-      // Realizar atualização em lote
-      for (const update of updates) {
-        const { data, error } = await supabase
-          .from("clients")
-          .update({
-            meta_ads_budget: update.meta_ads_budget,
-            meta_account_id: update.meta_account_id,
-            google_ads_budget: update.google_ads_budget,
-            google_account_id: update.google_account_id
-          })
-          .eq("id", update.id);
-
-        if (error) {
-          console.error(`Erro ao atualizar cliente ${update.id}:`, error);
-          throw error;
-        }
-        
-        console.log(`Cliente ${update.id} atualizado com sucesso`);
       }
       
       return true;
     },
     onSuccess: () => {
-      console.log("Orçamentos salvos com sucesso!");
+      console.log("🎉 Orçamentos salvos com sucesso!");
       toast({
         title: "Orçamentos salvos",
-        description: "Os orçamentos mensais foram atualizados com sucesso.",
+        description: "Os orçamentos foram atualizados com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["clients-budget-setup"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
+      queryClient.invalidateQueries({ queryKey: ["budget-manager-data"] });
     },
     onError: (error) => {
-      console.error("Detalhes do erro:", error);
+      console.error("❌ Erro ao salvar orçamentos:", error);
       toast({
         title: "Erro ao salvar orçamentos",
         description: String(error),
@@ -176,9 +227,7 @@ export const useBudgetSetup = () => {
   });
 
   const handleBudgetChange = (clientId: string, value: string) => {
-    // Permite números, vírgulas e pontos para valores monetários
     const sanitizedValue = value.replace(/[^0-9,.]/g, "");
-    
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
@@ -189,9 +238,7 @@ export const useBudgetSetup = () => {
   };
 
   const handleGoogleBudgetChange = (clientId: string, value: string) => {
-    // Permite números, vírgulas e pontos para valores monetários
     const sanitizedValue = value.replace(/[^0-9,.]/g, "");
-    
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
@@ -222,7 +269,7 @@ export const useBudgetSetup = () => {
   };
 
   const handleSave = () => {
-    console.log("Tentando salvar orçamentos:", budgets);
+    console.log("💾 Iniciando processo de salvamento:", budgets);
     saveBudgetsMutation.mutate();
   };
 
@@ -247,4 +294,5 @@ export const useBudgetSetup = () => {
   };
 };
 
-export type { ClientBudget, BudgetValues };
+// Exportar tipos atualizados
+export type { ClientWithAccounts as ClientBudget, BudgetValues };

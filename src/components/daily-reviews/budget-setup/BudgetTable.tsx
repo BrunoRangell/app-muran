@@ -35,10 +35,13 @@ export const BudgetTable = ({
     );
   }
 
-  if (filteredClients?.length === 0) {
+  if (!filteredClients || filteredClients.length === 0) {
     return (
       <div className="text-center py-6 text-gray-500">
-        Nenhum cliente encontrado com o termo "{searchTerm}"
+        {searchTerm ? 
+          `Nenhum cliente encontrado com o termo "${searchTerm}"` :
+          "Nenhum cliente encontrado"
+        }
       </div>
     );
   }
@@ -63,7 +66,7 @@ export const BudgetTable = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredClients?.map((client) => (
+          {filteredClients.map((client) => (
             <TableRow key={client.id}>
               <TableCell className="font-medium">{client.company_name}</TableCell>
               <TableCell>
@@ -107,7 +110,7 @@ export const BudgetTable = ({
                         id={`google-account-${client.id}`}
                         placeholder="ID da conta Google"
                         value={budgets[client.id]?.googleAccountId || ""}
-                        onChange={(e) => onGoogleAccountIdChange(client.id, e.target.value)}
+                        onChange={(e) => onGoogleAccountIdChange!(client.id, e.target.value)}
                         className="max-w-[150px]"
                       />
                     </div>
@@ -122,7 +125,7 @@ export const BudgetTable = ({
                         id={`google-${client.id}`}
                         placeholder="0,00"
                         value={budgets[client.id]?.googleMeta || ""}
-                        onChange={(e) => onGoogleBudgetChange(client.id, e.target.value)}
+                        onChange={(e) => onGoogleBudgetChange!(client.id, e.target.value)}
                         className="max-w-[150px]"
                         type="text"
                       />

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
@@ -7,6 +8,7 @@ import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
+import { DataDebugPanel } from "../debug/DataDebugPanel";
 import { AlertTriangle } from "lucide-react";
 
 interface GoogleAdsTabProps {
@@ -22,7 +24,17 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
   const { forceDataRefresh, startPolling } = useRealTimeDataService();
   
-  // CORREÇÃO: Adicionar callback para revisões individuais
+  // Log detalhado para debug
+  useEffect(() => {
+    console.log("🔍 GoogleAdsTab - Estado atual:", {
+      dataLength: data?.length || 0,
+      isLoading,
+      error: error?.message,
+      metrics,
+      timestamp: new Date().toISOString()
+    });
+  }, [data, isLoading, error, metrics]);
+  
   const { 
     reviewAllClients, 
     cancelBatchProcessing,
@@ -56,7 +68,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     };
   }, [startPolling]);
 
-  // Handlers unificados para reduzir duplicação
+  // Handlers unificados
   const handleSearchChange = (query: string) => setSearchQuery(query);
   const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
   const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
@@ -76,55 +88,63 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     }
   };
 
+  // Mostrar debug panel apenas se não há dados ou há erro
+  const shouldShowDebug = !isLoading && (error || !data || data.length === 0);
+
   if (isLoading) {
     return <ImprovedLoadingState />;
   }
 
-  if (error) {
-    return (
-      <EmptyState
-        title="Erro ao carregar dados"
-        description={`Ocorreu um erro ao carregar os dados: ${error.message}`}
-        icon={<AlertTriangle className="h-16 w-16 text-red-500 mb-4" />}
-      />
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <MetricsPanel 
-        metrics={metrics} 
-        onBatchReview={handleBatchReview}
-        isProcessing={isProcessing}
-        progress={progress}
-        total={total}
-        currentClientName={currentClientName}
-        platform="google"
-        onCancelBatchProcessing={cancelBatchProcessing}
-      />
-      
-      <FilterBar 
-        searchQuery={searchQuery}
-        viewMode={viewMode}
-        showOnlyAdjustments={showOnlyAdjustments}
-        showWithoutAccount={showWithoutAccount}
-        onSearchChange={handleSearchChange}
-        onViewModeChange={handleViewModeChange}
-        onAdjustmentFilterChange={handleAdjustmentFilterChange}
-        onAccountFilterChange={handleAccountFilterChange}
-        onRefresh={handleRefresh}
-        isRefreshing={isLoading}
-        platform="google"
-      />
-      
-      <ClientsList 
-        data={data}
-        viewMode={viewMode}
-        searchQuery={searchQuery}
-        showOnlyAdjustments={showOnlyAdjustments}
-        showWithoutAccount={showWithoutAccount}
-        platform="google"
-      />
+      {/* Debug Panel - mostra automaticamente apenas se há problemas */}
+      {shouldShowDebug && <DataDebugPanel />}
+
+      {error && (
+        <EmptyState
+          title="Erro ao carregar dados"
+          description={`Ocorreu um erro ao carregar os dados: ${error.message}`}
+          icon={<AlertTriangle className="h-16 w-16 text-red-500 mb-4" />}
+        />
+      )}
+
+      {!error && (
+        <>
+          <MetricsPanel 
+            metrics={metrics} 
+            onBatchReview={handleBatchReview}
+            isProcessing={isProcessing}
+            progress={progress}
+            total={total}
+            currentClientName={currentClientName}
+            platform="google"
+            onCancelBatchProcessing={cancelBatchProcessing}
+          />
+          
+          <FilterBar 
+            searchQuery={searchQuery}
+            viewMode={viewMode}
+            showOnlyAdjustments={showOnlyAdjustments}
+            showWithoutAccount={showWithoutAccount}
+            onSearchChange={handleSearchChange}
+            onViewModeChange={handleViewModeChange}
+            onAdjustmentFilterChange={handleAdjustmentFilterChange}
+            onAccountFilterChange={handleAccountFilterChange}
+            onRefresh={handleRefresh}
+            isRefreshing={isLoading}
+            platform="google"
+          />
+          
+          <ClientsList 
+            data={data}
+            viewMode={viewMode}
+            searchQuery={searchQuery}
+            showOnlyAdjustments={showOnlyAdjustments}
+            showWithoutAccount={showWithoutAccount}
+            platform="google"
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { supabase, checkSession } from "@/lib/supabase";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,109 +15,8 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const location = useLocation();
   const { toast } = useToast();
-  const authCheckRef = useRef<NodeJS.Timeout | null>(null);
-  const initialCheckDone = useRef(false);
 
-  // Função para verificar a autenticação com lógica melhorada
-  const checkAuth = async () => {
-    try {
-      if (!initialCheckDone.current) {
-        console.log("Verificação inicial de autenticação...");
-      }
-      
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Erro ao verificar sessão:", {
-          error: sessionError,
-          timestamp: new Date().toISOString()
-        });
-        
-        // Tenta renovar a sessão antes de falhar
-        try {
-          console.log("Tentando renovar sessão após erro...");
-          const { data } = await supabase.auth.refreshSession();
-          
-          if (data.session) {
-            console.log("Sessão renovada com sucesso após erro.");
-            setIsAuthenticated(true);
-            
-            if (requireAdmin) {
-              await checkAdminStatus(data.session.user.email);
-            }
-            
-            return;
-          }
-        } catch (refreshError) {
-          console.error("Erro ao renovar sessão após erro inicial:", refreshError);
-        }
-        
-        setIsAuthenticated(false);
-        if (requireAdmin) setIsAdmin(false);
-        
-        toast({
-          title: "Erro de autenticação",
-          description: errorMessages.AUTH_EXPIRED,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!session) {
-        console.log("Nenhuma sessão encontrada");
-        
-        // Tenta renovar a sessão antes de falhar
-        try {
-          console.log("Tentando renovar sessão inexistente...");
-          const { data } = await supabase.auth.refreshSession();
-          
-          if (data.session) {
-            console.log("Sessão criada com sucesso após não encontrar sessão.");
-            setIsAuthenticated(true);
-            
-            if (requireAdmin) {
-              await checkAdminStatus(data.session.user.email);
-            }
-            
-            return;
-          }
-        } catch (refreshError) {
-          console.error("Erro ao tentar renovar sessão inexistente:", refreshError);
-        }
-        
-        setIsAuthenticated(false);
-        if (requireAdmin) setIsAdmin(false);
-        return;
-      }
-
-      // Se chegou aqui, o usuário está autenticado
-      console.log("Sessão válida encontrada", {
-        user: session.user.email,
-        expires: new Date(session.expires_at! * 1000)
-      });
-      setIsAuthenticated(true);
-
-      if (requireAdmin) {
-        await checkAdminStatus(session.user.email);
-      }
-      
-      initialCheckDone.current = true;
-    } catch (error) {
-      console.error("Erro inesperado ao verificar autenticação:", {
-        error,
-        timestamp: new Date().toISOString()
-      });
-      setIsAuthenticated(false);
-      setIsAdmin(false);
-      toast({
-        title: "Erro",
-        description: errorMessages.OPERATION_FAILED,
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Função específica para verificar status de admin
+  // Função para verificar status de admin
   const checkAdminStatus = async (email: string | undefined) => {
     if (!email) {
       setIsAdmin(false);
@@ -133,25 +32,20 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
         .single();
 
       if (teamError) {
-        console.error("Erro ao verificar permissões:", {
-          error: teamError,
-          timestamp: new Date().toISOString()
-        });
+        console.error("Erro ao verificar permissões:", teamError);
         setIsAdmin(false);
-        toast({
-          title: "Erro de permissão",
-          description: errorMessages.PERMISSION_DENIED,
-          variant: "destructive",
-        });
+        if (requireAdmin) {
+          toast({
+            title: "Erro de permissão",
+            description: errorMessages.PERMISSION_DENIED,
+            variant: "destructive",
+          });
+        }
         return;
       }
 
       const userIsAdmin = teamMember?.permission === 'admin';
-      console.log("Usuário é admin?", userIsAdmin, {
-        email: email,
-        role: teamMember?.role,
-        permission: teamMember?.permission
-      });
+      console.log("Usuário é admin?", userIsAdmin);
       setIsAdmin(userIsAdmin);
 
       if (!userIsAdmin && requireAdmin) {
@@ -168,15 +62,41 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   };
 
   useEffect(() => {
-    // Verifica autenticação imediatamente
-    checkAuth();
+    const initializeAuth = async () => {
+      try {
+        const isValid = await checkSession();
+        
+        if (!isValid) {
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          return;
+        }
 
-    // Configura listener para mudanças de autenticação
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          return;
+        }
+
+        setIsAuthenticated(true);
+        
+        if (requireAdmin) {
+          await checkAdminStatus(session.user.email);
+        }
+      } catch (error) {
+        console.error("Erro na inicialização da autenticação:", error);
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+      }
+    };
+
+    initializeAuth();
+
+    // Configurar listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Mudança no estado de autenticação:", {
-        event,
-        timestamp: new Date().toISOString()
-      });
+      console.log("Mudança no estado de autenticação:", event);
       
       if (!session) {
         setIsAuthenticated(false);
@@ -191,26 +111,10 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
       }
     });
 
-    // Limpa a verificação anterior e configura nova verificação periódica
-    if (authCheckRef.current) {
-      clearInterval(authCheckRef.current);
-    }
-    
-    // Verifica a sessão periodicamente com um intervalo mais longo
-    authCheckRef.current = setInterval(() => {
-      // Ignora verificações na página de login
-      if (window.location.pathname !== '/login') {
-        checkAuth();
-      }
-    }, 5 * 60 * 1000); // Verifica a cada 5 minutos
-
     return () => {
       subscription.unsubscribe();
-      if (authCheckRef.current) {
-        clearInterval(authCheckRef.current);
-      }
     };
-  }, [requireAdmin, toast, location.pathname]);
+  }, [requireAdmin, toast]);
 
   // Estado de carregamento
   if (isAuthenticated === null || (requireAdmin && isAdmin === null)) {

@@ -1,32 +1,67 @@
 
-import { CheckCircle2, AlertCircle, AlertTriangle, Activity } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CampaignStatus } from "./types";
 
-type Status = "ok" | "warning" | "error" | "nodata";
+interface HealthStatusIndicatorProps {
+  status: CampaignStatus;
+}
 
-export function HealthStatusIndicator({ status }: { status: Status }) {
-  const options = {
-    ok: {
-      icon: <CheckCircle2 className="text-emerald-500 w-4 h-4" />,
-      label: "Normal"
-    },
-    warning: {
-      icon: <AlertTriangle className="text-yellow-500 w-4 h-4" />,
-      label: "Atenção"
-    },
-    error: {
-      icon: <AlertCircle className="text-destructive w-4 h-4" />,
-      label: "Erro"
-    },
-    nodata: {
-      icon: <Activity className="text-gray-400 w-4 h-4" />,
-      label: "Sem Dados"
+export function HealthStatusIndicator({ status }: HealthStatusIndicatorProps) {
+  const getStatusConfig = (status: CampaignStatus) => {
+    switch (status) {
+      case "active":
+        return {
+          label: "Ativo",
+          variant: "default" as const,
+          className: "bg-green-500 hover:bg-green-600 text-white"
+        };
+      case "no-spend":
+        return {
+          label: "Sem Gasto",
+          variant: "destructive" as const,
+          className: "bg-red-500 hover:bg-red-600 text-white"
+        };
+      case "no-campaigns":
+        return {
+          label: "Sem Campanhas",
+          variant: "secondary" as const,
+          className: "bg-yellow-500 hover:bg-yellow-600 text-white"
+        };
+      case "no-account":
+        return {
+          label: "Sem Conta",
+          variant: "outline" as const,
+          className: "border-gray-400 text-gray-600"
+        };
+      case "low-performance":
+        return {
+          label: "Baixa Performance",
+          variant: "secondary" as const,
+          className: "bg-orange-500 hover:bg-orange-600 text-white"
+        };
+      case "no-data":
+        return {
+          label: "Sem Dados",
+          variant: "outline" as const,
+          className: "border-blue-400 text-blue-600"
+        };
+      default:
+        return {
+          label: "Desconhecido",
+          variant: "outline" as const,
+          className: "border-gray-400 text-gray-600"
+        };
     }
   };
 
+  const config = getStatusConfig(status);
+
   return (
-    <div className="flex items-center gap-1">
-      {options[status].icon}
-      <span className="text-xs hidden sm:inline">{options[status].label}</span>
-    </div>
+    <Badge 
+      variant={config.variant}
+      className={config.className}
+    >
+      {config.label}
+    </Badge>
   );
 }

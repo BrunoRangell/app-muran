@@ -22,7 +22,7 @@ export const BudgetSetupForm = () => {
   } = useBudgetSetup();
 
   return (
-    <Card className="max-w-5xl mx-auto">
+    <Card className="w-full max-w-full mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="text-muran-primary" />

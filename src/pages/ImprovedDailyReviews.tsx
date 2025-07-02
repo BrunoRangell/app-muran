@@ -13,14 +13,17 @@ export default function ImprovedDailyReviews() {
   const getInitialTab = () => {
     const hashTab = window.location.hash.replace('#', '');
     if (hashTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(hashTab)) {
+      console.log("🔗 Aba inicial da URL:", hashTab);
       return hashTab;
     }
     
     const savedTab = localStorage.getItem("selected_tab");
     if (savedTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(savedTab)) {
+      console.log("💾 Aba inicial do localStorage:", savedTab);
       return savedTab;
     }
     
+    console.log("🔄 Usando aba padrão: meta-ads");
     return "meta-ads";
   };
   
@@ -37,6 +40,7 @@ export default function ImprovedDailyReviews() {
     const handleHashChange = () => {
       const newTab = window.location.hash.replace('#', '');
       if (newTab && ['meta-ads', 'google-ads', 'budgets', 'custom-budgets'].includes(newTab)) {
+        console.log("🔗 Hash mudou para:", newTab);
         setSelectedTab(newTab);
       }
     };
@@ -54,11 +58,26 @@ export default function ImprovedDailyReviews() {
   
   // Função para alterar a aba selecionada
   const handleTabChange = (value: string) => {
+    console.log("📋 Mudando para aba:", value);
     setSelectedTab(value);
     localStorage.setItem("selected_tab", value);
     window.location.hash = value;
-    refetchBoth();
+    
+    // Forçar refresh dos dados quando trocar de aba
+    setTimeout(() => {
+      refetchBoth();
+    }, 100);
   };
+
+  // Log para debug do estado atual
+  useEffect(() => {
+    console.log("📊 Estado atual da página:", {
+      selectedTab,
+      currentHash: window.location.hash,
+      lastMetaReviewTime,
+      lastGoogleReviewTime
+    });
+  }, [selectedTab, lastMetaReviewTime, lastGoogleReviewTime]);
   
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -88,7 +107,9 @@ export default function ImprovedDailyReviews() {
               lastReviewTime={lastGoogleReviewTime ? new Date(lastGoogleReviewTime) : undefined}
               platform="google"
             />
-            <GoogleAdsTab />
+            <GoogleAdsTab onRefreshCompleted={() => {
+              console.log("🔄 Google Ads refresh completed");
+            }} />
           </TabsContent>
 
           <TabsContent value="budgets" className="space-y-6">
