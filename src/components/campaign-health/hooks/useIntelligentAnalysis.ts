@@ -16,21 +16,22 @@ function determineAlertLevel(
   activeCampaignsCount: number,
   unservedCampaignsCount: number
 ): AlertLevel {
-  // Crítico: sem veiculação com campanhas ativas
-  if (activeCampaignsCount > 0 && costToday === 0) {
+  // 🔴 CRÍTICO: Todas as campanhas ativas sem veiculação (custo = 0 e impressões = 0)
+  if (activeCampaignsCount > 0 && unservedCampaignsCount === activeCampaignsCount) {
     return "critical";
   }
   
-  // Alto: campanhas sem veiculação
-  if (unservedCampaignsCount > 0) {
+  // 🟠 ALTO: Algumas campanhas ativas sem veiculação (não todas)
+  if (activeCampaignsCount > 0 && unservedCampaignsCount > 0 && unservedCampaignsCount < activeCampaignsCount) {
     return "high";
   }
   
-  // Médio: baixa performance
-  if (costToday > 0 && impressionsToday < 100) {
+  // 🟡 MÉDIO: Nenhuma campanha ativa na conta
+  if (activeCampaignsCount === 0) {
     return "medium";
   }
   
+  // 🟢 OK: Todas as outras situações (veiculação e impressões > 0)
   return "ok";
 }
 
@@ -42,26 +43,27 @@ function generateProblems(
 ): HealthProblem[] {
   const problems: HealthProblem[] = [];
   
-  if (activeCampaignsCount > 0 && costToday === 0) {
+  // 🔴 CRÍTICO: Todas as campanhas ativas sem veiculação
+  if (activeCampaignsCount > 0 && unservedCampaignsCount === activeCampaignsCount) {
     problems.push({
-      type: "no-spend",
-      description: "Sem veiculação com campanhas ativas",
+      type: "all-campaigns-no-serving",
+      description: "Nenhuma campanha está rodando",
       severity: "critical"
     });
   }
-  
-  if (unservedCampaignsCount > 0) {
+  // 🟠 ALTO: Algumas campanhas ativas sem veiculação
+  else if (activeCampaignsCount > 0 && unservedCampaignsCount > 0 && unservedCampaignsCount < activeCampaignsCount) {
     problems.push({
-      type: "unserved-campaigns",
-      description: `${unservedCampaignsCount} campanhas sem veiculação`,
+      type: "some-campaigns-no-serving",
+      description: "Algumas campanhas estão sem veiculação",
       severity: "high"
     });
   }
-  
-  if (costToday > 0 && impressionsToday < 100) {
+  // 🟡 MÉDIO: Nenhuma campanha ativa na conta
+  else if (activeCampaignsCount === 0) {
     problems.push({
-      type: "low-impressions",
-      description: "Baixo volume de impressões",
+      type: "no-active-campaigns",
+      description: "Nenhuma campanha ativa na conta",
       severity: "medium"
     });
   }
@@ -86,8 +88,9 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         const metaDataArray: EnhancedPlatformData[] = [];
         
         client.metaAds.forEach((metaAccount, index) => {
+          // Usar dados diretos da tabela campaign_health
           const activeCampaignsCount = metaAccount.hasActiveCampaigns ? 1 : 0;
-          const unservedCampaignsCount = metaAccount.costToday === 0 && metaAccount.hasActiveCampaigns ? 1 : 0;
+          const unservedCampaignsCount = metaAccount.costToday === 0 && metaAccount.impressionsToday === 0 && metaAccount.hasActiveCampaigns ? 1 : 0;
           
           const alertLevel = determineAlertLevel(
             metaAccount.costToday,
@@ -139,8 +142,9 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         const googleDataArray: EnhancedPlatformData[] = [];
         
         client.googleAds.forEach((googleAccount, index) => {
+          // Usar dados diretos da tabela campaign_health
           const activeCampaignsCount = googleAccount.hasActiveCampaigns ? 1 : 0;
-          const unservedCampaignsCount = googleAccount.costToday === 0 && googleAccount.hasActiveCampaigns ? 1 : 0;
+          const unservedCampaignsCount = googleAccount.costToday === 0 && googleAccount.impressionsToday === 0 && googleAccount.hasActiveCampaigns ? 1 : 0;
           
           const alertLevel = determineAlertLevel(
             googleAccount.costToday,
@@ -187,7 +191,7 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         enhancedClient.googleAds = googleDataArray;
       }
       
-      // Determinar status geral do cliente
+      // Determinar status geral do cliente (pior case entre todas as contas)
       const allAccounts = [
         ...(enhancedClient.metaAds || []),
         ...(enhancedClient.googleAds || [])
