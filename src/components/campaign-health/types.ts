@@ -1,5 +1,12 @@
 
-export type CampaignStatus = "active" | "no-spend" | "no-campaigns" | "no-account" | "low-performance";
+export interface ClientHealthData {
+  clientId: string;
+  clientName: string;
+  companyEmail?: string;
+  metaAds?: PlatformAccountData[];
+  googleAds?: PlatformAccountData[];
+  overallStatus: CampaignStatus;
+}
 
 export interface PlatformAccountData {
   accountId: string;
@@ -7,20 +14,20 @@ export interface PlatformAccountData {
   hasAccount: boolean;
   hasActiveCampaigns: boolean;
   costToday: number;
-  impressionsToday: number;
+  impressionsToday?: number;
   status: CampaignStatus;
   errors: string[];
 }
 
-export interface ClientHealthData {
-  clientId: string;
-  clientName: string;
-  metaAds?: PlatformAccountData[];
-  googleAds?: PlatformAccountData[];
-  overallStatus?: string; // Adicionado para compatibilidade
-}
+export type CampaignStatus = 
+  | "active" 
+  | "no-spend" 
+  | "no-campaigns" 
+  | "no-account" 
+  | "low-performance"
+  | "no-data";
 
-export interface HealthStats {
+export interface CampaignHealthStats {
   totalClients: number;
   clientsWithMeta: number;
   clientsWithGoogle: number;

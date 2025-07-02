@@ -27,98 +27,121 @@ interface UnifiedAccountData {
 }
 
 const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
-  console.log("🔍 Buscando dados de saúde das campanhas da estrutura unificada...");
+  console.log("🔍 Iniciando busca de dados de saúde das campanhas...");
   
   const today = new Date().toISOString().split('T')[0];
+  console.log("📅 Data de hoje:", today);
   
-  // Buscar dados da estrutura unificada - REMOVIDO .order() que causava erro
-  const { data: accountsData, error } = await supabase
-    .from('client_accounts')
-    .select(`
-      id,
-      client_id,
-      platform,
-      account_id,
-      account_name,
-      is_primary,
-      clients!inner(
+  try {
+    // Primeiro, vamos buscar os dados de forma mais simples
+    const { data: accountsData, error } = await supabase
+      .from('client_accounts')
+      .select(`
         id,
-        company_name
-      ),
-      campaign_health!inner(
-        has_account,
-        active_campaigns_count,
-        unserved_campaigns_count,
-        cost_today,
-        impressions_today,
-        snapshot_date
-      )
-    `)
-    .eq('status', 'active')
-    .eq('clients.status', 'active')
-    .eq('campaign_health.snapshot_date', today);
+        client_id,
+        platform,
+        account_id,
+        account_name,
+        is_primary,
+        clients!inner(
+          id,
+          company_name
+        )
+      `)
+      .eq('status', 'active')
+      .eq('clients.status', 'active');
 
-  if (error) {
-    console.error("❌ Erro ao buscar dados da estrutura unificada:", error);
+    if (error) {
+      console.error("❌ Erro ao buscar contas de clientes:", error);
+      throw error;
+    }
+
+    console.log(`📊 Encontradas ${accountsData?.length || 0} contas de clientes`);
+
+    if (!accountsData || accountsData.length === 0) {
+      console.log("⚠️ Nenhuma conta de cliente encontrada");
+      return [];
+    }
+
+    // Agora buscar os dados de saúde das campanhas separadamente
+    const { data: healthData, error: healthError } = await supabase
+      .from('campaign_health')
+      .select('*')
+      .eq('snapshot_date', today);
+
+    if (healthError) {
+      console.error("❌ Erro ao buscar dados de saúde:", healthError);
+      // Continuar mesmo com erro, mostrando contas sem dados de saúde
+    }
+
+    console.log(`📈 Encontrados ${healthData?.length || 0} registros de saúde para hoje`);
+
+    // Agrupar dados por cliente
+    const clientsMap = new Map<string, ClientHealthData>();
+
+    accountsData.forEach((account: any) => {
+      const clientId = account.client_id;
+      
+      if (!clientsMap.has(clientId)) {
+        clientsMap.set(clientId, {
+          clientId,
+          clientName: account.clients.company_name,
+          metaAds: [],
+          googleAds: [],
+          overallStatus: "ok"
+        });
+      }
+
+      const client = clientsMap.get(clientId)!;
+      
+      // Buscar dados de saúde para esta conta
+      const accountHealth = healthData?.find(h => 
+        h.account_id === account.id && h.platform === account.platform
+      );
+
+      const accountData: PlatformAccountData = {
+        accountId: account.account_id,
+        accountName: account.account_name,
+        hasAccount: accountHealth?.has_account ?? true,
+        hasActiveCampaigns: accountHealth?.active_campaigns_count > 0,
+        costToday: accountHealth?.cost_today ?? 0,
+        impressionsToday: accountHealth?.impressions_today ?? 0,
+        status: accountHealth ? determineAccountStatus(accountHealth) : "no-data",
+        errors: accountHealth ? generateErrors(accountHealth) : ["Dados não disponíveis"]
+      };
+
+      if (account.platform === 'meta') {
+        client.metaAds = client.metaAds || [];
+        client.metaAds.push(accountData);
+      } else if (account.platform === 'google') {
+        client.googleAds = client.googleAds || [];
+        client.googleAds.push(accountData);
+      }
+    });
+
+    // Converter para array e ordenar por nome da empresa
+    const result = Array.from(clientsMap.values()).sort((a, b) => 
+      a.clientName.localeCompare(b.clientName, 'pt-BR', { 
+        sensitivity: 'base',
+        numeric: true 
+      })
+    );
+    
+    console.log(`✅ Processados ${result.length} clientes com dados de saúde`);
+    
+    // Log detalhado para debug
+    result.forEach(client => {
+      console.log(`📋 Cliente: ${client.clientName}`);
+      console.log(`  - Meta Ads: ${client.metaAds?.length || 0} contas`);
+      console.log(`  - Google Ads: ${client.googleAds?.length || 0} contas`);
+    });
+    
+    return result;
+    
+  } catch (error) {
+    console.error("❌ Erro geral na busca de dados:", error);
     throw error;
   }
-
-  if (!accountsData || accountsData.length === 0) {
-    console.log("⚠️ Nenhum dado encontrado para hoje na estrutura unificada");
-    return [];
-  }
-
-  console.log(`✅ Estrutura unificada: ${accountsData.length} contas encontradas`);
-
-  // Agrupar dados por cliente
-  const clientsMap = new Map<string, ClientHealthData>();
-
-  accountsData.forEach((account: UnifiedAccountData) => {
-    const clientId = account.client_id;
-    
-    if (!clientsMap.has(clientId)) {
-      clientsMap.set(clientId, {
-        clientId,
-        clientName: account.clients.company_name,
-        metaAds: [],
-        googleAds: [],
-        overallStatus: "ok"
-      });
-    }
-
-    const client = clientsMap.get(clientId)!;
-    const healthData = account.campaign_health[0]; // Sempre haverá um item devido ao inner join
-
-    const accountData: PlatformAccountData = {
-      accountId: account.account_id,
-      accountName: account.account_name,
-      hasAccount: healthData.has_account,
-      hasActiveCampaigns: healthData.active_campaigns_count > 0,
-      costToday: healthData.cost_today,
-      impressionsToday: healthData.impressions_today,
-      status: determineAccountStatus(healthData),
-      errors: generateErrors(healthData)
-    };
-
-    if (account.platform === 'meta') {
-      client.metaAds = client.metaAds || [];
-      client.metaAds.push(accountData);
-    } else if (account.platform === 'google') {
-      client.googleAds = client.googleAds || [];
-      client.googleAds.push(accountData);
-    }
-  });
-
-  // Converter para array e ordenar localmente por nome da empresa
-  const result = Array.from(clientsMap.values()).sort((a, b) => 
-    a.clientName.localeCompare(b.clientName, 'pt-BR', { 
-      sensitivity: 'base',
-      numeric: true 
-    })
-  );
-  
-  console.log(`✅ Estrutura unificada: Processados ${result.length} clientes (ordenados localmente)`);
-  return result;
 };
 
 const determineAccountStatus = (healthData: any): CampaignStatus => {
@@ -142,7 +165,7 @@ const generateErrors = (healthData: any): string[] => {
     errors.push("Baixo volume de impressões");
   }
   
-  return errors;
+  return errors.length > 0 ? errors : [];
 };
 
 export function useActiveCampaignHealth() {
@@ -175,6 +198,7 @@ export function useActiveCampaignHealth() {
     
     try {
       // Executar a edge function para buscar dados atualizados das APIs
+      console.log("📡 Chamando edge function active-campaigns-health...");
       const { data: refreshResult, error: refreshError } = await supabase.functions.invoke('active-campaigns-health');
       
       if (refreshError) {
@@ -183,9 +207,15 @@ export function useActiveCampaignHealth() {
         console.log("✅ Edge function executada com sucesso:", refreshResult);
       }
       
+      // Aguardar um pouco para que os dados sejam processados
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       // Refetch os dados locais
+      console.log("🔄 Atualizando dados locais...");
       await refetch();
       setLastRefreshTimestamp(Date.now());
+      
+      console.log("✅ Refresh manual concluído");
       
     } catch (error) {
       console.error("❌ Erro no refresh manual:", error);
@@ -194,7 +224,7 @@ export function useActiveCampaignHealth() {
     }
   };
 
-  // Calcular estatísticas corrigidas usando o hook useCampaignHealthMetrics
+  // Calcular estatísticas
   const stats = {
     totalClients: data?.length || 0,
     clientsWithMeta: data?.filter(c => c.metaAds && c.metaAds.length > 0).length || 0,
@@ -223,6 +253,9 @@ export function useActiveCampaignHealth() {
       return metaNotConfigured || googleNotConfigured;
     }).length || 0
   };
+
+  // Log das estatísticas para debug
+  console.log("📊 Estatísticas calculadas:", stats);
 
   return {
     data,
