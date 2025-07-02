@@ -38,6 +38,15 @@ export default function CampaignHealth() {
 
   const { enhancedData, alerts, dashboardStats } = useIntelligentAnalysis(data || []);
 
+  console.log("🔍 CampaignHealth - Estado atual:", {
+    dataLength: data?.length || 0,
+    enhancedDataLength: enhancedData?.length || 0,
+    isLoading,
+    error: error?.message,
+    stats,
+    timestamp: new Date().toISOString()
+  });
+
   const handlePlatformAction = (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => {
     if (action === 'configure') {
       navigate('/revisao-diaria-avancada#budgets');
@@ -173,6 +182,28 @@ export default function CampaignHealth() {
               Mostrando {filteredEnhancedData.length} de {enhancedData.length} clientes • 
               {dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts} problemas detectados
               {isFetching && " • Atualizando..."}
+            </div>
+          )}
+          
+          {/* Mensagem quando não há dados */}
+          {!isLoading && (!data || data.length === 0) && (
+            <div className="text-center py-12">
+              <div className="text-gray-500 mb-4">
+                <span className="text-4xl">📊</span>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Nenhum cliente encontrado
+              </h3>
+              <p className="text-gray-500 mb-4">
+                Configure as contas de anúncios dos seus clientes para começar o monitoramento.
+              </p>
+              <button
+                onClick={handleRefresh}
+                disabled={isManualRefreshing}
+                className="px-4 py-2 bg-[#ff6e00] text-white rounded-lg hover:bg-[#e55a00] disabled:opacity-50"
+              >
+                {isManualRefreshing ? "Atualizando..." : "Atualizar dados"}
+              </button>
             </div>
           )}
         </div>
