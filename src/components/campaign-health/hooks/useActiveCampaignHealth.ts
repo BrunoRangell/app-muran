@@ -31,7 +31,7 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
   
   const today = new Date().toISOString().split('T')[0];
   
-  // Buscar dados da estrutura unificada
+  // Buscar dados da estrutura unificada - REMOVIDO .order() que causava erro
   const { data: accountsData, error } = await supabase
     .from('client_accounts')
     .select(`
@@ -56,8 +56,7 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
     `)
     .eq('status', 'active')
     .eq('clients.status', 'active')
-    .eq('campaign_health.snapshot_date', today)
-    .order('clients.company_name');
+    .eq('campaign_health.snapshot_date', today);
 
   if (error) {
     console.error("❌ Erro ao buscar dados da estrutura unificada:", error);
@@ -110,9 +109,15 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
     }
   });
 
-  const result = Array.from(clientsMap.values());
+  // Converter para array e ordenar localmente por nome da empresa
+  const result = Array.from(clientsMap.values()).sort((a, b) => 
+    a.clientName.localeCompare(b.clientName, 'pt-BR', { 
+      sensitivity: 'base',
+      numeric: true 
+    })
+  );
   
-  console.log(`✅ Estrutura unificada: Processados ${result.length} clientes`);
+  console.log(`✅ Estrutura unificada: Processados ${result.length} clientes (ordenados localmente)`);
   return result;
 };
 
