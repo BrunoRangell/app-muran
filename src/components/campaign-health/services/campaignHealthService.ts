@@ -63,15 +63,14 @@ export class CampaignHealthService {
             clients!inner(id, company_name)
           )
         `)
-        .eq('snapshot_date', today)
-        .order('client_accounts.clients.company_name');
+        .eq('snapshot_date', today);
 
       if (error) {
         console.error("❌ Erro ao buscar snapshots:", error);
         throw new Error(`Erro ao buscar snapshots: ${error.message}`);
       }
 
-      // Transformar dados para o formato esperado
+      // Transformar dados para o formato esperado e ordenar por nome da empresa
       const snapshots = data?.map((item: any) => ({
         id: item.id,
         client_id: item.client_id,
@@ -89,7 +88,7 @@ export class CampaignHealthService {
           id: item.client_accounts.clients.id,
           company_name: item.client_accounts.clients.company_name
         }
-      })) || [];
+      })).sort((a: any, b: any) => a.clients.company_name.localeCompare(b.clients.company_name)) || [];
 
       console.log(`✅ Encontrados ${snapshots.length} snapshots para hoje (timezone brasileiro)`);
       return snapshots;

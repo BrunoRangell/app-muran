@@ -46,136 +46,95 @@ function determineStatus(
   }
 }
 
-// Busca dados reais de saúde das campanhas com suporte a múltiplas contas
+// Busca dados reais de saúde das campanhas usando a nova estrutura unificada
 async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
-  console.log("🔍 Buscando dados de saúde das campanhas com múltiplas contas...");
+  console.log("🔍 Buscando dados de saúde das campanhas da nova estrutura unificada...");
   
   try {
-    // Buscar TODOS os clientes ativos
-    const { data: clients, error: clientsError } = await supabase
-      .from('clients')
-      .select('id, company_name, contact_name')
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Buscar dados da estrutura unificada: client_accounts + campaign_health
+    const { data: accountsData, error } = await supabase
+      .from('client_accounts')
+      .select(`
+        id,
+        client_id,
+        platform,
+        account_id,
+        account_name,
+        is_primary,
+        clients!inner(
+          id,
+          company_name,
+          contact_name
+        ),
+        campaign_health!inner(
+          has_account,
+          active_campaigns_count,
+          unserved_campaigns_count,
+          cost_today,
+          impressions_today,
+          snapshot_date
+        )
+      `)
       .eq('status', 'active')
-      .order('company_name');
+      .eq('clients.status', 'active')
+      .eq('campaign_health.snapshot_date', today)
+      .order('clients.company_name')
 
-    if (clientsError) {
-      console.error("❌ Erro ao buscar clientes:", clientsError);
-      throw clientsError;
+    if (error) {
+      console.error("❌ Erro ao buscar dados da estrutura unificada:", error);
+      throw error;
     }
 
-    console.log(`✅ Encontrados ${clients?.length || 0} clientes ativos`);
+    if (!accountsData || accountsData.length === 0) {
+      console.log("⚠️ Nenhum dado encontrado para hoje na estrutura unificada");
+      return [];
+    }
 
-    const healthData: CampaignHealth[] = [];
-    const today = new Date().toISOString().split('T')[0];
+    console.log(`✅ Estrutura unificada: ${accountsData.length} contas encontradas`);
 
-    for (const client of clients || []) {
-      console.log(`📊 Processando cliente: ${client.company_name}`);
+    // Agrupar dados por cliente
+    const clientsMap = new Map<string, CampaignHealth>();
+
+    accountsData.forEach((account: any) => {
+      const clientId = account.client_id;
       
-      let clientData: CampaignHealth = {
-        clientId: client.id,
-        clientName: client.company_name,
-        companyEmail: client.contact_name || undefined,
+      if (!clientsMap.has(clientId)) {
+        clientsMap.set(clientId, {
+          clientId,
+          clientName: account.clients.company_name,
+          companyEmail: account.clients.contact_name || undefined,
+          metaAds: [],
+          googleAds: []
+        });
+      }
+
+      const client = clientsMap.get(clientId)!;
+      const healthData = account.campaign_health[0]; // Sempre haverá um item devido ao inner join
+
+      const accountData: PlatformData = {
+        accountId: account.account_id,
+        accountName: account.account_name,
+        hasAccount: healthData.has_account,
+        hasActiveCampaigns: healthData.active_campaigns_count > 0,
+        costToday: healthData.cost_today,
+        impressionsToday: healthData.impressions_today,
+        status: determineAccountStatus(healthData),
+        errors: generateErrors(healthData)
       };
 
-      // Buscar TODAS as contas Meta do cliente
-      const { data: metaAccounts } = await supabase
-        .from('client_meta_accounts')
-        .select('account_id, account_name, is_primary')
-        .eq('client_id', client.id)
-        .eq('status', 'active')
-        .order('is_primary', { ascending: false }); // Principais primeiro
-
-      if (metaAccounts && metaAccounts.length > 0) {
-        const metaAccountsData: PlatformData[] = [];
-        
-        for (const metaAccount of metaAccounts) {
-          console.log(`  📱 Processando conta Meta: ${metaAccount.account_id} (${metaAccount.account_name})`);
-          
-          // Buscar dados de review mais recentes para esta conta específica (não apenas hoje)
-          const { data: metaReview } = await supabase
-            .from('daily_budget_reviews')
-            .select('meta_total_spent, meta_daily_budget_current, review_date')
-            .eq('client_id', client.id)
-            .eq('meta_account_id', metaAccount.account_id)
-            .order('review_date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const metaCostToday = metaReview?.meta_total_spent || 0;
-          const hasMetaReviewData = !!metaReview;
-          const metaStatus = determineStatus(metaCostToday, true, hasMetaReviewData);
-          
-          console.log(`    💰 Conta ${metaAccount.account_id}: Custo=${metaCostToday}, Status=${metaStatus.status}`);
-          
-          metaAccountsData.push({
-            costToday: metaCostToday,
-            impressionsToday: undefined,
-            errors: metaStatus.errors,
-            status: metaStatus.status,
-            accountId: metaAccount.account_id,
-            accountName: metaAccount.account_name,
-            hasAccount: true,
-            hasActiveCampaigns: metaCostToday > 0
-          });
-        }
-        
-        clientData.metaAds = metaAccountsData;
+      if (account.platform === 'meta') {
+        (client.metaAds as PlatformData[]).push(accountData);
+      } else if (account.platform === 'google') {
+        (client.googleAds as PlatformData[]).push(accountData);
       }
+    });
 
-      // Buscar TODAS as contas Google do cliente
-      const { data: googleAccounts } = await supabase
-        .from('client_google_accounts')
-        .select('account_id, account_name, is_primary')
-        .eq('client_id', client.id)
-        .eq('status', 'active')
-        .order('is_primary', { ascending: false }); // Principais primeiro
-
-      if (googleAccounts && googleAccounts.length > 0) {
-        const googleAccountsData: PlatformData[] = [];
-        
-        for (const googleAccount of googleAccounts) {
-          console.log(`  🔍 Processando conta Google: ${googleAccount.account_id} (${googleAccount.account_name})`);
-          
-          // Buscar dados de review mais recentes para esta conta específica
-          const { data: googleReview } = await supabase
-            .from('google_ads_reviews')
-            .select('google_total_spent, google_daily_budget_current, review_date')
-            .eq('client_id', client.id)
-            .eq('google_account_id', googleAccount.account_id)
-            .order('review_date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const googleCostToday = googleReview?.google_total_spent || 0;
-          const hasGoogleReviewData = !!googleReview;
-          const googleStatus = determineStatus(googleCostToday, true, hasGoogleReviewData);
-          
-          console.log(`    💰 Conta ${googleAccount.account_id}: Custo=${googleCostToday}, Status=${googleStatus.status}`);
-          
-          googleAccountsData.push({
-            costToday: googleCostToday,
-            impressionsToday: undefined,
-            errors: googleStatus.errors,
-            status: googleStatus.status,
-            accountId: googleAccount.account_id,
-            accountName: googleAccount.account_name,
-            hasAccount: true,
-            hasActiveCampaigns: googleCostToday > 0
-          });
-        }
-        
-        clientData.googleAds = googleAccountsData;
-      }
-
-      // Adicionar cliente se tiver pelo menos uma plataforma configurada
-      if (clientData.metaAds || clientData.googleAds) {
-        healthData.push(clientData);
-        console.log(`✅ Cliente ${client.company_name} adicionado com ${(clientData.metaAds as PlatformData[])?.length || 0} contas Meta e ${(clientData.googleAds as PlatformData[])?.length || 0} contas Google`);
-      }
-    }
-
-    console.log(`📈 Dados processados: ${healthData.length} clientes com campanhas (incluindo contas múltiplas)`);
-    return healthData;
+    const result = Array.from(clientsMap.values());
+    
+    console.log(`✅ Estrutura unificada: Processados ${result.length} clientes`);
+    return result;
 
   } catch (error) {
     console.error("❌ Erro ao processar dados de saúde:", error);
@@ -183,63 +142,51 @@ async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
   }
 }
 
-// Hook para buscar dados com refresh em massa - CORRIGIDO para processar múltiplas contas
+const determineAccountStatus = (healthData: any): CampaignStatus => {
+  if (!healthData.has_account) return "nodata";
+  if (healthData.active_campaigns_count === 0) return "nodata";
+  if (healthData.cost_today === 0) return "error";
+  if (healthData.cost_today > 0 && healthData.impressions_today < 100) return "warning";
+  return "ok";
+};
+
+const generateErrors = (healthData: any): string[] => {
+  const errors: string[] = [];
+  
+  if (!healthData.has_account) {
+    errors.push("Conta não configurada");
+  } else if (healthData.active_campaigns_count === 0) {
+    errors.push("Nenhuma campanha ativa");
+  } else if (healthData.cost_today === 0) {
+    errors.push("Sem veiculação hoje");
+  } else if (healthData.impressions_today < 100) {
+    errors.push("Baixo volume de impressões");
+  }
+  
+  return errors;
+}
+
+// Hook para buscar dados com refresh em massa usando a nova estrutura
 async function triggerMassReview() {
   console.log("🔄 Iniciando revisão em massa...");
   
   try {
-    // Buscar todos os clientes ativos com suas contas
-    const { data: clients, error } = await supabase
-      .from('clients')
-      .select(`
-        id, 
-        company_name,
-        client_meta_accounts!inner(account_id, is_primary)
-      `)
-      .eq('status', 'active')
-      .eq('client_meta_accounts.status', 'active');
-
-    if (error) throw error;
-
-    const results = { success: 0, failed: 0, total: 0 };
-    
-    // Contar total de contas a processar
-    for (const client of clients || []) {
-      results.total += (client as any).client_meta_accounts?.length || 0;
-    }
-    
-    console.log(`📋 Processando revisão para ${results.total} contas de ${clients?.length || 0} clientes...`);
-
-    // Processar cada cliente e suas contas
-    for (const client of clients || []) {
-      const metaAccounts = (client as any).client_meta_accounts || [];
-      
-      for (const metaAccount of metaAccounts) {
-        try {
-          const today = new Date().toISOString().split('T')[0];
-
-          // Chamar edge function para cada conta específica
-          await supabase.functions.invoke('daily-meta-review', {
-            body: {
-              clientId: client.id,
-              accountId: metaAccount.account_id,
-              reviewDate: today,
-              fetchRealData: true
-            }
-          });
-
-          results.success++;
-          console.log(`✅ Conta ${metaAccount.account_id} do cliente ${client.company_name} processada com sucesso`);
-          
-        } catch (accountError) {
-          console.error(`❌ Erro ao processar conta ${metaAccount.account_id} do cliente ${client.company_name}:`, accountError);
-          results.failed++;
-        }
+    // Executar a edge function para atualizar dados
+    const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
+      body: { 
+        timestamp: new Date().toISOString(),
+        action: 'generate_snapshots',
+        force_today_only: true
       }
+    });
+
+    if (error) {
+      console.error("❌ Erro na edge function:", error);
+      throw error;
     }
 
-    console.log(`📈 Revisão em massa concluída: ${results.success} sucessos, ${results.failed} falhas de ${results.total} contas`);
-    return results;
+    console.log("✅ Edge function executada com sucesso:", data);
+    return { success: 1, failed: 0, total: 1 };
 
   } catch (error) {
     console.error("❌ Erro na revisão em massa:", error);
