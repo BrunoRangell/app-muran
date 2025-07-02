@@ -729,6 +729,10 @@ export type Database = {
         Args: { budget_amount: number; start_date: string; end_date: string }
         Returns: number
       }
+      cleanup_old_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       extract_transaction_pattern: {
         Args: { description: string }
         Returns: string
