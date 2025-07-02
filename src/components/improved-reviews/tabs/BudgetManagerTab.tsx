@@ -1,280 +1,261 @@
 
-import React, { useState } from "react";
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription 
-} from "@/components/ui/card";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow,
-  TableFooter
-} from "@/components/ui/table";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Save, Loader, Info, Plus, Trash2 } from "lucide-react";
-import { useBudgetManager } from "../hooks/useBudgetManager";
-import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { DollarSign, RefreshCw, AlertTriangle } from "lucide-react";
+import { BudgetSetupForm } from "@/components/daily-reviews/BudgetSetupForm";
 
-export const BudgetManagerTab = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const { toast } = useToast();
-  const { 
-    clients, 
-    isLoading, 
-    budgets, 
-    handleBudgetChange, 
-    handleBudgetBlur,
-    handleAccountIdChange, 
-    handleGoogleBudgetChange,
-    handleGoogleAccountIdChange,
-    handleSave, 
-    isSaving,
-    totalBudget,
-    totalGoogleBudget,
-    addSecondaryAccount,
-    removeSecondaryAccount
-  } = useBudgetManager();
+interface ClientBudgetData {
+  id: string;
+  company_name: string;
+  hasMetaAccount: boolean;
+  hasGoogleAccount: boolean;
+  metaBudget: number;
+  googleBudget: number;
+  totalBudget: number;
+}
 
-  // Filtrar clientes com base no termo de busca
-  const filteredClients = clients?.filter(client => 
-    client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const fetchClientsWithBudgets = async (): Promise<ClientBudgetData[]> => {
+  console.log("💰 Buscando dados de orçamentos dos clientes...");
+  
+  try {
+    // Buscar todos os clientes ativos
+    const { data: clients, error: clientsError } = await supabase
+      .from('clients')
+      .select('id, company_name')
+      .eq('status', 'active');
 
-  const handleHelpClick = () => {
-    toast({
-      title: "Dica de uso",
-      description: "Digite os valores diretamente no campo de orçamento. O valor será formatado automaticamente quando você clicar fora do campo.",
-    });
-  };
+    if (clientsError) {
+      console.error("❌ Erro ao buscar clientes:", clientsError);
+      throw clientsError;
+    }
 
-  const handleRemoveSecondaryAccount = (clientId: string, clientName: string) => {
-    if (window.confirm(`Tem certeza que deseja excluir a conta secundária de ${clientName}?`)) {
-      removeSecondaryAccount(clientId);
+    if (!clients || clients.length === 0) {
+      console.warn("⚠️ Nenhum cliente ativo encontrado");
+      return [];
+    }
+
+    const result: ClientBudgetData[] = [];
+
+    for (const client of clients) {
+      console.log(`💼 Processando orçamentos do cliente: ${client.company_name}`);
+
+      // Buscar contas Meta Ads
+      const { data: metaAccounts } = await supabase
+        .from('client_accounts')
+        .select('budget_amount')
+        .eq('client_id', client.id)
+        .eq('platform', 'meta')
+        .eq('status', 'active');
+
+      // Buscar contas Google Ads
+      const { data: googleAccounts } = await supabase
+        .from('client_accounts')
+        .select('budget_amount')
+        .eq('client_id', client.id)
+        .eq('platform', 'google')
+        .eq('status', 'active');
+
+      const metaBudget = metaAccounts?.reduce((sum, acc) => sum + (acc.budget_amount || 0), 0) || 0;
+      const googleBudget = googleAccounts?.reduce((sum, acc) => sum + (acc.budget_amount || 0), 0) || 0;
+
+      const clientData: ClientBudgetData = {
+        id: client.id,
+        company_name: client.company_name,
+        hasMetaAccount: (metaAccounts?.length || 0) > 0,
+        hasGoogleAccount: (googleAccounts?.length || 0) > 0,
+        metaBudget,
+        googleBudget,
+        totalBudget: metaBudget + googleBudget
+      };
+
+      result.push(clientData);
+      console.log(`✅ Orçamentos processados para ${client.company_name}:`, {
+        meta: metaBudget,
+        google: googleBudget,
+        total: clientData.totalBudget
+      });
+    }
+
+    console.log(`🎉 Processamento de orçamentos concluído. Total: ${result.length} clientes`);
+    return result;
+
+  } catch (error) {
+    console.error("❌ Erro fatal ao buscar orçamentos:", error);
+    throw error;
+  }
+};
+
+export function BudgetManagerTab() {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['budget-manager-data'],
+    queryFn: fetchClientsWithBudgets,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos
+    retry: 2
+  });
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+      console.log("✅ Dados de orçamentos atualizados");
+    } catch (error) {
+      console.error("❌ Erro ao atualizar orçamentos:", error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
+  // Log para debug
+  useEffect(() => {
+    console.log("💰 BudgetManagerTab - Estado atual:", {
+      dataLength: data?.length || 0,
+      isLoading,
+      error: error?.message,
+      timestamp: new Date().toISOString()
+    });
+  }, [data, isLoading, error]);
+
+  const totalBudget = data?.reduce((sum, client) => sum + client.totalBudget, 0) || 0;
+  const clientsWithBudget = data?.filter(client => client.totalBudget > 0).length || 0;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+            <span>Erro ao carregar dados de orçamentos: {error.message}</span>
+          </div>
+          <Button onClick={handleRefresh} className="mt-4" variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Tentar novamente
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="w-full shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <CardTitle className="text-xl text-muran-dark flex items-center gap-2">
-              Gerenciamento de Orçamentos
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="h-6 w-6 rounded-full" 
-                onClick={handleHelpClick}
-              >
-                <Info className="h-4 w-4 text-[#ff6e00]" />
-              </Button>
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Configure os orçamentos mensais e IDs de contas para cada cliente
-            </CardDescription>
-          </div>
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar cliente..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader className="h-8 w-8 animate-spin text-[#ff6e00]" />
-          </div>
-        ) : (
-          <>
-            <div className="rounded-md border overflow-hidden">
-              <Table>
-                <TableHeader className="bg-gray-50">
-                  <TableRow>
-                    <TableHead className="w-[25%]">Cliente</TableHead>
-                    <TableHead className="w-[15%]">ID Conta Meta Ads</TableHead>
-                    <TableHead className="w-[15%]">Orçamento Meta Ads (R$)</TableHead>
-                    <TableHead className="w-[15%]">ID Conta Google Ads</TableHead>
-                    <TableHead className="w-[15%]">Orçamento Google Ads (R$)</TableHead>
-                    <TableHead className="w-[15%] text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClients?.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-gray-500">
-                        Nenhum cliente encontrado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredClients?.map((client) => (
-                      <React.Fragment key={client.id}>
-                        <TableRow className="hover:bg-gray-50">
-                          <TableCell className="font-medium">{client.company_name}</TableCell>
-                          <TableCell>
-                            <Input
-                              value={budgets[client.id]?.accountId || ""}
-                              onChange={(e) => handleAccountIdChange(client.id, e.target.value, 'primary')}
-                              placeholder="ID da conta Meta"
-                              className="bg-white"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="text"
-                              value={budgets[client.id]?.formattedValue || ""}
-                              onChange={(e) => handleBudgetChange(client.id, e.target.value, 'primary')}
-                              onBlur={() => handleBudgetBlur(client.id, 'meta', 'primary')}
-                              placeholder="R$ 0,00"
-                              className="text-right bg-white"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              value={budgets[client.id]?.googleAccountId || ""}
-                              onChange={(e) => handleGoogleAccountIdChange(client.id, e.target.value, 'primary')}
-                              placeholder="ID da conta Google"
-                              className="bg-white"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="text"
-                              value={budgets[client.id]?.googleFormattedValue || ""}
-                              onChange={(e) => handleGoogleBudgetChange(client.id, e.target.value, 'primary')}
-                              onBlur={() => handleBudgetBlur(client.id, 'google', 'primary')}
-                              placeholder="R$ 0,00"
-                              className="text-right bg-white"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addSecondaryAccount(client.id)}
-                              title="Adicionar Conta Secundária"
-                              className="h-8 w-8 p-0"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                        
-                        {/* Conta secundária se existir - CORRIGIDO o warning do React.Fragment */}
-                        {budgets[client.id]?.hasSecondary && (
-                          <TableRow key={`${client.id}-secondary`} className="bg-gray-50/50">
-                            <TableCell className="text-xs text-gray-500 pl-8">
-                              Conta secundária - {client.company_name}
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={budgets[client.id]?.secondaryAccountId || ""}
-                                onChange={(e) => handleAccountIdChange(client.id, e.target.value, 'secondary')}
-                                placeholder="ID da conta Meta secundária"
-                                className="bg-white"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="text"
-                                value={budgets[client.id]?.secondaryFormattedValue || ""}
-                                onChange={(e) => handleBudgetChange(client.id, e.target.value, 'secondary')}
-                                onBlur={() => handleBudgetBlur(client.id, 'meta', 'secondary')}
-                                placeholder="R$ 0,00"
-                                className="text-right bg-white"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={budgets[client.id]?.secondaryGoogleAccountId || ""}
-                                onChange={(e) => handleGoogleAccountIdChange(client.id, e.target.value, 'secondary')}
-                                placeholder="ID da conta Google secundária"
-                                className="bg-white"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="text"
-                                value={budgets[client.id]?.secondaryGoogleFormattedValue || ""}
-                                onChange={(e) => handleGoogleBudgetChange(client.id, e.target.value, 'secondary')}
-                                onBlur={() => handleBudgetBlur(client.id, 'google', 'secondary')}
-                                placeholder="R$ 0,00"
-                                className="text-right bg-white"
-                              />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveSecondaryAccount(client.id, client.company_name)}
-                                title="Remover Conta Secundária"
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-100"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </React.Fragment>
-                    ))
-                  )}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={2} className="text-right font-medium">
-                      Total de Orçamentos Meta Ads:
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {totalBudget}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      Total de Orçamentos Google Ads:
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {totalGoogleBudget}
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
-            </div>
+    <div className="space-y-6">
+      {/* Métricas Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Clientes ativos no sistema
+            </p>
+          </CardContent>
+        </Card>
 
-            <div className="mt-6 flex justify-end">
-              <Button 
-                onClick={handleSave} 
-                disabled={isLoading || isSaving}
-                className="bg-[#ff6e00] hover:bg-[#ff6e00]/90 font-medium"
-                size="lg"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Salvar alterações
-                  </>
-                )}
-              </Button>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Com Orçamento</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{clientsWithBudget}</div>
+            <p className="text-xs text-muted-foreground">
+              Clientes com orçamentos configurados
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Orçamento Total</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {totalBudget.toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+              })}
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+            <p className="text-xs text-muted-foreground">
+              Soma total dos orçamentos
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Botão de Atualizar */}
+      <div className="flex justify-end">
+        <Button 
+          onClick={handleRefresh} 
+          disabled={isLoading || refreshing}
+          variant="outline"
+          size="sm"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Atualizar Dados
+        </Button>
+      </div>
+
+      {/* Lista de Clientes com Orçamentos */}
+      {data && data.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Orçamentos por Cliente</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {data.map((client) => (
+                <div key={client.id} className="flex justify-between items-center border-b pb-2">
+                  <div>
+                    <h3 className="font-medium">{client.company_name}</h3>
+                    <div className="text-sm text-muted-foreground">
+                      {client.hasMetaAccount && "Meta Ads"} 
+                      {client.hasMetaAccount && client.hasGoogleAccount && " • "}
+                      {client.hasGoogleAccount && "Google Ads"}
+                      {!client.hasMetaAccount && !client.hasGoogleAccount && "Sem contas configuradas"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium">
+                      {client.totalBudget.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      })}
+                    </div>
+                    {(client.metaBudget > 0 || client.googleBudget > 0) && (
+                      <div className="text-xs text-muted-foreground">
+                        {client.metaBudget > 0 && `Meta: R$ ${client.metaBudget.toFixed(2)}`}
+                        {client.metaBudget > 0 && client.googleBudget > 0 && " • "}
+                        {client.googleBudget > 0 && `Google: R$ ${client.googleBudget.toFixed(2)}`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Formulário de Configuração de Orçamentos */}
+      <BudgetSetupForm />
+    </div>
   );
-};
-
-export default BudgetManagerTab;
+}

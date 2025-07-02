@@ -1,23 +1,21 @@
+
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { getDaysInMonth } from "date-fns";
 
 export interface GoogleAdsClientData {
-  id: string; // Mapeado de clientId
-  company_name: string; // Mapeado de clientName
+  id: string;
+  company_name: string;
   google_account_id?: string;
   google_account_name?: string;
   hasAccount: boolean;
-  // Estrutura de revisão padronizada
   review?: {
     total_spent: number;
     daily_budget_current: number;
   };
-  // Campos de orçamento padronizados
   budget_amount: number;
   original_budget_amount: number;
-  // Campos de cálculo padronizados
   needsAdjustment: boolean;
   budgetCalculation?: {
     budgetDifference: number;
@@ -27,7 +25,6 @@ export interface GoogleAdsClientData {
     needsAdjustmentBasedOnAverage: boolean;
     warningIgnoredToday: boolean;
   };
-  // Campos específicos do Google Ads
   weightedAverage?: number;
   isUsingCustomBudget?: boolean;
   customBudget?: any;
@@ -44,201 +41,153 @@ export interface GoogleAdsMetrics {
 }
 
 const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
-  console.log("🔍 Buscando dados do Google Ads com estrutura padronizada...");
+  console.log("🔍 Iniciando busca de dados do Google Ads...");
   
-  const today = new Date().toISOString().split('T')[0];
-  
-  // Buscar TODOS os clientes ativos (igual ao Meta Ads)
-  const { data: clientsData, error } = await supabase
-    .from('clients')
-    .select(`
-      id,
-      company_name,
-      client_accounts!left(
-        id,
-        account_id,
-        account_name,
-        budget_amount,
-        platform,
-        status
-      ),
-      budget_reviews!left(
-        total_spent,
-        daily_budget_current,
-        review_date,
-        using_custom_budget,
-        custom_budget_amount,
-        last_five_days_spent,
-        platform,
-        account_id,
-        client_id,
-        warning_ignored_today,
-        warning_ignored_date
-      )
-    `)
-    .eq('status', 'active');
+  try {
+    // Primeiro, buscar TODOS os clientes ativos
+    const { data: clients, error: clientsError } = await supabase
+      .from('clients')
+      .select('id, company_name')
+      .eq('status', 'active');
 
-  if (error) {
-    console.error("❌ Erro ao buscar dados do Google Ads:", error);
-    throw error;
-  }
+    if (clientsError) {
+      console.error("❌ Erro ao buscar clientes:", clientsError);
+      throw clientsError;
+    }
 
-  console.log(`✅ Encontrados ${clientsData?.length || 0} clientes ativos`);
+    console.log(`✅ Encontrados ${clients?.length || 0} clientes ativos`);
 
-  const result: GoogleAdsClientData[] = [];
+    if (!clients || clients.length === 0) {
+      console.warn("⚠️ Nenhum cliente ativo encontrado");
+      return [];
+    }
 
-  for (const client of clientsData || []) {
-    // Filtrar apenas contas Google Ads ativas
-    const googleAccounts = (client as any).client_accounts?.filter(
-      (acc: any) => acc.platform === 'google' && acc.status === 'active'
-    ) || [];
-    
-    // Filtrar apenas revisões Google Ads
-    const googleReviews = (client as any).budget_reviews?.filter(
-      (rev: any) => rev.platform === 'google' && rev.client_id === client.id
-    ) || [];
+    const result: GoogleAdsClientData[] = [];
+    const today = new Date().toISOString().split('T')[0];
 
-    if (googleAccounts.length > 0) {
-      // Cliente COM conta Google Ads
-      for (const account of googleAccounts) {
-        // Buscar revisões para esta conta específica
-        const accountReviews = googleReviews.filter(
-          (rev: any) => rev.account_id === account.id
-        );
-        
-        const latestReview = accountReviews.find((r: any) => r.review_date === today) || accountReviews[0];
-        
-        // CÁLCULO DO DIÁRIO IDEAL
-        const currentDate = new Date();
-        const daysInMonth = getDaysInMonth(currentDate);
-        const currentDay = currentDate.getDate();
-        const remainingDays = daysInMonth - currentDay + 1;
-        
-        const totalSpent = latestReview?.total_spent || 0;
-        const budgetAmount = latestReview?.custom_budget_amount || account.budget_amount || 0;
-        const remainingBudget = budgetAmount - totalSpent;
-        const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
-        
-        // MÉDIA PONDERADA CORRETA - usar o valor calculado na edge function
-        const weightedAverage = latestReview?.last_five_days_spent || 0;
-        
-        // CÁLCULO DO AJUSTE RECOMENDADO
-        const budgetDifference = idealDailyBudget - weightedAverage;
-        const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5; // R$ 5 de diferença
-        
-        console.log(`🧮 Cálculos para ${client.company_name}:`, {
-          idealDailyBudget: idealDailyBudget.toFixed(2),
-          weightedAverage: weightedAverage.toFixed(2),
-          budgetDifference: budgetDifference.toFixed(2),
-          needsBudgetAdjustment
-        });
-        
-        // ESTRUTURA PADRONIZADA - igual ao Meta Ads
+    // Processar cada cliente individualmente para evitar JOINs complexos
+    for (const client of clients) {
+      console.log(`🔄 Processando cliente: ${client.company_name}`);
+
+      // Buscar contas Google Ads do cliente
+      const { data: googleAccounts, error: accountsError } = await supabase
+        .from('client_accounts')
+        .select('*')
+        .eq('client_id', client.id)
+        .eq('platform', 'google')
+        .eq('status', 'active');
+
+      if (accountsError) {
+        console.error(`❌ Erro ao buscar contas Google do cliente ${client.company_name}:`, accountsError);
+        continue;
+      }
+
+      if (googleAccounts && googleAccounts.length > 0) {
+        // Cliente COM conta Google Ads
+        for (const account of googleAccounts) {
+          console.log(`📊 Processando conta Google: ${account.account_name}`);
+
+          // Buscar revisões para esta conta
+          const { data: reviews, error: reviewsError } = await supabase
+            .from('budget_reviews')
+            .select('*')
+            .eq('client_id', client.id)
+            .eq('account_id', account.id)
+            .eq('platform', 'google')
+            .order('review_date', { ascending: false })
+            .limit(1);
+
+          if (reviewsError) {
+            console.error(`❌ Erro ao buscar revisões:`, reviewsError);
+          }
+
+          const latestReview = reviews && reviews.length > 0 ? reviews[0] : null;
+          const totalSpent = latestReview?.total_spent || 0;
+          const budgetAmount = latestReview?.custom_budget_amount || account.budget_amount || 0;
+          
+          // Cálculos básicos
+          const currentDate = new Date();
+          const daysInMonth = getDaysInMonth(currentDate);
+          const currentDay = currentDate.getDate();
+          const remainingDays = daysInMonth - currentDay + 1;
+          const remainingBudget = Math.max(budgetAmount - totalSpent, 0);
+          const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+          const weightedAverage = latestReview?.last_five_days_spent || 0;
+          const budgetDifference = idealDailyBudget - weightedAverage;
+          const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
+
+          const clientData: GoogleAdsClientData = {
+            id: client.id,
+            company_name: client.company_name,
+            google_account_id: account.account_id,
+            google_account_name: account.account_name,
+            hasAccount: true,
+            review: {
+              total_spent: totalSpent,
+              daily_budget_current: latestReview?.daily_budget_current || account.budget_amount || 0
+            },
+            budget_amount: budgetAmount,
+            original_budget_amount: account.budget_amount || 0,
+            needsAdjustment: needsBudgetAdjustment,
+            weightedAverage: weightedAverage,
+            isUsingCustomBudget: latestReview?.using_custom_budget || false,
+            budgetCalculation: {
+              budgetDifference,
+              remainingDays,
+              idealDailyBudget,
+              needsBudgetAdjustment,
+              needsAdjustmentBasedOnAverage: needsBudgetAdjustment,
+              warningIgnoredToday: latestReview?.warning_ignored_today || false
+            }
+          };
+
+          result.push(clientData);
+          console.log(`✅ Cliente adicionado: ${client.company_name} (COM conta Google)`);
+        }
+      } else {
+        // Cliente SEM conta Google Ads
         const clientData: GoogleAdsClientData = {
-          // IDs padronizados
           id: client.id,
           company_name: client.company_name,
-          
-          // Informações da conta Google
-          google_account_id: account.account_id,
-          google_account_name: account.account_name,
-          hasAccount: true,
-          
-          // Estrutura de revisão padronizada
+          hasAccount: false,
           review: {
-            total_spent: totalSpent,
-            daily_budget_current: latestReview?.daily_budget_current || account.budget_amount || 0
+            total_spent: 0,
+            daily_budget_current: 0
           },
-          
-          // Campos de orçamento padronizados
-          budget_amount: budgetAmount,
-          original_budget_amount: account.budget_amount || 0,
-          
-          // Cálculos básicos para determinar se precisa ajuste
-          needsAdjustment: needsBudgetAdjustment,
-          
-          // Campos específicos do Google Ads
-          weightedAverage: weightedAverage, // AGORA É A MÉDIA PONDERADA CORRETA
-          isUsingCustomBudget: latestReview?.using_custom_budget || false,
-          
-          // Estrutura de cálculo padronizada COM DIÁRIO IDEAL CORRETO
+          budget_amount: 0,
+          original_budget_amount: 0,
+          needsAdjustment: false,
+          weightedAverage: 0,
+          isUsingCustomBudget: false,
           budgetCalculation: {
-            budgetDifference: budgetDifference, // AGORA CALCULADO CORRETAMENTE
-            remainingDays: remainingDays,
-            idealDailyBudget: idealDailyBudget,
-            needsBudgetAdjustment: needsBudgetAdjustment, // BASEADO NA MÉDIA PONDERADA
-            needsAdjustmentBasedOnAverage: needsBudgetAdjustment,
-            warningIgnoredToday: latestReview?.warning_ignored_today || false
+            budgetDifference: 0,
+            remainingDays: 0,
+            idealDailyBudget: 0,
+            needsBudgetAdjustment: false,
+            needsAdjustmentBasedOnAverage: false,
+            warningIgnoredToday: false
           }
         };
 
         result.push(clientData);
-        
-        console.log(`✅ Cliente processado: ${client.company_name} (COM conta Google)`, {
-          hasAccount: true,
-          totalSpent: clientData.review?.total_spent,
-          budgetAmount: clientData.budget_amount,
-          idealDailyBudget: idealDailyBudget,
-          weightedAverage: weightedAverage,
-          budgetDifference: budgetDifference,
-          remainingDays: remainingDays,
-          needsAdjustment: clientData.needsAdjustment
-        });
+        console.log(`✅ Cliente adicionado: ${client.company_name} (SEM conta Google)`);
       }
-    } else {
-      // Cliente SEM conta Google Ads - estrutura padronizada
-      const clientData: GoogleAdsClientData = {
-        // IDs padronizados
-        id: client.id,
-        company_name: client.company_name,
-        
-        // Sem conta
-        hasAccount: false,
-        
-        // Estrutura de revisão padronizada (zerada)
-        review: {
-          total_spent: 0,
-          daily_budget_current: 0
-        },
-        
-        // Campos de orçamento padronizados (zerados)
-        budget_amount: 0,
-        original_budget_amount: 0,
-        
-        // Sem necessidade de ajuste
-        needsAdjustment: false,
-        
-        // Campos específicos do Google Ads (zerados)
-        weightedAverage: 0,
-        isUsingCustomBudget: false,
-        
-        // Estrutura de cálculo padronizada (zerada)
-        budgetCalculation: {
-          budgetDifference: 0,
-          remainingDays: 0,
-          idealDailyBudget: 0,
-          needsBudgetAdjustment: false,
-          needsAdjustmentBasedOnAverage: false,
-          warningIgnoredToday: false
-        }
-      };
-
-      result.push(clientData);
-      
-      console.log(`✅ Cliente processado: ${client.company_name} (SEM conta Google)`, {
-        hasAccount: false,
-        allFieldsZeroed: true
-      });
     }
-  }
 
-  console.log(`✅ Estrutura de dados padronizada - Total: ${result.length} clientes`, {
-    comConta: result.filter(c => c.hasAccount).length,
-    semConta: result.filter(c => !c.hasAccount).length,
-    precisamAjuste: result.filter(c => c.needsAdjustment).length
-  });
-  
-  return result;
+    console.log(`🎉 Processamento concluído. Total de clientes: ${result.length}`);
+    console.log(`📊 Resumo:`, {
+      total: result.length,
+      comConta: result.filter(c => c.hasAccount).length,
+      semConta: result.filter(c => !c.hasAccount).length,
+      precisamAjuste: result.filter(c => c.needsAdjustment).length
+    });
+
+    return result;
+
+  } catch (error) {
+    console.error("❌ Erro fatal na busca de dados do Google Ads:", error);
+    throw error;
+  }
 };
 
 export const useGoogleAdsData = () => {
@@ -246,29 +195,34 @@ export const useGoogleAdsData = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['improved-google-reviews'], // CORREÇÃO: Padronizando query key
+    queryKey: ['google-ads-clients-data'], // Query key única e específica
     queryFn: fetchGoogleAdsData,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 2 * 60 * 1000, // 2 minutos
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const metrics = useMemo<GoogleAdsMetrics>(() => {
-    if (!data) return {
-      totalClients: 0,
-      clientsWithAdjustments: 0,
-      clientsWithoutAccount: 0,
-      averageSpend: 0,
-      totalSpent: 0,
-      totalBudget: 0,
-      spentPercentage: 0
-    };
+    if (!data || data.length === 0) {
+      console.log("📊 Calculando métricas - dados vazios");
+      return {
+        totalClients: 0,
+        clientsWithAdjustments: 0,
+        clientsWithoutAccount: 0,
+        averageSpend: 0,
+        totalSpent: 0,
+        totalBudget: 0,
+        spentPercentage: 0
+      };
+    }
 
     const totalSpent = data.reduce((sum, client) => sum + (client.review?.total_spent || 0), 0);
     const totalBudget = data.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
     const clientsWithAdjustments = data.filter(client => client.needsAdjustment).length;
     const clientsWithoutAccount = data.filter(client => !client.hasAccount).length;
 
-    return {
+    const calculatedMetrics = {
       totalClients: data.length,
       clientsWithAdjustments,
       clientsWithoutAccount,
@@ -277,16 +231,31 @@ export const useGoogleAdsData = () => {
       totalBudget,
       spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
     };
+
+    console.log("📊 Métricas calculadas:", calculatedMetrics);
+    return calculatedMetrics;
   }, [data]);
 
   const refreshData = async () => {
+    console.log("🔄 Forçando atualização dos dados...");
     setIsRefreshing(true);
     try {
       await refetch();
+      console.log("✅ Dados atualizados com sucesso");
+    } catch (error) {
+      console.error("❌ Erro ao atualizar dados:", error);
     } finally {
       setIsRefreshing(false);
     }
   };
+
+  // Log para debug do estado atual
+  console.log("🔍 Estado atual do hook:", {
+    dataLength: data?.length || 0,
+    isLoading,
+    error: error?.message,
+    hasData: !!data
+  });
 
   return {
     data: data || [],
