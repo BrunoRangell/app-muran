@@ -20,7 +20,6 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
   
   const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
   const { forceDataRefresh, startPolling } = useRealTimeDataService();
@@ -89,7 +88,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     }
   };
 
-  // Mostrar debug panel se não há dados ou há erro
+  // Mostrar debug panel apenas se não há dados ou há erro
   const shouldShowDebug = !isLoading && (error || !data || data.length === 0);
 
   if (isLoading) {
@@ -98,18 +97,8 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
 
   return (
     <div className="space-y-6">
-      {/* Debug Panel - mostra automaticamente se há problemas */}
-      {(shouldShowDebug || showDebugPanel) && <DataDebugPanel />}
-      
-      {/* Toggle Debug Panel */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setShowDebugPanel(!showDebugPanel)}
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          {showDebugPanel ? 'Ocultar' : 'Mostrar'} Debug Panel
-        </button>
-      </div>
+      {/* Debug Panel - mostra automaticamente apenas se há problemas */}
+      {shouldShowDebug && <DataDebugPanel />}
 
       {error && (
         <EmptyState

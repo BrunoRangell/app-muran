@@ -213,47 +213,6 @@ export function BudgetManagerTab() {
         </Button>
       </div>
 
-      {/* Lista de Clientes com Orçamentos */}
-      {data && data.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Orçamentos por Cliente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {data.map((client) => (
-                <div key={client.id} className="flex justify-between items-center border-b pb-2">
-                  <div>
-                    <h3 className="font-medium">{client.company_name}</h3>
-                    <div className="text-sm text-muted-foreground">
-                      {client.hasMetaAccount && "Meta Ads"} 
-                      {client.hasMetaAccount && client.hasGoogleAccount && " • "}
-                      {client.hasGoogleAccount && "Google Ads"}
-                      {!client.hasMetaAccount && !client.hasGoogleAccount && "Sem contas configuradas"}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">
-                      {client.totalBudget.toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      })}
-                    </div>
-                    {(client.metaBudget > 0 || client.googleBudget > 0) && (
-                      <div className="text-xs text-muted-foreground">
-                        {client.metaBudget > 0 && `Meta: R$ ${client.metaBudget.toFixed(2)}`}
-                        {client.metaBudget > 0 && client.googleBudget > 0 && " • "}
-                        {client.googleBudget > 0 && `Google: R$ ${client.googleBudget.toFixed(2)}`}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Formulário de Configuração de Orçamentos */}
       <BudgetSetupForm />
     </div>
