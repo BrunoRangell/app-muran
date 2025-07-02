@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./cors.ts";
 import { formatResponse, formatErrorResponse } from "./response.ts";
@@ -152,6 +151,156 @@ async function validateCustomBudget(supabaseUrl: string, supabaseKey: string, bu
   }
 }
 
+// Função para buscar o nome real da conta Google Ads
+async function fetchRealAccountName(
+  googleAccountId: string,
+  headers: Record<string, string>
+): Promise<string | null> {
+  try {
+    console.log(`🏷️ Buscando nome real da conta Google Ads: ${googleAccountId}`);
+    
+    const query = `
+      SELECT
+          customer_client.descriptive_name
+      FROM
+          customer_client
+      WHERE
+          customer_client.id = ${googleAccountId}
+    `;
+    
+    const response = await fetch(
+      `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ query })
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Erro ao buscar nome da conta ${googleAccountId}:`, errorText);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (!data || !data.results || data.results.length === 0) {
+      console.log(`📋 Nenhum nome encontrado para a conta ${googleAccountId}`);
+      return null;
+    }
+    
+    const accountName = data.results[0]?.customerClient?.descriptiveName;
+    
+    if (accountName) {
+      console.log(`✅ Nome real da conta obtido: "${accountName}"`);
+      return accountName;
+    }
+    
+    return null;
+    
+  } catch (error) {
+    console.error(`❌ Erro ao buscar nome da conta ${googleAccountId}:`, error);
+    return null;
+  }
+}
+
+// Função para atualizar o nome da conta no banco de dados
+async function updateAccountName(
+  supabaseUrl: string,
+  supabaseKey: string,
+  accountIdUuid: string,
+  realAccountName: string
+): Promise<boolean> {
+  try {
+    console.log(`💾 Atualizando nome da conta no banco: "${realAccountName}"`);
+    
+    const updateResponse = await fetch(
+      `${supabaseUrl}/rest/v1/client_accounts?id=eq.${accountIdUuid}`, {
+      method: "PATCH",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        account_name: realAccountName,
+        updated_at: new Date().toISOString()
+      })
+    });
+    
+    if (!updateResponse.ok) {
+      const errorText = await updateResponse.text();
+      console.error("❌ Erro ao atualizar nome da conta:", errorText);
+      return false;
+    }
+    
+    console.log(`✅ Nome da conta atualizado com sucesso: "${realAccountName}"`);
+    return true;
+    
+  } catch (error) {
+    console.error("❌ Erro ao atualizar nome da conta:", error);
+    return false;
+  }
+}
+
+// Função para buscar gastos de um dia específico
+async function fetchDailySpend(
+  googleAccountId: string,
+  targetDate: string,
+  headers: Record<string, string>
+): Promise<number> {
+  try {
+    console.log(`🔍 Buscando gastos para ${targetDate} da conta ${googleAccountId}`);
+    
+    const query = `
+      SELECT
+          metrics.cost_micros,
+          campaign.id,
+          campaign.name
+      FROM
+          campaign
+      WHERE
+          segments.date BETWEEN '${targetDate}' AND '${targetDate}'
+    `;
+    
+    const response = await fetch(
+      `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ query })
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Erro na API do Google Ads para ${targetDate}:`, errorText);
+      return 0; // Retornar 0 em caso de erro
+    }
+    
+    const data = await response.json();
+    
+    if (!data || !data.results || data.results.length === 0) {
+      console.log(`📊 Nenhum gasto encontrado para ${targetDate}`);
+      return 0;
+    }
+    
+    const totalSpend = data.results.reduce((acc: number, campaign: any) => {
+      const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
+      return acc + cost;
+    }, 0);
+    
+    console.log(`💰 Gasto total para ${targetDate}: ${totalSpend.toFixed(2)}`);
+    return totalSpend;
+    
+  } catch (error) {
+    console.error(`❌ Erro ao buscar gastos para ${targetDate}:`, error);
+    return 0;
+  }
+}
+
 // Função para processar as revisões do Google Ads
 async function processGoogleReview(req: Request) {
   try {
@@ -226,12 +375,12 @@ async function processGoogleReview(req: Request) {
 
     const client = clients[0];
     
-    // Buscar conta do Google Ads específica
-    let accountName = "Conta Principal";
-    let budgetAmount = client.google_ads_budget || 0;
+    // Buscar ou criar conta do Google Ads específica
+    let accountName = "Conta não identificada"; // ALTERADO: usar fallback padrão
+    let accountIdUuid = null;
     
     const accountResponse = await fetch(
-      `${supabaseUrl}/rest/v1/client_google_accounts?client_id=eq.${clientId}&account_id=eq.${googleAccountId}&select=*`, {
+      `${supabaseUrl}/rest/v1/client_accounts?client_id=eq.${clientId}&account_id=eq.${googleAccountId}&platform=eq.google&select=*`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -242,12 +391,38 @@ async function processGoogleReview(req: Request) {
     if (accountResponse.ok) {
       const accounts = await accountResponse.json();
       if (accounts && accounts.length > 0) {
-        accountName = accounts[0].account_name || "Conta Google";
-        budgetAmount = accounts[0].budget_amount || client.google_ads_budget || 0;
+        accountName = accounts[0].account_name || "Conta não identificada"; // ALTERADO: usar fallback
+        accountIdUuid = accounts[0].id;
+      } else {
+        // Criar nova conta se não existir
+        const createAccountResponse = await fetch(
+          `${supabaseUrl}/rest/v1/client_accounts`, {
+          method: "POST",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+          },
+          body: JSON.stringify({
+            client_id: clientId,
+            platform: "google",
+            account_id: googleAccountId,
+            account_name: accountName,
+            budget_amount: 0,
+            status: "active"
+          })
+        });
+        
+        if (createAccountResponse.ok) {
+          const newAccount = await createAccountResponse.json();
+          accountIdUuid = newAccount[0].id;
+          console.log(`✅ Nova conta Google Ads criada: ${accountIdUuid}`);
+        }
       }
     }
 
-    // CORREÇÃO: Verificar se existe um orçamento personalizado ativo para Google Ads
+    // Verificar orçamento personalizado
     const today = new Date().toISOString().split('T')[0];
     const customBudgetResponse = await fetch(
       `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&is_active=eq.true&platform=eq.google&start_date=lte.${today}&end_date=gte.${today}&order=created_at.desc&limit=1`, {
@@ -264,24 +439,13 @@ async function processGoogleReview(req: Request) {
       const customBudgets = await customBudgetResponse.json();
       if (customBudgets && customBudgets.length > 0) {
         customBudget = customBudgets[0];
-        
-        // VALIDAÇÃO CRÍTICA: Verificar se o orçamento personalizado realmente existe
-        const isValidBudget = await validateCustomBudget(supabaseUrl, supabaseKey, customBudget.id);
-        if (isValidBudget) {
-          budgetAmount = customBudget.budget_amount || budgetAmount;
-          console.log(`✅ Usando orçamento personalizado VÁLIDO (ID: ${customBudget.id}) - Valor: ${budgetAmount}`);
-        } else {
-          console.warn(`⚠️ Orçamento personalizado inválido (ID: ${customBudget.id}) - usando orçamento padrão`);
-          customBudget = null; // Reset para não usar orçamento inválido
-        }
+        console.log(`✅ Usando orçamento personalizado (ID: ${customBudget.id})`);
       }
     }
 
-    console.log(`💰 Orçamento final usado: ${budgetAmount} para conta ${accountName} (${googleAccountId})`);
-
-    // Verificar revisão existente
+    // CORREÇÃO: Verificar revisão existente na tabela budget_reviews unificada
     const existingReviewResponse = await fetch(
-      `${supabaseUrl}/rest/v1/google_ads_reviews?client_id=eq.${clientId}&google_account_id=eq.${googleAccountId}&review_date=eq.${reviewDate}&select=id`, {
+      `${supabaseUrl}/rest/v1/budget_reviews?client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&platform=eq.google&review_date=eq.${reviewDate}&select=id`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -297,6 +461,7 @@ async function processGoogleReview(req: Request) {
     let lastFiveDaysSpent = 0;
     let currentDailyBudget = 0;
     let apiErrorDetails = null;
+    let realAccountName = accountName; // Usar nome atual como padrão (agora "Conta não identificada")
     
     // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
     let googleDay1Spent = 0;
@@ -349,153 +514,117 @@ async function processGoogleReview(req: Request) {
         headers['login-customer-id'] = googleTokens.google_ads_manager_id;
       }
       
-      // Calcular datas para query
-      const today = new Date();
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const startDate = startOfMonth.toISOString().split('T')[0];
-      const endDate = today.toISOString().split('T')[0];
+      // IMPLEMENTAÇÃO: Buscar nome real da conta Google Ads
+      console.log("🏷️ Buscando nome real da conta Google Ads...");
+      const fetchedAccountName = await fetchRealAccountName(googleAccountId, headers);
       
-      // Query para obter gastos do mês atual com informações por dia
-      const query = `
+      if (fetchedAccountName && fetchedAccountName !== accountName) {
+        realAccountName = fetchedAccountName;
+        
+        // Atualizar nome da conta no banco de dados se necessário
+        if (accountIdUuid) {
+          const updateSuccess = await updateAccountName(supabaseUrl, supabaseKey, accountIdUuid, realAccountName);
+          if (updateSuccess) {
+            console.log(`✅ Nome da conta atualizado no banco: "${realAccountName}"`);
+          }
+        }
+      } else if (!fetchedAccountName) {
+        // NOVO: Se não conseguir buscar o nome, manter "Conta não identificada"
+        console.log("⚠️ Não foi possível obter o nome real da conta - usando fallback");
+        realAccountName = "Conta não identificada";
+      }
+      
+      // NOVA IMPLEMENTAÇÃO: Calcular as datas dos últimos 5 dias e buscar gastos individuais
+      const currentDate = new Date();
+      const lastFiveDays: string[] = [];
+      
+      for (let i = 1; i <= 5; i++) {
+        const date = new Date(currentDate);
+        date.setDate(date.getDate() - i);
+        lastFiveDays.push(date.toISOString().split('T')[0]);
+      }
+      
+      console.log("📅 Datas dos últimos 5 dias:", lastFiveDays);
+      
+      // Fazer 5 queries separadas para cada dia
+      const [day1Spend, day2Spend, day3Spend, day4Spend, day5Spend] = await Promise.all([
+        fetchDailySpend(googleAccountId, lastFiveDays[0], headers), // ontem
+        fetchDailySpend(googleAccountId, lastFiveDays[1], headers), // anteontem
+        fetchDailySpend(googleAccountId, lastFiveDays[2], headers), // 3 dias atrás
+        fetchDailySpend(googleAccountId, lastFiveDays[3], headers), // 4 dias atrás
+        fetchDailySpend(googleAccountId, lastFiveDays[4], headers), // 5 dias atrás
+      ]);
+      
+      // Mapear corretamente os gastos individuais
+      googleDay5Spent = day1Spend; // day_5_spent = ontem (mais recente, peso 0.3)
+      googleDay4Spent = day2Spend; // day_4_spent = anteontem (peso 0.25)
+      googleDay3Spent = day3Spend; // day_3_spent = 3 dias atrás (peso 0.2)
+      googleDay2Spent = day4Spend; // day_2_spent = 4 dias atrás (peso 0.15)
+      googleDay1Spent = day5Spend; // day_1_spent = 5 dias atrás (mais antigo, peso 0.1)
+      
+      console.log("💰 Gastos individuais corrigidos dos últimos 5 dias:", {
+        day1Spent_5diasAtras: googleDay1Spent,
+        day2Spent_4diasAtras: googleDay2Spent,
+        day3Spent_3diasAtras: googleDay3Spent,
+        day4Spent_anteontem: googleDay4Spent,
+        day5Spent_ontem: googleDay5Spent
+      });
+      
+      // IMPLEMENTAÇÃO DA MÉDIA PONDERADA CORRIGIDA
+      console.log("🧮 Calculando média ponderada dos últimos 5 dias...");
+      
+      // Aplicar a fórmula: (day1 * 0.1) + (day2 * 0.15) + (day3 * 0.2) + (day4 * 0.25) + (day5 * 0.3)
+      lastFiveDaysSpent = (googleDay1Spent * 0.1) + (googleDay2Spent * 0.15) + (googleDay3Spent * 0.2) + (googleDay4Spent * 0.25) + (googleDay5Spent * 0.3);
+      
+      console.log(`📊 Média ponderada CORRIGIDA: ${lastFiveDaysSpent.toFixed(2)}`, {
+        formula: `(${googleDay1Spent} * 0.1) + (${googleDay2Spent} * 0.15) + (${googleDay3Spent} * 0.2) + (${googleDay4Spent} * 0.25) + (${googleDay5Spent} * 0.3)`,
+        resultado: lastFiveDaysSpent
+      });
+      
+      // Buscar gasto total do mês atual
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const startDate = startOfMonth.toISOString().split('T')[0];
+      const endDate = currentDate.toISOString().split('T')[0];
+      
+      const monthlyQuery = `
         SELECT
             metrics.cost_micros,
             campaign.id,
-            campaign.name,
-            campaign_budget.amount_micros,
-            segments.date
+            campaign.name
         FROM
             campaign
         WHERE
             segments.date BETWEEN '${startDate}' AND '${endDate}'
       `;
       
-      console.log(`📊 Consultando API do Google Ads para a conta ${googleAccountId}, período: ${startDate} a ${endDate}`);
+      console.log(`📊 Consultando gasto total do mês para a conta ${googleAccountId}, período: ${startDate} a ${endDate}`);
       
-      // Fazer chamada para a API do Google Ads
-      const response = await fetch(
+      const monthlyResponse = await fetch(
         `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
         {
           method: "POST",
           headers: headers,
-          body: JSON.stringify({ query })
+          body: JSON.stringify({ query: monthlyQuery })
         }
       );
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Erro detalhado da API do Google Ads:", {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries()),
-          body: errorText
-        });
+      if (monthlyResponse.ok) {
+        const monthlyData = await monthlyResponse.json();
         
-        let errorMessage = `Erro ${response.status}: ${response.statusText}`;
-        try {
-          const errorData = JSON.parse(errorText);
-          if (errorData?.error?.message) {
-            errorMessage = errorData.error.message;
-          }
-        } catch (parseError) {
-          if (errorText) {
-            errorMessage = errorText;
-          }
-        }
-        
-        apiErrorDetails = {
-          status: response.status,
-          statusText: response.statusText,
-          message: errorMessage,
-          accountId: googleAccountId
-        };
-        
-        throw new Error(`Erro na API do Google Ads para conta ${googleAccountId}: ${errorMessage}`);
-      }
-      
-      const data = await response.json();
-      console.log("✅ Resposta da API do Google Ads obtida com sucesso");
-      
-      // Variáveis para rastrear gastos por dia
-      let dailySpends: Record<string, number> = {};
-      
-      // NOVO: Preparar datas dos últimos 5 dias para mapear corretamente
-      const lastFiveDays: string[] = [];
-      for (let i = 5; i >= 1; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        lastFiveDays.push(date.toISOString().split('T')[0]);
-      }
-      
-      console.log("📅 Últimos 5 dias para mapeamento:", lastFiveDays);
-      
-      // Calcular o gasto total e rastrear gastos por dia APENAS COM DADOS REAIS
-      if (data && data.results && data.results.length > 0) {
-        console.log(`📈 Encontrados ${data.results.length} resultados de gastos para a conta ${googleAccountId}`);
-        
-        // Processar resultados para calcular gastos
-        data.results.forEach((campaign: any) => {
-          const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
-          const date = campaign.segments?.date;
+        if (monthlyData && monthlyData.results && monthlyData.results.length > 0) {
+          totalSpent = monthlyData.results.reduce((acc: number, campaign: any) => {
+            const cost = campaign.metrics?.costMicros ? campaign.metrics.costMicros / 1e6 : 0;
+            return acc + cost;
+          }, 0);
           
-          // Adicionar ao gasto total
-          totalSpent += cost;
-          
-          // Rastrear gasto por dia para calcular média dos últimos 5 dias
-          if (date) {
-            if (!dailySpends[date]) {
-              dailySpends[date] = 0;
-            }
-            dailySpends[date] += cost;
-          }
-        });
-        
-        console.log(`💰 Gasto total REAL para o mês atual: ${totalSpent.toFixed(2)}`);
-        
-        // NOVO: Mapear gastos individuais dos últimos 5 dias
-        googleDay1Spent = dailySpends[lastFiveDays[0]] || 0; // 5 dias atrás
-        googleDay2Spent = dailySpends[lastFiveDays[1]] || 0; // 4 dias atrás
-        googleDay3Spent = dailySpends[lastFiveDays[2]] || 0; // 3 dias atrás
-        googleDay4Spent = dailySpends[lastFiveDays[3]] || 0; // 2 dias atrás
-        googleDay5Spent = dailySpends[lastFiveDays[4]] || 0; // 1 dia atrás
-        
-        console.log("💰 Gastos individuais dos últimos 5 dias:", {
-          day1: googleDay1Spent,
-          day2: googleDay2Spent,
-          day3: googleDay3Spent,
-          day4: googleDay4Spent,
-          day5: googleDay5Spent
-        });
-        
-      } else {
-        console.log("📊 Nenhum resultado de gasto encontrado - mantendo valores zerados");
-      }
-      
-      // Calcular a média dos últimos 5 dias APENAS COM DADOS REAIS (excluindo hoje)
-      let totalDaysWithData = 0;
-      let totalSpentLastFiveDays = 0;
-      
-      // Percorrer do dia anterior até 5 dias atrás
-      for (let i = 1; i <= 5; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        if (dailySpends[dateStr] !== undefined) {
-          totalSpentLastFiveDays += dailySpends[dateStr];
-          totalDaysWithData++;
+          console.log(`💰 Gasto total REAL para o mês atual: ${totalSpent.toFixed(2)}`);
+        } else {
+          console.log("📊 Nenhum gasto mensal encontrado - mantendo valores zerados");
+          totalSpent = 0;
         }
       }
       
-      // Calcular a média diária dos últimos 5 dias APENAS se tivermos dados reais
-      if (totalDaysWithData > 0) {
-        lastFiveDaysSpent = totalSpentLastFiveDays / totalDaysWithData;
-        console.log(`📊 Média REAL de gastos dos últimos ${totalDaysWithData} dias: ${lastFiveDaysSpent.toFixed(2)}`);
-      } else {
-        console.log("📊 Sem dados reais para média dos últimos 5 dias - mantendo valor zerado");
-        lastFiveDaysSpent = 0;
-      }
-      
-      // Query para obter orçamentos das campanhas ativas APENAS DADOS REAIS
+      // Query para obter orçamentos das campanhas ativas
       const campaignsQuery = `
         SELECT
             campaign_budget.amount_micros,
@@ -538,7 +667,7 @@ async function processGoogleReview(req: Request) {
       } else {
         const errorText = await campaignsResponse.text();
         console.error("❌ Erro ao obter orçamentos das campanhas:", errorText);
-        currentDailyBudget = 0; // Manter zerado se não conseguir dados reais
+        currentDailyBudget = 0;
       }
       
     } catch (apiError: any) {
@@ -554,6 +683,9 @@ async function processGoogleReview(req: Request) {
       googleDay3Spent = 0;
       googleDay4Spent = 0;
       googleDay5Spent = 0;
+      
+      // IMPORTANTE: Se houve erro na API, manter "Conta não identificada"
+      realAccountName = "Conta não identificada";
       
       apiErrorDetails = apiErrorDetails || {
         message: apiError.message,
@@ -576,51 +708,50 @@ async function processGoogleReview(req: Request) {
       custom_budget_end_date: null
     };
 
-    // Dados para a revisão - APENAS DADOS REAIS OU ZERADOS + GASTOS INDIVIDUAIS
+    // CORREÇÃO: Dados para a revisão na tabela budget_reviews unificada
     const reviewData = {
       client_id: clientId,
+      account_id: accountIdUuid,
+      platform: 'google',
       review_date: reviewDate,
-      google_daily_budget_current: currentDailyBudget,
-      google_total_spent: totalSpent,
-      google_last_five_days_spent: lastFiveDaysSpent,
-      google_account_id: googleAccountId,
-      google_account_name: accountName,
-      account_display_name: accountName,
-      // NOVOS CAMPOS: Gastos individuais dos últimos 5 dias
-      google_day_1_spent: googleDay1Spent,
-      google_day_2_spent: googleDay2Spent,
-      google_day_3_spent: googleDay3Spent,
-      google_day_4_spent: googleDay4Spent,
-      google_day_5_spent: googleDay5Spent,
+      daily_budget_current: currentDailyBudget,
+      total_spent: totalSpent,
+      last_five_days_spent: lastFiveDaysSpent, // MÉDIA PONDERADA CORRIGIDA
+      // CAMPOS CORRIGIDOS: Gastos individuais dos últimos 5 dias
+      day_1_spent: googleDay1Spent, // 5 dias atrás (mais antigo)
+      day_2_spent: googleDay2Spent, // 4 dias atrás
+      day_3_spent: googleDay3Spent, // 3 dias atrás
+      day_4_spent: googleDay4Spent, // anteontem
+      day_5_spent: googleDay5Spent, // ontem (mais recente)
       ...customBudgetInfo,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
     
-    console.log("📋 Dados FINAIS para revisão (incluindo gastos individuais):", {
+    console.log("📋 Dados FINAIS para revisão (com queries individuais corrigidas):", {
       orçamentoDiárioAtual: currentDailyBudget,
       gastoTotal: totalSpent,
-      gastoMédiaCincoDias: lastFiveDaysSpent,
-      gastosIndividuais: {
-        dia1: googleDay1Spent,
-        dia2: googleDay2Spent,
-        dia3: googleDay3Spent,
-        dia4: googleDay4Spent,
-        dia5: googleDay5Spent
+      médiaPonderadaCorrigida: lastFiveDaysSpent,
+      gastosIndividuaisCorrigidos: {
+        day1_5diasAtras: googleDay1Spent,
+        day2_4diasAtras: googleDay2Spent,
+        day3_3diasAtras: googleDay3Spent,
+        day4_anteontem: googleDay4Spent,
+        day5_ontem: googleDay5Spent
       },
       usandoOrçamentoPersonalizado: customBudget ? true : false,
       customBudgetId: customBudget?.id || null,
       apiErrorDetails
     });
     
-    // TRATAMENTO DEFENSIVO: Atualizar ou criar revisão com validação de erro
+    // CORREÇÃO: Atualizar ou criar revisão na tabela budget_reviews unificada
     try {
       if (existingReviews && existingReviews.length > 0) {
         reviewId = existingReviews[0].id;
         
         // Atualizar revisão existente
         const updateResponse = await fetch(
-          `${supabaseUrl}/rest/v1/google_ads_reviews?id=eq.${reviewId}`, {
+          `${supabaseUrl}/rest/v1/budget_reviews?id=eq.${reviewId}`, {
           method: "PATCH",
           headers: {
             "apikey": supabaseKey,
@@ -629,15 +760,14 @@ async function processGoogleReview(req: Request) {
             "Prefer": "return=minimal"
           },
           body: JSON.stringify({
-            google_daily_budget_current: currentDailyBudget,
-            google_total_spent: totalSpent,
-            google_last_five_days_spent: lastFiveDaysSpent,
-            // NOVOS CAMPOS: Gastos individuais
-            google_day_1_spent: googleDay1Spent,
-            google_day_2_spent: googleDay2Spent,
-            google_day_3_spent: googleDay3Spent,
-            google_day_4_spent: googleDay4Spent,
-            google_day_5_spent: googleDay5Spent,
+            daily_budget_current: currentDailyBudget,
+            total_spent: totalSpent,
+            last_five_days_spent: lastFiveDaysSpent,
+            day_1_spent: googleDay1Spent,
+            day_2_spent: googleDay2Spent,
+            day_3_spent: googleDay3Spent,
+            day_4_spent: googleDay4Spent,
+            day_5_spent: googleDay5Spent,
             ...customBudgetInfo,
             updated_at: new Date().toISOString()
           })
@@ -647,12 +777,11 @@ async function processGoogleReview(req: Request) {
           const errorText = await updateResponse.text();
           console.error("❌ Erro ao atualizar revisão:", errorText);
           
-          // Se for erro de chave estrangeira com orçamento personalizado, tentar sem ele
           if (errorText.includes("violates foreign key constraint") && customBudget) {
             console.warn("⚠️ Erro de chave estrangeira com orçamento personalizado - tentando sem orçamento personalizado");
             
             const fallbackUpdateResponse = await fetch(
-              `${supabaseUrl}/rest/v1/google_ads_reviews?id=eq.${reviewId}`, {
+              `${supabaseUrl}/rest/v1/budget_reviews?id=eq.${reviewId}`, {
               method: "PATCH",
               headers: {
                 "apikey": supabaseKey,
@@ -661,15 +790,14 @@ async function processGoogleReview(req: Request) {
                 "Prefer": "return=minimal"
               },
               body: JSON.stringify({
-                google_daily_budget_current: currentDailyBudget,
-                google_total_spent: totalSpent,
-                google_last_five_days_spent: lastFiveDaysSpent,
-                // NOVOS CAMPOS: Gastos individuais
-                google_day_1_spent: googleDay1Spent,
-                google_day_2_spent: googleDay2Spent,
-                google_day_3_spent: googleDay3Spent,
-                google_day_4_spent: googleDay4Spent,
-                google_day_5_spent: googleDay5Spent,
+                daily_budget_current: currentDailyBudget,
+                total_spent: totalSpent,
+                last_five_days_spent: lastFiveDaysSpent,
+                day_1_spent: googleDay1Spent,
+                day_2_spent: googleDay2Spent,
+                day_3_spent: googleDay3Spent,
+                day_4_spent: googleDay4Spent,
+                day_5_spent: googleDay5Spent,
                 using_custom_budget: false,
                 custom_budget_id: null,
                 custom_budget_amount: null,
@@ -684,17 +812,17 @@ async function processGoogleReview(req: Request) {
               throw new Error(`Erro ao atualizar revisão (fallback): ${fallbackUpdateResponse.status} - ${fallbackErrorText}`);
             }
             
-            console.log(`✅ Revisão existente atualizada com dados reais e gastos individuais (sem orçamento personalizado): ${reviewId}`);
+            console.log(`✅ Revisão existente atualizada com dados corrigidos (sem orçamento personalizado): ${reviewId}`);
           } else {
             throw new Error(`Erro ao atualizar revisão: ${updateResponse.status} - ${errorText}`);
           }
         } else {
-          console.log(`✅ Revisão existente atualizada com dados reais e gastos individuais: ${reviewId}`);
+          console.log(`✅ Revisão existente atualizada com dados corrigidos: ${reviewId}`);
         }
       } else {
         // Criar nova revisão
         const insertResponse = await fetch(
-          `${supabaseUrl}/rest/v1/google_ads_reviews`, {
+          `${supabaseUrl}/rest/v1/budget_reviews`, {
           method: "POST",
           headers: {
             "apikey": supabaseKey,
@@ -709,7 +837,6 @@ async function processGoogleReview(req: Request) {
           const errorText = await insertResponse.text();
           console.error("❌ Erro ao criar revisão:", errorText);
           
-          // Se for erro de chave estrangeira com orçamento personalizado, tentar sem ele
           if (errorText.includes("violates foreign key constraint") && customBudget) {
             console.warn("⚠️ Erro de chave estrangeira com orçamento personalizado - tentando sem orçamento personalizado");
             
@@ -723,7 +850,7 @@ async function processGoogleReview(req: Request) {
             };
             
             const fallbackInsertResponse = await fetch(
-              `${supabaseUrl}/rest/v1/google_ads_reviews`, {
+              `${supabaseUrl}/rest/v1/budget_reviews`, {
               method: "POST",
               headers: {
                 "apikey": supabaseKey,
@@ -742,7 +869,7 @@ async function processGoogleReview(req: Request) {
             const newReview = await fallbackInsertResponse.json();
             reviewId = newReview[0].id;
             
-            console.log(`✅ Nova revisão criada com dados reais e gastos individuais (sem orçamento personalizado): ${reviewId}`);
+            console.log(`✅ Nova revisão criada com dados corrigidos (sem orçamento personalizado): ${reviewId}`);
           } else {
             throw new Error(`Erro ao criar revisão: ${insertResponse.status} - ${errorText}`);
           }
@@ -750,7 +877,7 @@ async function processGoogleReview(req: Request) {
           const newReview = await insertResponse.json();
           reviewId = newReview[0].id;
           
-          console.log(`✅ Nova revisão criada com dados reais e gastos individuais: ${reviewId}`);
+          console.log(`✅ Nova revisão criada com dados corrigidos: ${reviewId}`);
         }
       }
     } catch (dbError: any) {
@@ -763,11 +890,10 @@ async function processGoogleReview(req: Request) {
       reviewId,
       clientId,
       accountId: googleAccountId,
-      accountName,
+      accountName: realAccountName, // RETORNAR O NOME REAL DA CONTA OU "Conta não identificada"
       currentDailyBudget,
       totalSpent,
       lastFiveDaysSpent,
-      // NOVOS DADOS RETORNADOS: Gastos individuais
       individualDaysSpent: {
         day1: googleDay1Spent,
         day2: googleDay2Spent,

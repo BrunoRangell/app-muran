@@ -1,27 +1,30 @@
 
-export type CampaignStatus = "funcionando" | "sem-veiculacao" | "sem-campanhas" | "nao-configurado";
+export type CampaignStatus = "active" | "no-spend" | "no-campaigns" | "no-account" | "low-performance";
 
-export interface PlatformHealthData {
+export interface PlatformAccountData {
+  accountId: string;
+  accountName: string;
   hasAccount: boolean;
   hasActiveCampaigns: boolean;
   costToday: number;
   impressionsToday: number;
-  activeCampaignsCount: number;
-  accountId?: string;
-  accountName?: string;
   status: CampaignStatus;
+  errors: string[];
 }
 
 export interface ClientHealthData {
   clientId: string;
   clientName: string;
-  metaAds?: PlatformHealthData;
-  googleAds?: PlatformHealthData;
-  overallStatus: CampaignStatus;
+  metaAds?: PlatformAccountData[];
+  googleAds?: PlatformAccountData[];
+  overallStatus?: string; // Adicionado para compatibilidade
 }
 
 export interface HealthStats {
   totalClients: number;
+  clientsWithMeta: number;
+  clientsWithGoogle: number;
+  totalAccounts: number;
   functioning: number;
   noSpend: number;
   noCampaigns: number;

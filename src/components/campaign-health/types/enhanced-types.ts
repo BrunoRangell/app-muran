@@ -1,39 +1,31 @@
-import { CampaignStatus } from "../types";
 
-export type AlertLevel = "critical" | "high" | "medium" | "low" | "ok";
+export type AlertLevel = "critical" | "high" | "medium" | "ok";
 
-export interface ProblemDiagnostic {
-  type: "budget" | "performance" | "technical" | "configuration";
-  severity: AlertLevel;
+export interface HealthProblem {
+  type: string;
   description: string;
-  suggestedAction: string;
-  lastActivity?: Date;
-  affectedCampaigns?: number;
+  severity: AlertLevel;
 }
 
 export interface EnhancedPlatformData {
+  accountId: string;
+  accountName?: string;
   hasAccount: boolean;
-  hasActiveCampaigns: boolean;
-  costToday: number;
-  impressionsToday: number;
   activeCampaignsCount: number;
   unservedCampaignsCount: number;
-  accountId?: string;
-  accountName?: string;
-  status: CampaignStatus;
+  costToday: number;
+  impressionsToday: number;
   alertLevel: AlertLevel;
-  problems: ProblemDiagnostic[];
-  lastActivity?: Date;
-  estimatedLoss?: number;
-  quickActions: QuickAction[];
+  problems: HealthProblem[];
+  isPrimary?: boolean; // Nova propriedade para identificar conta principal
 }
 
-export interface QuickAction {
-  id: string;
-  label: string;
-  type: "primary" | "secondary" | "danger";
-  action: () => void;
-  icon?: string;
+export interface EnhancedClientData {
+  clientId: string;
+  clientName: string;
+  metaAds?: EnhancedPlatformData[]; // Agora é um array
+  googleAds?: EnhancedPlatformData[]; // Agora é um array  
+  overallStatus: string;
 }
 
 export interface HealthAlert {
@@ -41,23 +33,18 @@ export interface HealthAlert {
   clientId: string;
   clientName: string;
   platform: 'meta' | 'google';
-  severity: AlertLevel;
-  title: string;
-  description: string;
-  suggestedAction: string;
-  createdAt: Date;
+  accountId: string;
+  accountName?: string;
+  alertLevel: AlertLevel;
+  problems: HealthProblem[];
+  timestamp: Date;
 }
 
-export interface HealthDashboardStats {
+export interface DashboardStats {
   totalClients: number;
   criticalAlerts: number;
   highAlerts: number;
   mediumAlerts: number;
-  estimatedLoss: number;
-  functioning: number;
-  trends: {
-    criticalTrend: number; // % change from yesterday
-    totalSpendTrend: number;
-    healthScore: number; // 0-100
-  };
+  totalActiveAccounts: number;
+  accountsWithIssues: number;
 }

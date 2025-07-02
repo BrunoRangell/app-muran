@@ -1,6 +1,6 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useMemo } from "react";
 
 interface ClientMetrics {
@@ -14,24 +14,33 @@ export const useUnifiedClientData = (platform: "meta" | "google") => {
   const { data: clients, isLoading, error, refetch } = useQuery({
     queryKey: [`${platform}-clients-unified`],
     queryFn: async () => {
-      console.log(`[useUnifiedClientData] Buscando clientes ${platform}...`);
+      console.log(`[useUnifiedClientData] Buscando clientes ${platform} da estrutura unificada...`);
       
-      let query = supabase
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Buscar usando a estrutura unificada
+      const { data, error } = await supabase
         .from('clients')
         .select(`
           *,
-          ${platform}_ads_reviews:${platform === "meta" ? "meta_ads_reviews" : "google_ads_reviews"}(*)
+          client_accounts!inner(
+            id,
+            account_id,
+            account_name,
+            platform,
+            budget_reviews(
+              total_spent,
+              daily_budget_current,
+              review_date,
+              using_custom_budget,
+              custom_budget_amount
+            )
+          )
         `)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('client_accounts.platform', platform)
+        .eq('client_accounts.status', 'active');
 
-      if (platform === "meta") {
-        query = query.not('meta_account_id', 'is', null);
-      } else {
-        query = query.not('google_account_id', 'is', null);
-      }
-
-      const { data, error } = await query;
-      
       if (error) {
         console.error(`[useUnifiedClientData] Erro ao buscar clientes ${platform}:`, error);
         throw error;
@@ -52,28 +61,37 @@ export const useUnifiedClientData = (platform: "meta" | "google") => {
       averageSpend: 0
     };
 
-    const accountField = platform === "meta" ? "meta_account_id" : "google_account_id";
-    const reviewsField = platform === "meta" ? "meta_ads_reviews" : "google_ads_reviews";
-    
-    const clientsWithoutAccount = clients.filter(c => !c[accountField]).length;
-    const clientsWithAdjustments = clients.filter(c => {
-      const reviews = c[reviewsField] || [];
-      return reviews.some((r: any) => r.needs_budget_adjustment);
-    }).length;
+    let totalSpend = 0;
+    let clientsWithAdjustments = 0;
 
-    const totalSpend = clients.reduce((sum, client) => {
-      const reviews = client[reviewsField] || [];
-      const latestReview = reviews[0];
-      return sum + (latestReview?.total_spent || 0);
-    }, 0);
+    clients.forEach(client => {
+      const accounts = (client as any).client_accounts || [];
+      
+      accounts.forEach((account: any) => {
+        const reviews = account.budget_reviews || [];
+        const latestReview = reviews[0];
+        
+        if (latestReview) {
+          totalSpend += latestReview.total_spent || 0;
+          
+          // Calcular se precisa de ajuste (exemplo: se gastou muito pouco ou muito em relação ao orçamento)
+          if (latestReview.daily_budget_current && latestReview.total_spent) {
+            const spentPercentage = (latestReview.total_spent / latestReview.daily_budget_current) * 100;
+            if (spentPercentage > 80 || spentPercentage < 20) {
+              clientsWithAdjustments++;
+            }
+          }
+        }
+      });
+    });
 
     return {
       totalClients: clients.length,
       clientsWithAdjustments,
-      clientsWithoutAccount,
+      clientsWithoutAccount: 0, // Todos têm conta pois filtramos na query
       averageSpend: clients.length > 0 ? totalSpend / clients.length : 0
     };
-  }, [clients, platform]);
+  }, [clients]);
 
   return {
     data: clients,

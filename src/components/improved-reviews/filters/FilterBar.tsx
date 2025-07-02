@@ -40,21 +40,21 @@ export function FilterBar({
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              type="text"
-              placeholder={`Buscar clientes ${platform === "meta" ? "Meta" : "Google"} Ads...`}
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+            <Input 
+              type="text" 
+              placeholder={`Buscar clientes ${platform === "meta" ? "Meta" : "Google"} Ads...`} 
+              className="pl-8" 
+              value={searchQuery} 
+              onChange={e => onSearchChange(e.target.value)} 
             />
           </div>
           
           <div className="flex flex-wrap gap-4 items-center">
             <div className="flex items-center space-x-2">
-              <Switch
-                id="show-adjustments"
-                checked={showOnlyAdjustments}
-                onCheckedChange={onAdjustmentFilterChange}
+              <Switch 
+                id="show-adjustments" 
+                checked={showOnlyAdjustments} 
+                onCheckedChange={onAdjustmentFilterChange} 
               />
               <Label htmlFor="show-adjustments" className="text-sm">
                 Necessitam ajustes
@@ -62,17 +62,21 @@ export function FilterBar({
             </div>
             
             <div className="flex items-center space-x-2">
-              <Switch
-                id="show-without-account"
-                checked={showWithoutAccount}
-                onCheckedChange={onAccountFilterChange}
+              <Switch 
+                id="show-without-account" 
+                checked={showWithoutAccount} 
+                onCheckedChange={onAccountFilterChange} 
               />
               <Label htmlFor="show-without-account" className="text-sm">
                 Sem conta cadastrada
               </Label>
             </div>
             
-            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && onViewModeChange(value as any)}>
+            <ToggleGroup 
+              type="single" 
+              value={viewMode} 
+              onValueChange={value => value && onViewModeChange(value as any)}
+            >
               <ToggleGroupItem value="cards" aria-label="Ver como cards">
                 <LayoutGrid className="h-4 w-4" />
               </ToggleGroupItem>
@@ -90,10 +94,10 @@ export function FilterBar({
                 size="sm"
                 onClick={onRefresh}
                 disabled={isRefreshing}
-                className="flex items-center gap-1"
+                className="flex items-center gap-2"
               >
                 <RefreshCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="hidden md:inline">Atualizar</span>
+                {isRefreshing ? 'Atualizando...' : 'Atualizar'}
               </Button>
             )}
           </div>

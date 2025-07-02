@@ -1,12 +1,13 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, AlertCircle, Zap, CheckCircle, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
-import { HealthDashboardStats, HealthAlert } from "./types/enhanced-types";
+import { DashboardStats, HealthAlert } from "./types/enhanced-types";
 
 interface AlertsDashboardProps {
-  stats: HealthDashboardStats;
+  stats: DashboardStats;
   topAlerts: HealthAlert[];
   onAlertClick: (alert: HealthAlert) => void;
 }
@@ -14,8 +15,8 @@ interface AlertsDashboardProps {
 export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashboardProps) {
   const [isAlertsExpanded, setIsAlertsExpanded] = useState(false);
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
+  const getSeverityColor = (alertLevel: string) => {
+    switch (alertLevel) {
       case "critical": return "bg-red-500 text-white";
       case "high": return "bg-orange-500 text-white";
       case "medium": return "bg-yellow-500 text-white";
@@ -23,8 +24,8 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
     }
   };
 
-  const getSeverityIconComponent = (severity: string) => {
-    switch (severity) {
+  const getSeverityIconComponent = (alertLevel: string) => {
+    switch (alertLevel) {
       case "critical": return <AlertTriangle className="w-5 h-5 text-red-600" />;
       case "high": return <AlertCircle className="w-5 h-5 text-orange-600" />;
       case "medium": return <Zap className="w-5 h-5 text-yellow-600" />;
@@ -75,7 +76,7 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
       level: "ok",
       icon: CheckCircle,
       label: "OK",
-      count: stats.functioning,
+      count: stats.totalActiveAccounts - stats.accountsWithIssues,
       bgColor: "bg-green-50",
       iconColor: "text-green-600", 
       textColor: "text-green-600"
@@ -151,25 +152,27 @@ export function AlertsDashboard({ stats, topAlerts, onAlertClick }: AlertsDashbo
                   onClick={() => onAlertClick(alert)}
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    {getSeverityIconComponent(alert.severity)}
+                    {getSeverityIconComponent(alert.alertLevel)}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-gray-900">{alert.clientName}</span>
                         <Badge variant="outline" className="text-xs">
                           {alert.platform === 'meta' ? 'Meta' : 'Google'} Ads
                         </Badge>
-                        <Badge className={`text-xs ${getSeverityColor(alert.severity)}`}>
-                          {alert.severity === 'critical' ? 'Crítico' : 
-                           alert.severity === 'high' ? 'Alto' : 
-                           alert.severity === 'medium' ? 'Médio' : 'Baixo'}
+                        <Badge className={`text-xs ${getSeverityColor(alert.alertLevel)}`}>
+                          {alert.alertLevel === 'critical' ? 'Crítico' : 
+                           alert.alertLevel === 'high' ? 'Alto' : 
+                           alert.alertLevel === 'medium' ? 'Médio' : 'Baixo'}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600">{alert.title}</p>
+                      <p className="text-sm text-gray-600">
+                        {alert.problems.length > 0 ? alert.problems[0].description : 'Problema detectado'}
+                      </p>
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="ml-3">
                     <span>
-                      {alert.severity === 'critical' ? 'Resolver Agora' : 'Investigar'}
+                      {alert.alertLevel === 'critical' ? 'Resolver Agora' : 'Investigar'}
                     </span>
                     <ExternalLink />
                   </Button>

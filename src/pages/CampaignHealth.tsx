@@ -51,7 +51,8 @@ export default function CampaignHealth() {
     }
 
     const platformData = platform === 'meta' ? client.metaAds : client.googleAds;
-    const accountId = platformData?.accountId;
+    const firstAccount = platformData && platformData.length > 0 ? platformData[0] : null;
+    const accountId = firstAccount?.accountId;
 
     const url = buildPlatformUrl(platform, accountId);
     
@@ -61,7 +62,6 @@ export default function CampaignHealth() {
       console.error(`Não foi possível gerar URL para ${platform} com ID ${accountId}`);
     }
   };
-
 
   // Aplicar filtros APENAS aos dados da tabela
   const filteredEnhancedData = enhancedData?.filter(client => {
@@ -73,23 +73,23 @@ export default function CampaignHealth() {
     let matchesPlatform = true;
     if (platformFilter !== "all") {
       if (platformFilter === "meta") {
-        matchesPlatform = !!client.metaAds;
+        matchesPlatform = !!client.metaAds && client.metaAds.length > 0;
       } else if (platformFilter === "google") {
-        matchesPlatform = !!client.googleAds;
+        matchesPlatform = !!client.googleAds && client.googleAds.length > 0;
       }
     }
 
     let matchesUrgency = true;
     if (urgencyFilter !== "all") {
-      const metaMatch = client.metaAds?.alertLevel === urgencyFilter;
-      const googleMatch = client.googleAds?.alertLevel === urgencyFilter;
+      const metaMatch = client.metaAds?.some(account => account.alertLevel === urgencyFilter);
+      const googleMatch = client.googleAds?.some(account => account.alertLevel === urgencyFilter);
       matchesUrgency = metaMatch || googleMatch;
     }
 
     let matchesProblemType = true;
     if (problemTypeFilter !== "all") {
-      const metaProblems = client.metaAds?.problems || [];
-      const googleProblems = client.googleAds?.problems || [];
+      const metaProblems = client.metaAds?.flatMap(account => account.problems) || [];
+      const googleProblems = client.googleAds?.flatMap(account => account.problems) || [];
       const allProblems = [...metaProblems, ...googleProblems];
       matchesProblemType = allProblems.some(problem => problem.type === problemTypeFilter);
     }

@@ -18,9 +18,9 @@ export function ClientRow({ client, platform = "meta" }: ClientRowProps) {
   
   const isProcessing = processingIds.includes(client.id);
   
-  // Preparar dados para exibição
+  // Preparar dados para exibição - CORRIGIDO: usar nomes de campos unificados
   const accountName = client[`${platform}_account_name`] || "Conta Principal";
-  const spentAmount = client.review?.[`${platform}_total_spent`] || 0;
+  const spentAmount = client.review?.total_spent || 0;
   const budgetAmount = client.budget_amount || 0;
   const spentPercentage = budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0;
   const needsAdjustment = client.needsAdjustment;

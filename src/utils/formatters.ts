@@ -1,57 +1,87 @@
 
-import { formatDateBr } from "./dateFormatter";
+// Utilitários para formatação de valores monetários
 
-// Função para converter strings numéricas com formatos como "1.000,00" para number
-export function parseCurrencyToNumber(value: string): number {
-  // Remover símbolos de moeda, espaços, pontos e converter vírgula para ponto
-  const cleanValue = value.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
-  
-  return parseFloat(cleanValue) || 0;
-}
-
-// Função para formatar um número como moeda (R$ 1.000,00)
-export function formatCurrency(value: number | string): string {
-  // Se for string, converter para número primeiro
-  const numValue = typeof value === 'string' ? parseCurrencyToNumber(value) : value;
+export const formatCurrency = (value: number): string => {
+  if (isNaN(value) || value === null || value === undefined) {
+    return "R$ 0,00";
+  }
   
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(numValue);
-}
+  }).format(value);
+};
 
-// Função para formatar uma data como string no formato brasileiro
-export function formatDate(date: Date | string | null): string {
-  if (!date) return '';
-  
-  return formatDateBr(date);
-}
-
-// Função para formatar porcentagem
-export function formatPercentage(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-// Função para formatar números com separadores de milhar
-export function formatNumber(value: number): string {
-  return new Intl.NumberFormat('pt-BR').format(value);
-}
-
-// Função para formatar número de telefone no padrão brasileiro
-export function formatPhoneNumber(value: string): string {
-  // Remove tudo que não for dígito
-  const digits = value.replace(/\D/g, '');
-  
-  // Aplica a formatação de acordo com a quantidade de dígitos
-  if (digits.length <= 2) {
-    return digits;
-  } else if (digits.length <= 6) {
-    return `(${digits.substring(0, 2)}) ${digits.substring(2)}`;
-  } else if (digits.length <= 10) {
-    return `(${digits.substring(0, 2)}) ${digits.substring(2, 6)}-${digits.substring(6)}`;
-  } else {
-    return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7, 11)}`;
+export const parseCurrencyToNumber = (value: string): number => {
+  if (!value || typeof value !== 'string') {
+    return 0;
   }
-}
+  
+  // Remove todos os caracteres não numéricos exceto vírgula e ponto
+  const cleanValue = value
+    .replace(/[^\d,.-]/g, '') // Remove símbolos de moeda, espaços, etc.
+    .replace(/\./g, '') // Remove pontos (separadores de milhares)
+    .replace(',', '.'); // Converte vírgula para ponto decimal
+  
+  const numericValue = parseFloat(cleanValue);
+  
+  return isNaN(numericValue) ? 0 : numericValue;
+};
+
+export const formatNumber = (value: number): string => {
+  if (isNaN(value) || value === null || value === undefined) {
+    return "0";
+  }
+  
+  return new Intl.NumberFormat('pt-BR').format(value);
+};
+
+export const formatDate = (dateString: string | Date | null | undefined): string => {
+  if (!dateString) return '';
+  
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) {
+      console.error("Data inválida:", dateString);
+      return typeof dateString === 'string' ? dateString : '';
+    }
+    
+    // Formatar a data no padrão brasileiro
+    return new Intl.DateTimeFormat('pt-BR').format(date);
+  } catch (error) {
+    console.error("Erro ao formatar data:", error);
+    return typeof dateString === 'string' ? dateString : '';
+  }
+};
+
+export const formatPercentage = (value: number): string => {
+  if (isNaN(value) || value === null || value === undefined) {
+    return "0%";
+  }
+  
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  }).format(value);
+};
+
+export const formatPhoneNumber = (value: string): string => {
+  if (!value) return '';
+  
+  // Remove todos os caracteres não numéricos
+  const cleanValue = value.replace(/\D/g, '');
+  
+  // Aplica a máscara do telefone brasileiro
+  if (cleanValue.length <= 10) {
+    // Telefone fixo: (XX) XXXX-XXXX
+    return cleanValue.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  } else {
+    // Celular: (XX) XXXXX-XXXX
+    return cleanValue.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  }
+};

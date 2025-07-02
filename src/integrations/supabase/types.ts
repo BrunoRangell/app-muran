@@ -74,182 +74,156 @@ export type Database = {
           },
         ]
       }
-      campaign_health_snapshots: {
+      budget_reviews: {
         Row: {
-          client_id: string
-          created_at: string | null
-          google_account_id: string | null
-          google_account_name: string | null
-          google_active_campaigns_count: number | null
-          google_cost_today: number | null
-          google_has_account: boolean | null
-          google_impressions_today: number | null
-          google_unserved_campaigns_count: number
-          id: string
-          meta_account_id: string | null
-          meta_account_name: string | null
-          meta_active_campaigns_count: number | null
-          meta_cost_today: number | null
-          meta_has_account: boolean | null
-          meta_impressions_today: number | null
-          meta_unserved_campaigns_count: number
-          snapshot_date: string
-          updated_at: string | null
-        }
-        Insert: {
-          client_id: string
-          created_at?: string | null
-          google_account_id?: string | null
-          google_account_name?: string | null
-          google_active_campaigns_count?: number | null
-          google_cost_today?: number | null
-          google_has_account?: boolean | null
-          google_impressions_today?: number | null
-          google_unserved_campaigns_count?: number
-          id?: string
-          meta_account_id?: string | null
-          meta_account_name?: string | null
-          meta_active_campaigns_count?: number | null
-          meta_cost_today?: number | null
-          meta_has_account?: boolean | null
-          meta_impressions_today?: number | null
-          meta_unserved_campaigns_count?: number
-          snapshot_date?: string
-          updated_at?: string | null
-        }
-        Update: {
-          client_id?: string
-          created_at?: string | null
-          google_account_id?: string | null
-          google_account_name?: string | null
-          google_active_campaigns_count?: number | null
-          google_cost_today?: number | null
-          google_has_account?: boolean | null
-          google_impressions_today?: number | null
-          google_unserved_campaigns_count?: number
-          id?: string
-          meta_account_id?: string | null
-          meta_account_name?: string | null
-          meta_active_campaigns_count?: number | null
-          meta_cost_today?: number | null
-          meta_has_account?: boolean | null
-          meta_impressions_today?: number | null
-          meta_unserved_campaigns_count?: number
-          snapshot_date?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_campaign_health_snapshots_client_id"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      client_current_reviews: {
-        Row: {
+          account_id: string
           client_id: string
           created_at: string
           custom_budget_amount: number | null
+          custom_budget_end_date: string | null
           custom_budget_id: string | null
-          google_account_id: string | null
-          google_account_name: string | null
-          google_daily_budget_current: number | null
-          google_total_spent: number | null
+          custom_budget_start_date: string | null
+          daily_budget_current: number | null
+          day_1_spent: number | null
+          day_2_spent: number | null
+          day_3_spent: number | null
+          day_4_spent: number | null
+          day_5_spent: number | null
           id: string
-          meta_account_id: string | null
-          meta_account_name: string | null
-          meta_daily_budget_current: number | null
-          meta_total_spent: number | null
+          last_five_days_spent: number | null
+          platform: string
           review_date: string
+          total_spent: number | null
           updated_at: string
           using_custom_budget: boolean | null
+          warning_ignored_date: string | null
+          warning_ignored_today: boolean | null
         }
         Insert: {
+          account_id: string
           client_id: string
           created_at?: string
           custom_budget_amount?: number | null
+          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
-          google_account_id?: string | null
-          google_account_name?: string | null
-          google_daily_budget_current?: number | null
-          google_total_spent?: number | null
+          custom_budget_start_date?: string | null
+          daily_budget_current?: number | null
+          day_1_spent?: number | null
+          day_2_spent?: number | null
+          day_3_spent?: number | null
+          day_4_spent?: number | null
+          day_5_spent?: number | null
           id?: string
-          meta_account_id?: string | null
-          meta_account_name?: string | null
-          meta_daily_budget_current?: number | null
-          meta_total_spent?: number | null
+          last_five_days_spent?: number | null
+          platform: string
           review_date?: string
+          total_spent?: number | null
           updated_at?: string
           using_custom_budget?: boolean | null
+          warning_ignored_date?: string | null
+          warning_ignored_today?: boolean | null
         }
         Update: {
+          account_id?: string
           client_id?: string
           created_at?: string
           custom_budget_amount?: number | null
+          custom_budget_end_date?: string | null
           custom_budget_id?: string | null
-          google_account_id?: string | null
-          google_account_name?: string | null
-          google_daily_budget_current?: number | null
-          google_total_spent?: number | null
+          custom_budget_start_date?: string | null
+          daily_budget_current?: number | null
+          day_1_spent?: number | null
+          day_2_spent?: number | null
+          day_3_spent?: number | null
+          day_4_spent?: number | null
+          day_5_spent?: number | null
           id?: string
-          meta_account_id?: string | null
-          meta_account_name?: string | null
-          meta_daily_budget_current?: number | null
-          meta_total_spent?: number | null
+          last_five_days_spent?: number | null
+          platform?: string
           review_date?: string
+          total_spent?: number | null
           updated_at?: string
           using_custom_budget?: boolean | null
+          warning_ignored_date?: string | null
+          warning_ignored_today?: boolean | null
         }
         Relationships: [
           {
-            foreignKeyName: "client_current_reviews_client_id_fkey"
+            foreignKeyName: "budget_reviews_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "client_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_reviews_client_id_fkey"
             columns: ["client_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_reviews_custom_budget_id_fkey"
+            columns: ["custom_budget_id"]
+            isOneToOne: false
+            referencedRelation: "custom_budgets"
             referencedColumns: ["id"]
           },
         ]
       }
-      client_google_accounts: {
+      campaign_health: {
         Row: {
           account_id: string
-          account_name: string
-          budget_amount: number
+          active_campaigns_count: number
           client_id: string
+          cost_today: number
           created_at: string
+          has_account: boolean
           id: string
-          is_primary: boolean
-          status: string
+          impressions_today: number
+          platform: string
+          snapshot_date: string
+          unserved_campaigns_count: number
           updated_at: string
         }
         Insert: {
           account_id: string
-          account_name: string
-          budget_amount?: number
+          active_campaigns_count?: number
           client_id: string
+          cost_today?: number
           created_at?: string
+          has_account?: boolean
           id?: string
-          is_primary?: boolean
-          status?: string
+          impressions_today?: number
+          platform: string
+          snapshot_date?: string
+          unserved_campaigns_count?: number
           updated_at?: string
         }
         Update: {
           account_id?: string
-          account_name?: string
-          budget_amount?: number
+          active_campaigns_count?: number
           client_id?: string
+          cost_today?: number
           created_at?: string
+          has_account?: boolean
           id?: string
-          is_primary?: boolean
-          status?: string
+          impressions_today?: number
+          platform?: string
+          snapshot_date?: string
+          unserved_campaigns_count?: number
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "client_google_accounts_client_id_fkey"
+            foreignKeyName: "campaign_health_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "client_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_health_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -257,7 +231,7 @@ export type Database = {
           },
         ]
       }
-      client_meta_accounts: {
+      client_accounts: {
         Row: {
           account_id: string
           account_name: string
@@ -266,6 +240,7 @@ export type Database = {
           created_at: string
           id: string
           is_primary: boolean
+          platform: string
           status: string
           updated_at: string
         }
@@ -277,6 +252,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_primary?: boolean
+          platform: string
           status?: string
           updated_at?: string
         }
@@ -288,12 +264,13 @@ export type Database = {
           created_at?: string
           id?: string
           is_primary?: boolean
+          platform?: string
           status?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "client_meta_accounts_client_id_fkey"
+            foreignKeyName: "client_accounts_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -311,12 +288,8 @@ export type Database = {
           contract_value: number
           created_at: string
           first_payment_date: string
-          google_account_id: string | null
-          google_ads_budget: number | null
           id: string
           last_payment_date: string | null
-          meta_account_id: string | null
-          meta_ads_budget: number | null
           payment_type: string
           status: string
         }
@@ -329,12 +302,8 @@ export type Database = {
           contract_value?: number
           created_at?: string
           first_payment_date: string
-          google_account_id?: string | null
-          google_ads_budget?: number | null
           id?: string
           last_payment_date?: string | null
-          meta_account_id?: string | null
-          meta_ads_budget?: number | null
           payment_type: string
           status: string
         }
@@ -347,12 +316,8 @@ export type Database = {
           contract_value?: number
           created_at?: string
           first_payment_date?: string
-          google_account_id?: string | null
-          google_ads_budget?: number | null
           id?: string
           last_payment_date?: string | null
-          meta_account_id?: string | null
-          meta_ads_budget?: number | null
           payment_type?: string
           status?: string
         }
@@ -489,78 +454,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "custom_budgets_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "custom_budgets_account_id_new_fkey"
+            columns: ["account_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "client_accounts"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      daily_budget_reviews: {
-        Row: {
-          account_display_name: string | null
-          client_account_id: string | null
-          client_id: string | null
-          created_at: string | null
-          custom_budget_amount: number | null
-          custom_budget_end_date: string | null
-          custom_budget_id: string | null
-          custom_budget_start_date: string | null
-          id: number
-          meta_account_id: string | null
-          meta_account_name: string | null
-          meta_daily_budget_current: number | null
-          meta_total_spent: number | null
-          review_date: string
-          updated_at: string | null
-          using_custom_budget: boolean | null
-          warning_ignored_date: string | null
-          warning_ignored_today: boolean | null
-        }
-        Insert: {
-          account_display_name?: string | null
-          client_account_id?: string | null
-          client_id?: string | null
-          created_at?: string | null
-          custom_budget_amount?: number | null
-          custom_budget_end_date?: string | null
-          custom_budget_id?: string | null
-          custom_budget_start_date?: string | null
-          id?: number
-          meta_account_id?: string | null
-          meta_account_name?: string | null
-          meta_daily_budget_current?: number | null
-          meta_total_spent?: number | null
-          review_date?: string
-          updated_at?: string | null
-          using_custom_budget?: boolean | null
-          warning_ignored_date?: string | null
-          warning_ignored_today?: boolean | null
-        }
-        Update: {
-          account_display_name?: string | null
-          client_account_id?: string | null
-          client_id?: string | null
-          created_at?: string | null
-          custom_budget_amount?: number | null
-          custom_budget_end_date?: string | null
-          custom_budget_id?: string | null
-          custom_budget_start_date?: string | null
-          id?: number
-          meta_account_id?: string | null
-          meta_account_name?: string | null
-          meta_daily_budget_current?: number | null
-          meta_total_spent?: number | null
-          review_date?: string
-          updated_at?: string | null
-          using_custom_budget?: boolean | null
-          warning_ignored_date?: string | null
-          warning_ignored_today?: boolean | null
-        }
-        Relationships: [
           {
-            foreignKeyName: "daily_budget_reviews_client_id_fkey"
+            foreignKeyName: "custom_budgets_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -609,102 +510,6 @@ export type Database = {
           target_value?: number
         }
         Relationships: []
-      }
-      google_ads_reviews: {
-        Row: {
-          account_display_name: string | null
-          client_account_id: string | null
-          client_id: string
-          created_at: string
-          custom_budget_amount: number | null
-          custom_budget_end_date: string | null
-          custom_budget_id: string | null
-          custom_budget_start_date: string | null
-          google_account_id: string | null
-          google_account_name: string | null
-          google_daily_budget_current: number | null
-          google_day_1_spent: number | null
-          google_day_2_spent: number | null
-          google_day_3_spent: number | null
-          google_day_4_spent: number | null
-          google_day_5_spent: number | null
-          google_last_five_days_spent: number | null
-          google_total_spent: number | null
-          id: string
-          review_date: string
-          updated_at: string
-          using_custom_budget: boolean | null
-          warning_ignored_date: string | null
-          warning_ignored_today: boolean | null
-        }
-        Insert: {
-          account_display_name?: string | null
-          client_account_id?: string | null
-          client_id: string
-          created_at?: string
-          custom_budget_amount?: number | null
-          custom_budget_end_date?: string | null
-          custom_budget_id?: string | null
-          custom_budget_start_date?: string | null
-          google_account_id?: string | null
-          google_account_name?: string | null
-          google_daily_budget_current?: number | null
-          google_day_1_spent?: number | null
-          google_day_2_spent?: number | null
-          google_day_3_spent?: number | null
-          google_day_4_spent?: number | null
-          google_day_5_spent?: number | null
-          google_last_five_days_spent?: number | null
-          google_total_spent?: number | null
-          id?: string
-          review_date?: string
-          updated_at?: string
-          using_custom_budget?: boolean | null
-          warning_ignored_date?: string | null
-          warning_ignored_today?: boolean | null
-        }
-        Update: {
-          account_display_name?: string | null
-          client_account_id?: string | null
-          client_id?: string
-          created_at?: string
-          custom_budget_amount?: number | null
-          custom_budget_end_date?: string | null
-          custom_budget_id?: string | null
-          custom_budget_start_date?: string | null
-          google_account_id?: string | null
-          google_account_name?: string | null
-          google_daily_budget_current?: number | null
-          google_day_1_spent?: number | null
-          google_day_2_spent?: number | null
-          google_day_3_spent?: number | null
-          google_day_4_spent?: number | null
-          google_day_5_spent?: number | null
-          google_last_five_days_spent?: number | null
-          google_total_spent?: number | null
-          id?: string
-          review_date?: string
-          updated_at?: string
-          using_custom_budget?: boolean | null
-          warning_ignored_date?: string | null
-          warning_ignored_today?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "google_ads_reviews_client_account_id_fkey"
-            columns: ["client_account_id"]
-            isOneToOne: false
-            referencedRelation: "client_google_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "google_ads_reviews_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       google_ads_token_metadata: {
         Row: {
