@@ -90,15 +90,13 @@ async function fetchMetaApiData(accountId: string, accessToken: string, customBu
       const accountResponse = await fetch(accountUrl);
       if (accountResponse.ok) {
         const accountData = await accountResponse.json();
-        accountName = accountData.name || "Conta principal";
+        accountName = accountData.name;
         console.log(`✅ Nome da conta obtido: ${accountName}`);
       } else {
-        console.log(`⚠️ Não foi possível obter o nome da conta, usando padrão`);
-        accountName = "Conta principal";
+        console.log(`⚠️ Não foi possível obter o nome da conta da API`);
       }
     } catch (error) {
-      console.log(`⚠️ Erro ao buscar nome da conta: ${error.message}, usando padrão`);
-      accountName = "Conta principal";
+      console.log(`⚠️ Erro ao buscar nome da conta: ${error.message}`);
     }
 
     return {
@@ -159,7 +157,7 @@ export async function processReviewRequest(req: Request) {
       account_name: metaApiData.account_name
     });
     
-    // 6. Atualizar nome da conta na tabela client_accounts (se obtido da API)
+    // 6. Atualizar nome da conta na tabela client_accounts APENAS se obtivemos um nome válido da API
     if (metaApiData.account_name && metaApiData.account_name !== metaAccount.account_name) {
       console.log(`🔄 Atualizando nome da conta de "${metaAccount.account_name}" para "${metaApiData.account_name}"`);
       
@@ -176,6 +174,8 @@ export async function processReviewRequest(req: Request) {
       } else {
         console.log(`✅ Nome da conta atualizado com sucesso na tabela client_accounts`);
       }
+    } else if (!metaApiData.account_name) {
+      console.log(`ℹ️ Nome da conta não obtido da API - mantendo nome existente: "${metaAccount.account_name}"`);
     }
     
     // 7. Preparar dados da revisão
