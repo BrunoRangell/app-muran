@@ -12,24 +12,12 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
   console.log("📅 Data de hoje:", today);
   
   try {
-    // Primeiro, buscar todas as contas de clientes ativos
+    // Primeira query: buscar todas as contas de clientes ativos
     console.log("🔍 Buscando contas de clientes...");
     const { data: accountsData, error: accountsError } = await supabase
       .from('client_accounts')
-      .select(`
-        id,
-        client_id,
-        platform,
-        account_id,
-        account_name,
-        is_primary,
-        clients!inner(
-          id,
-          company_name
-        )
-      `)
-      .eq('status', 'active')
-      .eq('clients.status', 'active');
+      .select('*')
+      .eq('status', 'active');
 
     if (accountsError) {
       console.error("❌ Erro ao buscar contas de clientes:", accountsError);
@@ -43,7 +31,21 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
       return [];
     }
 
-    // Buscar dados de saúde das campanhas para hoje
+    // Segunda query: buscar todos os clientes ativos
+    console.log("🔍 Buscando dados dos clientes...");
+    const { data: clientsData, error: clientsError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('status', 'active');
+
+    if (clientsError) {
+      console.error("❌ Erro ao buscar clientes:", clientsError);
+      throw clientsError;
+    }
+
+    console.log(`👥 Encontrados ${clientsData?.length || 0} clientes ativos`);
+
+    // Terceira query: buscar dados de saúde das campanhas para hoje
     console.log("🔍 Buscando dados de saúde das campanhas...");
     const { data: healthData, error: healthError } = await supabase
       .from('campaign_health')
@@ -57,23 +59,36 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
 
     console.log(`📈 Encontrados ${healthData?.length || 0} registros de saúde para hoje`);
 
-    // Agrupar dados por cliente  
-    const clientsMap = new Map<string, ClientHealthData>();
+    // Criar Map de clientes para lookup rápido
+    const clientsMap = new Map();
+    clientsData?.forEach(client => {
+      clientsMap.set(client.id, client);
+    });
+
+    // Agrupar contas por cliente e fazer JOIN manual
+    const clientAccountsMap = new Map<string, ClientHealthData>();
 
     accountsData.forEach((account: any) => {
-      const clientId = account.client_id;
+      const client = clientsMap.get(account.client_id);
       
-      if (!clientsMap.has(clientId)) {
-        clientsMap.set(clientId, {
+      if (!client) {
+        console.warn(`⚠️ Cliente não encontrado para conta ${account.id}`);
+        return;
+      }
+
+      const clientId = client.id;
+      
+      if (!clientAccountsMap.has(clientId)) {
+        clientAccountsMap.set(clientId, {
           clientId,
-          clientName: account.clients.company_name,
+          clientName: client.company_name,
           metaAds: [],
           googleAds: [],
-          overallStatus: "no-data" // Corrigido: usar valor válido da enum
+          overallStatus: "no-data"
         });
       }
 
-      const client = clientsMap.get(clientId)!;
+      const clientData = clientAccountsMap.get(clientId)!;
       
       // Buscar dados de saúde para esta conta
       const accountHealth = healthData?.find(h => 
@@ -92,16 +107,16 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
       };
 
       if (account.platform === 'meta') {
-        client.metaAds = client.metaAds || [];
-        client.metaAds.push(accountData);
+        clientData.metaAds = clientData.metaAds || [];
+        clientData.metaAds.push(accountData);
       } else if (account.platform === 'google') {
-        client.googleAds = client.googleAds || [];
-        client.googleAds.push(accountData);
+        clientData.googleAds = clientData.googleAds || [];
+        clientData.googleAds.push(accountData);
       }
     });
 
     // Determinar status geral de cada cliente
-    clientsMap.forEach((client) => {
+    clientAccountsMap.forEach((client) => {
       const allAccounts = [...(client.metaAds || []), ...(client.googleAds || [])];
       
       if (allAccounts.some(acc => acc.status === "active")) {
@@ -118,7 +133,7 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
     });
 
     // Converter para array e ordenar por nome da empresa
-    const result = Array.from(clientsMap.values()).sort((a, b) => 
+    const result = Array.from(clientAccountsMap.values()).sort((a, b) => 
       a.clientName.localeCompare(b.clientName, 'pt-BR', { 
         sensitivity: 'base',
         numeric: true 
