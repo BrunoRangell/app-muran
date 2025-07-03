@@ -1,5 +1,58 @@
-
 import { createSupabaseClient, fetchMetaAccessToken, fetchClientData, fetchPrimaryMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview } from "./database.ts";
+
+// Função para buscar conjuntos de anúncios de uma campanha
+async function fetchAdSets(campaignId: string, accessToken: string) {
+  try {
+    const adsetsUrl = `https://graph.facebook.com/v22.0/${campaignId}/adsets?fields=id,name,daily_budget,status,effective_status,end_time&access_token=${accessToken}&limit=1000`;
+    console.log(`📞 Buscando adsets da campanha ${campaignId}`);
+    
+    const response = await fetch(adsetsUrl);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`❌ Erro ao buscar adsets da campanha ${campaignId}:`, errorData);
+      return [];
+    }
+
+    const data = await response.json();
+    const adsets = data.data || [];
+    console.log(`✅ Encontrados ${adsets.length} adsets na campanha ${campaignId}`);
+    
+    return adsets;
+  } catch (error) {
+    console.error(`❌ Erro inesperado ao buscar adsets da campanha ${campaignId}:`, error);
+    return [];
+  }
+}
+
+// Função para filtrar adsets ativos
+function filterActiveAdsets(adsets: any[], now: Date) {
+  return adsets.filter(adset => {
+    // Verificar status
+    if (adset.status !== "ACTIVE") {
+      console.log(`Adset ${adset.id} (${adset.name}) não está ativo. Status: ${adset.status}`);
+      return false;
+    }
+    
+    // Verificar effective_status
+    if (adset.effective_status !== "ACTIVE") {
+      console.log(`Adset ${adset.id} (${adset.name}) tem effective_status não ativo: ${adset.effective_status}`);
+      return false;
+    }
+    
+    // Verificar data de término
+    if (adset.end_time) {
+      const endTime = new Date(adset.end_time);
+      const isFuture = endTime > now;
+      if (!isFuture) {
+        console.log(`Adset ${adset.id} (${adset.name}) já terminou em ${endTime.toLocaleDateString('pt-BR')}`);
+        return false;
+      }
+    }
+    
+    return true;
+  });
+}
 
 // Função para buscar dados reais da Meta Graph API
 async function fetchMetaApiData(accountId: string, accessToken: string, customBudget: any) {
@@ -7,7 +60,7 @@ async function fetchMetaApiData(accountId: string, accessToken: string, customBu
   
   try {
     // 1. Buscar campanhas ativas para calcular orçamento diário total
-    const campaignsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=daily_budget,status,effective_status&access_token=${accessToken}&limit=1000`;
+    const campaignsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=daily_budget,lifetime_budget,status,effective_status,end_time,name&access_token=${accessToken}&limit=1000`;
     console.log(`📞 Chamando API de campanhas: ${campaignsUrl.replace(accessToken, '[TOKEN_HIDDEN]')}`);
     
     const campaignsResponse = await fetch(campaignsUrl);
@@ -24,19 +77,68 @@ async function fetchMetaApiData(accountId: string, accessToken: string, customBu
 
     // Calcular orçamento diário total das campanhas ativas
     let totalDailyBudget = 0;
-    const activeCampaigns = campaigns.filter(campaign => 
-      campaign.effective_status === 'ACTIVE' && 
-      campaign.daily_budget && 
-      parseFloat(campaign.daily_budget) > 0
-    );
+    const now = new Date();
     
-    console.log(`📊 Campanhas ativas encontradas: ${activeCampaigns.length}`);
-    
-    activeCampaigns.forEach(campaign => {
-      const budget = parseFloat(campaign.daily_budget) / 100; // Meta retorna em centavos
-      totalDailyBudget += budget;
-      console.log(`💰 Campanha ${campaign.id}: Orçamento diário R$ ${budget.toFixed(2)}`);
-    });
+    // Processar cada campanha
+    for (const campaign of campaigns) {
+      console.log(`\n🔍 Avaliando campanha: ID=${campaign.id}, Nome="${campaign.name}", Status=${campaign.status}, EffectiveStatus=${campaign.effective_status}`);
+      
+      // Verificar se a campanha está ativa
+      if (campaign.status !== "ACTIVE") {
+        console.log(`Campanha ${campaign.id} (${campaign.name}) não está ativa. Status: ${campaign.status}`);
+        continue;
+      }
+
+      // Verificar effective_status também
+      if (campaign.effective_status !== "ACTIVE") {
+        console.log(`Campanha ${campaign.id} (${campaign.name}) tem effective_status não ativo: ${campaign.effective_status}`);
+        continue;
+      }
+
+      // Verificar data de término
+      if (campaign.end_time) {
+        const endTime = new Date(campaign.end_time);
+        const isFuture = endTime > now;
+        if (!isFuture) {
+          console.log(`Campanha ${campaign.id} (${campaign.name}) já terminou em ${endTime.toLocaleDateString('pt-BR')}`);
+          continue;
+        }
+      }
+
+      // Se a campanha tem orçamento diário, usar ele
+      if (campaign.daily_budget && parseInt(campaign.daily_budget) > 0) {
+        const campaignBudget = parseInt(campaign.daily_budget) / 100; // Converte de centavos para reais
+        totalDailyBudget += campaignBudget;
+        console.log(`💰 Adicionando orçamento da campanha ${campaign.id} (${campaign.name}): R$ ${campaignBudget.toFixed(2)}`);
+      } 
+      // Se não tem orçamento diário ou é zero, buscar adsets
+      else {
+        console.log(`🔍 Campanha ${campaign.id} (${campaign.name}) sem orçamento diário definido. Buscando adsets...`);
+        
+        // Buscar adsets da campanha
+        const adsets = await fetchAdSets(campaign.id, accessToken);
+        const activeAdsets = filterActiveAdsets(adsets, now);
+        
+        console.log(`📊 Campanha ${campaign.id} (${campaign.name}) tem ${activeAdsets.length} adsets ativos de ${adsets.length} totais`);
+        
+        // Somar orçamentos dos adsets ativos
+        let adsetBudgetSum = 0;
+        for (const adset of activeAdsets) {
+          if (adset.daily_budget && parseInt(adset.daily_budget) > 0) {
+            const adsetBudget = parseInt(adset.daily_budget) / 100; // Converte de centavos para reais
+            adsetBudgetSum += adsetBudget;
+            console.log(`💰 Adicionando orçamento do adset ${adset.id} (${adset.name}): R$ ${adsetBudget.toFixed(2)}`);
+          }
+        }
+        
+        if (adsetBudgetSum > 0) {
+          totalDailyBudget += adsetBudgetSum;
+          console.log(`💰 Total de orçamento dos adsets da campanha ${campaign.id} (${campaign.name}): R$ ${adsetBudgetSum.toFixed(2)}`);
+        } else {
+          console.log(`⚠️ Campanha ${campaign.id} (${campaign.name}) não tem orçamento nem nos adsets`);
+        }
+      }
+    }
 
     console.log(`💰 Orçamento diário total calculado: R$ ${totalDailyBudget.toFixed(2)}`);
 
@@ -146,8 +248,8 @@ export async function processReviewRequest(req: Request) {
     // 4. Buscar orçamento personalizado ativo
     const customBudget = await fetchActiveCustomBudget(supabase, clientId, today);
     
-    // 5. BUSCAR DADOS REAIS DA META API (substituindo dados simulados)
-    console.log(`🚀 Buscando dados reais da Meta Graph API...`);
+    // 5. BUSCAR DADOS REAIS DA META API (com lógica corrigida para adsets)
+    console.log(`🚀 Buscando dados reais da Meta Graph API com lógica de adsets...`);
     const metaApiData = await fetchMetaApiData(metaAccount.account_id, metaToken, customBudget);
     
     console.log(`✅ Dados reais da Meta API obtidos:`, {
@@ -196,11 +298,11 @@ export async function processReviewRequest(req: Request) {
     if (existingReview) {
       // Atualizar revisão existente
       await updateExistingReview(supabase, existingReview.id, reviewData);
-      console.log(`✅ Revisão atualizada para cliente ${clientData.company_name} com dados reais da API`);
+      console.log(`✅ Revisão atualizada para cliente ${clientData.company_name} com dados reais da API (incluindo adsets)`);
     } else {
       // Criar nova revisão
       await createNewReview(supabase, clientId, today, reviewData);
-      console.log(`✅ Nova revisão criada para cliente ${clientData.company_name} com dados reais da API`);
+      console.log(`✅ Nova revisão criada para cliente ${clientData.company_name} com dados reais da API (incluindo adsets)`);
     }
     
     return {
@@ -211,7 +313,7 @@ export async function processReviewRequest(req: Request) {
         name: metaApiData.account_name || metaAccount.account_name
       },
       review_data: reviewData,
-      message: "Revisão processada com sucesso usando dados reais da Meta API"
+      message: "Revisão processada com sucesso usando dados reais da Meta API (incluindo orçamentos de adsets)"
     };
     
   } catch (error) {
