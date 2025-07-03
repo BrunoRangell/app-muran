@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
@@ -42,7 +41,7 @@ export default function CampaignHealth() {
     dataLength: data?.length || 0,
     enhancedDataLength: enhancedData?.length || 0,
     isLoading,
-    error: error?.message,
+    error: error,
     stats,
     timestamp: new Date().toISOString()
   });
