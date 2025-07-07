@@ -334,10 +334,11 @@ export async function processReviewRequest(req: Request) {
   const supabase = createSupabaseClient();
   
   try {
-    const { clientId, reviewDate } = await req.json();
+    const { clientId, metaAccountId, reviewDate } = await req.json();
     
     console.log(`🔍 [PROCESSOR] Parâmetros recebidos:`, {
       clientId,
+      metaAccountId,
       reviewDate,
       timestamp: new Date().toISOString()
     });
@@ -382,23 +383,44 @@ export async function processReviewRequest(req: Request) {
     
     console.log(`✅ [CLIENT] Cliente encontrado: ${clientData.company_name} (${clientTime}ms)`);
     
-    // 3. Buscar conta Meta principal do cliente
+    // 3. Buscar conta Meta específica ou principal do cliente
     const accountStartTime = Date.now();
-    console.log(`🏢 [META_ACCOUNT] Buscando conta Meta do cliente ${clientId}`);
+    let metaAccount = null;
     
-    const metaAccount = await fetchPrimaryMetaAccount(supabase, clientId);
-    const accountTime = Date.now() - accountStartTime;
-    
-    if (!metaAccount) {
-      console.error(`❌ [META_ACCOUNT] Conta Meta não encontrada (${accountTime}ms)`);
-      return { success: false, error: "Cliente não possui conta Meta configurada" };
+    if (metaAccountId) {
+      console.log(`🏢 [META_ACCOUNT] Buscando conta Meta ESPECÍFICA ${metaAccountId} para cliente ${clientId}`);
+      
+      // Importar função para buscar conta específica
+      const { fetchMetaAccountDetails } = await import("./database.ts");
+      metaAccount = await fetchMetaAccountDetails(supabase, clientId, metaAccountId);
+      
+      if (!metaAccount) {
+        console.error(`❌ [META_ACCOUNT] Conta Meta específica ${metaAccountId} não encontrada para cliente ${clientId}`);
+        return { success: false, error: `Conta Meta específica ${metaAccountId} não encontrada` };
+      }
+      
+      console.log(`✅ [META_ACCOUNT] Conta ESPECÍFICA encontrada:`, {
+        accountId: metaAccount.account_id,
+        accountName: metaAccount.account_name,
+        isPrimary: metaAccount.is_primary
+      });
+    } else {
+      console.log(`🏢 [META_ACCOUNT] Buscando conta Meta PRINCIPAL para cliente ${clientId}`);
+      metaAccount = await fetchPrimaryMetaAccount(supabase, clientId);
+      
+      if (!metaAccount) {
+        console.error(`❌ [META_ACCOUNT] Conta Meta principal não encontrada`);
+        return { success: false, error: "Cliente não possui conta Meta configurada" };
+      }
+      
+      console.log(`✅ [META_ACCOUNT] Conta PRINCIPAL encontrada:`, {
+        accountId: metaAccount.account_id,
+        accountName: metaAccount.account_name,
+        isPrimary: metaAccount.is_primary
+      });
     }
     
-    console.log(`✅ [META_ACCOUNT] Conta encontrada:`, {
-      accountId: metaAccount.account_id,
-      accountName: metaAccount.account_name,
-      time: `${accountTime}ms`
-    });
+    const accountTime = Date.now() - accountStartTime;
     
     // 4. Buscar orçamento personalizado ativo
     const budgetStartTime = Date.now();
