@@ -152,13 +152,17 @@ export function CircularBudgetCard({
           throw error;
         }
       } else {
-        // Para Meta Ads, atualizar na tabela daily_budget_reviews
-        const {
-          error
-        } = await supabase.from("daily_budget_reviews").update({
-          warning_ignored_today: true,
-          warning_ignored_date: today
-        }).eq("client_id", client.id).eq("meta_account_id", client.meta_account_id);
+        // Para Meta Ads, atualizar na tabela budget_reviews usando account_id correto
+        const { error } = await supabase
+          .from("budget_reviews")
+          .update({
+            warning_ignored_today: true,
+            warning_ignored_date: today
+          })
+          .eq("client_id", client.id)
+          .eq("platform", "meta")
+          .eq("review_date", today);
+          
         if (error) {
           console.error("Erro ao atualizar aviso ignorado no Meta Ads:", error);
           throw error;

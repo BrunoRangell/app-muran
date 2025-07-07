@@ -5,6 +5,7 @@ import { useIntelligentAnalysis } from "@/components/campaign-health/hooks/useIn
 import { AlertsDashboard } from "@/components/campaign-health/AlertsDashboard";
 import { IntelligentFilters } from "@/components/campaign-health/IntelligentFilters";
 import { EnhancedHealthTable } from "@/components/campaign-health/EnhancedHealthTable";
+import { HealthProgressBar } from "@/components/campaign-health/HealthProgressBar";
 import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
 import { AuthErrorHandler } from "@/components/auth/AuthErrorHandler";
 import { CampaignStatus } from "@/components/campaign-health/types";
@@ -133,9 +134,16 @@ export default function CampaignHealth() {
                 📅 {formatDateForDisplay(todayDate)}
               </div>
               <span className="text-gray-600">
-                • Última atualização: {lastRefreshTimestamp > 0
-                  ? new Date(lastRefreshTimestamp).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-                  : 'Carregando...'}
+                • Última atualização: {lastRefreshTimestamp 
+                  ? new Date(lastRefreshTimestamp).toLocaleString('pt-BR', { 
+                      timeZone: 'America/Sao_Paulo',
+                      day: '2-digit',
+                      month: '2-digit', 
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'Nunca atualizado manualmente'}
               </span>
               {isManualRefreshing && (
                 <span className="text-blue-600 font-medium">• Atualizando...</span>
@@ -143,8 +151,13 @@ export default function CampaignHealth() {
             </div>
           </div>
           
+          {/* Barra de progresso durante atualização */}
+          <HealthProgressBar 
+            isRefreshing={isManualRefreshing}
+          />
+          
           {/* Dashboard de Alertas */}
-          <AlertsDashboard 
+          <AlertsDashboard
             stats={dashboardStats}
             topAlerts={alerts.slice(0, 5)}
             onAlertClick={handleAlertClick}

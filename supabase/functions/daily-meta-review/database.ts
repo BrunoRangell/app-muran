@@ -118,20 +118,21 @@ export async function fetchPrimaryMetaAccount(
 ): Promise<MetaAccount | null> {
   console.log(`Buscando conta Meta principal para cliente ${clientId}`);
   
-  const { data: metaAccount, error: accountError } = await supabase
+  const { data: metaAccounts, error: accountError } = await supabase
     .from("client_accounts")
     .select("*")
     .eq("client_id", clientId)
     .eq("platform", "meta")
     .eq("status", "active")
     .order("is_primary", { ascending: false })
-    .order("created_at", { ascending: true })
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
   if (accountError) {
     console.error(`Erro ao buscar conta Meta principal: ${accountError.message}`);
     return null;
   }
+
+  const metaAccount = metaAccounts && metaAccounts.length > 0 ? metaAccounts[0] : null;
 
   return metaAccount;
 }

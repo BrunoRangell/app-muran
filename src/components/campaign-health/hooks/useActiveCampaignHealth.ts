@@ -187,7 +187,7 @@ export function useActiveCampaignHealth() {
   const [statusFilter, setStatusFilter] = useState<CampaignStatus | "all">("all");
   const [platformFilter, setPlatformFilter] = useState<"all" | "meta" | "google">("all");
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
-  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState(Date.now());
+  const [lastManualRefreshTimestamp, setLastManualRefreshTimestamp] = useState<number | null>(null);
 
   const todayDate = new Date().toISOString().split('T')[0];
 
@@ -222,14 +222,16 @@ export function useActiveCampaignHealth() {
       }
       
       // Aguardar um pouco para que os dados sejam processados
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // Refetch os dados locais
       console.log("🔄 Atualizando dados locais...");
       await refetch();
-      setLastRefreshTimestamp(Date.now());
       
-      console.log("✅ Refresh manual concluído");
+      // Atualizar timestamp APENAS após sucesso completo
+      setLastManualRefreshTimestamp(Date.now());
+      
+      console.log("✅ Refresh manual concluído com sucesso");
       
     } catch (error) {
       console.error("❌ Erro no refresh manual:", error);
@@ -283,7 +285,7 @@ export function useActiveCampaignHealth() {
     platformFilter,
     setPlatformFilter,
     handleRefresh,
-    lastRefreshTimestamp,
+    lastRefreshTimestamp: lastManualRefreshTimestamp,
     stats,
     isManualRefreshing,
     todayDate
