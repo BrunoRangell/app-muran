@@ -12,6 +12,7 @@ type ClientWithAccounts = {
     id: string;
     platform: 'meta' | 'google';
     account_id: string;
+    account_name: string;
     budget_amount: number;
     is_primary: boolean;
   }>;
@@ -46,6 +47,7 @@ export const useBudgetSetup = () => {
             id,
             platform,
             account_id,
+            account_name,
             budget_amount,
             is_primary,
             status
@@ -84,9 +86,9 @@ export const useBudgetSetup = () => {
         );
         
         initialBudgets[client.id] = {
-          meta: metaAccount?.budget_amount ? metaAccount.budget_amount.toString() : "",
+          meta: metaAccount?.budget_amount ? metaAccount.budget_amount.toLocaleString('pt-BR') : "",
           accountId: metaAccount?.account_id || "",
-          googleMeta: googleAccount?.budget_amount ? googleAccount.budget_amount.toString() : "",
+          googleMeta: googleAccount?.budget_amount ? googleAccount.budget_amount.toLocaleString('pt-BR') : "",
           googleAccountId: googleAccount?.account_id || ""
         };
         
@@ -118,7 +120,7 @@ export const useBudgetSetup = () => {
         
         // Processar conta Meta
         if (values.meta || values.accountId) {
-          const metaBudget = values.meta ? parseFloat(values.meta.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
+          const metaBudget = values.meta ? parseFloat(values.meta.replace(/\./g, '').replace(',', '.')) || 0 : 0;
           
           // Verificar se já existe conta Meta para este cliente
           const { data: existingMeta } = await supabase
@@ -162,7 +164,7 @@ export const useBudgetSetup = () => {
         
         // Processar conta Google
         if (values.googleMeta || values.googleAccountId) {
-          const googleBudget = values.googleMeta ? parseFloat(values.googleMeta.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
+          const googleBudget = values.googleMeta ? parseFloat(values.googleMeta.replace(/\./g, '').replace(',', '.')) || 0 : 0;
           
           // Verificar se já existe conta Google para este cliente
           const { data: existingGoogle } = await supabase
@@ -227,7 +229,24 @@ export const useBudgetSetup = () => {
   });
 
   const handleBudgetChange = (clientId: string, value: string) => {
-    const sanitizedValue = value.replace(/[^0-9,.]/g, "");
+    // Permitir apenas números, vírgulas e pontos
+    let sanitizedValue = value.replace(/[^0-9,.]/g, "");
+    
+    // Aplicar formatação com separador de milhares
+    if (sanitizedValue) {
+      // Remover pontos existentes (separadores de milhares)
+      const numberValue = sanitizedValue.replace(/\./g, '').replace(',', '.');
+      const parsedValue = parseFloat(numberValue);
+      
+      if (!isNaN(parsedValue)) {
+        // Formatar com separador de milhares (ponto) e vírgula para decimais
+        sanitizedValue = parsedValue.toLocaleString('pt-BR', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        });
+      }
+    }
+    
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
@@ -238,7 +257,24 @@ export const useBudgetSetup = () => {
   };
 
   const handleGoogleBudgetChange = (clientId: string, value: string) => {
-    const sanitizedValue = value.replace(/[^0-9,.]/g, "");
+    // Permitir apenas números, vírgulas e pontos
+    let sanitizedValue = value.replace(/[^0-9,.]/g, "");
+    
+    // Aplicar formatação com separador de milhares
+    if (sanitizedValue) {
+      // Remover pontos existentes (separadores de milhares)
+      const numberValue = sanitizedValue.replace(/\./g, '').replace(',', '.');
+      const parsedValue = parseFloat(numberValue);
+      
+      if (!isNaN(parsedValue)) {
+        // Formatar com separador de milhares (ponto) e vírgula para decimais
+        sanitizedValue = parsedValue.toLocaleString('pt-BR', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        });
+      }
+    }
+    
     setBudgets((prev) => ({
       ...prev,
       [clientId]: {
@@ -278,6 +314,72 @@ export const useBudgetSetup = () => {
       client.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Funções para contas secundárias
+  const saveSecondaryAccount = async (clientId: string, account: {
+    account_id: string;
+    account_name: string;
+    budget_amount: string;
+    platform: 'meta' | 'google';
+  }) => {
+    const budgetAmount = account.budget_amount ? 
+      parseFloat(account.budget_amount.replace(/\./g, '').replace(',', '.')) || 0 : 0;
+
+    const { error } = await supabase
+      .from("client_accounts")
+      .insert({
+        client_id: clientId,
+        platform: account.platform,
+        account_id: account.account_id,
+        account_name: account.account_name,
+        budget_amount: budgetAmount,
+        is_primary: false,
+        status: "active"
+      });
+
+    if (error) {
+      console.error("❌ Erro ao criar conta secundária:", error);
+      toast({
+        title: "Erro ao criar conta",
+        description: "Ocorreu um erro ao criar a conta secundária",
+        variant: "destructive",
+      });
+      throw error;
+    }
+
+    toast({
+      title: "Conta criada",
+      description: "Conta secundária criada com sucesso",
+    });
+
+    // Recarregar dados
+    queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
+  };
+
+  const deleteSecondaryAccount = async (accountId: string) => {
+    const { error } = await supabase
+      .from("client_accounts")
+      .delete()
+      .eq("id", accountId);
+
+    if (error) {
+      console.error("❌ Erro ao deletar conta secundária:", error);
+      toast({
+        title: "Erro ao deletar conta",
+        description: "Ocorreu um erro ao deletar a conta secundária",
+        variant: "destructive",
+      });
+      throw error;
+    }
+
+    toast({
+      title: "Conta deletada",
+      description: "Conta secundária deletada com sucesso",
+    });
+
+    // Recarregar dados
+    queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
+  };
+
   return {
     searchTerm,
     setSearchTerm,
@@ -290,7 +392,9 @@ export const useBudgetSetup = () => {
     handleAccountIdChange,
     handleGoogleAccountIdChange,
     handleSave,
-    filteredClients
+    filteredClients,
+    saveSecondaryAccount,
+    deleteSecondaryAccount
   };
 };
 
