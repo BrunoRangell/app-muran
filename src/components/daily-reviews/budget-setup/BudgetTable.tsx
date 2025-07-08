@@ -55,86 +55,105 @@ export const BudgetTable = ({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[250px]">Cliente</TableHead>
-            <TableHead className={showGoogleFields ? "w-[150px]" : "w-[200px]"}>ID da Conta Meta</TableHead>
-            <TableHead className={showGoogleFields ? "w-[150px]" : "w-[200px]"}>Orçamento Meta Ads</TableHead>
-            {showGoogleFields && (
-              <>
-                <TableHead className="w-[150px]">ID da Conta Google</TableHead>
-                <TableHead className="w-[150px]">Orçamento Google Ads</TableHead>
-              </>
-            )}
+            <TableHead className="w-[120px]">Plataforma</TableHead>
+            <TableHead className="w-[150px]">Tipo</TableHead>
+            <TableHead className={showGoogleFields ? "w-[150px]" : "w-[200px]"}>ID da Conta</TableHead>
+            <TableHead className={showGoogleFields ? "w-[150px]" : "w-[200px]"}>Nome da Conta</TableHead>
+            <TableHead className={showGoogleFields ? "w-[150px]" : "w-[200px]"}>Orçamento</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredClients.map((client) => (
-            <TableRow key={client.id}>
-              <TableCell className="font-medium">{client.company_name}</TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor={`account-${client.id}`} className="sr-only">
-                    ID da Conta Meta
-                  </Label>
-                  <Input
-                    id={`account-${client.id}`}
-                    placeholder="ID da conta"
-                    value={budgets[client.id]?.accountId || ""}
-                    onChange={(e) => onAccountIdChange(client.id, e.target.value)}
-                    className="max-w-[150px]"
-                  />
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor={`meta-${client.id}`} className="sr-only">
-                    Orçamento Meta Ads
-                  </Label>
-                  <span className="text-gray-500">R$</span>
-                  <Input
-                    id={`meta-${client.id}`}
-                    placeholder="0,00"
-                    value={budgets[client.id]?.meta || ""}
-                    onChange={(e) => onBudgetChange(client.id, e.target.value)}
-                    className="max-w-[150px]"
-                    type="text"
-                  />
-                </div>
-              </TableCell>
-              {showGoogleFields && (
-                <>
-                  <TableCell>
+          {filteredClients.map((client) => {
+            // Agrupar contas por plataforma e ordenar (primária primeiro)
+            const metaAccounts = client.client_accounts
+              .filter(acc => acc.platform === 'meta')
+              .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+            
+            const googleAccounts = client.client_accounts
+              .filter(acc => acc.platform === 'google')
+              .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+
+            const allAccounts = [...metaAccounts, ...googleAccounts];
+            
+            return allAccounts.map((account, index) => (
+              <TableRow key={`${client.id}-${account.id}`}>
+                {/* Nome do cliente apenas na primeira linha */}
+                {index === 0 ? (
+                  <TableCell className="font-medium" rowSpan={allAccounts.length}>
+                    {client.company_name}
+                  </TableCell>
+                ) : null}
+                
+                <TableCell className="font-medium">
+                  {account.platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
+                </TableCell>
+                
+                <TableCell>
+                  <span className={account.is_primary ? 'text-blue-600 font-medium' : 'text-gray-500'}>
+                    {account.is_primary ? 'Principal' : 'Secundária'}
+                  </span>
+                </TableCell>
+                
+                <TableCell>
+                  {account.is_primary ? (
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor={`google-account-${client.id}`} className="sr-only">
-                        ID da Conta Google
+                      <Label htmlFor={`account-${client.id}-${account.platform}`} className="sr-only">
+                        ID da Conta {account.platform === 'meta' ? 'Meta' : 'Google'}
                       </Label>
                       <Input
-                        id={`google-account-${client.id}`}
-                        placeholder="ID da conta Google"
-                        value={budgets[client.id]?.googleAccountId || ""}
-                        onChange={(e) => onGoogleAccountIdChange!(client.id, e.target.value)}
+                        id={`account-${client.id}-${account.platform}`}
+                        placeholder="ID da conta"
+                        value={account.platform === 'meta' ? 
+                          (budgets[client.id]?.accountId || "") : 
+                          (budgets[client.id]?.googleAccountId || "")
+                        }
+                        onChange={(e) => account.platform === 'meta' ? 
+                          onAccountIdChange(client.id, e.target.value) :
+                          onGoogleAccountIdChange!(client.id, e.target.value)
+                        }
                         className="max-w-[150px]"
                       />
                     </div>
-                  </TableCell>
-                  <TableCell>
+                  ) : (
+                    <span className="text-sm text-gray-600">{account.account_id}</span>
+                  )}
+                </TableCell>
+                
+                <TableCell>
+                  <span className="text-sm text-gray-600">{account.account_name}</span>
+                </TableCell>
+                
+                <TableCell>
+                  {account.is_primary ? (
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor={`google-${client.id}`} className="sr-only">
-                        Orçamento Google Ads
+                      <Label htmlFor={`budget-${client.id}-${account.platform}`} className="sr-only">
+                        Orçamento {account.platform === 'meta' ? 'Meta' : 'Google'} Ads
                       </Label>
                       <span className="text-gray-500">R$</span>
                       <Input
-                        id={`google-${client.id}`}
+                        id={`budget-${client.id}-${account.platform}`}
                         placeholder="0,00"
-                        value={budgets[client.id]?.googleMeta || ""}
-                        onChange={(e) => onGoogleBudgetChange!(client.id, e.target.value)}
+                        value={account.platform === 'meta' ? 
+                          (budgets[client.id]?.meta || "") : 
+                          (budgets[client.id]?.googleMeta || "")
+                        }
+                        onChange={(e) => account.platform === 'meta' ? 
+                          onBudgetChange(client.id, e.target.value) :
+                          onGoogleBudgetChange!(client.id, e.target.value)
+                        }
                         className="max-w-[150px]"
                         type="text"
                       />
                     </div>
-                  </TableCell>
-                </>
-              )}
-            </TableRow>
-          ))}
+                  ) : (
+                    <span className="text-sm text-gray-600">
+                      R$ {account.budget_amount.toLocaleString('pt-BR')}
+                    </span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ));
+          })}
         </TableBody>
       </Table>
     </div>
