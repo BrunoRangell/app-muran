@@ -12,16 +12,15 @@ type ClientWithAccounts = {
     id: string;
     platform: 'meta' | 'google';
     account_id: string;
+    account_name: string;
     budget_amount: number;
     is_primary: boolean;
   }>;
 };
 
 type BudgetValues = {
-  meta: string;
-  accountId: string;
-  googleMeta: string;
-  googleAccountId: string;
+  account_id: string;
+  budget_amount: string;
 };
 
 export const useBudgetSetup = () => {
@@ -46,6 +45,7 @@ export const useBudgetSetup = () => {
             id,
             platform,
             account_id,
+            account_name,
             budget_amount,
             is_primary,
             status
@@ -73,24 +73,15 @@ export const useBudgetSetup = () => {
       const initialBudgets: Record<string, BudgetValues> = {};
       
       clients.forEach((client) => {
-        // Buscar conta Meta primária
-        const metaAccount = client.client_accounts.find(acc => 
-          acc.platform === 'meta' && acc.is_primary
-        );
+        // Inicializar todas as contas do cliente
+        client.client_accounts.forEach((account) => {
+          initialBudgets[account.id] = {
+            account_id: account.account_id || "",
+            budget_amount: account.budget_amount ? account.budget_amount.toString() : ""
+          };
+        });
         
-        // Buscar conta Google primária
-        const googleAccount = client.client_accounts.find(acc => 
-          acc.platform === 'google' && acc.is_primary
-        );
-        
-        initialBudgets[client.id] = {
-          meta: metaAccount?.budget_amount ? metaAccount.budget_amount.toString() : "",
-          accountId: metaAccount?.account_id || "",
-          googleMeta: googleAccount?.budget_amount ? googleAccount.budget_amount.toString() : "",
-          googleAccountId: googleAccount?.account_id || ""
-        };
-        
-        console.log(`✅ Inicializado para ${client.company_name}:`, initialBudgets[client.id]);
+        console.log(`✅ Inicializado para ${client.company_name}:`, client.client_accounts.length, "contas");
       });
       
       setBudgets(initialBudgets);
@@ -102,107 +93,34 @@ export const useBudgetSetup = () => {
     mutationFn: async () => {
       console.log("💾 Iniciando salvamento de orçamentos...");
       
-      const clientsToUpdate = Object.entries(budgets).filter(([clientId, values]) => {
-        return clientId && (values.meta || values.accountId || values.googleMeta || values.googleAccountId);
+      const accountsToUpdate = Object.entries(budgets).filter(([accountId, values]) => {
+        return accountId && (values.account_id || values.budget_amount);
       });
       
-      console.log("📋 Clientes a serem atualizados:", clientsToUpdate.length);
+      console.log("📋 Contas a serem atualizadas:", accountsToUpdate.length);
       
-      if (clientsToUpdate.length === 0) {
-        console.log("⚠️ Nenhum cliente para atualizar");
+      if (accountsToUpdate.length === 0) {
+        console.log("⚠️ Nenhuma conta para atualizar");
         return true;
       }
 
-      for (const [clientId, values] of clientsToUpdate) {
-        console.log(`🔄 Processando cliente ${clientId}:`, values);
+      for (const [accountId, values] of accountsToUpdate) {
+        console.log(`🔄 Processando conta ${accountId}:`, values);
         
-        // Processar conta Meta
-        if (values.meta || values.accountId) {
-          const metaBudget = values.meta ? parseFloat(values.meta.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
-          
-          // Verificar se já existe conta Meta para este cliente
-          const { data: existingMeta } = await supabase
-            .from("client_accounts")
-            .select("id")
-            .eq("client_id", clientId)
-            .eq("platform", "meta")
-            .eq("is_primary", true)
-            .single();
-          
-          if (existingMeta) {
-            // Atualizar conta existente
-            const { error } = await supabase
-              .from("client_accounts")
-              .update({
-                account_id: values.accountId || "",
-                budget_amount: metaBudget
-              })
-              .eq("id", existingMeta.id);
-            
-            if (error) throw error;
-            console.log(`✅ Conta Meta atualizada para cliente ${clientId}`);
-          } else if (values.accountId) {
-            // Criar nova conta Meta
-            const { error } = await supabase
-              .from("client_accounts")
-              .insert({
-                client_id: clientId,
-                platform: "meta",
-                account_id: values.accountId,
-                account_name: "Conta Meta Ads",
-                budget_amount: metaBudget,
-                is_primary: true,
-                status: "active"
-              });
-            
-            if (error) throw error;
-            console.log(`✅ Nova conta Meta criada para cliente ${clientId}`);
-          }
-        }
+        const budgetAmount = values.budget_amount ? 
+          parseFloat(values.budget_amount.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
         
-        // Processar conta Google
-        if (values.googleMeta || values.googleAccountId) {
-          const googleBudget = values.googleMeta ? parseFloat(values.googleMeta.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
-          
-          // Verificar se já existe conta Google para este cliente
-          const { data: existingGoogle } = await supabase
-            .from("client_accounts")
-            .select("id")
-            .eq("client_id", clientId)
-            .eq("platform", "google")
-            .eq("is_primary", true)
-            .single();
-          
-          if (existingGoogle) {
-            // Atualizar conta existente
-            const { error } = await supabase
-              .from("client_accounts")
-              .update({
-                account_id: values.googleAccountId || "",
-                budget_amount: googleBudget
-              })
-              .eq("id", existingGoogle.id);
-            
-            if (error) throw error;
-            console.log(`✅ Conta Google atualizada para cliente ${clientId}`);
-          } else if (values.googleAccountId) {
-            // Criar nova conta Google
-            const { error } = await supabase
-              .from("client_accounts")
-              .insert({
-                client_id: clientId,
-                platform: "google",
-                account_id: values.googleAccountId,
-                account_name: "Conta Google Ads",
-                budget_amount: googleBudget,
-                is_primary: true,
-                status: "active"
-              });
-            
-            if (error) throw error;
-            console.log(`✅ Nova conta Google criada para cliente ${clientId}`);
-          }
-        }
+        // Atualizar conta existente
+        const { error } = await supabase
+          .from("client_accounts")
+          .update({
+            account_id: values.account_id || "",
+            budget_amount: budgetAmount
+          })
+          .eq("id", accountId);
+        
+        if (error) throw error;
+        console.log(`✅ Conta ${accountId} atualizada`);
       }
       
       return true;
@@ -226,47 +144,30 @@ export const useBudgetSetup = () => {
     },
   });
 
-  const handleBudgetChange = (clientId: string, value: string) => {
+  const handleBudgetChange = (accountId: string, value: string) => {
     const sanitizedValue = value.replace(/[^0-9,.]/g, "");
     setBudgets((prev) => ({
       ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        meta: sanitizedValue,
+      [accountId]: {
+        ...prev[accountId],
+        budget_amount: sanitizedValue,
       },
     }));
   };
 
-  const handleGoogleBudgetChange = (clientId: string, value: string) => {
-    const sanitizedValue = value.replace(/[^0-9,.]/g, "");
+  const handleAccountIdChange = (accountId: string, value: string) => {
     setBudgets((prev) => ({
       ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        googleMeta: sanitizedValue,
+      [accountId]: {
+        ...prev[accountId],
+        account_id: value,
       },
     }));
   };
 
-  const handleAccountIdChange = (clientId: string, value: string) => {
-    setBudgets((prev) => ({
-      ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        accountId: value,
-      },
-    }));
-  };
-
-  const handleGoogleAccountIdChange = (clientId: string, value: string) => {
-    setBudgets((prev) => ({
-      ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        googleAccountId: value,
-      },
-    }));
-  };
+  // Handlers para compatibilidade - agora apontam para os handlers principais
+  const handleGoogleBudgetChange = handleBudgetChange;
+  const handleGoogleAccountIdChange = handleAccountIdChange;
 
   const handleSave = () => {
     console.log("💾 Iniciando processo de salvamento:", budgets);

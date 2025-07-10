@@ -66,75 +66,110 @@ export const BudgetTable = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredClients.map((client) => (
-            <TableRow key={client.id}>
-              <TableCell className="font-medium">{client.company_name}</TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor={`account-${client.id}`} className="sr-only">
-                    ID da Conta Meta
-                  </Label>
-                  <Input
-                    id={`account-${client.id}`}
-                    placeholder="ID da conta"
-                    value={budgets[client.id]?.accountId || ""}
-                    onChange={(e) => onAccountIdChange(client.id, e.target.value)}
-                    className="max-w-[150px]"
-                  />
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor={`meta-${client.id}`} className="sr-only">
-                    Orçamento Meta Ads
-                  </Label>
-                  <span className="text-gray-500">R$</span>
-                  <Input
-                    id={`meta-${client.id}`}
-                    placeholder="0,00"
-                    value={budgets[client.id]?.meta || ""}
-                    onChange={(e) => onBudgetChange(client.id, e.target.value)}
-                    className="max-w-[150px]"
-                    type="text"
-                  />
-                </div>
-              </TableCell>
-              {showGoogleFields && (
-                <>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor={`google-account-${client.id}`} className="sr-only">
-                        ID da Conta Google
-                      </Label>
-                      <Input
-                        id={`google-account-${client.id}`}
-                        placeholder="ID da conta Google"
-                        value={budgets[client.id]?.googleAccountId || ""}
-                        onChange={(e) => onGoogleAccountIdChange!(client.id, e.target.value)}
-                        className="max-w-[150px]"
-                      />
-                    </div>
+          {filteredClients.map((client) => {
+            // Organizar contas por plataforma com primárias primeiro
+            const metaAccounts = client.client_accounts
+              .filter(acc => acc.platform === 'meta')
+              .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+            
+            const googleAccounts = client.client_accounts
+              .filter(acc => acc.platform === 'google')
+              .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+
+            const maxAccounts = Math.max(metaAccounts.length, showGoogleFields ? googleAccounts.length : 0, 1);
+            
+            return Array.from({ length: maxAccounts }, (_, index) => {
+              const metaAccount = metaAccounts[index];
+              const googleAccount = showGoogleFields ? googleAccounts[index] : undefined;
+              const isFirstRow = index === 0;
+              
+              return (
+                <TableRow key={`${client.id}-${index}`} className={!isFirstRow ? "border-t-0" : ""}>
+                  <TableCell className={`font-medium ${!isFirstRow ? "text-transparent border-l-2 border-gray-200 pl-4" : ""}`}>
+                    {isFirstRow ? client.company_name : ""}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor={`google-${client.id}`} className="sr-only">
-                        Orçamento Google Ads
-                      </Label>
-                      <span className="text-gray-500">R$</span>
-                      <Input
-                        id={`google-${client.id}`}
-                        placeholder="0,00"
-                        value={budgets[client.id]?.googleMeta || ""}
-                        onChange={(e) => onGoogleBudgetChange!(client.id, e.target.value)}
-                        className="max-w-[150px]"
-                        type="text"
-                      />
-                    </div>
+                    {metaAccount && (
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor={`account-${metaAccount.id}`} className="sr-only">
+                          ID da Conta Meta
+                        </Label>
+                            <Input
+                              id={`account-${metaAccount.id}`}
+                              placeholder="ID da conta"
+                              value={budgets[metaAccount.id]?.account_id || ""}
+                              onChange={(e) => onAccountIdChange(metaAccount.id, e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                        {!metaAccount.is_primary && (
+                          <span className="text-xs text-gray-500 ml-1">Sec.</span>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
-                </>
-              )}
-            </TableRow>
-          ))}
+                  <TableCell>
+                    {metaAccount && (
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor={`meta-${metaAccount.id}`} className="sr-only">
+                          Orçamento Meta Ads
+                        </Label>
+                        <span className="text-gray-500">R$</span>
+                        <Input
+                          id={`meta-${metaAccount.id}`}
+                          placeholder="0,00"
+                          value={budgets[metaAccount.id]?.budget_amount || ""}
+                          onChange={(e) => onBudgetChange(metaAccount.id, e.target.value)}
+                          className="max-w-[150px]"
+                          type="text"
+                        />
+                      </div>
+                    )}
+                  </TableCell>
+                  {showGoogleFields && (
+                    <>
+                      <TableCell>
+                        {googleAccount && (
+                          <div className="flex items-center space-x-2">
+                            <Label htmlFor={`google-account-${googleAccount.id}`} className="sr-only">
+                              ID da Conta Google
+                            </Label>
+                            <Input
+                              id={`google-account-${googleAccount.id}`}
+                              placeholder="ID da conta Google"
+                              value={budgets[googleAccount.id]?.account_id || ""}
+                              onChange={(e) => onGoogleAccountIdChange!(googleAccount.id, e.target.value)}
+                              className="max-w-[150px]"
+                            />
+                            {!googleAccount.is_primary && (
+                              <span className="text-xs text-gray-500 ml-1">Sec.</span>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {googleAccount && (
+                          <div className="flex items-center space-x-2">
+                            <Label htmlFor={`google-${googleAccount.id}`} className="sr-only">
+                              Orçamento Google Ads
+                            </Label>
+                            <span className="text-gray-500">R$</span>
+                            <Input
+                              id={`google-${googleAccount.id}`}
+                              placeholder="0,00"
+                              value={budgets[googleAccount.id]?.budget_amount || ""}
+                              onChange={(e) => onGoogleBudgetChange!(googleAccount.id, e.target.value)}
+                              className="max-w-[150px]"
+                              type="text"
+                            />
+                          </div>
+                        )}
+                      </TableCell>
+                    </>
+                  )}
+                </TableRow>
+              );
+            });
+          })}
         </TableBody>
       </Table>
     </div>
