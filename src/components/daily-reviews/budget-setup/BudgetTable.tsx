@@ -1,9 +1,11 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader, Plus, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { type ClientBudget, type BudgetValues } from "../hooks/useBudgetSetup";
+import { formatCurrencyInput } from "@/utils/currencyUtils";
 
 type BudgetTableProps = {
   filteredClients: ClientBudget[] | undefined;
@@ -14,6 +16,8 @@ type BudgetTableProps = {
   onAccountIdChange: (clientId: string, value: string) => void;
   onGoogleBudgetChange?: (clientId: string, value: string) => void;
   onGoogleAccountIdChange?: (clientId: string, value: string) => void;
+  onAddSecondaryAccount?: (clientId: string, clientName: string) => void;
+  onDeleteSecondaryAccount?: (accountId: string) => void;
 };
 
 export const BudgetTable = ({
@@ -25,6 +29,8 @@ export const BudgetTable = ({
   onAccountIdChange,
   onGoogleBudgetChange,
   onGoogleAccountIdChange,
+  onAddSecondaryAccount,
+  onDeleteSecondaryAccount,
 }: BudgetTableProps) => {
   if (isLoading) {
     return (
@@ -49,6 +55,11 @@ export const BudgetTable = ({
   // Verificar se os manipuladores de Google Ads estão disponíveis
   const showGoogleFields = !!onGoogleBudgetChange && !!onGoogleAccountIdChange;
 
+  const handleBudgetInputChange = (accountId: string, value: string, handler: (id: string, val: string) => void) => {
+    const formatted = formatCurrencyInput(value);
+    handler(accountId, formatted);
+  };
+
   return (
     <div className="border rounded-md">
       <Table>
@@ -63,6 +74,7 @@ export const BudgetTable = ({
                 <TableHead className="w-[150px]">Orçamento Google Ads</TableHead>
               </>
             )}
+            <TableHead className="w-[100px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -86,7 +98,19 @@ export const BudgetTable = ({
               return (
                 <TableRow key={`${client.id}-${index}`} className={!isFirstRow ? "border-t-0" : ""}>
                   <TableCell className={`font-medium ${!isFirstRow ? "text-transparent border-l-2 border-gray-200 pl-4" : ""}`}>
-                    {isFirstRow ? client.company_name : ""}
+                    <div className="flex items-center gap-2">
+                      {isFirstRow ? client.company_name : ""}
+                      {isFirstRow && onAddSecondaryAccount && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onAddSecondaryAccount(client.id, client.company_name)}
+                          className="h-6 w-6 p-0 text-[#ff6e00] hover:text-[#ff6e00]/80 hover:bg-[#ff6e00]/10"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {metaAccount && (
@@ -94,15 +118,17 @@ export const BudgetTable = ({
                         <Label htmlFor={`account-${metaAccount.id}`} className="sr-only">
                           ID da Conta Meta
                         </Label>
-                            <Input
-                              id={`account-${metaAccount.id}`}
-                              placeholder="ID da conta"
-                              value={budgets[metaAccount.id]?.account_id || ""}
-                              onChange={(e) => onAccountIdChange(metaAccount.id, e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                        {!metaAccount.is_primary && (
-                          <span className="text-xs text-gray-500 ml-1">Sec.</span>
+                        <Input
+                          id={`account-${metaAccount.id}`}
+                          placeholder="ID da conta"
+                          value={budgets[metaAccount.id]?.account_id || ""}
+                          onChange={(e) => onAccountIdChange(metaAccount.id, e.target.value)}
+                          className="max-w-[150px]"
+                        />
+                        {metaAccount.is_primary ? (
+                          <span className="text-xs text-green-600 font-medium">Principal</span>
+                        ) : (
+                          <span className="text-xs text-blue-600 font-medium">Secundária</span>
                         )}
                       </div>
                     )}
@@ -118,7 +144,7 @@ export const BudgetTable = ({
                           id={`meta-${metaAccount.id}`}
                           placeholder="0,00"
                           value={budgets[metaAccount.id]?.budget_amount || ""}
-                          onChange={(e) => onBudgetChange(metaAccount.id, e.target.value)}
+                          onChange={(e) => handleBudgetInputChange(metaAccount.id, e.target.value, onBudgetChange)}
                           className="max-w-[150px]"
                           type="text"
                         />
@@ -140,8 +166,10 @@ export const BudgetTable = ({
                               onChange={(e) => onGoogleAccountIdChange!(googleAccount.id, e.target.value)}
                               className="max-w-[150px]"
                             />
-                            {!googleAccount.is_primary && (
-                              <span className="text-xs text-gray-500 ml-1">Sec.</span>
+                            {googleAccount.is_primary ? (
+                              <span className="text-xs text-green-600 font-medium">Principal</span>
+                            ) : (
+                              <span className="text-xs text-blue-600 font-medium">Secundária</span>
                             )}
                           </div>
                         )}
@@ -157,7 +185,7 @@ export const BudgetTable = ({
                               id={`google-${googleAccount.id}`}
                               placeholder="0,00"
                               value={budgets[googleAccount.id]?.budget_amount || ""}
-                              onChange={(e) => onGoogleBudgetChange!(googleAccount.id, e.target.value)}
+                              onChange={(e) => handleBudgetInputChange(googleAccount.id, e.target.value, onGoogleBudgetChange!)}
                               className="max-w-[150px]"
                               type="text"
                             />
@@ -166,6 +194,31 @@ export const BudgetTable = ({
                       </TableCell>
                     </>
                   )}
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {/* Botão de lixeira apenas para contas secundárias */}
+                      {metaAccount && !metaAccount.is_primary && onDeleteSecondaryAccount && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDeleteSecondaryAccount(metaAccount.id)}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {googleAccount && !googleAccount.is_primary && onDeleteSecondaryAccount && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDeleteSecondaryAccount(googleAccount.id)}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               );
             });

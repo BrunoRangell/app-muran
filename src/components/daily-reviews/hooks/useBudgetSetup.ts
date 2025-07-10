@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { parseBrazilianCurrency } from "@/utils/currencyUtils";
 
 type ClientWithAccounts = {
   id: string;
@@ -26,6 +26,8 @@ type BudgetValues = {
 export const useBudgetSetup = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [budgets, setBudgets] = useState<Record<string, BudgetValues>>({});
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedClientForAdd, setSelectedClientForAdd] = useState<{id: string, name: string} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -88,6 +90,84 @@ export const useBudgetSetup = () => {
     }
   }, [clients]);
 
+  // Mutation para criar conta secundária
+  const createSecondaryAccountMutation = useMutation({
+    mutationFn: async (data: {
+      clientId: string;
+      platform: 'meta' | 'google';
+      accountName: string;
+      accountId: string;
+      budgetAmount: number;
+    }) => {
+      console.log("🔄 Criando conta secundária:", data);
+      
+      const { error } = await supabase
+        .from("client_accounts")
+        .insert({
+          client_id: data.clientId,
+          platform: data.platform,
+          account_name: data.accountName,
+          account_id: data.accountId,
+          budget_amount: data.budgetAmount,
+          is_primary: false,
+          status: 'active'
+        });
+      
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      console.log("✅ Conta secundária criada com sucesso!");
+      toast({
+        title: "Conta criada",
+        description: "A conta secundária foi criada com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
+      setIsAddModalOpen(false);
+      setSelectedClientForAdd(null);
+    },
+    onError: (error) => {
+      console.error("❌ Erro ao criar conta secundária:", error);
+      toast({
+        title: "Erro ao criar conta",
+        description: String(error),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para deletar conta secundária
+  const deleteSecondaryAccountMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      console.log("🗑️ Deletando conta secundária:", accountId);
+      
+      const { error } = await supabase
+        .from("client_accounts")
+        .delete()
+        .eq("id", accountId)
+        .eq("is_primary", false); // Garantir que só deletamos contas secundárias
+      
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      console.log("✅ Conta secundária deletada com sucesso!");
+      toast({
+        title: "Conta removida",
+        description: "A conta secundária foi removida com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
+    },
+    onError: (error) => {
+      console.error("❌ Erro ao deletar conta secundária:", error);
+      toast({
+        title: "Erro ao remover conta",
+        description: String(error),
+        variant: "destructive",
+      });
+    },
+  });
+
   // Mutation para salvar orçamentos
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
@@ -145,12 +225,11 @@ export const useBudgetSetup = () => {
   });
 
   const handleBudgetChange = (accountId: string, value: string) => {
-    const sanitizedValue = value.replace(/[^0-9,.]/g, "");
     setBudgets((prev) => ({
       ...prev,
       [accountId]: {
         ...prev[accountId],
-        budget_amount: sanitizedValue,
+        budget_amount: value,
       },
     }));
   };
@@ -171,7 +250,43 @@ export const useBudgetSetup = () => {
 
   const handleSave = () => {
     console.log("💾 Iniciando processo de salvamento:", budgets);
+    
+    // Converter valores formatados para números antes de salvar
+    const processedBudgets: Record<string, BudgetValues> = {};
+    Object.entries(budgets).forEach(([accountId, values]) => {
+      processedBudgets[accountId] = {
+        ...values,
+        budget_amount: parseBrazilianCurrency(values.budget_amount).toString()
+      };
+    });
+    
+    setBudgets(processedBudgets);
     saveBudgetsMutation.mutate();
+  };
+
+  const handleAddSecondaryAccount = (clientId: string, clientName: string) => {
+    setSelectedClientForAdd({ id: clientId, name: clientName });
+    setIsAddModalOpen(true);
+  };
+
+  const handleCreateSecondaryAccount = (data: {
+    platform: 'meta' | 'google';
+    accountName: string;
+    accountId: string;
+    budgetAmount: number;
+  }) => {
+    if (!selectedClientForAdd) return;
+    
+    createSecondaryAccountMutation.mutate({
+      clientId: selectedClientForAdd.id,
+      ...data
+    });
+  };
+
+  const handleDeleteSecondaryAccount = (accountId: string) => {
+    if (window.confirm("Tem certeza que deseja remover esta conta secundária?")) {
+      deleteSecondaryAccountMutation.mutate(accountId);
+    }
   };
 
   const filteredClients = clients?.filter(
@@ -191,7 +306,16 @@ export const useBudgetSetup = () => {
     handleAccountIdChange,
     handleGoogleAccountIdChange,
     handleSave,
-    filteredClients
+    filteredClients,
+    // Novas funcionalidades
+    isAddModalOpen,
+    setIsAddModalOpen,
+    selectedClientForAdd,
+    handleAddSecondaryAccount,
+    handleCreateSecondaryAccount,
+    handleDeleteSecondaryAccount,
+    createSecondaryAccountMutation,
+    deleteSecondaryAccountMutation
   };
 };
 
