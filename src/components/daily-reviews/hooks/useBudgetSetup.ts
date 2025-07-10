@@ -43,7 +43,7 @@ export const useBudgetSetup = () => {
           id,
           company_name,
           status,
-          client_accounts!inner (
+          client_accounts (
             id,
             platform,
             account_id,
@@ -54,7 +54,6 @@ export const useBudgetSetup = () => {
           )
         `)
         .eq("status", "active")
-        .eq("client_accounts.status", "active")
         .order("company_name");
 
       if (error) {
@@ -62,8 +61,14 @@ export const useBudgetSetup = () => {
         throw error;
       }
 
-      console.log("✅ Clientes carregados:", data?.length, data);
-      return data as ClientWithAccounts[];
+      // Filtrar apenas contas ativas e processar dados
+      const processedData = data?.map(client => ({
+        ...client,
+        client_accounts: (client.client_accounts || []).filter(account => account.status === 'active')
+      })) || [];
+
+      console.log("✅ Clientes carregados:", processedData?.length, processedData);
+      return processedData as ClientWithAccounts[];
     },
   });
 

@@ -80,14 +80,15 @@ export const BudgetTable = ({
         <TableBody>
           {filteredClients.map((client) => {
             // Organizar contas por plataforma com primárias primeiro
-            const metaAccounts = client.client_accounts
+            const metaAccounts = (client.client_accounts || [])
               .filter(acc => acc.platform === 'meta')
               .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
             
-            const googleAccounts = client.client_accounts
+            const googleAccounts = (client.client_accounts || [])
               .filter(acc => acc.platform === 'google')
               .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
 
+            // Garantir que sempre haja pelo menos uma linha por cliente
             const maxAccounts = Math.max(metaAccounts.length, showGoogleFields ? googleAccounts.length : 0, 1);
             
             return Array.from({ length: maxAccounts }, (_, index) => {
@@ -113,84 +114,100 @@ export const BudgetTable = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    {metaAccount && (
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor={`account-${metaAccount.id}`} className="sr-only">
-                          ID da Conta Meta
-                        </Label>
-                        <Input
-                          id={`account-${metaAccount.id}`}
-                          placeholder="ID da conta"
-                          value={budgets[metaAccount.id]?.account_id || ""}
-                          onChange={(e) => onAccountIdChange(metaAccount.id, e.target.value)}
-                          className="max-w-[150px]"
-                        />
-                        {metaAccount.is_primary ? (
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor={`account-${metaAccount?.id || `${client.id}-meta-${index}`}`} className="sr-only">
+                        ID da Conta Meta
+                      </Label>
+                      <Input
+                        id={`account-${metaAccount?.id || `${client.id}-meta-${index}`}`}
+                        placeholder="ID da conta"
+                        value={metaAccount ? (budgets[metaAccount.id]?.account_id || "") : ""}
+                        onChange={(e) => {
+                          if (metaAccount) {
+                            onAccountIdChange(metaAccount.id, e.target.value);
+                          }
+                        }}
+                        className="max-w-[150px]"
+                        disabled={!metaAccount}
+                      />
+                      {metaAccount && (
+                        metaAccount.is_primary ? (
                           <span className="text-xs text-green-600 font-medium">Principal</span>
                         ) : (
                           <span className="text-xs text-blue-600 font-medium">Secundária</span>
-                        )}
-                      </div>
-                    )}
+                        )
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    {metaAccount && (
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor={`meta-${metaAccount.id}`} className="sr-only">
-                          Orçamento Meta Ads
-                        </Label>
-                        <span className="text-gray-500">R$</span>
-                        <Input
-                          id={`meta-${metaAccount.id}`}
-                          placeholder="0,00"
-                          value={budgets[metaAccount.id]?.budget_amount || ""}
-                          onChange={(e) => handleBudgetInputChange(metaAccount.id, e.target.value, onBudgetChange)}
-                          className="max-w-[150px]"
-                          type="text"
-                        />
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor={`meta-${metaAccount?.id || `${client.id}-meta-budget-${index}`}`} className="sr-only">
+                        Orçamento Meta Ads
+                      </Label>
+                      <span className="text-gray-500">R$</span>
+                      <Input
+                        id={`meta-${metaAccount?.id || `${client.id}-meta-budget-${index}`}`}
+                        placeholder="0,00"
+                        value={metaAccount ? (budgets[metaAccount.id]?.budget_amount || "") : ""}
+                        onChange={(e) => {
+                          if (metaAccount) {
+                            handleBudgetInputChange(metaAccount.id, e.target.value, onBudgetChange);
+                          }
+                        }}
+                        className="max-w-[150px]"
+                        type="text"
+                        disabled={!metaAccount}
+                      />
+                    </div>
                   </TableCell>
                   {showGoogleFields && (
                     <>
                       <TableCell>
-                        {googleAccount && (
-                          <div className="flex items-center space-x-2">
-                            <Label htmlFor={`google-account-${googleAccount.id}`} className="sr-only">
-                              ID da Conta Google
-                            </Label>
-                            <Input
-                              id={`google-account-${googleAccount.id}`}
-                              placeholder="ID da conta Google"
-                              value={budgets[googleAccount.id]?.account_id || ""}
-                              onChange={(e) => onGoogleAccountIdChange!(googleAccount.id, e.target.value)}
-                              className="max-w-[150px]"
-                            />
-                            {googleAccount.is_primary ? (
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor={`google-account-${googleAccount?.id || `${client.id}-google-${index}`}`} className="sr-only">
+                            ID da Conta Google
+                          </Label>
+                          <Input
+                            id={`google-account-${googleAccount?.id || `${client.id}-google-${index}`}`}
+                            placeholder="ID da conta Google"
+                            value={googleAccount ? (budgets[googleAccount.id]?.account_id || "") : ""}
+                            onChange={(e) => {
+                              if (googleAccount) {
+                                onGoogleAccountIdChange!(googleAccount.id, e.target.value);
+                              }
+                            }}
+                            className="max-w-[150px]"
+                            disabled={!googleAccount}
+                          />
+                          {googleAccount && (
+                            googleAccount.is_primary ? (
                               <span className="text-xs text-green-600 font-medium">Principal</span>
                             ) : (
                               <span className="text-xs text-blue-600 font-medium">Secundária</span>
-                            )}
-                          </div>
-                        )}
+                            )
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {googleAccount && (
-                          <div className="flex items-center space-x-2">
-                            <Label htmlFor={`google-${googleAccount.id}`} className="sr-only">
-                              Orçamento Google Ads
-                            </Label>
-                            <span className="text-gray-500">R$</span>
-                            <Input
-                              id={`google-${googleAccount.id}`}
-                              placeholder="0,00"
-                              value={budgets[googleAccount.id]?.budget_amount || ""}
-                              onChange={(e) => handleBudgetInputChange(googleAccount.id, e.target.value, onGoogleBudgetChange!)}
-                              className="max-w-[150px]"
-                              type="text"
-                            />
-                          </div>
-                        )}
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor={`google-${googleAccount?.id || `${client.id}-google-budget-${index}`}`} className="sr-only">
+                            Orçamento Google Ads
+                          </Label>
+                          <span className="text-gray-500">R$</span>
+                          <Input
+                            id={`google-${googleAccount?.id || `${client.id}-google-budget-${index}`}`}
+                            placeholder="0,00"
+                            value={googleAccount ? (budgets[googleAccount.id]?.budget_amount || "") : ""}
+                            onChange={(e) => {
+                              if (googleAccount) {
+                                handleBudgetInputChange(googleAccount.id, e.target.value, onGoogleBudgetChange!);
+                              }
+                            }}
+                            className="max-w-[150px]"
+                            type="text"
+                            disabled={!googleAccount}
+                          />
+                        </div>
                       </TableCell>
                     </>
                   )}
