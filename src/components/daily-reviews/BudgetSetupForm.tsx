@@ -20,6 +20,7 @@ export const BudgetSetupForm = () => {
     handleGoogleAccountIdChange,
     handleSave,
     filteredClients,
+    temporaryAccounts,
     // Novas funcionalidades
     isAddModalOpen,
     setIsAddModalOpen,
@@ -57,6 +58,7 @@ export const BudgetSetupForm = () => {
               onGoogleAccountIdChange={handleGoogleAccountIdChange}
               onAddSecondaryAccount={handleAddSecondaryAccount}
               onDeleteSecondaryAccount={handleDeleteSecondaryAccount}
+              temporaryAccounts={temporaryAccounts}
             />
 
             <SaveButton

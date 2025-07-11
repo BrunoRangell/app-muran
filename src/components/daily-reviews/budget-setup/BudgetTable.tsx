@@ -18,6 +18,7 @@ type BudgetTableProps = {
   onGoogleAccountIdChange?: (clientId: string, value: string) => void;
   onAddSecondaryAccount?: (clientId: string, clientName: string) => void;
   onDeleteSecondaryAccount?: (accountId: string) => void;
+  temporaryAccounts?: Record<string, Array<{id: string, platform: 'meta' | 'google', name: string}>>;
 };
 
 export const BudgetTable = ({
@@ -31,6 +32,7 @@ export const BudgetTable = ({
   onGoogleAccountIdChange,
   onAddSecondaryAccount,
   onDeleteSecondaryAccount,
+  temporaryAccounts = {},
 }: BudgetTableProps) => {
   if (isLoading) {
     return (
@@ -88,75 +90,74 @@ export const BudgetTable = ({
               .filter(acc => acc.platform === 'google')
               .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
 
+            // Adicionar contas temporárias do cliente
+            const clientTempAccounts = temporaryAccounts[client.id] || [];
+            const tempMetaAccounts = clientTempAccounts.filter(temp => temp.platform === 'meta').map(temp => ({
+              id: temp.id,
+              platform: 'meta' as const,
+              account_id: '',
+              account_name: temp.name,
+              budget_amount: 0,
+              is_primary: false,
+              isTemporary: true
+            }));
+            const allMetaAccounts = [...metaAccounts, ...tempMetaAccounts];
+
             // Garantir que sempre haja pelo menos uma linha por cliente
-            const maxAccounts = Math.max(metaAccounts.length, showGoogleFields ? googleAccounts.length : 0, 1);
+            const maxAccounts = Math.max(allMetaAccounts.length, showGoogleFields ? googleAccounts.length : 0, 1);
             
             return Array.from({ length: maxAccounts }, (_, index) => {
-              const metaAccount = metaAccounts[index];
+              const metaAccount = allMetaAccounts[index];
               const googleAccount = showGoogleFields ? googleAccounts[index] : undefined;
               const isFirstRow = index === 0;
+              const tempAccountKey = !metaAccount ? `${client.id}-meta-temp` : null;
+              const isTemporaryAccount = metaAccount && 'isTemporary' in metaAccount && metaAccount.isTemporary;
               
               return (
                 <TableRow key={`${client.id}-${index}`} className={!isFirstRow ? "border-t-0" : ""}>
                   <TableCell className={`font-medium ${!isFirstRow ? "text-transparent border-l-2 border-gray-200 pl-4" : ""}`}>
                     <div className="flex items-center gap-2">
                       {isFirstRow ? client.company_name : ""}
-                      {isFirstRow && onAddSecondaryAccount && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onAddSecondaryAccount(client.id, client.company_name)}
-                          className="h-6 w-6 p-0 text-[#ff6e00] hover:text-[#ff6e00]/80 hover:bg-[#ff6e00]/10"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      )}
+                      {isTemporaryAccount ? `${client.company_name} - secundária` : ""}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor={`account-${metaAccount?.id || `${client.id}-meta-${index}`}`} className="sr-only">
+                      <Label htmlFor={`account-${metaAccount?.id || tempAccountKey || `${client.id}-meta-${index}`}`} className="sr-only">
                         ID da Conta Meta
                       </Label>
                       <Input
-                        id={`account-${metaAccount?.id || `${client.id}-meta-${index}`}`}
+                        id={`account-${metaAccount?.id || tempAccountKey || `${client.id}-meta-${index}`}`}
                         placeholder="ID da conta"
-                        value={metaAccount ? (budgets[metaAccount.id]?.account_id || "") : ""}
+                        value={metaAccount ? (budgets[metaAccount.id]?.account_id || "") : (tempAccountKey ? (budgets[tempAccountKey]?.account_id || "") : "")}
                         onChange={(e) => {
-                          if (metaAccount) {
-                            onAccountIdChange(metaAccount.id, e.target.value);
+                          const accountKey = metaAccount?.id || tempAccountKey;
+                          if (accountKey) {
+                            onAccountIdChange(accountKey, e.target.value);
                           }
                         }}
                         className="max-w-[150px]"
-                        disabled={!metaAccount}
                       />
-                      {metaAccount && (
-                        metaAccount.is_primary ? (
-                          <span className="text-xs text-green-600 font-medium">Principal</span>
-                        ) : (
-                          <span className="text-xs text-blue-600 font-medium">Secundária</span>
-                        )
-                      )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor={`meta-${metaAccount?.id || `${client.id}-meta-budget-${index}`}`} className="sr-only">
+                      <Label htmlFor={`meta-${metaAccount?.id || tempAccountKey || `${client.id}-meta-budget-${index}`}`} className="sr-only">
                         Orçamento Meta Ads
                       </Label>
                       <span className="text-gray-500">R$</span>
                       <Input
-                        id={`meta-${metaAccount?.id || `${client.id}-meta-budget-${index}`}`}
+                        id={`meta-${metaAccount?.id || tempAccountKey || `${client.id}-meta-budget-${index}`}`}
                         placeholder="0,00"
-                        value={metaAccount ? (budgets[metaAccount.id]?.budget_amount || "") : ""}
+                        value={metaAccount ? (budgets[metaAccount.id]?.budget_amount || "") : (tempAccountKey ? (budgets[tempAccountKey]?.budget_amount || "") : "")}
                         onChange={(e) => {
-                          if (metaAccount) {
-                            handleBudgetInputChange(metaAccount.id, e.target.value, onBudgetChange);
+                          const accountKey = metaAccount?.id || tempAccountKey;
+                          if (accountKey) {
+                            handleBudgetInputChange(accountKey, e.target.value, onBudgetChange);
                           }
                         }}
                         className="max-w-[150px]"
                         type="text"
-                        disabled={!metaAccount}
                       />
                     </div>
                   </TableCell>
@@ -213,6 +214,17 @@ export const BudgetTable = ({
                   )}
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      {/* Botão + apenas na primeira linha */}
+                      {isFirstRow && onAddSecondaryAccount && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onAddSecondaryAccount(client.id, client.company_name)}
+                          className="h-6 w-6 p-0 text-[#ff6e00] hover:text-[#ff6e00]/80 hover:bg-[#ff6e00]/10"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
                       {/* Botão de lixeira apenas para contas secundárias */}
                       {metaAccount && !metaAccount.is_primary && onDeleteSecondaryAccount && (
                         <Button

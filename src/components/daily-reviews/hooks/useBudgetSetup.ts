@@ -28,6 +28,7 @@ export const useBudgetSetup = () => {
   const [budgets, setBudgets] = useState<Record<string, BudgetValues>>({});
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedClientForAdd, setSelectedClientForAdd] = useState<{id: string, name: string} | null>(null);
+  const [temporaryAccounts, setTemporaryAccounts] = useState<Record<string, Array<{id: string, platform: 'meta' | 'google', name: string}>>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -87,6 +88,15 @@ export const useBudgetSetup = () => {
             budget_amount: account.budget_amount ? account.budget_amount.toString() : ""
           };
         });
+        
+        // Inicializar campos vazios para clientes sem contas (para permitir preenchimento futuro)
+        if (client.client_accounts.length === 0) {
+          const metaKey = `${client.id}-meta-temp`;
+          initialBudgets[metaKey] = {
+            account_id: "",
+            budget_amount: ""
+          };
+        }
         
         console.log(`✅ Inicializado para ${client.company_name}:`, client.client_accounts.length, "contas");
       });
@@ -195,17 +205,60 @@ export const useBudgetSetup = () => {
         const budgetAmount = values.budget_amount ? 
           parseFloat(values.budget_amount.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
         
-        // Atualizar conta existente
-        const { error } = await supabase
-          .from("client_accounts")
-          .update({
-            account_id: values.account_id || "",
-            budget_amount: budgetAmount
-          })
-          .eq("id", accountId);
-        
-        if (error) throw error;
-        console.log(`✅ Conta ${accountId} atualizada`);
+        // Verificar se é uma conta temporária que precisa ser criada
+        if (accountId.includes('-temp-')) {
+          const clientId = accountId.split('-temp-')[0];
+          
+          // Criar nova conta no banco de dados
+          const { data: newAccount, error: createError } = await supabase
+            .from("client_accounts")
+            .insert({
+              client_id: clientId,
+              platform: 'meta',
+              account_name: `Conta Meta`,
+              account_id: values.account_id || "",
+              budget_amount: budgetAmount,
+              is_primary: false,
+              status: 'active'
+            })
+            .select()
+            .single();
+          
+          if (createError) throw createError;
+          console.log(`✅ Nova conta criada para cliente ${clientId}`);
+        } else if (accountId.includes('-meta-temp')) {
+          // Conta temporária para cliente sem contas
+          const clientId = accountId.split('-meta-temp')[0];
+          
+          if (values.account_id || values.budget_amount) {
+            const { error: createError } = await supabase
+              .from("client_accounts")
+              .insert({
+                client_id: clientId,
+                platform: 'meta',
+                account_name: `Conta Meta`,
+                account_id: values.account_id || "",
+                budget_amount: budgetAmount,
+                is_primary: true,
+                status: 'active'
+              });
+            
+            if (createError) throw createError;
+            console.log(`✅ Primeira conta criada para cliente ${clientId}`);
+          }
+        } else {
+          // Atualizar conta existente
+          const { error } = await supabase
+            .from("client_accounts")
+            .update({
+              account_id: values.account_id || "",
+              budget_amount: budgetAmount
+            })
+            .eq("id", accountId);
+          
+          if (error) throw error;
+          console.log(`✅ Conta ${accountId} atualizada`);
+        }
       }
       
       return true;
@@ -216,6 +269,8 @@ export const useBudgetSetup = () => {
         title: "Orçamentos salvos",
         description: "Os orçamentos foram atualizados com sucesso.",
       });
+      // Limpar contas temporárias após salvar
+      setTemporaryAccounts({});
       queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
       queryClient.invalidateQueries({ queryKey: ["budget-manager-data"] });
     },
@@ -270,8 +325,27 @@ export const useBudgetSetup = () => {
   };
 
   const handleAddSecondaryAccount = (clientId: string, clientName: string) => {
-    setSelectedClientForAdd({ id: clientId, name: clientName });
-    setIsAddModalOpen(true);
+    // Adicionar linha temporária instantaneamente
+    const tempId = `${clientId}-temp-${Date.now()}`;
+    const newTempAccount = {
+      id: tempId,
+      platform: 'meta' as const,
+      name: `${clientName} - secundária`
+    };
+    
+    setTemporaryAccounts(prev => ({
+      ...prev,
+      [clientId]: [...(prev[clientId] || []), newTempAccount]
+    }));
+    
+    // Inicializar budget para a conta temporária
+    setBudgets(prev => ({
+      ...prev,
+      [tempId]: {
+        account_id: "",
+        budget_amount: ""
+      }
+    }));
   };
 
   const handleCreateSecondaryAccount = (data: {
@@ -312,6 +386,7 @@ export const useBudgetSetup = () => {
     handleGoogleAccountIdChange,
     handleSave,
     filteredClients,
+    temporaryAccounts,
     // Novas funcionalidades
     isAddModalOpen,
     setIsAddModalOpen,
