@@ -131,10 +131,8 @@ export const BudgetTable = ({
                         placeholder="ID da conta"
                         value={metaAccount ? (budgets[metaAccount.id]?.account_id || "") : (tempAccountKey ? (budgets[tempAccountKey]?.account_id || "") : "")}
                         onChange={(e) => {
-                          const accountKey = metaAccount?.id || tempAccountKey;
-                          if (accountKey) {
-                            onAccountIdChange(accountKey, e.target.value);
-                          }
+                          const accountKey = metaAccount?.id || tempAccountKey || `${client.id}-meta-${index}`;
+                          onAccountIdChange(accountKey, e.target.value);
                         }}
                         className="max-w-[150px]"
                       />
@@ -151,10 +149,8 @@ export const BudgetTable = ({
                         placeholder="0,00"
                         value={metaAccount ? (budgets[metaAccount.id]?.budget_amount || "") : (tempAccountKey ? (budgets[tempAccountKey]?.budget_amount || "") : "")}
                         onChange={(e) => {
-                          const accountKey = metaAccount?.id || tempAccountKey;
-                          if (accountKey) {
-                            handleBudgetInputChange(accountKey, e.target.value, onBudgetChange);
-                          }
+                          const accountKey = metaAccount?.id || tempAccountKey || `${client.id}-meta-budget-${index}`;
+                          handleBudgetInputChange(accountKey, e.target.value, onBudgetChange);
                         }}
                         className="max-w-[150px]"
                         type="text"
@@ -173,20 +169,13 @@ export const BudgetTable = ({
                             placeholder="ID da conta Google"
                             value={googleAccount ? (budgets[googleAccount.id]?.account_id || "") : ""}
                             onChange={(e) => {
-                              if (googleAccount) {
-                                onGoogleAccountIdChange!(googleAccount.id, e.target.value);
+                              const accountKey = googleAccount?.id || `${client.id}-google-${index}`;
+                              if (onGoogleAccountIdChange) {
+                                onGoogleAccountIdChange(accountKey, e.target.value);
                               }
                             }}
                             className="max-w-[150px]"
-                            disabled={!googleAccount}
                           />
-                          {googleAccount && (
-                            googleAccount.is_primary ? (
-                              <span className="text-xs text-green-600 font-medium">Principal</span>
-                            ) : (
-                              <span className="text-xs text-blue-600 font-medium">Secundária</span>
-                            )
-                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -200,13 +189,13 @@ export const BudgetTable = ({
                             placeholder="0,00"
                             value={googleAccount ? (budgets[googleAccount.id]?.budget_amount || "") : ""}
                             onChange={(e) => {
-                              if (googleAccount) {
-                                handleBudgetInputChange(googleAccount.id, e.target.value, onGoogleBudgetChange!);
+                              const accountKey = googleAccount?.id || `${client.id}-google-budget-${index}`;
+                              if (onGoogleBudgetChange) {
+                                handleBudgetInputChange(accountKey, e.target.value, onGoogleBudgetChange);
                               }
                             }}
                             className="max-w-[150px]"
                             type="text"
-                            disabled={!googleAccount}
                           />
                         </div>
                       </TableCell>
