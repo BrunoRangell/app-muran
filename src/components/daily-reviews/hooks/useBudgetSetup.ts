@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { parseBrazilianCurrency } from "@/utils/currencyUtils";
 
 type ClientWithAccounts = {
   id: string;
@@ -12,21 +12,25 @@ type ClientWithAccounts = {
     id: string;
     platform: 'meta' | 'google';
     account_id: string;
+    account_name: string;
     budget_amount: number;
     is_primary: boolean;
   }>;
 };
 
 type BudgetValues = {
-  meta: string;
-  accountId: string;
-  googleMeta: string;
-  googleAccountId: string;
+  account_id: string;
+  budget_amount: string;
 };
 
 export const useBudgetSetup = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [budgets, setBudgets] = useState<Record<string, BudgetValues>>({});
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedClientForAdd, setSelectedClientForAdd] = useState<{id: string, name: string} | null>(null);
+  const [temporaryAccounts, setTemporaryAccounts] = useState<Record<string, Array<{id: string, platform: 'meta' | 'google', name: string}>>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<{id: string, name: string} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -42,17 +46,17 @@ export const useBudgetSetup = () => {
           id,
           company_name,
           status,
-          client_accounts!inner (
+          client_accounts (
             id,
             platform,
             account_id,
+            account_name,
             budget_amount,
             is_primary,
             status
           )
         `)
         .eq("status", "active")
-        .eq("client_accounts.status", "active")
         .order("company_name");
 
       if (error) {
@@ -60,8 +64,14 @@ export const useBudgetSetup = () => {
         throw error;
       }
 
-      console.log("✅ Clientes carregados:", data?.length, data);
-      return data as ClientWithAccounts[];
+      // Filtrar apenas contas ativas e processar dados
+      const processedData = data?.map(client => ({
+        ...client,
+        client_accounts: (client.client_accounts || []).filter(account => account.status === 'active')
+      })) || [];
+
+      console.log("✅ Clientes carregados:", processedData?.length, processedData);
+      return processedData as ClientWithAccounts[];
     },
   });
 
@@ -73,135 +83,183 @@ export const useBudgetSetup = () => {
       const initialBudgets: Record<string, BudgetValues> = {};
       
       clients.forEach((client) => {
-        // Buscar conta Meta primária
-        const metaAccount = client.client_accounts.find(acc => 
-          acc.platform === 'meta' && acc.is_primary
-        );
+        // Inicializar todas as contas do cliente
+        client.client_accounts.forEach((account) => {
+          initialBudgets[account.id] = {
+            account_id: account.account_id || "",
+            budget_amount: account.budget_amount ? account.budget_amount.toString() : ""
+          };
+        });
         
-        // Buscar conta Google primária
-        const googleAccount = client.client_accounts.find(acc => 
-          acc.platform === 'google' && acc.is_primary
-        );
+        // Inicializar campos vazios para clientes sem contas (para permitir preenchimento futuro)
+        if (client.client_accounts.length === 0) {
+          const metaKey = `${client.id}-meta-temp`;
+          initialBudgets[metaKey] = {
+            account_id: "",
+            budget_amount: ""
+          };
+        }
         
-        initialBudgets[client.id] = {
-          meta: metaAccount?.budget_amount ? metaAccount.budget_amount.toString() : "",
-          accountId: metaAccount?.account_id || "",
-          googleMeta: googleAccount?.budget_amount ? googleAccount.budget_amount.toString() : "",
-          googleAccountId: googleAccount?.account_id || ""
-        };
-        
-        console.log(`✅ Inicializado para ${client.company_name}:`, initialBudgets[client.id]);
+        console.log(`✅ Inicializado para ${client.company_name}:`, client.client_accounts.length, "contas");
       });
       
       setBudgets(initialBudgets);
     }
   }, [clients]);
 
+  // Mutation para criar conta secundária
+  const createSecondaryAccountMutation = useMutation({
+    mutationFn: async (data: {
+      clientId: string;
+      platform: 'meta' | 'google';
+      accountName: string;
+      accountId: string;
+      budgetAmount: number;
+    }) => {
+      console.log("🔄 Criando conta secundária:", data);
+      
+      const { error } = await supabase
+        .from("client_accounts")
+        .insert({
+          client_id: data.clientId,
+          platform: data.platform,
+          account_name: data.accountName,
+          account_id: data.accountId,
+          budget_amount: data.budgetAmount,
+          is_primary: false,
+          status: 'active'
+        });
+      
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      console.log("✅ Conta secundária criada com sucesso!");
+      toast({
+        title: "Conta criada",
+        description: "A conta secundária foi criada com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
+      setIsAddModalOpen(false);
+      setSelectedClientForAdd(null);
+    },
+    onError: (error) => {
+      console.error("❌ Erro ao criar conta secundária:", error);
+      toast({
+        title: "Erro ao criar conta",
+        description: String(error),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para deletar conta secundária
+  const deleteSecondaryAccountMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      console.log("🗑️ Deletando conta secundária:", accountId);
+      
+      const { error } = await supabase
+        .from("client_accounts")
+        .delete()
+        .eq("id", accountId)
+        .eq("is_primary", false); // Garantir que só deletamos contas secundárias
+      
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      console.log("✅ Conta secundária deletada com sucesso!");
+      toast({
+        title: "Conta removida",
+        description: "A conta secundária foi removida com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
+    },
+    onError: (error) => {
+      console.error("❌ Erro ao deletar conta secundária:", error);
+      toast({
+        title: "Erro ao remover conta",
+        description: String(error),
+        variant: "destructive",
+      });
+    },
+  });
+
   // Mutation para salvar orçamentos
   const saveBudgetsMutation = useMutation({
     mutationFn: async () => {
       console.log("💾 Iniciando salvamento de orçamentos...");
       
-      const clientsToUpdate = Object.entries(budgets).filter(([clientId, values]) => {
-        return clientId && (values.meta || values.accountId || values.googleMeta || values.googleAccountId);
+      const accountsToUpdate = Object.entries(budgets).filter(([accountId, values]) => {
+        return accountId && (values.account_id || values.budget_amount);
       });
       
-      console.log("📋 Clientes a serem atualizados:", clientsToUpdate.length);
+      console.log("📋 Contas a serem atualizadas:", accountsToUpdate.length);
       
-      if (clientsToUpdate.length === 0) {
-        console.log("⚠️ Nenhum cliente para atualizar");
+      if (accountsToUpdate.length === 0) {
+        console.log("⚠️ Nenhuma conta para atualizar");
         return true;
       }
 
-      for (const [clientId, values] of clientsToUpdate) {
-        console.log(`🔄 Processando cliente ${clientId}:`, values);
+      for (const [accountId, values] of accountsToUpdate) {
+        console.log(`🔄 Processando conta ${accountId}:`, values);
         
-        // Processar conta Meta
-        if (values.meta || values.accountId) {
-          const metaBudget = values.meta ? parseFloat(values.meta.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
+        const budgetAmount = values.budget_amount ? 
+          parseFloat(values.budget_amount.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
+        
+        // Verificar se é uma conta temporária que precisa ser criada
+        if (accountId.includes('-temp-')) {
+          const clientId = accountId.split('-temp-')[0];
           
-          // Verificar se já existe conta Meta para este cliente
-          const { data: existingMeta } = await supabase
+          // Criar nova conta no banco de dados
+          const { data: newAccount, error: createError } = await supabase
             .from("client_accounts")
-            .select("id")
-            .eq("client_id", clientId)
-            .eq("platform", "meta")
-            .eq("is_primary", true)
+            .insert({
+              client_id: clientId,
+              platform: 'meta',
+              account_name: `Conta Meta`,
+              account_id: values.account_id || "",
+              budget_amount: budgetAmount,
+              is_primary: false,
+              status: 'active'
+            })
+            .select()
             .single();
           
-          if (existingMeta) {
-            // Atualizar conta existente
-            const { error } = await supabase
-              .from("client_accounts")
-              .update({
-                account_id: values.accountId || "",
-                budget_amount: metaBudget
-              })
-              .eq("id", existingMeta.id);
-            
-            if (error) throw error;
-            console.log(`✅ Conta Meta atualizada para cliente ${clientId}`);
-          } else if (values.accountId) {
-            // Criar nova conta Meta
-            const { error } = await supabase
+          if (createError) throw createError;
+          console.log(`✅ Nova conta criada para cliente ${clientId}`);
+        } else if (accountId.includes('-meta-temp')) {
+          // Conta temporária para cliente sem contas
+          const clientId = accountId.split('-meta-temp')[0];
+          
+          if (values.account_id || values.budget_amount) {
+            const { error: createError } = await supabase
               .from("client_accounts")
               .insert({
                 client_id: clientId,
-                platform: "meta",
-                account_id: values.accountId,
-                account_name: "Conta Meta Ads",
-                budget_amount: metaBudget,
+                platform: 'meta',
+                account_name: `Conta Meta`,
+                account_id: values.account_id || "",
+                budget_amount: budgetAmount,
                 is_primary: true,
-                status: "active"
+                status: 'active'
               });
             
-            if (error) throw error;
-            console.log(`✅ Nova conta Meta criada para cliente ${clientId}`);
+            if (createError) throw createError;
+            console.log(`✅ Primeira conta criada para cliente ${clientId}`);
           }
-        }
-        
-        // Processar conta Google
-        if (values.googleMeta || values.googleAccountId) {
-          const googleBudget = values.googleMeta ? parseFloat(values.googleMeta.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0 : 0;
-          
-          // Verificar se já existe conta Google para este cliente
-          const { data: existingGoogle } = await supabase
+        } else {
+          // Atualizar conta existente
+          const { error } = await supabase
             .from("client_accounts")
-            .select("id")
-            .eq("client_id", clientId)
-            .eq("platform", "google")
-            .eq("is_primary", true)
-            .single();
+            .update({
+              account_id: values.account_id || "",
+              budget_amount: budgetAmount
+            })
+            .eq("id", accountId);
           
-          if (existingGoogle) {
-            // Atualizar conta existente
-            const { error } = await supabase
-              .from("client_accounts")
-              .update({
-                account_id: values.googleAccountId || "",
-                budget_amount: googleBudget
-              })
-              .eq("id", existingGoogle.id);
-            
-            if (error) throw error;
-            console.log(`✅ Conta Google atualizada para cliente ${clientId}`);
-          } else if (values.googleAccountId) {
-            // Criar nova conta Google
-            const { error } = await supabase
-              .from("client_accounts")
-              .insert({
-                client_id: clientId,
-                platform: "google",
-                account_id: values.googleAccountId,
-                account_name: "Conta Google Ads",
-                budget_amount: googleBudget,
-                is_primary: true,
-                status: "active"
-              });
-            
-            if (error) throw error;
-            console.log(`✅ Nova conta Google criada para cliente ${clientId}`);
-          }
+          if (error) throw error;
+          console.log(`✅ Conta ${accountId} atualizada`);
         }
       }
       
@@ -213,6 +271,8 @@ export const useBudgetSetup = () => {
         title: "Orçamentos salvos",
         description: "Os orçamentos foram atualizados com sucesso.",
       });
+      // Limpar contas temporárias após salvar
+      setTemporaryAccounts({});
       queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
       queryClient.invalidateQueries({ queryKey: ["budget-manager-data"] });
     },
@@ -226,51 +286,126 @@ export const useBudgetSetup = () => {
     },
   });
 
-  const handleBudgetChange = (clientId: string, value: string) => {
-    const sanitizedValue = value.replace(/[^0-9,.]/g, "");
+  const handleBudgetChange = (accountId: string, value: string) => {
     setBudgets((prev) => ({
       ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        meta: sanitizedValue,
+      [accountId]: {
+        ...prev[accountId],
+        budget_amount: value,
       },
     }));
   };
 
-  const handleGoogleBudgetChange = (clientId: string, value: string) => {
-    const sanitizedValue = value.replace(/[^0-9,.]/g, "");
+  const handleAccountIdChange = (accountId: string, value: string) => {
     setBudgets((prev) => ({
       ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        googleMeta: sanitizedValue,
+      [accountId]: {
+        ...prev[accountId],
+        account_id: value,
       },
     }));
   };
 
-  const handleAccountIdChange = (clientId: string, value: string) => {
-    setBudgets((prev) => ({
-      ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        accountId: value,
-      },
-    }));
-  };
-
-  const handleGoogleAccountIdChange = (clientId: string, value: string) => {
-    setBudgets((prev) => ({
-      ...prev,
-      [clientId]: {
-        ...prev[clientId],
-        googleAccountId: value,
-      },
-    }));
-  };
+  // Handlers para compatibilidade - agora apontam para os handlers principais
+  const handleGoogleBudgetChange = handleBudgetChange;
+  const handleGoogleAccountIdChange = handleAccountIdChange;
 
   const handleSave = () => {
     console.log("💾 Iniciando processo de salvamento:", budgets);
+    
+    // Converter valores formatados para números antes de salvar
+    const processedBudgets: Record<string, BudgetValues> = {};
+    Object.entries(budgets).forEach(([accountId, values]) => {
+      processedBudgets[accountId] = {
+        ...values,
+        budget_amount: parseBrazilianCurrency(values.budget_amount).toString()
+      };
+    });
+    
+    setBudgets(processedBudgets);
     saveBudgetsMutation.mutate();
+  };
+
+  const handleAddSecondaryAccount = (clientId: string, clientName: string) => {
+    // Adicionar linha temporária instantaneamente
+    const tempId = `${clientId}-temp-${Date.now()}`;
+    const newTempAccount = {
+      id: tempId,
+      platform: 'meta' as const,
+      name: `${clientName} - secundária`
+    };
+    
+    setTemporaryAccounts(prev => ({
+      ...prev,
+      [clientId]: [...(prev[clientId] || []), newTempAccount]
+    }));
+    
+    // Inicializar budget para a conta temporária
+    setBudgets(prev => ({
+      ...prev,
+      [tempId]: {
+        account_id: "",
+        budget_amount: ""
+      }
+    }));
+  };
+
+  const handleCreateSecondaryAccount = (data: {
+    platform: 'meta' | 'google';
+    accountName: string;
+    accountId: string;
+    budgetAmount: number;
+  }) => {
+    if (!selectedClientForAdd) return;
+    
+    createSecondaryAccountMutation.mutate({
+      clientId: selectedClientForAdd.id,
+      ...data
+    });
+  };
+
+  const handleDeleteSecondaryAccount = (accountId: string) => {
+    // Verificar se é uma conta temporária
+    const isTemporary = accountId.includes('-temp-');
+    
+    if (isTemporary) {
+      // Para contas temporárias, removê-las imediatamente do frontend
+      const clientId = accountId.split('-temp-')[0];
+      
+      setTemporaryAccounts(prev => ({
+        ...prev,
+        [clientId]: (prev[clientId] || []).filter(acc => acc.id !== accountId)
+      }));
+      
+      // Remover também do estado de budgets
+      setBudgets(prev => {
+        const newBudgets = { ...prev };
+        delete newBudgets[accountId];
+        return newBudgets;
+      });
+      
+      toast({
+        title: "Conta removida",
+        description: "A conta temporária foi removida.",
+      });
+      
+      return;
+    }
+    
+    // Para contas salvas no banco, usar o diálogo de confirmação
+    const account = clients?.flatMap(client => client.client_accounts).find(acc => acc.id === accountId);
+    const accountName = account?.account_name || "conta secundária";
+    
+    setAccountToDelete({ id: accountId, name: accountName });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteAccount = () => {
+    if (accountToDelete) {
+      deleteSecondaryAccountMutation.mutate(accountToDelete.id);
+      setDeleteDialogOpen(false);
+      setAccountToDelete(null);
+    }
   };
 
   const filteredClients = clients?.filter(
@@ -290,7 +425,22 @@ export const useBudgetSetup = () => {
     handleAccountIdChange,
     handleGoogleAccountIdChange,
     handleSave,
-    filteredClients
+    filteredClients,
+    temporaryAccounts,
+    // Novas funcionalidades
+    isAddModalOpen,
+    setIsAddModalOpen,
+    selectedClientForAdd,
+    handleAddSecondaryAccount,
+    handleCreateSecondaryAccount,
+    handleDeleteSecondaryAccount,
+    createSecondaryAccountMutation,
+    deleteSecondaryAccountMutation,
+    // Estados do diálogo de confirmação
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    accountToDelete,
+    confirmDeleteAccount
   };
 };
 

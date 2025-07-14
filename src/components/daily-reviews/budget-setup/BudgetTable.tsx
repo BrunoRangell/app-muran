@@ -1,9 +1,11 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader, Plus, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { type ClientBudget, type BudgetValues } from "../hooks/useBudgetSetup";
+import { formatCurrencyInput } from "@/utils/currencyUtils";
 
 type BudgetTableProps = {
   filteredClients: ClientBudget[] | undefined;
@@ -14,6 +16,9 @@ type BudgetTableProps = {
   onAccountIdChange: (clientId: string, value: string) => void;
   onGoogleBudgetChange?: (clientId: string, value: string) => void;
   onGoogleAccountIdChange?: (clientId: string, value: string) => void;
+  onAddSecondaryAccount?: (clientId: string, clientName: string) => void;
+  onDeleteSecondaryAccount?: (accountId: string) => void;
+  temporaryAccounts?: Record<string, Array<{id: string, platform: 'meta' | 'google', name: string}>>;
 };
 
 export const BudgetTable = ({
@@ -25,6 +30,9 @@ export const BudgetTable = ({
   onAccountIdChange,
   onGoogleBudgetChange,
   onGoogleAccountIdChange,
+  onAddSecondaryAccount,
+  onDeleteSecondaryAccount,
+  temporaryAccounts = {},
 }: BudgetTableProps) => {
   if (isLoading) {
     return (
@@ -49,6 +57,11 @@ export const BudgetTable = ({
   // Verificar se os manipuladores de Google Ads estão disponíveis
   const showGoogleFields = !!onGoogleBudgetChange && !!onGoogleAccountIdChange;
 
+  const handleBudgetInputChange = (accountId: string, value: string, handler: (id: string, val: string) => void) => {
+    const formatted = formatCurrencyInput(value);
+    handler(accountId, formatted);
+  };
+
   return (
     <div className="border rounded-md">
       <Table>
@@ -63,78 +76,171 @@ export const BudgetTable = ({
                 <TableHead className="w-[150px]">Orçamento Google Ads</TableHead>
               </>
             )}
+            <TableHead className="w-[100px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredClients.map((client) => (
-            <TableRow key={client.id}>
-              <TableCell className="font-medium">{client.company_name}</TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor={`account-${client.id}`} className="sr-only">
-                    ID da Conta Meta
-                  </Label>
-                  <Input
-                    id={`account-${client.id}`}
-                    placeholder="ID da conta"
-                    value={budgets[client.id]?.accountId || ""}
-                    onChange={(e) => onAccountIdChange(client.id, e.target.value)}
-                    className="max-w-[150px]"
-                  />
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor={`meta-${client.id}`} className="sr-only">
-                    Orçamento Meta Ads
-                  </Label>
-                  <span className="text-gray-500">R$</span>
-                  <Input
-                    id={`meta-${client.id}`}
-                    placeholder="0,00"
-                    value={budgets[client.id]?.meta || ""}
-                    onChange={(e) => onBudgetChange(client.id, e.target.value)}
-                    className="max-w-[150px]"
-                    type="text"
-                  />
-                </div>
-              </TableCell>
-              {showGoogleFields && (
-                <>
+          {filteredClients.map((client) => {
+            // Organizar contas por plataforma com primárias primeiro
+            const metaAccounts = (client.client_accounts || [])
+              .filter(acc => acc.platform === 'meta')
+              .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+            
+            const googleAccounts = (client.client_accounts || [])
+              .filter(acc => acc.platform === 'google')
+              .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0));
+
+            // Adicionar contas temporárias do cliente
+            const clientTempAccounts = temporaryAccounts[client.id] || [];
+            const tempMetaAccounts = clientTempAccounts.filter(temp => temp.platform === 'meta').map(temp => ({
+              id: temp.id,
+              platform: 'meta' as const,
+              account_id: '',
+              account_name: temp.name,
+              budget_amount: 0,
+              is_primary: false,
+              isTemporary: true
+            }));
+            const allMetaAccounts = [...metaAccounts, ...tempMetaAccounts];
+
+            // Garantir que sempre haja pelo menos uma linha por cliente
+            const maxAccounts = Math.max(allMetaAccounts.length, showGoogleFields ? googleAccounts.length : 0, 1);
+            
+            return Array.from({ length: maxAccounts }, (_, index) => {
+              const metaAccount = allMetaAccounts[index];
+              const googleAccount = showGoogleFields ? googleAccounts[index] : undefined;
+              const isFirstRow = index === 0;
+              const tempAccountKey = !metaAccount ? `${client.id}-meta-temp` : null;
+              const isTemporaryAccount = metaAccount && 'isTemporary' in metaAccount && metaAccount.isTemporary;
+              
+              return (
+                <TableRow key={`${client.id}-${index}`} className={!isFirstRow ? "border-t-0" : ""}>
+                  <TableCell className={`font-medium ${!isFirstRow ? "text-transparent border-l-2 border-gray-200 pl-4" : ""}`}>
+                    <div className="flex items-center gap-2">
+                      {isFirstRow ? client.company_name : ""}
+                      {isTemporaryAccount ? `${client.company_name} - secundária` : ""}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor={`google-account-${client.id}`} className="sr-only">
-                        ID da Conta Google
+                      <Label htmlFor={`account-${metaAccount?.id || tempAccountKey || `${client.id}-meta-${index}`}`} className="sr-only">
+                        ID da Conta Meta
                       </Label>
                       <Input
-                        id={`google-account-${client.id}`}
-                        placeholder="ID da conta Google"
-                        value={budgets[client.id]?.googleAccountId || ""}
-                        onChange={(e) => onGoogleAccountIdChange!(client.id, e.target.value)}
+                        id={`account-${metaAccount?.id || tempAccountKey || `${client.id}-meta-${index}`}`}
+                        placeholder="ID da conta"
+                        value={metaAccount ? (budgets[metaAccount.id]?.account_id || "") : (tempAccountKey ? (budgets[tempAccountKey]?.account_id || "") : "")}
+                        onChange={(e) => {
+                          const accountKey = metaAccount?.id || tempAccountKey || `${client.id}-meta-${index}`;
+                          onAccountIdChange(accountKey, e.target.value);
+                        }}
                         className="max-w-[150px]"
                       />
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor={`google-${client.id}`} className="sr-only">
-                        Orçamento Google Ads
+                      <Label htmlFor={`meta-${metaAccount?.id || tempAccountKey || `${client.id}-meta-budget-${index}`}`} className="sr-only">
+                        Orçamento Meta Ads
                       </Label>
                       <span className="text-gray-500">R$</span>
                       <Input
-                        id={`google-${client.id}`}
+                        id={`meta-${metaAccount?.id || tempAccountKey || `${client.id}-meta-budget-${index}`}`}
                         placeholder="0,00"
-                        value={budgets[client.id]?.googleMeta || ""}
-                        onChange={(e) => onGoogleBudgetChange!(client.id, e.target.value)}
+                        value={metaAccount ? (budgets[metaAccount.id]?.budget_amount || "") : (tempAccountKey ? (budgets[tempAccountKey]?.budget_amount || "") : "")}
+                        onChange={(e) => {
+                          const accountKey = metaAccount?.id || tempAccountKey || `${client.id}-meta-budget-${index}`;
+                          handleBudgetInputChange(accountKey, e.target.value, onBudgetChange);
+                        }}
                         className="max-w-[150px]"
                         type="text"
                       />
                     </div>
                   </TableCell>
-                </>
-              )}
-            </TableRow>
-          ))}
+                  {showGoogleFields && (
+                    <>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor={`google-account-${googleAccount?.id || `${client.id}-google-${index}`}`} className="sr-only">
+                            ID da Conta Google
+                          </Label>
+                          <Input
+                            id={`google-account-${googleAccount?.id || `${client.id}-google-${index}`}`}
+                            placeholder="ID da conta Google"
+                            value={googleAccount ? (budgets[googleAccount.id]?.account_id || "") : ""}
+                            onChange={(e) => {
+                              const accountKey = googleAccount?.id || `${client.id}-google-${index}`;
+                              if (onGoogleAccountIdChange) {
+                                onGoogleAccountIdChange(accountKey, e.target.value);
+                              }
+                            }}
+                            className="max-w-[150px]"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor={`google-${googleAccount?.id || `${client.id}-google-budget-${index}`}`} className="sr-only">
+                            Orçamento Google Ads
+                          </Label>
+                          <span className="text-gray-500">R$</span>
+                          <Input
+                            id={`google-${googleAccount?.id || `${client.id}-google-budget-${index}`}`}
+                            placeholder="0,00"
+                            value={googleAccount ? (budgets[googleAccount.id]?.budget_amount || "") : ""}
+                            onChange={(e) => {
+                              const accountKey = googleAccount?.id || `${client.id}-google-budget-${index}`;
+                              if (onGoogleBudgetChange) {
+                                handleBudgetInputChange(accountKey, e.target.value, onGoogleBudgetChange);
+                              }
+                            }}
+                            className="max-w-[150px]"
+                            type="text"
+                          />
+                        </div>
+                      </TableCell>
+                    </>
+                  )}
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {/* Botão + apenas na primeira linha */}
+                      {isFirstRow && onAddSecondaryAccount && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onAddSecondaryAccount(client.id, client.company_name)}
+                          className="h-6 w-6 p-0 text-[#ff6e00] hover:text-[#ff6e00]/80 hover:bg-[#ff6e00]/10"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {/* Botão de lixeira apenas para contas secundárias */}
+                      {metaAccount && !metaAccount.is_primary && onDeleteSecondaryAccount && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDeleteSecondaryAccount(metaAccount.id)}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {googleAccount && !googleAccount.is_primary && onDeleteSecondaryAccount && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDeleteSecondaryAccount(googleAccount.id)}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            });
+          })}
         </TableBody>
       </Table>
     </div>
