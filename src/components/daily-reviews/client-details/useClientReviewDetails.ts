@@ -13,7 +13,6 @@ export const useClientReviewDetails = (clientId: string) => {
     queryClient.invalidateQueries({ queryKey: ["client-detail", clientId] });
     queryClient.invalidateQueries({ queryKey: ["latest-review", clientId] });
     queryClient.invalidateQueries({ queryKey: ["review-history", clientId] });
-    queryClient.invalidateQueries({ queryKey: ["custom-budget", clientId] });
   }, [queryClient, clientId]);
 
   // Buscar dados do cliente
@@ -35,33 +34,6 @@ export const useClientReviewDetails = (clientId: string) => {
       console.log("Dados do cliente recuperados:", data);
       return data;
     },
-  });
-
-  // Buscar orçamento personalizado ativo
-  const { data: customBudget, isLoading: isLoadingCustomBudget } = useQuery({
-    queryKey: ["custom-budget", clientId],
-    queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const { data, error } = await supabase
-        .from("custom_budgets")
-        .select("*")
-        .eq("client_id", clientId)
-        .eq("platform", "meta")
-        .eq("is_active", true)
-        .lte("start_date", today)
-        .gte("end_date", today)
-        .order("created_at", { ascending: false })
-        .maybeSingle();
-      
-      if (error) {
-        console.error("Erro ao buscar orçamento personalizado:", error);
-        return null;
-      }
-      
-      return data;
-    },
-    enabled: !!client,
   });
 
   // Buscar a revisão mais recente
@@ -140,10 +112,6 @@ export const useClientReviewDetails = (clientId: string) => {
     enabled: !!client,
   });
 
-  // Determinar se está usando orçamento personalizado
-  const usingCustomBudget = customBudget !== null;
-  const monthlyBudget = customBudget?.budget_amount || client?.meta_ads_budget;
-
   // Calcular recomendações de orçamento usando o hook separado
   const {
     recommendation,
@@ -154,21 +122,16 @@ export const useClientReviewDetails = (clientId: string) => {
   } = useClientBudgetRecommendation(
     client?.meta_ads_budget,
     latestReview?.meta_total_spent,
-    latestReview?.meta_daily_budget_current,
-    customBudget?.budget_amount,
-    customBudget?.start_date,
-    customBudget?.end_date,
-    usingCustomBudget
+    latestReview?.meta_daily_budget_current
   );
 
-  const isLoading = isLoadingClient || isLoadingReview || isLoadingCustomBudget;
+  const isLoading = isLoadingClient || isLoadingReview;
   const hasError = clientError || reviewError || historyError;
 
   return {
     client,
     latestReview,
     reviewHistory,
-    customBudget,
     recommendation,
     idealDailyBudget,
     suggestedBudgetChange,
@@ -179,8 +142,7 @@ export const useClientReviewDetails = (clientId: string) => {
     // Detalhes do cálculo
     remainingDays,
     remainingBudget,
-    monthlyBudget,
-    totalSpent: latestReview?.meta_total_spent,
-    usingCustomBudget
+    monthlyBudget: client?.meta_ads_budget,
+    totalSpent: latestReview?.meta_total_spent
   };
 };

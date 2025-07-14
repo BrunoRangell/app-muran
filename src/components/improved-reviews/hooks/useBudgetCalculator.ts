@@ -1,6 +1,5 @@
 
 import { useMemo } from "react";
-import { calculateIdealDailyBudget, calculateRemainingDays } from "@/utils/budgetCalculations";
 
 type BudgetInput = {
   monthlyBudget: number;
@@ -9,9 +8,6 @@ type BudgetInput = {
   lastFiveDaysAverage?: number;
   weightedAverage?: number; // Campo para média ponderada (Google Ads)
   customBudgetEndDate?: string;
-  customBudgetStartDate?: string;
-  customBudgetAmount?: number;
-  usingCustomBudget?: boolean;
   warningIgnoredToday?: boolean; // Campo para controlar avisos ignorados
 };
 
@@ -32,37 +28,42 @@ type BudgetCalculation = {
 export function useBudgetCalculator() {
   const calculateBudget = useMemo(() => {
     return (input: BudgetInput): BudgetCalculation => {
-      // Determinar qual orçamento usar
-      const actualBudget = input.usingCustomBudget && input.customBudgetAmount 
-        ? input.customBudgetAmount 
-        : input.monthlyBudget;
+      const today = new Date();
       
-      // Calcular dias restantes baseado no tipo de orçamento
-      const remainingDays = input.usingCustomBudget 
-        ? calculateRemainingDays(input.customBudgetEndDate, input.customBudgetStartDate)
-        : calculateRemainingDays();
+      // Calcular dias restantes
+      let remainingDays;
+      if (input.customBudgetEndDate) {
+        const endDate = new Date(input.customBudgetEndDate);
+        const timeDiff = endDate.getTime() - today.getTime();
+        remainingDays = Math.max(1, Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1);
+        
+        console.log(`🔍 DEBUG - Cálculo de dias restantes (orçamento personalizado):`, {
+          today: today.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          customBudgetEndDate: input.customBudgetEndDate,
+          timeDiff,
+          remainingDays,
+          calculationUsed: 'customBudget'
+        });
+      } else {
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        remainingDays = lastDayOfMonth.getDate() - today.getDate() + 1;
+        
+        console.log(`🔍 DEBUG - Cálculo de dias restantes (mês atual):`, {
+          today: today.toISOString().split('T')[0],
+          lastDayOfMonth: lastDayOfMonth.toISOString().split('T')[0],
+          remainingDays,
+          calculationUsed: 'monthEnd'
+        });
+      }
       
-      console.log(`🔍 DEBUG - Cálculo de dias restantes:`, {
-        usingCustomBudget: input.usingCustomBudget,
-        customBudgetStartDate: input.customBudgetStartDate,
-        customBudgetEndDate: input.customBudgetEndDate,
-        remainingDays,
-        actualBudget,
-        calculationMethod: input.usingCustomBudget ? 'customBudget' : 'monthEnd'
-      });
-      
-      const remainingBudget = Math.max(0, actualBudget - input.totalSpent);
-      const spentPercentage = actualBudget > 0 
-        ? (input.totalSpent / actualBudget) * 100 
+      const remainingBudget = Math.max(0, input.monthlyBudget - input.totalSpent);
+      const spentPercentage = input.monthlyBudget > 0 
+        ? (input.totalSpent / input.monthlyBudget) * 100 
         : 0;
       
-      // Calcular orçamento diário ideal
-      const idealDailyBudget = calculateIdealDailyBudget(
-        actualBudget,
-        input.totalSpent,
-        input.usingCustomBudget ? input.customBudgetEndDate : undefined,
-        input.usingCustomBudget ? input.customBudgetStartDate : undefined
-      );
+      const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
+      const roundedIdealDailyBudget = Math.round(idealDailyBudget * 100) / 100;
       
       // CORREÇÃO: Priorizar média ponderada para Google Ads
       let primaryBudgetDifference;
@@ -70,12 +71,12 @@ export function useBudgetCalculator() {
       
       if (input.weightedAverage !== undefined && input.weightedAverage > 0) {
         // Para Google Ads: usar média ponderada como base principal
-        primaryBudgetDifference = idealDailyBudget - input.weightedAverage;
+        primaryBudgetDifference = roundedIdealDailyBudget - input.weightedAverage;
         const absoluteDifference = Math.abs(primaryBudgetDifference);
         primaryNeedsAdjustment = !input.warningIgnoredToday && absoluteDifference >= 5;
         
         console.log(`🔍 DEBUG - Usando média ponderada como base principal:`, {
-          idealDailyBudget,
+          idealDailyBudget: roundedIdealDailyBudget,
           weightedAverage: input.weightedAverage,
           budgetDifference: primaryBudgetDifference,
           absoluteDifference,
@@ -85,12 +86,12 @@ export function useBudgetCalculator() {
         });
       } else {
         // Para Meta Ads ou quando não há média ponderada: usar método tradicional
-        primaryBudgetDifference = idealDailyBudget - input.currentDailyBudget;
+        primaryBudgetDifference = roundedIdealDailyBudget - input.currentDailyBudget;
         const absoluteDifference = Math.abs(primaryBudgetDifference);
         primaryNeedsAdjustment = !input.warningIgnoredToday && input.currentDailyBudget > 0 && absoluteDifference >= 5;
         
         console.log(`🔍 DEBUG - Usando método tradicional:`, {
-          idealDailyBudget,
+          idealDailyBudget: roundedIdealDailyBudget,
           currentDailyBudget: input.currentDailyBudget,
           budgetDifference: primaryBudgetDifference,
           absoluteDifference,
@@ -102,7 +103,7 @@ export function useBudgetCalculator() {
       
       // Cálculos adicionais para compatibilidade
       const budgetDifferenceBasedOnAverage = input.lastFiveDaysAverage !== undefined && input.lastFiveDaysAverage > 0
-        ? idealDailyBudget - input.lastFiveDaysAverage
+        ? roundedIdealDailyBudget - input.lastFiveDaysAverage
         : undefined;
       
       const needsAdjustmentBasedOnAverage = budgetDifferenceBasedOnAverage !== undefined
@@ -111,7 +112,7 @@ export function useBudgetCalculator() {
       
       // CORREÇÃO: Garantir que needsAdjustmentBasedOnWeighted seja calculado corretamente
       const budgetDifferenceBasedOnWeighted = input.weightedAverage !== undefined && input.weightedAverage > 0
-        ? idealDailyBudget - input.weightedAverage
+        ? roundedIdealDailyBudget - input.weightedAverage
         : undefined;
       
       const needsAdjustmentBasedOnWeighted = budgetDifferenceBasedOnWeighted !== undefined
@@ -120,18 +121,14 @@ export function useBudgetCalculator() {
       
       // LOG DETALHADO para debugging
       console.log(`🔍 DEBUG FINAL - Resultado do cálculo:`, {
-        idealDailyBudget,
+        roundedIdealDailyBudget,
         primaryBudgetDifference,
         primaryNeedsAdjustment,
         budgetDifferenceBasedOnWeighted,
         needsAdjustmentBasedOnWeighted,
         warningIgnoredToday: input.warningIgnoredToday,
-        usingCustomBudget: input.usingCustomBudget,
-        customBudgetPeriod: input.usingCustomBudget ? `${input.customBudgetStartDate} - ${input.customBudgetEndDate}` : 'N/A',
         input: {
           monthlyBudget: input.monthlyBudget,
-          customBudgetAmount: input.customBudgetAmount,
-          actualBudget,
           totalSpent: input.totalSpent,
           weightedAverage: input.weightedAverage,
           currentDailyBudget: input.currentDailyBudget
@@ -139,7 +136,7 @@ export function useBudgetCalculator() {
       });
       
       return {
-        idealDailyBudget,
+        idealDailyBudget: roundedIdealDailyBudget,
         budgetDifference: primaryBudgetDifference,
         budgetDifferenceBasedOnAverage,
         budgetDifferenceBasedOnWeighted,
