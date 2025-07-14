@@ -365,7 +365,34 @@ export const useBudgetSetup = () => {
   };
 
   const handleDeleteSecondaryAccount = (accountId: string) => {
-    // Encontrar o nome da conta para mostrar no diálogo
+    // Verificar se é uma conta temporária
+    const isTemporary = accountId.includes('-temp-');
+    
+    if (isTemporary) {
+      // Para contas temporárias, removê-las imediatamente do frontend
+      const clientId = accountId.split('-temp-')[0];
+      
+      setTemporaryAccounts(prev => ({
+        ...prev,
+        [clientId]: (prev[clientId] || []).filter(acc => acc.id !== accountId)
+      }));
+      
+      // Remover também do estado de budgets
+      setBudgets(prev => {
+        const newBudgets = { ...prev };
+        delete newBudgets[accountId];
+        return newBudgets;
+      });
+      
+      toast({
+        title: "Conta removida",
+        description: "A conta temporária foi removida.",
+      });
+      
+      return;
+    }
+    
+    // Para contas salvas no banco, usar o diálogo de confirmação
     const account = clients?.flatMap(client => client.client_accounts).find(acc => acc.id === accountId);
     const accountName = account?.account_name || "conta secundária";
     
