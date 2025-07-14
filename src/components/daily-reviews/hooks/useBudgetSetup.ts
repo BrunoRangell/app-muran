@@ -29,6 +29,8 @@ export const useBudgetSetup = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedClientForAdd, setSelectedClientForAdd] = useState<{id: string, name: string} | null>(null);
   const [temporaryAccounts, setTemporaryAccounts] = useState<Record<string, Array<{id: string, platform: 'meta' | 'google', name: string}>>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<{id: string, name: string} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -363,8 +365,19 @@ export const useBudgetSetup = () => {
   };
 
   const handleDeleteSecondaryAccount = (accountId: string) => {
-    if (window.confirm("Tem certeza que deseja remover esta conta secundária?")) {
-      deleteSecondaryAccountMutation.mutate(accountId);
+    // Encontrar o nome da conta para mostrar no diálogo
+    const account = clients?.flatMap(client => client.client_accounts).find(acc => acc.id === accountId);
+    const accountName = account?.account_name || "conta secundária";
+    
+    setAccountToDelete({ id: accountId, name: accountName });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteAccount = () => {
+    if (accountToDelete) {
+      deleteSecondaryAccountMutation.mutate(accountToDelete.id);
+      setDeleteDialogOpen(false);
+      setAccountToDelete(null);
     }
   };
 
@@ -395,7 +408,12 @@ export const useBudgetSetup = () => {
     handleCreateSecondaryAccount,
     handleDeleteSecondaryAccount,
     createSecondaryAccountMutation,
-    deleteSecondaryAccountMutation
+    deleteSecondaryAccountMutation,
+    // Estados do diálogo de confirmação
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    accountToDelete,
+    confirmDeleteAccount
   };
 };
 

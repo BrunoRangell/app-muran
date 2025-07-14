@@ -6,6 +6,7 @@ import { SearchBar } from "./budget-setup/SearchBar";
 import { BudgetTable } from "./budget-setup/BudgetTable";
 import { SaveButton } from "./budget-setup/SaveButton";
 import { AddSecondaryAccountModal } from "./budget-setup/AddSecondaryAccountModal";
+import { DeleteAccountDialog } from "./budget-setup/DeleteAccountDialog";
 
 export const BudgetSetupForm = () => {
   const {
@@ -28,7 +29,12 @@ export const BudgetSetupForm = () => {
     handleAddSecondaryAccount,
     handleCreateSecondaryAccount,
     handleDeleteSecondaryAccount,
-    createSecondaryAccountMutation
+    createSecondaryAccountMutation,
+    // Estados do diálogo de confirmação
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    accountToDelete,
+    confirmDeleteAccount
   } = useBudgetSetup();
 
   return (
@@ -76,6 +82,13 @@ export const BudgetSetupForm = () => {
         onSave={handleCreateSecondaryAccount}
         clientName={selectedClientForAdd?.name || ""}
         isLoading={createSecondaryAccountMutation.isPending}
+      />
+
+      <DeleteAccountDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeleteAccount}
+        accountName={accountToDelete?.name}
       />
     </>
   );
