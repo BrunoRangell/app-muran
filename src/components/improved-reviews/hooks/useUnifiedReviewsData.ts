@@ -182,12 +182,14 @@ export function useUnifiedReviewsData() {
             let monthlyBudget = account.budget_amount;
             let isUsingCustomBudget = false;
             let customBudgetEndDate = null;
+            let customBudgetStartDate = null; // CORREÇÃO: Adicionar customBudgetStartDate
             
             // Verificar orçamento personalizado na revisão
             if (review?.using_custom_budget && review?.custom_budget_amount) {
               isUsingCustomBudget = true;
               monthlyBudget = review.custom_budget_amount;
               customBudgetEndDate = review.custom_budget_end_date;
+              customBudgetStartDate = review.custom_budget_start_date; // CORREÇÃO: Definir customBudgetStartDate
               
               if (review.custom_budget_id) {
                 customBudget = {
@@ -205,16 +207,18 @@ export function useUnifiedReviewsData() {
               monthlyBudget = budget.budget_amount;
               isUsingCustomBudget = true;
               customBudgetEndDate = budget.end_date;
+              customBudgetStartDate = budget.start_date; // CORREÇÃO: Definir customBudgetStartDate
             }
             
-            console.log(`🔍 DEBUG - Cliente ${client.company_name}: customBudgetEndDate = ${customBudgetEndDate}`);
+            console.log(`🔍 DEBUG - Cliente ${client.company_name}: customBudgetStartDate = ${customBudgetStartDate}, customBudgetEndDate = ${customBudgetEndDate}`);
             
-            // Calcular orçamento
+            // Calcular orçamento - CORREÇÃO: Passar customBudgetStartDate
             const budgetCalc = calculateBudget({
               monthlyBudget: monthlyBudget,
               totalSpent: review?.total_spent || 0,
               currentDailyBudget: review?.daily_budget_current || 0,
               customBudgetEndDate: customBudgetEndDate,
+              customBudgetStartDate: customBudgetStartDate, // CORREÇÃO: Adicionar este campo
               warningIgnoredToday: warningIgnoredToday
             });
             
@@ -246,6 +250,7 @@ export function useUnifiedReviewsData() {
               warningIgnoredToday: warningIgnoredToday,
               hasReview: !!review,
               reviewDate: review?.review_date,
+              customBudgetStartDate: customBudgetStartDate,
               customBudgetEndDate: customBudgetEndDate,
               remainingDays: budgetCalc.remainingDays
             });
