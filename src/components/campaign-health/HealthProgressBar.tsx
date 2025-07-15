@@ -18,35 +18,12 @@ export function HealthProgressBar({
 }: HealthProgressBarProps) {
   const [internalProgress, setInternalProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("Iniciando...");
-  const [isCompleting, setIsCompleting] = useState(false);
   
   // Simular progresso e etapas quando não temos progresso real
   useEffect(() => {
     if (!isRefreshing) {
-      if (internalProgress > 0 && internalProgress < 100) {
-        // Se estava em progresso e parou, finalizar rapidamente
-        setIsCompleting(true);
-        setCurrentStep("Finalizando...");
-        const completeInterval = setInterval(() => {
-          setInternalProgress(prev => {
-            if (prev >= 100) {
-              clearInterval(completeInterval);
-              // Aguardar um pouco antes de esconder a barra
-              setTimeout(() => {
-                setInternalProgress(0);
-                setCurrentStep("Iniciando...");
-                setIsCompleting(false);
-              }, 500);
-              return 100;
-            }
-            return prev + 10;
-          });
-        }, 50);
-      } else {
-        setInternalProgress(0);
-        setCurrentStep("Iniciando...");
-        setIsCompleting(false);
-      }
+      setInternalProgress(0);
+      setCurrentStep("Iniciando...");
       return;
     }
     
@@ -57,23 +34,22 @@ export function HealthProgressBar({
       "Coletando dados do Google Ads...",
       "Processando métricas de campanhas...",
       "Analisando performance...",
-      "Salvando dados..."
+      "Finalizando atualização..."
     ];
     
     let currentStepIndex = 0;
     let currentProgress = 0;
     
     const interval = setInterval(() => {
-      if (currentProgress >= 90) {
-        // Desacelerar próximo ao final
-        currentProgress += Math.random() * 3;
-        if (currentProgress > 90) currentProgress = 90;
-      } else {
-        currentProgress += Math.random() * 15;
-        if (currentProgress > 90) currentProgress = 90;
+      if (currentProgress >= 95) {
+        clearInterval(interval);
+        return;
       }
       
-      const stepIndex = Math.floor((currentProgress / 90) * steps.length);
+      currentProgress += Math.random() * 15;
+      if (currentProgress > 95) currentProgress = 95;
+      
+      const stepIndex = Math.floor((currentProgress / 100) * steps.length);
       if (stepIndex !== currentStepIndex && stepIndex < steps.length) {
         currentStepIndex = stepIndex;
         setCurrentStep(steps[stepIndex]);
@@ -83,9 +59,9 @@ export function HealthProgressBar({
     }, 800);
     
     return () => clearInterval(interval);
-  }, [isRefreshing, internalProgress]);
+  }, [isRefreshing]);
   
-  if (!isRefreshing && !isCompleting) return null;
+  if (!isRefreshing) return null;
   
   const displayProgress = progress > 0 ? (progress / total) * 100 : internalProgress;
   
