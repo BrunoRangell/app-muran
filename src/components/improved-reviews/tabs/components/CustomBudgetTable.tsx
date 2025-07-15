@@ -79,9 +79,20 @@ export function CustomBudgetTable({ budgets, onEdit, onDelete, onToggleStatus }:
                 {formatDateBr(budget.start_date)} - {formatDateBr(budget.end_date)}
               </TableCell>
               <TableCell>
-                <Badge variant={budget.is_active ? 'success' : 'secondary'}>
-                  {budget.is_active ? 'Ativo' : 'Inativo'}
-                </Badge>
+                {(() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const isExpired = budget.end_date < today;
+                  
+                  if (isExpired) {
+                    return <Badge variant="destructive">Expirado</Badge>;
+                  }
+                  
+                  return (
+                    <Badge variant={budget.is_active ? 'success' : 'secondary'}>
+                      {budget.is_active ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  );
+                })()}
               </TableCell>
               <TableCell className="max-w-xs truncate">
                 {budget.description || '-'}
