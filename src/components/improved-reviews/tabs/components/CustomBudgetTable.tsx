@@ -3,7 +3,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
+import { formatDateBr } from "@/utils/dateFormatter";
 
 interface CustomBudget {
   id: string;
@@ -75,7 +76,7 @@ export function CustomBudgetTable({ budgets, onEdit, onDelete, onToggleStatus }:
                 {formatCurrency(budget.budget_amount)}
               </TableCell>
               <TableCell>
-                {formatDate(budget.start_date)} - {formatDate(budget.end_date)}
+                {formatDateBr(budget.start_date)} - {formatDateBr(budget.end_date)}
               </TableCell>
               <TableCell>
                 <Badge variant={budget.is_active ? 'success' : 'secondary'}>
