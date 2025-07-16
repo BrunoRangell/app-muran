@@ -1,85 +1,67 @@
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Loader, X, Activity } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Loader2, X } from "lucide-react";
 
 interface HealthProgressBarProps {
   isRefreshing: boolean;
-  progress?: number;
-  total?: number;
+  progress: {
+    current: number;
+    total: number;
+    currentAccount: string;
+    platform: string;
+    percentage: number;
+    estimatedTime: number;
+  };
   onCancel?: () => void;
 }
 
 export function HealthProgressBar({
   isRefreshing,
-  progress = 0,
-  total = 100,
+  progress,
   onCancel
 }: HealthProgressBarProps) {
-  const [internalProgress, setInternalProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState("Iniciando...");
-  
-  // Simular progresso e etapas quando não temos progresso real
-  useEffect(() => {
-    if (!isRefreshing) {
-      setInternalProgress(0);
-      setCurrentStep("Iniciando...");
-      return;
-    }
-    
-    const steps = [
-      "Iniciando atualização...",
-      "Conectando com APIs das plataformas...", 
-      "Coletando dados do Meta Ads...",
-      "Coletando dados do Google Ads...",
-      "Processando métricas de campanhas...",
-      "Analisando performance...",
-      "Finalizando atualização..."
-    ];
-    
-    let currentStepIndex = 0;
-    let currentProgress = 0;
-    
-    const interval = setInterval(() => {
-      if (currentProgress >= 95) {
-        clearInterval(interval);
-        return;
-      }
-      
-      currentProgress += Math.random() * 15;
-      if (currentProgress > 95) currentProgress = 95;
-      
-      const stepIndex = Math.floor((currentProgress / 100) * steps.length);
-      if (stepIndex !== currentStepIndex && stepIndex < steps.length) {
-        currentStepIndex = stepIndex;
-        setCurrentStep(steps[stepIndex]);
-      }
-      
-      setInternalProgress(currentProgress);
-    }, 800);
-    
-    return () => clearInterval(interval);
-  }, [isRefreshing]);
   
   if (!isRefreshing) return null;
   
-  const displayProgress = progress > 0 ? (progress / total) * 100 : internalProgress;
+  const formatTime = (minutes: number) => {
+    if (minutes < 1) {
+      return "< 1 minuto";
+    } else if (minutes < 60) {
+      return `~${Math.ceil(minutes)} minutos`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `~${hours}h ${Math.ceil(remainingMinutes)}m` : `~${hours} horas`;
+    }
+  };
+  
+  const getCurrentStep = () => {
+    if (progress.percentage === 100) {
+      return "Finalizando atualização...";
+    } else if (progress.currentAccount && progress.platform) {
+      return `Processando ${progress.platform}: ${progress.currentAccount}`;
+    } else if (progress.percentage > 0) {
+      return "Coletando dados das plataformas...";
+    } else {
+      return "Iniciando atualização...";
+    }
+  };
   
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-[#ff6e00] animate-pulse" />
-          <span className="text-sm font-medium text-gray-700">
+    <div className="space-y-4 p-6 bg-gradient-to-br from-[#ebebf0] to-white rounded-xl border border-gray-200 shadow-lg mb-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-5 w-5 text-[#ff6e00] animate-spin" />
+          <span className="text-base font-semibold text-[#321e32]">
             Atualizando Saúde das Campanhas
           </span>
         </div>
         {onCancel && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onCancel}
-            className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+            className="h-9 w-9 p-0 hover:bg-red-50 hover:text-red-600 transition-colors rounded-full"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -87,19 +69,54 @@ export function HealthProgressBar({
       </div>
       
       <div className="space-y-3">
-        <div className="flex justify-between items-center text-xs text-gray-600">
-          <span>{currentStep}</span>
-          <span>{Math.round(displayProgress)}%</span>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-[#321e32] font-medium">
+            {progress.total > 0 ? `${progress.current} de ${progress.total} contas processadas` : 'Iniciando...'}
+          </span>
+          <span className="font-bold text-[#ff6e00] text-lg">
+            {progress.percentage}%
+          </span>
         </div>
-        <Progress 
-          value={displayProgress} 
-          className="h-2" 
-          indicatorClassName="bg-gradient-to-r from-[#ff6e00] to-[#ff8533]"
-        />
-        <p className="text-xs text-gray-500 text-center">
-          Buscando dados em tempo real das plataformas Meta Ads e Google Ads
-        </p>
+        
+        <div className="relative">
+          <Progress 
+            value={progress.percentage} 
+            className="h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner"
+            indicatorClassName="bg-gradient-to-r from-[#ff6e00] to-[#ff8f39] transition-all duration-500 ease-out rounded-full relative overflow-hidden"
+          />
+          {/* Efeito de brilho na barra */}
+          <div 
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full animate-pulse"
+            style={{ width: `${progress.percentage}%` }}
+          />
+        </div>
+        
+        <div className="text-xs text-gray-600 text-center">
+          {getCurrentStep()}
+        </div>
       </div>
+
+      {progress.currentAccount && progress.platform && (
+        <div className="flex items-center gap-2 text-sm bg-white/50 rounded-lg p-3 border-l-4 border-[#ff6e00]">
+          <div className="w-2 h-2 bg-[#ff6e00] rounded-full animate-pulse"></div>
+          <div>
+            <span className="font-medium text-[#321e32]">Processando agora:</span>
+            <span className="ml-2 text-[#321e32]/80 font-medium">{progress.currentAccount}</span>
+          </div>
+        </div>
+      )}
+
+      {progress.estimatedTime > 0 && progress.percentage < 100 && (
+        <div className="flex items-center justify-between text-sm text-[#321e32]/70 bg-blue-50 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+            <span className="font-medium">Tempo estimado restante:</span>
+          </div>
+          <span className="font-semibold text-blue-600">
+            {formatTime(progress.estimatedTime)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ type BudgetInput = {
   lastFiveDaysAverage?: number;
   weightedAverage?: number; // Campo para média ponderada (Google Ads)
   customBudgetEndDate?: string;
-  customBudgetStartDate?: string;
+  customBudgetStartDate?: string; // CORREÇÃO: Garantir que este campo está presente
   customBudgetAmount?: number;
   usingCustomBudget?: boolean;
   warningIgnoredToday?: boolean; // Campo para controlar avisos ignorados
@@ -37,8 +37,8 @@ export function useBudgetCalculator() {
         ? input.customBudgetAmount 
         : input.monthlyBudget;
       
-      // Calcular dias restantes baseado no tipo de orçamento
-      const remainingDays = input.usingCustomBudget 
+      // CORREÇÃO: Calcular dias restantes baseado no tipo de orçamento com ambas as datas
+      const remainingDays = input.usingCustomBudget || (input.customBudgetEndDate && input.customBudgetStartDate)
         ? calculateRemainingDays(input.customBudgetEndDate, input.customBudgetStartDate)
         : calculateRemainingDays();
       
@@ -48,7 +48,7 @@ export function useBudgetCalculator() {
         customBudgetEndDate: input.customBudgetEndDate,
         remainingDays,
         actualBudget,
-        calculationMethod: input.usingCustomBudget ? 'customBudget' : 'monthEnd'
+        calculationMethod: (input.usingCustomBudget || (input.customBudgetEndDate && input.customBudgetStartDate)) ? 'customBudget' : 'monthEnd'
       });
       
       const remainingBudget = Math.max(0, actualBudget - input.totalSpent);
@@ -56,12 +56,12 @@ export function useBudgetCalculator() {
         ? (input.totalSpent / actualBudget) * 100 
         : 0;
       
-      // Calcular orçamento diário ideal
+      // CORREÇÃO: Calcular orçamento diário ideal com ambas as datas
       const idealDailyBudget = calculateIdealDailyBudget(
         actualBudget,
         input.totalSpent,
-        input.usingCustomBudget ? input.customBudgetEndDate : undefined,
-        input.usingCustomBudget ? input.customBudgetStartDate : undefined
+        input.customBudgetEndDate,
+        input.customBudgetStartDate // CORREÇÃO: Passar também a data de início
       );
       
       // CORREÇÃO: Priorizar média ponderada para Google Ads
@@ -127,7 +127,8 @@ export function useBudgetCalculator() {
         needsAdjustmentBasedOnWeighted,
         warningIgnoredToday: input.warningIgnoredToday,
         usingCustomBudget: input.usingCustomBudget,
-        customBudgetPeriod: input.usingCustomBudget ? `${input.customBudgetStartDate} - ${input.customBudgetEndDate}` : 'N/A',
+        customBudgetPeriod: (input.customBudgetStartDate && input.customBudgetEndDate) ? `${input.customBudgetStartDate} - ${input.customBudgetEndDate}` : 'N/A',
+        remainingDays: remainingDays,
         input: {
           monthlyBudget: input.monthlyBudget,
           customBudgetAmount: input.customBudgetAmount,
