@@ -33,6 +33,7 @@ export default function CampaignHealth() {
     lastRefreshTimestamp,
     stats,
     isManualRefreshing,
+    refreshProgress,
     todayDate
   } = useActiveCampaignHealth();
 
@@ -152,9 +153,13 @@ export default function CampaignHealth() {
           </div>
           
           {/* Barra de progresso durante atualização */}
-          <HealthProgressBar 
-            isRefreshing={isManualRefreshing}
-          />
+        <HealthProgressBar 
+          isRefreshing={isManualRefreshing}
+          progress={refreshProgress}
+          onCancel={() => {
+            console.log("🛑 Cancelamento solicitado pelo usuário");
+          }}
+        />
           
           {/* Dashboard de Alertas */}
           <AlertsDashboard
