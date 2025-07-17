@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -215,75 +214,68 @@ export function useActiveCampaignHealth() {
     retry: 2
   });
 
-  const simulateProgressBasedOnTime = (startTime: number) => {
+  // Sistema de progresso melhorado baseado no tempo real
+  const simulateRealisticProgress = (startTime: number) => {
     const totalAccounts = data?.reduce((acc, client) => {
       return acc + (client.metaAds?.length || 0) + (client.googleAds?.length || 0);
     }, 0) || 52;
     
-    const expectedDuration = 90; // 1.5 minutos em segundos
     const elapsedSeconds = (Date.now() - startTime) / 1000;
     
-    // Função não-linear para progresso mais realista
-    const rawProgress = Math.min(elapsedSeconds / expectedDuration, 1);
-    const smoothProgress = Math.pow(rawProgress, 0.8); // Curva suavizada
-    const progressPercentage = Math.min(Math.round(smoothProgress * 100), 95);
+    // Progresso baseado no padrão observado nos logs:
+    // 0-5s: Conectando (0-5%)
+    // 5-15s: Primeiras contas (5-20%)  
+    // 15-45s: Processamento principal (20-85%)
+    // 45-53s: Finalizando (85-100%)
     
-    const currentAccountIndex = Math.floor(smoothProgress * totalAccounts);
-    const current = Math.min(currentAccountIndex, totalAccounts);
+    let progressPercentage = 0;
+    let currentAccount = '';
+    let estimatedTimeRemaining = 0;
     
-    // Nomes das contas baseados nos logs reais
-    const accountNames = [
-      'Meta: Juliana Lenz', 'Google: Juliana Lenz',
-      'Meta: Rosacruz', 'Google: Rosacruz', 
-      'Meta: BVK Advogados', 'Google: BVK Advogados',
-      'Meta: Ótica Haas', 'Google: Ótica Haas',
-      'Meta: Elegance Móveis', 'Google: Elegance Móveis',
-      'Meta: Aracuri Vinhos', 'Google: Aracuri Vinhos',
-      'Meta: Simmons Colchões', 'Google: Simmons Colchões',
-      'Meta: Ana Cruz', 'Google: Ana Cruz',
-      'Meta: Andreia Star', 'Google: Andreia Star',
-      'Meta: Bertusch', 'Google: Bertusch'
-    ];
-    
-    const currentAccount = currentAccountIndex < accountNames.length ? 
-      accountNames[currentAccountIndex] : 'Finalizando processamento...';
-    
-    const platform = currentAccount.startsWith('Meta') ? 'Meta Ads' : 
-                    currentAccount.startsWith('Google') ? 'Google Ads' : '';
-    
-    const remainingAccounts = totalAccounts - current;
-    const remainingSeconds = Math.max(0, expectedDuration - elapsedSeconds);
-    const estimatedTime = Math.ceil(remainingSeconds / 60); // em minutos
+    if (elapsedSeconds <= 5) {
+      // Fase inicial: Conectando
+      progressPercentage = Math.min(Math.round((elapsedSeconds / 5) * 5), 5);
+      currentAccount = 'Conectando às plataformas...';
+      estimatedTimeRemaining = 53 - elapsedSeconds;
+    } else if (elapsedSeconds <= 15) {
+      // Fase inicial: Primeiras contas
+      progressPercentage = 5 + Math.min(Math.round(((elapsedSeconds - 5) / 10) * 15), 15);
+      const accountIndex = Math.floor((elapsedSeconds - 5) / 2);
+      const accounts = ['Meta: Juliana Lenz', 'Google: Juliana Lenz', 'Meta: Rosacruz', 'Google: Rosacruz', 'Meta: BVK Advogados'];
+      currentAccount = accounts[accountIndex] || 'Processando contas iniciais...';
+      estimatedTimeRemaining = 53 - elapsedSeconds;
+    } else if (elapsedSeconds <= 45) {
+      // Fase principal: Processamento
+      progressPercentage = 20 + Math.min(Math.round(((elapsedSeconds - 15) / 30) * 65), 65);
+      const accountIndex = Math.floor((elapsedSeconds - 15) / 1.5);
+      const accounts = [
+        'Google: BVK Advogados', 'Meta: Ótica Haas', 'Google: Ótica Haas',
+        'Meta: Elegance Móveis', 'Google: Elegance Móveis', 'Meta: Aracuri Vinhos',
+        'Meta: Simmons Colchões', 'Google: Simmons Colchões', 'Meta: Ana Cruz',
+        'Meta: Andreia Star', 'Meta: Bertusch', 'Google: Bertusch',
+        'Meta: CWR', 'Google: CWR', 'Meta: Dermais', 'Google: Dermais'
+      ];
+      currentAccount = accounts[accountIndex] || 'Processando campanhas...';
+      estimatedTimeRemaining = 53 - elapsedSeconds;
+    } else {
+      // Fase final: Finalizando
+      progressPercentage = 85 + Math.min(Math.round(((elapsedSeconds - 45) / 8) * 15), 15);
+      currentAccount = 'Finalizando e salvando dados...';
+      estimatedTimeRemaining = Math.max(0, 53 - elapsedSeconds);
+    }
+
+    const current = Math.floor((progressPercentage / 100) * totalAccounts);
+    const platform = currentAccount.includes('Meta:') ? 'Meta Ads' : 
+                    currentAccount.includes('Google:') ? 'Google Ads' : '';
 
     setRefreshProgress({
       current,
       total: totalAccounts,
       currentAccount,
       platform,
-      percentage: progressPercentage,
-      estimatedTime
+      percentage: Math.min(progressPercentage, 100),
+      estimatedTime: Math.ceil(Math.max(estimatedTimeRemaining, 0) / 60) // em minutos
     });
-  };
-
-  const monitorDataUpdates = async (startTime: number) => {
-    // Monitorar atualizações na tabela campaign_health para verificar progresso real
-    try {
-      const { data: currentHealthData } = await supabase
-        .from('campaign_health')
-        .select('updated_at')
-        .eq('snapshot_date', todayDate)
-        .order('updated_at', { ascending: false })
-        .limit(1);
-
-      if (currentHealthData && currentHealthData.length > 0) {
-        const lastUpdateTime = new Date(currentHealthData[0].updated_at).getTime();
-        if (lastUpdateTime > startTime) {
-          console.log("📊 Dados atualizados detectados, progresso real em andamento");
-        }
-      }
-    } catch (error) {
-      console.warn("⚠️ Erro ao monitorar atualizações:", error);
-    }
   };
 
   const handleRefresh = async () => {
@@ -313,23 +305,22 @@ export function useActiveCampaignHealth() {
         console.log("✅ Edge function executada com sucesso:", refreshResult);
       }
       
-      // Iniciar monitoramento de progresso inteligente
+      // Iniciar sistema de progresso melhorado
       const progressInterval = setInterval(() => {
-        simulateProgressBasedOnTime(startTime);
-        monitorDataUpdates(startTime);
-      }, 1000); // Atualizar a cada segundo
+        simulateRealisticProgress(startTime);
+      }, 500); // Atualizar a cada 500ms para progresso mais fluido
       
-      // Aguardar conclusão (máximo 2 minutos)
+      // Aguardar conclusão (máximo 60 segundos)
       let attempts = 0;
-      const maxAttempts = 120; // 2 minutos
+      const maxAttempts = 120; // 60 segundos
       
       while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
         attempts++;
         
-        // Verificar se processo foi concluído pelo tempo
+        // Verificar se processo foi concluído pelo tempo (53s + buffer)
         const elapsedSeconds = (Date.now() - startTime) / 1000;
-        if (elapsedSeconds >= 90) { // 1.5 minutos
+        if (elapsedSeconds >= 55) {
           console.log("✅ Processo concluído por tempo");
           break;
         }
@@ -342,13 +333,13 @@ export function useActiveCampaignHealth() {
         ...prev,
         current: prev.total,
         percentage: 100,
-        currentAccount: 'Finalizando...',
+        currentAccount: 'Concluído!',
         platform: '',
         estimatedTime: 0
       }));
       
       // Aguardar um pouco para que os dados sejam processados
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Refetch os dados locais
       console.log("🔄 Atualizando dados locais...");
@@ -373,7 +364,7 @@ export function useActiveCampaignHealth() {
           percentage: 0,
           estimatedTime: 0
         });
-      }, 1000);
+      }, 2000);
     }
   };
 
@@ -407,7 +398,6 @@ export function useActiveCampaignHealth() {
     }).length || 0
   };
 
-  // Log das estatísticas para debug
   console.log("📊 Estatísticas calculadas:", stats);
 
   return {

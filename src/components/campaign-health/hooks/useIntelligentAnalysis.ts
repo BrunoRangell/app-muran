@@ -88,9 +88,12 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         const metaDataArray: EnhancedPlatformData[] = [];
         
         client.metaAds.forEach((metaAccount, index) => {
-          // Usar dados diretos da tabela campaign_health
-          const activeCampaignsCount = metaAccount.hasActiveCampaigns ? 1 : 0;
-          const unservedCampaignsCount = metaAccount.costToday === 0 && metaAccount.impressionsToday === 0 && metaAccount.hasActiveCampaigns ? 1 : 0;
+          // CORREÇÃO: Usar os valores reais de activeCampaignsCount
+          const activeCampaignsCount = metaAccount.activeCampaignsCount || 0;
+          
+          // CORREÇÃO: Calcular unservedCampaignsCount baseado nos dados reais
+          // Campanhas sem veiculação = campanhas que têm custo 0 mas impressões baixas
+          const unservedCampaignsCount = (activeCampaignsCount > 0 && metaAccount.costToday === 0) ? activeCampaignsCount : 0;
           
           const alertLevel = determineAlertLevel(
             metaAccount.costToday,
@@ -142,9 +145,11 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         const googleDataArray: EnhancedPlatformData[] = [];
         
         client.googleAds.forEach((googleAccount, index) => {
-          // Usar dados diretos da tabela campaign_health
-          const activeCampaignsCount = googleAccount.hasActiveCampaigns ? 1 : 0;
-          const unservedCampaignsCount = googleAccount.costToday === 0 && googleAccount.impressionsToday === 0 && googleAccount.hasActiveCampaigns ? 1 : 0;
+          // CORREÇÃO: Usar os valores reais de activeCampaignsCount
+          const activeCampaignsCount = googleAccount.activeCampaignsCount || 0;
+          
+          // CORREÇÃO: Calcular unservedCampaignsCount baseado nos dados reais
+          const unservedCampaignsCount = (activeCampaignsCount > 0 && googleAccount.costToday === 0) ? activeCampaignsCount : 0;
           
           const alertLevel = determineAlertLevel(
             googleAccount.costToday,

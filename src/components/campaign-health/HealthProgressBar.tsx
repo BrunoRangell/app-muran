@@ -37,16 +37,16 @@ export function HealthProgressBar({
   };
   
   const getCurrentStep = () => {
-    if (progress.percentage === 100) {
-      return "Finalizando atualização...";
-    } else if (progress.current === 0 && progress.percentage === 0) {
-      return "Conectando às plataformas de anúncios...";
-    } else if (progress.currentAccount && progress.platform) {
-      return `Processando ${progress.platform}: ${progress.currentAccount}`;
-    } else if (progress.percentage > 0) {
-      return "Coletando dados das plataformas...";
+    if (progress.percentage >= 100) {
+      return "✅ Atualização concluída!";
+    } else if (progress.percentage >= 85) {
+      return "🔄 Finalizando e salvando dados...";
+    } else if (progress.percentage >= 20) {
+      return `🔍 Processando: ${progress.currentAccount}`;
+    } else if (progress.percentage >= 5) {
+      return `🚀 Iniciando processamento das contas...`;
     } else {
-      return "Iniciando atualização...";
+      return "🔗 Conectando às plataformas de anúncios...";
     }
   };
   
@@ -85,7 +85,7 @@ export function HealthProgressBar({
           <Progress 
             value={progress.percentage} 
             className="h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner"
-            indicatorClassName="bg-gradient-to-r from-[#ff6e00] to-[#ff8f39] transition-all duration-500 ease-out rounded-full relative overflow-hidden"
+            indicatorClassName="bg-gradient-to-r from-[#ff6e00] to-[#ff8f39] transition-all duration-300 ease-out rounded-full relative overflow-hidden"
           />
           {/* Efeito de brilho na barra */}
           <div 
@@ -94,16 +94,16 @@ export function HealthProgressBar({
           />
         </div>
         
-        <div className="text-xs text-gray-600 text-center">
+        <div className="text-sm text-gray-700 text-center font-medium">
           {getCurrentStep()}
         </div>
       </div>
 
-      {progress.currentAccount && progress.platform && progress.percentage > 0 && progress.percentage < 100 && (
+      {progress.currentAccount && progress.platform && progress.percentage > 5 && progress.percentage < 85 && (
         <div className="flex items-center gap-2 text-sm bg-white/50 rounded-lg p-3 border-l-4 border-[#ff6e00]">
           <div className="w-2 h-2 bg-[#ff6e00] rounded-full animate-pulse"></div>
           <div>
-            <span className="font-medium text-[#321e32]">Processando agora:</span>
+            <span className="font-medium text-[#321e32]">Processando:</span>
             <span className="ml-2 text-[#321e32]/80 font-medium">{progress.currentAccount}</span>
           </div>
         </div>
