@@ -13,6 +13,7 @@ export interface PlatformAccountData {
   accountName: string;
   hasAccount: boolean;
   hasActiveCampaigns: boolean;
+  activeCampaignsCount?: number; // Novo campo para número real de campanhas
   costToday: number;
   impressionsToday?: number;
   status: CampaignStatus;

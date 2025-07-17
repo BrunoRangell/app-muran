@@ -1,3 +1,4 @@
+
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
@@ -38,6 +39,8 @@ export function HealthProgressBar({
   const getCurrentStep = () => {
     if (progress.percentage === 100) {
       return "Finalizando atualização...";
+    } else if (progress.current === 0 && progress.percentage === 0) {
+      return "Conectando às plataformas de anúncios...";
     } else if (progress.currentAccount && progress.platform) {
       return `Processando ${progress.platform}: ${progress.currentAccount}`;
     } else if (progress.percentage > 0) {
@@ -71,7 +74,7 @@ export function HealthProgressBar({
       <div className="space-y-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-[#321e32] font-medium">
-            {progress.total > 0 ? `${progress.current} de ${progress.total} contas processadas` : 'Iniciando...'}
+            {progress.total > 0 ? `${progress.current} de ${progress.total} contas processadas` : 'Conectando...'}
           </span>
           <span className="font-bold text-[#ff6e00] text-lg">
             {progress.percentage}%
@@ -96,7 +99,7 @@ export function HealthProgressBar({
         </div>
       </div>
 
-      {progress.currentAccount && progress.platform && (
+      {progress.currentAccount && progress.platform && progress.percentage > 0 && progress.percentage < 100 && (
         <div className="flex items-center gap-2 text-sm bg-white/50 rounded-lg p-3 border-l-4 border-[#ff6e00]">
           <div className="w-2 h-2 bg-[#ff6e00] rounded-full animate-pulse"></div>
           <div>
@@ -106,7 +109,7 @@ export function HealthProgressBar({
         </div>
       )}
 
-      {progress.estimatedTime > 0 && progress.percentage < 100 && (
+      {progress.estimatedTime > 0 && progress.percentage < 100 && progress.percentage > 0 && (
         <div className="flex items-center justify-between text-sm text-[#321e32]/70 bg-blue-50 rounded-lg p-3">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>

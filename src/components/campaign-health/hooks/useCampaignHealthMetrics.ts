@@ -45,9 +45,10 @@ export function useCampaignHealthMetrics(data: ClientHealthData[] = []) {
       return total + metaImpressions + googleImpressions;
     }, 0);
 
+    // Usar activeCampaignsCount real ao invés de hasActiveCampaigns
     const totalActiveCampaigns = data.reduce((total, client) => {
-      const metaCampaigns = client.metaAds?.filter(acc => acc.hasActiveCampaigns).length || 0;
-      const googleCampaigns = client.googleAds?.filter(acc => acc.hasActiveCampaigns).length || 0;
+      const metaCampaigns = client.metaAds?.reduce((sum, acc) => sum + (acc.activeCampaignsCount || 0), 0) || 0;
+      const googleCampaigns = client.googleAds?.reduce((sum, acc) => sum + (acc.activeCampaignsCount || 0), 0) || 0;
       return total + metaCampaigns + googleCampaigns;
     }, 0);
 
@@ -58,7 +59,7 @@ export function useCampaignHealthMetrics(data: ClientHealthData[] = []) {
           return total + (client.metaAds?.reduce((sum, acc) => sum + acc.costToday, 0) || 0);
         }, 0),
         campaigns: data.reduce((total, client) => {
-          return total + (client.metaAds?.filter(acc => acc.hasActiveCampaigns).length || 0);
+          return total + (client.metaAds?.reduce((sum, acc) => sum + (acc.activeCampaignsCount || 0), 0) || 0);
         }, 0),
         impressions: data.reduce((total, client) => {
           return total + (client.metaAds?.reduce((sum, acc) => sum + acc.impressionsToday, 0) || 0);
@@ -70,7 +71,7 @@ export function useCampaignHealthMetrics(data: ClientHealthData[] = []) {
           return total + (client.googleAds?.reduce((sum, acc) => sum + acc.costToday, 0) || 0);
         }, 0),
         campaigns: data.reduce((total, client) => {
-          return total + (client.googleAds?.filter(acc => acc.hasActiveCampaigns).length || 0);
+          return total + (client.googleAds?.reduce((sum, acc) => sum + (acc.activeCampaignsCount || 0), 0) || 0);
         }, 0),
         impressions: data.reduce((total, client) => {
           return total + (client.googleAds?.reduce((sum, acc) => sum + acc.impressionsToday, 0) || 0);
