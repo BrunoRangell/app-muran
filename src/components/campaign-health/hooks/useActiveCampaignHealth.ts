@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -142,14 +143,6 @@ const fetchActiveCampaignHealth = async (): Promise<ClientHealthData[]> => {
     
     console.log(`✅ Processados ${result.length} clientes com dados de saúde`);
     
-    // Log detalhado para debug
-    result.forEach(client => {
-      console.log(`📋 Cliente: ${client.clientName}`);
-      console.log(`  - Meta Ads: ${client.metaAds?.length || 0} contas`);
-      console.log(`  - Google Ads: ${client.googleAds?.length || 0} contas`);
-      console.log(`  - Status geral: ${client.overallStatus}`);
-    });
-    
     return result;
     
   } catch (error) {
@@ -214,138 +207,110 @@ export function useActiveCampaignHealth() {
     retry: 2
   });
 
-  // Sistema de progresso melhorado baseado no tempo real
-  const simulateRealisticProgress = (startTime: number) => {
-    const totalAccounts = data?.reduce((acc, client) => {
-      return acc + (client.metaAds?.length || 0) + (client.googleAds?.length || 0);
-    }, 0) || 52;
-    
-    const elapsedSeconds = (Date.now() - startTime) / 1000;
-    
-    // Progresso baseado no padrão observado nos logs:
-    // 0-5s: Conectando (0-5%)
-    // 5-15s: Primeiras contas (5-20%)  
-    // 15-45s: Processamento principal (20-85%)
-    // 45-53s: Finalizando (85-100%)
-    
-    let progressPercentage = 0;
-    let currentAccount = '';
-    let estimatedTimeRemaining = 0;
-    
-    if (elapsedSeconds <= 5) {
-      // Fase inicial: Conectando
-      progressPercentage = Math.min(Math.round((elapsedSeconds / 5) * 5), 5);
-      currentAccount = 'Conectando às plataformas...';
-      estimatedTimeRemaining = 53 - elapsedSeconds;
-    } else if (elapsedSeconds <= 15) {
-      // Fase inicial: Primeiras contas
-      progressPercentage = 5 + Math.min(Math.round(((elapsedSeconds - 5) / 10) * 15), 15);
-      const accountIndex = Math.floor((elapsedSeconds - 5) / 2);
-      const accounts = ['Meta: Juliana Lenz', 'Google: Juliana Lenz', 'Meta: Rosacruz', 'Google: Rosacruz', 'Meta: BVK Advogados'];
-      currentAccount = accounts[accountIndex] || 'Processando contas iniciais...';
-      estimatedTimeRemaining = 53 - elapsedSeconds;
-    } else if (elapsedSeconds <= 45) {
-      // Fase principal: Processamento
-      progressPercentage = 20 + Math.min(Math.round(((elapsedSeconds - 15) / 30) * 65), 65);
-      const accountIndex = Math.floor((elapsedSeconds - 15) / 1.5);
-      const accounts = [
-        'Google: BVK Advogados', 'Meta: Ótica Haas', 'Google: Ótica Haas',
-        'Meta: Elegance Móveis', 'Google: Elegance Móveis', 'Meta: Aracuri Vinhos',
-        'Meta: Simmons Colchões', 'Google: Simmons Colchões', 'Meta: Ana Cruz',
-        'Meta: Andreia Star', 'Meta: Bertusch', 'Google: Bertusch',
-        'Meta: CWR', 'Google: CWR', 'Meta: Dermais', 'Google: Dermais'
-      ];
-      currentAccount = accounts[accountIndex] || 'Processando campanhas...';
-      estimatedTimeRemaining = 53 - elapsedSeconds;
-    } else {
-      // Fase final: Finalizando
-      progressPercentage = 85 + Math.min(Math.round(((elapsedSeconds - 45) / 8) * 15), 15);
-      currentAccount = 'Finalizando e salvando dados...';
-      estimatedTimeRemaining = Math.max(0, 53 - elapsedSeconds);
-    }
-
-    const current = Math.floor((progressPercentage / 100) * totalAccounts);
-    const platform = currentAccount.includes('Meta:') ? 'Meta Ads' : 
-                    currentAccount.includes('Google:') ? 'Google Ads' : '';
-
-    setRefreshProgress({
-      current,
-      total: totalAccounts,
-      currentAccount,
-      platform,
-      percentage: Math.min(progressPercentage, 100),
-      estimatedTime: Math.ceil(Math.max(estimatedTimeRemaining, 0) / 60) // em minutos
-    });
-  };
-
   const handleRefresh = async () => {
     console.log("🔄 Executando refresh manual dos dados...");
     setIsManualRefreshing(true);
     
-    // Resetar progresso
-    setRefreshProgress({
-      current: 0,
-      total: 0,
-      currentAccount: '',
-      platform: '',
-      percentage: 0,
-      estimatedTime: 0
-    });
-    
-    const startTime = Date.now();
-    
     try {
-      // Executar a edge function para buscar dados atualizados das APIs
-      console.log("📡 Chamando edge function active-campaigns-health...");
-      const { data: refreshResult, error: refreshError } = await supabase.functions.invoke('active-campaigns-health');
-      
-      if (refreshError) {
-        console.error("❌ Erro ao executar edge function:", refreshError);
-      } else {
-        console.log("✅ Edge function executada com sucesso:", refreshResult);
+      // Buscar todas as contas para processar
+      const { data: accountsToProcess, error: accountsError } = await supabase
+        .from('client_accounts')
+        .select(`
+          id,
+          account_name,
+          platform,
+          clients!inner(company_name, status)
+        `)
+        .eq('status', 'active')
+        .eq('clients.status', 'active')
+        .order('clients.company_name')
+        .order('platform');
+
+      if (accountsError) {
+        throw accountsError;
       }
+
+      const totalAccounts = accountsToProcess?.length || 0;
+      console.log(`📊 Processando ${totalAccounts} contas`);
       
-      // Iniciar sistema de progresso melhorado
-      const progressInterval = setInterval(() => {
-        simulateRealisticProgress(startTime);
-      }, 500); // Atualizar a cada 500ms para progresso mais fluido
+      // Resetar progresso
+      setRefreshProgress({
+        current: 0,
+        total: totalAccounts,
+        currentAccount: '',
+        platform: '',
+        percentage: 0,
+        estimatedTime: 0
+      });
+
+      const startTime = Date.now();
       
-      // Aguardar conclusão (máximo 60 segundos)
-      let attempts = 0;
-      const maxAttempts = 120; // 60 segundos
-      
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        attempts++;
+      // Processar cada conta individualmente
+      for (let i = 0; i < totalAccounts; i++) {
+        const account = accountsToProcess[i];
+        const clientName = account.clients.company_name;
+        const platformName = account.platform === 'meta' ? 'Meta Ads' : 'Google Ads';
         
-        // Verificar se processo foi concluído pelo tempo (53s + buffer)
-        const elapsedSeconds = (Date.now() - startTime) / 1000;
-        if (elapsedSeconds >= 55) {
-          console.log("✅ Processo concluído por tempo");
-          break;
+        console.log(`🔄 Processando ${i + 1}/${totalAccounts}: ${clientName} - ${platformName}`);
+        
+        // Atualizar progresso
+        const currentProgress = i + 1;
+        const percentage = Math.round((currentProgress / totalAccounts) * 100);
+        const elapsedTime = (Date.now() - startTime) / 1000;
+        const avgTimePerAccount = currentProgress > 0 ? elapsedTime / currentProgress : 2;
+        const remainingAccounts = totalAccounts - currentProgress;
+        const estimatedRemainingTime = Math.ceil(remainingAccounts * avgTimePerAccount / 60); // em minutos
+        
+        setRefreshProgress({
+          current: currentProgress,
+          total: totalAccounts,
+          currentAccount: `${clientName} - ${platformName}`,
+          platform: platformName,
+          percentage,
+          estimatedTime: estimatedRemainingTime
+        });
+        
+        try {
+          // Processar conta individual
+          const { data: result, error: processError } = await supabase.functions.invoke(
+            'process-single-account-health',
+            {
+              body: { accountId: account.id }
+            }
+          );
+          
+          if (processError) {
+            console.error(`❌ Erro ao processar conta ${account.id}:`, processError);
+          } else {
+            console.log(`✅ Conta processada: ${result?.accountName}`);
+          }
+          
+        } catch (error) {
+          console.error(`❌ Erro no processamento da conta ${account.id}:`, error);
         }
+        
+        // Pequeno delay para não sobrecarregar as APIs
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
-      clearInterval(progressInterval);
-      
-      // Definir progresso como 100% ao finalizar
-      setRefreshProgress(prev => ({
-        ...prev,
-        current: prev.total,
-        percentage: 100,
+      // Finalizar progresso
+      setRefreshProgress({
+        current: totalAccounts,
+        total: totalAccounts,
         currentAccount: 'Concluído!',
         platform: '',
+        percentage: 100,
         estimatedTime: 0
-      }));
+      });
       
-      // Aguardar um pouco para que os dados sejam processados
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Aguardar um pouco antes de refetch
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Refetch os dados locais
       console.log("🔄 Atualizando dados locais...");
       await refetch();
       
-      // Atualizar timestamp APENAS após sucesso completo
+      // Atualizar timestamp
       setLastManualRefreshTimestamp(Date.now());
       
       console.log("✅ Refresh manual concluído com sucesso");
@@ -368,7 +333,7 @@ export function useActiveCampaignHealth() {
     }
   };
 
-  // Calcular estatísticas corrigidas
+  // Calcular estatísticas
   const stats = {
     totalClients: data?.length || 0,
     clientsWithMeta: data?.filter(c => c.metaAds && c.metaAds.length > 0).length || 0,
@@ -397,8 +362,6 @@ export function useActiveCampaignHealth() {
       return metaNotConfigured || googleNotConfigured;
     }).length || 0
   };
-
-  console.log("📊 Estatísticas calculadas:", stats);
 
   return {
     data,
