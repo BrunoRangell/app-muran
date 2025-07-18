@@ -223,14 +223,21 @@ export function useActiveCampaignHealth() {
         `)
         .eq('status', 'active')
         .eq('clients.status', 'active')
-        .order('clients.company_name')
         .order('platform');
 
       if (accountsError) {
         throw accountsError;
       }
 
-      const totalAccounts = accountsToProcess?.length || 0;
+      // Ordenar por nome da empresa no frontend
+      const sortedAccounts = accountsToProcess?.sort((a, b) => 
+        a.clients.company_name.localeCompare(b.clients.company_name, 'pt-BR', { 
+          sensitivity: 'base',
+          numeric: true 
+        })
+      ) || [];
+
+      const totalAccounts = sortedAccounts.length;
       console.log(`📊 Processando ${totalAccounts} contas`);
       
       // Resetar progresso
@@ -247,7 +254,7 @@ export function useActiveCampaignHealth() {
       
       // Processar cada conta individualmente
       for (let i = 0; i < totalAccounts; i++) {
-        const account = accountsToProcess[i];
+        const account = sortedAccounts[i];
         const clientName = account.clients.company_name;
         const platformName = account.platform === 'meta' ? 'Meta Ads' : 'Google Ads';
         
