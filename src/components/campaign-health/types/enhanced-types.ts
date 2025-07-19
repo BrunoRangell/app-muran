@@ -7,6 +7,14 @@ export interface HealthProblem {
   severity: AlertLevel;
 }
 
+export interface CampaignDetail {
+  id: string;
+  name: string;
+  cost: number;
+  impressions: number;
+  status: string;
+}
+
 export interface EnhancedPlatformData {
   accountId: string;
   accountName?: string;
@@ -17,14 +25,15 @@ export interface EnhancedPlatformData {
   impressionsToday: number;
   alertLevel: AlertLevel;
   problems: HealthProblem[];
-  isPrimary?: boolean; // Nova propriedade para identificar conta principal
+  isPrimary?: boolean;
+  campaignsDetailed?: CampaignDetail[]; // Nova propriedade para dados detalhados
 }
 
 export interface EnhancedClientData {
   clientId: string;
   clientName: string;
-  metaAds?: EnhancedPlatformData[]; // Agora é um array
-  googleAds?: EnhancedPlatformData[]; // Agora é um array  
+  metaAds?: EnhancedPlatformData[];
+  googleAds?: EnhancedPlatformData[];
   overallStatus: string;
 }
 
