@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
 const corsHeaders = {
@@ -94,34 +93,65 @@ async function manageGoogleAdsTokens(supabase: any): Promise<string> {
   return newAccessToken;
 }
 
-// Buscar dados do Meta Ads
+// Buscar dados do Meta Ads com paginação completa
 async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
   try {
     const today = getTodayInBrazil();
+    console.log(`📊 Meta: Iniciando busca de campanhas para conta ${accountId}`);
     
-    const campaignsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/campaigns?fields=id,name,effective_status&access_token=${accessToken}`;
+    // Buscar todas as campanhas com paginação
+    let allCampaigns: any[] = [];
+    let nextUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,effective_status&limit=1000&access_token=${accessToken}`;
+    let pageCount = 0;
     
-    const campaignsResponse = await fetch(campaignsUrl);
-    const campaignsData = await campaignsResponse.json();
-    
-    if (!campaignsResponse.ok || campaignsData.error) {
-      console.error(`❌ Meta: Erro ao buscar campanhas:`, campaignsData.error || campaignsResponse.status);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+    while (nextUrl && pageCount < 10) { // Limite de segurança para evitar loops infinitos
+      pageCount++;
+      console.log(`📄 Meta: Buscando página ${pageCount} de campanhas`);
+      
+      const campaignsResponse = await fetch(nextUrl);
+      const campaignsData = await campaignsResponse.json();
+      
+      if (!campaignsResponse.ok || campaignsData.error) {
+        console.error(`❌ Meta: Erro ao buscar campanhas página ${pageCount}:`, campaignsData.error || campaignsResponse.status);
+        break;
+      }
+      
+      if (!campaignsData.data || !Array.isArray(campaignsData.data)) {
+        console.log(`⚠️ Meta: Página ${pageCount} sem dados válidos`);
+        break;
+      }
+      
+      // Adicionar campanhas desta página
+      allCampaigns = allCampaigns.concat(campaignsData.data);
+      console.log(`📊 Meta: Página ${pageCount} - ${campaignsData.data.length} campanhas encontradas`);
+      
+      // Verificar se há próxima página
+      nextUrl = campaignsData.paging?.next || null;
+      
+      if (!nextUrl) {
+        console.log(`✅ Meta: Todas as páginas processadas - Total: ${allCampaigns.length} campanhas`);
+        break;
+      }
     }
     
-    if (!campaignsData.data || !Array.isArray(campaignsData.data)) {
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+    if (pageCount >= 10) {
+      console.warn(`⚠️ Meta: Limite de páginas atingido (10) para conta ${accountId}`);
     }
     
-    const activeCampaigns = campaignsData.data.filter((campaign: any) => 
+    // Filtrar campanhas ativas
+    const activeCampaigns = allCampaigns.filter((campaign: any) => 
       campaign.effective_status === 'ACTIVE'
     );
+    
+    console.log(`📈 Meta: ${activeCampaigns.length} campanhas ativas de ${allCampaigns.length} total`);
     
     if (activeCampaigns.length === 0) {
       return { cost: 0, impressions: 0, activeCampaigns: 0 };
     }
     
-    const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+    // Buscar insights para hoje
+    console.log(`💰 Meta: Buscando insights para ${activeCampaigns.length} campanhas ativas`);
+    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
     
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
@@ -138,6 +168,9 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       const todayInsights = insightsData.data[0];
       totalCost = parseFloat(todayInsights.spend || '0');
       totalImpressions = parseInt(todayInsights.impressions || '0');
+      console.log(`💰 Meta: Custo hoje R$${totalCost.toFixed(2)}, Impressões: ${totalImpressions.toLocaleString()}`);
+    } else {
+      console.log(`📊 Meta: Sem insights para hoje - campanhas podem não ter veiculado ainda`);
     }
     
     return {
