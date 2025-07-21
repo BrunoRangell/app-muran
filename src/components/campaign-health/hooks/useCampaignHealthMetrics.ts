@@ -11,19 +11,29 @@ export function useCampaignHealthMetrics(data: ClientHealthData[] = []) {
       totalAccounts: data.reduce((acc, client) => {
         return acc + (client.metaAds?.length || 0) + (client.googleAds?.length || 0);
       }, 0),
+      totalCost: data.reduce((acc, client) => {
+        const metaCost = client.metaAds?.reduce((sum, account) => sum + account.costToday, 0) || 0;
+        const googleCost = client.googleAds?.reduce((sum, account) => sum + account.costToday, 0) || 0;
+        return acc + metaCost + googleCost;
+      }, 0),
+      totalImpressions: data.reduce((acc, client) => {
+        const metaImpressions = client.metaAds?.reduce((sum, account) => sum + (account.impressionsToday || 0), 0) || 0;
+        const googleImpressions = client.googleAds?.reduce((sum, account) => sum + (account.impressionsToday || 0), 0) || 0;
+        return acc + metaImpressions + googleImpressions;
+      }, 0),
       functioning: data.filter(client => {
-        const metaActive = client.metaAds?.some(acc => acc.status === "active") || false;
-        const googleActive = client.googleAds?.some(acc => acc.status === "active") || false;
+        const metaActive = client.metaAds?.some(acc => acc.status === "active" || acc.status === "healthy") || false;
+        const googleActive = client.googleAds?.some(acc => acc.status === "active" || acc.status === "healthy") || false;
         return metaActive || googleActive;
       }).length,
       noSpend: data.filter(client => {
-        const metaNoSpend = client.metaAds?.some(acc => acc.status === "no-spend") || false;
-        const googleNoSpend = client.googleAds?.some(acc => acc.status === "no-spend") || false;
+        const metaNoSpend = client.metaAds?.some(acc => acc.status === "no-spend" || acc.costToday === 0) || false;
+        const googleNoSpend = client.googleAds?.some(acc => acc.status === "no-spend" || acc.costToday === 0) || false;
         return metaNoSpend || googleNoSpend;
       }).length,
       noCampaigns: data.filter(client => {
-        const metaNoCampaigns = client.metaAds?.some(acc => acc.status === "no-campaigns") || false;
-        const googleNoCampaigns = client.googleAds?.some(acc => acc.status === "no-campaigns") || false;
+        const metaNoCampaigns = client.metaAds?.some(acc => acc.status === "no-campaigns" || (acc.activeCampaignsCount || 0) === 0) || false;
+        const googleNoCampaigns = client.googleAds?.some(acc => acc.status === "no-campaigns" || (acc.activeCampaignsCount || 0) === 0) || false;
         return metaNoCampaigns || googleNoCampaigns;
       }).length,
       notConfigured: data.filter(client => {
@@ -32,18 +42,6 @@ export function useCampaignHealthMetrics(data: ClientHealthData[] = []) {
         return metaNotConfigured || googleNotConfigured;
       }).length,
     };
-
-    const totalSpendToday = data.reduce((total, client) => {
-      const metaSpend = client.metaAds?.reduce((sum, acc) => sum + acc.costToday, 0) || 0;
-      const googleSpend = client.googleAds?.reduce((sum, acc) => sum + acc.costToday, 0) || 0;
-      return total + metaSpend + googleSpend;
-    }, 0);
-
-    const totalImpressionsToday = data.reduce((total, client) => {
-      const metaImpressions = client.metaAds?.reduce((sum, acc) => sum + acc.impressionsToday, 0) || 0;
-      const googleImpressions = client.googleAds?.reduce((sum, acc) => sum + acc.impressionsToday, 0) || 0;
-      return total + metaImpressions + googleImpressions;
-    }, 0);
 
     // Usar activeCampaignsCount real ao invés de hasActiveCampaigns
     const totalActiveCampaigns = data.reduce((total, client) => {
@@ -62,7 +60,7 @@ export function useCampaignHealthMetrics(data: ClientHealthData[] = []) {
           return total + (client.metaAds?.reduce((sum, acc) => sum + (acc.activeCampaignsCount || 0), 0) || 0);
         }, 0),
         impressions: data.reduce((total, client) => {
-          return total + (client.metaAds?.reduce((sum, acc) => sum + acc.impressionsToday, 0) || 0);
+          return total + (client.metaAds?.reduce((sum, acc) => sum + (acc.impressionsToday || 0), 0) || 0);
         }, 0),
       },
       google: {
@@ -74,7 +72,7 @@ export function useCampaignHealthMetrics(data: ClientHealthData[] = []) {
           return total + (client.googleAds?.reduce((sum, acc) => sum + (acc.activeCampaignsCount || 0), 0) || 0);
         }, 0),
         impressions: data.reduce((total, client) => {
-          return total + (client.googleAds?.reduce((sum, acc) => sum + acc.impressionsToday, 0) || 0);
+          return total + (client.googleAds?.reduce((sum, acc) => sum + (acc.impressionsToday || 0), 0) || 0);
         }, 0),
       }
     };
@@ -85,8 +83,8 @@ export function useCampaignHealthMetrics(data: ClientHealthData[] = []) {
 
     return {
       stats,
-      totalSpendToday,
-      totalImpressionsToday,
+      totalSpendToday: stats.totalCost,
+      totalImpressionsToday: stats.totalImpressions,
       totalActiveCampaigns,
       platformStats,
       healthPercentage
