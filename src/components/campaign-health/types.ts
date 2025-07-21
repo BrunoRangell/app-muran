@@ -13,19 +13,26 @@ export interface PlatformAccountData {
   accountName: string;
   hasAccount: boolean;
   hasActiveCampaigns: boolean;
-  activeCampaignsCount?: number; // Novo campo para número real de campanhas
+  activeCampaignsCount?: number;
   costToday: number;
   impressionsToday?: number;
   status: CampaignStatus;
   errors: string[];
+  campaignsDetailed?: CampaignDetail[];
+}
+
+export interface CampaignDetail {
+  id: string;
+  name: string;
+  cost: number;
+  impressions: number;
+  status: string;
 }
 
 export type CampaignStatus = 
-  | "active" 
-  | "no-spend" 
-  | "no-campaigns" 
-  | "no-account" 
-  | "low-performance"
+  | "healthy"
+  | "warning" 
+  | "critical"
   | "no-data";
 
 export interface CampaignHealthStats {
@@ -39,12 +46,13 @@ export interface CampaignHealthStats {
   notConfigured: number;
 }
 
-// Adicionar interface HealthStats que estava faltando
 export interface HealthStats {
   totalClients: number;
   clientsWithMeta: number;
   clientsWithGoogle: number;
   totalAccounts: number;
+  totalCost: number;
+  totalImpressions: number;
   functioning: number;
   noSpend: number;
   noCampaigns: number;

@@ -73,6 +73,7 @@ export function useActiveCampaignHealth() {
             clientName,
             metaAds: [],
             googleAds: [],
+            overallStatus: "healthy",
           });
         }
 
@@ -82,6 +83,7 @@ export function useActiveCampaignHealth() {
           accountId: record.client_accounts.account_id,
           accountName: record.client_accounts.account_name,
           hasAccount: record.has_account,
+          hasActiveCampaigns: (record.active_campaigns_count || 0) > 0,
           activeCampaignsCount: record.active_campaigns_count,
           unservedCampaignsCount: record.unserved_campaigns_count,
           costToday: Number(record.cost_today),

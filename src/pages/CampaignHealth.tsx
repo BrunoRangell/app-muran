@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
@@ -153,13 +154,13 @@ export default function CampaignHealth() {
           </div>
           
           {/* Barra de progresso durante atualização */}
-        <HealthProgressBar 
-          isRefreshing={isManualRefreshing}
-          progress={refreshProgress}
-          onCancel={() => {
-            console.log("🛑 Cancelamento solicitado pelo usuário");
-          }}
-        />
+          <HealthProgressBar 
+            isRefreshing={isManualRefreshing}
+            progress={refreshProgress}
+            onCancel={() => {
+              console.log("🛑 Cancelamento solicitado pelo usuário");
+            }}
+          />
           
           {/* Dashboard de Alertas */}
           <AlertsDashboard
@@ -172,9 +173,9 @@ export default function CampaignHealth() {
           <IntelligentFilters 
             filterValue={filterValue}
             setFilterValue={setFilterValue}
-            statusFilter={statusFilter}
+            statusFilter={statusFilter as CampaignStatus | "all"}
             setStatusFilter={setStatusFilter}
-            platformFilter={platformFilter}
+            platformFilter={platformFilter as "meta" | "google" | "all"}
             setPlatformFilter={setPlatformFilter}
             urgencyFilter={urgencyFilter}
             setUrgencyFilter={setUrgencyFilter}

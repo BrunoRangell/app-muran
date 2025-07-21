@@ -1,14 +1,13 @@
 
 import { useMemo } from "react";
-import { ClientHealthData } from "../types";
+import { ClientHealthData, CampaignDetail } from "../types";
 import { 
   EnhancedClientData, 
   EnhancedPlatformData, 
   AlertLevel, 
   HealthProblem, 
   HealthAlert, 
-  DashboardStats,
-  CampaignDetail
+  DashboardStats
 } from "../types/enhanced-types";
 
 function determineAlertLevel(
@@ -74,7 +73,7 @@ function generateProblems(
 
 // Função para processar dados reais das campanhas da tabela campaign_health
 function processCampaignDetails(
-  campaignsDetailed: any[],
+  campaignsDetailed: CampaignDetail[] | undefined,
   activeCampaignsCount: number,
   costToday: number,
   impressionsToday: number,
@@ -135,7 +134,7 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
           
           // Processar campanhas detalhadas reais
           const campaignsDetailed = processCampaignDetails(
-            metaAccount.campaignsDetailed || [],
+            metaAccount.campaignsDetailed,
             activeCampaignsCount,
             metaAccount.costToday,
             metaAccount.impressionsToday || 0,
@@ -202,7 +201,7 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
           
           // Processar campanhas detalhadas reais
           const campaignsDetailed = processCampaignDetails(
-            googleAccount.campaignsDetailed || [],
+            googleAccount.campaignsDetailed,
             activeCampaignsCount,
             googleAccount.costToday,
             googleAccount.impressionsToday || 0,

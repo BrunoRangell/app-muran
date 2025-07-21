@@ -26,6 +26,7 @@ export interface ClientHealthData {
   companyEmail?: string;
   metaAds?: PlatformData[];
   googleAds?: PlatformData[];
+  overallStatus: CampaignStatus;
 }
 
 export type CampaignStatus = "healthy" | "warning" | "critical" | "no-data";
