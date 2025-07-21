@@ -1,5 +1,5 @@
 
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { CampaignDetail } from "./types/enhanced-types";
 
 interface CampaignDetailsTooltipProps {
@@ -23,33 +23,31 @@ export function CampaignDetailsTooltip({ campaigns, children, title, platform }:
   };
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {children}
-        </TooltipTrigger>
-        <TooltipContent className="max-w-md p-4">
-          <div className="space-y-2">
-            <h4 className="font-semibold text-sm mb-2">{title} - {platform}</h4>
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {campaigns.map((campaign, index) => (
-                <div key={`${campaign.id}-${index}`} className="text-xs border-b border-gray-200 pb-1 last:border-b-0">
-                  <div className="font-medium truncate" title={campaign.name}>
-                    {campaign.name}
-                  </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>{formatCurrency(campaign.cost)}</span>
-                    <span>{formatNumber(campaign.impressions)} impr.</span>
-                  </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent className="max-w-md p-4">
+        <div className="space-y-2">
+          <h4 className="font-semibold text-sm mb-2">{title} - {platform}</h4>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {campaigns.map((campaign, index) => (
+              <div key={`${campaign.id}-${index}`} className="text-xs border-b border-gray-200 pb-1 last:border-b-0">
+                <div className="font-medium truncate" title={campaign.name}>
+                  {campaign.name}
                 </div>
-              ))}
-            </div>
-            <div className="text-xs text-gray-500 mt-2 pt-2 border-t">
-              Total: {campaigns.length} campanha{campaigns.length !== 1 ? 's' : ''}
-            </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>{formatCurrency(campaign.cost)}</span>
+                  <span>{formatNumber(campaign.impressions)} impr.</span>
+                </div>
+              </div>
+            ))}
           </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+          <div className="text-xs text-gray-500 mt-2 pt-2 border-t">
+            Total: {campaigns.length} campanha{campaigns.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
