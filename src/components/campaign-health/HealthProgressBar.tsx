@@ -1,3 +1,4 @@
+
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Loader2, X } from "lucide-react";
@@ -36,14 +37,16 @@ export function HealthProgressBar({
   };
   
   const getCurrentStep = () => {
-    if (progress.percentage === 100) {
-      return "Finalizando atualização...";
-    } else if (progress.currentAccount && progress.platform) {
-      return `Processando ${progress.platform}: ${progress.currentAccount}`;
-    } else if (progress.percentage > 0) {
-      return "Coletando dados das plataformas...";
+    if (progress.percentage >= 100) {
+      return "✅ Atualização concluída!";
+    } else if (progress.percentage >= 85) {
+      return "🔄 Finalizando e salvando dados...";
+    } else if (progress.percentage >= 20) {
+      return `🔍 Processando: ${progress.currentAccount}`;
+    } else if (progress.percentage >= 5) {
+      return `🚀 Iniciando processamento das contas...`;
     } else {
-      return "Iniciando atualização...";
+      return "🔗 Conectando às plataformas de anúncios...";
     }
   };
   
@@ -71,7 +74,7 @@ export function HealthProgressBar({
       <div className="space-y-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-[#321e32] font-medium">
-            {progress.total > 0 ? `${progress.current} de ${progress.total} contas processadas` : 'Iniciando...'}
+            {progress.total > 0 ? `${progress.current} de ${progress.total} contas processadas` : 'Conectando...'}
           </span>
           <span className="font-bold text-[#ff6e00] text-lg">
             {progress.percentage}%
@@ -82,7 +85,7 @@ export function HealthProgressBar({
           <Progress 
             value={progress.percentage} 
             className="h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner"
-            indicatorClassName="bg-gradient-to-r from-[#ff6e00] to-[#ff8f39] transition-all duration-500 ease-out rounded-full relative overflow-hidden"
+            indicatorClassName="bg-gradient-to-r from-[#ff6e00] to-[#ff8f39] transition-all duration-300 ease-out rounded-full relative overflow-hidden"
           />
           {/* Efeito de brilho na barra */}
           <div 
@@ -91,22 +94,22 @@ export function HealthProgressBar({
           />
         </div>
         
-        <div className="text-xs text-gray-600 text-center">
+        <div className="text-sm text-gray-700 text-center font-medium">
           {getCurrentStep()}
         </div>
       </div>
 
-      {progress.currentAccount && progress.platform && (
+      {progress.currentAccount && progress.platform && progress.percentage > 5 && progress.percentage < 85 && (
         <div className="flex items-center gap-2 text-sm bg-white/50 rounded-lg p-3 border-l-4 border-[#ff6e00]">
           <div className="w-2 h-2 bg-[#ff6e00] rounded-full animate-pulse"></div>
           <div>
-            <span className="font-medium text-[#321e32]">Processando agora:</span>
+            <span className="font-medium text-[#321e32]">Processando:</span>
             <span className="ml-2 text-[#321e32]/80 font-medium">{progress.currentAccount}</span>
           </div>
         </div>
       )}
 
-      {progress.estimatedTime > 0 && progress.percentage < 100 && (
+      {progress.estimatedTime > 0 && progress.percentage < 100 && progress.percentage > 0 && (
         <div className="flex items-center justify-between text-sm text-[#321e32]/70 bg-blue-50 rounded-lg p-3">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>

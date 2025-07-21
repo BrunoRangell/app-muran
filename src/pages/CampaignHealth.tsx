@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveCampaignHealth } from "@/components/campaign-health/hooks/useActiveCampaignHealth";
@@ -120,6 +121,16 @@ export default function CampaignHealth() {
     totalProblems: dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts
   };
 
+  // Criar objeto de progresso adequado para HealthProgressBar
+  const progressData = {
+    current: 0,
+    total: 0,
+    currentAccount: '',
+    platform: '',
+    percentage: typeof refreshProgress === 'number' ? refreshProgress : 0,
+    estimatedTime: 0
+  };
+
   return (
     <TeamMemberCheck>
       <AuthErrorHandler />
@@ -153,13 +164,13 @@ export default function CampaignHealth() {
           </div>
           
           {/* Barra de progresso durante atualização */}
-        <HealthProgressBar 
-          isRefreshing={isManualRefreshing}
-          progress={refreshProgress}
-          onCancel={() => {
-            console.log("🛑 Cancelamento solicitado pelo usuário");
-          }}
-        />
+          <HealthProgressBar 
+            isRefreshing={isManualRefreshing}
+            progress={progressData}
+            onCancel={() => {
+              console.log("🛑 Cancelamento solicitado pelo usuário");
+            }}
+          />
           
           {/* Dashboard de Alertas */}
           <AlertsDashboard
@@ -172,9 +183,9 @@ export default function CampaignHealth() {
           <IntelligentFilters 
             filterValue={filterValue}
             setFilterValue={setFilterValue}
-            statusFilter={statusFilter}
+            statusFilter={statusFilter as CampaignStatus | "all"}
             setStatusFilter={setStatusFilter}
-            platformFilter={platformFilter}
+            platformFilter={platformFilter as "meta" | "google" | "all"}
             setPlatformFilter={setPlatformFilter}
             urgencyFilter={urgencyFilter}
             setUrgencyFilter={setUrgencyFilter}

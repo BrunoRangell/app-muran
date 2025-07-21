@@ -1,13 +1,13 @@
 
 import { useMemo } from "react";
-import { ClientHealthData } from "../types";
+import { ClientHealthData, CampaignDetail } from "../types";
 import { 
   EnhancedClientData, 
   EnhancedPlatformData, 
   AlertLevel, 
   HealthProblem, 
   HealthAlert, 
-  DashboardStats 
+  DashboardStats
 } from "../types/enhanced-types";
 
 function determineAlertLevel(
@@ -71,6 +71,48 @@ function generateProblems(
   return problems;
 }
 
+// Função para processar dados reais das campanhas da tabela campaign_health
+function processCampaignDetails(
+  campaignsDetailed: CampaignDetail[] | undefined,
+  activeCampaignsCount: number,
+  costToday: number,
+  impressionsToday: number,
+  platform: string
+): CampaignDetail[] {
+  // Se temos dados reais detalhados, usá-los
+  if (campaignsDetailed && Array.isArray(campaignsDetailed) && campaignsDetailed.length > 0) {
+    console.log(`📊 Usando dados reais para ${platform}:`, campaignsDetailed.length, "campanhas");
+    return campaignsDetailed.map(campaign => ({
+      id: campaign.id || `${platform}-${Math.random()}`,
+      name: campaign.name || `Campanha ${platform}`,
+      cost: Number(campaign.cost || 0),
+      impressions: Number(campaign.impressions || 0),
+      status: campaign.status || 'ACTIVE'
+    }));
+  }
+  
+  // Fallback apenas quando não houver dados reais
+  console.warn(`⚠️ Usando dados de fallback para ${platform} - campanhas detalhadas não disponíveis`);
+  
+  if (activeCampaignsCount === 0) {
+    return [];
+  }
+  
+  // Criar dados básicos apenas para compatibilidade
+  const campaigns: CampaignDetail[] = [];
+  for (let i = 0; i < activeCampaignsCount; i++) {
+    campaigns.push({
+      id: `fallback-${platform}-${i}`,
+      name: `Campanha ${platform} ${i + 1}`,
+      cost: costToday / activeCampaignsCount,
+      impressions: Math.floor(impressionsToday / activeCampaignsCount),
+      status: 'ACTIVE'
+    });
+  }
+  
+  return campaigns;
+}
+
 export function useIntelligentAnalysis(data: ClientHealthData[]) {
   return useMemo(() => {
     const enhancedData: EnhancedClientData[] = [];
@@ -88,9 +130,21 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         const metaDataArray: EnhancedPlatformData[] = [];
         
         client.metaAds.forEach((metaAccount, index) => {
-          // Usar dados diretos da tabela campaign_health
-          const activeCampaignsCount = metaAccount.hasActiveCampaigns ? 1 : 0;
-          const unservedCampaignsCount = metaAccount.costToday === 0 && metaAccount.impressionsToday === 0 && metaAccount.hasActiveCampaigns ? 1 : 0;
+          const activeCampaignsCount = metaAccount.activeCampaignsCount || 0;
+          
+          // Processar campanhas detalhadas reais
+          const campaignsDetailed = processCampaignDetails(
+            metaAccount.campaignsDetailed,
+            activeCampaignsCount,
+            metaAccount.costToday,
+            metaAccount.impressionsToday || 0,
+            'Meta'
+          );
+          
+          // Calcular unservedCampaignsCount baseado nos dados reais das campanhas
+          const unservedCampaignsCount = campaignsDetailed.filter(campaign => 
+            campaign.impressions === 0 && campaign.cost === 0
+          ).length;
           
           const alertLevel = determineAlertLevel(
             metaAccount.costToday,
@@ -130,7 +184,8 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
             impressionsToday: metaAccount.impressionsToday || 0,
             alertLevel,
             problems,
-            isPrimary: index === 0 // Primeira conta é considerada principal
+            isPrimary: index === 0,
+            campaignsDetailed
           });
         });
         
@@ -142,9 +197,21 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         const googleDataArray: EnhancedPlatformData[] = [];
         
         client.googleAds.forEach((googleAccount, index) => {
-          // Usar dados diretos da tabela campaign_health
-          const activeCampaignsCount = googleAccount.hasActiveCampaigns ? 1 : 0;
-          const unservedCampaignsCount = googleAccount.costToday === 0 && googleAccount.impressionsToday === 0 && googleAccount.hasActiveCampaigns ? 1 : 0;
+          const activeCampaignsCount = googleAccount.activeCampaignsCount || 0;
+          
+          // Processar campanhas detalhadas reais
+          const campaignsDetailed = processCampaignDetails(
+            googleAccount.campaignsDetailed,
+            activeCampaignsCount,
+            googleAccount.costToday,
+            googleAccount.impressionsToday || 0,
+            'Google'
+          );
+          
+          // Calcular unservedCampaignsCount baseado nos dados reais das campanhas
+          const unservedCampaignsCount = campaignsDetailed.filter(campaign => 
+            campaign.impressions === 0 && campaign.cost === 0
+          ).length;
           
           const alertLevel = determineAlertLevel(
             googleAccount.costToday,
@@ -184,7 +251,8 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
             impressionsToday: googleAccount.impressionsToday || 0,
             alertLevel,
             problems,
-            isPrimary: index === 0 // Primeira conta é considerada principal
+            isPrimary: index === 0,
+            campaignsDetailed
           });
         });
         

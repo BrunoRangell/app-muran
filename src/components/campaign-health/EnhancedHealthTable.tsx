@@ -1,4 +1,3 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Eye, Settings, ExternalLink, AlertTriangle, Zap, CheckCircle, Crown } from "lucide-react";
 import { EnhancedPlatformData, EnhancedClientData } from "./types/enhanced-types";
+import { CampaignDetailsTooltip } from "./CampaignDetailsTooltip";
 
 interface EnhancedHealthTableProps {
   data?: EnhancedClientData[];
@@ -131,18 +131,32 @@ function EnhancedPlatformCell({
                 </p>
               </div>
 
-              {/* Métricas compactas */}
+              {/* Métricas compactas com tooltips */}
               <div className="grid grid-cols-2 gap-1 text-xs mb-2">
-                <div className="bg-white rounded p-1">
-                  <div className="font-medium text-gray-800">{account.activeCampaignsCount}</div>
-                  <div className="text-gray-500 text-xs">Ativas</div>
-                </div>
-                <div className="bg-white rounded p-1">
-                  <div className={`font-medium ${account.unservedCampaignsCount > 0 ? 'text-orange-600' : 'text-gray-800'}`}>
-                    {account.unservedCampaignsCount}
+                <CampaignDetailsTooltip
+                  campaigns={account.campaignsDetailed || []}
+                  title="Campanhas Ativas"
+                  platform={platformName}
+                >
+                  <div className="bg-white rounded p-1 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="font-medium text-gray-800">{account.activeCampaignsCount}</div>
+                    <div className="text-gray-500 text-xs">Ativas</div>
                   </div>
-                  <div className="text-gray-500 text-xs">S/ veic.</div>
-                </div>
+                </CampaignDetailsTooltip>
+                
+                <CampaignDetailsTooltip
+                  campaigns={account.campaignsDetailed?.filter(c => c.impressions === 0 && c.cost === 0) || []}
+                  title="Campanhas Sem Veiculação"
+                  platform={platformName}
+                >
+                  <div className="bg-white rounded p-1 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className={`font-medium ${account.unservedCampaignsCount > 0 ? 'text-orange-600' : 'text-gray-800'}`}>
+                      {account.unservedCampaignsCount}
+                    </div>
+                    <div className="text-gray-500 text-xs">S/ veic.</div>
+                  </div>
+                </CampaignDetailsTooltip>
+                
                 <div className="bg-white rounded p-1">
                   <div className={`font-medium text-xs ${account.costToday > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                     R$ {account.costToday.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

@@ -10,6 +10,7 @@ export function HealthStatusIndicator({ status }: HealthStatusIndicatorProps) {
   const getStatusConfig = (status: CampaignStatus) => {
     switch (status) {
       case "active":
+      case "healthy":
         return {
           label: "Ativo",
           variant: "default" as const,
@@ -34,10 +35,17 @@ export function HealthStatusIndicator({ status }: HealthStatusIndicatorProps) {
           className: "border-gray-400 text-gray-600"
         };
       case "low-performance":
+      case "warning":
         return {
           label: "Baixa Performance",
           variant: "secondary" as const,
           className: "bg-orange-500 hover:bg-orange-600 text-white"
+        };
+      case "critical":
+        return {
+          label: "Crítico",
+          variant: "destructive" as const,
+          className: "bg-red-600 hover:bg-red-700 text-white"
         };
       case "no-data":
         return {
