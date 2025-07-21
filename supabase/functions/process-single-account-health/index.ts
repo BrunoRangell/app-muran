@@ -466,7 +466,7 @@ Deno.serve(async (req) => {
     
     const today = getTodayInBrazil();
     
-    // CORREÇÃO: Calcular campanhas sem veiculação baseado em impressões = 0 AND custo = 0
+    // Calcular campanhas sem veiculação baseado em impressões = 0 AND custo = 0
     const unservedCampaigns = campaignData.campaignsDetailed.filter(campaign => 
       campaign.impressions === 0 && campaign.cost === 0
     ).length;
@@ -480,7 +480,8 @@ Deno.serve(async (req) => {
       active_campaigns_count: campaignData.activeCampaigns,
       unserved_campaigns_count: unservedCampaigns,
       cost_today: campaignData.cost,
-      impressions_today: campaignData.impressions
+      impressions_today: campaignData.impressions,
+      campaigns_detailed: campaignData.campaignsDetailed
     };
 
     // Salvar dados

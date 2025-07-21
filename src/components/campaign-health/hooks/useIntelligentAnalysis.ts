@@ -72,45 +72,40 @@ function generateProblems(
   return problems;
 }
 
-// Simular dados detalhados das campanhas para compatibilidade com dados existentes
-function generateMockCampaignDetails(
+// Função para processar dados reais das campanhas da tabela campaign_health
+function processCampaignDetails(
+  campaignsDetailed: any[],
   activeCampaignsCount: number,
-  unservedCampaignsCount: number,
   costToday: number,
   impressionsToday: number,
   platform: string
 ): CampaignDetail[] {
-  const campaigns: CampaignDetail[] = [];
+  // Se temos dados reais detalhados, usá-los
+  if (campaignsDetailed && Array.isArray(campaignsDetailed) && campaignsDetailed.length > 0) {
+    return campaignsDetailed.map(campaign => ({
+      id: campaign.id || `${platform}-${Math.random()}`,
+      name: campaign.name || `Campanha ${platform}`,
+      cost: Number(campaign.cost || 0),
+      impressions: Number(campaign.impressions || 0),
+      status: campaign.status || 'ACTIVE'
+    }));
+  }
   
-  // Se temos dados detalhados reais, eles virão da API
-  // Esta função é apenas um fallback para dados legados
+  // Fallback apenas quando não houver dados reais
+  console.warn(`⚠️ Usando dados de fallback para ${platform} - campanhas detalhadas não disponíveis`);
   
   if (activeCampaignsCount === 0) {
-    return campaigns;
+    return [];
   }
   
-  const servingCampaigns = activeCampaignsCount - unservedCampaignsCount;
-  const avgCostPerServing = servingCampaigns > 0 ? costToday / servingCampaigns : 0;
-  const avgImpressionsPerServing = servingCampaigns > 0 ? impressionsToday / servingCampaigns : 0;
-  
-  // Criar campanhas que estão veiculando
-  for (let i = 0; i < servingCampaigns; i++) {
+  // Criar dados básicos apenas para compatibilidade
+  const campaigns: CampaignDetail[] = [];
+  for (let i = 0; i < activeCampaignsCount; i++) {
     campaigns.push({
-      id: `mock-serving-${i}`,
+      id: `fallback-${platform}-${i}`,
       name: `Campanha ${platform} ${i + 1}`,
-      cost: avgCostPerServing,
-      impressions: Math.floor(avgImpressionsPerServing),
-      status: 'ACTIVE'
-    });
-  }
-  
-  // Criar campanhas sem veiculação
-  for (let i = 0; i < unservedCampaignsCount; i++) {
-    campaigns.push({
-      id: `mock-unserved-${i}`,
-      name: `Campanha ${platform} Sem Veiculação ${i + 1}`,
-      cost: 0,
-      impressions: 0,
+      cost: costToday / activeCampaignsCount,
+      impressions: Math.floor(impressionsToday / activeCampaignsCount),
       status: 'ACTIVE'
     });
   }
@@ -137,11 +132,19 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         client.metaAds.forEach((metaAccount, index) => {
           const activeCampaignsCount = metaAccount.activeCampaignsCount || 0;
           
-          // CORREÇÃO: Calcular unservedCampaignsCount corretamente
-          // Baseado em campanhas com impressões = 0 AND custo = 0
-          const unservedCampaignsCount = (activeCampaignsCount > 0 && metaAccount.costToday === 0 && (metaAccount.impressionsToday || 0) === 0) 
-            ? activeCampaignsCount 
-            : 0;
+          // Processar campanhas detalhadas reais
+          const campaignsDetailed = processCampaignDetails(
+            metaAccount.campaignsDetailed || [],
+            activeCampaignsCount,
+            metaAccount.costToday,
+            metaAccount.impressionsToday || 0,
+            'Meta'
+          );
+          
+          // Calcular unservedCampaignsCount baseado nos dados reais das campanhas
+          const unservedCampaignsCount = campaignsDetailed.filter(campaign => 
+            campaign.impressions === 0 && campaign.cost === 0
+          ).length;
           
           const alertLevel = determineAlertLevel(
             metaAccount.costToday,
@@ -171,15 +174,6 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
             });
           }
           
-          // Gerar dados detalhados mock se não houver dados reais
-          const campaignsDetailed = generateMockCampaignDetails(
-            activeCampaignsCount,
-            unservedCampaignsCount,
-            metaAccount.costToday,
-            metaAccount.impressionsToday || 0,
-            'Meta'
-          );
-          
           metaDataArray.push({
             accountId: metaAccount.accountId || '',
             accountName: metaAccount.accountName,
@@ -205,10 +199,19 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
         client.googleAds.forEach((googleAccount, index) => {
           const activeCampaignsCount = googleAccount.activeCampaignsCount || 0;
           
-          // CORREÇÃO: Calcular unservedCampaignsCount corretamente  
-          const unservedCampaignsCount = (activeCampaignsCount > 0 && googleAccount.costToday === 0 && (googleAccount.impressionsToday || 0) === 0) 
-            ? activeCampaignsCount 
-            : 0;
+          // Processar campanhas detalhadas reais
+          const campaignsDetailed = processCampaignDetails(
+            googleAccount.campaignsDetailed || [],
+            activeCampaignsCount,
+            googleAccount.costToday,
+            googleAccount.impressionsToday || 0,
+            'Google'
+          );
+          
+          // Calcular unservedCampaignsCount baseado nos dados reais das campanhas
+          const unservedCampaignsCount = campaignsDetailed.filter(campaign => 
+            campaign.impressions === 0 && campaign.cost === 0
+          ).length;
           
           const alertLevel = determineAlertLevel(
             googleAccount.costToday,
@@ -237,15 +240,6 @@ export function useIntelligentAnalysis(data: ClientHealthData[]) {
               timestamp: new Date()
             });
           }
-          
-          // Gerar dados detalhados mock se não houver dados reais
-          const campaignsDetailed = generateMockCampaignDetails(
-            activeCampaignsCount,
-            unservedCampaignsCount,
-            googleAccount.costToday,
-            googleAccount.impressionsToday || 0,
-            'Google'
-          );
           
           googleDataArray.push({
             accountId: googleAccount.accountId || '',

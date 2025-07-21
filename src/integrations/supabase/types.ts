@@ -180,6 +180,7 @@ export type Database = {
         Row: {
           account_id: string
           active_campaigns_count: number
+          campaigns_detailed: Json | null
           client_id: string
           cost_today: number
           created_at: string
@@ -194,6 +195,7 @@ export type Database = {
         Insert: {
           account_id: string
           active_campaigns_count?: number
+          campaigns_detailed?: Json | null
           client_id: string
           cost_today?: number
           created_at?: string
@@ -208,6 +210,7 @@ export type Database = {
         Update: {
           account_id?: string
           active_campaigns_count?: number
+          campaigns_detailed?: Json | null
           client_id?: string
           cost_today?: number
           created_at?: string
