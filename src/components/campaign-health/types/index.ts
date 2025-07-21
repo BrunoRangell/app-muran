@@ -1,4 +1,12 @@
 
+export interface CampaignDetail {
+  id: string;
+  name: string;
+  cost: number;
+  impressions: number;
+  status: string;
+}
+
 export interface PlatformData {
   accountId?: string;
   accountName?: string;
@@ -12,14 +20,6 @@ export interface PlatformData {
   campaignsDetailed?: CampaignDetail[];
 }
 
-export interface CampaignDetail {
-  id: string;
-  name: string;
-  cost: number;
-  impressions: number;
-  status: string;
-}
-
 export interface ClientHealthData {
   clientId: string;
   clientName: string;
@@ -29,3 +29,16 @@ export interface ClientHealthData {
 }
 
 export type CampaignStatus = "healthy" | "warning" | "critical" | "no-data";
+
+export interface HealthStats {
+  totalClients: number;
+  totalAccounts: number;
+  totalCost: number;
+  totalImpressions: number;
+  clientsWithMeta: number;
+  clientsWithGoogle: number;
+  functioning: number;
+  noSpend: number;
+  noCampaigns: number;
+  notConfigured: number;
+}

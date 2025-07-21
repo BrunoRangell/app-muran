@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ClientHealthData } from "../types";
+import { ClientHealthData, HealthStats } from "../types";
 import { useState, useCallback } from "react";
 import { getTodayInBrazil } from "@/utils/brazilTimezone";
 
@@ -201,7 +201,7 @@ export function useActiveCampaignHealth() {
     }
   }, [isManualRefreshing, refetch]);
 
-  const stats = {
+  const stats: HealthStats = {
     totalClients: data?.length || 0,
     totalAccounts: data?.reduce((acc, client) => {
       return acc + (client.metaAds?.length || 0) + (client.googleAds?.length || 0);
@@ -216,6 +216,26 @@ export function useActiveCampaignHealth() {
       const googleImpressions = client.googleAds?.reduce((sum, account) => sum + (account.impressionsToday || 0), 0) || 0;
       return acc + metaImpressions + googleImpressions;
     }, 0) || 0,
+    clientsWithMeta: data?.filter(client => client.metaAds && client.metaAds.length > 0).length || 0,
+    clientsWithGoogle: data?.filter(client => client.googleAds && client.googleAds.length > 0).length || 0,
+    functioning: data?.filter(client => {
+      const metaFunctioning = client.metaAds?.some(account => account.costToday > 0 || (account.impressionsToday || 0) > 0);
+      const googleFunctioning = client.googleAds?.some(account => account.costToday > 0 || (account.impressionsToday || 0) > 0);
+      return metaFunctioning || googleFunctioning;
+    }).length || 0,
+    noSpend: data?.filter(client => {
+      const metaNoSpend = client.metaAds?.every(account => account.costToday === 0 && (account.impressionsToday || 0) === 0);
+      const googleNoSpend = client.googleAds?.every(account => account.costToday === 0 && (account.impressionsToday || 0) === 0);
+      return metaNoSpend && googleNoSpend;
+    }).length || 0,
+    noCampaigns: data?.filter(client => {
+      const metaNoCampaigns = client.metaAds?.every(account => (account.activeCampaignsCount || 0) === 0);
+      const googleNoCampaigns = client.googleAds?.every(account => (account.activeCampaignsCount || 0) === 0);
+      return metaNoCampaigns && googleNoCampaigns;
+    }).length || 0,
+    notConfigured: data?.filter(client => {
+      return (!client.metaAds || client.metaAds.length === 0) && (!client.googleAds || client.googleAds.length === 0);
+    }).length || 0,
   };
 
   return {

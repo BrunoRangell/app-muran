@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
 const corsHeaders = {
@@ -108,7 +109,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
 }> {
   try {
     const today = getTodayInBrazil();
-    console.log(`📊 Meta: Iniciando busca de campanhas para conta ${accountId}`);
+    console.log(`🔍 DEBUG Meta: Iniciando busca de campanhas para conta ${accountId} - Data: ${today}`);
     
     // Buscar todas as campanhas com paginação
     let allCampaigns: any[] = [];
@@ -143,9 +144,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       }
     }
     
-    if (pageCount >= 10) {
-      console.warn(`⚠️ Meta: Limite de páginas atingido (10) para conta ${accountId}`);
-    }
+    console.log(`📋 DEBUG Meta: Campanhas encontradas:`, allCampaigns.map(c => ({ id: c.id, name: c.name, status: c.effective_status })));
     
     // Filtrar campanhas ativas
     const activeCampaigns = allCampaigns.filter((campaign: any) => 
@@ -155,6 +154,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     console.log(`📈 Meta: ${activeCampaigns.length} campanhas ativas de ${allCampaigns.length} total`);
     
     if (activeCampaigns.length === 0) {
+      console.log(`⚠️ DEBUG Meta: Nenhuma campanha ativa encontrada`);
       return { 
         cost: 0, 
         impressions: 0, 
@@ -177,6 +177,8 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
         try {
           const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
           
+          console.log(`🔍 DEBUG Meta: Buscando insights para campanha ${campaign.id} (${campaign.name})`);
+          
           const response = await fetch(campaignInsightsUrl);
           const data = await response.json();
           
@@ -187,15 +189,22 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
             const insights = data.data[0];
             campaignCost = parseFloat(insights.spend || '0');
             campaignImpressions = parseInt(insights.impressions || '0');
+            console.log(`📊 DEBUG Meta: Campanha ${campaign.name} - Custo: ${campaignCost}, Impressões: ${campaignImpressions}`);
+          } else {
+            console.warn(`⚠️ DEBUG Meta: Sem insights para campanha ${campaign.name}:`, data);
           }
           
-          return {
+          const campaignDetail = {
             id: campaign.id,
             name: campaign.name,
             cost: campaignCost,
             impressions: campaignImpressions,
             status: campaign.effective_status
           };
+          
+          console.log(`📋 DEBUG Meta: Detalhes da campanha processada:`, campaignDetail);
+          
+          return campaignDetail;
         } catch (error) {
           console.error(`❌ Meta: Erro ao buscar insights da campanha ${campaign.id}:`, error);
           return {
@@ -225,6 +234,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     
     console.log(`💰 Meta: Custo total R$${totalCost.toFixed(2)}, Impressões totais: ${totalImpressions.toLocaleString()}`);
     console.log(`📊 Meta: Processadas ${campaignsDetailed.length} campanhas com detalhes`);
+    console.log(`📋 DEBUG Meta: Campanhas detalhadas finais:`, campaignsDetailed);
     
     return {
       cost: totalCost,
@@ -293,6 +303,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     }
 
     const today = getTodayForGoogleAds();
+    console.log(`🔍 DEBUG Google: Iniciando busca para conta ${clientCustomerId} - Data: ${today}`);
     
     const query = `
       SELECT 
@@ -339,6 +350,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     const data = await response.json();
     
     if (!data.results || !Array.isArray(data.results)) {
+      console.log(`⚠️ DEBUG Google: Sem resultados encontrados`);
       return { 
         cost: 0, 
         impressions: 0, 
@@ -346,6 +358,8 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         campaignsDetailed: []
       };
     }
+    
+    console.log(`📋 DEBUG Google: Resultados encontrados:`, data.results.length);
     
     let totalCost = 0;
     let totalImpressions = 0;
@@ -361,18 +375,23 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         totalCost += campaignCost;
         totalImpressions += parseInt(campaignImpressions);
         
-        campaignsDetailed.push({
+        const campaignDetail = {
           id: result.campaign.id.toString(),
           name: result.campaign.name || 'Campanha sem nome',
           cost: campaignCost,
           impressions: parseInt(campaignImpressions),
           status: result.campaign.status
-        });
+        };
+        
+        console.log(`📊 DEBUG Google: Campanha ${campaignDetail.name} - Custo: ${campaignCost}, Impressões: ${campaignImpressions}`);
+        
+        campaignsDetailed.push(campaignDetail);
       }
     });
     
     console.log(`💰 Google: Custo total R$${totalCost.toFixed(2)}, Impressões totais: ${totalImpressions.toLocaleString()}`);
     console.log(`📊 Google: Processadas ${campaignsDetailed.length} campanhas com detalhes`);
+    console.log(`📋 DEBUG Google: Campanhas detalhadas finais:`, campaignsDetailed);
     
     return {
       cost: totalCost,
@@ -484,6 +503,12 @@ Deno.serve(async (req) => {
       campaigns_detailed: campaignData.campaignsDetailed
     };
 
+    console.log(`🔍 DEBUG: Objeto antes de salvar no banco:`, {
+      ...healthSnapshot,
+      campaigns_detailed_length: campaignData.campaignsDetailed.length,
+      campaigns_detailed_sample: campaignData.campaignsDetailed.slice(0, 2)
+    });
+
     // Salvar dados
     const { error: upsertError } = await supabase
       .from('campaign_health')
@@ -498,6 +523,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`✅ ${account.platform.toUpperCase()}: Campanhas=${campaignData.activeCampaigns}, Custo=R$${campaignData.cost.toFixed(2)}, Sem veiculação=${unservedCampaigns}`);
+    console.log(`📊 DEBUG: Campanhas salvas no banco: ${campaignData.campaignsDetailed.length}`);
 
     return new Response(
       JSON.stringify({ 

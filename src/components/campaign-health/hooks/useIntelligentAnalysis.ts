@@ -82,6 +82,7 @@ function processCampaignDetails(
 ): CampaignDetail[] {
   // Se temos dados reais detalhados, usá-los
   if (campaignsDetailed && Array.isArray(campaignsDetailed) && campaignsDetailed.length > 0) {
+    console.log(`📊 Usando dados reais para ${platform}:`, campaignsDetailed.length, "campanhas");
     return campaignsDetailed.map(campaign => ({
       id: campaign.id || `${platform}-${Math.random()}`,
       name: campaign.name || `Campanha ${platform}`,
