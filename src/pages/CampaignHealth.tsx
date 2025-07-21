@@ -121,6 +121,9 @@ export default function CampaignHealth() {
     totalProblems: dashboardStats.criticalAlerts + dashboardStats.highAlerts + dashboardStats.mediumAlerts
   };
 
+  // Garantir que refreshProgress seja sempre um número
+  const normalizedRefreshProgress = typeof refreshProgress === 'number' ? refreshProgress : 0;
+
   return (
     <TeamMemberCheck>
       <AuthErrorHandler />
@@ -156,7 +159,7 @@ export default function CampaignHealth() {
           {/* Barra de progresso durante atualização */}
           <HealthProgressBar 
             isRefreshing={isManualRefreshing}
-            progress={refreshProgress}
+            progress={normalizedRefreshProgress}
             onCancel={() => {
               console.log("🛑 Cancelamento solicitado pelo usuário");
             }}
