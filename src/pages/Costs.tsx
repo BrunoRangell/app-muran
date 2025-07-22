@@ -16,6 +16,7 @@ import { DateFilter } from "@/components/costs/filters/DateFilter";
 import { Separator } from "@/components/ui/separator";
 import { ImportCostsDialog } from "@/components/costs/filters/import/ImportCostsDialog";
 import { Toaster } from "@/components/ui/toaster";
+import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
@@ -63,6 +64,7 @@ export default function Costs() {
   });
 
   return (
+    <TeamMemberCheck>
     <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -139,5 +141,6 @@ export default function Costs() {
 
       <Toaster />
     </div>
+    </TeamMemberCheck>
   );
 }
