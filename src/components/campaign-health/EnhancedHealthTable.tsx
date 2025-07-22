@@ -232,7 +232,7 @@ export function EnhancedHealthTable({
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-gray-500">Nenhum cliente encontrado com os filtros aplicados.</p>
+          <p className="text-gray-500">Nenhuma revisão disponível para hoje.</p>
         </CardContent>
       </Card>
     );

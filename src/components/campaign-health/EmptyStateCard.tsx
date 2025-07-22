@@ -36,11 +36,11 @@ export function EmptyStateCard({ onRefresh, isRefreshing, hasFilters }: EmptySta
           <Plus className="w-8 h-8 text-gray-400" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Nenhum cliente encontrado
+          Nenhuma revisão disponível para hoje
         </h3>
         <p className="text-gray-500 text-center mb-6 max-w-md">
-          Não há clientes com campanhas configuradas. 
-          Configure as contas de anúncios dos seus clientes para começar o monitoramento.
+          Os dados de hoje ainda não foram processados. 
+          Clique em atualizar para buscar os dados mais recentes.
         </p>
         <Button 
           variant="outline" 
