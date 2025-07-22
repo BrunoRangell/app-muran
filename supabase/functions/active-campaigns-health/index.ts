@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
 const corsHeaders = {
@@ -295,6 +294,23 @@ Deno.serve(async (req) => {
 
     console.log('🔍 NOVA ESTRUTURA: Iniciando busca de saúde de campanhas com tabela unificada...');
 
+    const today = getTodayInBrazil();
+
+    // 🧹 LIMPEZA AUTOMÁTICA: Remover dados antigos (manter apenas dados de hoje)
+    console.log(`🧹 Iniciando limpeza automática de dados antigos (< ${today})...`);
+    
+    const { data: deletedData, error: deleteError } = await supabase
+      .from('campaign_health')
+      .delete()
+      .lt('snapshot_date', today);
+
+    if (deleteError) {
+      console.error('❌ Erro ao limpar dados antigos:', deleteError);
+      // Continuar mesmo com erro na limpeza para não interromper a análise
+    } else {
+      console.log(`✅ Limpeza automática concluída: dados antigos removidos (snapshot_date < ${today})`);
+    }
+
     // Buscar token do Meta Ads
     const { data: metaToken } = await supabase
       .from('api_tokens')
@@ -338,7 +354,6 @@ Deno.serve(async (req) => {
 
     console.log(`✅ Nova estrutura: Encontradas ${accounts?.length || 0} contas ativas`);
 
-    const today = getTodayInBrazil();
     const healthData: CampaignHealthData[] = [];
 
     // Processar cada conta individualmente
@@ -402,6 +417,7 @@ Deno.serve(async (req) => {
     console.log(`🟥 Contas Google: ${googleAccounts.length}`);
     console.log(`💰 Contas com dados: ${accountsWithData.length} de ${healthData.length}`);
     console.log(`👥 Clientes únicos: ${uniqueClients}`);
+    console.log(`🧹 Limpeza automática: mantendo apenas dados de ${today}`);
 
     return new Response(
       JSON.stringify({ 
@@ -413,11 +429,13 @@ Deno.serve(async (req) => {
         metaAccounts: metaAccounts.length,
         googleAccounts: googleAccounts.length,
         new_structure: true,
+        auto_cleanup: true,
         debug: {
           accountsWithData: accountsWithData.length,
           uniqueClients: uniqueClients,
           timezone: 'America/Sao_Paulo',
-          unified_structure: 'client_accounts + campaign_health tables'
+          unified_structure: 'client_accounts + campaign_health tables',
+          cleanup_enabled: 'automatic removal of old data'
         }
       }),
       { 
@@ -434,7 +452,8 @@ Deno.serve(async (req) => {
         error: error.message,
         timestamp: new Date().toISOString(),
         brazil_date: getTodayInBrazil(),
-        new_structure: false
+        new_structure: false,
+        auto_cleanup: false
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
