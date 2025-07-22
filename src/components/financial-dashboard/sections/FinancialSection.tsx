@@ -7,12 +7,13 @@ import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinan
 
 interface FinancialSectionProps {
   filters: CostFilters;
+  metrics: any;
+  isLoading: boolean;
 }
 
-export const FinancialSection = ({ filters }: FinancialSectionProps) => {
-  const { allClientsMetrics, isLoadingAllClients } = useFinancialMetrics();
+export const FinancialSection = ({ filters, metrics, isLoading }: FinancialSectionProps) => {
 
-  if (isLoadingAllClients) {
+  if (isLoading) {
     return (
       <Card className="p-6">
         <div className="animate-pulse space-y-4">
@@ -27,7 +28,6 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
     );
   }
 
-  const metrics = allClientsMetrics;
   const profit = (metrics?.mrr || 0) - (metrics?.totalCosts || 0);
   const marginProfit = metrics?.mrr ? (profit / metrics.mrr) * 100 : 0;
 

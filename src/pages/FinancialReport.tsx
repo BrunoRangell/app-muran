@@ -5,12 +5,14 @@ import { UnifiedDashboard } from "@/components/financial-dashboard/UnifiedDashbo
 import { FiltersSidebar } from "@/components/financial-dashboard/FiltersSidebar";
 import { DashboardHeader } from "@/components/financial-dashboard/DashboardHeader";
 import { ExportTools } from "@/components/financial-dashboard/ExportTools";
+import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
 
 const FinancialReport = () => {
   const [filters, setFilters] = useState<CostFilters>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
+    <TeamMemberCheck>
     <div className="min-h-screen bg-gradient-to-br from-muran-secondary/20 to-white">
       {/* Sidebar de Filtros */}
       <FiltersSidebar 
@@ -37,6 +39,7 @@ const FinancialReport = () => {
         </div>
       </div>
     </div>
+    </TeamMemberCheck>
   );
 };
 

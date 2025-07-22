@@ -220,10 +220,10 @@ export default function CampaignHealth() {
                 <span className="text-4xl">📊</span>
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Nenhum cliente encontrado
+                Nenhuma revisão disponível para hoje
               </h3>
               <p className="text-gray-500 mb-4">
-                Configure as contas de anúncios dos seus clientes para começar o monitoramento.
+                Os dados de hoje ainda não foram processados. Clique em atualizar para buscar os dados mais recentes.
               </p>
               <button
                 onClick={handleRefresh}
