@@ -3,7 +3,6 @@ import { DollarSign, TrendingUp, PieChart, Target } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
-import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 
 interface FinancialSectionProps {
   filters: CostFilters;
@@ -12,7 +11,6 @@ interface FinancialSectionProps {
 }
 
 export const FinancialSection = ({ filters, metrics, isLoading }: FinancialSectionProps) => {
-
   if (isLoading) {
     return (
       <Card className="p-6">

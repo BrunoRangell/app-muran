@@ -1,8 +1,6 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { supabase } from "@/lib/supabase";
 import { CostFilters } from "@/types/cost";
 import { CostsMetrics } from "@/components/costs/CostsMetrics";
 import { CostsTable } from "@/components/costs/CostsTable";
@@ -17,51 +15,18 @@ import { Separator } from "@/components/ui/separator";
 import { ImportCostsDialog } from "@/components/costs/filters/import/ImportCostsDialog";
 import { Toaster } from "@/components/ui/toaster";
 import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
+import { useCosts } from "@/hooks/queries/useCosts";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
   const [selectedCost, setSelectedCost] = useState<Cost | null>(null);
   const [filters, setFilters] = useState<CostFilters>({});
 
-  const { data: costs, isLoading } = useQuery({
-    queryKey: ["costs", filters],
-    queryFn: async () => {
-      console.log('Buscando custos com filtros:', filters);
-      
-      let query = supabase
-        .from("costs")
-        .select("*, costs_categories(category_id)")
-        .order("date", { ascending: false });
+  const { costs, isLoading } = useCosts(filters);
 
-      if (filters.startDate) {
-        query = query.gte("date", filters.startDate);
-      }
-      if (filters.endDate) {
-        query = query.lte("date", filters.endDate);
-      }
-      if (filters.categories && filters.categories.length > 0) {
-        query = query.in("costs_categories.category_id", filters.categories);
-      }
-      if (filters.search) {
-        query = query.ilike("name", `%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Erro ao buscar custos:", error);
-        throw error;
-      }
-
-      const processedData = data.map(cost => ({
-        ...cost,
-        categories: cost.costs_categories.map((cc: any) => cc.category_id)
-      }));
-
-      console.log('Custos retornados:', processedData);
-      return processedData;
-    },
-  });
+  // Calcular totais
+  const totalCosts = (costs || []).reduce((sum, cost) => sum + cost.amount, 0);
+  const monthlyAverage = totalCosts / Math.max(1, new Set((costs || []).map(c => c.date.substring(0, 7))).size);
 
   return (
     <TeamMemberCheck>
@@ -93,7 +58,7 @@ export default function Costs() {
             <h4 className="text-sm font-medium text-gray-500">Total de Custos</h4>
             <p className="text-2xl font-bold text-gray-900">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                .format((costs || []).reduce((sum, cost) => sum + cost.amount, 0))}
+                .format(totalCosts)}
             </p>
           </div>
           
@@ -101,8 +66,7 @@ export default function Costs() {
             <h4 className="text-sm font-medium text-gray-500">Média Mensal</h4>
             <p className="text-2xl font-bold text-gray-900">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                .format((costs || []).reduce((sum, cost) => sum + cost.amount, 0) / 
-                  Math.max(1, new Set((costs || []).map(c => c.date.substring(0, 7))).size))}
+                .format(monthlyAverage)}
             </p>
           </div>
 

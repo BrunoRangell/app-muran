@@ -3,7 +3,6 @@ import { Users, UserPlus, UserMinus, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
-import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 
 interface ClientsSectionProps {
   filters: CostFilters;
@@ -12,7 +11,6 @@ interface ClientsSectionProps {
 }
 
 export const ClientsSection = ({ filters, metrics, isLoading }: ClientsSectionProps) => {
-
   if (isLoading) {
     return (
       <Card className="p-6">

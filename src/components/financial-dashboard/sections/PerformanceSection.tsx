@@ -3,7 +3,6 @@ import { Activity, Target, Zap, Award } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
-import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 
 interface PerformanceSectionProps {
   filters: CostFilters;
@@ -12,7 +11,6 @@ interface PerformanceSectionProps {
 }
 
 export const PerformanceSection = ({ filters, metrics, isLoading }: PerformanceSectionProps) => {
-
   if (isLoading) {
     return (
       <Card className="p-6">

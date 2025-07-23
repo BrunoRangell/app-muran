@@ -1,9 +1,8 @@
 
 import { differenceInMonths, parseISO, subMonths } from "date-fns";
 import { Client } from "@/components/clients/types";
-import { supabase } from "@/lib/supabase";
 
-export const calculateFinancialMetrics = async (clients: Client[]) => {
+export const calculateFinancialMetrics = (clients: Client[], costs: any[] = []) => {
   const today = new Date();
   const threeMonthsAgo = subMonths(today, 3);
   const activeClients = clients.filter(client => client.status === "active");
@@ -21,6 +20,7 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
 
   // Retenção Média (em meses)
   const retentionPeriods = clients.map(client => {
+    if (!client.first_payment_date) return 1;
     const startDate = parseISO(client.first_payment_date);
     const endDate = client.status === "active" 
       ? today 
@@ -28,7 +28,7 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     return Math.max(differenceInMonths(endDate, startDate), 1);
   });
 
-  const averageRetention = retentionPeriods.reduce((sum, months) => sum + months, 0) / totalClients;
+  const averageRetention = retentionPeriods.reduce((sum, months) => sum + months, 0) / Math.max(totalClients, 1);
 
   // Churn Rate (últimos 3 meses)
   const churned = clients.filter(client => 
@@ -50,12 +50,8 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   // LTV (Lifetime Value) - usando valor do contrato * retenção média
   const ltv = mrr * averageRetention;
 
-  // Buscar total de custos
-  const { data: costs } = await supabase
-    .from("costs")
-    .select("amount");
-
-  const totalCosts = (costs || []).reduce((acc, cost) => acc + Number(cost.amount), 0);
+  // Total de custos (recebido como parâmetro)
+  const totalCosts = costs.reduce((acc, cost) => acc + Number(cost.amount), 0);
 
   console.log("Financial metrics calculated:", {
     mrr,

@@ -12,8 +12,7 @@ interface MetricsOverviewProps {
 }
 
 export const MetricsOverview = ({ filters }: MetricsOverviewProps) => {
-  // Centralizar o hook aqui também
-  const { allClientsMetrics, isLoadingAllClients } = useFinancialMetrics();
+  const { financialData, isLoadingFinancialData } = useFinancialMetrics();
 
   return (
     <div className="space-y-8">
@@ -26,13 +25,13 @@ export const MetricsOverview = ({ filters }: MetricsOverviewProps) => {
         <div className="space-y-6">
           <FinancialSection 
             filters={filters} 
-            metrics={allClientsMetrics}
-            isLoading={isLoadingAllClients}
+            metrics={financialData}
+            isLoading={isLoadingFinancialData}
           />
           <CostsSection 
             filters={filters}
-            metrics={allClientsMetrics}
-            isLoading={isLoadingAllClients}
+            metrics={financialData}
+            isLoading={isLoadingFinancialData}
           />
         </div>
 
@@ -40,13 +39,13 @@ export const MetricsOverview = ({ filters }: MetricsOverviewProps) => {
         <div className="space-y-6">
           <ClientsSection 
             filters={filters}
-            metrics={allClientsMetrics}
-            isLoading={isLoadingAllClients}
+            metrics={financialData}
+            isLoading={isLoadingFinancialData}
           />
           <PerformanceSection 
             filters={filters}
-            metrics={allClientsMetrics}
-            isLoading={isLoadingAllClients}
+            metrics={financialData}
+            isLoading={isLoadingFinancialData}
           />
         </div>
       </div>

@@ -3,7 +3,6 @@ import { CreditCard, TrendingDown, AlertTriangle, Calculator } from "lucide-reac
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
-import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 
 interface CostsSectionProps {
   filters: CostFilters;
@@ -12,7 +11,6 @@ interface CostsSectionProps {
 }
 
 export const CostsSection = ({ filters, metrics, isLoading }: CostsSectionProps) => {
-
   if (isLoading) {
     return (
       <Card className="p-6">
