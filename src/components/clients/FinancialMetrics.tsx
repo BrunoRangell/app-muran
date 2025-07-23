@@ -11,7 +11,7 @@ export const FinancialMetrics = () => {
     dateRange,
     isCustomDateOpen,
     selectedMetrics,
-    isLoadingAllClients,
+    isLoadingFinancialData,
     clients,
     handlePeriodChange,
     setIsCustomDateOpen,
@@ -77,7 +77,7 @@ export const FinancialMetrics = () => {
 
   return (
     <div className="space-y-6">
-      {isLoadingAllClients ? (
+      {isLoadingFinancialData ? (
         <p className="text-gray-600">Carregando métricas...</p>
       ) : (
         <div className="space-y-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
