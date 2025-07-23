@@ -1,6 +1,5 @@
 
 import { useState } from "react";
-import { useClients } from "@/hooks/queries/useClients";
 import { useClientColumns } from "@/hooks/useClientColumns";
 import { useClientFilters } from "@/hooks/useClientFilters";
 import { ClientsTable } from "./table/ClientsTable";
@@ -9,12 +8,23 @@ import { Client } from "./types";
 import { ClientForm } from "@/components/admin/ClientForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-export const ClientsList = () => {
+interface ClientsListProps {
+  clients: Client[];
+}
+
+export const ClientsList = ({ clients }: ClientsListProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' }); // Corrigido para passar o objeto correto
+  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
   const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
-  const { clients, isLoading } = useClients(filters);
+
+  // Filtrar clientes localmente
+  const filteredClients = clients.filter(client => {
+    if (filters.status && client.status !== filters.status) return false;
+    if (filters.acquisition_channel && client.acquisition_channel !== filters.acquisition_channel) return false;
+    if (filters.payment_type && client.payment_type !== filters.payment_type) return false;
+    return true;
+  });
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);
@@ -39,12 +49,12 @@ export const ClientsList = () => {
       />
 
       <ClientsTable
-        clients={clients || []}
+        clients={filteredClients}
         columns={columns}
         onEditClick={handleEditClick}
         sortConfig={{ key: "", direction: "asc" }}
         onSort={() => {}}
-        isLoading={isLoading}
+        isLoading={false}
       />
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

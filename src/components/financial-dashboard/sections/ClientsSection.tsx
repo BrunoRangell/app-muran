@@ -7,10 +7,11 @@ import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
 interface ClientsSectionProps {
   filters: CostFilters;
   metrics: any;
+  clients?: any[];
   isLoading: boolean;
 }
 
-export const ClientsSection = ({ filters, metrics, isLoading }: ClientsSectionProps) => {
+export const ClientsSection = ({ filters, metrics, clients = [], isLoading }: ClientsSectionProps) => {
   if (isLoading) {
     return (
       <Card className="p-6">
@@ -32,6 +33,16 @@ export const ClientsSection = ({ filters, metrics, isLoading }: ClientsSectionPr
       maximumFractionDigits: 1,
     }).format(value);
   };
+
+  // Calcular novos clientes (últimos 30 dias)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const newClients = clients.filter(client => {
+    if (!client.first_payment_date) return false;
+    const firstPaymentDate = new Date(client.first_payment_date);
+    return firstPaymentDate >= thirtyDaysAgo;
+  }).length;
 
   return (
     <Card className="p-6 border-l-4 border-l-blue-500">
@@ -57,11 +68,11 @@ export const ClientsSection = ({ filters, metrics, isLoading }: ClientsSectionPr
 
         <InteractiveMetricCard
           title="Novos Clientes"
-          value="12"
+          value={newClients.toString()}
           icon={UserPlus}
           trend={{ value: 18.5, isPositive: true }}
           color="bg-green-500"
-          description="Adquiridos este mês"
+          description="Adquiridos nos últimos 30 dias"
         />
 
         <InteractiveMetricCard
@@ -70,7 +81,7 @@ export const ClientsSection = ({ filters, metrics, isLoading }: ClientsSectionPr
           icon={UserMinus}
           trend={{ value: 2.1, isPositive: false }}
           color={(metrics?.churnRate || 0) <= 5 ? "bg-green-500" : (metrics?.churnRate || 0) <= 10 ? "bg-yellow-500" : "bg-red-500"}
-          description="Taxa de cancelamento mensal"
+          description="Taxa de cancelamento nos últimos 3 meses"
         />
 
         <InteractiveMetricCard

@@ -2,20 +2,20 @@
 import { Card } from "@/components/ui/card";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
-import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 import { AlertCircle } from "lucide-react";
 import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
 import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
 import { Suspense } from "react";
+import { useFinancialData } from "@/hooks/useFinancialData";
 
 const Clients = () => {
-  const { clients, isLoadingFinancialData } = useFinancialMetrics();
+  const { data: financialData, isLoading, error } = useFinancialData();
 
-  if (isLoadingFinancialData) {
+  if (isLoading) {
     return <ClientsLoadingState />;
   }
 
-  if (!clients) {
+  if (error || !financialData) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4">
         <AlertCircle className="h-12 w-12" />
@@ -40,10 +40,10 @@ const Clients = () => {
 
         <Suspense fallback={<ClientsLoadingState />}>
           <Card className="p-2 md:p-6">
-            <ClientsList />
+            <ClientsList clients={financialData.clients} />
           </Card>
 
-          <ClientsRanking clients={clients || []} />
+          <ClientsRanking clients={financialData.clients || []} />
         </Suspense>
       </div>
     </TeamMemberCheck>

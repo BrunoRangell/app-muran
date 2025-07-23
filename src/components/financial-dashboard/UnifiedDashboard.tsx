@@ -5,15 +5,18 @@ import { ClientsSection } from "./sections/ClientsSection";
 import { CostsSection } from "./sections/CostsSection";
 import { PerformanceSection } from "./sections/PerformanceSection";
 import { InteractiveCharts } from "./components/InteractiveCharts";
-import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 
 interface UnifiedDashboardProps {
   filters: CostFilters;
+  financialData: {
+    clients: any[];
+    costs: any[];
+    payments: any[];
+    metrics: any;
+  };
 }
 
-export const UnifiedDashboard = ({ filters }: UnifiedDashboardProps) => {
-  const { financialData, isLoadingFinancialData } = useFinancialMetrics();
-
+export const UnifiedDashboard = ({ filters, financialData }: UnifiedDashboardProps) => {
   return (
     <div className="space-y-8">
       {/* Grid de Métricas Principais */}
@@ -22,13 +25,14 @@ export const UnifiedDashboard = ({ filters }: UnifiedDashboardProps) => {
         <div className="space-y-6">
           <FinancialSection 
             filters={filters} 
-            metrics={financialData}
-            isLoading={isLoadingFinancialData}
+            metrics={financialData.metrics}
+            isLoading={false}
           />
           <CostsSection 
             filters={filters}
-            metrics={financialData}
-            isLoading={isLoadingFinancialData}
+            metrics={financialData.metrics}
+            costs={financialData.costs}
+            isLoading={false}
           />
         </div>
 
@@ -36,19 +40,23 @@ export const UnifiedDashboard = ({ filters }: UnifiedDashboardProps) => {
         <div className="space-y-6">
           <ClientsSection 
             filters={filters}
-            metrics={financialData}
-            isLoading={isLoadingFinancialData}
+            metrics={financialData.metrics}
+            clients={financialData.clients}
+            isLoading={false}
           />
           <PerformanceSection 
             filters={filters}
-            metrics={financialData}
-            isLoading={isLoadingFinancialData}
+            metrics={financialData.metrics}
+            isLoading={false}
           />
         </div>
       </div>
 
       {/* Gráficos Interativos */}
-      <InteractiveCharts filters={filters} />
+      <InteractiveCharts 
+        filters={filters} 
+        financialData={financialData}
+      />
     </div>
   );
 };
