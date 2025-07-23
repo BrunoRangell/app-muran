@@ -57,14 +57,13 @@ export default function Costs() {
   const filteredCosts = costs.filter(cost => {
     if (filters.startDate && cost.date < filters.startDate) return false;
     if (filters.endDate && cost.date > filters.endDate) return false;
-    if (filters.categories?.length && !filters.categories.includes(cost.category_id)) return false;
     if (filters.search && !cost.name?.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
   });
 
   // Calcular totais
-  const totalCosts = filteredCosts.reduce((sum, cost) => sum + cost.amount, 0);
-  const monthlyAverage = totalCosts / Math.max(1, new Set(filteredCosts.map(c => c.date.substring(0, 7))).size);
+  const totalCosts = filteredCosts.reduce((sum, cost) => sum + (cost.amount || 0), 0);
+  const monthlyAverage = totalCosts / Math.max(1, new Set(filteredCosts.map(c => c.date?.substring(0, 7))).size);
 
   return (
     <TeamMemberCheck>

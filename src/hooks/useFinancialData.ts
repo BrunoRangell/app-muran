@@ -13,11 +13,23 @@ export const useFinancialData = () => {
       const [clientsResult, costsResult, paymentsResult] = await Promise.all([
         supabase
           .from("clients")
-          .select("id, company_name, status, contract_value, first_payment_date, last_payment_date, acquisition_channel, payment_type"),
+          .select(`
+            id, 
+            company_name, 
+            status, 
+            contract_value, 
+            first_payment_date, 
+            last_payment_date, 
+            acquisition_channel, 
+            payment_type,
+            company_birthday,
+            contact_name,
+            contact_phone
+          `),
         
         supabase
           .from("costs")
-          .select("id, amount, date, category_id"),
+          .select("id, name, amount, date, description, created_at, updated_at"),
         
         supabase
           .from("payments")

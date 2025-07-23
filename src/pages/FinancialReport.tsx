@@ -1,25 +1,24 @@
 
 import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CostFilters } from "@/types/cost";
 import { UnifiedDashboard } from "@/components/financial-dashboard/UnifiedDashboard";
-import { FiltersSidebar } from "@/components/financial-dashboard/FiltersSidebar";
-import { DashboardHeader } from "@/components/financial-dashboard/DashboardHeader";
-import { ExportTools } from "@/components/financial-dashboard/ExportTools";
+import { DetailedAnalytics } from "@/components/financial-dashboard/DetailedAnalytics";
+import { AlertCircle } from "lucide-react";
 import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
 import { useFinancialData } from "@/hooks/useFinancialData";
-import { AlertCircle } from "lucide-react";
 
-const FinancialReport = () => {
+export default function FinancialReport() {
   const [filters, setFilters] = useState<CostFilters>({});
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: financialData, isLoading, error } = useFinancialData();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-muran-secondary/20 to-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-muran-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando relatório financeiro...</p>
+      <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-muran-primary"></div>
+          <span className="ml-3">Carregando relatório financeiro...</span>
         </div>
       </div>
     );
@@ -27,7 +26,7 @@ const FinancialReport = () => {
 
   if (error || !financialData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-muran-secondary/20 to-white flex items-center justify-center">
+      <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
         <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4">
           <AlertCircle className="h-12 w-12" />
           <h2 className="text-xl font-semibold">Erro ao carregar relatório</h2>
@@ -43,37 +42,33 @@ const FinancialReport = () => {
 
   return (
     <TeamMemberCheck>
-      <div className="min-h-screen bg-gradient-to-br from-muran-secondary/20 to-white">
-        {/* Sidebar de Filtros */}
-        <FiltersSidebar 
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          filters={filters}
-          onFiltersChange={setFilters}
-        />
-
-        {/* Conteúdo Principal */}
-        <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-80' : 'ml-0'}`}>
-          <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-            {/* Header do Dashboard */}
-            <DashboardHeader 
-              onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-              sidebarOpen={sidebarOpen}
-            />
-
-            {/* Ferramentas de Exportação */}
-            <ExportTools filters={filters} />
-
-            {/* Dashboard Unificado */}
-            <UnifiedDashboard 
-              filters={filters} 
-              financialData={financialData}
-            />
+      <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
+              Relatório Financeiro
+            </h1>
+            <p className="text-gray-600">
+              Visão completa da saúde financeira da agência
+            </p>
           </div>
         </div>
+
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="analytics">Análise Detalhada</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <UnifiedDashboard filters={filters} financialData={financialData} />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <DetailedAnalytics filters={filters} financialData={financialData} />
+          </TabsContent>
+        </Tabs>
       </div>
     </TeamMemberCheck>
   );
-};
-
-export default FinancialReport;
+}
