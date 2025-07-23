@@ -30,8 +30,8 @@ export interface Client {
   company_name: string;
   contract_value: number;
   first_payment_date: string;
-  payment_type: "pre" | "post";
-  status: "active" | "inactive";
+  payment_type: string;  // Alterado de "pre" | "post" para string
+  status: string;  // Alterado de "active" | "inactive" para string
   acquisition_channel: string;
   company_birthday: string;
   contact_name: string;

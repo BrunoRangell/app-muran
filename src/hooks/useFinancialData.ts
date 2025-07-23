@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateFinancialMetrics } from "@/utils/financialCalculations";
+import { Client } from "@/components/clients/types";
 
 export const useFinancialData = () => {
   return useQuery({
@@ -52,7 +53,7 @@ export const useFinancialData = () => {
         throw paymentsResult.error;
       }
 
-      const clients = clientsResult.data || [];
+      const clients = clientsResult.data as Client[] || [];
       const costs = costsResult.data || [];
       const payments = paymentsResult.data || [];
 
