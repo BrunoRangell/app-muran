@@ -1,6 +1,6 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { addMonths, format } from "date-fns";
 import { calculateMonthlyMetrics } from "./utils/calculateMonthlyMetrics";
 import { Client } from "../types";
@@ -60,7 +60,7 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
       
       return months;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    retry: 3,
+    staleTime: 5 * 60 * 1000, // 5 minutos - sincronizado
+    retry: 1, // Reduzido para 1 retry
   });
 };

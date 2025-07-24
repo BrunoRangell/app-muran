@@ -5,14 +5,14 @@ import { ClientsSection } from "./sections/ClientsSection";
 import { CostsSection } from "./sections/CostsSection";
 import { PerformanceSection } from "./sections/PerformanceSection";
 import { QuickInsights } from "./components/QuickInsights";
-import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
+import { useFinancialData } from "@/hooks/useFinancialData";
 
 interface MetricsOverviewProps {
   filters: CostFilters;
 }
 
 export const MetricsOverview = ({ filters }: MetricsOverviewProps) => {
-  const { financialData, isLoadingFinancialData } = useFinancialMetrics();
+  const { data: financialData, isLoading: isLoadingFinancialData } = useFinancialData();
 
   return (
     <div className="space-y-8">
@@ -25,12 +25,13 @@ export const MetricsOverview = ({ filters }: MetricsOverviewProps) => {
         <div className="space-y-6">
           <FinancialSection 
             filters={filters} 
-            metrics={financialData}
+            metrics={financialData?.metrics}
             isLoading={isLoadingFinancialData}
           />
           <CostsSection 
             filters={filters}
-            metrics={financialData}
+            metrics={financialData?.metrics}
+            costs={financialData?.costs}
             isLoading={isLoadingFinancialData}
           />
         </div>
@@ -39,12 +40,13 @@ export const MetricsOverview = ({ filters }: MetricsOverviewProps) => {
         <div className="space-y-6">
           <ClientsSection 
             filters={filters}
-            metrics={financialData}
+            metrics={financialData?.metrics}
+            clients={financialData?.clients}
             isLoading={isLoadingFinancialData}
           />
           <PerformanceSection 
             filters={filters}
-            metrics={financialData}
+            metrics={financialData?.metrics}
             isLoading={isLoadingFinancialData}
           />
         </div>

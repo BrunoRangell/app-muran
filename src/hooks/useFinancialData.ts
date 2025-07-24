@@ -73,8 +73,8 @@ export const useFinancialData = () => {
         metrics
       };
     },
-    staleTime: 10 * 60 * 1000, // 10 minutos
-    gcTime: 15 * 60 * 1000, // 15 minutos
+    staleTime: 5 * 60 * 1000, // 5 minutos - reduzido para sincronia
+    gcTime: 10 * 60 * 1000, // 10 minutos
     retry: 1,
     refetchOnWindowFocus: false,
   });
