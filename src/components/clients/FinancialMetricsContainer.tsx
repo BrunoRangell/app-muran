@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears } from "date-fns";
-import { useMetricsData } from "./metrics/useMetricsData";
+import { useFinancialData } from "@/hooks/useFinancialData";
 import { MetricsChart } from "./metrics/MetricsChart";
 import { MetricsSwitch } from "./metrics/components/MetricsSwitch";
 import { METRIC_COLORS } from "./metrics/constants/metricColors";
@@ -89,7 +89,7 @@ export const FinancialMetricsContainer = ({ clients, isLoading }: FinancialMetri
     setDateRange(newDateRange);
   };
 
-  const { data: filteredClientsData } = useMetricsData(dateRange);
+  const { data: financialData } = useFinancialData();
 
   const getActiveLines = () => {
     const lines = [];
@@ -160,7 +160,7 @@ export const FinancialMetricsContainer = ({ clients, isLoading }: FinancialMetri
 
           <MetricsChart 
             title="" 
-            data={filteredClientsData || []} 
+            data={financialData?.clients || []} 
             periodFilter={periodFilter} 
             onPeriodChange={handlePeriodChange} 
             isCustomDateOpen={isCustomDateOpen} 

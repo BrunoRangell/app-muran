@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { ClientWithReview, MetaAccount } from "../types/reviewTypes";
 
 export const fetchClientsWithMetaData = async () => {

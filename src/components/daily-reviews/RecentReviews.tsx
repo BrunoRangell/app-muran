@@ -1,6 +1,6 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, ListChecks, Loader } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
