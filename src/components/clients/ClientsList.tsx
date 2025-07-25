@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useClients } from "@/hooks/queries/useClients";
 import { useClientColumns } from "@/hooks/useClientColumns";
 import { useClientFilters } from "@/hooks/useClientFilters";
 import { ClientsTable } from "./table/ClientsTable";
@@ -8,27 +9,12 @@ import { Client } from "./types";
 import { ClientForm } from "@/components/admin/ClientForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-interface ClientsListProps {
-  clients: Client[];
-}
-
-export const ClientsList = ({ clients }: ClientsListProps) => {
-  console.log("🔍 [ClientsList] Renderizando com", clients?.length || 0, "clientes");
-  
+export const ClientsList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
+  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' }); // Corrigido para passar o objeto correto
   const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
-
-  // Aplicar filtros localmente aos clientes recebidos
-  const filteredClients = clients?.filter(client => {
-    if (filters.status && filters.status !== client.status) return false;
-    if (filters.acquisition_channel && filters.acquisition_channel !== client.acquisition_channel) return false;
-    if (filters.payment_type && filters.payment_type !== client.payment_type) return false;
-    return true;
-  }) || [];
-
-  console.log("📊 [ClientsList] Clientes filtrados:", filteredClients.length);
+  const { clients, isLoading } = useClients(filters);
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);
@@ -53,12 +39,12 @@ export const ClientsList = ({ clients }: ClientsListProps) => {
       />
 
       <ClientsTable
-        clients={filteredClients}
+        clients={clients || []}
         columns={columns}
         onEditClick={handleEditClick}
         sortConfig={{ key: "", direction: "asc" }}
         onSort={() => {}}
-        isLoading={false}
+        isLoading={isLoading}
       />
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
