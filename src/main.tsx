@@ -25,16 +25,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Debug logging para React Query
-queryClient.setQueryDefaults(['clients'], {
-  onError: (error) => {
-    console.error('❌ [QueryClient] Erro na query de clientes:', error);
-  },
-  onSuccess: (data) => {
-    console.log('✅ [QueryClient] Query de clientes executada com sucesso:', data?.length || 0);
-  },
-});
-
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

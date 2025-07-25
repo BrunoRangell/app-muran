@@ -79,7 +79,14 @@ export const useClients = (filters?: {
     queryKey,
     queryFn: async () => {
       console.log("🚀 [useClients] QueryFn executada!");
-      return fetchClients(filters);
+      try {
+        const result = await fetchClients(filters);
+        console.log("✅ [useClients] Dados carregados com sucesso:", result?.length || 0);
+        return result;
+      } catch (error) {
+        console.error("❌ [useClients] Erro capturado no queryFn:", error);
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
@@ -92,12 +99,6 @@ export const useClients = (filters?: {
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     enabled: true, // Garantir que a query está habilitada
-    onError: (error) => {
-      console.error("❌ [useClients] Erro capturado no onError:", error);
-    },
-    onSuccess: (data) => {
-      console.log("✅ [useClients] Dados carregados com sucesso:", data?.length || 0);
-    },
   });
 
   // Log do estado atual
