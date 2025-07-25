@@ -20,8 +20,6 @@ export const fetchClientsWithReviews = async () => {
     .select(`
       id,
       company_name,
-      meta_account_id,
-      meta_ads_budget,
       status
     `)
     .eq('status', 'active')
@@ -34,12 +32,12 @@ export const fetchClientsWithReviews = async () => {
   
   // Agora, para cada cliente, buscar apenas a revisão mais recente
   let lastReviewTime: Date | null = null;
-  const processedClients = [];
+  const processedClients: ClientWithReview[] = [];
   
   for (const client of clientsData || []) {
     // Buscar apenas a revisão mais recente para este cliente
     const { data: reviewData, error: reviewError } = await supabase
-      .from('daily_budget_reviews')
+      .from('budget_reviews')
       .select('*')
       .eq('client_id', client.id)
       .order('review_date', { ascending: false })
@@ -52,19 +50,45 @@ export const fetchClientsWithReviews = async () => {
       // Continuar com o próximo cliente
       processedClients.push({
         ...client,
-        lastReview: null
+        lastReview: null,
+        status: client.status
       });
       continue;
     }
     
+    // Buscar contas Meta para este cliente
+    const { data: metaAccounts } = await supabase
+      .from('client_accounts')
+      .select('*')
+      .eq('client_id', client.id)
+      .eq('platform', 'meta')
+      .eq('status', 'active');
+    
+    // Buscar contas Google para este cliente
+    const { data: googleAccounts } = await supabase
+      .from('client_accounts')
+      .select('*')
+      .eq('client_id', client.id)
+      .eq('platform', 'google')
+      .eq('status', 'active');
+    
     // Adicionar a revisão mais recente ao cliente
     processedClients.push({
       ...client,
-      lastReview: reviewData
+      lastReview: reviewData ? {
+        ...reviewData,
+        google_daily_budget_current: reviewData.daily_budget_current || 0,
+        google_total_spent: reviewData.total_spent || 0,
+        meta_daily_budget_current: reviewData.daily_budget_current || 0,
+        meta_total_spent: reviewData.total_spent || 0,
+      } : null,
+      status: client.status,
+      meta_accounts: metaAccounts || [],
+      google_accounts: googleAccounts || [],
     });
     
     // Atualizar o timestamp da revisão mais recente global
-    if (reviewData) {
+    if (reviewData && reviewData.created_at) {
       const reviewDate = new Date(reviewData.created_at);
       if (!lastReviewTime || reviewDate > lastReviewTime) {
         lastReviewTime = reviewDate;
@@ -75,7 +99,7 @@ export const fetchClientsWithReviews = async () => {
   console.log("Clientes processados com revisões:", processedClients?.length);
   
   return { 
-    clientsData: processedClients as ClientWithReview[] || [],
+    clientsData: processedClients || [],
     lastReviewTime 
   };
 };
