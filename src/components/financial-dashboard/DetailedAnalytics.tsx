@@ -6,19 +6,13 @@ import { TrendAnalysis } from "./components/TrendAnalysis";
 
 interface DetailedAnalyticsProps {
   filters: CostFilters;
-  financialData: {
-    clients: any[];
-    costs: any[];
-    payments: any[];
-    metrics: any;
-  };
 }
 
-export const DetailedAnalytics = ({ filters, financialData }: DetailedAnalyticsProps) => {
+export const DetailedAnalytics = ({ filters }: DetailedAnalyticsProps) => {
   return (
     <div className="space-y-8">
       {/* Gráficos Interativos */}
-      <InteractiveCharts filters={filters} financialData={financialData} />
+      <InteractiveCharts filters={filters} />
 
       {/* Análise Comparativa */}
       <ComparativeAnalysis filters={filters} />

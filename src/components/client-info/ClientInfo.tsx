@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, DollarSign, BadgeDollarSign } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
@@ -29,7 +29,7 @@ export function ClientInfo({ client }: ClientInfoProps) {
         // Buscar orçamento personalizado ativo para a data atual
         const today = new Date().toISOString().split('T')[0];
         const { data, error } = await supabase
-          .from("custom_budgets")
+          .from("meta_custom_budgets")
           .select("*")
           .eq("client_id", client.id)
           .eq("is_active", true)

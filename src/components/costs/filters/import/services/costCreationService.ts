@@ -1,5 +1,5 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { Transaction } from "../types";
 import { CostCategory } from "@/types/cost";
 

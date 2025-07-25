@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useClientBudgetRecommendation } from "../hooks/useClientBudgetRecommendation";
 
 export const useClientReviewDetails = (clientId: string) => {
@@ -37,28 +37,6 @@ export const useClientReviewDetails = (clientId: string) => {
     },
   });
 
-  // Buscar conta Meta do cliente
-  const { data: metaAccount } = useQuery({
-    queryKey: ["client-meta-account", clientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("client_accounts")
-        .select("*")
-        .eq("client_id", clientId)
-        .eq("platform", "meta")
-        .eq("status", "active")
-        .maybeSingle();
-
-      if (error) {
-        console.error("Erro ao buscar conta Meta:", error);
-        return null;
-      }
-      
-      return data;
-    },
-    enabled: !!client,
-  });
-
   // Buscar orçamento personalizado ativo
   const { data: customBudget, isLoading: isLoadingCustomBudget } = useQuery({
     queryKey: ["custom-budget", clientId],
@@ -92,10 +70,9 @@ export const useClientReviewDetails = (clientId: string) => {
     queryFn: async () => {
       console.log("Buscando revisão mais recente para cliente:", clientId);
       const { data, error } = await supabase
-        .from("budget_reviews")
+        .from("daily_budget_reviews")
         .select("*")
         .eq("client_id", clientId)
-        .eq("platform", "meta")
         .order("review_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(1)
@@ -110,17 +87,17 @@ export const useClientReviewDetails = (clientId: string) => {
       
       // Garantir que os valores numéricos sejam convertidos corretamente
       if (data) {
-        if (data.total_spent !== null && data.total_spent !== undefined) {
-          data.total_spent = Number(data.total_spent);
+        if (data.meta_total_spent !== null && data.meta_total_spent !== undefined) {
+          data.meta_total_spent = Number(data.meta_total_spent);
         }
         
-        if (data.daily_budget_current !== null && data.daily_budget_current !== undefined) {
-          data.daily_budget_current = Number(data.daily_budget_current);
+        if (data.meta_daily_budget_current !== null && data.meta_daily_budget_current !== undefined) {
+          data.meta_daily_budget_current = Number(data.meta_daily_budget_current);
         }
         
         console.log("Valores convertidos:", {
-          total_spent: data.total_spent,
-          daily_budget_current: data.daily_budget_current
+          meta_total_spent: data.meta_total_spent,
+          meta_daily_budget_current: data.meta_daily_budget_current
         });
       }
       
@@ -135,10 +112,9 @@ export const useClientReviewDetails = (clientId: string) => {
     queryFn: async () => {
       console.log("Buscando histórico de revisões para cliente:", clientId);
       const { data, error } = await supabase
-        .from("budget_reviews")
+        .from("daily_budget_reviews")
         .select("*")
         .eq("client_id", clientId)
-        .eq("platform", "meta")
         .order("review_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(10);
@@ -154,8 +130,8 @@ export const useClientReviewDetails = (clientId: string) => {
       if (data && data.length > 0) {
         return data.map(review => ({
           ...review,
-          total_spent: review.total_spent !== null ? Number(review.total_spent) : null,
-          daily_budget_current: review.daily_budget_current !== null ? Number(review.daily_budget_current) : null
+          meta_total_spent: review.meta_total_spent !== null ? Number(review.meta_total_spent) : null,
+          meta_daily_budget_current: review.meta_daily_budget_current !== null ? Number(review.meta_daily_budget_current) : null
         }));
       }
       
@@ -166,7 +142,7 @@ export const useClientReviewDetails = (clientId: string) => {
 
   // Determinar se está usando orçamento personalizado
   const usingCustomBudget = customBudget !== null;
-  const monthlyBudget = customBudget?.budget_amount || metaAccount?.budget_amount;
+  const monthlyBudget = customBudget?.budget_amount || client?.meta_ads_budget;
 
   // Calcular recomendações de orçamento usando o hook separado
   const {
@@ -176,9 +152,9 @@ export const useClientReviewDetails = (clientId: string) => {
     remainingDays,
     remainingBudget
   } = useClientBudgetRecommendation(
-    metaAccount?.budget_amount,
-    latestReview?.total_spent,
-    latestReview?.daily_budget_current,
+    client?.meta_ads_budget,
+    latestReview?.meta_total_spent,
+    latestReview?.meta_daily_budget_current,
     customBudget?.budget_amount,
     customBudget?.start_date,
     customBudget?.end_date,
@@ -190,7 +166,6 @@ export const useClientReviewDetails = (clientId: string) => {
 
   return {
     client,
-    metaAccount,
     latestReview,
     reviewHistory,
     customBudget,
@@ -205,7 +180,7 @@ export const useClientReviewDetails = (clientId: string) => {
     remainingDays,
     remainingBudget,
     monthlyBudget,
-    totalSpent: latestReview?.total_spent,
+    totalSpent: latestReview?.meta_total_spent,
     usingCustomBudget
   };
 };

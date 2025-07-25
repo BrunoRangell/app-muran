@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Loader, Zap, RefreshCw } from "lucide-react";
 import { useMetaReviewService } from "@/components/common/hooks/useMetaReviewService";
@@ -53,7 +53,7 @@ export function AutoReviewSettings() {
         .maybeSingle();
       
       if (configData?.value) {
-        setLastReviewTime(String(configData.value));
+        setLastReviewTime(configData.value);
       }
       
       const { data: autoReviewConfig } = await supabase
@@ -63,7 +63,7 @@ export function AutoReviewSettings() {
         .maybeSingle();
       
       if (autoReviewConfig?.value !== undefined) {
-        setIsAutoReviewEnabled(String(autoReviewConfig.value) === "true");
+        setIsAutoReviewEnabled(autoReviewConfig.value === "true");
       }
       
     } catch (error) {

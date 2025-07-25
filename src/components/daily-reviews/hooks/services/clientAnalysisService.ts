@@ -1,57 +1,65 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 
-export const fetchClientAnalysis = async (clientId: string) => {
+export const reviewClient = async (clientId: string, metaAccountId?: string) => {
   try {
-    // Como não existe a tabela client_analysis, vamos buscar nos system_logs
-    const { data, error } = await supabase
-      .from("system_logs")
-      .select("*")
-      .eq("event_type", "client_analysis")
-      .or(`details->>'client_id'.eq.${clientId}`)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` com conta Meta ${metaAccountId}` : ''}`);
 
-    if (error) {
-      console.error("Erro ao buscar análise do cliente:", error);
-      return null;
+    // Se for fornecido um ID de conta Meta específica, buscar os detalhes dessa conta
+    let metaAccountName: string | undefined;
+    let metaBudgetAmount: number | undefined;
+
+    if (metaAccountId) {
+      const { data: metaAccount, error: metaError } = await supabase
+        .from('client_meta_accounts')
+        .select('account_name, budget_amount')
+        .eq('client_id', clientId)
+        .eq('account_id', metaAccountId)
+        .maybeSingle();
+
+      if (metaError) throw metaError;
+
+      if (metaAccount) {
+        metaAccountName = metaAccount.account_name;
+        metaBudgetAmount = metaAccount.budget_amount;
+      }
     }
 
-    return data;
-  } catch (error) {
-    console.error("Erro ao buscar análise do cliente:", error);
-    return null;
-  }
-};
-
-export const updateClientAnalysis = async (
-  clientId: string,
-  analysisData: any
-) => {
-  try {
-    // Salvar análise como log do sistema
-    const { data, error } = await supabase
-      .from("system_logs")
-      .insert({
-        event_type: "client_analysis",
-        message: `Análise do cliente ${clientId} atualizada`,
-        details: {
-          client_id: clientId,
-          ...analysisData,
-        },
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Erro ao atualizar análise do cliente:", error);
-      return null;
+    // Montar payload da requisição com as informações da conta específica, se fornecida
+    const reviewDate = new Date().toISOString().split('T')[0];
+    
+    interface ReviewPayload {
+      clientId: string;
+      metaAccountId?: string;
+      reviewDate: string;
+      metaAccountName?: string;
+      metaBudgetAmount?: number;
+    }
+    
+    const payload: ReviewPayload = {
+      clientId,
+      metaAccountId,
+      reviewDate
+    };
+    
+    // Adicionar informações opcionais ao payload, se disponíveis
+    if (metaAccountName) {
+      payload.metaAccountName = metaAccountName;
+    }
+    
+    if (metaBudgetAmount !== undefined) {
+      payload.metaBudgetAmount = metaBudgetAmount;
     }
 
-    return data;
+    // Fazer chamada para a edge function
+    const url = `${window.location.origin}/api/daily-meta-review`;
+    const response = await axios.post(url, payload);
+
+    console.log("Resposta da função Edge:", response.data);
+    return response.data;
   } catch (error) {
-    console.error("Erro ao atualizar análise do cliente:", error);
-    return null;
+    console.error("Erro ao revisar cliente:", error);
+    throw error;
   }
 };

@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,11 +20,11 @@ export function CronDiagnostics() {
     try {
       setIsLoading(true);
       
-      // Buscar jobs usando a função do banco
+      // Buscar status atual dos jobs ativos (apenas os 2 jobs otimizados)
       const { data: jobsData, error: jobsError } = await supabase
-        .rpc('get_cron_jobs', { 
-          job_names: ['google-ads-token-check-job', 'cron-health-check'] 
-        });
+        .from('cron.job')
+        .select('jobid, jobname, schedule, active')
+        .in('jobname', ['google-ads-token-check-job', 'cron-health-check']);
       
       // Buscar logs recentes do sistema
       const { data: logsData, error: logsError } = await supabase

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Save } from "lucide-react";
 
@@ -38,12 +38,11 @@ export const ClientMetaAccountSettings = ({
     setIsSaving(true);
     
     try {
-      // Atualizar o ID da conta Meta na tabela client_accounts
+      // Atualizar o ID da conta Meta do cliente
       const { error } = await supabase
-        .from("client_accounts")
-        .update({ account_id: accountId })
-        .eq("client_id", clientId)
-        .eq("platform", "meta");
+        .from("clients")
+        .update({ meta_account_id: accountId })
+        .eq("id", clientId);
         
       if (error) throw error;
       

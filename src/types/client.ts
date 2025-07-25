@@ -3,8 +3,8 @@ export interface ClientFormData {
   companyName: string;
   contractValue: number;
   firstPaymentDate: string;
-  paymentType: string;  // Alterado de "pre" | "post" para string
-  status: string;  // Alterado de "active" | "inactive" para string
+  paymentType: "pre" | "post";
+  status: "active" | "inactive";
   acquisitionChannel?: string;
   customAcquisitionChannel?: string;
   companyBirthday?: string;

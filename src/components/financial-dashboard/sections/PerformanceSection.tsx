@@ -3,15 +3,16 @@ import { Activity, Target, Zap, Award } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
+import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 
 interface PerformanceSectionProps {
   filters: CostFilters;
-  metrics: any;
-  isLoading: boolean;
 }
 
-export const PerformanceSection = ({ filters, metrics, isLoading }: PerformanceSectionProps) => {
-  if (isLoading) {
+export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
+  const { allClientsMetrics, isLoadingAllClients } = useFinancialMetrics();
+
+  if (isLoadingAllClients) {
     return (
       <Card className="p-6">
         <div className="animate-pulse space-y-4">
@@ -25,6 +26,8 @@ export const PerformanceSection = ({ filters, metrics, isLoading }: PerformanceS
       </Card>
     );
   }
+
+  const metrics = allClientsMetrics;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {

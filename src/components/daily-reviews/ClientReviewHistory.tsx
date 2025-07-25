@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { formatCurrency } from "@/utils/formatters";
 
 interface ClientReviewHistoryProps {
@@ -20,10 +20,9 @@ export const ClientReviewHistory = ({ clientId }: ClientReviewHistoryProps) => {
       
       try {
         const { data, error } = await supabase
-          .from("budget_reviews")
+          .from("daily_budget_reviews")
           .select("*")
           .eq("client_id", clientId)
-          .eq("platform", "meta")
           .order("review_date", { ascending: false })
           .limit(30);
           
@@ -79,10 +78,10 @@ export const ClientReviewHistory = ({ clientId }: ClientReviewHistoryProps) => {
                     {new Date(item.review_date).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="py-2 px-4">
-                    {formatCurrency(item.daily_budget_current)}
+                    {formatCurrency(item.meta_daily_budget_current)}
                   </td>
                   <td className="py-2 px-4">
-                    {formatCurrency(item.total_spent)}
+                    {formatCurrency(item.meta_total_spent)}
                   </td>
                   <td className="py-2 px-4">
                     {item.using_custom_budget ? 

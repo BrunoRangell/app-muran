@@ -7,8 +7,8 @@ interface ClientData {
   company_name: string;
   contract_value: number;
   first_payment_date: string;
-  payment_type: string;  // Alterado de "pre" | "post" para string
-  status: string;  // Alterado de "active" | "inactive" para string
+  payment_type: "pre" | "post";
+  status: "active" | "inactive";
   acquisition_channel: string;
   company_birthday: string | null;
   contact_name: string;

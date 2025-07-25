@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 
 // Estrutura reformulada para separar Meta e Google Ads
 export type CampaignStatus = "ok" | "warning" | "error" | "nodata";
