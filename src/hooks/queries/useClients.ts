@@ -4,6 +4,60 @@ import { supabase } from "@/integrations/supabase/client";
 import { Client } from "@/components/clients/types";
 import { useToast } from "@/hooks/use-toast";
 
+// Função separada para buscar clientes
+const fetchClients = async (filters?: {
+  status?: string;
+  acquisition_channel?: string;
+  payment_type?: string;
+}) => {
+  console.log("🔍 [fetchClients] Iniciando busca de clientes...");
+  console.log("🔍 [fetchClients] Filtros recebidos:", filters);
+  
+  try {
+    // Verificar se o supabase está disponível
+    if (!supabase) {
+      console.error("❌ [fetchClients] Supabase client não está disponível");
+      throw new Error("Supabase client não está disponível");
+    }
+
+    console.log("🔄 [fetchClients] Construindo query...");
+    
+    let query = supabase
+      .from("clients")
+      .select("*");
+
+    // Aplicar filtros apenas se existirem
+    if (filters?.status) {
+      console.log("🔧 [fetchClients] Aplicando filtro de status:", filters.status);
+      query = query.eq('status', filters.status);
+    }
+    if (filters?.acquisition_channel) {
+      console.log("🔧 [fetchClients] Aplicando filtro de canal:", filters.acquisition_channel);
+      query = query.eq('acquisition_channel', filters.acquisition_channel);
+    }
+    if (filters?.payment_type) {
+      console.log("🔧 [fetchClients] Aplicando filtro de pagamento:", filters.payment_type);
+      query = query.eq('payment_type', filters.payment_type);
+    }
+
+    console.log("🚀 [fetchClients] Executando query no Supabase...");
+    const { data, error } = await query.order("company_name");
+
+    if (error) {
+      console.error("❌ [fetchClients] Erro retornado pelo Supabase:", error);
+      throw new Error(`Erro ao buscar clientes: ${error.message}`);
+    }
+
+    console.log("✅ [fetchClients] Query executada com sucesso!");
+    console.log("✅ [fetchClients] Dados retornados:", data?.length || 0, "clientes");
+    
+    return data as Client[];
+  } catch (error) {
+    console.error("❌ [fetchClients] Erro na função fetchClients:", error);
+    throw error;
+  }
+};
+
 export const useClients = (filters?: {
   status?: string;
   acquisition_channel?: string;
@@ -12,43 +66,20 @@ export const useClients = (filters?: {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Chave única para evitar conflitos
-  const queryKey = ["clients-list", filters];
+  console.log("🔍 [useClients] Hook iniciado com filtros:", filters);
 
-  const { data: clients, isLoading, error } = useQuery({
+  // Criar chave única e simplificada
+  const queryKey = filters 
+    ? ["clients", "filtered", JSON.stringify(filters)] 
+    : ["clients", "all"];
+
+  console.log("🔑 [useClients] Query key gerada:", queryKey);
+
+  const { data: clients, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => {
-      console.log("🔍 [useClients] Iniciando busca de clientes com filtros:", filters);
-      
-      try {
-        let query = supabase
-          .from("clients")
-          .select("*");
-
-        // Aplicar filtros apenas se existirem
-        if (filters?.status) {
-          query = query.eq('status', filters.status);
-        }
-        if (filters?.acquisition_channel) {
-          query = query.eq('acquisition_channel', filters.acquisition_channel);
-        }
-        if (filters?.payment_type) {
-          query = query.eq('payment_type', filters.payment_type);
-        }
-
-        const { data, error } = await query.order("company_name");
-
-        if (error) {
-          console.error("❌ [useClients] Erro ao buscar clientes:", error);
-          throw new Error(`Erro ao buscar clientes: ${error.message}`);
-        }
-
-        console.log("✅ [useClients] Clientes encontrados:", data?.length || 0);
-        return data as Client[];
-      } catch (error) {
-        console.error("❌ [useClients] Erro na função queryFn:", error);
-        throw error;
-      }
+      console.log("🚀 [useClients] QueryFn executada!");
+      return fetchClients(filters);
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
@@ -59,9 +90,27 @@ export const useClients = (filters?: {
       return delay;
     },
     refetchOnWindowFocus: false,
-    refetchOnMount: true
+    refetchOnMount: true,
+    enabled: true, // Garantir que a query está habilitada
+    onError: (error) => {
+      console.error("❌ [useClients] Erro capturado no onError:", error);
+    },
+    onSuccess: (data) => {
+      console.log("✅ [useClients] Dados carregados com sucesso:", data?.length || 0);
+    },
   });
 
+  // Log do estado atual
+  console.log("📊 [useClients] Estado atual:", {
+    isLoading,
+    clientsCount: clients?.length || 0,
+    hasError: !!error,
+    errorMessage: error?.message,
+    filters,
+    queryKey
+  });
+
+  // Mutações existentes mantidas...
   const createClient = useMutation({
     mutationFn: async (client: Omit<Client, "id">) => {
       console.log("➕ [useClients] Criando cliente:", client.company_name);
@@ -81,7 +130,7 @@ export const useClients = (filters?: {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
       toast({
         title: "Cliente criado",
         description: "Cliente cadastrado com sucesso!",
@@ -117,7 +166,7 @@ export const useClients = (filters?: {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
       toast({
         title: "Cliente atualizado",
         description: "Cliente atualizado com sucesso!",
@@ -150,7 +199,7 @@ export const useClients = (filters?: {
       console.log("✅ [useClients] Cliente excluído com sucesso:", id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients-list"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
       toast({
         title: "Cliente excluído",
         description: "Cliente excluído com sucesso!",
@@ -166,38 +215,16 @@ export const useClients = (filters?: {
     }
   });
 
-  // Função auxiliar para buscar apenas clientes ativos
-  const useActiveClients = () => {
-    return useQuery({
-      queryKey: ["clients-active"],
-      queryFn: async () => {
-        console.log("🔍 [useActiveClients] Buscando clientes ativos");
-        
-        const { data, error } = await supabase
-          .from("clients")
-          .select("*")
-          .eq('status', 'active')
-          .order("company_name");
-
-        if (error) {
-          console.error("❌ [useActiveClients] Erro ao buscar clientes ativos:", error);
-          throw error;
-        }
-
-        console.log("✅ [useActiveClients] Clientes ativos encontrados:", data?.length || 0);
-        return data as Client[];
-      },
-      staleTime: 5 * 60 * 1000,
-      retry: 3,
-    });
+  // Função para forçar refresh
+  const forceRefresh = async () => {
+    console.log("🔄 [useClients] Forçando refresh dos dados...");
+    try {
+      await refetch();
+      console.log("✅ [useClients] Refresh concluído");
+    } catch (error) {
+      console.error("❌ [useClients] Erro no refresh:", error);
+    }
   };
-
-  console.log("🔍 [useClients] Estado atual do hook:", {
-    isLoading,
-    clientsCount: clients?.length || 0,
-    hasError: !!error,
-    filters
-  });
 
   return {
     clients,
@@ -206,6 +233,6 @@ export const useClients = (filters?: {
     createClient,
     updateClient,
     deleteClient,
-    useActiveClients
+    forceRefresh
   };
 };
