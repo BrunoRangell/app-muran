@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ClientWithReview, MetaAccount } from "../types/reviewTypes";
 
@@ -14,7 +15,6 @@ export const fetchClientsWithMetaData = async () => {
     .select(`
       id,
       company_name,
-      meta_ads_budget,
       status
     `)
     .eq('status', 'active')
@@ -32,9 +32,10 @@ export const fetchClientsWithMetaData = async () => {
 export const fetchMetaAccounts = async () => {
   console.log("Buscando contas Meta ativas...");
   const { data: metaAccountsData, error: metaAccountsError } = await supabase
-    .from('client_meta_accounts')
+    .from('client_accounts')
     .select('*')
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .eq('platform', 'meta');
   
   if (metaAccountsError) {
     console.error("Erro ao buscar contas Meta:", metaAccountsError);
@@ -91,10 +92,11 @@ export const fetchClientReviews = async (clientId: string, accountId?: string) =
     if (accountId) {
       console.log(`Buscando revisões para cliente ${clientId} e conta Meta ${accountId}...`);
       const { data: reviewsData, error: reviewsError } = await supabase
-        .from('daily_budget_reviews')
+        .from('budget_reviews')
         .select('*')
         .eq('client_id', clientId)
-        .or(`meta_account_id.eq.${accountId},client_account_id.eq.${accountId}`)
+        .eq('account_id', accountId)
+        .eq('platform', 'meta')
         .eq('review_date', today)
         .order('created_at', { ascending: false });
         
@@ -114,9 +116,10 @@ export const fetchClientReviews = async (clientId: string, accountId?: string) =
     } else {
       console.log(`Buscando revisões para cliente ${clientId}...`);
       const { data: reviewsData, error: reviewsError } = await supabase
-        .from('daily_budget_reviews')
+        .from('budget_reviews')
         .select('*')
         .eq('client_id', clientId)
+        .eq('platform', 'meta')
         .eq('review_date', today)
         .order('created_at', { ascending: false });
         
@@ -145,10 +148,11 @@ export const createInitialReview = async (clientId: string, accountId: string, a
     
     if (!metaAccountName || metaBudgetAmount === undefined) {
       const { data: metaAccount } = await supabase
-        .from('client_meta_accounts')
+        .from('client_accounts')
         .select('account_name, budget_amount')
         .eq('client_id', clientId)
         .eq('account_id', accountId)
+        .eq('platform', 'meta')
         .maybeSingle();
       
       if (metaAccount) {
@@ -161,10 +165,11 @@ export const createInitialReview = async (clientId: string, accountId: string, a
     
     // Verificar se já existe uma revisão para evitar duplicação
     const { data: existingReview } = await supabase
-      .from('daily_budget_reviews')
+      .from('budget_reviews')
       .select('id')
       .eq('client_id', clientId)
-      .eq('meta_account_id', accountId)
+      .eq('account_id', accountId)
+      .eq('platform', 'meta')
       .eq('review_date', today)
       .maybeSingle();
       
@@ -175,16 +180,14 @@ export const createInitialReview = async (clientId: string, accountId: string, a
     
     // Criar uma revisão inicial com valores zerados
     const { data: review, error } = await supabase
-      .from('daily_budget_reviews')
+      .from('budget_reviews')
       .insert({
         client_id: clientId,
-        meta_account_id: accountId,
-        client_account_id: accountId,
-        meta_account_name: metaAccountName || 'Conta Meta',
-        account_display_name: metaAccountName || 'Conta Meta',
+        account_id: accountId,
+        platform: 'meta',
         review_date: today,
-        meta_daily_budget_current: 0,
-        meta_total_spent: 0,
+        daily_budget_current: 0,
+        total_spent: 0,
         using_custom_budget: false
       })
       .select()

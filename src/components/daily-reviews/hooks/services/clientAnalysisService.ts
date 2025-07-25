@@ -1,65 +1,50 @@
+import { supabase } from "@/integrations/supabase/client";
 
-import axios from 'axios';
-import { supabase } from '@/lib/supabase';
-
-export const reviewClient = async (clientId: string, metaAccountId?: string) => {
+export const fetchClientAnalysis = async (clientId: string) => {
   try {
-    console.log(`Iniciando revisão para cliente ${clientId}${metaAccountId ? ` com conta Meta ${metaAccountId}` : ''}`);
+    const { data, error } = await supabase
+      .from("client_analysis")
+      .select("*")
+      .eq("client_id", clientId)
+      .single();
 
-    // Se for fornecido um ID de conta Meta específica, buscar os detalhes dessa conta
-    let metaAccountName: string | undefined;
-    let metaBudgetAmount: number | undefined;
-
-    if (metaAccountId) {
-      const { data: metaAccount, error: metaError } = await supabase
-        .from('client_meta_accounts')
-        .select('account_name, budget_amount')
-        .eq('client_id', clientId)
-        .eq('account_id', metaAccountId)
-        .maybeSingle();
-
-      if (metaError) throw metaError;
-
-      if (metaAccount) {
-        metaAccountName = metaAccount.account_name;
-        metaBudgetAmount = metaAccount.budget_amount;
-      }
+    if (error) {
+      console.error("Erro ao buscar análise do cliente:", error);
+      return null;
     }
 
-    // Montar payload da requisição com as informações da conta específica, se fornecida
-    const reviewDate = new Date().toISOString().split('T')[0];
-    
-    interface ReviewPayload {
-      clientId: string;
-      metaAccountId?: string;
-      reviewDate: string;
-      metaAccountName?: string;
-      metaBudgetAmount?: number;
-    }
-    
-    const payload: ReviewPayload = {
-      clientId,
-      metaAccountId,
-      reviewDate
-    };
-    
-    // Adicionar informações opcionais ao payload, se disponíveis
-    if (metaAccountName) {
-      payload.metaAccountName = metaAccountName;
-    }
-    
-    if (metaBudgetAmount !== undefined) {
-      payload.metaBudgetAmount = metaBudgetAmount;
-    }
-
-    // Fazer chamada para a edge function
-    const url = `${window.location.origin}/api/daily-meta-review`;
-    const response = await axios.post(url, payload);
-
-    console.log("Resposta da função Edge:", response.data);
-    return response.data;
+    return data;
   } catch (error) {
-    console.error("Erro ao revisar cliente:", error);
-    throw error;
+    console.error("Erro ao buscar análise do cliente:", error);
+    return null;
+  }
+};
+
+export const updateClientAnalysis = async (
+  clientId: string,
+  analysisData: any
+) => {
+  try {
+    const { data, error } = await supabase
+      .from("client_analysis")
+      .upsert(
+        {
+          client_id: clientId,
+          ...analysisData,
+        },
+        { onConflict: "client_id" }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Erro ao atualizar análise do cliente:", error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Erro ao atualizar análise do cliente:", error);
+    return null;
   }
 };
