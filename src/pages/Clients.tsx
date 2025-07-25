@@ -2,65 +2,81 @@
 import { Card } from "@/components/ui/card";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { Client } from "@/components/clients/types";
-import { useToast } from "@/hooks/use-toast";
+import { useClients } from "@/hooks/queries/useClients";
 import { AlertCircle } from "lucide-react";
-import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
-import { Suspense } from "react";
+import { LoadingView } from "@/components/daily-reviews/dashboard/components/LoadingView";
 
 const Clients = () => {
-  const { toast } = useToast();
+  console.log("🔍 Renderizando página Clients");
   
-  const { data: clients, isLoading, error } = useQuery({
-    queryKey: ["clients"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .order("company_name");
-
-      if (error) {
-        console.error("Erro ao buscar clientes:", error);
-        throw new Error("Não foi possível carregar a lista de clientes");
-      }
-
-      if (!data) {
-        throw new Error("Nenhum dado retornado");
-      }
-
-      return data as Client[];
-    },
-    meta: {
-      onError: (error: Error) => {
-        console.error("Erro na query de clientes:", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar clientes",
-          description: error instanceof Error ? error.message : "Tente novamente mais tarde",
-        });
-      }
-    }
+  // Usar apenas o hook useClients sem filtros para garantir que busque todos os clientes
+  const { clients, isLoading, error } = useClients();
+  
+  console.log("📊 Estado atual:", {
+    isLoading,
+    clientsCount: clients?.length || 0,
+    hasError: !!error,
+    errorMessage: error?.message
   });
 
+  // Estado de erro
   if (error) {
+    console.error("❌ Erro na página Clients:", error);
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4">
-        <AlertCircle className="h-12 w-12" />
-        <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
-        <p className="text-center text-gray-600">
-          Não foi possível carregar a lista de clientes.
-          <br />
-          Por favor, tente novamente mais tarde.
-        </p>
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
+        <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4">
+          <AlertCircle className="h-12 w-12" />
+          <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
+          <p className="text-center text-gray-600">
+            Não foi possível carregar a lista de clientes.
+            <br />
+            Por favor, tente novamente mais tarde.
+          </p>
+        </div>
       </div>
     );
   }
 
+  // Estado de carregamento
   if (isLoading) {
-    return <ClientsLoadingState />;
+    console.log("⏳ Mostrando estado de loading");
+    return (
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
+            Lista de Clientes
+          </h1>
+        </div>
+        <LoadingView />
+      </div>
+    );
   }
+
+  // Verificar se temos dados
+  if (!clients || clients.length === 0) {
+    console.log("⚠️ Nenhum cliente encontrado");
+    return (
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
+            Lista de Clientes
+          </h1>
+        </div>
+        <Card className="p-6">
+          <div className="text-center py-8">
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+              Nenhum cliente encontrado
+            </h3>
+            <p className="text-gray-500">
+              Comece adicionando seu primeiro cliente.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  console.log("✅ Renderizando página com dados:", clients.length, "clientes");
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
@@ -74,7 +90,7 @@ const Clients = () => {
         <ClientsList />
       </Card>
 
-      <ClientsRanking clients={clients || []} />
+      <ClientsRanking clients={clients} />
     </div>
   );
 };

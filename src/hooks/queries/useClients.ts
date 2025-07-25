@@ -1,5 +1,6 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Client } from "@/components/clients/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,11 +15,13 @@ export const useClients = (filters?: {
   const { data: clients, isLoading, error } = useQuery({
     queryKey: ["clients", filters],
     queryFn: async () => {
-      console.log("Buscando clientes com filtros:", filters);
+      console.log("🔍 Buscando clientes com filtros:", filters);
+      
       let query = supabase
         .from("clients")
         .select("*");
 
+      // Aplicar filtros apenas se existirem
       if (filters?.status) {
         query = query.eq('status', filters.status);
       }
@@ -32,22 +35,16 @@ export const useClients = (filters?: {
       const { data, error } = await query.order("company_name");
 
       if (error) {
-        console.error("Erro ao buscar clientes:", error);
-        throw error;
+        console.error("❌ Erro ao buscar clientes:", error);
+        throw new Error(`Erro ao buscar clientes: ${error.message}`);
       }
 
+      console.log("✅ Clientes encontrados:", data?.length || 0);
       return data as Client[];
     },
-    meta: {
-      onError: (error: Error) => {
-        console.error("Erro na query de clientes:", error);
-        toast({
-          title: "Erro ao carregar clientes",
-          description: "Você não tem permissão para visualizar os clientes ou ocorreu um erro de conexão.",
-          variant: "destructive",
-        });
-      }
-    }
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const createClient = useMutation({
@@ -61,21 +58,20 @@ export const useClients = (filters?: {
       if (error) throw error;
       return data;
     },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["clients"] });
-        toast({
-          title: "Cliente criado",
-          description: "Cliente cadastrado com sucesso!",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Erro ao criar cliente",
-          description: "Você não tem permissão para criar clientes ou ocorreu um erro.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast({
+        title: "Cliente criado",
+        description: "Cliente cadastrado com sucesso!",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("❌ Erro ao criar cliente:", error);
+      toast({
+        title: "Erro ao criar cliente",
+        description: "Você não tem permissão para criar clientes ou ocorreu um erro.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -91,21 +87,20 @@ export const useClients = (filters?: {
       if (error) throw error;
       return data;
     },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["clients"] });
-        toast({
-          title: "Cliente atualizado",
-          description: "Cliente atualizado com sucesso!",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Erro ao atualizar cliente",
-          description: "Você não tem permissão para atualizar clientes ou ocorreu um erro.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast({
+        title: "Cliente atualizado",
+        description: "Cliente atualizado com sucesso!",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("❌ Erro ao atualizar cliente:", error);
+      toast({
+        title: "Erro ao atualizar cliente",
+        description: "Você não tem permissão para atualizar clientes ou ocorreu um erro.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -118,21 +113,20 @@ export const useClients = (filters?: {
 
       if (error) throw error;
     },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["clients"] });
-        toast({
-          title: "Cliente excluído",
-          description: "Cliente excluído com sucesso!",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Erro ao excluir cliente",
-          description: "Você não tem permissão para excluir clientes ou ocorreu um erro.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast({
+        title: "Cliente excluído",
+        description: "Cliente excluído com sucesso!",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("❌ Erro ao excluir cliente:", error);
+      toast({
+        title: "Erro ao excluir cliente",
+        description: "Você não tem permissão para excluir clientes ou ocorreu um erro.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -148,22 +142,14 @@ export const useClients = (filters?: {
           .order("company_name");
 
         if (error) {
-          console.error("Erro ao buscar clientes ativos:", error);
+          console.error("❌ Erro ao buscar clientes ativos:", error);
           throw error;
         }
 
         return data as Client[];
       },
-      meta: {
-        onError: (error: Error) => {
-          console.error("Erro na query de clientes ativos:", error);
-          toast({
-            title: "Erro ao carregar clientes",
-            description: "Ocorreu um erro ao carregar a lista de clientes ativos.",
-            variant: "destructive",
-          });
-        }
-      }
+      staleTime: 5 * 60 * 1000,
+      retry: 3,
     });
   };
 
