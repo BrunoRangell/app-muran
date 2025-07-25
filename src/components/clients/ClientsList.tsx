@@ -1,6 +1,5 @@
 
 import { useState } from "react";
-import { useClients } from "@/hooks/queries/useClients";
 import { useClientColumns } from "@/hooks/useClientColumns";
 import { useClientFilters } from "@/hooks/useClientFilters";
 import { ClientsTable } from "./table/ClientsTable";
@@ -8,25 +7,28 @@ import { ClientsHeader } from "./components/ClientsHeader";
 import { Client } from "./types";
 import { ClientForm } from "@/components/admin/ClientForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { LoadingView } from "@/components/daily-reviews/dashboard/components/LoadingView";
 
-export const ClientsList = () => {
-  console.log("🔍 Renderizando ClientsList");
+interface ClientsListProps {
+  clients: Client[];
+}
+
+export const ClientsList = ({ clients }: ClientsListProps) => {
+  console.log("🔍 [ClientsList] Renderizando com", clients?.length || 0, "clientes");
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
   const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
-  
-  // Usar o hook useClients com os filtros aplicados
-  const { clients, isLoading, error } = useClients(filters);
 
-  console.log("📊 Estado ClientsList:", {
-    isLoading,
-    clientsCount: clients?.length || 0,
-    hasError: !!error,
-    activeFilters: hasActiveFilters
-  });
+  // Aplicar filtros localmente aos clientes recebidos
+  const filteredClients = clients?.filter(client => {
+    if (filters.status && filters.status !== client.status) return false;
+    if (filters.acquisition_channel && filters.acquisition_channel !== client.acquisition_channel) return false;
+    if (filters.payment_type && filters.payment_type !== client.payment_type) return false;
+    return true;
+  }) || [];
+
+  console.log("📊 [ClientsList] Clientes filtrados:", filteredClients.length);
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);
@@ -37,19 +39,6 @@ export const ClientsList = () => {
     setSelectedClient(null);
     setIsFormOpen(true);
   };
-
-  // Se ainda está carregando, mostrar loading
-  if (isLoading) {
-    console.log("⏳ ClientsList - Mostrando loading");
-    return <LoadingView />;
-  }
-
-  // Se há erro, mostrar na table mesmo assim (o erro será tratado na página pai)
-  if (error) {
-    console.error("❌ Erro no ClientsList:", error);
-  }
-
-  console.log("✅ ClientsList renderizando tabela com", clients?.length || 0, "clientes");
 
   return (
     <>
@@ -64,12 +53,12 @@ export const ClientsList = () => {
       />
 
       <ClientsTable
-        clients={clients || []}
+        clients={filteredClients}
         columns={columns}
         onEditClick={handleEditClick}
         sortConfig={{ key: "", direction: "asc" }}
         onSort={() => {}}
-        isLoading={isLoading}
+        isLoading={false}
       />
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
