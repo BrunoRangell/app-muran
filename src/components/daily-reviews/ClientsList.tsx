@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader, AlertTriangle, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 
-type Client = {
+type ClientWithAccount = {
   id: string;
   company_name: string;
-  meta_ads_budget: number;
-  meta_account_id: string | null;
+  status: string;
+  account_id?: string;
+  account_name?: string;
+  budget_amount?: number;
 };
 
 type ClientsListProps = {
@@ -20,18 +22,40 @@ type ClientsListProps = {
 };
 
 export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClientId }: ClientsListProps) => {
-  // Buscar clientes ativos
+  // Buscar clientes ativos com suas contas Meta
   const { data: clients, isLoading: isLoadingClients, error } = useQuery({
-    queryKey: ["clients-active"],
+    queryKey: ["clients-with-meta-accounts"],
     queryFn: async () => {
-      const { data: clients, error } = await supabase
+      // Buscar clientes ativos
+      const { data: clientsData, error: clientsError } = await supabase
         .from("clients")
         .select("*")
         .eq("status", "active")
         .order("company_name");
 
-      if (error) throw error;
-      return clients as Client[];
+      if (clientsError) throw clientsError;
+
+      // Buscar contas Meta para cada cliente
+      const clientsWithAccounts: ClientWithAccount[] = [];
+      
+      for (const client of clientsData) {
+        const { data: accountData } = await supabase
+          .from("client_accounts")
+          .select("*")
+          .eq("client_id", client.id)
+          .eq("platform", "meta")
+          .eq("status", "active")
+          .maybeSingle();
+
+        clientsWithAccounts.push({
+          ...client,
+          account_id: accountData?.account_id,
+          account_name: accountData?.account_name,
+          budget_amount: accountData?.budget_amount
+        });
+      }
+
+      return clientsWithAccounts;
     },
   });
 
@@ -91,23 +115,23 @@ export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClien
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">{client.company_name}</CardTitle>
             <CardDescription>
-              {client.meta_ads_budget > 0 && client.meta_account_id
+              {client.budget_amount && client.account_id
                 ? "Orçamento configurado"
                 : "Orçamento não configurado"}
             </CardDescription>
           </CardHeader>
           <CardContent className="pb-2">
-            {client.meta_ads_budget > 0 && (
+            {client.budget_amount && (
               <p className="text-sm">
-                Meta Ads: {formatCurrency(client.meta_ads_budget)}
+                Meta Ads: {formatCurrency(client.budget_amount)}
               </p>
             )}
-            {client.meta_account_id && (
+            {client.account_id && (
               <p className="text-sm text-gray-500">
-                ID da Conta: {client.meta_account_id}
+                ID da Conta: {client.account_id}
               </p>
             )}
-            {!client.meta_account_id && (
+            {!client.account_id && (
               <p className="text-sm text-amber-500 flex items-center gap-1">
                 <AlertCircle size={16} />
                 Conta Meta Ads não configurada
@@ -117,12 +141,12 @@ export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClien
           <CardFooter>
             <Button
               onClick={() => 
-                (client.meta_ads_budget > 0 && client.meta_account_id) 
+                (client.budget_amount && client.account_id) 
                   ? onAnalyzeClient(client.id)
                   : onConfigureBudget(client.id)
               }
               className="w-full"
-              variant={(client.meta_ads_budget > 0 && client.meta_account_id) ? "default" : "outline"}
+              variant={(client.budget_amount && client.account_id) ? "default" : "outline"}
               disabled={analyzingClientId === client.id}
             >
               {analyzingClientId === client.id ? (
@@ -132,7 +156,7 @@ export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClien
                 </>
               ) : (
                 <>
-                  {(client.meta_ads_budget > 0 && client.meta_account_id)
+                  {(client.budget_amount && client.account_id)
                     ? "Analisar orçamentos"
                     : "Configurar orçamentos"}
                   <ArrowRight className="ml-2" size={16} />

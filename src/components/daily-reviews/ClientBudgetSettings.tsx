@@ -39,11 +39,12 @@ export const ClientBudgetSettings = ({
     setIsSaving(true);
     
     try {
-      // Atualizar o orçamento do cliente
+      // Atualizar o orçamento na tabela client_accounts
       const { error } = await supabase
-        .from("clients")
-        .update({ meta_ads_budget: budgetValue })
-        .eq("id", clientId);
+        .from("client_accounts")
+        .update({ budget_amount: budgetValue })
+        .eq("client_id", clientId)
+        .eq("platform", "meta");
         
       if (error) throw error;
       

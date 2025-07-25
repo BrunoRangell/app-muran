@@ -38,11 +38,12 @@ export const ClientMetaAccountSettings = ({
     setIsSaving(true);
     
     try {
-      // Atualizar o ID da conta Meta do cliente
+      // Atualizar o ID da conta Meta na tabela client_accounts
       const { error } = await supabase
-        .from("clients")
-        .update({ meta_account_id: accountId })
-        .eq("id", clientId);
+        .from("client_accounts")
+        .update({ account_id: accountId })
+        .eq("client_id", clientId)
+        .eq("platform", "meta");
         
       if (error) throw error;
       

@@ -2,10 +2,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, ListChecks, Loader } from "lucide-react";
+import { AlertCircle, ListChecks } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateInBrasiliaTz } from "@/utils/dateUtils";
-import { ptBR } from "date-fns/locale";
 
 type RecentReviewsProps = {
   onSelectClient: (clientId: string) => void;
@@ -17,11 +16,12 @@ export const RecentReviews = ({ onSelectClient }: RecentReviewsProps) => {
     queryKey: ["recent-reviews"],
     queryFn: async () => {
       const { data: reviews, error } = await supabase
-        .from("daily_budget_reviews")
+        .from("budget_reviews")
         .select(`
           *,
           clients(company_name)
         `)
+        .eq("platform", "meta")
         .order("review_date", { ascending: false })
         .limit(10);
 
@@ -80,7 +80,7 @@ export const RecentReviews = ({ onSelectClient }: RecentReviewsProps) => {
                   {formatDateInBrasiliaTz(review.review_date, 'dd/MM/yyyy')}
                 </div>
                 <div className="col-span-2 flex items-center gap-1">
-                  {formatCurrency(review.meta_daily_budget_current || 0)}
+                  {formatCurrency(review.daily_budget_current || 0)}
                 </div>
               </div>
             </div>

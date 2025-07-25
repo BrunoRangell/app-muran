@@ -20,12 +20,13 @@ export const ClientLatestReview = ({ clientId }: ClientLatestReviewProps) => {
       
       try {
         const { data, error } = await supabase
-          .from("daily_budget_reviews")
+          .from("budget_reviews")
           .select("*")
           .eq("client_id", clientId)
+          .eq("platform", "meta")
           .order("review_date", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
           
         if (error && error.code !== 'PGRST116') throw error;
         setLatestReview(data);
@@ -69,13 +70,13 @@ export const ClientLatestReview = ({ clientId }: ClientLatestReviewProps) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Orçamento Atual</p>
-              <p className="text-xl font-semibold">{formatCurrency(latestReview.meta_daily_budget_current)}</p>
+              <p className="text-xl font-semibold">{formatCurrency(latestReview.daily_budget_current)}</p>
               <p className="text-xs text-gray-500">Tipo: {budgetType}</p>
             </div>
             
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-500">Gasto Total</p>
-              <p className="text-xl font-semibold">{formatCurrency(latestReview.meta_total_spent)}</p>
+              <p className="text-xl font-semibold">{formatCurrency(latestReview.total_spent)}</p>
             </div>
             
             <div className="bg-gray-50 p-4 rounded-lg">
