@@ -53,7 +53,7 @@ export function AutoReviewSettings() {
         .maybeSingle();
       
       if (configData?.value) {
-        setLastReviewTime(configData.value);
+        setLastReviewTime(String(configData.value));
       }
       
       const { data: autoReviewConfig } = await supabase
@@ -63,7 +63,7 @@ export function AutoReviewSettings() {
         .maybeSingle();
       
       if (autoReviewConfig?.value !== undefined) {
-        setIsAutoReviewEnabled(autoReviewConfig.value === "true");
+        setIsAutoReviewEnabled(String(autoReviewConfig.value) === "true");
       }
       
     } catch (error) {

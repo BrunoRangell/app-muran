@@ -20,11 +20,11 @@ export function CronDiagnostics() {
     try {
       setIsLoading(true);
       
-      // Buscar status atual dos jobs ativos (apenas os 2 jobs otimizados)
+      // Buscar jobs usando a função do banco
       const { data: jobsData, error: jobsError } = await supabase
-        .from('cron.job')
-        .select('jobid, jobname, schedule, active')
-        .in('jobname', ['google-ads-token-check-job', 'cron-health-check']);
+        .rpc('get_cron_jobs', { 
+          job_names: ['google-ads-token-check-job', 'cron-health-check'] 
+        });
       
       // Buscar logs recentes do sistema
       const { data: logsData, error: logsError } = await supabase
