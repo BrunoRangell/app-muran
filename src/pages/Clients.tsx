@@ -3,11 +3,14 @@ import { Card } from "@/components/ui/card";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
 import { useClients } from "@/hooks/queries/useClients";
+import { useClientFilters } from "@/hooks/useClientFilters";
 import { AlertCircle } from "lucide-react";
 import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
 
 const Clients = () => {
-  const { clients, isLoading, error } = useClients();
+  console.log("[Clients] Página Clients renderizada");
+  const { filters } = useClientFilters();
+  const { clients, isLoading, error } = useClients(filters);
 
   if (error) {
     return (

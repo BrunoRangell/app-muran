@@ -9,48 +9,56 @@ export const useClients = (filters?: {
   acquisition_channel?: string;
   payment_type?: string;
 }) => {
+  console.log("[useClients] Iniciado com filtros:", filters);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: clients, isLoading, error } = useQuery({
     queryKey: ["clients", filters],
     queryFn: async () => {
-      console.log("Buscando clientes com filtros:", filters);
+      console.log("[useClients] Executando query com filtros:", filters);
+      
       let query = supabase
         .from("clients")
         .select("*");
 
-      if (filters?.status) {
+      // Aplicar filtros apenas se tiverem valor
+      if (filters?.status && filters.status !== '') {
+        console.log("[useClients] Aplicando filtro de status:", filters.status);
         query = query.eq('status', filters.status);
       }
-      if (filters?.acquisition_channel) {
+      if (filters?.acquisition_channel && filters.acquisition_channel !== '') {
+        console.log("[useClients] Aplicando filtro de canal:", filters.acquisition_channel);
         query = query.eq('acquisition_channel', filters.acquisition_channel);
       }
-      if (filters?.payment_type) {
+      if (filters?.payment_type && filters.payment_type !== '') {
+        console.log("[useClients] Aplicando filtro de pagamento:", filters.payment_type);
         query = query.eq('payment_type', filters.payment_type);
       }
 
       const { data, error } = await query.order("company_name");
 
       if (error) {
-        console.error("Erro ao buscar clientes:", error);
+        console.error("[useClients] Erro ao buscar clientes:", error);
         throw error;
       }
 
+      console.log("[useClients] Dados carregados:", data?.length || 0, "clientes");
       return data as Client[];
     },
-    retry: 2,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+    retry: 1,
+    staleTime: 2 * 60 * 1000, // 2 minutos
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: false,
   });
 
   // Handle errors with useEffect
   useEffect(() => {
     if (error) {
-      console.error("Erro na query de clientes:", error);
+      console.error("[useClients] Erro detectado:", error);
       toast({
         title: "Erro ao carregar clientes",
-        description: "Você não tem permissão para visualizar os clientes ou ocorreu um erro de conexão.",
+        description: "Não foi possível carregar a lista de clientes. Verifique sua conexão.",
         variant: "destructive",
       });
     }
@@ -67,21 +75,19 @@ export const useClients = (filters?: {
       if (error) throw error;
       return data;
     },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["clients"] });
-        toast({
-          title: "Cliente criado",
-          description: "Cliente cadastrado com sucesso!",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Erro ao criar cliente",
-          description: "Você não tem permissão para criar clientes ou ocorreu um erro.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast({
+        title: "Cliente criado",
+        description: "Cliente cadastrado com sucesso!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao criar cliente",
+        description: "Você não tem permissão para criar clientes ou ocorreu um erro.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -97,21 +103,19 @@ export const useClients = (filters?: {
       if (error) throw error;
       return data;
     },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["clients"] });
-        toast({
-          title: "Cliente atualizado",
-          description: "Cliente atualizado com sucesso!",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Erro ao atualizar cliente",
-          description: "Você não tem permissão para atualizar clientes ou ocorreu um erro.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast({
+        title: "Cliente atualizado",
+        description: "Cliente atualizado com sucesso!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar cliente",
+        description: "Você não tem permissão para atualizar clientes ou ocorreu um erro.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -124,46 +128,21 @@ export const useClients = (filters?: {
 
       if (error) throw error;
     },
-    meta: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["clients"] });
-        toast({
-          title: "Cliente excluído",
-          description: "Cliente excluído com sucesso!",
-        });
-      },
-      onError: (error: Error) => {
-        toast({
-          title: "Erro ao excluir cliente",
-          description: "Você não tem permissão para excluir clientes ou ocorreu um erro.",
-          variant: "destructive",
-        });
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      toast({
+        title: "Cliente excluído",
+        description: "Cliente excluído com sucesso!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao excluir cliente",
+        description: "Você não tem permissão para excluir clientes ou ocorreu um erro.",
+        variant: "destructive",
+      });
     }
   });
-
-  // Função adicional para buscar apenas clientes ativos
-  const useActiveClients = () => {
-    return useQuery({
-      queryKey: ["clients-active"],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from("clients")
-          .select("*")
-          .eq('status', 'active')
-          .order("company_name");
-
-        if (error) {
-          console.error("Erro ao buscar clientes ativos:", error);
-          throw error;
-        }
-
-        return data as Client[];
-      },
-      retry: 2,
-      staleTime: 5 * 60 * 1000,
-    });
-  };
 
   return {
     clients,
@@ -171,7 +150,6 @@ export const useClients = (filters?: {
     error,
     createClient,
     updateClient,
-    deleteClient,
-    useActiveClients
+    deleteClient
   };
 };

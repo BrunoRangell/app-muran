@@ -13,7 +13,8 @@ interface ClientsListProps {
   isLoading?: boolean;
 }
 
-export const ClientsList = ({ clients, isLoading }: ClientsListProps) => {
+export const ClientsList = ({ clients = [], isLoading = false }: ClientsListProps) => {
+  console.log("[ClientsList] Renderizado com", clients.length, "clientes, loading:", isLoading);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
