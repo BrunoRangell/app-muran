@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Client } from "@/components/clients/types";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 export const useClients = (filters?: {
   status?: string;
@@ -38,17 +39,22 @@ export const useClients = (filters?: {
 
       return data as Client[];
     },
-    meta: {
-      onError: (error: Error) => {
-        console.error("Erro na query de clientes:", error);
-        toast({
-          title: "Erro ao carregar clientes",
-          description: "Você não tem permissão para visualizar os clientes ou ocorreu um erro de conexão.",
-          variant: "destructive",
-        });
-      }
-    }
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos
   });
+
+  // Handle errors with useEffect
+  useEffect(() => {
+    if (error) {
+      console.error("Erro na query de clientes:", error);
+      toast({
+        title: "Erro ao carregar clientes",
+        description: "Você não tem permissão para visualizar os clientes ou ocorreu um erro de conexão.",
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
 
   const createClient = useMutation({
     mutationFn: async (client: Omit<Client, "id">) => {
@@ -154,16 +160,8 @@ export const useClients = (filters?: {
 
         return data as Client[];
       },
-      meta: {
-        onError: (error: Error) => {
-          console.error("Erro na query de clientes ativos:", error);
-          toast({
-            title: "Erro ao carregar clientes",
-            description: "Ocorreu um erro ao carregar a lista de clientes ativos.",
-            variant: "destructive",
-          });
-        }
-      }
+      retry: 2,
+      staleTime: 5 * 60 * 1000,
     });
   };
 
