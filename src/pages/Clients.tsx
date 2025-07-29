@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Client } from "@/components/clients/types";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
