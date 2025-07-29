@@ -1,24 +1,39 @@
 
 import { useState } from "react";
 import { useClientColumns } from "@/hooks/useClientColumns";
-import { useClientFilters } from "@/hooks/useClientFilters";
 import { ClientsTable } from "./table/ClientsTable";
 import { ClientsHeader } from "./components/ClientsHeader";
 import { Client } from "./types";
 import { ClientForm } from "@/components/admin/ClientForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
+interface ClientFilters {
+  status: string;
+  acquisition_channel: string;
+  payment_type: string;
+}
+
 interface ClientsListProps {
   clients?: Client[];
   isLoading?: boolean;
+  filters: ClientFilters;
+  onFilterChange: (key: keyof ClientFilters, value: string) => void;
+  onClearFilters: () => void;
+  hasActiveFilters: boolean;
 }
 
-export const ClientsList = ({ clients = [], isLoading = false }: ClientsListProps) => {
-  console.log("[ClientsList] Renderizado com", clients.length, "clientes, loading:", isLoading);
+export const ClientsList = ({ 
+  clients = [], 
+  isLoading = false,
+  filters,
+  onFilterChange,
+  onClearFilters,
+  hasActiveFilters
+}: ClientsListProps) => {
+  console.log("[ClientsList] Renderizado com", clients.length, "clientes, loading:", isLoading, "filtros:", filters);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
-  const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);
@@ -37,8 +52,8 @@ export const ClientsList = ({ clients = [], isLoading = false }: ClientsListProp
         filters={filters}
         hasActiveFilters={hasActiveFilters}
         onToggleColumn={toggleColumn}
-        onFilterChange={updateFilter}
-        onClearFilters={clearFilters}
+        onFilterChange={onFilterChange}
+        onClearFilters={onClearFilters}
         onCreateClick={handleCreateClick}
       />
 

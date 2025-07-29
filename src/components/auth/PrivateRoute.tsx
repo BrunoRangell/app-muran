@@ -1,7 +1,8 @@
 
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase, checkSession } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
+import { checkSession } from "@/lib/supabase";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
 

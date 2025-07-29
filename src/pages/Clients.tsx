@@ -1,4 +1,5 @@
 
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
@@ -9,8 +10,24 @@ import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingS
 
 const Clients = () => {
   console.log("[Clients] Página Clients renderizada");
-  const { filters } = useClientFilters();
+  const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
   const { clients, isLoading, error } = useClients(filters);
+
+  // Timeout de segurança para evitar loading infinito
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        console.error("[Clients] Loading timeout - forçando saída do estado de loading");
+        setLoadingTimeout(true);
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [isLoading]);
 
   if (error) {
     return (
@@ -26,7 +43,7 @@ const Clients = () => {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !loadingTimeout) {
     return <ClientsLoadingState />;
   }
 
@@ -39,7 +56,14 @@ const Clients = () => {
       </div>
 
       <Card className="p-2 md:p-6">
-        <ClientsList clients={clients} isLoading={isLoading} />
+        <ClientsList 
+          clients={clients} 
+          isLoading={isLoading && !loadingTimeout}
+          filters={filters}
+          onFilterChange={updateFilter}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
       </Card>
 
       <ClientsRanking clients={clients || []} />
