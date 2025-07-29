@@ -8,7 +8,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditarPagamentoDialog } from "./EditarPagamentoDialog";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { 
   AlertDialog,

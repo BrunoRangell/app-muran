@@ -1,33 +1,48 @@
 
-import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientsRanking } from "@/components/clients/rankings/ClientsRanking";
-import { useClients } from "@/hooks/queries/useClients";
-import { useClientFilters } from "@/hooks/useClientFilters";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { Client } from "@/components/clients/types";
+import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
+import { Suspense } from "react";
 
 const Clients = () => {
-  console.log("[Clients] Página Clients renderizada");
-  const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
-  const { clients, isLoading, error } = useClients(filters);
-
-  // Timeout de segurança para evitar loading infinito
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const { toast } = useToast();
   
-  useEffect(() => {
-    if (isLoading) {
-      const timer = setTimeout(() => {
-        console.error("[Clients] Loading timeout - forçando saída do estado de loading");
-        setLoadingTimeout(true);
-      }, 10000);
-      
-      return () => clearTimeout(timer);
-    } else {
-      setLoadingTimeout(false);
+  const { data: clients, isLoading, error } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("*")
+        .order("company_name");
+
+      if (error) {
+        console.error("Erro ao buscar clientes:", error);
+        throw new Error("Não foi possível carregar a lista de clientes");
+      }
+
+      if (!data) {
+        throw new Error("Nenhum dado retornado");
+      }
+
+      return data as Client[];
+    },
+    meta: {
+      onError: (error: Error) => {
+        console.error("Erro na query de clientes:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar clientes",
+          description: error instanceof Error ? error.message : "Tente novamente mais tarde",
+        });
+      }
     }
-  }, [isLoading]);
+  });
 
   if (error) {
     return (
@@ -43,7 +58,7 @@ const Clients = () => {
     );
   }
 
-  if (isLoading && !loadingTimeout) {
+  if (isLoading) {
     return <ClientsLoadingState />;
   }
 
@@ -56,14 +71,7 @@ const Clients = () => {
       </div>
 
       <Card className="p-2 md:p-6">
-        <ClientsList 
-          clients={clients} 
-          isLoading={isLoading && !loadingTimeout}
-          filters={filters}
-          onFilterChange={updateFilter}
-          onClearFilters={clearFilters}
-          hasActiveFilters={hasActiveFilters}
-        />
+        <ClientsList />
       </Card>
 
       <ClientsRanking clients={clients || []} />

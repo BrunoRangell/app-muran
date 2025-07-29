@@ -1,39 +1,20 @@
 
 import { useState } from "react";
+import { useClients } from "@/hooks/queries/useClients";
 import { useClientColumns } from "@/hooks/useClientColumns";
+import { useClientFilters } from "@/hooks/useClientFilters";
 import { ClientsTable } from "./table/ClientsTable";
 import { ClientsHeader } from "./components/ClientsHeader";
 import { Client } from "./types";
 import { ClientForm } from "@/components/admin/ClientForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-interface ClientFilters {
-  status: string;
-  acquisition_channel: string;
-  payment_type: string;
-}
-
-interface ClientsListProps {
-  clients?: Client[];
-  isLoading?: boolean;
-  filters: ClientFilters;
-  onFilterChange: (key: keyof ClientFilters, value: string) => void;
-  onClearFilters: () => void;
-  hasActiveFilters: boolean;
-}
-
-export const ClientsList = ({ 
-  clients = [], 
-  isLoading = false,
-  filters,
-  onFilterChange,
-  onClearFilters,
-  hasActiveFilters
-}: ClientsListProps) => {
-  console.log("[ClientsList] Renderizado com", clients.length, "clientes, loading:", isLoading, "filtros:", filters);
+export const ClientsList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
+  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' }); // Corrigido para passar o objeto correto
+  const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
+  const { clients, isLoading } = useClients(filters);
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);
@@ -52,8 +33,8 @@ export const ClientsList = ({
         filters={filters}
         hasActiveFilters={hasActiveFilters}
         onToggleColumn={toggleColumn}
-        onFilterChange={onFilterChange}
-        onClearFilters={onClearFilters}
+        onFilterChange={updateFilter}
+        onClearFilters={clearFilters}
         onCreateClick={handleCreateClick}
       />
 
