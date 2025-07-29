@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useClients } from "@/hooks/queries/useClients";
 import { useClientColumns } from "@/hooks/useClientColumns";
 import { useClientFilters } from "@/hooks/useClientFilters";
 import { ClientsTable } from "./table/ClientsTable";
@@ -8,16 +9,12 @@ import { Client } from "./types";
 import { ClientForm } from "@/components/admin/ClientForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-interface ClientsListProps {
-  clients?: Client[];
-  isLoading?: boolean;
-}
-
-export const ClientsList = ({ clients = [], isLoading = false }: ClientsListProps) => {
+export const ClientsList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
+  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' }); // Corrigido para passar o objeto correto
   const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
+  const { clients, isLoading } = useClients(filters);
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);
@@ -42,7 +39,7 @@ export const ClientsList = ({ clients = [], isLoading = false }: ClientsListProp
       />
 
       <ClientsTable
-        clients={clients}
+        clients={clients || []}
         columns={columns}
         onEditClick={handleEditClick}
         sortConfig={{ key: "", direction: "asc" }}

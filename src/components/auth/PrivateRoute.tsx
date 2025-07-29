@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, checkSession } from "@/lib/supabase";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
 
@@ -58,18 +58,6 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
     } catch (error) {
       console.error("Erro ao verificar status de admin:", error);
       setIsAdmin(false);
-    }
-  };
-
-  // Função para verificar sessão
-  const checkSession = async () => {
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      return !!session;
-    } catch (error) {
-      console.error('Erro ao verificar sessão:', error);
-      return false;
     }
   };
 
