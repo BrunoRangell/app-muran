@@ -296,19 +296,31 @@ Deno.serve(async (req) => {
 
     const today = getTodayInBrazil();
 
-    // 🧹 LIMPEZA AUTOMÁTICA: Remover dados antigos (manter apenas dados de hoje)
-    console.log(`🧹 Iniciando limpeza automática de dados antigos (< ${today})...`);
+    // 🧹 LIMPEZA AUTOMÁTICA COMPLETA: Remover TODOS os dados antigos e duplicatas
+    console.log(`🧹 Iniciando limpeza automática COMPLETA de dados antigos...`);
     
-    const { data: deletedData, error: deleteError } = await supabase
+    // 1. Remover TODOS os dados anteriores a hoje
+    const { error: deleteOldError } = await supabase
       .from('campaign_health')
       .delete()
       .lt('snapshot_date', today);
 
-    if (deleteError) {
-      console.error('❌ Erro ao limpar dados antigos:', deleteError);
-      // Continuar mesmo com erro na limpeza para não interromper a análise
+    if (deleteOldError) {
+      console.error('❌ Erro ao limpar dados de dias anteriores:', deleteOldError);
     } else {
-      console.log(`✅ Limpeza automática concluída: dados antigos removidos (snapshot_date < ${today})`);
+      console.log(`✅ Dados de dias anteriores removidos (snapshot_date < ${today})`);
+    }
+
+    // 2. Remover duplicatas de hoje (manter apenas os mais recentes)
+    const { error: deleteTodayDuplicatesError } = await supabase
+      .from('campaign_health')
+      .delete()
+      .eq('snapshot_date', today);
+
+    if (deleteTodayDuplicatesError) {
+      console.error('❌ Erro ao limpar dados duplicados de hoje:', deleteTodayDuplicatesError);
+    } else {
+      console.log(`✅ Dados antigos de hoje removidos - preparando para inserir dados frescos`);
     }
 
     // Buscar token do Meta Ads
