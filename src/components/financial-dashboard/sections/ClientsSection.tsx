@@ -7,13 +7,12 @@ import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinan
 
 interface ClientsSectionProps {
   filters: CostFilters;
-  metrics: any;
-  isLoading: boolean;
 }
 
-export const ClientsSection = ({ filters, metrics, isLoading }: ClientsSectionProps) => {
+export const ClientsSection = ({ filters }: ClientsSectionProps) => {
+  const { allClientsMetrics, isLoadingAllClients } = useFinancialMetrics();
 
-  if (isLoading) {
+  if (isLoadingAllClients) {
     return (
       <Card className="p-6">
         <div className="animate-pulse space-y-4">
@@ -27,6 +26,8 @@ export const ClientsSection = ({ filters, metrics, isLoading }: ClientsSectionPr
       </Card>
     );
   }
+
+  const metrics = allClientsMetrics;
 
   const formatDecimal = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {

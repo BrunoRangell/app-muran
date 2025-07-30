@@ -173,11 +173,13 @@ export const useClientAnalysis = (
       }
     },
     onError: (error) => {
-      toast({
-        title: "Erro na análise",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      // Toast de erro removido - conforme solicitação do usuário
+      // toast({
+      //   title: "Erro na análise",
+      //   description: error instanceof Error ? error.message : "Erro desconhecido",
+      //   variant: "destructive",
+      // });
+      console.error("Erro na análise do cliente:", error);
     },
   });
 

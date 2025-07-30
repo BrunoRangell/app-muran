@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   Activity
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { SidebarLogo } from "./SidebarLogo";
 import { SidebarMenuItem } from "./SidebarMenuItem";

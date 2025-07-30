@@ -163,19 +163,20 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
         onIndividualComplete();
       }
       
-      // Mostrar toast de sucesso
-      toast({
-        title: "Revisão concluída",
-        description: `Cliente analisado com sucesso`,
-      });
+      // Mostrar toast de sucesso removido - conforme solicitação do usuário
+      // toast({
+      //   title: "Revisão concluída",
+      //   description: `Cliente analisado com sucesso`,
+      // });
       
     } catch (error) {
       console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
-      toast({
-        title: "Erro na análise",
-        description: `Erro ao analisar cliente: ${error.message}`,
-        variant: "destructive",
-      });
+      // Toast de erro removido - conforme solicitação do usuário
+      // toast({
+      //   title: "Erro na análise",
+      //   description: `Erro ao analisar cliente: ${error.message}`,
+      //   variant: "destructive",
+      // });
     } finally {
       setProcessingIds(prev => prev.filter(id => id !== clientId));
     }

@@ -128,11 +128,12 @@ export function CircularBudgetCard({
       console.log(`✅ Revisão do cliente ${client.company_name} concluída com sucesso`);
     } catch (error: any) {
       console.error(`❌ Erro na revisão do cliente ${client.company_name}:`, error);
-      toast({
-        title: "Erro na análise",
-        description: error.message || "Ocorreu um erro ao analisar o cliente",
-        variant: "destructive"
-      });
+      // Toast de erro removido - conforme solicitação do usuário
+      // toast({
+      //   title: "Erro na análise",
+      //   description: error.message || "Ocorreu um erro ao analisar o cliente",
+      //   variant: "destructive"
+      // });
     }
   };
   const handleWarningIgnored = async () => {
@@ -184,11 +185,11 @@ export function CircularBudgetCard({
       // Atualizar estado local imediatamente para refletir mudança
       setLocalWarningIgnored(true);
 
-      // Toast de confirmação
-      toast({
-        title: "Aviso ignorado",
-        description: `O aviso de ajuste para ${companyName} foi ocultado por hoje.`
-      });
+      // Toast de confirmação removido - conforme solicitação do usuário
+      // toast({
+      //   title: "Aviso ignorado",
+      //   description: `O aviso de ajuste para ${companyName} foi ocultado por hoje.`
+      // });
       console.log(`✅ Cache invalidado e interface atualizada para ${platform}`);
 
       // Chamar callback se fornecido para atualizar a interface

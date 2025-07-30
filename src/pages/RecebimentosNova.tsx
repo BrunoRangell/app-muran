@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { RegistroPagamentoDialog } from "@/components/recebimentos-nova/RegistroPagamentoDialog";
 import { HistoricoPagamentosDialog } from "@/components/recebimentos-nova/HistoricoPagamentosDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
 import {
   Tooltip,
   TooltipContent,
@@ -185,7 +184,6 @@ export default function RecebimentosNova() {
   }
 
   return (
-    <TeamMemberCheck>
     <div className="container py-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Recebimentos</h1>
@@ -324,6 +322,5 @@ export default function RecebimentosNova() {
         />
       )}
     </div>
-    </TeamMemberCheck>
   );
 }

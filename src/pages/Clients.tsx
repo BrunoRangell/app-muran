@@ -8,7 +8,6 @@ import { Client } from "@/components/clients/types";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import { ClientsLoadingState } from "@/components/loading-states/ClientsLoadingState";
-import { TeamMemberCheck } from "@/components/auth/TeamMemberCheck";
 import { Suspense } from "react";
 
 const Clients = () => {
@@ -64,23 +63,19 @@ const Clients = () => {
   }
 
   return (
-    <TeamMemberCheck>
-      <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
-            Lista de Clientes
-          </h1>
-        </div>
-
-        <Suspense fallback={<ClientsLoadingState />}>
-          <Card className="p-2 md:p-6">
-            <ClientsList />
-          </Card>
-
-          <ClientsRanking clients={clients || []} />
-        </Suspense>
+    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-muran-dark">
+          Lista de Clientes
+        </h1>
       </div>
-    </TeamMemberCheck>
+
+      <Card className="p-2 md:p-6">
+        <ClientsList />
+      </Card>
+
+      <ClientsRanking clients={clients || []} />
+    </div>
   );
 };
 

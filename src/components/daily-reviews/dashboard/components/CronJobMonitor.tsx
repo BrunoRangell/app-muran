@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlayIcon, RefreshCw, CheckCircle, Clock, Zap } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -277,7 +277,7 @@ export function CronJobMonitor() {
           .update({
             status: response.ok ? "completed" : "error",
             details: {
-              ...logEntry.details,
+              ...(typeof logEntry.details === 'object' && logEntry.details !== null ? logEntry.details : {}),
               http_success: response.ok,
               response_status: response.status,
               response_data: responseText,

@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { supabase, checkSession } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
 
@@ -64,14 +64,6 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const isValid = await checkSession();
-        
-        if (!isValid) {
-          setIsAuthenticated(false);
-          setIsAdmin(false);
-          return;
-        }
-
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
