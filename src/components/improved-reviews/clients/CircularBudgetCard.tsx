@@ -128,11 +128,12 @@ export function CircularBudgetCard({
       console.log(`✅ Revisão do cliente ${client.company_name} concluída com sucesso`);
     } catch (error: any) {
       console.error(`❌ Erro na revisão do cliente ${client.company_name}:`, error);
-      toast({
-        title: "Erro na análise",
-        description: error.message || "Ocorreu um erro ao analisar o cliente",
-        variant: "destructive"
-      });
+      // Toast de erro removido - conforme solicitação do usuário
+      // toast({
+      //   title: "Erro na análise",
+      //   description: error.message || "Ocorreu um erro ao analisar o cliente",
+      //   variant: "destructive"
+      // });
     }
   };
   const handleWarningIgnored = async () => {

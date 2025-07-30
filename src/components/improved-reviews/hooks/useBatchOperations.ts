@@ -171,11 +171,12 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
       
     } catch (error) {
       console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
-      toast({
-        title: "Erro na análise",
-        description: `Erro ao analisar cliente: ${error.message}`,
-        variant: "destructive",
-      });
+      // Toast de erro removido - conforme solicitação do usuário
+      // toast({
+      //   title: "Erro na análise",
+      //   description: `Erro ao analisar cliente: ${error.message}`,
+      //   variant: "destructive",
+      // });
     } finally {
       setProcessingIds(prev => prev.filter(id => id !== clientId));
     }
