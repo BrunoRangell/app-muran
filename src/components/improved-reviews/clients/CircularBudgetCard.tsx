@@ -184,11 +184,11 @@ export function CircularBudgetCard({
       // Atualizar estado local imediatamente para refletir mudança
       setLocalWarningIgnored(true);
 
-      // Toast de confirmação
-      toast({
-        title: "Aviso ignorado",
-        description: `O aviso de ajuste para ${companyName} foi ocultado por hoje.`
-      });
+      // Toast de confirmação removido - conforme solicitação do usuário
+      // toast({
+      //   title: "Aviso ignorado",
+      //   description: `O aviso de ajuste para ${companyName} foi ocultado por hoje.`
+      // });
       console.log(`✅ Cache invalidado e interface atualizada para ${platform}`);
 
       // Chamar callback se fornecido para atualizar a interface
