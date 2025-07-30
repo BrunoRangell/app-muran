@@ -445,7 +445,42 @@ export async function processReviewRequest(req: Request) {
       account_name: metaApiData.account_name
     });
     
-    // 6. Atualizar nome da conta na tabela client_accounts APENAS se obtivemos um nome válido da API
+    // 6. 🧹 LIMPEZA AUTOMÁTICA: Remover revisões antigas da tabela budget_reviews
+    const cleanupStartTime = Date.now();
+    console.log(`🧹 [CLEANUP] Iniciando limpeza automática da tabela budget_reviews...`);
+    
+    // 6.1. Remover TODAS as revisões anteriores a hoje
+    const { error: deleteOldError } = await supabase
+      .from('budget_reviews')
+      .delete()
+      .eq('platform', 'meta')
+      .lt('review_date', today);
+
+    if (deleteOldError) {
+      console.error('❌ [CLEANUP] Erro ao limpar revisões de dias anteriores:', deleteOldError);
+    } else {
+      console.log(`✅ [CLEANUP] Revisões de dias anteriores removidas (review_date < ${today})`);
+    }
+
+    // 6.2. Remover revisões duplicadas de hoje para esta conta específica
+    const { error: deleteTodayDuplicatesError } = await supabase
+      .from('budget_reviews')
+      .delete()
+      .eq('platform', 'meta')
+      .eq('client_id', clientId)
+      .eq('account_id', metaAccount.account_id)
+      .eq('review_date', today);
+
+    if (deleteTodayDuplicatesError) {
+      console.error('❌ [CLEANUP] Erro ao limpar revisões duplicadas de hoje:', deleteTodayDuplicatesError);
+    } else {
+      console.log(`✅ [CLEANUP] Revisões duplicadas de hoje removidas para conta ${metaAccount.account_id}`);
+    }
+
+    const cleanupTime = Date.now() - cleanupStartTime;
+    console.log(`✅ [CLEANUP] Limpeza concluída (${cleanupTime}ms)`);
+
+    // 7. Atualizar nome da conta na tabela client_accounts APENAS se obtivemos um nome válido da API
     if (metaApiData.account_name && metaApiData.account_name !== metaAccount.account_name) {
       const updateStartTime = Date.now();
       console.log(`🔄 [UPDATE] Atualizando nome da conta`);

@@ -443,7 +443,46 @@ async function processGoogleReview(req: Request) {
       }
     }
 
-    // CORREÇÃO: Verificar revisão existente na tabela budget_reviews unificada
+    // 🧹 LIMPEZA AUTOMÁTICA: Remover revisões antigas da tabela budget_reviews
+    console.log(`🧹 [CLEANUP] Iniciando limpeza automática da tabela budget_reviews...`);
+    
+    // 1. Remover TODAS as revisões anteriores a hoje
+    const deleteOldResponse = await fetch(
+      `${supabaseUrl}/rest/v1/budget_reviews?platform=eq.google&review_date=lt.${reviewDate}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!deleteOldResponse.ok) {
+      console.error('❌ [CLEANUP] Erro ao limpar revisões de dias anteriores');
+    } else {
+      console.log(`✅ [CLEANUP] Revisões de dias anteriores removidas (review_date < ${reviewDate})`);
+    }
+
+    // 2. Remover revisões duplicadas de hoje para esta conta específica
+    const deleteTodayResponse = await fetch(
+      `${supabaseUrl}/rest/v1/budget_reviews?platform=eq.google&client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&review_date=eq.${reviewDate}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!deleteTodayResponse.ok) {
+      console.error('❌ [CLEANUP] Erro ao limpar revisões duplicadas de hoje');
+    } else {
+      console.log(`✅ [CLEANUP] Revisões duplicadas de hoje removidas para conta ${accountIdUuid}`);
+    }
+
+    console.log(`✅ [CLEANUP] Limpeza automática concluída`);
+
+    // CORREÇÃO: Verificar revisão existente na tabela budget_reviews unificada (após limpeza)
     const existingReviewResponse = await fetch(
       `${supabaseUrl}/rest/v1/budget_reviews?client_id=eq.${clientId}&account_id=eq.${accountIdUuid}&platform=eq.google&review_date=eq.${reviewDate}&select=id`, {
       headers: {
