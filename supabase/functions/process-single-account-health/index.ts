@@ -430,8 +430,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    const today = getTodayInBrazil();
-
     console.log(`🔍 Processando conta individual: ${requestAccountId}`);
 
     // Buscar token do Meta Ads
@@ -484,6 +482,8 @@ Deno.serve(async (req) => {
     } else if (account.platform === 'google') {
       campaignData = await fetchGoogleActiveCampaigns(account.account_id, supabase);
     }
+    
+    const today = getTodayInBrazil();
     
     // Calcular campanhas sem veiculação baseado em impressões = 0 AND custo = 0
     const unservedCampaigns = campaignData.campaignsDetailed.filter(campaign => 
