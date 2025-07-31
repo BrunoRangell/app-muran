@@ -430,6 +430,47 @@ Deno.serve(async (req) => {
       );
     }
 
+    const today = getTodayInBrazil();
+
+    // 🧹 LIMPEZA AUTOMÁTICA: Remover dados antigos na primeira execução do dia
+    console.log(`🧹 Iniciando limpeza automática de dados antigos...`);
+    
+    // Verificar se já existe dados de hoje para esta conta específica
+    const { data: existingData } = await supabase
+      .from('campaign_health')
+      .select('id')
+      .eq('account_id', requestAccountId)
+      .eq('snapshot_date', today)
+      .limit(1);
+
+    // Se não existe dados de hoje para esta conta, fazer limpeza geral
+    if (!existingData || existingData.length === 0) {
+      // Remover TODOS os dados antigos (de qualquer data anterior a hoje)
+      const { error: deleteOldError } = await supabase
+        .from('campaign_health')
+        .delete()
+        .lt('snapshot_date', today);
+
+      if (deleteOldError) {
+        console.error('❌ Erro ao limpar dados antigos:', deleteOldError);
+      } else {
+        console.log(`✅ Dados antigos removidos (snapshot_date < ${today})`);
+      }
+    }
+
+    // Sempre remover dados existentes desta conta específica para o dia atual
+    const { error: deleteCurrentError } = await supabase
+      .from('campaign_health')
+      .delete()
+      .eq('account_id', requestAccountId)
+      .eq('snapshot_date', today);
+
+    if (deleteCurrentError) {
+      console.error('❌ Erro ao limpar dados atuais da conta:', deleteCurrentError);
+    } else {
+      console.log(`✅ Dados atuais da conta ${requestAccountId} removidos para ${today}`);
+    }
+
     console.log(`🔍 Processando conta individual: ${requestAccountId}`);
 
     // Buscar token do Meta Ads
@@ -482,8 +523,6 @@ Deno.serve(async (req) => {
     } else if (account.platform === 'google') {
       campaignData = await fetchGoogleActiveCampaigns(account.account_id, supabase);
     }
-    
-    const today = getTodayInBrazil();
     
     // Calcular campanhas sem veiculação baseado em impressões = 0 AND custo = 0
     const unservedCampaigns = campaignData.campaignsDetailed.filter(campaign => 
