@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.active-campaigns-health]
 verify_jwt = false
+
+[functions.manual-cleanup-campaign-health]
+verify_jwt = false
+
+[functions.campaign-health-status]
+verify_jwt = false

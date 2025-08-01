@@ -745,6 +745,10 @@ export type Database = {
         Args: { description: string }
         Returns: string
       }
+      get_campaign_health_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_cron_expression: {
         Args: { job_name: string }
         Returns: {
@@ -782,6 +786,10 @@ export type Database = {
       is_team_member: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      manual_cleanup_campaign_health: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       review_all_google_ads_clients: {
         Args: Record<PropertyKey, never>
