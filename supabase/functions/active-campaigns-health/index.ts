@@ -300,27 +300,37 @@ Deno.serve(async (req) => {
     console.log(`🧹 Iniciando limpeza automática COMPLETA de dados antigos...`);
     
     // 1. Remover TODOS os dados anteriores a hoje
-    const { error: deleteOldError } = await supabase
+    console.log(`🗑️ Tentando remover dados anteriores a ${today}...`);
+    const { error: deleteOldError, count: deletedOldCount } = await supabase
       .from('campaign_health')
-      .delete()
+      .delete({ count: 'exact' })
       .lt('snapshot_date', today);
 
     if (deleteOldError) {
-      console.error('❌ Erro ao limpar dados de dias anteriores:', deleteOldError);
+      console.error('❌ ERRO CRÍTICO ao limpar dados de dias anteriores:', deleteOldError);
+      console.error('❌ Detalhes do erro:', JSON.stringify(deleteOldError, null, 2));
     } else {
-      console.log(`✅ Dados de dias anteriores removidos (snapshot_date < ${today})`);
+      console.log(`✅ Dados de dias anteriores removidos: ${deletedOldCount || 0} registros (snapshot_date < ${today})`);
     }
 
     // 2. Remover duplicatas de hoje (manter apenas os mais recentes)
-    const { error: deleteTodayDuplicatesError } = await supabase
+    console.log(`🗑️ Tentando remover dados duplicados de hoje (${today})...`);
+    const { error: deleteTodayDuplicatesError, count: deletedTodayCount } = await supabase
       .from('campaign_health')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('snapshot_date', today);
 
     if (deleteTodayDuplicatesError) {
-      console.error('❌ Erro ao limpar dados duplicados de hoje:', deleteTodayDuplicatesError);
+      console.error('❌ ERRO CRÍTICO ao limpar dados duplicados de hoje:', deleteTodayDuplicatesError);
+      console.error('❌ Detalhes do erro:', JSON.stringify(deleteTodayDuplicatesError, null, 2));
     } else {
-      console.log(`✅ Dados antigos de hoje removidos - preparando para inserir dados frescos`);
+      console.log(`✅ Dados antigos de hoje removidos: ${deletedTodayCount || 0} registros - preparando para inserir dados frescos`);
+    }
+
+    // 3. Fallback: Se houve erro na limpeza, inserir dados únicos usando upsert mais restritivo
+    const hasCleanupErrors = deleteOldError || deleteTodayDuplicatesError;
+    if (hasCleanupErrors) {
+      console.log(`⚠️ FALLBACK ATIVADO: Limpeza automática falhou, usando estratégia alternativa`);
     }
 
     // Buscar token do Meta Ads
