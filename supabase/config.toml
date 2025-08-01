@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.campaign-health-status]
 verify_jwt = false
+
+[functions.trigger-campaign-health-update]
+verify_jwt = false
