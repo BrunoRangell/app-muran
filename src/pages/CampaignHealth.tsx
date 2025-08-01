@@ -13,11 +13,14 @@ import { CampaignStatus } from "@/components/campaign-health/types";
 import { AlertLevel, HealthAlert } from "@/components/campaign-health/types/enhanced-types";
 import { formatDateForDisplay } from "@/utils/brazilTimezone";
 import { buildPlatformUrl } from "@/utils/platformUrls";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export default function CampaignHealth() {
   const navigate = useNavigate();
   const [urgencyFilter, setUrgencyFilter] = useState<AlertLevel | "all">("all");
   const [problemTypeFilter, setProblemTypeFilter] = useState<string>("all");
+  
 
   const {
     data,
@@ -112,6 +115,7 @@ export default function CampaignHealth() {
     console.log("🚨 Clique no alerta:", alert);
     handlePlatformAction('review', alert.clientId, alert.platform);
   };
+
 
   // Mapear dashboardStats para o formato esperado pelo IntelligentFilters
   const totalFilterStats = {
@@ -230,7 +234,7 @@ export default function CampaignHealth() {
                 disabled={isManualRefreshing}
                 className="px-4 py-2 bg-[#ff6e00] text-white rounded-lg hover:bg-[#e55a00] disabled:opacity-50"
               >
-                {isManualRefreshing ? "Atualizando..." : "Atualizar dados"}
+                {isManualRefreshing ? "Atualizando..." : "🔄 Atualizar"}
               </button>
             </div>
           )}

@@ -118,7 +118,17 @@ export function useActiveCampaignHealth() {
     try {
       console.log("🔄 Iniciando atualização manual...");
       
-      // Buscar todas as contas ativas
+      // 1. Primeiro fazer limpeza dos dados antigos
+      console.log("🧹 Executando limpeza automática...");
+      const { data: cleanupResult, error: cleanupError } = await supabase.rpc('manual_cleanup_campaign_health');
+      
+      if (cleanupError) {
+        console.warn("⚠️ Aviso na limpeza automática:", cleanupError);
+      } else {
+        console.log("✅ Limpeza automática concluída:", cleanupResult);
+      }
+      
+      // 2. Buscar todas as contas ativas
       const { data: accounts, error: accountsError } = await supabase
         .from('client_accounts')
         .select(`
