@@ -20,7 +20,7 @@ export default function CampaignHealth() {
   const navigate = useNavigate();
   const [urgencyFilter, setUrgencyFilter] = useState<AlertLevel | "all">("all");
   const [problemTypeFilter, setProblemTypeFilter] = useState<string>("all");
-  const [isGeneralUpdating, setIsGeneralUpdating] = useState(false);
+  
 
   const {
     data,
@@ -116,31 +116,6 @@ export default function CampaignHealth() {
     handlePlatformAction('review', alert.clientId, alert.platform);
   };
 
-  const handleGeneralUpdate = async () => {
-    setIsGeneralUpdating(true);
-    try {
-      console.log('🚀 Iniciando atualização geral...');
-      toast.info('Iniciando atualização geral de campanhas...');
-      
-      const { data, error } = await supabase.functions.invoke('trigger-campaign-health-update');
-      
-      if (error) {
-        console.error('❌ Erro na atualização geral:', error);
-        toast.error('Erro na atualização geral: ' + error.message);
-      } else {
-        console.log('✅ Atualização geral concluída:', data);
-        toast.success('Atualização geral concluída com sucesso!');
-        
-        // Atualizar os dados locais
-        await handleRefresh();
-      }
-    } catch (error) {
-      console.error('❌ Erro crítico:', error);
-      toast.error('Erro crítico na atualização geral');
-    } finally {
-      setIsGeneralUpdating(false);
-    }
-  };
 
   // Mapear dashboardStats para o formato esperado pelo IntelligentFilters
   const totalFilterStats = {
@@ -189,20 +164,6 @@ export default function CampaignHealth() {
               {isManualRefreshing && (
                 <span className="text-blue-600 font-medium">• Atualizando...</span>
               )}
-              {isGeneralUpdating && (
-                <span className="text-orange-600 font-medium">• Atualização geral em andamento...</span>
-              )}
-            </div>
-            
-            {/* Botão de Atualização Geral */}
-            <div className="mt-3">
-              <button
-                onClick={handleGeneralUpdate}
-                disabled={isGeneralUpdating || isManualRefreshing}
-                className="px-4 py-2 bg-[#ff6e00] text-white rounded-lg hover:bg-[#e55a00] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-              >
-                {isGeneralUpdating ? "Executando..." : "🚀 Atualização Geral"}
-              </button>
             </div>
           </div>
           
@@ -273,7 +234,7 @@ export default function CampaignHealth() {
                 disabled={isManualRefreshing}
                 className="px-4 py-2 bg-[#ff6e00] text-white rounded-lg hover:bg-[#e55a00] disabled:opacity-50"
               >
-                {isManualRefreshing ? "Atualizando..." : "Atualizar dados"}
+                {isManualRefreshing ? "Atualizando..." : "🔄 Atualizar"}
               </button>
             </div>
           )}
