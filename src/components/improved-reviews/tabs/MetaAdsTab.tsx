@@ -6,8 +6,11 @@ import { MetricsPanel } from "../dashboard/MetricsPanel";
 import { useUnifiedReviewsData } from "../hooks/useUnifiedReviewsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
+import { NoReviewsWarning } from "../common/NoReviewsWarning";
+import { BatchProgressBar } from "../dashboard/BatchProgressBar";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
+import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
 import { AlertTriangle } from "lucide-react";
 
 interface MetaAdsTabProps {
@@ -21,6 +24,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
+  const { data: todayReviews, refetch: refetchTodayCheck } = useTodayReviewsCheck();
   const { forceDataRefresh, startPolling } = useRealTimeDataService();
   const { 
     reviewAllClients, 
@@ -59,6 +63,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
     console.log("🔄 Atualizando dados do Meta Ads...");
     await forceDataRefresh();
     await refreshData();
+    await refetchTodayCheck();
     if (onRefreshCompleted) onRefreshCompleted();
   };
 
@@ -80,6 +85,28 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         description={`Ocorreu um erro ao carregar os dados: ${error.message}`}
         icon={<AlertTriangle className="h-16 w-16 text-red-500 mb-4" />}
       />
+    );
+  }
+
+  // Se não há reviews para hoje, mostrar apenas o aviso
+  if (!isLoading && !error && !todayReviews.hasMetaReviews) {
+    return (
+      <div className="space-y-6">
+        <NoReviewsWarning 
+          platform="meta" 
+          onRefresh={handleBatchReview}
+          isRefreshing={isProcessing}
+        />
+        {isProcessing && (
+          <BatchProgressBar
+            progress={progress}
+            total={total}
+            currentClientName={currentClientName}
+            platform="meta"
+            onCancel={cancelBatchProcessing}
+          />
+        )}
+      </div>
     );
   }
 

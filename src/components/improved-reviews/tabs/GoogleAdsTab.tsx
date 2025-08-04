@@ -6,8 +6,11 @@ import { MetricsPanel } from "../dashboard/MetricsPanel";
 import { useGoogleAdsData } from "../hooks/useGoogleAdsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
+import { NoReviewsWarning } from "../common/NoReviewsWarning";
+import { BatchProgressBar } from "../dashboard/BatchProgressBar";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
+import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
 import { DataDebugPanel } from "../debug/DataDebugPanel";
 import { AlertTriangle } from "lucide-react";
 
@@ -22,6 +25,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   
   const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
+  const { data: todayReviews, refetch: refetchTodayCheck } = useTodayReviewsCheck();
   const { forceDataRefresh, startPolling } = useRealTimeDataService();
   
   // Log detalhado para debug
@@ -78,6 +82,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     console.log("🔄 Atualizando dados do Google Ads...");
     await forceDataRefresh();
     await refreshData();
+    await refetchTodayCheck();
     if (onRefreshCompleted) onRefreshCompleted();
   };
 
@@ -93,6 +98,28 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
 
   if (isLoading) {
     return <ImprovedLoadingState />;
+  }
+
+  // Se não há reviews para hoje, mostrar apenas o aviso
+  if (!isLoading && !error && !todayReviews.hasGoogleReviews) {
+    return (
+      <div className="space-y-6">
+        <NoReviewsWarning 
+          platform="google" 
+          onRefresh={handleBatchReview}
+          isRefreshing={isProcessing}
+        />
+        {isProcessing && (
+          <BatchProgressBar
+            progress={progress}
+            total={total}
+            currentClientName={currentClientName}
+            platform="google"
+            onCancel={cancelBatchProcessing}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
