@@ -7,6 +7,7 @@ import { useGoogleAdsData } from "../hooks/useGoogleAdsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { NoReviewsWarning } from "../common/NoReviewsWarning";
+import { BatchProgressBar } from "../dashboard/BatchProgressBar";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
 import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
@@ -108,6 +109,15 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
           onRefresh={handleBatchReview}
           isRefreshing={isProcessing}
         />
+        {isProcessing && (
+          <BatchProgressBar
+            progress={progress}
+            total={total}
+            currentClientName={currentClientName}
+            platform="google"
+            onCancel={cancelBatchProcessing}
+          />
+        )}
       </div>
     );
   }

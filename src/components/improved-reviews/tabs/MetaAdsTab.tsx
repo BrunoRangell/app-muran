@@ -7,6 +7,7 @@ import { useUnifiedReviewsData } from "../hooks/useUnifiedReviewsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
 import { NoReviewsWarning } from "../common/NoReviewsWarning";
+import { BatchProgressBar } from "../dashboard/BatchProgressBar";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
 import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
@@ -96,6 +97,15 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
           onRefresh={handleBatchReview}
           isRefreshing={isProcessing}
         />
+        {isProcessing && (
+          <BatchProgressBar
+            progress={progress}
+            total={total}
+            currentClientName={currentClientName}
+            platform="meta"
+            onCancel={cancelBatchProcessing}
+          />
+        )}
       </div>
     );
   }
