@@ -93,8 +93,8 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
       <div className="space-y-6">
         <NoReviewsWarning 
           platform="meta" 
-          onRefresh={handleRefresh}
-          isRefreshing={isLoading}
+          onRefresh={handleBatchReview}
+          isRefreshing={isProcessing}
         />
       </div>
     );

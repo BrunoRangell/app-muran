@@ -105,8 +105,8 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
       <div className="space-y-6">
         <NoReviewsWarning 
           platform="google" 
-          onRefresh={handleRefresh}
-          isRefreshing={isLoading}
+          onRefresh={handleBatchReview}
+          isRefreshing={isProcessing}
         />
       </div>
     );
