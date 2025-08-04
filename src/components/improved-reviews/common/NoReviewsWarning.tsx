@@ -48,7 +48,7 @@ export function NoReviewsWarning({ platform, onRefresh, isRefreshing }: NoReview
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar e Gerar Revisões
+                Atualizar
               </>
             )}
           </Button>

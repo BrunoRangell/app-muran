@@ -87,17 +87,21 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Aviso se não há reviews para hoje */}
-      {!isLoading && !error && !todayReviews.hasMetaReviews && (
+  // Se não há reviews para hoje, mostrar apenas o aviso
+  if (!isLoading && !error && !todayReviews.hasMetaReviews) {
+    return (
+      <div className="space-y-6">
         <NoReviewsWarning 
           platform="meta" 
           onRefresh={handleRefresh}
           isRefreshing={isLoading}
         />
-      )}
+      </div>
+    );
+  }
 
+  return (
+    <div className="space-y-6">
       <MetricsPanel 
         metrics={metrics} 
         onBatchReview={handleBatchReview}

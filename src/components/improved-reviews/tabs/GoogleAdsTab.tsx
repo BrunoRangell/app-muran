@@ -99,19 +99,23 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
     return <ImprovedLoadingState />;
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Debug Panel - mostra automaticamente apenas se há problemas */}
-      {shouldShowDebug && <DataDebugPanel />}
-
-      {/* Aviso se não há reviews para hoje */}
-      {!isLoading && !error && !todayReviews.hasGoogleReviews && (
+  // Se não há reviews para hoje, mostrar apenas o aviso
+  if (!isLoading && !error && !todayReviews.hasGoogleReviews) {
+    return (
+      <div className="space-y-6">
         <NoReviewsWarning 
           platform="google" 
           onRefresh={handleRefresh}
           isRefreshing={isLoading}
         />
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Debug Panel - mostra automaticamente apenas se há problemas */}
+      {shouldShowDebug && <DataDebugPanel />}
 
       {error && (
         <EmptyState
