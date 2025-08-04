@@ -6,8 +6,10 @@ import { MetricsPanel } from "../dashboard/MetricsPanel";
 import { useUnifiedReviewsData } from "../hooks/useUnifiedReviewsData";
 import { ImprovedLoadingState } from "../common/ImprovedLoadingState";
 import { EmptyState } from "../common/EmptyState";
+import { NoReviewsWarning } from "../common/NoReviewsWarning";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
+import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
 import { AlertTriangle } from "lucide-react";
 
 interface MetaAdsTabProps {
@@ -21,6 +23,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
+  const { data: todayReviews, refetch: refetchTodayCheck } = useTodayReviewsCheck();
   const { forceDataRefresh, startPolling } = useRealTimeDataService();
   const { 
     reviewAllClients, 
@@ -59,6 +62,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
     console.log("🔄 Atualizando dados do Meta Ads...");
     await forceDataRefresh();
     await refreshData();
+    await refetchTodayCheck();
     if (onRefreshCompleted) onRefreshCompleted();
   };
 
@@ -85,6 +89,15 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
 
   return (
     <div className="space-y-6">
+      {/* Aviso se não há reviews para hoje */}
+      {!isLoading && !error && !todayReviews.hasMetaReviews && (
+        <NoReviewsWarning 
+          platform="meta" 
+          onRefresh={handleRefresh}
+          isRefreshing={isLoading}
+        />
+      )}
+
       <MetricsPanel 
         metrics={metrics} 
         onBatchReview={handleBatchReview}

@@ -44,6 +44,25 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
   console.log("🔍 Iniciando busca de dados do Google Ads...");
   
   try {
+    // 1. Primeiro fazer limpeza dos dados antigos
+    console.log("🧹 Executando limpeza automática dos budget_reviews...");
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        'https://socrnutfpqtcjmetskta.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw'
+      );
+      
+      const { data: cleanupResult, error: cleanupError } = await supabase.rpc('manual_cleanup_campaign_health');
+      
+      if (cleanupError) {
+        console.warn("⚠️ Aviso na limpeza automática:", cleanupError);
+      } else {
+        console.log("✅ Limpeza automática concluída:", cleanupResult);
+      }
+    } catch (cleanupErr) {
+      console.warn("⚠️ Erro na limpeza automática (continuando):", cleanupErr);
+    }
     // Primeiro, buscar TODOS os clientes ativos
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
