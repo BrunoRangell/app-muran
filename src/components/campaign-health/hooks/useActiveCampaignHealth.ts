@@ -1,19 +1,31 @@
 
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ClientHealthData, HealthStats } from "../types";
-import { useState, useCallback } from "react";
 import { getTodayInBrazil } from "@/utils/brazilTimezone";
+
+const LAST_REFRESH_KEY = 'campaign-health-last-refresh';
 
 export function useActiveCampaignHealth() {
   const [filterValue, setFilterValue] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
-  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number | null>(null);
+  // Carregar timestamp do localStorage na inicialização
+  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState<number | null>(() => {
+    const saved = localStorage.getItem(LAST_REFRESH_KEY);
+    return saved ? parseInt(saved, 10) : null;
+  });
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState(0);
 
   const todayDate = getTodayInBrazil();
+
+  // Função para salvar timestamp no localStorage
+  const updateLastRefreshTimestamp = useCallback((timestamp: number) => {
+    setLastRefreshTimestamp(timestamp);
+    localStorage.setItem(LAST_REFRESH_KEY, timestamp.toString());
+  }, []);
 
   const {
     data,
@@ -203,7 +215,7 @@ export function useActiveCampaignHealth() {
       }
 
       console.log("✅ Atualização manual concluída!");
-      setLastRefreshTimestamp(Date.now());
+      updateLastRefreshTimestamp(Date.now());
       
       // Refetch dos dados
       await refetch();
@@ -215,7 +227,7 @@ export function useActiveCampaignHealth() {
       setIsManualRefreshing(false);
       setRefreshProgress(0);
     }
-  }, [isManualRefreshing, refetch]);
+  }, [isManualRefreshing, refetch, updateLastRefreshTimestamp]);
 
   const stats: HealthStats = {
     totalClients: data?.length || 0,
