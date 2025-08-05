@@ -296,41 +296,67 @@ Deno.serve(async (req) => {
 
     const today = getTodayInBrazil();
 
-    // 🧹 LIMPEZA AUTOMÁTICA COMPLETA: Remover TODOS os dados antigos e duplicatas
-    console.log(`🧹 Iniciando limpeza automática COMPLETA de dados antigos...`);
+    // 🧹 LIMPEZA INTELIGENTE: Remover apenas dados antigos, preservar dados válidos de hoje
+    console.log(`🧹 Iniciando limpeza inteligente de dados antigos...`);
     
-    // 1. Remover TODOS os dados anteriores a hoje
-    console.log(`🗑️ Tentando remover dados anteriores a ${today}...`);
+    // 1. Verificar se já existem dados válidos de hoje
+    const { data: existingTodayData, error: checkError } = await supabase
+      .from('campaign_health')
+      .select('id, account_id, created_at')
+      .eq('snapshot_date', today);
+
+    if (checkError) {
+      console.error('❌ Erro ao verificar dados existentes:', checkError);
+    } else {
+      console.log(`📊 Dados existentes de hoje: ${existingTodayData?.length || 0} registros`);
+    }
+
+    // 2. Remover APENAS dados anteriores a hoje (preservar dados de hoje)
+    console.log(`🗑️ Removendo dados anteriores a ${today}...`);
     const { error: deleteOldError, count: deletedOldCount } = await supabase
       .from('campaign_health')
       .delete({ count: 'exact' })
       .lt('snapshot_date', today);
 
     if (deleteOldError) {
-      console.error('❌ ERRO CRÍTICO ao limpar dados de dias anteriores:', deleteOldError);
-      console.error('❌ Detalhes do erro:', JSON.stringify(deleteOldError, null, 2));
+      console.error('❌ ERRO ao limpar dados de dias anteriores:', deleteOldError);
     } else {
-      console.log(`✅ Dados de dias anteriores removidos: ${deletedOldCount || 0} registros (snapshot_date < ${today})`);
+      console.log(`✅ Dados de dias anteriores removidos: ${deletedOldCount || 0} registros`);
     }
 
-    // 2. Remover duplicatas de hoje (manter apenas os mais recentes)
-    console.log(`🗑️ Tentando remover dados duplicados de hoje (${today})...`);
-    const { error: deleteTodayDuplicatesError, count: deletedTodayCount } = await supabase
-      .from('campaign_health')
-      .delete({ count: 'exact' })
-      .eq('snapshot_date', today);
-
-    if (deleteTodayDuplicatesError) {
-      console.error('❌ ERRO CRÍTICO ao limpar dados duplicados de hoje:', deleteTodayDuplicatesError);
-      console.error('❌ Detalhes do erro:', JSON.stringify(deleteTodayDuplicatesError, null, 2));
-    } else {
-      console.log(`✅ Dados antigos de hoje removidos: ${deletedTodayCount || 0} registros - preparando para inserir dados frescos`);
+    // 3. Se já existem dados de hoje e não é forçada a atualização, pular geração
+    const forceRefresh = req.headers.get('x-force-refresh') === 'true';
+    if (existingTodayData && existingTodayData.length > 0 && !forceRefresh) {
+      console.log(`⚠️ DADOS JÁ EXISTEM para hoje (${existingTodayData.length} registros). Use x-force-refresh: true para forçar nova geração.`);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          data: existingTodayData,
+          message: `Dados já existem para ${today}`,
+          existing_records: existingTodayData.length,
+          timestamp: new Date().toISOString(),
+          brazil_date: today,
+          skipped_generation: true
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
     }
 
-    // 3. Fallback: Se houve erro na limpeza, inserir dados únicos usando upsert mais restritivo
-    const hasCleanupErrors = deleteOldError || deleteTodayDuplicatesError;
-    if (hasCleanupErrors) {
-      console.log(`⚠️ FALLBACK ATIVADO: Limpeza automática falhou, usando estratégia alternativa`);
+    // 4. Se forçar refresh, remover dados de hoje antes de gerar novos
+    if (forceRefresh && existingTodayData && existingTodayData.length > 0) {
+      console.log(`🔄 FORCE REFRESH: Removendo ${existingTodayData.length} registros de hoje para gerar novos...`);
+      const { error: deleteTodayError } = await supabase
+        .from('campaign_health')
+        .delete()
+        .eq('snapshot_date', today);
+      
+      if (deleteTodayError) {
+        console.error('❌ Erro ao limpar dados de hoje:', deleteTodayError);
+      }
     }
 
     // Buscar token do Meta Ads
