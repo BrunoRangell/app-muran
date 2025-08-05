@@ -39,6 +39,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
       console.log("✅ Revisão em lote do Meta Ads concluída. Atualizando dados...");
       await forceDataRefresh();
       await refreshData();
+      await refetchTodayCheck();
       if (onRefreshCompleted) onRefreshCompleted();
     }
   });

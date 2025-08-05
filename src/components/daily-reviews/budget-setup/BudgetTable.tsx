@@ -167,9 +167,9 @@ export const BudgetTable = ({
                           <Input
                             id={`google-account-${googleAccount?.id || `${client.id}-google-${index}`}`}
                             placeholder="ID da conta Google"
-                            value={googleAccount ? (budgets[googleAccount.id]?.account_id || "") : ""}
+                            value={googleAccount ? (budgets[googleAccount.id]?.account_id || "") : (budgets[`${client.id}-google-0`]?.account_id || "")}
                             onChange={(e) => {
-                              const accountKey = googleAccount?.id || `${client.id}-google-${index}`;
+                              const accountKey = googleAccount?.id || `${client.id}-google-0`;
                               if (onGoogleAccountIdChange) {
                                 onGoogleAccountIdChange(accountKey, e.target.value);
                               }
@@ -187,9 +187,9 @@ export const BudgetTable = ({
                           <Input
                             id={`google-${googleAccount?.id || `${client.id}-google-budget-${index}`}`}
                             placeholder="0,00"
-                            value={googleAccount ? (budgets[googleAccount.id]?.budget_amount || "") : ""}
+                            value={googleAccount ? (budgets[googleAccount.id]?.budget_amount || "") : (budgets[`${client.id}-google-0`]?.budget_amount || "")}
                             onChange={(e) => {
-                              const accountKey = googleAccount?.id || `${client.id}-google-budget-${index}`;
+                              const accountKey = googleAccount?.id || `${client.id}-google-0`;
                               if (onGoogleBudgetChange) {
                                 handleBudgetInputChange(accountKey, e.target.value, onGoogleBudgetChange);
                               }

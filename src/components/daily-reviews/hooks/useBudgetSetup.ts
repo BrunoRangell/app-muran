@@ -100,9 +100,22 @@ export const useBudgetSetup = () => {
           };
         }
         
+        // Inicializar campos vazios para Google Ads se o cliente não tem conta Google
+        const hasGoogleAccount = client.client_accounts.some(acc => acc.platform === 'google');
+        if (!hasGoogleAccount) {
+          // Criar entradas para até 1 conta Google por cliente
+          const googleKey = `${client.id}-google-0`;
+          console.log(`🔧 Inicializando conta Google temporária para ${client.company_name}:`, googleKey);
+          initialBudgets[googleKey] = {
+            account_id: "",
+            budget_amount: ""
+          };
+        }
+        
         console.log(`✅ Inicializado para ${client.company_name}:`, client.client_accounts.length, "contas");
       });
       
+      console.log("📋 Estado inicial dos orçamentos:", initialBudgets);
       setBudgets(initialBudgets);
     }
   }, [clients]);
@@ -229,7 +242,7 @@ export const useBudgetSetup = () => {
           if (createError) throw createError;
           console.log(`✅ Nova conta criada para cliente ${clientId}`);
         } else if (accountId.includes('-meta-temp')) {
-          // Conta temporária para cliente sem contas
+          // Conta temporária para cliente sem contas Meta
           const clientId = accountId.split('-meta-temp')[0];
           
           if (values.account_id || values.budget_amount) {
@@ -246,7 +259,51 @@ export const useBudgetSetup = () => {
               });
             
             if (createError) throw createError;
-            console.log(`✅ Primeira conta criada para cliente ${clientId}`);
+            console.log(`✅ Primeira conta Meta criada para cliente ${clientId}`);
+          }
+        } else if (accountId.includes('-google-')) {
+          // Conta temporária para Google Ads
+          const clientId = accountId.split('-google-')[0];
+          
+          if (values.account_id && values.account_id.trim() !== "" && values.budget_amount && parseFloat(values.budget_amount.replace(/[^\d,.-]/g, '').replace(',', '.')) > 0) {
+            // Verificar duplicatas apenas se account_id não estiver vazio
+            if (values.account_id && values.account_id.trim() !== "") {
+              const { data: existingAccount } = await supabase
+                .from("client_accounts")
+                .select("id")
+                .eq("platform", "google")
+                .eq("account_id", values.account_id.trim())
+                .maybeSingle();
+
+              if (existingAccount) {
+                console.log(`⚠️ Conta Google com ID ${values.account_id} já existe`);
+                throw new Error(`Já existe uma conta Google com o ID ${values.account_id}`);
+              }
+            }
+
+            // Verificar se já existe uma conta primária Google para este cliente
+            const { data: primaryAccount } = await supabase
+              .from("client_accounts")
+              .select("id")
+              .eq("client_id", clientId)
+              .eq("platform", "google")
+              .eq("is_primary", true)
+              .maybeSingle();
+
+            const { error: createError } = await supabase
+              .from("client_accounts")
+              .insert({
+                client_id: clientId,
+                platform: 'google',
+                account_name: `Conta Google Ads`,
+                account_id: values.account_id || "",
+                budget_amount: budgetAmount,
+                is_primary: !primaryAccount, // Se não há conta primária, essa será primária
+                status: 'active'
+              });
+            
+            if (createError) throw createError;
+            console.log(`✅ Primeira conta Google criada para cliente ${clientId}`);
           }
         } else {
           // Atualizar conta existente
@@ -276,11 +333,21 @@ export const useBudgetSetup = () => {
       queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
       queryClient.invalidateQueries({ queryKey: ["budget-manager-data"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("❌ Erro ao salvar orçamentos:", error);
+      
+      let errorMessage = "Erro desconhecido";
+      if (error?.code === "23505" && error?.message?.includes("unique_account_per_platform")) {
+        errorMessage = "Já existe uma conta para este cliente e plataforma. Verifique se não há duplicatas.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else {
+        errorMessage = String(error);
+      }
+      
       toast({
         title: "Erro ao salvar orçamentos",
-        description: String(error),
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -306,9 +373,38 @@ export const useBudgetSetup = () => {
     }));
   };
 
-  // Handlers para compatibilidade - agora apontam para os handlers principais
-  const handleGoogleBudgetChange = handleBudgetChange;
-  const handleGoogleAccountIdChange = handleAccountIdChange;
+  // Handlers específicos para Google com logs detalhados
+  const handleGoogleBudgetChange = (accountId: string, value: string) => {
+    console.log(`💰 Mudança orçamento Google: ${accountId} = ${value}`);
+    console.log("🔍 Estado atual budgets antes da mudança:", budgets);
+    setBudgets(prev => {
+      const newState = {
+        ...prev,
+        [accountId]: {
+          ...prev[accountId],
+          budget_amount: value
+        }
+      };
+      console.log("🔍 Novo estado budgets após mudança:", newState);
+      return newState;
+    });
+  };
+
+  const handleGoogleAccountIdChange = (accountId: string, value: string) => {
+    console.log(`🆔 Mudança ID conta Google: ${accountId} = ${value}`);
+    console.log("🔍 Estado atual budgets antes da mudança:", budgets);
+    setBudgets(prev => {
+      const newState = {
+        ...prev,
+        [accountId]: {
+          ...prev[accountId],
+          account_id: value
+        }
+      };
+      console.log("🔍 Novo estado budgets após mudança:", newState);
+      return newState;
+    });
+  };
 
   const handleSave = () => {
     console.log("💾 Iniciando processo de salvamento:", budgets);

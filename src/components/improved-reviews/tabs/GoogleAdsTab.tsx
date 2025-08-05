@@ -52,12 +52,14 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
       console.log("✅ Revisão em lote do Google Ads concluída. Atualizando dados...");
       await forceDataRefresh();
       await refreshData();
+      await refetchTodayCheck();
       if (onRefreshCompleted) onRefreshCompleted();
     },
     onIndividualComplete: async () => {
       console.log("✅ Revisão individual do Google Ads concluída. Atualizando dados...");
       await forceDataRefresh();
       await refreshData();
+      await refetchTodayCheck();
       if (onRefreshCompleted) onRefreshCompleted();
     }
   });

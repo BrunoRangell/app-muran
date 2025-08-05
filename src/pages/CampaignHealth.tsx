@@ -146,11 +146,8 @@ export default function CampaignHealth() {
               Monitoramento de Campanhas
             </h1>
             <div className="flex items-center gap-2 text-sm">
-              <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
-                📅 {formatDateForDisplay(todayDate)}
-              </div>
               <span className="text-gray-600">
-                • Última atualização: {lastRefreshTimestamp 
+                Última atualização: {lastRefreshTimestamp 
                   ? new Date(lastRefreshTimestamp).toLocaleString('pt-BR', { 
                       timeZone: 'America/Sao_Paulo',
                       day: '2-digit',
@@ -159,7 +156,7 @@ export default function CampaignHealth() {
                       hour: '2-digit',
                       minute: '2-digit'
                     })
-                  : 'Nunca atualizado manualmente'}
+                  : 'Nunca atualizado'}
               </span>
               {isManualRefreshing && (
                 <span className="text-blue-600 font-medium">• Atualizando...</span>
