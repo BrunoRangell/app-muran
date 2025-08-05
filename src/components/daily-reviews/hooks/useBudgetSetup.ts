@@ -100,6 +100,17 @@ export const useBudgetSetup = () => {
           };
         }
         
+        // Inicializar campos vazios para Google Ads se o cliente não tem conta Google
+        const hasGoogleAccount = client.client_accounts.some(acc => acc.platform === 'google');
+        if (!hasGoogleAccount) {
+          // Criar entradas para até 1 conta Google por cliente
+          const googleKey = `${client.id}-google-0`;
+          initialBudgets[googleKey] = {
+            account_id: "",
+            budget_amount: ""
+          };
+        }
+        
         console.log(`✅ Inicializado para ${client.company_name}:`, client.client_accounts.length, "contas");
       });
       
@@ -229,7 +240,7 @@ export const useBudgetSetup = () => {
           if (createError) throw createError;
           console.log(`✅ Nova conta criada para cliente ${clientId}`);
         } else if (accountId.includes('-meta-temp')) {
-          // Conta temporária para cliente sem contas
+          // Conta temporária para cliente sem contas Meta
           const clientId = accountId.split('-meta-temp')[0];
           
           if (values.account_id || values.budget_amount) {
@@ -246,7 +257,27 @@ export const useBudgetSetup = () => {
               });
             
             if (createError) throw createError;
-            console.log(`✅ Primeira conta criada para cliente ${clientId}`);
+            console.log(`✅ Primeira conta Meta criada para cliente ${clientId}`);
+          }
+        } else if (accountId.includes('-google-')) {
+          // Conta temporária para Google Ads
+          const clientId = accountId.split('-google-')[0];
+          
+          if (values.account_id || values.budget_amount) {
+            const { error: createError } = await supabase
+              .from("client_accounts")
+              .insert({
+                client_id: clientId,
+                platform: 'google',
+                account_name: `Conta Google Ads`,
+                account_id: values.account_id || "",
+                budget_amount: budgetAmount,
+                is_primary: true,
+                status: 'active'
+              });
+            
+            if (createError) throw createError;
+            console.log(`✅ Primeira conta Google criada para cliente ${clientId}`);
           }
         } else {
           // Atualizar conta existente

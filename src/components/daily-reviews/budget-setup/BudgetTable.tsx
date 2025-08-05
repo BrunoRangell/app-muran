@@ -56,6 +56,10 @@ export const BudgetTable = ({
 
   // Verificar se os manipuladores de Google Ads estão disponíveis
   const showGoogleFields = !!onGoogleBudgetChange && !!onGoogleAccountIdChange;
+  console.log("🔍 BudgetTable - showGoogleFields:", showGoogleFields, {
+    hasGoogleBudgetChange: !!onGoogleBudgetChange,
+    hasGoogleAccountIdChange: !!onGoogleAccountIdChange
+  });
 
   const handleBudgetInputChange = (accountId: string, value: string, handler: (id: string, val: string) => void) => {
     const formatted = formatCurrencyInput(value);
@@ -167,7 +171,7 @@ export const BudgetTable = ({
                           <Input
                             id={`google-account-${googleAccount?.id || `${client.id}-google-${index}`}`}
                             placeholder="ID da conta Google"
-                            value={googleAccount ? (budgets[googleAccount.id]?.account_id || "") : ""}
+                            value={googleAccount ? (budgets[googleAccount.id]?.account_id || "") : (budgets[`${client.id}-google-${index}`]?.account_id || "")}
                             onChange={(e) => {
                               const accountKey = googleAccount?.id || `${client.id}-google-${index}`;
                               if (onGoogleAccountIdChange) {
@@ -187,7 +191,7 @@ export const BudgetTable = ({
                           <Input
                             id={`google-${googleAccount?.id || `${client.id}-google-budget-${index}`}`}
                             placeholder="0,00"
-                            value={googleAccount ? (budgets[googleAccount.id]?.budget_amount || "") : ""}
+                            value={googleAccount ? (budgets[googleAccount.id]?.budget_amount || "") : (budgets[`${client.id}-google-${index}`]?.budget_amount || "")}
                             onChange={(e) => {
                               const accountKey = googleAccount?.id || `${client.id}-google-budget-${index}`;
                               if (onGoogleBudgetChange) {
