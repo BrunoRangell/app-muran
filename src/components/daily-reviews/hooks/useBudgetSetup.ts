@@ -105,6 +105,7 @@ export const useBudgetSetup = () => {
         if (!hasGoogleAccount) {
           // Criar entradas para até 1 conta Google por cliente
           const googleKey = `${client.id}-google-0`;
+          console.log(`🔧 Inicializando conta Google temporária para ${client.company_name}:`, googleKey);
           initialBudgets[googleKey] = {
             account_id: "",
             budget_amount: ""
@@ -114,6 +115,7 @@ export const useBudgetSetup = () => {
         console.log(`✅ Inicializado para ${client.company_name}:`, client.client_accounts.length, "contas");
       });
       
+      console.log("📋 Estado inicial dos orçamentos:", initialBudgets);
       setBudgets(initialBudgets);
     }
   }, [clients]);
@@ -264,17 +266,19 @@ export const useBudgetSetup = () => {
           const clientId = accountId.split('-google-')[0];
           
           if (values.account_id || values.budget_amount) {
-            // Verificar se já existe uma conta com esse account_id para evitar duplicatas
-            const { data: existingAccount } = await supabase
-              .from("client_accounts")
-              .select("id")
-              .eq("platform", "google")
-              .eq("account_id", values.account_id || "")
-              .maybeSingle();
+            // Verificar duplicatas apenas se account_id não estiver vazio
+            if (values.account_id && values.account_id.trim() !== "") {
+              const { data: existingAccount } = await supabase
+                .from("client_accounts")
+                .select("id")
+                .eq("platform", "google")
+                .eq("account_id", values.account_id.trim())
+                .maybeSingle();
 
-            if (existingAccount && values.account_id) {
-              console.log(`⚠️ Conta Google com ID ${values.account_id} já existe`);
-              throw new Error(`Já existe uma conta Google com o ID ${values.account_id}`);
+              if (existingAccount) {
+                console.log(`⚠️ Conta Google com ID ${values.account_id} já existe`);
+                throw new Error(`Já existe uma conta Google com o ID ${values.account_id}`);
+              }
             }
 
             // Verificar se já existe uma conta primária Google para este cliente
@@ -369,9 +373,38 @@ export const useBudgetSetup = () => {
     }));
   };
 
-  // Handlers para compatibilidade - agora apontam para os handlers principais
-  const handleGoogleBudgetChange = handleBudgetChange;
-  const handleGoogleAccountIdChange = handleAccountIdChange;
+  // Handlers específicos para Google com logs detalhados
+  const handleGoogleBudgetChange = (accountId: string, value: string) => {
+    console.log(`💰 Mudança orçamento Google: ${accountId} = ${value}`);
+    console.log("🔍 Estado atual budgets antes da mudança:", budgets);
+    setBudgets(prev => {
+      const newState = {
+        ...prev,
+        [accountId]: {
+          ...prev[accountId],
+          budget_amount: value
+        }
+      };
+      console.log("🔍 Novo estado budgets após mudança:", newState);
+      return newState;
+    });
+  };
+
+  const handleGoogleAccountIdChange = (accountId: string, value: string) => {
+    console.log(`🆔 Mudança ID conta Google: ${accountId} = ${value}`);
+    console.log("🔍 Estado atual budgets antes da mudança:", budgets);
+    setBudgets(prev => {
+      const newState = {
+        ...prev,
+        [accountId]: {
+          ...prev[accountId],
+          account_id: value
+        }
+      };
+      console.log("🔍 Novo estado budgets após mudança:", newState);
+      return newState;
+    });
+  };
 
   const handleSave = () => {
     console.log("💾 Iniciando processo de salvamento:", budgets);
