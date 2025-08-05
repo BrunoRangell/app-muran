@@ -105,8 +105,12 @@ export function useActiveCampaignHealth() {
       
       return result;
     },
-    refetchInterval: 5 * 60 * 1000, // 5 minutos
-    staleTime: 2 * 60 * 1000, // 2 minutos
+    // Configuração manual - sem atualização automática
+    enabled: true,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnReconnect: false,
+    staleTime: Infinity, // Dados nunca ficam obsoletos automaticamente
   });
 
   const handleRefresh = useCallback(async () => {
