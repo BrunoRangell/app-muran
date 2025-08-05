@@ -56,10 +56,6 @@ export const BudgetTable = ({
 
   // Verificar se os manipuladores de Google Ads estão disponíveis
   const showGoogleFields = !!onGoogleBudgetChange && !!onGoogleAccountIdChange;
-  console.log("🔍 BudgetTable - showGoogleFields:", showGoogleFields, {
-    hasGoogleBudgetChange: !!onGoogleBudgetChange,
-    hasGoogleAccountIdChange: !!onGoogleAccountIdChange
-  });
 
   const handleBudgetInputChange = (accountId: string, value: string, handler: (id: string, val: string) => void) => {
     const formatted = formatCurrencyInput(value);

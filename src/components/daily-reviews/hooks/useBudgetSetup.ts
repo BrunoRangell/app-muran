@@ -264,6 +264,28 @@ export const useBudgetSetup = () => {
           const clientId = accountId.split('-google-')[0];
           
           if (values.account_id || values.budget_amount) {
+            // Verificar se já existe uma conta com esse account_id para evitar duplicatas
+            const { data: existingAccount } = await supabase
+              .from("client_accounts")
+              .select("id")
+              .eq("platform", "google")
+              .eq("account_id", values.account_id || "")
+              .maybeSingle();
+
+            if (existingAccount && values.account_id) {
+              console.log(`⚠️ Conta Google com ID ${values.account_id} já existe`);
+              throw new Error(`Já existe uma conta Google com o ID ${values.account_id}`);
+            }
+
+            // Verificar se já existe uma conta primária Google para este cliente
+            const { data: primaryAccount } = await supabase
+              .from("client_accounts")
+              .select("id")
+              .eq("client_id", clientId)
+              .eq("platform", "google")
+              .eq("is_primary", true)
+              .maybeSingle();
+
             const { error: createError } = await supabase
               .from("client_accounts")
               .insert({
@@ -272,7 +294,7 @@ export const useBudgetSetup = () => {
                 account_name: `Conta Google Ads`,
                 account_id: values.account_id || "",
                 budget_amount: budgetAmount,
-                is_primary: true,
+                is_primary: !primaryAccount, // Se não há conta primária, essa será primária
                 status: 'active'
               });
             
@@ -307,11 +329,21 @@ export const useBudgetSetup = () => {
       queryClient.invalidateQueries({ queryKey: ["clients-with-accounts-setup"] });
       queryClient.invalidateQueries({ queryKey: ["budget-manager-data"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("❌ Erro ao salvar orçamentos:", error);
+      
+      let errorMessage = "Erro desconhecido";
+      if (error?.code === "23505" && error?.message?.includes("unique_account_per_platform")) {
+        errorMessage = "Já existe uma conta para este cliente e plataforma. Verifique se não há duplicatas.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else {
+        errorMessage = String(error);
+      }
+      
       toast({
         title: "Erro ao salvar orçamentos",
-        description: String(error),
+        description: errorMessage,
         variant: "destructive",
       });
     },
