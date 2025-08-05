@@ -34,21 +34,7 @@ export function useUnifiedReviewsData() {
     queryFn: async () => {
       console.log("🔍 Buscando dados dos clientes Meta Ads consolidados...");
       
-      // 1. Primeiro fazer limpeza dos dados antigos
-      console.log("🧹 Executando limpeza automática dos budget_reviews...");
-      try {
-        const { data: cleanupResult, error: cleanupError } = await supabase.rpc('manual_cleanup_campaign_health');
-        
-        if (cleanupError) {
-          console.warn("⚠️ Aviso na limpeza automática:", cleanupError);
-        } else {
-          console.log("✅ Limpeza automática concluída:", cleanupResult);
-        }
-      } catch (cleanupErr) {
-        console.warn("⚠️ Erro na limpeza automática (continuando):", cleanupErr);
-      }
-      
-      // 2. Buscar clientes ativos - CORRIGIDO: sem campos inexistentes
+      // Buscar clientes ativos
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
         .select(`
