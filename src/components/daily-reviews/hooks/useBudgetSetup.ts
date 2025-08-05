@@ -265,7 +265,7 @@ export const useBudgetSetup = () => {
           // Conta temporária para Google Ads
           const clientId = accountId.split('-google-')[0];
           
-          if (values.account_id || values.budget_amount) {
+          if (values.account_id && values.account_id.trim() !== "" && values.budget_amount && parseFloat(values.budget_amount.replace(/[^\d,.-]/g, '').replace(',', '.')) > 0) {
             // Verificar duplicatas apenas se account_id não estiver vazio
             if (values.account_id && values.account_id.trim() !== "") {
               const { data: existingAccount } = await supabase
