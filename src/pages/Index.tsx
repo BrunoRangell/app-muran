@@ -17,6 +17,7 @@ const Index = () => {
   const [greeting, setGreeting] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [isUserLoading, setIsUserLoading] = useState(true);
 
   const { data: teamMembers, isLoading: isTeamLoading } = useQuery({
     queryKey: ["team_members"],
@@ -69,23 +70,48 @@ const Index = () => {
 
     const fetchUserData = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        setIsUserLoading(true);
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Erro ao verificar sessão:", sessionError);
+          setUserName("Usuário");
+          return;
+        }
+
         if (session?.user?.email) {
-          const { data: teamMember } = await supabase
+          console.log("Buscando dados do usuário:", session.user.email);
+          const { data: teamMember, error: memberError } = await supabase
             .from("team_members")
             .select("name, permission, role, photo_url")
             .eq("email", session.user.email)
             .single();
 
+          if (memberError) {
+            console.error("Erro ao buscar membro da equipe:", memberError);
+            setUserName("Usuário");
+            return;
+          }
+
           if (teamMember) {
-            setUserName(teamMember.name.split(" ")[0]);
+            const firstName = teamMember.name?.split(" ")[0] || "Usuário";
+            setUserName(firstName);
             setUserRole(teamMember.role || "");
             setAvatarUrl(teamMember.photo_url || "");
+            setIsAdmin(teamMember.permission === "admin");
+            console.log("Dados do usuário carregados:", { firstName, role: teamMember.role, isAdmin: teamMember.permission === "admin" });
+          } else {
+            setUserName("Usuário");
           }
-          setIsAdmin(teamMember?.permission === "admin");
+        } else {
+          console.log("Nenhuma sessão ativa encontrada");
+          setUserName("Usuário");
         }
       } catch (error) {
         console.error("Erro ao buscar dados do usuário:", error);
+        setUserName("Usuário");
+      } finally {
+        setIsUserLoading(false);
       }
     };
 
@@ -103,7 +129,7 @@ const Index = () => {
 
   const todaysQuote = getRandomQuote();
 
-  if (isTeamLoading || isMetricsLoading) {
+  if (isTeamLoading || isMetricsLoading || isUserLoading) {
     return <DashboardLoadingState />;
   }
 
@@ -123,7 +149,7 @@ const Index = () => {
             </Avatar>
             <div className="text-left">
               <h1 className="text-2xl font-bold text-muran-complementary">
-                {greeting}, {userName}!
+                {greeting}, {userName || "Usuário"}!
               </h1>
               <p className="text-gray-600">É muito bom ter você na Muran!</p>
             </div>

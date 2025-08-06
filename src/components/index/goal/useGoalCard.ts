@@ -25,27 +25,47 @@ export const useGoalCard = (isAdmin: boolean) => {
   const { data: goals, isLoading, error: queryError } = useQuery({
     queryKey: ["current-goal"],
     queryFn: async () => {
-      const today = new Date();
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("status", "active")
-        .order("created_at", { ascending: false });
+      try {
+        console.log("Buscando desafios ativos...");
+        
+        // Verificar se há sessão ativa
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.log("Nenhuma sessão ativa encontrada para buscar desafios");
+          return [];
+        }
 
-      if (error) {
-        console.error("Erro ao buscar desafios:", error);
+        const today = new Date();
+        const { data, error } = await supabase
+          .from("goals")
+          .select("*")
+          .eq("status", "active")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Erro ao buscar desafios:", error);
+          throw error;
+        }
+
+        console.log("Desafios encontrados:", data?.length || 0);
+
+        const activeGoal = (data as Goal[]).find(goal => {
+          const startDate = parseISO(goal.start_date);
+          const endDate = parseISO(goal.end_date);
+          const isActive = isWithinInterval(today, { start: startDate, end: endDate });
+          console.log(`Desafio ${goal.id}: ${isActive ? 'ativo' : 'inativo'} (${goal.start_date} - ${goal.end_date})`);
+          return isActive;
+        });
+
+        console.log("Desafio ativo encontrado:", activeGoal ? activeGoal.id : "nenhum");
+        return activeGoal ? [activeGoal] : [];
+      } catch (error) {
+        console.error("Erro na consulta de desafios:", error);
         throw error;
       }
-
-      const activeGoal = (data as Goal[]).find(goal => {
-        const startDate = parseISO(goal.start_date);
-        const endDate = parseISO(goal.end_date);
-        return isWithinInterval(today, { start: startDate, end: endDate });
-      });
-
-      return activeGoal ? [activeGoal] : [];
     },
     retry: 2,
+    enabled: !!currentUserId, // Só executa se tiver usuário logado
   });
 
   const goal = goals?.[0];
