@@ -6,6 +6,8 @@ import { useToast } from '@/components/ui/use-toast';
 export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [session, setSession] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -13,16 +15,28 @@ export const useAuth = () => {
     // Verificar sessão inicial
     const checkSession = async () => {
       try {
+        console.log('🔍 Verificando sessão inicial...');
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
-          console.error('Erro ao verificar sessão:', error);
+          console.error('❌ Erro ao verificar sessão:', error);
           setIsAuthenticated(false);
+          setUser(null);
+          setSession(null);
         } else {
+          console.log('✅ Sessão encontrada:', { 
+            hasSession: !!session, 
+            userId: session?.user?.id,
+            email: session?.user?.email 
+          });
           setIsAuthenticated(!!session);
+          setUser(session?.user || null);
+          setSession(session);
         }
       } catch (error) {
-        console.error('Erro ao verificar sessão:', error);
+        console.error('❌ Erro ao verificar sessão:', error);
         setIsAuthenticated(false);
+        setUser(null);
+        setSession(null);
       } finally {
         setIsLoading(false);
       }
@@ -33,8 +47,15 @@ export const useAuth = () => {
     // Monitorar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, !!session);
+        console.log('🔄 Auth state changed:', { 
+          event, 
+          hasSession: !!session,
+          userId: session?.user?.id,
+          email: session?.user?.email 
+        });
         setIsAuthenticated(!!session);
+        setUser(session?.user || null);
+        setSession(session);
         setIsLoading(false);
       }
     );
@@ -89,6 +110,8 @@ export const useAuth = () => {
   return {
     isAuthenticated,
     isLoading,
+    user,
+    session,
     logout
   };
 };

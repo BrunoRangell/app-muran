@@ -17,10 +17,20 @@ export function usePaymentsClients() {
         // Verificar se o usuário está autenticado
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
-        if (sessionError || !sessionData.session) {
-          console.error("❌ Erro de autenticação:", sessionError || "Sessão não encontrada");
-          throw new Error("Erro de autenticação ou sessão expirada");
+        if (sessionError) {
+          console.error("❌ Erro de sessão no usePaymentsClients:", sessionError);
+          throw new Error("Erro de autenticação: " + sessionError.message);
         }
+        
+        if (!sessionData.session) {
+          console.error("❌ Nenhuma sessão encontrada no usePaymentsClients");
+          throw new Error("Sessão não encontrada ou expirada");
+        }
+
+        console.log("✅ Sessão válida no usePaymentsClients:", {
+          userId: sessionData.session.user.id,
+          email: sessionData.session.user.email
+        });
 
         // Buscar todos os clientes primeiro
         const { data: clientsData, error: clientsError } = await supabase

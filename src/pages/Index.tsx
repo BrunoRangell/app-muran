@@ -71,16 +71,20 @@ const Index = () => {
     const fetchUserData = async () => {
       try {
         setIsUserLoading(true);
+        console.log("🔍 Buscando dados do usuário...");
+        
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.error("Erro ao verificar sessão:", sessionError);
+          console.error("❌ Erro ao verificar sessão:", sessionError);
           setUserName("Usuário");
           return;
         }
 
         if (session?.user?.email) {
-          console.log("Buscando dados do usuário:", session.user.email);
+          console.log("✅ Sessão encontrada, buscando team member para:", session.user.email);
+          console.log("🔍 Auth UID:", session.user.id);
+          
           const { data: teamMember, error: memberError } = await supabase
             .from("team_members")
             .select("name, permission, role, photo_url")
@@ -88,7 +92,7 @@ const Index = () => {
             .single();
 
           if (memberError) {
-            console.error("Erro ao buscar membro da equipe:", memberError);
+            console.error("❌ Erro ao buscar membro da equipe:", memberError);
             setUserName("Usuário");
             return;
           }
@@ -99,16 +103,22 @@ const Index = () => {
             setUserRole(teamMember.role || "");
             setAvatarUrl(teamMember.photo_url || "");
             setIsAdmin(teamMember.permission === "admin");
-            console.log("Dados do usuário carregados:", { firstName, role: teamMember.role, isAdmin: teamMember.permission === "admin" });
+            console.log("✅ Dados do usuário carregados:", { 
+              firstName, 
+              role: teamMember.role, 
+              isAdmin: teamMember.permission === "admin",
+              email: session.user.email 
+            });
           } else {
+            console.log("⚠️ Nenhum membro da equipe encontrado");
             setUserName("Usuário");
           }
         } else {
-          console.log("Nenhuma sessão ativa encontrada");
+          console.log("⚠️ Nenhuma sessão ativa encontrada");
           setUserName("Usuário");
         }
       } catch (error) {
-        console.error("Erro ao buscar dados do usuário:", error);
+        console.error("❌ Erro ao buscar dados do usuário:", error);
         setUserName("Usuário");
       } finally {
         setIsUserLoading(false);
