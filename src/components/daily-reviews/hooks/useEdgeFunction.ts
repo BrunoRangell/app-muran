@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from '@/integrations/supabase/client';
 import { AnalysisResult } from "./types";
 import { AppError } from "@/lib/errors";
 
@@ -87,10 +87,10 @@ export const invokeEdgeFunction = async (
       throw new Error("Token Meta Ads não configurado. Configure o token na página de configurações.");
     }
     
-    // Verificar se o cliente existe e buscar os dados necessários
+    // Verificar se o cliente existe e buscar dados através da tabela client_accounts
     const { data: clientData, error: clientError } = await supabase
       .from("clients")
-      .select("company_name, meta_account_id")
+      .select("company_name")
       .eq("id", clientId)
       .maybeSingle();
     
@@ -100,8 +100,7 @@ export const invokeEdgeFunction = async (
       if (clientError.message && clientError.message.includes("column")) {
         throw new AppError(
           "Erro na estrutura do banco de dados. Verifique as colunas na tabela clients.",
-          "DATABASE_SCHEMA_ERROR", 
-          { originalError: clientError }
+          "DATABASE_SCHEMA_ERROR"
         );
       }
       throw new Error("Erro ao buscar dados do cliente: " + clientError.message);
@@ -112,7 +111,16 @@ export const invokeEdgeFunction = async (
       throw new Error("Cliente não encontrado.");
     }
     
-    if (!clientData.meta_account_id) {
+    // Buscar conta Meta do cliente
+    const { data: metaAccount } = await supabase
+      .from('client_accounts')
+      .select('account_id')
+      .eq('client_id', clientId)
+      .eq('platform', 'meta')
+      .eq('is_primary', true)
+      .single();
+      
+    if (!metaAccount?.account_id) {
       console.error("Cliente sem ID de conta Meta Ads configurado:", clientId);
       throw new Error("Cliente não possui ID de conta Meta Ads configurado. Configure o ID na página de clientes.");
     }
@@ -123,7 +131,7 @@ export const invokeEdgeFunction = async (
       clientId,
       reviewDate: formattedDate,
       clientName: clientData.company_name,
-      metaAccountId: clientData.meta_account_id,
+      metaAccountId: metaAccount.account_id,
       fetchRealData: true
     };
     
@@ -150,7 +158,7 @@ export const invokeEdgeFunction = async (
       // Verificar erro da função Edge
       if (error) {
         console.error("Erro na função Edge:", error);
-        throw new AppError("Erro ao obter dados do Meta Ads: " + error.message, "EDGE_FUNCTION_ERROR", { originalError: error });
+        throw new AppError("Erro ao obter dados do Meta Ads: " + error.message, "EDGE_FUNCTION_ERROR");
       }
       
       // Verificar resposta válida
@@ -176,7 +184,7 @@ export const invokeEdgeFunction = async (
       data.client = {
         id: clientId,
         company_name: clientData.company_name,
-        meta_account_id: clientData.meta_account_id
+        meta_account_id: metaAccount.account_id
       };
       
       return data;

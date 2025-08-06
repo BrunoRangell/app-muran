@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { CostFilters } from "@/types/cost";
 import { CostsMetrics } from "@/components/costs/CostsMetrics";
 import { CostsTable } from "@/components/costs/CostsTable";

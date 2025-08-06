@@ -100,11 +100,31 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
       throw new Error(`Cliente não encontrado: ${error.message}`);
     }
     
-    if (!dbClient.meta_account_id) {
+    // Buscar conta meta do cliente através da tabela client_accounts
+    const { data: metaAccount } = await supabase
+      .from('client_accounts')
+      .select('account_id')
+      .eq('client_id', dbClient.id)
+      .eq('platform', 'meta')
+      .eq('is_primary', true)
+      .single();
+      
+    if (!metaAccount?.account_id) {
       throw new Error("Cliente não possui configuração de Meta Ads");
     }
-  } else if (!client.meta_account_id) {
-    throw new Error("Cliente não possui configuração de Meta Ads");
+  } else {
+    // Buscar conta meta do cliente através da tabela client_accounts  
+    const { data: metaAccount } = await supabase
+      .from('client_accounts')
+      .select('account_id')
+      .eq('client_id', client.id)
+      .eq('platform', 'meta')
+      .eq('is_primary', true)
+      .single();
+      
+    if (!metaAccount?.account_id) {
+      throw new Error("Cliente não possui configuração de Meta Ads");
+    }
   }
   
   // Buscar token do Meta Ads

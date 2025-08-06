@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Cost, CostFilters } from "@/types/cost";
 import { toast } from "@/components/ui/use-toast";
 

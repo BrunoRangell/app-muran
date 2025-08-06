@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/components/IgnoreWarningDialog";
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 interface CircularBudgetCardProps {
   client: any;
@@ -144,13 +144,13 @@ export function CircularBudgetCard({
     try {
       const today = new Date().toISOString().split('T')[0];
       if (platform === "google") {
-        // Atualizar na tabela google_ads_reviews
+        // Atualizar na tabela budget_reviews para Google Ads
         const {
           error
-        } = await supabase.from("google_ads_reviews").update({
+        } = await supabase.from("budget_reviews").update({
           warning_ignored_today: true,
           warning_ignored_date: today
-        }).eq("client_id", client.id).eq("google_account_id", client.google_account_id);
+        }).eq("client_id", client.id).eq("platform", "google").eq("review_date", today);
         if (error) {
           console.error("Erro ao atualizar aviso ignorado no Google Ads:", error);
           throw error;

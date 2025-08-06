@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { EditFormData, TeamMember } from "@/types/team";
 import { ErrorState } from "@/components/clients/components/ErrorState";
 import { Skeleton } from "@/components/ui/skeleton";
