@@ -1,6 +1,6 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { addMonths, format } from "date-fns";
 import { calculateMonthlyMetrics } from "./utils/calculateMonthlyMetrics";
 import { Client } from "../types";
