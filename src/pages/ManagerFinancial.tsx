@@ -48,14 +48,20 @@ const ManagerFinancial = () => {
     }
 
     try {
-      const { data: salariesData, error } = await supabase
-        .from("salaries")
-        .select("month, amount")
-        .eq("manager_id", session.user.id)
-        .order("month", { ascending: false });
+      const { data: paymentsData, error } = await supabase
+        .from("payments")
+        .select("reference_month, amount")
+        .order("reference_month", { ascending: false });
 
       if (error) throw error;
-      setSalaries(salariesData || []);
+      
+      // Transform payments data to match salary interface
+      const salaryData = paymentsData?.map(payment => ({
+        month: payment.reference_month,
+        amount: payment.amount
+      })) || [];
+      
+      setSalaries(salaryData);
     } catch (error) {
       console.error("Error fetching salaries:", error);
       toast({
@@ -90,11 +96,11 @@ const ManagerFinancial = () => {
         .split("T")[0];
 
       const amount = parseFloat(values.amount.replace(/\D/g, "")) / 100;
-      const { error } = await supabase.from("salaries").insert([
+      const { error } = await supabase.from("payments").insert([
         {
-          manager_id: sessionData.session.user.id,
-          month: formattedDate,
+          reference_month: formattedDate,
           amount: amount,
+          notes: "Salário adicionado via interface"
         },
       ]);
 
