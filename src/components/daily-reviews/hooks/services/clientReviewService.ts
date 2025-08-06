@@ -17,13 +17,11 @@ export const fetchClientsWithReviews = async () => {
   // Primeiro, buscar todos os clientes ativos
   const { data: clientsData, error } = await supabase
     .from('clients')
-    .select(`
-      id,
-      company_name,
-      meta_account_id,
-      meta_ads_budget,
-      status
-    `)
+      .select(`
+        id,
+        company_name,
+        status
+      `)
     .eq('status', 'active')
     .order('company_name');
     

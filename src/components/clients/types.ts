@@ -30,13 +30,14 @@ export interface Client {
   company_name: string;
   contract_value: number;
   first_payment_date: string;
-  payment_type: "pre" | "post";
-  status: "active" | "inactive";
-  acquisition_channel: string;
-  company_birthday: string;
+  payment_type: string; // Changed from union type to match database
+  status: string; // Changed from union type to match database
+  acquisition_channel: string | null;
+  company_birthday: string | null;
   contact_name: string;
   contact_phone: string;
   last_payment_date: string | null;
+  created_at?: string;
 }
 
 export interface Column {

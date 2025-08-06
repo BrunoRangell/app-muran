@@ -39,11 +39,17 @@ export const ClientBudgetSettings = ({
     setIsSaving(true);
     
     try {
-      // Atualizar o orçamento do cliente
+      // Criar ou atualizar conta do cliente
       const { error } = await supabase
-        .from("clients")
-        .update({ meta_ads_budget: budgetValue })
-        .eq("id", clientId);
+        .from("client_accounts")
+        .upsert({
+          client_id: clientId,
+          platform: 'meta',
+          budget_amount: budgetValue,
+          account_name: `Meta Account - ${clientName}`,
+          account_id: `meta_${clientId}`,
+          is_primary: true
+        });
         
       if (error) throw error;
       

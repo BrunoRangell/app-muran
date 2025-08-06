@@ -38,11 +38,17 @@ export const ClientMetaAccountSettings = ({
     setIsSaving(true);
     
     try {
-      // Atualizar o ID da conta Meta do cliente
+      // Criar ou atualizar conta Meta do cliente
       const { error } = await supabase
-        .from("clients")
-        .update({ meta_account_id: accountId })
-        .eq("id", clientId);
+        .from("client_accounts")
+        .upsert({
+          client_id: clientId,
+          platform: 'meta',
+          account_id: accountId,
+          account_name: `Meta Account - ${clientName}`,
+          budget_amount: 0,
+          is_primary: true
+        });
         
       if (error) throw error;
       
