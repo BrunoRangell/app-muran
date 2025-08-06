@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ClientWithTotalPayments, Payment } from "../types";
 import { useToast } from "@/hooks/use-toast";
@@ -114,7 +114,7 @@ export function usePaymentsClients() {
             id: client.id,
             company_name: client.company_name || "Cliente sem nome",
             contract_value: Number(client.contract_value) || 0,
-            status: client.status || "inactive",
+            status: (client.status || "inactive") as "active" | "inactive",
             first_payment_date: client.first_payment_date,
             payment_type: (client.payment_type || "pre") as "pre" | "post",
             acquisition_channel: client.acquisition_channel,
