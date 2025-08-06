@@ -9,9 +9,10 @@ import { useBatchOperations } from "../hooks/useBatchOperations";
 interface ClientsTableProps {
   data: any[];
   platform?: "meta" | "google";
+  budgetCalculationMode?: "weighted" | "current";
 }
 
-export function ClientsTable({ data, platform = "meta" }: ClientsTableProps) {
+export function ClientsTable({ data, platform = "meta", budgetCalculationMode }: ClientsTableProps) {
   const { reviewClient, processingIds } = useBatchOperations({
     platform: platform as "meta" | "google"
   });

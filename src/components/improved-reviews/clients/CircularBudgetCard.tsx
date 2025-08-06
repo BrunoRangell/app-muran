@@ -14,11 +14,13 @@ import { useQueryClient } from "@tanstack/react-query";
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
+  budgetCalculationMode?: "weighted" | "current";
   onIndividualReviewComplete?: () => void;
 }
 export function CircularBudgetCard({
   client,
   platform = "meta",
+  budgetCalculationMode = "weighted",
   onIndividualReviewComplete
 }: CircularBudgetCardProps) {
   const {
@@ -78,8 +80,9 @@ export function CircularBudgetCard({
   // Verificar se o aviso foi ignorado hoje (obtido do banco de dados OU estado local)
   const warningIgnoredToday = localWarningIgnored || client.budgetCalculation?.warningIgnoredToday || false;
 
-  // NOVA MÉTRICA: Média Ponderada (só para Google Ads)
+  // NOVA MÉTRICA: Média Ponderada ou Orçamento Atual para Google Ads
   const weightedAverage = client.weightedAverage || 0;
+  const currentDailyBudget = client.review?.daily_budget_current || 0;
 
   // Determinar cor e status - APENAS 2 estados principais + ignorado
   const getStatusInfo = () => {
@@ -310,16 +313,18 @@ export function CircularBudgetCard({
                 </p>
               </div>
               
-              {/* NOVA MÉTRICA: Mostrar Média Pond para Google Ads */}
+              {/* NOVA MÉTRICA: Mostrar valor baseado no modo selecionado para Google Ads */}
               {platform === "google" && <div>
-                  <p className="text-xs text-gray-500 mb-1">Média Pond</p>
+                  <p className="text-xs text-gray-500 mb-1">
+                    {budgetCalculationMode === "weighted" ? "Média Pond" : "Orç. atual"}
+                  </p>
                   <p className="text-sm font-semibold text-gray-700">
-                    {formatCurrency(weightedAverage)}
+                    {formatCurrency(budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget)}
                   </p>
                 </div>}
               
-              {/* Mostrar diário ideal sempre que houver diferença da média ponderada (para Google) */}
-              {platform === "google" && idealDailyBudget !== weightedAverage ? <div>
+              {/* Mostrar diário ideal sempre que houver diferença (para Google) */}
+              {platform === "google" && idealDailyBudget !== (budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget) ? <div>
                   <p className="text-xs text-gray-500 mb-1">Diário ideal</p>
                   <p className="text-sm font-semibold text-gray-700">
                     {formatCurrency(idealDailyBudget)}

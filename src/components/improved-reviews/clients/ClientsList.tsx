@@ -11,6 +11,7 @@ interface ClientsListProps {
   searchQuery: string;
   showOnlyAdjustments: boolean;
   showWithoutAccount: boolean;
+  budgetCalculationMode?: "weighted" | "current";
   platform?: "meta" | "google";
 }
 
@@ -20,6 +21,7 @@ export function ClientsList({
   searchQuery,
   showOnlyAdjustments,
   showWithoutAccount,
+  budgetCalculationMode,
   platform = "meta"
 }: ClientsListProps) {
   // Filtrar os dados com base na pesquisa e nos filtros
@@ -104,14 +106,14 @@ export function ClientsList({
 
   // Renderizar com base no modo de visualização selecionado
   if (viewMode === "table") {
-    return <ClientsTable data={sortedClients} platform={platform} />;
+    return <ClientsTable data={sortedClients} platform={platform} budgetCalculationMode={budgetCalculationMode} />;
   }
   
   if (viewMode === "list") {
     return (
       <div className="space-y-2">
         {sortedClients.map((client) => (
-          <ClientRow key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} />
+          <ClientRow key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} budgetCalculationMode={budgetCalculationMode} />
         ))}
       </div>
     );
@@ -121,7 +123,7 @@ export function ClientsList({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {sortedClients.map((client) => (
-        <ClientCard key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} />
+        <ClientCard key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} budgetCalculationMode={budgetCalculationMode} />
       ))}
     </div>
   );

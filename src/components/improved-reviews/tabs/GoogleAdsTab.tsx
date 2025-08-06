@@ -179,6 +179,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
             searchQuery={searchQuery}
             showOnlyAdjustments={showOnlyAdjustments}
             showWithoutAccount={showWithoutAccount}
+            budgetCalculationMode={budgetCalculationMode}
             platform="google"
           />
         </>
