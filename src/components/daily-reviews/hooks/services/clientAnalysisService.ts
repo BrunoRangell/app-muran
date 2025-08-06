@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import { supabase } from '@/lib/supabase';
+import { supabase } from "@/integrations/supabase/client";
 
 export const reviewClient = async (clientId: string, metaAccountId?: string) => {
   try {

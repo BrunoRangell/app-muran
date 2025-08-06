@@ -1,5 +1,5 @@
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Verifica se existe um orçamento personalizado ativo para o cliente na data atual - VERSÃO UNIFICADA
