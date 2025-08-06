@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff, ExternalLink } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
@@ -265,7 +265,30 @@ export function CircularBudgetCard({
                       <p>Ignorar aviso de ajuste por hoje</p>
                     </TooltipContent>
                   </Tooltip>
-                </TooltipProvider>}
+                 </TooltipProvider>}
+               {/* Ícone para abrir conta Meta Ads (apenas para Meta) */}
+               {platform === "meta" && accountInfo.id !== "N/A" && (
+                 <TooltipProvider>
+                   <Tooltip>
+                     <TooltipTrigger asChild>
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         onClick={() => {
+                           const metaUrl = `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${accountInfo.id}`;
+                           window.open(metaUrl, '_blank');
+                         }}
+                         className="h-8 w-8 p-0 text-gray-500 hover:text-[#ff6e00] hover:bg-orange-50"
+                       >
+                         <ExternalLink className="h-4 w-4" />
+                       </Button>
+                     </TooltipTrigger>
+                     <TooltipContent>
+                       <p>Abrir conta no Meta Ads Manager</p>
+                     </TooltipContent>
+                   </Tooltip>
+                 </TooltipProvider>
+               )}
             </div>
           </div>
 
