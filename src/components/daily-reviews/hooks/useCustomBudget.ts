@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { formatDateBr } from '@/utils/dateFormatter';
 
 export const useCustomBudget = (clientId: string) => {
@@ -40,7 +40,7 @@ export const useCustomBudget = (clientId: string) => {
     const checkCurrentReview = async () => {
       if (customBudget) {
         const { data, error } = await supabase
-          .from('daily_budget_reviews')
+          .from('budget_reviews')
           .select('using_custom_budget')
           .eq('client_id', clientId)
           .eq('review_date', new Date().toISOString().split('T')[0])

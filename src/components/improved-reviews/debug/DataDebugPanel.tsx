@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGoogleAdsData } from "../hooks/useGoogleAdsData";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle, Database, RefreshCw } from "lucide-react";
 
 export function DataDebugPanel() {

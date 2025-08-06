@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAdsService } from "./hooks/useGoogleAdsService";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useBatchOperations } from "@/components/improved-reviews/hooks/useBatchOperations";
 import { AnalysisProgress } from "@/components/daily-reviews/dashboard/components/AnalysisProgress";
 import { useGoogleAdsData } from "@/components/improved-reviews/hooks/useGoogleAdsData";
@@ -43,7 +43,7 @@ export const GoogleAdsDashboard = () => {
     const fetchLastBatchReview = async () => {
       try {
         const { data, error } = await supabase
-          .from('google_ads_reviews')
+          .from('budget_reviews')
           .select('updated_at')
           .order('updated_at', { ascending: false })
           .limit(1);

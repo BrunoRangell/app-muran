@@ -6,7 +6,7 @@ import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
 import { socialMediaSchema, SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AccountSecuritySection } from "./AccountSecuritySection";
 import { PersonalInfoSection } from "./PersonalInfoSection";

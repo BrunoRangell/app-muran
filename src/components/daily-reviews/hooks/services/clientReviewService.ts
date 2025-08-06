@@ -1,5 +1,5 @@
 
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { ClientWithReview } from "../types/reviewTypes";
 
 /**
@@ -17,13 +17,11 @@ export const fetchClientsWithReviews = async () => {
   // Primeiro, buscar todos os clientes ativos
   const { data: clientsData, error } = await supabase
     .from('clients')
-    .select(`
-      id,
-      company_name,
-      meta_account_id,
-      meta_ads_budget,
-      status
-    `)
+      .select(`
+        id,
+        company_name,
+        status
+      `)
     .eq('status', 'active')
     .order('company_name');
     
@@ -39,7 +37,7 @@ export const fetchClientsWithReviews = async () => {
   for (const client of clientsData || []) {
     // Buscar apenas a revisão mais recente para este cliente
     const { data: reviewData, error: reviewError } = await supabase
-      .from('daily_budget_reviews')
+      .from('budget_reviews')
       .select('*')
       .eq('client_id', client.id)
       .order('review_date', { ascending: false })
@@ -102,11 +100,31 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
       throw new Error(`Cliente não encontrado: ${error.message}`);
     }
     
-    if (!dbClient.meta_account_id) {
+    // Buscar conta meta do cliente através da tabela client_accounts
+    const { data: metaAccount } = await supabase
+      .from('client_accounts')
+      .select('account_id')
+      .eq('client_id', dbClient.id)
+      .eq('platform', 'meta')
+      .eq('is_primary', true)
+      .single();
+      
+    if (!metaAccount?.account_id) {
       throw new Error("Cliente não possui configuração de Meta Ads");
     }
-  } else if (!client.meta_account_id) {
-    throw new Error("Cliente não possui configuração de Meta Ads");
+  } else {
+    // Buscar conta meta do cliente através da tabela client_accounts  
+    const { data: metaAccount } = await supabase
+      .from('client_accounts')
+      .select('account_id')
+      .eq('client_id', client.id)
+      .eq('platform', 'meta')
+      .eq('is_primary', true)
+      .single();
+      
+    if (!metaAccount?.account_id) {
+      throw new Error("Cliente não possui configuração de Meta Ads");
+    }
   }
   
   // Buscar token do Meta Ads
@@ -128,9 +146,17 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
   
   // Chamar a função Edge para análise
   console.log("Chamando Meta Budget Calculator para o cliente:", clientId);
-  const metaAccountId = client?.meta_account_id || (
-    await supabase.from('clients').select('meta_account_id').eq('id', clientId).single()
-  ).data?.meta_account_id;
+  
+  // Buscar conta Meta do cliente
+  const { data: metaAccountData } = await supabase
+    .from('client_accounts')
+    .select('account_id')
+    .eq('client_id', clientId)
+    .eq('platform', 'meta')
+    .eq('is_primary', true)
+    .single();
+  
+  const metaAccountId = metaAccountData?.account_id;
   
   if (!metaAccountId) {
     throw new Error("ID da conta Meta não encontrado para o cliente");
@@ -168,7 +194,7 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
   
   // Buscar orçamento personalizado
   const { data: customBudgetData } = await supabase
-    .from("meta_custom_budgets")
+    .from("custom_budgets")
     .select("id, budget_amount, start_date, end_date")
     .eq("client_id", clientId)
     .eq("is_active", true)
@@ -192,7 +218,7 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
   
   // Verificar se já existe revisão para hoje
   const { data: existingReview } = await supabase
-    .from('daily_budget_reviews')
+    .from('budget_reviews')
     .select('id')
     .eq('client_id', clientId)
     .eq('review_date', today)
@@ -202,10 +228,12 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
   if (existingReview) {
     // Atualizar revisão existente
     await supabase
-      .from('daily_budget_reviews')
+      .from('budget_reviews')
       .update({
-        meta_daily_budget_current: metaDailyBudget,
-        meta_total_spent: metaTotalSpent,
+        daily_budget_current: metaDailyBudget,
+        total_spent: metaTotalSpent,
+        platform: 'meta',
+        account_id: metaAccountId,
         ...customBudgetInfo,
         updated_at: now.toISOString()
       })
@@ -213,14 +241,14 @@ export const analyzeClient = async (clientId: string, clientsData: ClientWithRev
   } else {
     // Criar nova revisão
     await supabase
-      .from('daily_budget_reviews')
+      .from('budget_reviews')
       .insert({
         client_id: clientId,
+        account_id: metaAccountId,
         review_date: today,
-        meta_daily_budget_current: metaDailyBudget,
-        meta_total_spent: metaTotalSpent,
-        meta_account_id: metaAccountId,
-        meta_account_name: `Conta ${metaAccountId}`,
+        platform: 'meta',
+        daily_budget_current: metaDailyBudget,
+        total_spent: metaTotalSpent,
         ...customBudgetInfo
       });
   }

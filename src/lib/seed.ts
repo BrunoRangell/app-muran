@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 
 export const seedInitialData = async () => {
@@ -52,59 +52,20 @@ export const seedInitialData = async () => {
       }
     }
 
-    // Verificar se já existem salários para este usuário
-    const { data: existingSalaries, error: existingSalariesError } = await supabase
-      .from('salaries')
+    // Verificar se já existem pagamentos para este usuário
+    const { data: existingPayments, error: existingPaymentsError } = await supabase
+      .from('payments')
       .select('*')
-      .eq('manager_id', userId);
+      .limit(1);
 
-    if (existingSalariesError) {
-      console.error('Erro ao verificar salários existentes:', existingSalariesError);
-      throw existingSalariesError;
+    if (existingPaymentsError) {
+      console.error('Erro ao verificar pagamentos existentes:', existingPaymentsError);
+      throw existingPaymentsError;
     }
 
-    if (existingSalaries && existingSalaries.length > 0) {
-      console.log('Salários já existem para este usuário:', existingSalaries);
+    if (existingPayments && existingPayments.length > 0) {
+      console.log('Dados iniciais já existem');
       return { success: true, message: 'Dados já existem' };
-    }
-
-    // Inserir salários usando o ID do usuário
-    const salariesData = [
-      { 
-        id: uuidv4(),
-        manager_id: userId, 
-        month: new Date('2024-01-05').toISOString(), 
-        amount: 1000.00 
-      },
-      { 
-        id: uuidv4(),
-        manager_id: userId, 
-        month: new Date('2024-02-05').toISOString(), 
-        amount: 1300.00 
-      },
-      { 
-        id: uuidv4(),
-        manager_id: userId, 
-        month: new Date('2024-03-05').toISOString(), 
-        amount: 1300.00 
-      },
-      { 
-        id: uuidv4(),
-        manager_id: userId, 
-        month: new Date('2024-04-05').toISOString(), 
-        amount: 1300.00 
-      }
-    ];
-
-    console.log('Inserindo salários:', salariesData);
-
-    const { error: salaryError } = await supabase
-      .from('salaries')
-      .insert(salariesData);
-
-    if (salaryError) {
-      console.error('Erro ao criar salários:', salaryError);
-      throw salaryError;
     }
 
     console.log('Dados iniciais criados com sucesso!');

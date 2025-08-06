@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { ClientWithReview } from "./types/reviewTypes";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { callEdgeFunction } from "./useEdgeFunction";
 
 export const useClientBudgetCalculation = (client: ClientWithReview, specificAccountId?: string) => {
@@ -34,10 +34,11 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
         // Se temos um ID de conta específico, buscamos as informações dessa conta
         if (specificAccountId) {
           const { data: accountData, error: accountError } = await supabase
-            .from('client_meta_accounts')
+            .from('client_accounts')
             .select('*')
             .eq('client_id', client.id)
             .eq('account_id', specificAccountId)
+            .eq('platform', 'meta')
             .maybeSingle();
             
           if (!accountError && accountData) {
@@ -49,10 +50,11 @@ export const useClientBudgetCalculation = (client: ClientWithReview, specificAcc
         // Buscar orçamento personalizado ativo (se houver)
         const today = new Date().toISOString().split('T')[0];
         const { data: customBudget, error: budgetError } = await supabase
-          .from('meta_custom_budgets')
+          .from('custom_budgets')
           .select('*')
           .eq('client_id', client.id)
           .eq('is_active', true)
+          .eq('platform', 'meta')
           .lte('start_date', today)
           .gte('end_date', today)
           .order('created_at', { ascending: false })

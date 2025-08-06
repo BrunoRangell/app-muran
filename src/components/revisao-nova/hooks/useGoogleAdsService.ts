@@ -2,7 +2,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { DateTime } from "luxon";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface GoogleAdsClient {
   customerId: string;

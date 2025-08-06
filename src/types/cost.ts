@@ -17,6 +17,8 @@ export interface Cost {
   description: string | null;
   created_at: string;
   updated_at: string;
+  name_customized?: boolean;
+  original_name?: string;
   categories?: CostCategory[];
 }
 

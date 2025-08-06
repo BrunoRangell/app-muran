@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useClientBudgetRecommendation } from "../hooks/useClientBudgetRecommendation";
 
 export const useClientReviewDetails = (clientId: string) => {
@@ -70,7 +70,7 @@ export const useClientReviewDetails = (clientId: string) => {
     queryFn: async () => {
       console.log("Buscando revisão mais recente para cliente:", clientId);
       const { data, error } = await supabase
-        .from("daily_budget_reviews")
+        .from("budget_reviews")
         .select("*")
         .eq("client_id", clientId)
         .order("review_date", { ascending: false })
@@ -87,17 +87,17 @@ export const useClientReviewDetails = (clientId: string) => {
       
       // Garantir que os valores numéricos sejam convertidos corretamente
       if (data) {
-        if (data.meta_total_spent !== null && data.meta_total_spent !== undefined) {
-          data.meta_total_spent = Number(data.meta_total_spent);
+        if (data.total_spent !== null && data.total_spent !== undefined) {
+          data.total_spent = Number(data.total_spent);
         }
         
-        if (data.meta_daily_budget_current !== null && data.meta_daily_budget_current !== undefined) {
-          data.meta_daily_budget_current = Number(data.meta_daily_budget_current);
+        if (data.daily_budget_current !== null && data.daily_budget_current !== undefined) {
+          data.daily_budget_current = Number(data.daily_budget_current);
         }
         
         console.log("Valores convertidos:", {
-          meta_total_spent: data.meta_total_spent,
-          meta_daily_budget_current: data.meta_daily_budget_current
+          total_spent: data.total_spent,
+          daily_budget_current: data.daily_budget_current
         });
       }
       
@@ -112,7 +112,7 @@ export const useClientReviewDetails = (clientId: string) => {
     queryFn: async () => {
       console.log("Buscando histórico de revisões para cliente:", clientId);
       const { data, error } = await supabase
-        .from("daily_budget_reviews")
+        .from("budget_reviews")
         .select("*")
         .eq("client_id", clientId)
         .order("review_date", { ascending: false })
@@ -130,8 +130,8 @@ export const useClientReviewDetails = (clientId: string) => {
       if (data && data.length > 0) {
         return data.map(review => ({
           ...review,
-          meta_total_spent: review.meta_total_spent !== null ? Number(review.meta_total_spent) : null,
-          meta_daily_budget_current: review.meta_daily_budget_current !== null ? Number(review.meta_daily_budget_current) : null
+          total_spent: review.total_spent !== null ? Number(review.total_spent) : null,
+          daily_budget_current: review.daily_budget_current !== null ? Number(review.daily_budget_current) : null
         }));
       }
       
@@ -142,7 +142,7 @@ export const useClientReviewDetails = (clientId: string) => {
 
   // Determinar se está usando orçamento personalizado
   const usingCustomBudget = customBudget !== null;
-  const monthlyBudget = customBudget?.budget_amount || client?.meta_ads_budget;
+  const monthlyBudget = customBudget?.budget_amount || 0;
 
   // Calcular recomendações de orçamento usando o hook separado
   const {
@@ -152,9 +152,9 @@ export const useClientReviewDetails = (clientId: string) => {
     remainingDays,
     remainingBudget
   } = useClientBudgetRecommendation(
-    client?.meta_ads_budget,
-    latestReview?.meta_total_spent,
-    latestReview?.meta_daily_budget_current,
+    monthlyBudget,
+    latestReview?.total_spent,
+    latestReview?.daily_budget_current,
     customBudget?.budget_amount,
     customBudget?.start_date,
     customBudget?.end_date,
@@ -180,7 +180,7 @@ export const useClientReviewDetails = (clientId: string) => {
     remainingDays,
     remainingBudget,
     monthlyBudget,
-    totalSpent: latestReview?.meta_total_spent,
+    totalSpent: latestReview?.total_spent,
     usingCustomBudget
   };
 };

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { ClientFormData } from "@/types/client";
 import { parseCurrencyToNumber } from "@/utils/formatters";
 import { clientFormSchema } from "@/validations/clientFormSchema";

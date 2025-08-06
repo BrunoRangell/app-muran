@@ -1,16 +1,16 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader, AlertTriangle, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 
-type Client = {
+type ClientDB = {
   id: string;
   company_name: string;
-  meta_ads_budget: number;
-  meta_account_id: string | null;
+  status: string;
+  [key: string]: any;
 };
 
 type ClientsListProps = {
@@ -31,7 +31,7 @@ export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClien
         .order("company_name");
 
       if (error) throw error;
-      return clients as Client[];
+      return clients as ClientDB[];
     },
   });
 
@@ -91,50 +91,33 @@ export const ClientsList = ({ onAnalyzeClient, onConfigureBudget, analyzingClien
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">{client.company_name}</CardTitle>
             <CardDescription>
-              {client.meta_ads_budget > 0 && client.meta_account_id
-                ? "Orçamento configurado"
-                : "Orçamento não configurado"}
+              Cliente ativo
             </CardDescription>
           </CardHeader>
           <CardContent className="pb-2">
-            {client.meta_ads_budget > 0 && (
-              <p className="text-sm">
-                Meta Ads: {formatCurrency(client.meta_ads_budget)}
-              </p>
-            )}
-            {client.meta_account_id && (
-              <p className="text-sm text-gray-500">
-                ID da Conta: {client.meta_account_id}
-              </p>
-            )}
-            {!client.meta_account_id && (
-              <p className="text-sm text-amber-500 flex items-center gap-1">
-                <AlertCircle size={16} />
-                Conta Meta Ads não configurada
-              </p>
-            )}
+            <p className="text-sm text-gray-500">
+              Status: {client.status}
+            </p>
+            <p className="text-sm text-amber-500 flex items-center gap-1">
+              <AlertCircle size={16} />
+              Configurar orçamentos
+            </p>
           </CardContent>
           <CardFooter>
             <Button
-              onClick={() => 
-                (client.meta_ads_budget > 0 && client.meta_account_id) 
-                  ? onAnalyzeClient(client.id)
-                  : onConfigureBudget(client.id)
-              }
+              onClick={() => onConfigureBudget(client.id)}
               className="w-full"
-              variant={(client.meta_ads_budget > 0 && client.meta_account_id) ? "default" : "outline"}
+              variant="outline"
               disabled={analyzingClientId === client.id}
             >
               {analyzingClientId === client.id ? (
                 <>
                   <Loader className="animate-spin mr-2" size={16} />
-                  Analisando...
+                  Configurando...
                 </>
               ) : (
                 <>
-                  {(client.meta_ads_budget > 0 && client.meta_account_id)
-                    ? "Analisar orçamentos"
-                    : "Configurar orçamentos"}
+                  Configurar orçamentos
                   <ArrowRight className="ml-2" size={16} />
                 </>
               )}

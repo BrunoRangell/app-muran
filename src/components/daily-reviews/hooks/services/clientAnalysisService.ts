@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import { supabase } from '@/lib/supabase';
+import { supabase } from "@/integrations/supabase/client";
 
 export const reviewClient = async (clientId: string, metaAccountId?: string) => {
   try {
@@ -12,10 +12,11 @@ export const reviewClient = async (clientId: string, metaAccountId?: string) => 
 
     if (metaAccountId) {
       const { data: metaAccount, error: metaError } = await supabase
-        .from('client_meta_accounts')
+        .from('client_accounts')
         .select('account_name, budget_amount')
         .eq('client_id', clientId)
         .eq('account_id', metaAccountId)
+        .eq('platform', 'meta')
         .maybeSingle();
 
       if (metaError) throw metaError;

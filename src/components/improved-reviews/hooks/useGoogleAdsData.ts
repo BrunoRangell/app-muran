@@ -1,7 +1,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { getDaysInMonth } from "date-fns";
 
 export interface GoogleAdsClientData {

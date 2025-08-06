@@ -1,7 +1,7 @@
 
 import { differenceInMonths, parseISO, subMonths } from "date-fns";
 import { Client } from "@/components/clients/types";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export const calculateFinancialMetrics = async (clients: Client[]) => {
   const today = new Date();
