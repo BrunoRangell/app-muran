@@ -2,7 +2,7 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, LayoutGrid, List, Table2, Filter, RefreshCcw } from "lucide-react";
+import { Search, LayoutGrid, List, Table2, Filter, RefreshCcw, TrendingUp, Calculator } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -12,10 +12,12 @@ interface FilterBarProps {
   viewMode: string;
   showOnlyAdjustments: boolean;
   showWithoutAccount: boolean;
+  budgetCalculationMode?: "weighted" | "current";
   onSearchChange: (query: string) => void;
   onViewModeChange: (mode: "cards" | "table" | "list") => void;
   onAdjustmentFilterChange: (showAdjustments: boolean) => void;
   onAccountFilterChange: (showWithoutAccount: boolean) => void;
+  onBudgetCalculationModeChange?: (mode: "weighted" | "current") => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
   platform?: "meta" | "google";
@@ -26,10 +28,12 @@ export function FilterBar({
   viewMode,
   showOnlyAdjustments,
   showWithoutAccount,
+  budgetCalculationMode,
   onSearchChange,
   onViewModeChange,
   onAdjustmentFilterChange,
   onAccountFilterChange,
+  onBudgetCalculationModeChange,
   onRefresh,
   isRefreshing = false,
   platform = "meta"
@@ -71,6 +75,27 @@ export function FilterBar({
                 Sem conta cadastrada
               </Label>
             </div>
+            
+            {platform === "google" && onBudgetCalculationModeChange && (
+              <div className="flex items-center space-x-2">
+                <Label className="text-sm text-muted-foreground">Base de cálculo:</Label>
+                <ToggleGroup 
+                  type="single" 
+                  value={budgetCalculationMode || "weighted"} 
+                  onValueChange={value => value && onBudgetCalculationModeChange(value as "weighted" | "current")}
+                  className="h-8"
+                >
+                  <ToggleGroupItem value="weighted" className="h-8 px-3 text-xs">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    Média Pond
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="current" className="h-8 px-3 text-xs">
+                    <Calculator className="h-3 w-3 mr-1" />
+                    Orç. atual
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            )}
             
             <ToggleGroup 
               type="single" 

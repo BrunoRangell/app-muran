@@ -40,30 +40,11 @@ export interface GoogleAdsMetrics {
   spentPercentage: number;
 }
 
-const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
+const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" = "weighted"): Promise<GoogleAdsClientData[]> => {
   console.log("🔍 Iniciando busca de dados do Google Ads...");
   
   try {
-    // 1. Primeiro fazer limpeza dos dados antigos
-    console.log("🧹 Executando limpeza automática dos budget_reviews...");
-    try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        'https://socrnutfpqtcjmetskta.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw'
-      );
-      
-      const { data: cleanupResult, error: cleanupError } = await supabase.rpc('manual_cleanup_campaign_health');
-      
-      if (cleanupError) {
-        console.warn("⚠️ Aviso na limpeza automática:", cleanupError);
-      } else {
-        console.log("✅ Limpeza automática concluída:", cleanupResult);
-      }
-    } catch (cleanupErr) {
-      console.warn("⚠️ Erro na limpeza automática (continuando):", cleanupErr);
-    }
-    // Primeiro, buscar TODOS os clientes ativos
+    // Buscar TODOS os clientes ativos
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
       .select('id, company_name')
@@ -132,7 +113,11 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
           const remainingBudget = Math.max(budgetAmount - totalSpent, 0);
           const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
           const weightedAverage = latestReview?.last_five_days_spent || 0;
-          const budgetDifference = idealDailyBudget - weightedAverage;
+          const currentDailyBudget = latestReview?.daily_budget_current || 0;
+          
+          // Escolher base de cálculo conforme o modo selecionado
+          const comparisonValue = budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget;
+          const budgetDifference = idealDailyBudget - comparisonValue;
           const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
 
           const clientData: GoogleAdsClientData = {
@@ -143,7 +128,7 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
             hasAccount: true,
             review: {
               total_spent: totalSpent,
-              daily_budget_current: latestReview?.daily_budget_current || account.budget_amount || 0
+              daily_budget_current: latestReview?.daily_budget_current || 0
             },
             budget_amount: budgetAmount,
             original_budget_amount: account.budget_amount || 0,
@@ -209,13 +194,13 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
   }
 };
 
-export const useGoogleAdsData = () => {
+export const useGoogleAdsData = (budgetCalculationMode: "weighted" | "current" = "weighted") => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['google-ads-clients-data'], // Query key única e específica
-    queryFn: fetchGoogleAdsData,
+    queryKey: ['google-ads-clients-data', budgetCalculationMode], // Include mode in query key
+    queryFn: () => fetchGoogleAdsData(budgetCalculationMode),
     staleTime: 2 * 60 * 1000, // 2 minutos
     gcTime: 5 * 60 * 1000, // 5 minutos
     retry: 3,
