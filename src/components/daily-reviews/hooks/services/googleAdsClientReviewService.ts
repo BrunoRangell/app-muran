@@ -38,15 +38,16 @@ const saveReviewResults = async (clientId: string, analysisResults: any, usingCu
   const { meta_daily_budget_current, meta_total_spent, meta_last_5_days_spent, meta_weighted_average } = analysisResults;
 
   const { data, error } = await supabase
-    .from("daily_budget_reviews")
+    .from("budget_reviews")
     .insert([
       {
         client_id: clientId,
+        account_id: 'google-account',
         review_date: reviewDate.toISOString(),
-        meta_daily_budget_current,
-        meta_total_spent,
-        meta_last_5_days_spent,
-        meta_weighted_average,
+        platform: 'google',
+        daily_budget_current: meta_daily_budget_current,
+        total_spent: meta_total_spent,
+        last_five_days_spent: meta_last_5_days_spent,
         using_custom_budget: usingCustomBudget,
       },
     ])
@@ -62,15 +63,9 @@ const saveReviewResults = async (clientId: string, analysisResults: any, usingCu
 
 // Função para atualizar a tabela de clientes com os dados da última revisão
 const updateClientWithLastReview = async (clientId: string, reviewData: any) => {
-  const { error } = await supabase
-    .from("clients")
-    .update({ last_review_id: reviewData[0].id })
-    .eq("id", clientId);
-
-  if (error) {
-    console.error("Erro ao atualizar cliente com última revisão:", error);
-    throw new Error(`Erro ao atualizar cliente com última revisão: ${error.message}`);
-  }
+  // This function is not needed as clients table doesn't have last_review_id field
+  // Just return success
+  return true;
 };
 
 // Serviço para realizar a revisão do cliente Google Ads
@@ -80,17 +75,18 @@ export const googleAdsClientReviewService = {
       // 1. Buscar dados do cliente
       const clientData = await fetchClientData(clientId);
 
-      // Determinar se está usando orçamento personalizado
+      // Determinar se está usando orçamento personalizado buscando na tabela custom_budgets
       let usingCustomBudget = false;
-      if (clientData.custom_budgets && clientData.custom_budgets.length > 0) {
-        const today = new Date();
-        const activeBudget = clientData.custom_budgets.find(budget => {
-          const startDate = new Date(budget.start_date);
-          const endDate = new Date(budget.end_date);
-          return startDate <= today && endDate >= today;
-        });
-        usingCustomBudget = !!activeBudget;
-      }
+      const today = new Date();
+      const { data: customBudgets } = await supabase
+        .from('custom_budgets')
+        .select('*')
+        .eq('client_id', clientId)
+        .eq('is_active', true)
+        .lte('start_date', today.toISOString().split('T')[0])
+        .gte('end_date', today.toISOString().split('T')[0]);
+      
+      usingCustomBudget = customBudgets && customBudgets.length > 0;
 
       // 2. Simular análise do cliente
       const analysisResults = await analyzeClient(clientId);

@@ -26,38 +26,48 @@ export interface MetaAccount {
 export interface GoogleReview {
   id: string;
   client_id: string;
+  account_id: string;
   review_date: string;
-  google_daily_budget_current: number;
-  google_total_spent: number;
-  google_last_five_days_spent?: number;
-  google_account_id?: string;
-  google_account_name?: string;
-  client_account_id?: string;
-  account_display_name?: string;
+  platform: string;
+  daily_budget_current: number;
+  total_spent: number;
+  last_five_days_spent?: number;
+  day_1_spent?: number;
+  day_2_spent?: number;
+  day_3_spent?: number;
+  day_4_spent?: number;
+  day_5_spent?: number;
   created_at: string;
   updated_at: string;
   using_custom_budget?: boolean;
   custom_budget_amount?: number;
   custom_budget_id?: string;
+  custom_budget_start_date?: string;
   custom_budget_end_date?: string;
+  warning_ignored_today?: boolean;
+  warning_ignored_date?: string;
   
-  // Novos campos para gastos individuais dos últimos 5 dias
+  // Campos compatíveis para Google Ads
+  google_daily_budget_current?: number;
+  google_total_spent?: number;
+  google_last_five_days_spent?: number;
+  google_account_id?: string;
+  google_account_name?: string;
   google_day_1_spent?: number;
   google_day_2_spent?: number;
   google_day_3_spent?: number;
   google_day_4_spent?: number;
   google_day_5_spent?: number;
   
-  // Novos campos para controlar avisos ignorados
-  warning_ignored_today?: boolean;
-  warning_ignored_date?: string;
-  
-  // Adicionando campos compatíveis para evitar erros no código existente
+  // Campos compatíveis para Meta Ads
   meta_account_id?: string;
   meta_daily_budget_current?: number;
   meta_total_spent?: number;
+  
+  // Campos de exibição
+  client_account_id?: string;
+  account_display_name?: string;
   idealDailyBudget?: number;
-  custom_budget_start_date?: string;
 }
 
 export interface ClientWithReview {

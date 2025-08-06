@@ -1,5 +1,5 @@
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 export const verifyStorageBucket = async (): Promise<boolean> => {
   try {

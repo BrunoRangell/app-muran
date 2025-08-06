@@ -32,7 +32,16 @@ export const useClientAnalysis = (
         throw new Error(`Erro ao buscar cliente: ${clientError.message}`);
       }
 
-      if (!client.meta_account_id) {
+      // Buscar conta Meta do cliente através da tabela client_accounts
+      const { data: metaAccount } = await supabase
+        .from('client_accounts')
+        .select('account_id')
+        .eq('client_id', clientId)
+        .eq('platform', 'meta')
+        .eq('is_primary', true)
+        .single();
+        
+      if (!metaAccount?.account_id) {
         throw new Error("Cliente não possui Meta Account ID configurado");
       }
 
@@ -62,7 +71,7 @@ export const useClientAnalysis = (
         "meta-budget-calculator",
         {
           body: {
-            accountId: client.meta_account_id,
+            accountId: metaAccount.account_id,
             accessToken: tokenData.value,
             dateRange,
             fetchSeparateInsights: true,
@@ -84,7 +93,7 @@ export const useClientAnalysis = (
       // Buscar orçamento personalizado
       const today = now.toISOString().split("T")[0];
       const { data: customBudgetData } = await supabase
-        .from("meta_custom_budgets")
+        .from("custom_budgets")
         .select("id, budget_amount, start_date, end_date")
         .eq("client_id", clientId)
         .eq("is_active", true)
@@ -113,7 +122,7 @@ export const useClientAnalysis = (
       // Verificar se já existe revisão para hoje
       const currentDate = today;
       const { data: existingReview } = await supabase
-        .from("daily_budget_reviews")
+        .from("budget_reviews")
         .select("id")
         .eq("client_id", clientId)
         .eq("review_date", currentDate)
@@ -123,23 +132,25 @@ export const useClientAnalysis = (
       if (existingReview) {
         // Atualizar revisão existente
         await supabase
-          .from("daily_budget_reviews")
+          .from("budget_reviews")
           .update({
-            meta_daily_budget_current: metaDailyBudgetCurrent,
-            meta_total_spent: metaTotalSpent,
+            daily_budget_current: metaDailyBudgetCurrent,
+            total_spent: metaTotalSpent,
+            platform: 'meta',
+            account_id: metaAccount.account_id,
             ...customBudgetInfo,
             updated_at: now.toISOString(),
           })
           .eq("id", existingReview.id);
       } else {
         // Criar nova revisão
-        await supabase.from("daily_budget_reviews").insert({
+        await supabase.from("budget_reviews").insert({
           client_id: clientId,
+          account_id: metaAccount.account_id,
           review_date: currentDate,
-          meta_daily_budget_current: metaDailyBudgetCurrent,
-          meta_total_spent: metaTotalSpent,
-          meta_account_id: client.meta_account_id,
-          meta_account_name: `Conta ${client.meta_account_id}`,
+          platform: 'meta',
+          daily_budget_current: metaDailyBudgetCurrent,
+          total_spent: metaTotalSpent,
           ...customBudgetInfo,
         });
       }

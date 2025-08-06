@@ -20,8 +20,6 @@ export const fetchClientsWithReviews = async () => {
     .select(`
       id,
       company_name,
-      meta_account_id,
-      meta_ads_budget,
       status
     `)
     .eq('status', 'active')
@@ -39,7 +37,7 @@ export const fetchClientsWithReviews = async () => {
   for (const client of clientsData || []) {
     // Buscar apenas a revisão mais recente para este cliente
     const { data: reviewData, error: reviewError } = await supabase
-      .from('daily_budget_reviews')
+      .from('budget_reviews')
       .select('*')
       .eq('client_id', client.id)
       .order('review_date', { ascending: false })
