@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Goal } from "@/types/goal";
 import { useToast } from "@/components/ui/use-toast";
 import { parseISO, isWithinInterval } from "date-fns";
@@ -16,8 +16,25 @@ export const useGoalCard = (isAdmin: boolean) => {
 
   useEffect(() => {
     const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('❌ Erro ao verificar sessão no useGoalCard:', error);
+          setCurrentUserId(null);
+          return;
+        }
+        
+        if (session?.user?.id) {
+          console.log('✅ Usuário encontrado no useGoalCard:', session.user.id);
+          setCurrentUserId(session.user.id);
+        } else {
+          console.log('⚠️ Nenhuma sessão válida no useGoalCard');
+          setCurrentUserId(null);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao buscar usuário no useGoalCard:', error);
+        setCurrentUserId(null);
+      }
     };
     getCurrentUser();
   }, []);
@@ -25,27 +42,54 @@ export const useGoalCard = (isAdmin: boolean) => {
   const { data: goals, isLoading, error: queryError } = useQuery({
     queryKey: ["current-goal"],
     queryFn: async () => {
-      const today = new Date();
-      const { data, error } = await supabase
-        .from("goals")
-        .select("*")
-        .eq("status", "active")
-        .order("created_at", { ascending: false });
+      try {
+        console.log("🔍 Buscando desafios ativos...");
+        
+        // Verificar se há sessão ativa
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error("❌ Erro de sessão no useGoalCard:", sessionError);
+          throw sessionError;
+        }
+        
+        if (!session) {
+          console.log("⚠️ Nenhuma sessão ativa encontrada para buscar desafios");
+          return [];
+        }
 
-      if (error) {
-        console.error("Erro ao buscar desafios:", error);
+        console.log("✅ Sessão válida, buscando goals com auth.uid:", session.user.id);
+
+        const today = new Date();
+        const { data, error } = await supabase
+          .from("goals")
+          .select("*")
+          .eq("status", "active")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("❌ Erro ao buscar desafios:", error);
+          throw error;
+        }
+
+        console.log("📊 Desafios encontrados:", data?.length || 0, data);
+
+        const activeGoal = (data as Goal[]).find(goal => {
+          const startDate = parseISO(goal.start_date);
+          const endDate = parseISO(goal.end_date);
+          const isActive = isWithinInterval(today, { start: startDate, end: endDate });
+          console.log(`🎯 Desafio ${goal.id}: ${isActive ? 'ativo' : 'inativo'} (${goal.start_date} - ${goal.end_date})`);
+          return isActive;
+        });
+
+        console.log("🏆 Desafio ativo encontrado:", activeGoal ? activeGoal.id : "nenhum");
+        return activeGoal ? [activeGoal] : [];
+      } catch (error) {
+        console.error("❌ Erro na consulta de desafios:", error);
         throw error;
       }
-
-      const activeGoal = (data as Goal[]).find(goal => {
-        const startDate = parseISO(goal.start_date);
-        const endDate = parseISO(goal.end_date);
-        return isWithinInterval(today, { start: startDate, end: endDate });
-      });
-
-      return activeGoal ? [activeGoal] : [];
     },
     retry: 2,
+    enabled: !!currentUserId, // Só executa se tiver usuário logado
   });
 
   const goal = goals?.[0];

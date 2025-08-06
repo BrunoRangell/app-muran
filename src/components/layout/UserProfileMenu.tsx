@@ -2,9 +2,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Settings, LogOut, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
+import { useAuth } from "@/hooks/useAuth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,29 +15,8 @@ import { cn } from "@/lib/utils";
 
 export const UserProfileMenu = ({ isCollapsed }: { isCollapsed?: boolean }) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { data: user, isLoading } = useCurrentUser();
-
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso.",
-      });
-      
-      navigate("/login");
-    } catch (error) {
-      console.error("Erro ao fazer logout:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao sair",
-        description: "Ocorreu um erro ao tentar desconectar.",
-      });
-    }
-  };
+  const { logout } = useAuth();
 
   if (isLoading || !user) return null;
 
@@ -76,7 +54,7 @@ export const UserProfileMenu = ({ isCollapsed }: { isCollapsed?: boolean }) => {
         
         <DropdownMenuSeparator className="bg-white/10" />
         
-        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 hover:bg-[#5a3a5a]">
+        <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-400 hover:bg-[#5a3a5a]">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sair</span>
         </DropdownMenuItem>

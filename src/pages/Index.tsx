@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getRandomQuote } from "@/data/motivationalQuotes";
@@ -10,6 +10,8 @@ import { BirthdayCard } from "@/components/team/BirthdayCard";
 import { GoalCard } from "@/components/index/GoalCard";
 import { Quote } from "lucide-react";
 import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { AuthDebugger } from "@/components/auth/AuthDebugger";
 
 const Index = () => {
   const [userName, setUserName] = useState<string>("");
@@ -17,6 +19,10 @@ const Index = () => {
   const [greeting, setGreeting] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [isUserLoading, setIsUserLoading] = useState(true);
+  
+  // Usar hook de sessão dedicado
+  const { session, user, isAuthenticated, isLoading: isAuthLoading, refreshSession } = useAuthSession();
 
   const { data: teamMembers, isLoading: isTeamLoading } = useQuery({
     queryKey: ["team_members"],
@@ -69,29 +75,66 @@ const Index = () => {
 
     const fetchUserData = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.email) {
-          const { data: teamMember } = await supabase
-            .from("team_members")
-            .select("name, permission, role, photo_url")
-            .eq("email", session.user.email)
-            .single();
+        setIsUserLoading(true);
+        console.log("🔍 Buscando dados do usuário...");
+        
+        // Aguardar que tenhamos uma sessão válida
+        if (!session || !user?.email) {
+          console.log("⚠️ Sessão ou email não disponível ainda");
+          setUserName("Usuário");
+          return;
+        }
 
-          if (teamMember) {
-            setUserName(teamMember.name.split(" ")[0]);
-            setUserRole(teamMember.role || "");
-            setAvatarUrl(teamMember.photo_url || "");
-          }
-          setIsAdmin(teamMember?.permission === "admin");
+        console.log("✅ Sessão disponível, buscando team member para:", user.email);
+        console.log("🔍 Auth UID da sessão:", user.id);
+        
+        const { data: teamMember, error: memberError } = await supabase
+          .from("team_members")
+          .select("name, permission, role, photo_url")
+          .eq("email", user.email)
+          .single();
+
+        if (memberError) {
+          console.error("❌ Erro ao buscar membro da equipe:", memberError);
+          setUserName("Usuário");
+          return;
+        }
+
+        if (teamMember) {
+          const firstName = teamMember.name?.split(" ")[0] || "Usuário";
+          setUserName(firstName);
+          setUserRole(teamMember.role || "");
+          setAvatarUrl(teamMember.photo_url || "");
+          setIsAdmin(teamMember.permission === "admin");
+          console.log("✅ Dados do usuário carregados:", { 
+            firstName, 
+            role: teamMember.role, 
+            isAdmin: teamMember.permission === "admin",
+            email: user.email 
+          });
+        } else {
+          console.log("⚠️ Nenhum membro da equipe encontrado");
+          setUserName("Usuário");
         }
       } catch (error) {
-        console.error("Erro ao buscar dados do usuário:", error);
+        console.error("❌ Erro ao buscar dados do usuário:", error);
+        setUserName("Usuário");
+      } finally {
+        setIsUserLoading(false);
       }
     };
 
     setGreeting(getGreeting());
-    fetchUserData();
-  }, []);
+    
+    // Só buscar dados se tivermos sessão autenticada
+    if (isAuthenticated && session && user) {
+      fetchUserData();
+    } else if (!isAuthLoading) {
+      console.log("⚠️ Sem autenticação válida, definindo usuário padrão");
+      setUserName("Usuário");
+      setIsUserLoading(false);
+    }
+  }, [session, user, isAuthenticated, isAuthLoading]);
 
   const getInitials = (name: string) => {
     return name
@@ -103,8 +146,17 @@ const Index = () => {
 
   const todaysQuote = getRandomQuote();
 
-  if (isTeamLoading || isMetricsLoading) {
+  if (isTeamLoading || isMetricsLoading || isUserLoading || isAuthLoading) {
     return <DashboardLoadingState />;
+  }
+
+  // Se não estiver autenticado, mostrar debugger
+  if (!isAuthenticated && !isAuthLoading) {
+    return (
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
+        <AuthDebugger />
+      </div>
+    );
   }
 
   return (
@@ -123,7 +175,7 @@ const Index = () => {
             </Avatar>
             <div className="text-left">
               <h1 className="text-2xl font-bold text-muran-complementary">
-                {greeting}, {userName}!
+                {greeting}, {userName || "Usuário"}!
               </h1>
               <p className="text-gray-600">É muito bom ter você na Muran!</p>
             </div>
