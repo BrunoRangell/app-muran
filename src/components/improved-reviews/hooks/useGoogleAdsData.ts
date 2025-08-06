@@ -40,7 +40,7 @@ export interface GoogleAdsMetrics {
   spentPercentage: number;
 }
 
-const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
+const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" = "weighted"): Promise<GoogleAdsClientData[]> => {
   console.log("🔍 Iniciando busca de dados do Google Ads...");
   
   try {
@@ -113,7 +113,11 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
           const remainingBudget = Math.max(budgetAmount - totalSpent, 0);
           const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
           const weightedAverage = latestReview?.last_five_days_spent || 0;
-          const budgetDifference = idealDailyBudget - weightedAverage;
+          const currentDailyBudget = latestReview?.daily_budget_current || account.budget_amount || 0;
+          
+          // Escolher base de cálculo conforme o modo selecionado
+          const comparisonValue = budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget;
+          const budgetDifference = idealDailyBudget - comparisonValue;
           const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
 
           const clientData: GoogleAdsClientData = {
@@ -190,13 +194,13 @@ const fetchGoogleAdsData = async (): Promise<GoogleAdsClientData[]> => {
   }
 };
 
-export const useGoogleAdsData = () => {
+export const useGoogleAdsData = (budgetCalculationMode: "weighted" | "current" = "weighted") => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['google-ads-clients-data'], // Query key única e específica
-    queryFn: fetchGoogleAdsData,
+    queryKey: ['google-ads-clients-data', budgetCalculationMode], // Include mode in query key
+    queryFn: () => fetchGoogleAdsData(budgetCalculationMode),
     staleTime: 2 * 60 * 1000, // 2 minutos
     gcTime: 5 * 60 * 1000, // 5 minutos
     retry: 3,

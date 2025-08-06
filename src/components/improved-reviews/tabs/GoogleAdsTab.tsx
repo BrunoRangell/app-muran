@@ -23,8 +23,11 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
+  const [budgetCalculationMode, setBudgetCalculationMode] = useState<"weighted" | "current">(() => {
+    return (localStorage.getItem("googleAds_budgetCalculationMode") as "weighted" | "current") || "weighted";
+  });
   
-  const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData();
+  const { data, isLoading, error, metrics, refreshData } = useGoogleAdsData(budgetCalculationMode);
   const { data: todayReviews, refetch: refetchTodayCheck } = useTodayReviewsCheck();
   const { forceDataRefresh, startPolling } = useRealTimeDataService();
   
@@ -79,6 +82,10 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
   const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
   const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
+  const handleBudgetCalculationModeChange = (mode: "weighted" | "current") => {
+    setBudgetCalculationMode(mode);
+    localStorage.setItem("googleAds_budgetCalculationMode", mode);
+  };
 
   const handleRefresh = async () => {
     console.log("🔄 Atualizando dados do Google Ads...");
@@ -155,10 +162,12 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
             viewMode={viewMode}
             showOnlyAdjustments={showOnlyAdjustments}
             showWithoutAccount={showWithoutAccount}
+            budgetCalculationMode={budgetCalculationMode}
             onSearchChange={handleSearchChange}
             onViewModeChange={handleViewModeChange}
             onAdjustmentFilterChange={handleAdjustmentFilterChange}
             onAccountFilterChange={handleAccountFilterChange}
+            onBudgetCalculationModeChange={handleBudgetCalculationModeChange}
             onRefresh={handleRefresh}
             isRefreshing={isLoading}
             platform="google"
