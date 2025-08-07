@@ -44,7 +44,7 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
       while (currentDate <= dateRange.end && monthCount < 50) { // Limite de segurança
         try {
           console.log(`Processing month ${monthCount + 1}:`, format(currentDate, 'yyyy-MM-dd'));
-          const monthData = calculateMonthlyMetrics(clients, currentDate);
+          const monthData = await calculateMonthlyMetrics(clients, currentDate);
           console.log(`Month data for ${format(currentDate, 'MMM/yy')}:`, monthData);
           months.push(monthData);
         } catch (error) {

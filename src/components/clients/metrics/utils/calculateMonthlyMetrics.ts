@@ -7,6 +7,7 @@ import {
   isClientChurnedInMonth,
   getActiveClientsAtStartOfMonth 
 } from "./dateFilters";
+import { calculatePaymentBasedMRR } from "@/utils/paymentCalculations";
 
 interface MonthlyMetrics {
   month: string;
@@ -17,10 +18,10 @@ interface MonthlyMetrics {
   newClients: number;
 }
 
-export const calculateMonthlyMetrics = (
+export const calculateMonthlyMetrics = async (
   clients: Client[], 
   currentDate: Date
-): MonthlyMetrics => {
+): Promise<MonthlyMetrics> => {
   try {
     console.log(`Calculating metrics for ${format(currentDate, 'yyyy-MM-dd')}`);
     
@@ -43,11 +44,14 @@ export const calculateMonthlyMetrics = (
 
     const activeClientsAtStartOfMonth = getActiveClientsAtStartOfMonth(clients, monthStart);
 
+    // Calcular MRR baseado em pagamentos reais
+    const paymentMetrics = await calculatePaymentBasedMRR(monthStart, monthEnd);
+
     const monthStr = format(currentDate, 'M/yy'); // Formato numérico para consistência
 
     const result = {
       month: monthStr,
-      mrr: activeClientsInMonth.reduce((sum, client) => sum + (client.contract_value || 0), 0),
+      mrr: paymentMetrics.monthlyRevenue, // Usar receita real dos pagamentos
       clients: activeClientsInMonth.length,
       churn: churned,
       churnRate: activeClientsAtStartOfMonth > 0 

@@ -2,6 +2,7 @@
 import { differenceInMonths, parseISO, subMonths } from "date-fns";
 import { Client } from "@/components/clients/types";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateCurrentMRR } from "./paymentCalculations";
 
 export const calculateFinancialMetrics = async (clients: Client[]) => {
   const today = new Date();
@@ -12,8 +13,8 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   const totalClients = clients.length;
   const activeClientsCount = activeClients.length;
 
-  // MRR e ARR
-  const mrr = activeClients.reduce((sum, client) => sum + (client.contract_value || 0), 0);
+  // MRR e ARR baseados em pagamentos reais
+  const mrr = await calculateCurrentMRR();
   const arr = mrr * 12;
 
   // Ticket Médio
