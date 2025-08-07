@@ -13,14 +13,20 @@ export const calculatePaymentBasedMRR = async (
 ): Promise<PaymentBasedMetrics> => {
   try {
     const monthStr = format(monthStart, 'yyyy-MM');
+    const nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
     
-    console.log(`Calculating payment-based MRR for ${monthStr}`);
+    console.log(`Calculating payment-based MRR for ${monthStr}`, {
+      monthStart: monthStart.toISOString(),
+      monthEnd: monthEnd.toISOString(),
+      nextMonth: nextMonth.toISOString()
+    });
     
-    // Buscar todos os pagamentos do mês específico
+    // Buscar todos os pagamentos do mês específico usando range de datas
     const { data: payments, error } = await supabase
       .from("payments")
       .select("amount, client_id, reference_month")
-      .eq("reference_month", monthStr);
+      .gte("reference_month", monthStart.toISOString().split('T')[0])
+      .lt("reference_month", nextMonth.toISOString().split('T')[0]);
 
     if (error) {
       console.error("Error fetching payments:", error);
@@ -57,12 +63,19 @@ export const calculatePaymentBasedMRR = async (
 export const calculateCurrentMRR = async (): Promise<number> => {
   try {
     const currentDate = new Date();
-    const currentMonthStr = format(currentDate, 'yyyy-MM');
+    const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    
+    console.log('Calculating current MRR for:', {
+      currentMonthStart: currentMonthStart.toISOString(),
+      nextMonth: nextMonth.toISOString()
+    });
     
     const { data: payments, error } = await supabase
       .from("payments")
       .select("amount")
-      .eq("reference_month", currentMonthStr);
+      .gte("reference_month", currentMonthStart.toISOString().split('T')[0])
+      .lt("reference_month", nextMonth.toISOString().split('T')[0]);
 
     if (error) {
       console.error("Error fetching current month payments:", error);
