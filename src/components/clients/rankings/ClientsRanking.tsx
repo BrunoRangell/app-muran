@@ -17,7 +17,6 @@ interface ClientsRankingProps {
 type RankingMetric = 'monthly_revenue' | 'total_revenue' | 'retention';
 
 export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
-  const [selectedMetric, setSelectedMetric] = useState<RankingMetric>('monthly_revenue');
   const { toast } = useToast();
 
   // Filtra apenas clientes ativos
@@ -73,40 +72,37 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
     );
   }
 
-  // Calcula o ranking baseado na métrica selecionada
-  const rankedClients = [...activeClients].sort((a, b) => {
-    try {
-      switch (selectedMetric) {
-        case 'monthly_revenue':
-          return b.contract_value - a.contract_value;
-        case 'total_revenue':
-          const totalA = (totalsByClient as Record<string, number>)[a.id] ?? 0;
-          const totalB = (totalsByClient as Record<string, number>)[b.id] ?? 0;
-          return totalB - totalA;
-        case 'retention':
-          const retentionA = calculateRetention(a);
-          const retentionB = calculateRetention(b);
-          if (isNaN(retentionA) || isNaN(retentionB)) {
-            throw new Error("Erro no cálculo da retenção");
-          }
-          return retentionB - retentionA;
-        default:
-          return 0;
+  // Calcula rankings para cada métrica
+  const getRankedClients = (metric: RankingMetric) => {
+    return [...activeClients].sort((a, b) => {
+      try {
+        switch (metric) {
+          case 'monthly_revenue':
+            return b.contract_value - a.contract_value;
+          case 'total_revenue':
+            const totalA = (totalsByClient as Record<string, number>)[a.id] ?? 0;
+            const totalB = (totalsByClient as Record<string, number>)[b.id] ?? 0;
+            return totalB - totalA;
+          case 'retention':
+            const retentionA = calculateRetention(a);
+            const retentionB = calculateRetention(b);
+            if (isNaN(retentionA) || isNaN(retentionB)) {
+              throw new Error("Erro no cálculo da retenção");
+            }
+            return retentionB - retentionA;
+          default:
+            return 0;
+        }
+      } catch (error) {
+        console.error("Erro ao calcular ranking:", error);
+        return 0;
       }
-    } catch (error) {
-      console.error("Erro ao calcular ranking:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro no cálculo",
-        description: "Ocorreu um erro ao calcular o ranking. Alguns dados podem estar incorretos.",
-      });
-      return 0;
-    }
-  }).slice(0, 5); // Pega os top 5
+    }).slice(0, 3); // Top 3 para economizar espaço
+  };
 
-  const getMetricValue = (client: Client) => {
+  const getMetricValue = (client: Client, metric: RankingMetric) => {
     try {
-      switch (selectedMetric) {
+      switch (metric) {
         case 'monthly_revenue':
           return formatCurrency(client.contract_value);
         case 'total_revenue':
@@ -115,71 +111,86 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
         case 'retention':
           const retention = calculateRetention(client);
           if (isNaN(retention)) throw new Error("Valor de retenção inválido");
-          return `${retention} meses`;
+          return `${retention}m`;
         default:
           return '';
       }
     } catch (error) {
       console.error("Erro ao formatar valor métrica:", error);
-      return "Erro no cálculo";
+      return "Erro";
     }
   };
 
-  return (
-    <Card className="p-6">
-      <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <h2 className="text-xl font-bold text-muran-dark">Ranking de Clientes</h2>
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={selectedMetric === 'monthly_revenue' ? 'default' : 'outline'}
-              onClick={() => setSelectedMetric('monthly_revenue')}
-              className="gap-2"
-            >
-              <BarChart3 className="h-4 w-4" />
-              Por Receita Mensal
-            </Button>
-            <Button
-              variant={selectedMetric === 'total_revenue' ? 'default' : 'outline'}
-              onClick={() => setSelectedMetric('total_revenue')}
-              className="gap-2"
-            >
-              <Trophy className="h-4 w-4" />
-              Por Receita Total
-            </Button>
-            <Button
-              variant={selectedMetric === 'retention' ? 'default' : 'outline'}
-              onClick={() => setSelectedMetric('retention')}
-              className="gap-2"
-            >
-              <Clock className="h-4 w-4" />
-              Por Retenção
-            </Button>
-          </div>
-        </div>
+  const rankingConfigs = [
+    {
+      metric: 'monthly_revenue' as RankingMetric,
+      title: 'Receita Mensal',
+      icon: BarChart3,
+      gradient: 'from-blue-500 to-blue-600'
+    },
+    {
+      metric: 'total_revenue' as RankingMetric,
+      title: 'Receita Total',
+      icon: Trophy,
+      gradient: 'from-green-500 to-green-600'
+    },
+    {
+      metric: 'retention' as RankingMetric,
+      title: 'Retenção',
+      icon: Clock,
+      gradient: 'from-purple-500 to-purple-600'
+    }
+  ];
 
-        <div className="space-y-4">
-          {rankedClients.map((client, index) => (
-            <div
-              key={client.id}
-              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100"
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muran-primary text-white font-bold">
-                  {index + 1}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-muran-dark">{client.company_name}</h3>
-                  <p className="text-sm text-gray-500">
-                    {getMetricValue(client)}
-                  </p>
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold text-muran-dark">Rankings de Clientes</h2>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {rankingConfigs.map((config) => {
+          const rankedClients = getRankedClients(config.metric);
+          const IconComponent = config.icon;
+          
+          return (
+            <Card key={config.metric} className="overflow-hidden">
+              <div className={`bg-gradient-to-r ${config.gradient} p-4 text-white`}>
+                <div className="flex items-center gap-2">
+                  <IconComponent className="h-5 w-5" />
+                  <h3 className="font-semibold">{config.title}</h3>
                 </div>
               </div>
-              <TrendingUp className={`h-5 w-5 ${index === 0 ? 'text-yellow-500' : 'text-gray-400'}`} />
-            </div>
-          ))}
-        </div>
+              
+              <div className="p-4 space-y-3">
+                {rankedClients.map((client, index) => (
+                  <div key={client.id} className="flex items-center gap-3">
+                    <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                      index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                      index === 1 ? 'bg-gray-100 text-gray-700' :
+                      'bg-orange-100 text-orange-700'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-muran-dark truncate">
+                        {client.company_name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {getMetricValue(client, config.metric)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                
+                {rankedClients.length === 0 && (
+                  <div className="text-center text-gray-500 text-sm py-4">
+                    Nenhum dado disponível
+                  </div>
+                )}
+              </div>
+            </Card>
+          );
+        })}
       </div>
-    </Card>
+    </div>
   );
 };
