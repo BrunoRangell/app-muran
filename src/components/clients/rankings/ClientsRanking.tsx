@@ -122,7 +122,7 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
   const rankingConfigs = [
     {
       metric: 'monthly_revenue' as RankingMetric,
-      title: 'Receita Mensal',
+      title: 'Maior receita recorrente',
       icon: BarChart3,
       borderColor: 'border-l-muran-primary',
       iconBg: 'bg-muran-primary/10',
@@ -131,21 +131,21 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
     },
     {
       metric: 'total_revenue' as RankingMetric,
-      title: 'Receita Total',
+      title: 'Maior receita acumulada',
       icon: Trophy,
-      borderColor: 'border-l-muran-complementary',
-      iconBg: 'bg-muran-complementary/10',
-      iconColor: 'text-muran-complementary',
-      headerBg: 'bg-muran-complementary'
+      borderColor: 'border-l-muran-primary',
+      iconBg: 'bg-muran-primary/10',
+      iconColor: 'text-muran-primary',
+      headerBg: 'bg-muran-primary'
     },
     {
       metric: 'retention' as RankingMetric,
-      title: 'Retenção',
+      title: 'Parceria mais longa',
       icon: Clock,
-      borderColor: 'border-l-muran-dark',
-      iconBg: 'bg-muran-dark/10',
-      iconColor: 'text-muran-dark',
-      headerBg: 'bg-gradient-to-r from-muran-primary to-muran-complementary'
+      borderColor: 'border-l-muran-primary',
+      iconBg: 'bg-muran-primary/10',
+      iconColor: 'text-muran-primary',
+      headerBg: 'bg-muran-primary'
     }
   ];
 
@@ -169,7 +169,7 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-gradient-to-r from-muran-primary to-muran-complementary">
+        <div className="p-2 rounded-lg bg-muran-primary">
           <Trophy className="h-6 w-6 text-white" />
         </div>
         <h2 className="text-2xl font-bold text-muran-dark">Rankings de Clientes</h2>
