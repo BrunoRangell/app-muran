@@ -1,5 +1,6 @@
 
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { ClientFormData } from "@/types/client";
 import { SanitizedInput } from "@/components/common/SanitizedInputs";
@@ -10,6 +11,7 @@ interface CompanySectionProps {
 }
 
 
+export const CompanySection = ({ form }: CompanySectionProps) => {
   return (
     <>
       <FormField
