@@ -28,7 +28,7 @@ export const InteractiveMetricCard = ({
 }: InteractiveMetricCardProps) => {
   return (
     <Card 
-      className={`p-2 hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${
+      className={`p-3 hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${
         onClick ? 'hover:scale-[1.02]' : ''
       } group`}
       style={{ borderLeftColor: color.replace('bg-', '#') }}
@@ -36,14 +36,14 @@ export const InteractiveMetricCard = ({
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-1 mb-1">
+          <div className="flex items-center gap-2 mb-1">
             <h4 className="text-xs font-medium text-gray-600 group-hover:text-gray-800 transition-colors">
               {title}
             </h4>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="h-2 w-2 text-gray-400 hover:text-gray-600 transition-colors" />
+                  <Info className="h-3 w-3 text-gray-400 hover:text-gray-600 transition-colors" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="text-xs">{description}</p>
@@ -53,7 +53,7 @@ export const InteractiveMetricCard = ({
           </div>
           
           <div className="mb-1">
-            <span className="text-lg font-bold text-muran-dark group-hover:text-muran-primary transition-colors">
+            <span className="text-xl font-bold text-muran-dark group-hover:text-muran-primary transition-colors">
               {value}
             </span>
           </div>
@@ -73,8 +73,8 @@ export const InteractiveMetricCard = ({
           )}
         </div>
 
-        <div className={`p-1.5 rounded-full ${color.replace('bg-', 'bg-')}/10 group-hover:${color.replace('bg-', 'bg-')}/20 transition-colors`}>
-          <Icon className={`h-3 w-3 ${color.replace('bg-', 'text-')}`} />
+        <div className={`p-2 rounded-full ${color.replace('bg-', 'bg-')}/10 group-hover:${color.replace('bg-', 'bg-')}/20 transition-colors`}>
+          <Icon className={`h-4 w-4 ${color.replace('bg-', 'text-')}`} />
         </div>
       </div>
     </Card>

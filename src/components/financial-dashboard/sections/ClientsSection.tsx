@@ -1,10 +1,8 @@
 
-import { useState } from "react";
 import { Users, UserPlus, UserMinus, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
-import { MetricExplanationDialog } from "../components/MetricExplanationDialog";
 import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 
 interface ClientsSectionProps {
@@ -13,48 +11,6 @@ interface ClientsSectionProps {
 
 export const ClientsSection = ({ filters }: ClientsSectionProps) => {
   const { allClientsMetrics, isLoadingAllClients } = useFinancialMetrics();
-  const [selectedMetric, setSelectedMetric] = useState<any>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const getMetricExplanation = (metricType: string, value: string) => {
-    const explanations = {
-      activeClients: {
-        title: "Clientes Ativos",
-        value,
-        explanation: "Número total de clientes que estão atualmente ativos na base. Considera clientes com contratos vigentes e que realizaram pagamentos recentes.",
-        calculation: "Conta todos os clientes com status 'ativo' ou que realizaram pagamentos nos últimos meses",
-        dataSource: "Tabela 'clients' com status ativo e tabela 'payments' para validação de atividade"
-      },
-      newClients: {
-        title: "Novos Clientes",
-        value,
-        explanation: "Número de clientes que fizeram seu primeiro pagamento no mês atual. Esta métrica mostra a capacidade de aquisição de novos clientes da agência.",
-        calculation: "Conta clientes cujo primeiro pagamento (reference_month) ocorreu no mês em análise",
-        dataSource: "Tabela 'payments' - identifica primeiro pagamento por cliente_id"
-      },
-      churnRate: {
-        title: "Churn Rate",
-        value,
-        explanation: "Taxa de cancelamento mensal, representa o percentual de clientes que cancelaram em relação ao total de clientes ativos no início do mês.",
-        calculation: "(Clientes que cancelaram no mês ÷ Clientes ativos no início do mês) × 100",
-        dataSource: "Baseado na data do último pagamento registrado na tabela 'payments'"
-      },
-      retention: {
-        title: "Retenção Média",
-        value,
-        explanation: "Tempo médio que os clientes permanecem ativos na base antes de cancelar. Indica a qualidade do relacionamento e satisfação dos clientes.",
-        calculation: "Média da diferença entre primeiro e último pagamento de todos os clientes",
-        dataSource: "Calculado a partir das datas de primeiro e último pagamento na tabela 'payments'"
-      }
-    };
-    return explanations[metricType as keyof typeof explanations];
-  };
-
-  const handleMetricClick = (metricType: string, value: string) => {
-    const explanation = getMetricExplanation(metricType, value);
-    setSelectedMetric(explanation);
-    setIsDialogOpen(true);
-  };
 
   if (isLoadingAllClients) {
     return (
@@ -100,7 +56,6 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
           trend={{ value: 5.2, isPositive: true }}
           color="bg-blue-500"
           description="Total de clientes ativos"
-          onClick={() => handleMetricClick('activeClients', metrics?.activeClientsCount?.toString() || "0")}
         />
 
         <InteractiveMetricCard
@@ -110,7 +65,6 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
           trend={{ value: 18.5, isPositive: true }}
           color="bg-green-500"
           description="Adquiridos este mês"
-          onClick={() => handleMetricClick('newClients', "12")}
         />
 
         <InteractiveMetricCard
@@ -120,7 +74,6 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
           trend={{ value: 2.1, isPositive: false }}
           color={(metrics?.churnRate || 0) <= 5 ? "bg-green-500" : (metrics?.churnRate || 0) <= 10 ? "bg-yellow-500" : "bg-red-500"}
           description="Taxa de cancelamento mensal"
-          onClick={() => handleMetricClick('churnRate', `${formatDecimal(metrics?.churnRate || 0)}%`)}
         />
 
         <InteractiveMetricCard
@@ -130,15 +83,8 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
           trend={{ value: 8.7, isPositive: true }}
           color="bg-purple-500"
           description="Tempo médio de permanência"
-          onClick={() => handleMetricClick('retention', `${formatDecimal(metrics?.averageRetention || 0)} meses`)}
         />
       </div>
-
-      <MetricExplanationDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        metric={selectedMetric}
-      />
     </Card>
   );
 };

@@ -88,8 +88,6 @@ export const MetricsLineChart = ({ data, lines, onClick }: MetricsLineChartProps
           <RechartsTooltip 
             content={<CustomTooltip />}
             cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '4 4' }}
-            active={true}
-            allowEscapeViewBox={{ x: false, y: false }}
           />
           
           <Legend 
