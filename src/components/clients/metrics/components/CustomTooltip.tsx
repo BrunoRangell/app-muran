@@ -10,53 +10,31 @@ interface CustomTooltipProps {
 }
 
 export const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  console.log('CustomTooltip called:', { active, payload, label });
+  
   if (active && payload && payload.length) {
-    // Função para formatar o mês/ano para português com validação robusta
+    // Formatação simples para o mês/ano
     const formatMonthYear = (monthYear: string) => {
+      if (!monthYear) return '';
+      
       try {
-        if (!monthYear || typeof monthYear !== 'string') {
-          console.warn('Invalid monthYear value:', monthYear);
-          return monthYear || '';
-        }
-
-        // Verificar se já está no formato correto (ex: "jul/24")
-        if (monthYear.includes('/') && monthYear.length <= 6) {
-          const parts = monthYear.split('/');
-          if (parts.length === 2) {
-            const [monthStr, yearStr] = parts;
-            
-            // Tentar parsear como MMM/yy primeiro
-            try {
-              const parsedDate = parse(monthYear, 'MMM/yy', new Date());
-              if (!isNaN(parsedDate.getTime())) {
-                return format(parsedDate, "MMM'/'yy", { locale: ptBR }).toLowerCase();
-              }
-            } catch (parseError) {
-              console.log('Erro no parse MMM/yy, tentando MM/yy:', parseError);
-            }
-
-            // Se não conseguir, tentar como MM/yy
-            try {
-              const month = parseInt(monthStr);
-              const year = parseInt(yearStr);
-              
-              if (!isNaN(month) && !isNaN(year) && month >= 1 && month <= 12) {
-                const fullYear = year < 50 ? 2000 + year : 1900 + year;
-                const date = new Date(fullYear, month - 1, 1);
-                return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
-              }
-            } catch (numericError) {
-              console.log('Erro no parse numérico:', numericError);
-            }
+        // Se contém '/', tentar formatar como mês/ano
+        if (monthYear.includes('/')) {
+          const [month, year] = monthYear.split('/');
+          const monthNum = parseInt(month);
+          const yearNum = parseInt(year);
+          
+          if (!isNaN(monthNum) && !isNaN(yearNum) && monthNum >= 1 && monthNum <= 12) {
+            const fullYear = yearNum < 50 ? 2000 + yearNum : 1900 + yearNum;
+            const date = new Date(fullYear, monthNum - 1, 1);
+            return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
           }
         }
-
-        // Fallback: retornar o valor original
-        console.warn('Não foi possível formatar a data:', monthYear);
+        
         return monthYear;
       } catch (error) {
-        console.error('Erro geral ao formatar mês:', error, monthYear);
-        return monthYear || '';
+        console.error('Erro ao formatar mês:', error);
+        return monthYear;
       }
     };
 
