@@ -1,7 +1,11 @@
 
 import { formatCurrency } from "@/utils/formatters";
-import { format, parse } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RevenueTooltip } from "./RevenueTooltip";
+import { ClientsTooltip } from "./ClientsTooltip";
+import { ChurnTooltip } from "./ChurnTooltip";
+import { NewClientsTooltip } from "./NewClientsTooltip";
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -10,8 +14,6 @@ interface CustomTooltipProps {
 }
 
 export const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-  console.log('CustomTooltip called:', { active, payload, label });
-  
   if (active && payload && payload.length) {
     // Formatação simples para o mês/ano
     const formatMonthYear = (monthYear: string) => {
@@ -38,6 +40,68 @@ export const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) =>
       }
     };
 
+    // Pegar os dados do primeiro entry que contém os detalhes
+    const dataPoint = payload[0]?.payload;
+    
+    // Se há apenas uma métrica sendo exibida, mostrar tooltip específico
+    if (payload.length === 1) {
+      const entry = payload[0];
+      const metricKey = entry.dataKey;
+      
+      return (
+        <div className="bg-white p-4 border rounded-lg shadow-lg max-w-xs">
+          <p className="text-sm font-medium text-gray-600 mb-3">{formatMonthYear(label || '')}</p>
+          
+          {metricKey === 'mrr' && dataPoint?.paymentDetails && (
+            <RevenueTooltip 
+              paymentDetails={dataPoint.paymentDetails}
+              totalRevenue={entry.value || 0}
+            />
+          )}
+          
+          {metricKey === 'clients' && dataPoint?.clientDetails && (
+            <ClientsTooltip 
+              clientDetails={dataPoint.clientDetails}
+              totalClients={entry.value || 0}
+            />
+          )}
+          
+          {metricKey === 'churn' && dataPoint?.churnedClients && (
+            <ChurnTooltip 
+              churnedClients={dataPoint.churnedClients}
+              churnCount={entry.value || 0}
+              churnRate={dataPoint.churnRate || 0}
+            />
+          )}
+          
+          {metricKey === 'newClients' && dataPoint?.newClientNames && (
+            <NewClientsTooltip 
+              newClientNames={dataPoint.newClientNames}
+              newClientsCount={entry.value || 0}
+            />
+          )}
+          
+          {metricKey === 'churnRate' && (
+            <div className="space-y-2">
+              <div className="font-semibold text-sm">
+                Taxa de Churn: {(entry.value || 0).toFixed(1)}%
+              </div>
+              {dataPoint?.churnedClients && dataPoint.churnedClients.length > 0 && (
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {dataPoint.churnedClients.map((clientName: string, index: number) => (
+                    <div key={index} className="text-xs bg-red-50 p-2 rounded border-l-2 border-red-200">
+                      {clientName}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Tooltip padrão para múltiplas métricas
     return (
       <div className="bg-white p-4 border rounded-lg shadow-lg">
         <p className="text-sm font-medium text-gray-600 mb-2">{formatMonthYear(label || '')}</p>
