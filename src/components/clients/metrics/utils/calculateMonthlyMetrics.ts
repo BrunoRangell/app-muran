@@ -7,7 +7,7 @@ import {
   isClientChurnedInMonth,
   getActiveClientsAtStartOfMonth 
 } from "./dateFilters";
-import { calculatePaymentBasedMRR } from "@/utils/paymentCalculations";
+import { calculatePaymentBasedMRR, calculateNewClientsFromPayments } from "@/utils/paymentCalculations";
 
 interface MonthlyMetrics {
   month: string;
@@ -34,9 +34,8 @@ export const calculateMonthlyMetrics = async (
       isClientActiveInMonth(client, monthStart, monthEnd)
     );
 
-    const newClients = clients.filter(client => 
-      isClientNewInMonth(client, monthStart, monthEnd)
-    ).length;
+    // Calcular novos clientes baseado no primeiro pagamento real
+    const newClients = await calculateNewClientsFromPayments(monthStart, monthEnd);
 
     const churned = clients.filter(client => 
       isClientChurnedInMonth(client, monthStart, monthEnd)
