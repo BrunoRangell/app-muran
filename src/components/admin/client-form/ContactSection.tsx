@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { ClientFormData } from "@/types/client";
 import { formatPhoneNumber } from "@/utils/formatters";
+import { SanitizedInput } from "@/components/common/SanitizedInputs";
+import { handlePhonePaste } from "@/utils/inputSanitizers";
 
 interface ContactSectionProps {
   form: UseFormReturn<ClientFormData>;
@@ -19,7 +21,7 @@ export const ContactSection = ({ form }: ContactSectionProps) => {
           <FormItem>
             <FormLabel>Nome do Responsável</FormLabel>
             <FormControl>
-              <Input placeholder="Nome completo do responsável" {...field} />
+              <SanitizedInput placeholder="Nome completo do responsável" {...field} maxLengthLimit={255} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -41,6 +43,12 @@ export const ContactSection = ({ form }: ContactSectionProps) => {
                   e.target.value = formatted;
                   field.onChange(formatted);
                 }}
+                onPaste={(e) => handlePhonePaste(e as any, (digits) => {
+                  // Aplica máscara após normalizar os dígitos
+                  const masked = formatPhoneNumber(digits);
+                  (e.target as HTMLInputElement).value = masked;
+                  field.onChange(masked);
+                })}
                 maxLength={15}
               />
             </FormControl>

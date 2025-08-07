@@ -1,10 +1,10 @@
 
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { ClientFormData, ACQUISITION_CHANNELS } from "@/types/client";
 import { useState, useEffect } from "react";
+import { SanitizedInput } from "@/components/common/SanitizedInputs";
 
 interface StatusSectionProps {
   form: UseFormReturn<ClientFormData>;
@@ -98,7 +98,7 @@ export const StatusSection = ({ form, showLastPaymentDate }: StatusSectionProps)
             <FormItem>
               <FormLabel>Especifique o Canal</FormLabel>
               <FormControl>
-                <Input placeholder="Digite o canal de aquisição" {...field} />
+                <SanitizedInput placeholder="Digite o canal de aquisição" {...field} maxLengthLimit={255} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -1,43 +1,14 @@
 
-import { useState } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { ClientFormData } from "@/types/client";
-import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
+import { SanitizedInput } from "@/components/common/SanitizedInputs";
+import { CurrencyInput } from "@/components/common/CurrencyInput";
 
 interface CompanySectionProps {
   form: UseFormReturn<ClientFormData>;
 }
 
-export const CompanySection = ({ form }: CompanySectionProps) => {
-  const [inputValue, setInputValue] = useState<string>(() => {
-    const initialValue = form.getValues().contractValue;
-    return initialValue ? formatCurrency(initialValue) : '';
-  });
-
-  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Permite apenas números e vírgula
-    const sanitizedValue = e.target.value.replace(/[^\d,]/g, '');
-    setInputValue(sanitizedValue);
-  };
-
-  const handleValueBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Formata o valor quando o campo perde o foco
-    const value = e.target.value;
-    if (!value) {
-      setInputValue('');
-      form.setValue('contractValue', 0);
-      return;
-    }
-
-    const numericValue = parseCurrencyToNumber(value);
-    const formattedValue = formatCurrency(numericValue);
-    setInputValue(formattedValue);
-    
-    // Salva o valor numérico no formulário
-    form.setValue('contractValue', numericValue);
-  };
 
   return (
     <>
@@ -48,7 +19,7 @@ export const CompanySection = ({ form }: CompanySectionProps) => {
           <FormItem>
             <FormLabel>Nome da Empresa</FormLabel>
             <FormControl>
-              <Input placeholder="Nome da empresa" {...field} />
+              <SanitizedInput placeholder="Nome da empresa" {...field} maxLengthLimit={255} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -62,16 +33,10 @@ export const CompanySection = ({ form }: CompanySectionProps) => {
           <FormItem>
             <FormLabel>Valor do Contrato</FormLabel>
             <FormControl>
-              <Input 
+              <CurrencyInput 
                 placeholder="R$ 0,00"
-                {...restField}
-                name={name}
-                value={inputValue}
-                onChange={handleValueChange}
-                onBlur={(e) => {
-                  handleValueBlur(e);
-                  fieldOnBlur();
-                }}
+                value={form.watch('contractValue')}
+                onValueChange={({ numeric }) => form.setValue('contractValue', numeric)}
                 className="font-mono text-lg"
               />
             </FormControl>
