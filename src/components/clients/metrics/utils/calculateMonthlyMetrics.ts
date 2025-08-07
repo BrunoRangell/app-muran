@@ -44,14 +44,19 @@ export const calculateMonthlyMetrics = async (
 
     const activeClientsAtStartOfMonth = getActiveClientsAtStartOfMonth(clients, monthStart);
 
-    // Calcular MRR baseado em pagamentos reais
+    // Para o gráfico, usar receita baseada em pagamentos quando disponível, senão usar contract_value
     const paymentMetrics = await calculatePaymentBasedMRR(monthStart, monthEnd);
+    
+    // Se não há dados de pagamento para o mês, calcular baseado em contratos ativos
+    const mrrValue = paymentMetrics.monthlyRevenue > 0 
+      ? paymentMetrics.monthlyRevenue 
+      : activeClientsInMonth.reduce((sum, client) => sum + Number(client.contract_value), 0);
 
     const monthStr = format(currentDate, 'M/yy'); // Formato numérico para consistência
 
     const result = {
       month: monthStr,
-      mrr: paymentMetrics.monthlyRevenue, // Usar receita real dos pagamentos
+      mrr: mrrValue, // Usar receita dos pagamentos ou contract_value como fallback
       clients: activeClientsInMonth.length,
       churn: churned,
       churnRate: activeClientsAtStartOfMonth > 0 

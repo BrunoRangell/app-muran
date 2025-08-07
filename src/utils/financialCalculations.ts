@@ -13,8 +13,8 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   const totalClients = clients.length;
   const activeClientsCount = activeClients.length;
 
-  // MRR e ARR baseados em pagamentos reais
-  const mrr = await calculateCurrentMRR();
+  // Receita Mensal Prevista baseada em contract_value dos clientes ativos
+  const mrr = activeClients.reduce((sum, client) => sum + Number(client.contract_value), 0);
   const arr = mrr * 12;
 
   // Ticket Médio
@@ -59,8 +59,8 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   const totalCosts = (costs || []).reduce((acc, cost) => acc + Number(cost.amount), 0);
 
   console.log("Financial metrics calculated:", {
-    mrr,
-    arr,
+    mrr: `R$ ${mrr.toLocaleString('pt-BR')} (Receita Mensal Prevista)`,
+    arr: `R$ ${arr.toLocaleString('pt-BR')}`,
     averageRetention,
     churnRate,
     ltv,
