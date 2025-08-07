@@ -1,10 +1,8 @@
 
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Trophy, TrendingUp, Clock, BarChart3, AlertCircle } from "lucide-react";
+import { Trophy, TrendingUp, Clock, BarChart3, AlertCircle, Medal, Crown } from "lucide-react";
 import { Client } from "../types";
 import { formatCurrency } from "@/utils/formatters";
-import { useState, useMemo } from "react";
 import { calculateRetention } from "../table/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -97,7 +95,7 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
         console.error("Erro ao calcular ranking:", error);
         return 0;
       }
-    }).slice(0, 3); // Top 3 para economizar espaço
+    }).slice(0, 5); // Top 5
   };
 
   const getMetricValue = (client: Client, metric: RankingMetric) => {
@@ -126,25 +124,56 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
       metric: 'monthly_revenue' as RankingMetric,
       title: 'Receita Mensal',
       icon: BarChart3,
-      gradient: 'from-blue-500 to-blue-600'
+      borderColor: 'border-l-muran-primary',
+      iconBg: 'bg-muran-primary/10',
+      iconColor: 'text-muran-primary',
+      headerBg: 'bg-muran-primary'
     },
     {
       metric: 'total_revenue' as RankingMetric,
       title: 'Receita Total',
       icon: Trophy,
-      gradient: 'from-green-500 to-green-600'
+      borderColor: 'border-l-muran-complementary',
+      iconBg: 'bg-muran-complementary/10',
+      iconColor: 'text-muran-complementary',
+      headerBg: 'bg-muran-complementary'
     },
     {
       metric: 'retention' as RankingMetric,
       title: 'Retenção',
       icon: Clock,
-      gradient: 'from-purple-500 to-purple-600'
+      borderColor: 'border-l-muran-dark',
+      iconBg: 'bg-muran-dark/10',
+      iconColor: 'text-muran-dark',
+      headerBg: 'bg-gradient-to-r from-muran-primary to-muran-complementary'
     }
   ];
 
+  const getPositionIcon = (index: number) => {
+    switch (index) {
+      case 0:
+        return <Crown className="h-4 w-4 text-yellow-600" />;
+      case 1:
+        return <Medal className="h-4 w-4 text-gray-500" />;
+      case 2:
+        return <Medal className="h-4 w-4 text-amber-600" />;
+      default:
+        return (
+          <div className="flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-xs font-semibold text-gray-600">
+            {index + 1}
+          </div>
+        );
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold text-muran-dark">Rankings de Clientes</h2>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-gradient-to-r from-muran-primary to-muran-complementary">
+          <Trophy className="h-6 w-6 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-muran-dark">Rankings de Clientes</h2>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {rankingConfigs.map((config) => {
@@ -152,38 +181,54 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
           const IconComponent = config.icon;
           
           return (
-            <Card key={config.metric} className="overflow-hidden">
-              <div className={`bg-gradient-to-r ${config.gradient} p-4 text-white`}>
-                <div className="flex items-center gap-2">
-                  <IconComponent className="h-5 w-5" />
-                  <h3 className="font-semibold">{config.title}</h3>
+            <Card 
+              key={config.metric} 
+              className={`overflow-hidden hover:shadow-lg transition-all duration-300 ${config.borderColor} border-l-4`}
+            >
+              <div className={`${config.headerBg} p-4 text-white`}>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
+                    <IconComponent className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-semibold text-lg">{config.title}</h3>
                 </div>
               </div>
               
               <div className="p-4 space-y-3">
                 {rankedClients.map((client, index) => (
-                  <div key={client.id} className="flex items-center gap-3">
-                    <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                      index === 0 ? 'bg-yellow-100 text-yellow-700' :
-                      index === 1 ? 'bg-gray-100 text-gray-700' :
-                      'bg-orange-100 text-orange-700'
-                    }`}>
-                      {index + 1}
+                  <div 
+                    key={client.id} 
+                    className={`flex items-center gap-4 p-3 rounded-lg transition-all duration-200 hover:shadow-sm ${
+                      index === 0 ? 'bg-yellow-50 border border-yellow-200' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex-shrink-0">
+                      {getPositionIcon(index)}
                     </div>
+                    
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-muran-dark truncate">
+                      <p className={`font-semibold text-sm truncate ${
+                        index === 0 ? 'text-muran-dark' : 'text-gray-700'
+                      }`}>
                         {client.company_name}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className={`text-xs ${
+                        index === 0 ? 'text-yellow-700 font-medium' : 'text-gray-500'
+                      }`}>
                         {getMetricValue(client, config.metric)}
                       </p>
+                    </div>
+
+                    <div className={`p-2 rounded-full ${config.iconBg}`}>
+                      <IconComponent className={`h-4 w-4 ${config.iconColor}`} />
                     </div>
                   </div>
                 ))}
                 
                 {rankedClients.length === 0 && (
-                  <div className="text-center text-gray-500 text-sm py-4">
-                    Nenhum dado disponível
+                  <div className="text-center text-gray-500 text-sm py-8">
+                    <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Nenhum dado disponível</p>
                   </div>
                 )}
               </div>
