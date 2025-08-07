@@ -72,7 +72,11 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
 
   // Calcula rankings para cada métrica
   const getRankedClients = (metric: RankingMetric) => {
-    return [...allClients].sort((a, b) => {
+    const clientsToRank = metric === 'monthly_revenue' 
+      ? allClients.filter(client => client.status === 'active')
+      : allClients;
+      
+    return [...clientsToRank].sort((a, b) => {
       try {
         switch (metric) {
           case 'monthly_revenue':
@@ -111,14 +115,14 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
           if (isNaN(retention)) throw new Error("Valor de retenção inválido");
           
           if (retention < 12) {
-            return `${retention}m`;
+            return `${retention} ${retention === 1 ? 'mês' : 'meses'}`;
           } else {
             const anos = Math.floor(retention / 12);
             const meses = retention % 12;
             if (meses === 0) {
               return `${anos} ${anos === 1 ? 'ano' : 'anos'}`;
             } else {
-              return `${anos} ${anos === 1 ? 'ano' : 'anos'} e ${meses}m`;
+              return `${anos} ${anos === 1 ? 'ano' : 'anos'} e ${meses} ${meses === 1 ? 'mês' : 'meses'}`;
             }
           }
         default:
@@ -218,11 +222,18 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <p className={`font-semibold text-sm truncate ${
-                        index === 0 ? 'text-muran-dark' : 'text-gray-700'
-                      }`}>
-                        {client.company_name}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`font-semibold text-sm truncate ${
+                          index === 0 ? 'text-muran-dark' : 'text-gray-700'
+                        }`}>
+                          {client.company_name}
+                        </p>
+                        {client.status === 'inactive' && (
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                            inativo
+                          </span>
+                        )}
+                      </div>
                       <p className={`text-xs ${
                         index === 0 ? 'text-yellow-700 font-medium' : 'text-gray-500'
                       }`}>
