@@ -42,7 +42,7 @@ export const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) =>
       <div className="bg-white p-4 border rounded-lg shadow-lg">
         <p className="text-sm font-medium text-gray-600 mb-2">{formatMonthYear(label || '')}</p>
         {payload.map((entry: any, index: number) => {
-          const value = entry.payload[entry.dataKey];
+          const value = entry.value;
           const formattedValue = entry.dataKey === 'mrr'
             ? formatCurrency(value || 0)
             : entry.dataKey === 'churnRate'
