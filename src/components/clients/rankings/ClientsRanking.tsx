@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Trophy, TrendingUp, Clock, BarChart3, AlertCircle } from "lucide-react";
 import { Client } from "../types";
 import { formatCurrency } from "@/utils/formatters";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { calculateRetention } from "../table/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ClientsRankingProps {
   clients: Client[];
@@ -20,6 +22,27 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
 
   // Filtra apenas clientes ativos
   const activeClients = clients.filter(client => client.status === 'active');
+  const activeIds = activeClients.map(c => c.id);
+
+  // Totais de receita real por cliente a partir de payments
+  const { data: totalsByClient = {}, isLoading: loadingTotals } = useQuery({
+    queryKey: ['payments_totals_by_client', activeIds],
+    queryFn: async () => {
+      if (!activeIds.length) return {} as Record<string, number>;
+      const { data, error } = await supabase
+        .from('payments')
+        .select('client_id, amount')
+        .in('client_id', activeIds);
+      if (error) throw error;
+      const totals: Record<string, number> = {};
+      (data || []).forEach((row: any) => {
+        const n = Number(row.amount) || 0;
+        totals[row.client_id] = (totals[row.client_id] || 0) + n;
+      });
+      return totals;
+    },
+    enabled: activeIds.length > 0,
+  });
 
   if (!Array.isArray(clients)) {
     console.error("Erro: clients não é um array válido", clients);
@@ -57,11 +80,8 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
         case 'monthly_revenue':
           return b.contract_value - a.contract_value;
         case 'total_revenue':
-          const totalA = a.contract_value * calculateRetention(a);
-          const totalB = b.contract_value * calculateRetention(b);
-          if (isNaN(totalA) || isNaN(totalB)) {
-            throw new Error("Erro no cálculo da receita total");
-          }
+          const totalA = (totalsByClient as Record<string, number>)[a.id] ?? 0;
+          const totalB = (totalsByClient as Record<string, number>)[b.id] ?? 0;
           return totalB - totalA;
         case 'retention':
           const retentionA = calculateRetention(a);
@@ -90,8 +110,7 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
         case 'monthly_revenue':
           return formatCurrency(client.contract_value);
         case 'total_revenue':
-          const total = client.contract_value * calculateRetention(client);
-          if (isNaN(total)) throw new Error("Valor total inválido");
+          const total = (totalsByClient as Record<string, number>)[client.id] ?? 0;
           return formatCurrency(total);
         case 'retention':
           const retention = calculateRetention(client);
