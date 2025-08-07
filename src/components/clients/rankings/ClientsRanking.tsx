@@ -17,19 +17,19 @@ type RankingMetric = 'monthly_revenue' | 'total_revenue' | 'retention';
 export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
   const { toast } = useToast();
 
-  // Filtra apenas clientes ativos
-  const activeClients = clients.filter(client => client.status === 'active');
-  const activeIds = activeClients.map(c => c.id);
+  // Considera todos os clientes (ativos e inativos)
+  const allClients = clients;
+  const allIds = allClients.map(c => c.id);
 
   // Totais de receita real por cliente a partir de payments
   const { data: totalsByClient = {}, isLoading: loadingTotals } = useQuery({
-    queryKey: ['payments_totals_by_client', activeIds],
+    queryKey: ['payments_totals_by_client', allIds],
     queryFn: async () => {
-      if (!activeIds.length) return {} as Record<string, number>;
+      if (!allIds.length) return {} as Record<string, number>;
       const { data, error } = await supabase
         .from('payments')
         .select('client_id, amount')
-        .in('client_id', activeIds);
+        .in('client_id', allIds);
       if (error) throw error;
       const totals: Record<string, number> = {};
       (data || []).forEach((row: any) => {
@@ -38,7 +38,7 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
       });
       return totals;
     },
-    enabled: activeIds.length > 0,
+    enabled: allIds.length > 0,
   });
 
   if (!Array.isArray(clients)) {
@@ -58,13 +58,13 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
     );
   }
 
-  if (activeClients.length === 0) {
+  if (allClients.length === 0) {
     return (
       <Card className="p-6">
         <div className="flex flex-col items-center justify-center p-4 text-gray-500 gap-2">
           <TrendingUp className="h-8 w-8 mb-2" />
-          <p>Nenhum cliente ativo encontrado</p>
-          <p className="text-sm">Adicione clientes ativos para ver o ranking</p>
+          <p>Nenhum cliente encontrado</p>
+          <p className="text-sm">Adicione clientes para ver o ranking</p>
         </div>
       </Card>
     );
@@ -72,7 +72,7 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
 
   // Calcula rankings para cada métrica
   const getRankedClients = (metric: RankingMetric) => {
-    return [...activeClients].sort((a, b) => {
+    return [...allClients].sort((a, b) => {
       try {
         switch (metric) {
           case 'monthly_revenue':
@@ -109,7 +109,18 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
         case 'retention':
           const retention = calculateRetention(client);
           if (isNaN(retention)) throw new Error("Valor de retenção inválido");
-          return `${retention}m`;
+          
+          if (retention < 12) {
+            return `${retention}m`;
+          } else {
+            const anos = Math.floor(retention / 12);
+            const meses = retention % 12;
+            if (meses === 0) {
+              return `${anos} ${anos === 1 ? 'ano' : 'anos'}`;
+            } else {
+              return `${anos} ${anos === 1 ? 'ano' : 'anos'} e ${meses}m`;
+            }
+          }
         default:
           return '';
       }
@@ -124,28 +135,28 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
       metric: 'monthly_revenue' as RankingMetric,
       title: 'Maior receita recorrente',
       icon: BarChart3,
-      borderColor: 'border-l-muran-primary',
-      iconBg: 'bg-muran-primary/10',
-      iconColor: 'text-muran-primary',
-      headerBg: 'bg-muran-primary'
+      borderColor: 'border-l-primary',
+      iconBg: 'bg-primary/10',
+      iconColor: 'text-primary',
+      headerBg: 'bg-card border-b'
     },
     {
       metric: 'total_revenue' as RankingMetric,
       title: 'Maior receita acumulada',
       icon: Trophy,
-      borderColor: 'border-l-muran-primary',
-      iconBg: 'bg-muran-primary/10',
-      iconColor: 'text-muran-primary',
-      headerBg: 'bg-muran-primary'
+      borderColor: 'border-l-primary',
+      iconBg: 'bg-primary/10',
+      iconColor: 'text-primary',
+      headerBg: 'bg-card border-b'
     },
     {
       metric: 'retention' as RankingMetric,
       title: 'Parceria mais longa',
       icon: Clock,
-      borderColor: 'border-l-muran-primary',
-      iconBg: 'bg-muran-primary/10',
-      iconColor: 'text-muran-primary',
-      headerBg: 'bg-muran-primary'
+      borderColor: 'border-l-primary',
+      iconBg: 'bg-primary/10',
+      iconColor: 'text-primary',
+      headerBg: 'bg-card border-b'
     }
   ];
 
@@ -169,10 +180,10 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-muran-primary">
-          <Trophy className="h-6 w-6 text-white" />
+        <div className="p-2 rounded-lg bg-primary/10">
+          <Trophy className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-muran-dark">Rankings de Clientes</h2>
+        <h2 className="text-2xl font-bold text-foreground">Rankings de Clientes</h2>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -185,12 +196,12 @@ export const ClientsRanking = ({ clients }: ClientsRankingProps) => {
               key={config.metric} 
               className={`overflow-hidden hover:shadow-lg transition-all duration-300 ${config.borderColor} border-l-4`}
             >
-              <div className={`${config.headerBg} p-4 text-white`}>
+              <div className={`${config.headerBg} p-4`}>
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
-                    <IconComponent className="h-5 w-5" />
+                  <div className={`p-2 rounded-lg ${config.iconBg}`}>
+                    <IconComponent className={`h-5 w-5 ${config.iconColor}`} />
                   </div>
-                  <h3 className="font-semibold text-lg">{config.title}</h3>
+                  <h3 className="font-semibold text-lg text-foreground">{config.title}</h3>
                 </div>
               </div>
               
