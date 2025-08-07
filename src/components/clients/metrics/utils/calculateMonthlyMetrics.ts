@@ -72,7 +72,7 @@ export const calculateMonthlyMetrics = async (
       .select(`
         amount,
         client_id,
-        clients!client_id(company_name, status)
+        clients!client_id(company_name)
       `)
       .gte("reference_month", monthStart.toISOString().split('T')[0])
       .lt("reference_month", new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1).toISOString().split('T')[0]);
@@ -80,7 +80,7 @@ export const calculateMonthlyMetrics = async (
     const paymentDetails: PaymentDetail[] = payments?.map(payment => ({
       company_name: payment.clients?.company_name || 'Cliente não encontrado',
       amount: Number(payment.amount),
-      status: payment.clients?.status || 'unknown'
+      status: 'RECEBIDO' // Todos os pagamentos na tabela são considerados recebidos
     })) || [];
 
     // Criar detalhes dos clientes ativos com último pagamento
