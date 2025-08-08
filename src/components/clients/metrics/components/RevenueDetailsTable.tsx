@@ -35,13 +35,14 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
       console.log('Parâmetros:', { monthStr, monthStart, monthEnd });
       
       try {
-        // Buscar pagamentos reais com valor > 0
+        // Buscar pagamentos reais com valor > 0 usando JOIN manual para evitar erro de relacionamento duplicado
         const { data: payments, error: paymentsError } = await supabase
           .from("payments")
           .select(`
             id,
             amount,
-            clients!client_id(
+            client_id,
+            clients:client_id(
               company_name,
               first_payment_date
             )
