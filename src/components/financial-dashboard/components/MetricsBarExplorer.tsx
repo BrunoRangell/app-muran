@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetricsData } from "@/components/clients/metrics/useMetricsData";
@@ -171,6 +171,8 @@ export const MetricsBarExplorer = () => {
     metric: string;
     value: number;
   } | null>(null);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [isCalculatingLTV, setIsCalculatingLTV] = useState(false);
 
   const dateRange = useMemo(() => getPeriodRange(period), [period]);
   
@@ -191,43 +193,17 @@ export const MetricsBarExplorer = () => {
   // Agregar custos por mês
   const costsByMonth = useMemo(() => aggregateCostsByMonth(costsData || []), [costsData]);
 
-  // Processar dados para o gráfico
-  const chartData = useMemo(() => {
-    console.log('📊 Processando dados para gráfico:', { monthlyMetrics, costsByMonth });
-    
-    const processData = async () => {
-      const processedData = await Promise.all(
-        (monthlyMetrics || []).map(async (item) => {
-          const monthCosts = costsByMonth[item.month] || 0;
-          const profit = item.mrr - monthCosts;
-          const averageLTV = await calculateAverageLTV(item.month, clients || []);
-          
-          return {
-            month: item.month,
-            mrr: item.mrr,
-            totalCosts: monthCosts,
-            profit: profit,
-            newClients: item.newClients,
-            churn: item.churn,
-            cac: item.newClients > 0 ? monthCosts / item.newClients : 0,
-            ltv: averageLTV, // LTV médio baseado em payments reais
-          };
-        })
-      );
-      
-      return processedData.sort((a, b) => {
-        try {
-          const dateA = parse(a.month, "MMM/yy", new Date(), { locale: ptBR });
-          const dateB = parse(b.month, "MMM/yy", new Date(), { locale: ptBR });
-          return dateA.getTime() - dateB.getTime();
-        } catch {
-          return 0;
-        }
-      });
-    };
+  // Processar dados básicos do gráfico
+  useEffect(() => {
+    if (!monthlyMetrics || monthlyMetrics.length === 0) {
+      setChartData([]);
+      return;
+    }
 
-    // Para mantê-lo síncrono, retornamos dados básicos primeiro
-    return (monthlyMetrics || []).map(item => {
+    console.log('📊 Processando dados básicos para gráfico:', { monthlyMetrics, costsByMonth });
+    
+    // Criar dados básicos primeiro (sem LTV)
+    const basicData = monthlyMetrics.map(item => {
       const monthCosts = costsByMonth[item.month] || 0;
       const profit = item.mrr - monthCosts;
       
@@ -250,6 +226,39 @@ export const MetricsBarExplorer = () => {
         return 0;
       }
     });
+
+    setChartData(basicData);
+
+    // Calcular LTV assincronamente
+    const calculateLTVForAllMonths = async () => {
+      if (!clients || clients.length === 0) return;
+      
+      setIsCalculatingLTV(true);
+      console.log('🔄 Iniciando cálculo de LTV para todos os meses...');
+      
+      try {
+        const updatedData = await Promise.all(
+          basicData.map(async (item) => {
+            const averageLTV = await calculateAverageLTV(item.month, clients);
+            console.log(`💰 LTV calculado para ${item.month}: R$ ${averageLTV.toFixed(2)}`);
+            
+            return {
+              ...item,
+              ltv: averageLTV,
+            };
+          })
+        );
+
+        console.log('✅ Cálculo de LTV concluído para todos os meses');
+        setChartData(updatedData);
+      } catch (error) {
+        console.error('❌ Erro ao calcular LTV:', error);
+      } finally {
+        setIsCalculatingLTV(false);
+      }
+    };
+
+    calculateLTVForAllMonths();
   }, [monthlyMetrics, costsByMonth, clients]);
 
   const selected = METRICS.find((m) => m.id === metric)!;
@@ -382,6 +391,9 @@ export const MetricsBarExplorer = () => {
         <p>💡 <strong>Dica:</strong> Clique nas barras para ver detalhes do mês</p>
         {(metric === "cac" || metric === "ltv") && (
           <p>ℹ️ CAC = Custos ÷ Novos Clientes | LTV = Média da soma real de payments de cada cliente</p>
+        )}
+        {isCalculatingLTV && metric === "ltv" && (
+          <p className="text-primary">🔄 Calculando LTV baseado em payments reais...</p>
         )}
       </div>
 
