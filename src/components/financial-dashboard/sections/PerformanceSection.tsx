@@ -36,8 +36,10 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
     }).format(value);
   };
 
-  const averageLTV = metrics?.totalClients ? (metrics?.ltv || 0) / metrics.totalClients : 0;
-  const ltvcacRatio = averageLTV > 0 ? averageLTV / 1250 : 0; // CAC fixo em 1250
+  const averageLTV = metrics?.averageTicket && metrics?.averageRetention 
+    ? metrics.averageTicket * metrics.averageRetention 
+    : 0;
+  const ltvcacRatio = metrics?.ltvCacRatio || 0;
 
   return (
     <Card className="p-6 border-l-4 border-l-purple-500">
@@ -72,20 +74,26 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
 
         <InteractiveMetricCard
           title="Crescimento MRR"
-          value="15.7%"
+          value={`${(metrics?.mrrGrowthRate || 0).toFixed(1)}%`}
           icon={Award}
-          trend={{ value: 15.7, isPositive: true }}
-          color="bg-green-500"
-          description="Crescimento mensal da receita"
+          trend={{ 
+            value: Math.abs(metrics?.mrrGrowthRate || 0), 
+            isPositive: (metrics?.mrrGrowthRate || 0) >= 0 
+          }}
+          color={(metrics?.mrrGrowthRate || 0) >= 0 ? "bg-green-500" : "bg-red-500"}
+          description="Crescimento mensal da receita vs mês anterior"
         />
 
         <InteractiveMetricCard
           title="Score de Saúde"
-          value="87/100"
+          value={`${Math.round(metrics?.healthScore || 0)}/100`}
           icon={Activity}
           trend={{ value: 5.2, isPositive: true }}
-          color="bg-green-500"
-          description="Indicador geral de saúde financeira"
+          color={
+            (metrics?.healthScore || 0) >= 80 ? "bg-green-500" :
+            (metrics?.healthScore || 0) >= 60 ? "bg-yellow-500" : "bg-red-500"
+          }
+          description="Indicador geral de saúde financeira baseado em múltiplos KPIs"
         />
       </div>
     </Card>

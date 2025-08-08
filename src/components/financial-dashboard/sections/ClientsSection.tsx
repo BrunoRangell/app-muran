@@ -59,12 +59,12 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
         />
 
         <InteractiveMetricCard
-          title="Novos Clientes"
-          value="12"
+          title="Novos clientes este mês"
+          value={(metrics?.newClientsThisMonth || 0).toString()}
           icon={UserPlus}
           trend={{ value: 18.5, isPositive: true }}
           color="bg-green-500"
-          description="Adquiridos este mês"
+          description="Novos clientes adquiridos no mês atual"
         />
 
         <InteractiveMetricCard

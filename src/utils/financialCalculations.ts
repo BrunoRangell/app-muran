@@ -1,8 +1,9 @@
 
-import { differenceInMonths, parseISO, subMonths } from "date-fns";
+import { differenceInMonths, parseISO, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { Client } from "@/components/clients/types";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateCurrentMRR } from "./paymentCalculations";
+import { isClientNewInMonth } from "@/components/clients/metrics/utils/dateFilters";
 
 export const calculateFinancialMetrics = async (clients: Client[]) => {
   const today = new Date();
@@ -16,6 +17,26 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   // Receita Mensal Prevista baseada em contract_value dos clientes ativos
   const mrr = activeClients.reduce((sum, client) => sum + Number(client.contract_value), 0);
   const arr = mrr * 12;
+
+  // Novos clientes este mês
+  const currentMonthStart = startOfMonth(today);
+  const currentMonthEnd = endOfMonth(today);
+  const newClientsThisMonth = clients.filter(client => 
+    isClientNewInMonth(client, currentMonthStart, currentMonthEnd)
+  ).length;
+
+  // Calcular MRR do mês anterior para crescimento
+  const lastMonthStart = startOfMonth(subMonths(today, 1));
+  const lastMonthEnd = endOfMonth(subMonths(today, 1));
+  const lastMonthActiveClients = clients.filter(client => {
+    const firstPayment = parseISO(client.first_payment_date);
+    const lastPayment = client.last_payment_date ? parseISO(client.last_payment_date) : null;
+    return firstPayment <= lastMonthEnd && (!lastPayment || lastPayment >= lastMonthStart);
+  });
+  const lastMonthMRR = lastMonthActiveClients.reduce((sum, client) => sum + Number(client.contract_value), 0);
+  
+  // Crescimento MRR
+  const mrrGrowthRate = lastMonthMRR > 0 ? ((mrr - lastMonthMRR) / lastMonthMRR) * 100 : 0;
 
   // Ticket Médio
   const averageTicket = activeClientsCount > 0 ? mrr / activeClientsCount : 0;
@@ -48,8 +69,43 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     ? (churned / activeClientsThreeMonthsAgo) * 100 
     : 0;
 
-  // LTV (Lifetime Value) - usando valor do contrato * retenção média
-  const ltv = mrr * averageRetention;
+  // LTV (Lifetime Value) - usando ticket médio * retenção média
+  const ltv = averageTicket * averageRetention;
+  
+  // CAC fixo por enquanto
+  const cac = 1250;
+  
+  // LTV:CAC Ratio
+  const ltvCacRatio = cac > 0 ? ltv / cac : 0;
+  
+  // Score de Saúde (0-100) baseado em múltiplos fatores
+  let healthScore = 50; // Base
+  
+  // LTV:CAC ratio (peso: 30 pontos)
+  if (ltvCacRatio >= 3) healthScore += 30;
+  else if (ltvCacRatio >= 2) healthScore += 20;
+  else if (ltvCacRatio >= 1) healthScore += 10;
+  
+  // Churn rate (peso: 25 pontos)
+  if (churnRate <= 5) healthScore += 25;
+  else if (churnRate <= 10) healthScore += 15;
+  else if (churnRate <= 15) healthScore += 5;
+  else healthScore -= 10;
+  
+  // Crescimento MRR (peso: 20 pontos)
+  if (mrrGrowthRate >= 15) healthScore += 20;
+  else if (mrrGrowthRate >= 10) healthScore += 15;
+  else if (mrrGrowthRate >= 5) healthScore += 10;
+  else if (mrrGrowthRate >= 0) healthScore += 5;
+  else healthScore -= 10;
+  
+  // Retenção média (peso: 15 pontos)
+  if (averageRetention >= 24) healthScore += 15;
+  else if (averageRetention >= 12) healthScore += 10;
+  else if (averageRetention >= 6) healthScore += 5;
+  
+  // Limitar entre 0 e 100
+  healthScore = Math.max(0, Math.min(100, healthScore));
 
   // Buscar total de custos
   const { data: costs } = await supabase
@@ -69,7 +125,12 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     churned,
     activeClientsThreeMonthsAgo,
     averageTicket,
-    totalCosts
+    totalCosts,
+    newClientsThisMonth,
+    mrrGrowthRate,
+    ltvCacRatio,
+    healthScore,
+    cac
   });
 
   return {
@@ -81,6 +142,11 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     activeClientsCount,
     totalClients,
     averageTicket,
-    totalCosts
+    totalCosts,
+    newClientsThisMonth,
+    mrrGrowthRate,
+    ltvCacRatio,
+    healthScore,
+    cac
   };
 };

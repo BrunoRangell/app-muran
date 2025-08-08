@@ -59,12 +59,12 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InteractiveMetricCard
-          title="Receita Mensal"
+          title="Receita Mensal Prevista"
           value={formatCurrency(metrics?.mrr || 0)}
           icon={DollarSign}
           trend={{ value: 12.5, isPositive: true }}
           color="bg-green-500"
-          description="MRR total dos clientes ativos"
+          description="Receita mensal prevista baseada nos contratos ativos"
         />
 
         <InteractiveMetricCard
