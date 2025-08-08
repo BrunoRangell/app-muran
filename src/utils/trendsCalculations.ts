@@ -15,20 +15,20 @@ interface PreviousMetrics {
   ltvCacRatio: number;
 }
 
-// Calculate CAC based on marketing and sales costs
+// Calculate CAC based on marketing and sales costs (last 3 months)
 export const calculateCAC = async (clients: Client[], currentDate: Date): Promise<number> => {
-  const monthStart = startOfMonth(currentDate);
+  const threeMonthsStart = startOfMonth(subMonths(currentDate, 2));
   const monthEnd = endOfMonth(currentDate);
 
   try {
-    // Get marketing and sales costs for current month
+    // Get marketing and sales costs for last 3 months
     const { data: costsData, error: costsError } = await supabase
       .from('costs')
       .select(`
         amount,
         costs_categories!inner(category_id)
       `)
-      .gte('date', monthStart.toISOString().split('T')[0])
+      .gte('date', threeMonthsStart.toISOString().split('T')[0])
       .lte('date', monthEnd.toISOString().split('T')[0]);
 
     if (costsError) throw costsError;
@@ -42,8 +42,13 @@ export const calculateCAC = async (clients: Client[], currentDate: Date): Promis
 
     const totalMarketingCosts = marketingAndSalesCosts.reduce((sum, cost) => sum + Number(cost.amount), 0);
 
-    // Get new clients for current month
-    const newClientsCount = clients.filter(client => isClientNewInMonth(client, monthStart, monthEnd)).length;
+    // Get new clients for last 3 months
+    let newClientsCount = 0;
+    for (let i = 0; i < 3; i++) {
+      const monthStart = startOfMonth(subMonths(currentDate, i));
+      const monthEnd = endOfMonth(subMonths(currentDate, i));
+      newClientsCount += clients.filter(client => isClientNewInMonth(client, monthStart, monthEnd)).length;
+    }
 
     // Calculate CAC
     return newClientsCount > 0 ? totalMarketingCosts / newClientsCount : 0;

@@ -62,21 +62,21 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
         />
 
         <InteractiveMetricCard
-          title="CAC"
+          title="CAC (3 meses)"
           value={formatCurrency(metrics?.cac || 0)}
           icon={TrendingDown}
           trend={metrics?.trends?.cacTrend}
           color="bg-orange-500"
-          description="Custo de Aquisição de Cliente"
+          description="Custo de Aquisição de Cliente dos últimos 3 meses"
         />
 
         <InteractiveMetricCard
-          title="Custo por Cliente"
+          title="Custo mensal por cliente"
           value={formatCurrency(costPerClient)}
           icon={Calculator}
           trend={metrics?.trends?.totalCostsTrend}
           color="bg-yellow-500"
-          description="Custo médio por cliente ativo"
+          description="Custo médio mensal por cliente ativo"
         />
 
         <InteractiveMetricCard

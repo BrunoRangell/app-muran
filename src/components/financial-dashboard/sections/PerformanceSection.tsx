@@ -62,11 +62,11 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
 
         <InteractiveMetricCard
           title="LTV:CAC Ratio"
-          value={`${ltvCacRatio.toFixed(1)}:1`}
+          value={`${ltvCacRatio.toFixed(1)}x`}
           icon={TrendingUp}
           trend={metrics?.trends?.ltvCacRatioTrend}
           color={ltvCacRatio >= 3 ? "bg-green-500" : ltvCacRatio >= 2 ? "bg-yellow-500" : "bg-red-500"}
-          description="Relação entre LTV e CAC - ideal acima de 3:1"
+          description="Relação entre LTV e CAC - ideal acima de 3x"
         />
       </div>
     </Card>

@@ -62,7 +62,7 @@ export const ComparativeAnalysis = ({ filters }: ComparativeAnalysisProps) => {
 
   const comparisons = [
     {
-      metric: 'MRR',
+      metric: 'Receita mensal prevista',
       current: formatCurrency(allClientsMetrics.mrr),
       previous: formatCurrency(previousMetrics.mrr),
       change: calculateChange(allClientsMetrics.mrr, previousMetrics.mrr),
@@ -83,7 +83,7 @@ export const ComparativeAnalysis = ({ filters }: ComparativeAnalysisProps) => {
       isPositive: allClientsMetrics.newClientsCount >= previousMetrics.newClientsCount
     },
     {
-      metric: 'CAC',
+      metric: 'CAC (3 meses)',
       current: formatCurrency(allClientsMetrics.cac),
       previous: formatCurrency(previousMetrics.cac),
       change: Math.abs(calculateChange(allClientsMetrics.cac, previousMetrics.cac)),
