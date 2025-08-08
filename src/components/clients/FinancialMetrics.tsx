@@ -60,15 +60,6 @@ export const FinancialMetrics = () => {
   };
 
   const handleMetricChange = (metric: string, checked: boolean) => {
-    // Se tentando ativar uma métrica
-    if (checked) {
-      const currentActiveCount = Object.values(selectedMetrics).filter(Boolean).length;
-      // Se já tem 2 ativas, não permite ativar mais
-      if (currentActiveCount >= 2) {
-        return;
-      }
-    }
-    
     setSelectedMetrics(prev => ({
       ...prev,
       [metric]: checked

@@ -9,8 +9,6 @@ import { BarChart3 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { DetailsDialog } from "@/components/clients/metrics/components/DetailsDialog";
 import { useClientFiltering } from "@/components/clients/metrics/hooks/useClientFiltering";
-import { VerticalMetricsFilterBar } from "@/components/clients/metrics/components/VerticalMetricsFilterBar";
-import { METRIC_COLORS } from "@/components/clients/metrics/constants/metricColors";
 import { Cost } from "@/types/cost";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -31,16 +29,6 @@ export interface MetricOption {
   id: MetricId;
   label: string;
   kind: "currency" | "percent" | "ratio" | "number";
-}
-
-interface SelectedMetrics {
-  mrr: boolean;
-  totalCosts: boolean;
-  profit: boolean;
-  newClients: boolean;
-  churn: boolean;
-  cac: boolean;
-  ltv: boolean;
 }
 
 const METRICS: MetricOption[] = [
@@ -161,15 +149,7 @@ const calculateAverageLTV = (monthStr: string, clients: Client[]): number => {
 
 export const MetricsBarExplorer = () => {
   const [period, setPeriod] = useState<PeriodFilter>("last-12-months");
-  const [selectedMetrics, setSelectedMetrics] = useState<SelectedMetrics>({
-    mrr: true,
-    totalCosts: false,
-    profit: false,
-    newClients: false,
-    churn: false,
-    cac: false,
-    ltv: false,
-  });
+  const [metric, setMetric] = useState<MetricId>("mrr");
   const [selectedPoint, setSelectedPoint] = useState<{
     month: string;
     metric: string;
@@ -225,34 +205,17 @@ export const MetricsBarExplorer = () => {
     });
   }, [monthlyMetrics, costsByMonth, clients]);
 
-  const activeMetrics = Object.entries(selectedMetrics)
-    .filter(([_, isActive]) => isActive)
-    .map(([key, _]) => key as MetricId);
-
-  const handleMetricChange = (metric: string, checked: boolean) => {
-    const activeCount = Object.values(selectedMetrics).filter(Boolean).length;
-    
-    if (checked && activeCount >= 2) {
-      return; // Não permite mais de 2 métricas ativas
-    }
-    
-    setSelectedMetrics(prev => ({
-      ...prev,
-      [metric]: checked
-    }));
-  };
+  const selected = METRICS.find((m) => m.id === metric)!;
+  const primaryColor = "#ff6e00";
 
   const handleBarClick = (data: any) => {
     if (!data || !data.activePayload) return;
     
     const barData = data.activePayload[0].payload;
-    const clickedMetric = data.activePayload[0].dataKey;
-    const metricLabel = METRICS.find(m => m.id === clickedMetric)?.label || clickedMetric;
-    
     setSelectedPoint({
       month: barData.month,
-      metric: metricLabel,
-      value: barData[clickedMetric]
+      metric: selected.label,
+      value: barData[metric]
     });
   };
 
@@ -296,12 +259,12 @@ export const MetricsBarExplorer = () => {
     <Card className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-muran-primary/10 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-muran-primary" />
+          <div className="p-2 bg-[#ff6e00]/10 rounded-lg">
+            <BarChart3 className="h-5 w-5 text-[#ff6e00]" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-foreground">Análise Comparativa por Barras</h2>
-            <p className="text-sm text-muted-foreground">Compare até 2 métricas mensais - clique nas barras para detalhes</p>
+            <p className="text-sm text-muted-foreground">Compare métricas mensais com visualização em barras - clique nas barras para detalhes</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -318,63 +281,59 @@ export const MetricsBarExplorer = () => {
               <SelectItem value="last-year">Ano passado</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={metric} onValueChange={(value: MetricId) => setMetric(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {METRICS.map(m => (
+                <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="flex-shrink-0">
-          <VerticalMetricsFilterBar
-            selectedMetrics={selectedMetrics}
-            onMetricChange={handleMetricChange}
-          />
-        </div>
-
-        <div className="flex-1 h-[320px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} onClick={handleBarClick}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="month" 
-                tick={{ fontSize: 12 }} 
-                stroke="hsl(var(--muted-foreground))"
-              />
-              <YAxis 
-                tick={{ fontSize: 12 }} 
-                width={90}
-                stroke="hsl(var(--muted-foreground))"
-              />
-              <Tooltip
-                contentStyle={{ 
-                  background: "hsl(var(--card))", 
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px"
-                }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-                formatter={(value, name) => {
-                  const metric = METRICS.find(m => m.id === name);
-                  return [formatValue(metric?.kind || "number", Number(value)), metric?.label || name];
-                }}
-                cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
-              />
-              {activeMetrics.map((metricId, index) => (
-                <Bar 
-                  key={metricId}
-                  dataKey={metricId} 
-                  fill={METRIC_COLORS[metricId as keyof typeof METRIC_COLORS] || "#ff6e00"}
-                  stroke={METRIC_COLORS[metricId as keyof typeof METRIC_COLORS] || "#ff6e00"}
-                  strokeWidth={0}
-                  radius={[4, 4, 0, 0]}
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="h-[320px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} onClick={handleBarClick}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis 
+              dataKey="month" 
+              tick={{ fontSize: 12 }} 
+              stroke="hsl(var(--muted-foreground))"
+            />
+            <YAxis 
+              tick={{ fontSize: 12 }} 
+              tickFormatter={(v) => formatValue(selected.kind, v)} 
+              width={90}
+              stroke="hsl(var(--muted-foreground))"
+            />
+            <Tooltip
+              contentStyle={{ 
+                background: "hsl(var(--card))", 
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "8px"
+              }}
+              labelStyle={{ color: "hsl(var(--foreground))" }}
+              formatter={(value) => [formatValue(selected.kind, Number(value)), selected.label]}
+              cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
+            />
+            <Bar 
+              dataKey={metric} 
+              fill={primaryColor}
+              stroke={primaryColor}
+              strokeWidth={0}
+              radius={[4, 4, 0, 0]}
+              className="cursor-pointer hover:opacity-80 transition-opacity"
+            />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <div className="text-xs text-muted-foreground space-y-1">
-        <p>💡 <strong>Dica:</strong> Selecione até 2 métricas no filtro e clique nas barras para ver detalhes</p>
-        {activeMetrics.some(m => m === "cac" || m === "ltv") && (
+        <p>💡 <strong>Dica:</strong> Clique nas barras para ver detalhes do mês</p>
+        {(metric === "cac" || metric === "ltv") && (
           <p>ℹ️ CAC = Custos ÷ Novos Clientes | LTV = Média do LTV individual dos clientes ativos (valor contrato × meses ativos)</p>
         )}
       </div>
