@@ -16,6 +16,9 @@ export const RevenueTooltip = ({ paymentDetails, totalRevenue }: RevenueTooltipP
   }
 
 
+  // Filtrar apenas pagamentos com valor real
+  const realPayments = paymentDetails.filter(payment => payment.amount > 0);
+
   return (
     <div className="space-y-2">
       <div className="font-semibold text-sm flex items-center gap-2">
@@ -26,7 +29,7 @@ export const RevenueTooltip = ({ paymentDetails, totalRevenue }: RevenueTooltipP
         Valores efetivamente pagos
       </div>
       <div className="max-h-32 overflow-y-auto space-y-1">
-        {paymentDetails.map((payment, index) => (
+        {realPayments.map((payment, index) => (
           <div key={index} className="flex justify-between items-center text-xs bg-gray-50 p-2 rounded">
             <div className="flex-1 truncate">
               <div className="font-medium">{payment.company_name}</div>

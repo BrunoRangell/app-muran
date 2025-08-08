@@ -81,7 +81,7 @@ export const calculateMonthlyMetrics = async (
       company_name: payment.clients?.company_name || 'Cliente não encontrado',
       amount: Number(payment.amount),
       status: 'RECEBIDO' // Todos os pagamentos na tabela são considerados recebidos
-    })) || [];
+    })).filter(payment => payment.amount > 0) || []; // Filtrar apenas pagamentos com valor real
 
     // Criar detalhes dos clientes ativos com último pagamento
     const clientDetails: ClientDetail[] = activeClientsInMonth.map(client => ({
