@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
-import { format, differenceInMonths } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseMonthString } from "@/utils/monthParser";
+import { InfoIcon } from "lucide-react";
 
 interface LTVDetailsTableProps {
   monthStr: string; // formato "Jan/25"
@@ -14,24 +15,21 @@ interface ClientLTV {
   id: string;
   company_name: string;
   first_payment_date: string;
-  last_payment_date: string | null;
-  status: string;
   contract_value: number;
-  totalPaid: number;
-  monthsActive: number;
+  monthsActiveUntilMonth: number;
   ltv: number;
 }
 
 export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
   // Parse monthStr (example: "Jan/25" or "6/25")
-  const { monthEnd } = parseMonthString(monthStr);
+  const { monthStart, monthEnd, month, fullYear } = parseMonthString(monthStr);
   const referenceDate = monthEnd; // Last day of the month
 
   const { data: clientsLTV, isLoading, error } = useQuery({
     queryKey: ['ltv-details', monthStr],
     queryFn: async () => {
-      // Buscar clientes ativos até a data de referência
-      const { data: clients, error: clientsError } = await supabase
+      // Buscar todos os clientes
+      const { data: allClients, error: clientsError } = await supabase
         .from("clients")
         .select(`
           id,
@@ -40,52 +38,45 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
           last_payment_date,
           status,
           contract_value
-        `)
-        .lte("first_payment_date", referenceDate.toISOString().split('T')[0]);
+        `);
 
       if (clientsError) throw clientsError;
 
-      // Para cada cliente, calcular o LTV
-      const clientsWithLTV: ClientLTV[] = [];
-
-      for (const client of clients || []) {
-        // Buscar todos os pagamentos do cliente
-        const { data: payments, error: paymentsError } = await supabase
-          .from("payments")
-          .select("amount, reference_month")
-          .eq("client_id", client.id)
-          .lte("reference_month", referenceDate.toISOString().split('T')[0]);
-
-        if (paymentsError) continue;
-
-        const totalPaid = payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
+      // Filtrar clientes que estavam ativos no mês específico
+      const activeClientsInMonth = (allClients || []).filter(client => {
+        const firstPaymentDate = new Date(client.first_payment_date);
+        const lastPaymentDate = client.last_payment_date ? new Date(client.last_payment_date) : null;
         
-        // Calcular meses ativos
-        const startDate = new Date(client.first_payment_date);
-        const endDate = client.status === 'active' 
-          ? referenceDate 
-          : client.last_payment_date 
-            ? new Date(client.last_payment_date)
-            : referenceDate;
+        // Cliente estava ativo se começou antes/durante o mês de referência
+        // e não cancelou antes do mês de referência
+        const wasActive = firstPaymentDate <= referenceDate &&
+          (!lastPaymentDate || lastPaymentDate >= monthStart);
         
-        const monthsActive = Math.max(1, differenceInMonths(endDate, startDate) + 1);
-        
-        // Calculate LTV using the same formula as financialCalculations.ts
-        // LTV = contract_value * monthsActive (representing ticket médio * retenção)
-        const ltv = client.contract_value * monthsActive;
+        return wasActive && client.status === 'active';
+      });
 
-        clientsWithLTV.push({
+      // Calcular LTV para cada cliente ativo no mês
+      const clientsWithLTV: ClientLTV[] = activeClientsInMonth.map(client => {
+        const firstPaymentDate = new Date(client.first_payment_date);
+        
+        // Calcular meses ativos até a data de referência
+        const monthsActiveUntilMonth = Math.max(1, 
+          (fullYear - firstPaymentDate.getFullYear()) * 12 +
+          (month - firstPaymentDate.getMonth()) + 1
+        );
+        
+        // Calculate LTV: contract_value * monthsActive até aquele mês
+        const ltv = client.contract_value * monthsActiveUntilMonth;
+
+        return {
           id: client.id,
           company_name: client.company_name,
           first_payment_date: client.first_payment_date,
-          last_payment_date: client.last_payment_date,
-          status: client.status,
           contract_value: client.contract_value,
-          totalPaid,
-          monthsActive,
+          monthsActiveUntilMonth,
           ltv
-        });
-      }
+        };
+      });
 
       // Ordenar por LTV decrescente
       clientsWithLTV.sort((a, b) => b.ltv - a.ltv);
@@ -97,7 +88,7 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
       return {
         clients: clientsWithLTV,
         averageLTV,
-        totalLTV: clientsWithLTV.reduce((sum, client) => sum + client.ltv, 0)
+        totalActiveClients: clientsWithLTV.length
       };
     }
   });
@@ -134,72 +125,58 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
     <div className="space-y-6">
       {/* Resumo do LTV */}
       <div className="bg-card p-4 rounded-lg border">
-        <h3 className="font-semibold mb-2">Resumo do LTV</h3>
-        <div className="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">LTV Médio:</span>
-            <div className="font-medium text-primary">{formatCurrency(clientsLTV.averageLTV)}</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Total de Clientes:</span>
-            <div className="font-medium">{clientsLTV.clients.length}</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">LTV Total:</span>
-            <div className="font-medium">{formatCurrency(clientsLTV.totalLTV)}</div>
+        <div className="flex items-start gap-3">
+          <InfoIcon className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+          <div className="space-y-3 flex-1">
+            <div>
+              <h3 className="font-semibold text-lg">LTV Médio - {monthStr}</h3>
+              <p className="text-sm text-muted-foreground">
+                Baseado em {clientsLTV.totalActiveClients} clientes ativos neste mês
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-background/50 p-3 rounded-lg">
+                <span className="text-sm text-muted-foreground block">LTV Médio:</span>
+                <div className="text-2xl font-bold text-primary">{formatCurrency(clientsLTV.averageLTV)}</div>
+              </div>
+              <div className="bg-background/50 p-3 rounded-lg">
+                <span className="text-sm text-muted-foreground block">Fórmula:</span>
+                <div className="text-sm font-medium">Valor Contrato × Meses Ativos até {monthStr}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Tabela de LTV por Cliente */}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Empresa</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Total Pago</TableHead>
-            <TableHead className="text-center">Meses Ativos</TableHead>
-            <TableHead className="text-right">LTV</TableHead>
-            <TableHead>Início</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {clientsLTV.clients.map((client) => (
-            <TableRow key={client.id}>
-              <TableCell className="font-medium">{client.company_name}</TableCell>
-              <TableCell>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  client.status === 'active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {client.status === 'active' ? 'Ativo' : 'Inativo'}
-                </span>
-              </TableCell>
-              <TableCell className="text-right">{formatCurrency(client.totalPaid)}</TableCell>
-              <TableCell className="text-center">{client.monthsActive}</TableCell>
-              <TableCell className="text-right font-medium">{formatCurrency(client.ltv)}</TableCell>
-              <TableCell>
-                {format(new Date(client.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })}
-              </TableCell>
+      {/* Tabela de Clientes Ativos */}
+      <div>
+        <h4 className="font-medium mb-3">Clientes Ativos em {monthStr}</h4>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Empresa</TableHead>
+              <TableHead className="text-right">Valor Contrato</TableHead>
+              <TableHead className="text-center">Meses Ativos</TableHead>
+              <TableHead className="text-right">LTV Individual</TableHead>
+              <TableHead>Data de Início</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell className="font-bold">MÉDIAS/TOTAL</TableCell>
-            <TableCell></TableCell>
-            <TableCell className="text-right font-bold">
-              {formatCurrency(clientsLTV.totalLTV / clientsLTV.clients.length)}
-            </TableCell>
-            <TableCell className="text-center font-bold">
-              {Math.round(clientsLTV.clients.reduce((sum, client) => sum + client.monthsActive, 0) / clientsLTV.clients.length)}
-            </TableCell>
-            <TableCell className="text-right font-bold">{formatCurrency(clientsLTV.averageLTV)}</TableCell>
-            <TableCell></TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {clientsLTV.clients.map((client) => (
+              <TableRow key={client.id}>
+                <TableCell className="font-medium">{client.company_name}</TableCell>
+                <TableCell className="text-right">{formatCurrency(client.contract_value)}</TableCell>
+                <TableCell className="text-center">{client.monthsActiveUntilMonth}</TableCell>
+                <TableCell className="text-right font-medium text-primary">{formatCurrency(client.ltv)}</TableCell>
+                <TableCell>
+                  {format(new Date(client.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
