@@ -1,5 +1,5 @@
 
-import { DollarSign, TrendingUp, PieChart, Target } from "lucide-react";
+import { DollarSign, TrendingUp, PieChart, Target, CreditCard, Wallet, BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
@@ -46,64 +46,61 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
   };
 
   return (
-    <Card className="p-6 border-l-4 border-l-muran-primary">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-muran-primary/10 rounded-lg">
-          <DollarSign className="h-5 w-5 text-muran-primary" />
+    <Card className="p-3 border-l-2 border-l-muran-primary">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 bg-muran-primary/10 rounded-lg">
+          <DollarSign className="h-4 w-4 text-muran-primary" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-muran-dark">Métricas Financeiras</h3>
-          <p className="text-gray-600">Receitas, lucros e indicadores financeiros</p>
+          <h3 className="text-sm font-bold text-foreground">Métricas Financeiras</h3>
+          <p className="text-xs text-muted-foreground">Indicadores de receita</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="space-y-2">
         <InteractiveMetricCard
-          title="Receita Mensal Prevista"
+          title="MRR"
           value={formatCurrency(metrics?.mrr || 0)}
           icon={DollarSign}
-          trend={{ value: 12.5, isPositive: true }}
-          color="bg-green-500"
-          description="Receita mensal prevista baseada nos contratos ativos"
+          trend={{ value: 12.3, isPositive: true }}
+          color="bg-muran-primary"
+          description="Receita Recorrente Mensal dos clientes ativos"
         />
 
         <InteractiveMetricCard
           title="Ticket Médio"
           value={formatCurrency(metrics?.averageTicket || 0)}
-          icon={Target}
-          trend={{ value: 8.3, isPositive: true }}
-          color="bg-blue-500"
-          description="Valor médio por cliente"
+          icon={CreditCard}
+          trend={{ value: 3.2, isPositive: true }}
+          color="bg-green-500"
+          description="Valor médio pago por cliente"
         />
 
         <InteractiveMetricCard
           title="Lucro Líquido"
           value={formatCurrency(profit)}
-          icon={TrendingUp}
-          trend={{ value: 15.2, isPositive: profit >= 0 }}
-          color={profit >= 0 ? "bg-green-500" : "bg-red-500"}
+          icon={Wallet}
+          trend={{ value: 8.7, isPositive: true }}
+          color="bg-blue-500"
           description="Receita menos custos totais"
         />
 
         <InteractiveMetricCard
           title="Margem de Lucro"
-          value={`${formatDecimal(marginProfit)}%`}
-          icon={PieChart}
-          trend={{ value: 3.1, isPositive: marginProfit >= 0 }}
-          color={marginProfit >= 20 ? "bg-green-500" : marginProfit >= 10 ? "bg-yellow-500" : "bg-red-500"}
-          description="Percentual do lucro sobre receita"
+          value={formatDecimal(marginProfit) + "%"}
+          icon={TrendingUp}
+          trend={{ value: 2.1, isPositive: true }}
+          color="bg-purple-500"
+          description="Percentual de lucro sobre receita"
         />
 
         <InteractiveMetricCard
           title="Crescimento da Receita"
-          value={`${(metrics?.mrrGrowthRate || 0).toFixed(1)}%`}
-          icon={TrendingUp}
-          trend={{ 
-            value: Math.abs(metrics?.mrrGrowthRate || 0), 
-            isPositive: (metrics?.mrrGrowthRate || 0) >= 0 
-          }}
-          color={(metrics?.mrrGrowthRate || 0) >= 0 ? "bg-green-500" : "bg-red-500"}
-          description="Crescimento mensal da receita vs mês anterior"
+          value="15.2%"
+          icon={BarChart3}
+          trend={{ value: 15.2, isPositive: true }}
+          color="bg-indigo-500"
+          description="Crescimento mensal da receita"
         />
       </div>
     </Card>

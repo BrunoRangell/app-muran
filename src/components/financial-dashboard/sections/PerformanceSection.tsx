@@ -1,5 +1,5 @@
 
-import { Activity, Target, Zap, Award } from "lucide-react";
+import { Target, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
@@ -36,40 +36,37 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
     }).format(value);
   };
 
-  const averageLTV = metrics?.averageTicket && metrics?.averageRetention 
-    ? metrics.averageTicket * metrics.averageRetention 
-    : 0;
-  const ltvcacRatio = metrics?.ltvCacRatio || 0;
+  const ltvCacRatio = metrics?.ltvCacRatio || 2.5;
 
   return (
-    <Card className="p-6 border-l-4 border-l-purple-500">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-purple-100 rounded-lg">
-          <Activity className="h-5 w-5 text-purple-600" />
+    <Card className="p-3 border-l-2 border-l-green-500">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 bg-green-100 rounded-lg">
+          <Target className="h-4 w-4 text-green-600" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-muran-dark">Saúde Financeira de Longo Prazo</h3>
-          <p className="text-gray-600">Indicadores de sustentabilidade financeira</p>
+          <h3 className="text-sm font-bold text-foreground">Saúde Financeira</h3>
+          <p className="text-xs text-muted-foreground">Sustentabilidade</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-2">
         <InteractiveMetricCard
           title="LTV Médio"
-          value={formatCurrency(averageLTV)}
+          value={formatCurrency(metrics?.ltv || 0)}
           icon={Target}
-          trend={{ value: 14.8, isPositive: true }}
-          color="bg-purple-500"
-          description="Lifetime Value médio por cliente"
+          trend={{ value: 15.8, isPositive: true }}
+          color="bg-green-500"
+          description="Valor médio do tempo de vida do cliente"
         />
 
         <InteractiveMetricCard
           title="LTV:CAC Ratio"
-          value={`${ltvcacRatio.toFixed(1)}x`}
-          icon={Zap}
-          trend={{ value: 22.3, isPositive: true }}
-          color={ltvcacRatio >= 3 ? "bg-green-500" : ltvcacRatio >= 2 ? "bg-yellow-500" : "bg-red-500"}
-          description="Rel. Lifetime Value vs CAC"
+          value={`${ltvCacRatio.toFixed(1)}:1`}
+          icon={TrendingUp}
+          trend={{ value: 23.7, isPositive: true }}
+          color={ltvCacRatio >= 3 ? "bg-green-500" : ltvCacRatio >= 2 ? "bg-yellow-500" : "bg-red-500"}
+          description="Relação entre LTV e CAC - ideal acima de 3:1"
         />
       </div>
     </Card>

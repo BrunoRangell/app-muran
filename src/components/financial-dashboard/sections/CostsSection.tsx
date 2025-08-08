@@ -40,18 +40,18 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
   const costToRevenueRatio = metrics?.mrr ? ((metrics?.totalCosts || 0) / metrics.mrr) * 100 : 0;
 
   return (
-    <Card className="p-6 border-l-4 border-l-red-500">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-red-100 rounded-lg">
-          <CreditCard className="h-5 w-5 text-red-600" />
+    <Card className="p-3 border-l-2 border-l-red-500">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 bg-red-100 rounded-lg">
+          <CreditCard className="h-4 w-4 text-red-600" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-muran-dark">Análise de Custos</h3>
-          <p className="text-gray-600">Controle de gastos e eficiência</p>
+          <h3 className="text-sm font-bold text-foreground">Análise de Custos</h3>
+          <p className="text-xs text-muted-foreground">Gastos e eficiência</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-2">
         <InteractiveMetricCard
           title="Total de Custos"
           value={formatCurrency(metrics?.totalCosts || 0)}
