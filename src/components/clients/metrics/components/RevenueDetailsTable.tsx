@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -110,6 +110,9 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
 
   const { data } = revenueData;
 
+  // Calcular total dos pagamentos
+  const total = data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+
   return (
     <div className="space-y-4">
       <Table>
@@ -146,6 +149,14 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
             </TableRow>
           ))}
         </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell className="font-bold">TOTAL</TableCell>
+            <TableCell className="font-bold">{formatCurrency(total)}</TableCell>
+            <TableCell></TableCell>
+            <TableCell></TableCell>
+          </TableRow>
+        </TableFooter>
       </Table>
     </div>
   );

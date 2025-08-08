@@ -1,6 +1,6 @@
 
 import { format } from "date-fns";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
 import { Client } from "../../types";
 
@@ -10,6 +10,9 @@ interface ClientDetailsTableProps {
 }
 
 export const ClientDetailsTable = ({ clients, metric }: ClientDetailsTableProps) => {
+  // Calcular total dos contratos
+  const total = clients.reduce((sum, client) => sum + (client.contract_value || 0), 0);
+
   return (
     <Table>
       <TableHeader>
@@ -50,6 +53,18 @@ export const ClientDetailsTable = ({ clients, metric }: ClientDetailsTableProps)
           </TableRow>
         ))}
       </TableBody>
+      <TableFooter>
+        <TableRow>
+          <TableCell className="font-bold">TOTAL</TableCell>
+          <TableCell className="font-bold">{formatCurrency(total)}</TableCell>
+          <TableCell></TableCell>
+          <TableCell></TableCell>
+          <TableCell></TableCell>
+          {metric === 'Clientes Cancelados' && (
+            <TableCell></TableCell>
+          )}
+        </TableRow>
+      </TableFooter>
     </Table>
   );
 };
