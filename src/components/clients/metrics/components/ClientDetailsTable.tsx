@@ -10,6 +10,16 @@ interface ClientDetailsTableProps {
 }
 
 export const ClientDetailsTable = ({ clients, metric }: ClientDetailsTableProps) => {
+  // Ordenar clientes: ativos primeiro, depois por ordem alfabética
+  const sortedClients = [...clients].sort((a, b) => {
+    // Primeiro por status (ativo primeiro)
+    if (a.status !== b.status) {
+      return a.status === 'active' ? -1 : 1;
+    }
+    // Depois por nome alfabético
+    return a.company_name.localeCompare(b.company_name, 'pt-BR', { sensitivity: 'base' });
+  });
+
   // Calcular total dos contratos
   const total = clients.reduce((sum, client) => sum + (client.contract_value || 0), 0);
 
@@ -28,7 +38,7 @@ export const ClientDetailsTable = ({ clients, metric }: ClientDetailsTableProps)
         </TableRow>
       </TableHeader>
       <TableBody>
-        {clients.map((client) => (
+        {sortedClients.map((client) => (
           <TableRow key={client.id}>
             <TableCell className="font-medium">{client.company_name}</TableCell>
             <TableCell>{formatCurrency(client.contract_value)}</TableCell>
