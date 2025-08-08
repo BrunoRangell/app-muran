@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetricsData } from "@/components/clients/metrics/useMetricsData";
 import { useCosts } from "@/hooks/queries/useCosts";
+import { useClients } from "@/hooks/queries/useClients";
 import { formatCurrency, formatPercentage } from "@/utils/formatters";
 import { BarChart3 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
@@ -115,6 +116,7 @@ export const MetricsBarExplorer = () => {
     startDate: dateRange.start.toISOString().split('T')[0],
     endDate: dateRange.end.toISOString().split('T')[0]
   });
+  const { clients, isLoading: loadingClients } = useClients();
 
   const { getClientsForPeriod } = useClientFiltering();
 
@@ -161,11 +163,11 @@ export const MetricsBarExplorer = () => {
         monthStr: selectedPoint.month.split('/')[0],
         yearStr: selectedPoint.month.split('/')[1],
         metric: selectedPoint.metric,
-        clients: []
+        clients: clients || []
       })
     : [];
 
-  const isLoading = loadingMetrics || loadingCosts;
+  const isLoading = loadingMetrics || loadingCosts || loadingClients;
 
   if (isLoading) {
     return (
@@ -182,8 +184,8 @@ export const MetricsBarExplorer = () => {
     return (
       <Card className="p-4 md:p-6 text-center">
         <div className="flex items-center gap-3 justify-center mb-4">
-          <div className="p-2 bg-muran-primary/10 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-muran-primary" />
+          <div className="p-2 bg-[#ff6e00]/10 rounded-lg">
+            <BarChart3 className="h-5 w-5 text-[#ff6e00]" />
           </div>
           <h2 className="text-xl font-semibold">Análise Comparativa por Barras</h2>
         </div>
@@ -196,8 +198,8 @@ export const MetricsBarExplorer = () => {
     <Card className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-muran-primary/10 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-muran-primary" />
+          <div className="p-2 bg-[#ff6e00]/10 rounded-lg">
+            <BarChart3 className="h-5 w-5 text-[#ff6e00]" />
           </div>
           <div>
             <h2 className="text-xl font-semibold text-foreground">Análise Comparativa por Barras</h2>
