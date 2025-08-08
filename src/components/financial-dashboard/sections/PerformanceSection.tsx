@@ -55,7 +55,7 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
           title="LTV Médio"
           value={formatCurrency(metrics?.ltv || 0)}
           icon={Target}
-          trend={{ value: 15.8, isPositive: true }}
+          trend={metrics?.trends?.ltvTrend}
           color="bg-green-500"
           description="Valor médio do tempo de vida do cliente"
         />
@@ -64,7 +64,7 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
           title="LTV:CAC Ratio"
           value={`${ltvCacRatio.toFixed(1)}:1`}
           icon={TrendingUp}
-          trend={{ value: 23.7, isPositive: true }}
+          trend={metrics?.trends?.ltvCacRatioTrend}
           color={ltvCacRatio >= 3 ? "bg-green-500" : ltvCacRatio >= 2 ? "bg-yellow-500" : "bg-red-500"}
           description="Relação entre LTV e CAC - ideal acima de 3:1"
         />

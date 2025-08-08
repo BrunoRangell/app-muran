@@ -56,16 +56,16 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
           title="Total de Custos"
           value={formatCurrency(metrics?.totalCosts || 0)}
           icon={CreditCard}
-          trend={{ value: -3.2, isPositive: false }}
+          trend={metrics?.trends?.totalCostsTrend}
           color="bg-red-500"
           description="Custos totais do período"
         />
 
         <InteractiveMetricCard
           title="CAC"
-          value={formatCurrency(1250)}
+          value={formatCurrency(metrics?.cac || 0)}
           icon={TrendingDown}
-          trend={{ value: -8.1, isPositive: true }}
+          trend={metrics?.trends?.cacTrend}
           color="bg-orange-500"
           description="Custo de Aquisição de Cliente"
         />
@@ -74,7 +74,7 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
           title="Custo por Cliente"
           value={formatCurrency(costPerClient)}
           icon={Calculator}
-          trend={{ value: 2.3, isPositive: false }}
+          trend={metrics?.trends?.totalCostsTrend}
           color="bg-yellow-500"
           description="Custo médio por cliente ativo"
         />
@@ -83,7 +83,7 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
           title="Custo vs Receita"
           value={`${costToRevenueRatio.toFixed(1)}%`}
           icon={AlertTriangle}
-          trend={{ value: -1.5, isPositive: true }}
+          trend={metrics?.trends?.totalCostsTrend}
           color={costToRevenueRatio <= 30 ? "bg-green-500" : costToRevenueRatio <= 50 ? "bg-yellow-500" : "bg-red-500"}
           description="Percentual dos custos sobre receita"
         />

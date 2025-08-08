@@ -4,33 +4,73 @@ import { CostFilters } from "@/types/cost";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Target } from "lucide-react";
+import { useFinancialMetrics } from "@/components/clients/metrics/hooks/useFinancialMetrics";
 
 interface TrendAnalysisProps {
   filters: CostFilters;
 }
 
 export const TrendAnalysis = ({ filters }: TrendAnalysisProps) => {
+  const { allClientsMetrics, isLoadingAllClients } = useFinancialMetrics();
+
+  if (isLoadingAllClients || !allClientsMetrics) {
+    return (
+      <Card className="p-6 border-l-4 border-l-green-500">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+          <div className="space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  // Calculate intelligent goals based on current metrics and industry benchmarks
+  const mrrTarget = allClientsMetrics.mrr * 1.5; // 50% growth target
+  const clientsTarget = Math.ceil(allClientsMetrics.activeClientsCount * 1.3); // 30% growth target
+  const averageTicketTarget = allClientsMetrics.averageTicket * 1.2; // 20% improvement target
+  const cacTarget = allClientsMetrics.cac * 0.8; // 20% reduction target
+  const churnTarget = 2; // Industry benchmark: 2%
+  const marginTarget = 25; // Industry benchmark: 25%
+
+  const currentMargin = allClientsMetrics.mrr > 0 
+    ? ((allClientsMetrics.mrr - allClientsMetrics.totalCosts) / allClientsMetrics.mrr) * 100 
+    : 0;
+
   const trends = [
     {
       category: 'Crescimento',
       metrics: [
         {
           name: 'MRR',
-          progress: 78,
-          target: 'R$ 150k',
-          status: 'Em andamento'
+          progress: Math.min((allClientsMetrics.mrr / mrrTarget) * 100, 100),
+          target: formatCurrency(mrrTarget),
+          status: allClientsMetrics.mrr >= mrrTarget * 0.8 ? 'Adiantado' : 
+                  allClientsMetrics.mrr >= mrrTarget * 0.6 ? 'Em andamento' : 'Atrasado'
         },
         {
           name: 'Base de Clientes',
-          progress: 65,
-          target: '200 clientes',
-          status: 'Em andamento'
+          progress: Math.min((allClientsMetrics.activeClientsCount / clientsTarget) * 100, 100),
+          target: `${clientsTarget} clientes`,
+          status: allClientsMetrics.activeClientsCount >= clientsTarget * 0.8 ? 'Adiantado' : 
+                  allClientsMetrics.activeClientsCount >= clientsTarget * 0.6 ? 'Em andamento' : 'Atrasado'
         },
         {
           name: 'Ticket Médio',
-          progress: 45,
-          target: 'R$ 2.5k',
-          status: 'Atrasado'
+          progress: Math.min((allClientsMetrics.averageTicket / averageTicketTarget) * 100, 100),
+          target: formatCurrency(averageTicketTarget),
+          status: allClientsMetrics.averageTicket >= averageTicketTarget * 0.8 ? 'Adiantado' : 
+                  allClientsMetrics.averageTicket >= averageTicketTarget * 0.6 ? 'Em andamento' : 'Atrasado'
         }
       ]
     },
@@ -39,21 +79,24 @@ export const TrendAnalysis = ({ filters }: TrendAnalysisProps) => {
       metrics: [
         {
           name: 'Redução CAC',
-          progress: 85,
-          target: 'R$ 1.1k',
-          status: 'Adiantado'
+          progress: Math.min(((allClientsMetrics.cac > 0 ? cacTarget / allClientsMetrics.cac : 1) * 100), 100),
+          target: formatCurrency(cacTarget),
+          status: allClientsMetrics.cac <= cacTarget * 1.2 ? 'Adiantado' : 
+                  allClientsMetrics.cac <= cacTarget * 1.5 ? 'Em andamento' : 'Atrasado'
         },
         {
           name: 'Melhoria Churn',
-          progress: 40,
+          progress: Math.min(((churnTarget / Math.max(allClientsMetrics.churnRate, 0.1)) * 100), 100),
           target: '2%',
-          status: 'Atrasado'
+          status: allClientsMetrics.churnRate <= churnTarget * 1.2 ? 'Adiantado' : 
+                  allClientsMetrics.churnRate <= churnTarget * 2 ? 'Em andamento' : 'Atrasado'
         },
         {
           name: 'Margem de Lucro',
-          progress: 70,
+          progress: Math.min((currentMargin / marginTarget) * 100, 100),
           target: '25%',
-          status: 'Em andamento'
+          status: currentMargin >= marginTarget * 0.8 ? 'Adiantado' : 
+                  currentMargin >= marginTarget * 0.6 ? 'Em andamento' : 'Atrasado'
         }
       ]
     }

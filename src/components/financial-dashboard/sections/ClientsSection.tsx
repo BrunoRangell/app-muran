@@ -36,8 +36,6 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
     }).format(value);
   };
 
-  const churnRate = 0; // Placeholder - needs calculation logic
-
 
   return (
     <Card className="p-3 border-l-2 border-l-blue-500">
@@ -56,26 +54,26 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
           title="Clientes Ativos"
           value={metrics?.activeClientsCount?.toString() || "0"}
           icon={Users}
-          trend={{ value: 5.2, isPositive: true }}
+          trend={metrics?.trends?.newClientsTrend} // Using new clients trend as proxy for growth
           color="bg-blue-500"
           description="Total de clientes ativos no período"
         />
 
         <InteractiveMetricCard
           title="Novos clientes este mês"
-          value={metrics?.newClientsThisMonth?.toString() || "0"}
+          value={metrics?.newClientsCount?.toString() || "0"}
           icon={UserPlus}
-          trend={{ value: 12.8, isPositive: true }}
+          trend={metrics?.trends?.newClientsTrend}
           color="bg-green-500"
           description="Clientes adquiridos no mês atual"
         />
 
         <InteractiveMetricCard
           title="Churn Rate"
-          value={formatDecimal(churnRate) + "%"}
+          value={formatDecimal(metrics?.churnRate || 0) + "%"}
           icon={UserMinus}
-          trend={{ value: -2.3, isPositive: true }}
-          color={churnRate <= 5 ? "bg-green-500" : churnRate <= 10 ? "bg-yellow-500" : "bg-red-500"}
+          trend={metrics?.trends?.churnRateTrend}
+          color={(metrics?.churnRate || 0) <= 5 ? "bg-green-500" : (metrics?.churnRate || 0) <= 10 ? "bg-yellow-500" : "bg-red-500"}
           description="Taxa de cancelamento mensal"
         />
 
@@ -83,7 +81,7 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
           title="Retenção Média"
           value={formatDecimal(metrics?.averageRetention || 0) + " meses"}
           icon={Clock}
-          trend={{ value: 8.5, isPositive: true }}
+          trend={metrics?.trends?.ltvTrend} // LTV is related to retention
           color="bg-purple-500"
           description="Tempo médio de permanência dos clientes"
         />

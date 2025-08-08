@@ -62,7 +62,7 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
           title="MRR"
           value={formatCurrency(metrics?.mrr || 0)}
           icon={DollarSign}
-          trend={{ value: 12.3, isPositive: true }}
+          trend={metrics?.trends?.mrrTrend}
           color="bg-muran-primary"
           description="Receita Recorrente Mensal dos clientes ativos"
         />
@@ -71,7 +71,7 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
           title="Ticket Médio"
           value={formatCurrency(metrics?.averageTicket || 0)}
           icon={CreditCard}
-          trend={{ value: 3.2, isPositive: true }}
+          trend={metrics?.trends?.averageTicketTrend}
           color="bg-green-500"
           description="Valor médio pago por cliente"
         />
@@ -80,7 +80,10 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
           title="Lucro Líquido"
           value={formatCurrency(profit)}
           icon={Wallet}
-          trend={{ value: 8.7, isPositive: true }}
+          trend={metrics?.trends?.totalCostsTrend ? { 
+            value: metrics.trends.totalCostsTrend.value, 
+            isPositive: !metrics.trends.totalCostsTrend.isPositive // Invert for profit (lower costs = better)
+          } : undefined}
           color="bg-blue-500"
           description="Receita menos custos totais"
         />
@@ -89,18 +92,12 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
           title="Margem de Lucro"
           value={formatDecimal(marginProfit) + "%"}
           icon={TrendingUp}
-          trend={{ value: 2.1, isPositive: true }}
+          trend={metrics?.trends?.totalCostsTrend ? { 
+            value: metrics.trends.totalCostsTrend.value, 
+            isPositive: !metrics.trends.totalCostsTrend.isPositive // Invert for margin (lower costs = better margin)
+          } : undefined}
           color="bg-purple-500"
           description="Percentual de lucro sobre receita"
-        />
-
-        <InteractiveMetricCard
-          title="Crescimento da Receita"
-          value="15.2%"
-          icon={BarChart3}
-          trend={{ value: 15.2, isPositive: true }}
-          color="bg-indigo-500"
-          description="Crescimento mensal da receita"
         />
       </div>
     </Card>

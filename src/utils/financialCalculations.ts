@@ -1,9 +1,8 @@
-
 import { differenceInMonths, parseISO, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { Client } from "@/components/clients/types";
 import { supabase } from "@/integrations/supabase/client";
-import { calculateCurrentMRR } from "./paymentCalculations";
 import { isClientNewInMonth } from "@/components/clients/metrics/utils/dateFilters";
+import { calculateCAC, calculatePreviousMonthMetrics, calculateTrend } from './trendsCalculations';
 
 export const calculateFinancialMetrics = async (clients: Client[]) => {
   const today = new Date();
@@ -84,8 +83,8 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   // LTV (Lifetime Value) - usando ticket médio * retenção média
   const ltv = averageTicket * averageRetention;
   
-  // CAC fixo por enquanto
-  const cac = 1250;
+  // CAC baseado em custos de marketing e vendas
+  const cac = await calculateCAC(clients, today);
   
   // LTV:CAC Ratio
   const ltvCacRatio = cac > 0 ? ltv / cac : 0;
@@ -126,6 +125,10 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
 
   const totalCosts = (costs || []).reduce((acc, cost) => acc + Number(cost.amount), 0);
 
+  // Calculate month-over-month trends
+  const previousDate = subMonths(today, 1);
+  const previousMetrics = await calculatePreviousMonthMetrics(clients, previousDate);
+
   console.log("Financial metrics calculated:", {
     mrr: `R$ ${mrr.toLocaleString('pt-BR')} (Receita Mensal Prevista)`,
     arr: `R$ ${arr.toLocaleString('pt-BR')}`,
@@ -155,10 +158,20 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     totalClients,
     averageTicket,
     totalCosts,
-    newClientsThisMonth,
+    newClientsCount: newClientsThisMonth,
     mrrGrowthRate,
     ltvCacRatio,
     healthScore,
-    cac
+    cac,
+    trends: {
+      mrrTrend: calculateTrend(mrr, previousMetrics.mrr),
+      averageTicketTrend: calculateTrend(averageTicket, previousMetrics.averageTicket),
+      newClientsTrend: calculateTrend(newClientsThisMonth, previousMetrics.newClientsCount),
+      churnRateTrend: calculateTrend(churnRate, previousMetrics.churnRate, true), // true = lower is better
+      totalCostsTrend: calculateTrend(totalCosts || 0, previousMetrics.totalCosts, true),
+      cacTrend: calculateTrend(cac, previousMetrics.cac, true),
+      ltvTrend: calculateTrend(ltv, previousMetrics.ltv),
+      ltvCacRatioTrend: calculateTrend(ltvCacRatio, previousMetrics.ltvCacRatio),
+    }
   };
 };
