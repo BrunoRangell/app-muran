@@ -12,6 +12,8 @@ import { useClientFiltering } from "@/components/clients/metrics/hooks/useClient
 import { Cost } from "@/types/cost";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseMonthString } from "@/utils/monthParser";
+import { Client } from "@/components/clients/types";
 
 export type PeriodFilter = 
   | 'last-3-months' 
@@ -102,6 +104,49 @@ const aggregateCostsByMonth = (costs: Cost[]) => {
   return costsByMonth;
 };
 
+// Função para calcular LTV médio real dos clientes ativos no mês
+const calculateAverageLTV = (monthStr: string, clients: Client[]): number => {
+  try {
+    // Parse da string do mês (ex: "Jan/25")
+    const parsedMonth = parseMonthString(monthStr);
+    const referenceDate = parsedMonth.monthStart;
+    
+    // Filtrar clientes ativos naquele mês
+    const activeClients = clients.filter(client => {
+      const firstPaymentDate = new Date(client.first_payment_date);
+      const lastPaymentDate = client.last_payment_date ? new Date(client.last_payment_date) : null;
+      
+      // Cliente estava ativo se começou antes/durante o mês de referência
+      // e não cancelou antes do mês de referência
+      const wasActive = firstPaymentDate <= referenceDate &&
+        (!lastPaymentDate || lastPaymentDate >= referenceDate);
+      
+      return wasActive && client.status === 'active';
+    });
+    
+    if (activeClients.length === 0) return 0;
+    
+    // Calcular LTV individual para cada cliente ativo
+    const ltvValues = activeClients.map(client => {
+      const firstPaymentDate = new Date(client.first_payment_date);
+      const monthsActive = Math.max(1, 
+        (parsedMonth.fullYear - firstPaymentDate.getFullYear()) * 12 +
+        (parsedMonth.month - firstPaymentDate.getMonth()) + 1
+      );
+      
+      return client.contract_value * monthsActive;
+    });
+    
+    // Retornar a média dos LTVs
+    const totalLTV = ltvValues.reduce((sum, ltv) => sum + ltv, 0);
+    return totalLTV / ltvValues.length;
+    
+  } catch (error) {
+    console.error('Erro ao calcular LTV médio:', error);
+    return 0;
+  }
+};
+
 export const MetricsBarExplorer = () => {
   const [period, setPeriod] = useState<PeriodFilter>("last-12-months");
   const [metric, setMetric] = useState<MetricId>("mrr");
@@ -137,6 +182,7 @@ export const MetricsBarExplorer = () => {
     return (monthlyMetrics || []).map(item => {
       const monthCosts = costsByMonth[item.month] || 0;
       const profit = item.mrr - monthCosts;
+      const averageLTV = calculateAverageLTV(item.month, clients || []);
       
       return {
         month: item.month,
@@ -146,7 +192,7 @@ export const MetricsBarExplorer = () => {
         newClients: item.newClients,
         churn: item.churn,
         cac: item.newClients > 0 ? monthCosts / item.newClients : 0,
-        ltv: item.mrr * 12, // Estimativa simples: MRR * 12
+        ltv: averageLTV, // LTV médio real dos clientes ativos
       };
     }).sort((a, b) => {
       try {
@@ -157,7 +203,7 @@ export const MetricsBarExplorer = () => {
         return 0;
       }
     });
-  }, [monthlyMetrics, costsByMonth]);
+  }, [monthlyMetrics, costsByMonth, clients]);
 
   const selected = METRICS.find((m) => m.id === metric)!;
   const primaryColor = "#ff6e00";
@@ -288,7 +334,7 @@ export const MetricsBarExplorer = () => {
       <div className="text-xs text-muted-foreground space-y-1">
         <p>💡 <strong>Dica:</strong> Clique nas barras para ver detalhes do mês</p>
         {(metric === "cac" || metric === "ltv") && (
-          <p>ℹ️ CAC = Custos ÷ Novos Clientes | LTV = MRR × 12 (estimativa simples)</p>
+          <p>ℹ️ CAC = Custos ÷ Novos Clientes | LTV = Média do LTV individual dos clientes ativos (valor contrato × meses ativos)</p>
         )}
       </div>
 
