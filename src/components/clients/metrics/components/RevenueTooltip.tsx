@@ -7,10 +7,23 @@ interface RevenueTooltipProps {
 }
 
 export const RevenueTooltip = ({ paymentDetails, totalRevenue }: RevenueTooltipProps) => {
-  if (!paymentDetails.length) {
+  if (!paymentDetails.length && totalRevenue === 0) {
     return (
-      <div className="text-sm text-gray-500">
+      <div className="text-sm text-muted-foreground">
         Nenhum pagamento registrado neste mês
+      </div>
+    );
+  }
+
+  if (!paymentDetails.length && totalRevenue > 0) {
+    return (
+      <div className="text-sm">
+        <div className="font-semibold text-primary">
+          Total: {formatCurrency(totalRevenue)}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Receita calculada baseada nos contratos ativos
+        </div>
       </div>
     );
   }

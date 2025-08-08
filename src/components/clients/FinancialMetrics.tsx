@@ -1,7 +1,6 @@
 
 import { useMetricsData } from "./metrics/useMetricsData";
-import { MetricsChart } from "./metrics/MetricsChart";
-import { MetricsSwitch } from "./metrics/components/MetricsSwitch";
+import { EnhancedMetricsChart } from "./metrics/components/EnhancedMetricsChart";
 import { useFinancialMetrics } from "./metrics/hooks/useFinancialMetrics";
 import { METRIC_COLORS } from "./metrics/constants/metricColors";
 
@@ -78,31 +77,23 @@ export const FinancialMetrics = () => {
   return (
     <div className="space-y-6">
       {isLoadingAllClients ? (
-        <p className="text-gray-600">Carregando métricas...</p>
-      ) : (
-        <div className="space-y-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Métricas ao Longo do Tempo</h3>
-          </div>
-
-          <MetricsSwitch 
-            selectedMetrics={selectedMetrics} 
-            onMetricChange={handleMetricChange} 
-          />
-
-          <MetricsChart 
-            title="" 
-            data={filteredClientsData || []} 
-            periodFilter={periodFilter} 
-            onPeriodChange={handlePeriodChange} 
-            isCustomDateOpen={isCustomDateOpen} 
-            onCustomDateOpenChange={setIsCustomDateOpen} 
-            dateRange={dateRange} 
-            onDateRangeChange={setDateRange} 
-            lines={getActiveLines()} 
-            clients={clients} 
-          />
+        <div className="flex items-center justify-center p-8">
+          <p className="text-muted-foreground">Carregando métricas...</p>
         </div>
+      ) : (
+        <EnhancedMetricsChart
+          data={filteredClientsData || []}
+          periodFilter={periodFilter}
+          onPeriodChange={handlePeriodChange}
+          isCustomDateOpen={isCustomDateOpen}
+          onCustomDateOpenChange={setIsCustomDateOpen}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          lines={getActiveLines()}
+          clients={clients}
+          selectedMetrics={selectedMetrics}
+          onMetricChange={handleMetricChange}
+        />
       )}
     </div>
   );

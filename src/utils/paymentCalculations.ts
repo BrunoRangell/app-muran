@@ -26,7 +26,8 @@ export const calculatePaymentBasedMRR = async (
       .from("payments")
       .select("amount, client_id, reference_month")
       .gte("reference_month", monthStart.toISOString().split('T')[0])
-      .lt("reference_month", nextMonth.toISOString().split('T')[0]);
+      .lt("reference_month", nextMonth.toISOString().split('T')[0])
+      .gt('amount', 0); // Only get payments with positive amounts
 
     if (error) {
       console.error("Error fetching payments:", error);
@@ -75,7 +76,8 @@ export const calculateCurrentMRR = async (): Promise<number> => {
       .from("payments")
       .select("amount")
       .gte("reference_month", currentMonthStart.toISOString().split('T')[0])
-      .lt("reference_month", nextMonth.toISOString().split('T')[0]);
+      .lt("reference_month", nextMonth.toISOString().split('T')[0])
+      .gt('amount', 0); // Only get payments with positive amounts
 
     if (error) {
       console.error("Error fetching current month payments:", error);
