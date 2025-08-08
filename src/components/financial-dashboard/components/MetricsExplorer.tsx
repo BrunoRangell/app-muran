@@ -176,16 +176,36 @@ export const MetricsExplorer = () => {
 
   const selected = METRICS.find((m) => m.id === metric)!;
 
-  const primaryColor = "hsl(var(--muran-primary))";
-  const primaryFill = "hsl(var(--muran-primary) / 0.15)";
+  const primaryColor = "#ff6e00";
+  const primaryFill = "#ff6e00";
 
   const isLoading = loadingMetrics || loadingCosts;
+
+  if (isLoading) {
+    return (
+      <Card className="p-4 md:p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-[260px] bg-gray-200 rounded"></div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!chartData || chartData.length === 0) {
+    return (
+      <Card className="p-4 md:p-6 text-center">
+        <h2 className="text-xl font-semibold mb-2">Explorador de Métricas</h2>
+        <p className="text-muted-foreground">Não há dados disponíveis para o período selecionado.</p>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-muran-dark">Explorador de Métricas</h2>
+          <h2 className="text-xl font-semibold text-foreground">Explorador de Métricas</h2>
           <p className="text-sm text-muted-foreground">Visualize diferentes métricas do relatório financeiro por mês</p>
         </div>
         <div className="flex gap-2">
@@ -230,7 +250,7 @@ export const MetricsExplorer = () => {
             <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatValue(selected.kind, v)} width={90} />
             <Tooltip
               contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-              labelStyle={{ color: "hsl(var(--muran-dark))" }}
+              labelStyle={{ color: "hsl(var(--foreground))" }}
               formatter={(value) => [formatValue(selected.kind, Number(value)), selected.label]}
             />
             <Area
