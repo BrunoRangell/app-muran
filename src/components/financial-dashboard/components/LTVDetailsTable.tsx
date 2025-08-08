@@ -15,8 +15,7 @@ interface ClientLTV {
   id: string;
   company_name: string;
   first_payment_date: string;
-  contract_value: number;
-  monthsActiveUntilMonth: number;
+  total_payments: number;
   ltv: number;
 }
 
@@ -36,11 +35,26 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
           company_name,
           first_payment_date,
           last_payment_date,
-          status,
-          contract_value
+          status
         `);
 
       if (clientsError) throw clientsError;
+
+      // Buscar todos os payments agrupados por cliente
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from("payments")
+        .select("client_id, amount");
+
+      if (paymentsError) throw paymentsError;
+
+      // Agrupar payments por cliente
+      const paymentsByClient: Record<string, number> = {};
+      (paymentsData || []).forEach(payment => {
+        const clientId = payment.client_id;
+        if (clientId) {
+          paymentsByClient[clientId] = (paymentsByClient[clientId] || 0) + Number(payment.amount);
+        }
+      });
 
       // Filtrar clientes que estavam ativos no mês específico
       const activeClientsInMonth = (allClients || []).filter(client => {
@@ -52,31 +66,21 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
         const wasActive = firstPaymentDate <= referenceDate &&
           (!lastPaymentDate || lastPaymentDate >= monthStart);
         
-        return wasActive && client.status === 'active';
+        return wasActive;
       });
 
-      // Calcular LTV para cada cliente ativo no mês
+      // Calcular LTV para cada cliente ativo no mês baseado em payments reais
       const clientsWithLTV: ClientLTV[] = activeClientsInMonth.map(client => {
-        const firstPaymentDate = new Date(client.first_payment_date);
+        const totalPayments = paymentsByClient[client.id] || 0;
         
-        // Calcular meses ativos até a data de referência
-        const monthsActiveUntilMonth = Math.max(1, 
-          (fullYear - firstPaymentDate.getFullYear()) * 12 +
-          (month - firstPaymentDate.getMonth()) + 1
-        );
-        
-        // Calculate LTV: contract_value * monthsActive até aquele mês
-        const ltv = client.contract_value * monthsActiveUntilMonth;
-
         return {
           id: client.id,
           company_name: client.company_name,
           first_payment_date: client.first_payment_date,
-          contract_value: client.contract_value,
-          monthsActiveUntilMonth,
-          ltv
+          total_payments: totalPayments,
+          ltv: totalPayments // LTV = total de payments reais do cliente
         };
-      });
+      }).filter(client => client.ltv > 0); // Só mostrar clientes que fizeram payments
 
       // Ordenar por LTV decrescente
       clientsWithLTV.sort((a, b) => b.ltv - a.ltv);
@@ -142,7 +146,7 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
               </div>
               <div className="bg-background/50 p-3 rounded-lg">
                 <span className="text-sm text-muted-foreground block">Fórmula:</span>
-                <div className="text-sm font-medium">Valor Contrato × Meses Ativos até {monthStr}</div>
+                <div className="text-sm font-medium">Soma de Todos os Payments Reais do Cliente</div>
               </div>
             </div>
           </div>
@@ -156,8 +160,7 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
           <TableHeader>
             <TableRow>
               <TableHead>Empresa</TableHead>
-              <TableHead className="text-right">Valor Contrato</TableHead>
-              <TableHead className="text-center">Meses Ativos</TableHead>
+              <TableHead className="text-right">Total Payments</TableHead>
               <TableHead className="text-right">LTV Individual</TableHead>
               <TableHead>Data de Início</TableHead>
             </TableRow>
@@ -166,8 +169,7 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
             {clientsLTV.clients.map((client) => (
               <TableRow key={client.id}>
                 <TableCell className="font-medium">{client.company_name}</TableCell>
-                <TableCell className="text-right">{formatCurrency(client.contract_value)}</TableCell>
-                <TableCell className="text-center">{client.monthsActiveUntilMonth}</TableCell>
+                <TableCell className="text-right">{formatCurrency(client.total_payments)}</TableCell>
                 <TableCell className="text-right font-medium text-primary">{formatCurrency(client.ltv)}</TableCell>
                 <TableCell>
                   {format(new Date(client.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })}
