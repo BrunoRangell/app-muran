@@ -1,40 +1,24 @@
 
-import { useState } from "react";
-import { CostFilters } from "@/types/cost";
+import { BarChart3 } from "lucide-react";
 import { UnifiedDashboard } from "@/components/financial-dashboard/UnifiedDashboard";
-import { FiltersSidebar } from "@/components/financial-dashboard/FiltersSidebar";
-import { DashboardHeader } from "@/components/financial-dashboard/DashboardHeader";
-import { ExportTools } from "@/components/financial-dashboard/ExportTools";
 
 const FinancialReport = () => {
-  const [filters, setFilters] = useState<CostFilters>({});
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muran-secondary/20 to-white">
-      {/* Sidebar de Filtros */}
-      <FiltersSidebar 
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        filters={filters}
-        onFiltersChange={setFilters}
-      />
-
-      {/* Conteúdo Principal */}
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-80' : 'ml-0'}`}>
-        <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-          {/* Header do Dashboard */}
-          <DashboardHeader 
-            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-            sidebarOpen={sidebarOpen}
-          />
-
-          {/* Ferramentas de Exportação */}
-          <ExportTools filters={filters} />
-
-          {/* Dashboard Unificado */}
-          <UnifiedDashboard filters={filters} />
+    <div className="min-h-screen bg-gradient-to-br from-muran-secondary/5 to-background">
+      <div className="max-w-7xl mx-auto p-3 md:p-4 space-y-4">
+        {/* Header Minimalista */}
+        <div className="flex items-center gap-3 py-2">
+          <div className="p-2 bg-muran-primary/10 rounded-lg">
+            <BarChart3 className="h-6 w-6 text-muran-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-muran-dark">Relatório Financeiro</h1>
+            <p className="text-sm text-muted-foreground">Visão geral das métricas da agência</p>
+          </div>
         </div>
+
+        {/* Dashboard Unificado */}
+        <UnifiedDashboard filters={{}} />
       </div>
     </div>
   );

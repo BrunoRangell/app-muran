@@ -12,20 +12,13 @@ interface UnifiedDashboardProps {
 
 export const UnifiedDashboard = ({ filters }: UnifiedDashboardProps) => {
   return (
-    <div className="space-y-8">
-      {/* Grid de Métricas Principais */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Seção Financeira */}
-        <div className="space-y-6">
-          <FinancialSection filters={filters} />
-          <CostsSection filters={filters} />
-        </div>
-
-        {/* Seção de Clientes e Performance */}
-        <div className="space-y-6">
-          <ClientsSection filters={filters} />
-          <PerformanceSection filters={filters} />
-        </div>
+    <div className="space-y-6">
+      {/* Layout Horizontal dos Painéis */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+        <FinancialSection filters={filters} />
+        <ClientsSection filters={filters} />
+        <CostsSection filters={filters} />
+        <PerformanceSection filters={filters} />
       </div>
 
       {/* Gráficos Interativos */}

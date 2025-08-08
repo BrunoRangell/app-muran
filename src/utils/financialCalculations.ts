@@ -1,7 +1,9 @@
 
-import { differenceInMonths, parseISO, subMonths } from "date-fns";
+import { differenceInMonths, parseISO, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { Client } from "@/components/clients/types";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateCurrentMRR } from "./paymentCalculations";
+import { isClientNewInMonth } from "@/components/clients/metrics/utils/dateFilters";
 
 export const calculateFinancialMetrics = async (clients: Client[]) => {
   const today = new Date();
@@ -12,9 +14,40 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   const totalClients = clients.length;
   const activeClientsCount = activeClients.length;
 
-  // MRR e ARR
-  const mrr = activeClients.reduce((sum, client) => sum + (client.contract_value || 0), 0);
+  // Receita Mensal Prevista baseada em contract_value dos clientes ativos
+  const mrr = activeClients.reduce((sum, client) => sum + Number(client.contract_value), 0);
   const arr = mrr * 12;
+
+  // Novos clientes este mês
+  const currentMonthStart = startOfMonth(today);
+  const currentMonthEnd = endOfMonth(today);
+  const newClientsThisMonth = clients.filter(client => 
+    isClientNewInMonth(client, currentMonthStart, currentMonthEnd)
+  ).length;
+
+  // Calcular crescimento da receita baseado em payments
+  const lastMonthStart = startOfMonth(subMonths(today, 1));
+  const lastMonthEnd = endOfMonth(subMonths(today, 1));
+  
+  // Buscar payments do mês atual
+  const { data: currentMonthPayments } = await supabase
+    .from("payments")
+    .select("amount")
+    .gte("reference_month", currentMonthStart.toISOString().split('T')[0])
+    .lte("reference_month", currentMonthEnd.toISOString().split('T')[0]);
+  
+  // Buscar payments do mês anterior
+  const { data: lastMonthPayments } = await supabase
+    .from("payments")
+    .select("amount")
+    .gte("reference_month", lastMonthStart.toISOString().split('T')[0])
+    .lte("reference_month", lastMonthEnd.toISOString().split('T')[0]);
+  
+  const currentMonthRevenue = (currentMonthPayments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const lastMonthRevenue = (lastMonthPayments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+  
+  // Crescimento da receita
+  const mrrGrowthRate = lastMonthRevenue > 0 ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
 
   // Ticket Médio
   const averageTicket = activeClientsCount > 0 ? mrr / activeClientsCount : 0;
@@ -30,25 +63,61 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
 
   const averageRetention = retentionPeriods.reduce((sum, months) => sum + months, 0) / totalClients;
 
-  // Churn Rate (últimos 3 meses)
-  const churned = clients.filter(client => 
+  // Churn Rate (apenas mês atual)
+  const churnedThisMonth = clients.filter(client => 
     client.status === "inactive" && 
     client.last_payment_date && 
-    parseISO(client.last_payment_date) >= threeMonthsAgo
+    parseISO(client.last_payment_date) >= currentMonthStart &&
+    parseISO(client.last_payment_date) <= currentMonthEnd
   ).length;
 
-  const activeClientsThreeMonthsAgo = clients.filter(client => 
-    client.first_payment_date && 
-    parseISO(client.first_payment_date) <= threeMonthsAgo &&
-    (!client.last_payment_date || parseISO(client.last_payment_date) > threeMonthsAgo)
-  ).length;
+  const activeClientsThisMonth = clients.filter(client => {
+    const firstPayment = parseISO(client.first_payment_date);
+    const lastPayment = client.last_payment_date ? parseISO(client.last_payment_date) : null;
+    return firstPayment <= currentMonthEnd && (!lastPayment || lastPayment >= currentMonthStart);
+  }).length;
 
-  const churnRate = activeClientsThreeMonthsAgo > 0 
-    ? (churned / activeClientsThreeMonthsAgo) * 100 
+  const churnRate = activeClientsThisMonth > 0 
+    ? (churnedThisMonth / activeClientsThisMonth) * 100 
     : 0;
 
-  // LTV (Lifetime Value) - usando valor do contrato * retenção média
-  const ltv = mrr * averageRetention;
+  // LTV (Lifetime Value) - usando ticket médio * retenção média
+  const ltv = averageTicket * averageRetention;
+  
+  // CAC fixo por enquanto
+  const cac = 1250;
+  
+  // LTV:CAC Ratio
+  const ltvCacRatio = cac > 0 ? ltv / cac : 0;
+  
+  // Score de Saúde (0-100) baseado em múltiplos fatores
+  let healthScore = 50; // Base
+  
+  // LTV:CAC ratio (peso: 30 pontos)
+  if (ltvCacRatio >= 3) healthScore += 30;
+  else if (ltvCacRatio >= 2) healthScore += 20;
+  else if (ltvCacRatio >= 1) healthScore += 10;
+  
+  // Churn rate (peso: 25 pontos)
+  if (churnRate <= 5) healthScore += 25;
+  else if (churnRate <= 10) healthScore += 15;
+  else if (churnRate <= 15) healthScore += 5;
+  else healthScore -= 10;
+  
+  // Crescimento MRR (peso: 20 pontos)
+  if (mrrGrowthRate >= 15) healthScore += 20;
+  else if (mrrGrowthRate >= 10) healthScore += 15;
+  else if (mrrGrowthRate >= 5) healthScore += 10;
+  else if (mrrGrowthRate >= 0) healthScore += 5;
+  else healthScore -= 10;
+  
+  // Retenção média (peso: 15 pontos)
+  if (averageRetention >= 24) healthScore += 15;
+  else if (averageRetention >= 12) healthScore += 10;
+  else if (averageRetention >= 6) healthScore += 5;
+  
+  // Limitar entre 0 e 100
+  healthScore = Math.max(0, Math.min(100, healthScore));
 
   // Buscar total de custos
   const { data: costs } = await supabase
@@ -58,17 +127,22 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
   const totalCosts = (costs || []).reduce((acc, cost) => acc + Number(cost.amount), 0);
 
   console.log("Financial metrics calculated:", {
-    mrr,
-    arr,
+    mrr: `R$ ${mrr.toLocaleString('pt-BR')} (Receita Mensal Prevista)`,
+    arr: `R$ ${arr.toLocaleString('pt-BR')}`,
     averageRetention,
     churnRate,
     ltv,
     activeClientsCount,
     totalClients,
-    churned,
-    activeClientsThreeMonthsAgo,
+    churnedThisMonth,
+    activeClientsThisMonth,
     averageTicket,
-    totalCosts
+    totalCosts,
+    newClientsThisMonth,
+    mrrGrowthRate,
+    ltvCacRatio,
+    healthScore,
+    cac
   });
 
   return {
@@ -80,6 +154,11 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     activeClientsCount,
     totalClients,
     averageTicket,
-    totalCosts
+    totalCosts,
+    newClientsThisMonth,
+    mrrGrowthRate,
+    ltvCacRatio,
+    healthScore,
+    cac
   };
 };

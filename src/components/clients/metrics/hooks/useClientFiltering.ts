@@ -40,48 +40,91 @@ export const useClientFiltering = () => {
   };
 
   const getClientsForPeriod = ({ monthStr, yearStr, metric, clients }: FilterParams) => {
-    if (!clients) return [];
+    console.log('Filtrando clientes para:', { monthStr, yearStr, metric, clientsCount: clients?.length });
+    
+    if (!clients) {
+      console.log('Nenhum cliente fornecido');
+      return [];
+    }
 
-    const monthIndex = getMonthIndex(monthStr);
-    if (monthIndex === -1) return [];
+    // monthStr vem como número (ex: "6"), yearStr como "25"
+    const month = parseInt(monthStr);
+    const year = parseInt(yearStr);
+    
+    if (isNaN(month) || isNaN(year)) {
+      console.error('Mês ou ano inválido:', { monthStr, yearStr });
+      return [];
+    }
 
-    const year = Number(`20${yearStr}`);
-    const startDate = new Date(year, monthIndex, 1);
-    const endDate = new Date(year, monthIndex + 1, 0);
+    const fullYear = year < 50 ? 2000 + year : 1900 + year;
+    const startDate = new Date(fullYear, month - 1, 1);
+    const endDate = new Date(fullYear, month, 0);
 
-    console.log('Período selecionado:', {
+    console.log('Período calculado:', {
+      month, year: fullYear,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       metric
     });
 
+    let filteredClients = [];
+
     switch (metric) {
       case 'Clientes Adquiridos':
-        return clients.filter(client => {
+        filteredClients = clients.filter(client => {
           if (!client.first_payment_date) return false;
           const date = new Date(client.first_payment_date);
-          return date >= startDate && date <= endDate;
+          const isInPeriod = date >= startDate && date <= endDate;
+          if (isInPeriod) {
+            console.log('Cliente adquirido encontrado:', client.company_name, client.first_payment_date);
+          }
+          return isInPeriod;
         });
+        break;
+        
       case 'Clientes Cancelados':
-        return clients.filter(client => {
+        filteredClients = clients.filter(client => {
           if (!client.last_payment_date) return false;
           const date = new Date(client.last_payment_date);
-          return date >= startDate && date <= endDate && client.status === 'inactive';
+          const isInPeriod = date >= startDate && date <= endDate && client.status === 'inactive';
+          if (isInPeriod) {
+            console.log('Cliente cancelado encontrado:', client.company_name, client.last_payment_date);
+          }
+          return isInPeriod;
         });
+        break;
+        
       case 'Churn Rate':
-        return clients.filter(client => {
+        filteredClients = clients.filter(client => {
           if (!client.last_payment_date) return false;
           const date = new Date(client.last_payment_date);
-          return date >= startDate && date <= endDate && client.status === 'inactive';
+          const isInPeriod = date >= startDate && date <= endDate && client.status === 'inactive';
+          return isInPeriod;
         });
+        break;
+        
+      case 'Receita Mensal':
+      case 'Total de Clientes':
       default:
-        return clients.filter(client => {
+        filteredClients = clients.filter(client => {
           if (!client.first_payment_date) return false;
           const startClient = new Date(client.first_payment_date);
           const endClient = client.last_payment_date ? new Date(client.last_payment_date) : new Date();
-          return startClient <= endDate && endClient >= startDate;
+          const isActive = startClient <= endDate && endClient >= startDate;
+          if (isActive && metric === 'Total de Clientes') {
+            console.log('Cliente ativo encontrado:', client.company_name, {
+              first_payment: client.first_payment_date,
+              last_payment: client.last_payment_date,
+              status: client.status
+            });
+          }
+          return isActive;
         });
+        break;
     }
+
+    console.log(`Clientes filtrados para ${metric}:`, filteredClients.length);
+    return filteredClients;
   };
 
   return { getClientsForPeriod };

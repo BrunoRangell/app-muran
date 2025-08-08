@@ -18,7 +18,9 @@ import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { MonthSelector } from "./MonthSelector";
 import { Client } from "@/components/clients/types";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, parseCurrencyToNumber } from "@/utils/formatters";
+import { CurrencyInput } from "@/components/common/CurrencyInput";
+import { SanitizedTextarea } from "@/components/common/SanitizedInputs";
 
 const paymentFormSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
@@ -72,10 +74,9 @@ export function PaymentForm({ client, onSubmit, onCancel, isLoading }: PaymentFo
             <FormItem>
               <FormLabel>Valor</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
-                  placeholder="R$ 0,00"
-                  onChange={(e) => handleAmountChange(e.target.value)}
+                <CurrencyInput
+                  value={parseCurrencyToNumber(form.watch('amount') || '')}
+                  onValueChange={({ formatted }) => form.setValue('amount', formatted)}
                 />
               </FormControl>
               <FormMessage />
@@ -105,7 +106,7 @@ export function PaymentForm({ client, onSubmit, onCancel, isLoading }: PaymentFo
             <FormItem>
               <FormLabel>Observações</FormLabel>
               <FormControl>
-                <Textarea {...field} />
+                <SanitizedTextarea {...field} maxLengthLimit={500} />
               </FormControl>
               <FormMessage />
             </FormItem>

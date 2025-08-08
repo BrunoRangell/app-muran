@@ -10,6 +10,8 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/utils/formatters";
+import { CurrencyInput } from "@/components/common/CurrencyInput";
+import { SanitizedTextarea } from "@/components/common/SanitizedInputs";
 
 interface RegistroPagamentoDialogProps {
   open: boolean;
@@ -24,7 +26,7 @@ export function RegistroPagamentoDialog({
   cliente, 
   onSuccess 
 }: RegistroPagamentoDialogProps) {
-  const [valor, setValor] = useState("");
+  const [valorNumero, setValorNumero] = useState(0);
   const [dataPagamento, setDataPagamento] = useState(format(new Date(), "yyyy-MM"));
   const [dataFimPagamento, setDataFimPagamento] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -35,8 +37,8 @@ export function RegistroPagamentoDialog({
   // Inicializa os valores quando o diálogo é aberto
   useEffect(() => {
     if (open && cliente) {
-      // Formata o valor do contrato para exibição
-      setValor(formatCurrency(cliente.contract_value || 0));
+      // Define o valor do contrato como base
+      setValorNumero(cliente.contract_value || 0);
       setDataPagamento(format(new Date(), "yyyy-MM"));
       setDataFimPagamento("");
       setObservacoes("");
@@ -44,20 +46,6 @@ export function RegistroPagamentoDialog({
     }
   }, [open, cliente]);
 
-  // Formata o valor digitado como moeda
-  const formatarValor = (valor: string) => {
-    // Remove caracteres não numéricos
-    const apenasNumeros = valor.replace(/\D/g, "");
-    
-    if (apenasNumeros === "") {
-      setValor("");
-      return;
-    }
-    
-    // Converte para número (centavos)
-    const valorNumerico = parseInt(apenasNumeros, 10) / 100;
-    setValor(formatCurrency(valorNumerico));
-  };
 
   // Salva o pagamento no banco de dados
   const handleSubmit = async () => {
@@ -66,10 +54,8 @@ export function RegistroPagamentoDialog({
     try {
       setIsLoading(true);
       
-      // Extrai o valor numérico (remove formatação de moeda)
-      const valorNumerico = parseFloat(valor.replace(/[^\d,]/g, "").replace(",", "."));
-      
-      if (isNaN(valorNumerico)) {
+      // Validação do valor
+      if (!valorNumero || valorNumero <= 0) {
         toast({
           title: "Erro",
           description: "Por favor, insira um valor válido",
@@ -92,10 +78,9 @@ export function RegistroPagamentoDialog({
           return;
         }
         
-        // Registrar pagamentos para cada mês
         const pagamentos = meses.map(mes => ({
           client_id: cliente.id,
-          amount: valorNumerico,
+          amount: valorNumero,
           reference_month: `${mes}-01`,
           notes: observacoes || null
         }));
@@ -111,10 +96,9 @@ export function RegistroPagamentoDialog({
         
         onSuccess();
       } else {
-        // Registrar pagamento único
         const { error } = await supabase.from("payments").insert({
           client_id: cliente.id,
-          amount: valorNumerico,
+          amount: valorNumero,
           reference_month: `${dataPagamento}-01`, // Primeiro dia do mês
           notes: observacoes || null
         });
@@ -180,11 +164,10 @@ export function RegistroPagamentoDialog({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="valor">Valor</Label>
-            <Input 
+            <CurrencyInput 
               id="valor"
-              value={valor}
-              onChange={(e) => formatarValor(e.target.value)}
-              placeholder="R$ 0,00"
+              value={valorNumero}
+              onValueChange={({ numeric }) => setValorNumero(numeric)}
               disabled={isLoading}
             />
           </div>
@@ -237,7 +220,7 @@ export function RegistroPagamentoDialog({
           
           <div className="space-y-2">
             <Label htmlFor="observacoes">Observações</Label>
-            <Textarea
+            <SanitizedTextarea
               id="observacoes"
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
@@ -245,6 +228,8 @@ export function RegistroPagamentoDialog({
               disabled={isLoading}
               className="resize-none"
               rows={3}
+              maxLengthLimit={500}
+              preserveNewlines
             />
           </div>
           
@@ -258,7 +243,7 @@ export function RegistroPagamentoDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isLoading}
+              disabled={isLoading || !valorNumero || valorNumero <= 0}
             >
               {isLoading ? "Salvando..." : "Salvar"}
             </Button>

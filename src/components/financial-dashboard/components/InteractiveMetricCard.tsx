@@ -28,22 +28,22 @@ export const InteractiveMetricCard = ({
 }: InteractiveMetricCardProps) => {
   return (
     <Card 
-      className={`p-4 hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 ${
-        onClick ? 'hover:scale-[1.02]' : ''
-      } group`}
+      className={`p-2 hover:shadow-lg transition-all duration-200 cursor-pointer border-l-2 ${
+        onClick ? 'hover:scale-[1.01]' : ''
+      } group h-fit`}
       style={{ borderLeftColor: color.replace('bg-', '#') }}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <h4 className="text-sm font-medium text-gray-600 group-hover:text-gray-800 transition-colors">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1 mb-1">
+            <h4 className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors truncate">
               {title}
             </h4>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="h-3 w-3 text-gray-400 hover:text-gray-600 transition-colors" />
+                  <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground transition-colors flex-shrink-0" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="text-xs">{description}</p>
@@ -52,8 +52,8 @@ export const InteractiveMetricCard = ({
             </TooltipProvider>
           </div>
           
-          <div className="mb-2">
-            <span className="text-2xl font-bold text-muran-dark group-hover:text-muran-primary transition-colors">
+          <div className="mb-1">
+            <span className="text-lg font-bold text-foreground group-hover:text-muran-primary transition-colors">
               {value}
             </span>
           </div>
@@ -68,13 +68,13 @@ export const InteractiveMetricCard = ({
                 <ArrowDown className="h-3 w-3" />
               )}
               <span>{Math.abs(trend.value)}%</span>
-              <span className="text-gray-500">vs mês anterior</span>
+              <span className="text-muted-foreground">vs anterior</span>
             </div>
           )}
         </div>
 
-        <div className={`p-3 rounded-full ${color.replace('bg-', 'bg-')}/10 group-hover:${color.replace('bg-', 'bg-')}/20 transition-colors`}>
-          <Icon className={`h-5 w-5 ${color.replace('bg-', 'text-')}`} />
+        <div className={`p-1.5 rounded-full ${color.replace('bg-', 'bg-')}/10 group-hover:${color.replace('bg-', 'bg-')}/20 transition-colors flex-shrink-0`}>
+          <Icon className={`h-3.5 w-3.5 ${color.replace('bg-', 'text-')}`} />
         </div>
       </div>
     </Card>

@@ -25,9 +25,9 @@ export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: Metric
 
       <MetricCard
         icon={DollarSign}
-        title="Receita mensal"
+        title="Receita Mensal Prevista"
         value={metrics.mrr || 0}
-        tooltip="Receita mensal recorrente total dos clientes ativos. Soma dos valores de contrato de todos os clientes ativos"
+        tooltip="Receita mensal prevista baseada na soma dos valores de contrato dos clientes ativos"
         formatter={formatCurrency}
       />
 

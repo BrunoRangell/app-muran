@@ -1,7 +1,11 @@
 
 import { formatCurrency } from "@/utils/formatters";
-import { format, parse } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { RevenueTooltip } from "./RevenueTooltip";
+import { ClientsTooltip } from "./ClientsTooltip";
+import { ChurnTooltip } from "./ChurnTooltip";
+import { NewClientsTooltip } from "./NewClientsTooltip";
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -11,60 +15,98 @@ interface CustomTooltipProps {
 
 export const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
-    // Função para formatar o mês/ano para português com validação robusta
+    // Formatação simples para o mês/ano
     const formatMonthYear = (monthYear: string) => {
+      if (!monthYear) return '';
+      
       try {
-        if (!monthYear || typeof monthYear !== 'string') {
-          console.warn('Invalid monthYear value:', monthYear);
-          return monthYear || '';
-        }
-
-        // Verificar se já está no formato correto (ex: "jul/24")
-        if (monthYear.includes('/') && monthYear.length <= 6) {
-          const parts = monthYear.split('/');
-          if (parts.length === 2) {
-            const [monthStr, yearStr] = parts;
-            
-            // Tentar parsear como MMM/yy primeiro
-            try {
-              const parsedDate = parse(monthYear, 'MMM/yy', new Date());
-              if (!isNaN(parsedDate.getTime())) {
-                return format(parsedDate, "MMM'/'yy", { locale: ptBR }).toLowerCase();
-              }
-            } catch (parseError) {
-              console.log('Erro no parse MMM/yy, tentando MM/yy:', parseError);
-            }
-
-            // Se não conseguir, tentar como MM/yy
-            try {
-              const month = parseInt(monthStr);
-              const year = parseInt(yearStr);
-              
-              if (!isNaN(month) && !isNaN(year) && month >= 1 && month <= 12) {
-                const fullYear = year < 50 ? 2000 + year : 1900 + year;
-                const date = new Date(fullYear, month - 1, 1);
-                return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
-              }
-            } catch (numericError) {
-              console.log('Erro no parse numérico:', numericError);
-            }
+        // Se contém '/', tentar formatar como mês/ano
+        if (monthYear.includes('/')) {
+          const [month, year] = monthYear.split('/');
+          const monthNum = parseInt(month);
+          const yearNum = parseInt(year);
+          
+          if (!isNaN(monthNum) && !isNaN(yearNum) && monthNum >= 1 && monthNum <= 12) {
+            const fullYear = yearNum < 50 ? 2000 + yearNum : 1900 + yearNum;
+            const date = new Date(fullYear, monthNum - 1, 1);
+            return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
           }
         }
-
-        // Fallback: retornar o valor original
-        console.warn('Não foi possível formatar a data:', monthYear);
+        
         return monthYear;
       } catch (error) {
-        console.error('Erro geral ao formatar mês:', error, monthYear);
-        return monthYear || '';
+        console.error('Erro ao formatar mês:', error);
+        return monthYear;
       }
     };
 
+    // Pegar os dados do primeiro entry que contém os detalhes
+    const dataPoint = payload[0]?.payload;
+    
+    // Se há apenas uma métrica sendo exibida, mostrar tooltip específico
+    if (payload.length === 1) {
+      const entry = payload[0];
+      const metricKey = entry.dataKey;
+      
+      return (
+        <div className="bg-white p-4 border rounded-lg shadow-lg max-w-xs">
+          <p className="text-sm font-medium text-gray-600 mb-3">{formatMonthYear(label || '')}</p>
+          
+          {metricKey === 'mrr' && dataPoint?.paymentDetails && (
+            <RevenueTooltip 
+              paymentDetails={dataPoint.paymentDetails}
+              totalRevenue={entry.value || 0}
+            />
+          )}
+          
+          {metricKey === 'clients' && dataPoint?.clientDetails && (
+            <ClientsTooltip 
+              clientDetails={dataPoint.clientDetails}
+              totalClients={entry.value || 0}
+            />
+          )}
+          
+          {metricKey === 'churn' && dataPoint?.churnedClients && (
+            <ChurnTooltip 
+              churnedClients={dataPoint.churnedClients}
+              churnCount={entry.value || 0}
+              churnRate={dataPoint.churnRate || 0}
+            />
+          )}
+          
+          {metricKey === 'newClients' && dataPoint?.newClientNames && (
+            <NewClientsTooltip 
+              newClientNames={dataPoint.newClientNames}
+              newClientsCount={entry.value || 0}
+            />
+          )}
+          
+          {metricKey === 'churnRate' && (
+            <div className="space-y-2">
+              <div className="font-semibold text-sm">
+                Taxa de Churn: {(entry.value || 0).toFixed(1)}%
+              </div>
+              {dataPoint?.churnedClients && dataPoint.churnedClients.length > 0 && (
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {dataPoint.churnedClients.map((clientName: string, index: number) => (
+                    <div key={index} className="text-xs bg-red-50 p-2 rounded border-l-2 border-red-200">
+                      {clientName}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Tooltip padrão para múltiplas métricas
     return (
       <div className="bg-white p-4 border rounded-lg shadow-lg">
         <p className="text-sm font-medium text-gray-600 mb-2">{formatMonthYear(label || '')}</p>
         {payload.map((entry: any, index: number) => {
-          const value = entry.payload[entry.dataKey];
+          const value = entry.value;
           const formattedValue = entry.dataKey === 'mrr'
             ? formatCurrency(value || 0)
             : entry.dataKey === 'churnRate'
