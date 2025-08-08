@@ -4,6 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatCurrency } from "@/utils/formatters";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Client } from "../../types";
+import { isClientActiveInMonth } from "../utils/dateFilters";
 
 interface RevenueDetailsTableProps {
   monthStr: string; // formato "6/25"
@@ -25,10 +27,13 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
   const monthStart = new Date(fullYear, parseInt(month) - 1, 1);
   const monthEnd = new Date(fullYear, parseInt(month), 0);
 
-  const { data: payments, isLoading } = useQuery({
+  const { data: revenueData, isLoading, error } = useQuery({
     queryKey: ['revenue-details', monthStr],
     queryFn: async () => {
-      const { data, error } = await supabase
+      console.log('Buscando dados de receita para:', { monthStr, monthStart, monthEnd });
+      
+      // Primeiro, buscar pagamentos reais
+      const { data: payments, error: paymentsError } = await supabase
         .from("payments")
         .select(`
           id,
@@ -41,8 +46,47 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
         .gte("reference_month", monthStart.toISOString().split('T')[0])
         .lt("reference_month", new Date(fullYear, parseInt(month), 1).toISOString().split('T')[0]);
 
-      if (error) throw error;
-      return data as PaymentWithClient[];
+      if (paymentsError) {
+        console.error('Erro ao buscar pagamentos:', paymentsError);
+      }
+
+      console.log('Pagamentos encontrados:', payments?.length || 0);
+
+      // Se não há pagamentos, buscar clientes ativos no período
+      if (!payments || payments.length === 0) {
+        const { data: clients, error: clientsError } = await supabase
+          .from("clients")
+          .select("*");
+
+        if (clientsError) {
+          console.error('Erro ao buscar clientes:', clientsError);
+          throw clientsError;
+        }
+
+        // Filtrar clientes ativos no mês
+        const activeClients = clients?.filter(client => 
+          isClientActiveInMonth(client, monthStart, new Date(fullYear, parseInt(month), 0))
+        ) || [];
+
+        console.log('Clientes ativos encontrados:', activeClients.length);
+
+        return {
+          type: 'estimated',
+          data: activeClients.map(client => ({
+            id: client.id,
+            amount: client.contract_value || 0,
+            clients: {
+              company_name: client.company_name,
+              first_payment_date: client.first_payment_date
+            }
+          }))
+        };
+      }
+
+      return {
+        type: 'payments',
+        data: payments as PaymentWithClient[]
+      };
     }
   });
 
@@ -54,50 +98,77 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
     );
   }
 
-  if (!payments || payments.length === 0) {
+  if (error) {
     return (
       <div className="text-center py-8">
-        <div className="text-sm text-muted-foreground">
-          Nenhum pagamento registrado para este período
-        </div>
-        <div className="text-xs text-muted-foreground mt-2">
-          Os valores exibidos no gráfico são baseados em contratos ativos
+        <div className="text-sm text-red-600">
+          Erro ao carregar dados: {error.message}
         </div>
       </div>
     );
   }
 
+  if (!revenueData || !revenueData.data || revenueData.data.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-sm text-muted-foreground">
+          Nenhum dado de receita encontrado para este período
+        </div>
+      </div>
+    );
+  }
+
+  const { type, data } = revenueData;
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Empresa</TableHead>
-          <TableHead>Valor Pago</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Início</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {payments.map((payment) => (
-          <TableRow key={payment.id}>
-            <TableCell className="font-medium">
-              {payment.clients?.company_name || 'Nome não encontrado'}
-            </TableCell>
-            <TableCell>{formatCurrency(payment.amount)}</TableCell>
-            <TableCell>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                Pago
-              </span>
-            </TableCell>
-            <TableCell>
-              {payment.clients?.first_payment_date 
-                ? format(new Date(payment.clients.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })
-                : 'Data não disponível'
-              }
-            </TableCell>
+    <div className="space-y-4">
+      {type === 'estimated' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-amber-700 text-sm">
+            <span className="inline-block w-2 h-2 bg-amber-500 rounded-full"></span>
+            <span className="font-medium">Receita Estimada</span>
+          </div>
+          <p className="text-xs text-amber-600 mt-1">
+            Valores baseados nos contratos ativos (sem pagamentos registrados para este mês)
+          </p>
+        </div>
+      )}
+      
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Empresa</TableHead>
+            <TableHead>{type === 'payments' ? 'Valor Pago' : 'Valor do Contrato'}</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Início</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {data.map((item: any, index: number) => (
+            <TableRow key={item.id || index}>
+              <TableCell className="font-medium">
+                {item.clients?.company_name || 'Nome não encontrado'}
+              </TableCell>
+              <TableCell>{formatCurrency(item.amount)}</TableCell>
+              <TableCell>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  type === 'payments' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {type === 'payments' ? 'Pago' : 'Estimado'}
+                </span>
+              </TableCell>
+              <TableCell>
+                {item.clients?.first_payment_date 
+                  ? format(new Date(item.clients.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })
+                  : 'Data não disponível'
+                }
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
