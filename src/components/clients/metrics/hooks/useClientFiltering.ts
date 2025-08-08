@@ -77,6 +77,17 @@ export const useClientFiltering = () => {
           if (isNew) {
             console.log('Cliente adquirido encontrado:', client.company_name, client.first_payment_date);
           }
+          // Debug específico para Orientista
+          if (client.company_name?.toLowerCase().includes('orientista')) {
+            console.log('🔍 DEBUG ORIENTISTA - Novo Cliente:', {
+              company: client.company_name,
+              first_payment: client.first_payment_date,
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              isNew,
+              calculatedDate: client.first_payment_date ? new Date(client.first_payment_date).toISOString() : 'null'
+            });
+          }
           return isNew;
         });
         break;
@@ -101,6 +112,23 @@ export const useClientFiltering = () => {
               first_payment: client.first_payment_date,
               last_payment: client.last_payment_date,
               status: client.status
+            });
+          }
+          // Debug específico para Orientista
+          if (client.company_name?.toLowerCase().includes('orientista')) {
+            console.log('🔍 DEBUG ORIENTISTA - Cliente Ativo:', {
+              company: client.company_name,
+              first_payment: client.first_payment_date,
+              last_payment: client.last_payment_date,
+              status: client.status,
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              isActive,
+              calculatedStartDate: client.first_payment_date ? (() => {
+                const date = new Date(client.first_payment_date);
+                date.setDate(date.getDate() + 1);
+                return date.toISOString();
+              })() : 'null'
             });
           }
           return isActive;

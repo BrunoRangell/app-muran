@@ -110,6 +110,22 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
 
   const { data } = revenueData;
 
+  // Ordenar dados por status (ativo primeiro) e depois alfabeticamente
+  const sortedData = [...data].sort((a, b) => {
+    // Status: ativos primeiro, depois inativos
+    const statusA = a.clients?.status === 'active' ? 0 : 1;
+    const statusB = b.clients?.status === 'active' ? 0 : 1;
+    
+    if (statusA !== statusB) {
+      return statusA - statusB;
+    }
+    
+    // Dentro do mesmo status, ordenar alfabeticamente
+    const nameA = a.clients?.company_name || '';
+    const nameB = b.clients?.company_name || '';
+    return nameA.localeCompare(nameB);
+  });
+
   // Calcular total dos pagamentos
   const total = data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
 
@@ -125,7 +141,7 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((item: any, index: number) => (
+          {sortedData.map((item: any, index: number) => (
             <TableRow key={item.id || index}>
               <TableCell className="font-medium">
                 {item.clients?.company_name || 'Nome não encontrado'}
