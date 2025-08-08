@@ -5,7 +5,7 @@ import { useClientFiltering } from "../hooks/useClientFiltering";
 import { MetricsLineChart } from "./MetricsLineChart";
 import { DetailsDialog } from "./DetailsDialog";
 import { CustomDateRangeDialog } from "../CustomDateRangeDialog";
-import { MetricChips } from "./MetricChips";
+import { VerticalMetricsFilter } from "./VerticalMetricsFilter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3 } from "lucide-react";
 
@@ -104,22 +104,24 @@ export const EnhancedMetricsChart = ({
         </Select>
       </div>
 
-      {/* Controles de Métricas */}
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-muted-foreground">Métricas ativas:</p>
-        <MetricChips 
-          selectedMetrics={selectedMetrics}
-          onMetricChange={onMetricChange}
-        />
-      </div>
-      
-      {/* Gráfico Principal - Maior altura */}
-      <div className="h-[450px]">
-        <MetricsLineChart 
-          data={data}
-          lines={lines}
-          onClick={handlePointClick}
-        />
+      {/* Layout Horizontal: Filtros + Gráfico */}
+      <div className="flex gap-4">
+        {/* Filtros Verticais */}
+        <div className="flex-shrink-0">
+          <VerticalMetricsFilter 
+            selectedMetrics={selectedMetrics}
+            onMetricChange={onMetricChange}
+          />
+        </div>
+        
+        {/* Gráfico Principal */}
+        <div className="flex-1 h-[450px]">
+          <MetricsLineChart 
+            data={data}
+            lines={lines}
+            onClick={handlePointClick}
+          />
+        </div>
       </div>
 
       <CustomDateRangeDialog
