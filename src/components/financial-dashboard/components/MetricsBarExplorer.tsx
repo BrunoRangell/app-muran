@@ -10,7 +10,8 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { DetailsDialog } from "@/components/clients/metrics/components/DetailsDialog";
 import { useClientFiltering } from "@/components/clients/metrics/hooks/useClientFiltering";
 import { Cost } from "@/types/cost";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export type PeriodFilter = 
   | 'last-3-months' 
@@ -29,13 +30,13 @@ export interface MetricOption {
 }
 
 const METRICS: MetricOption[] = [
+  { id: "mrr", label: "Receita Mensal", kind: "currency" },
   { id: "profit", label: "Lucro", kind: "currency" },
-  { id: "totalCosts", label: "Custos Totais", kind: "currency" },
-  { id: "mrr", label: "Receita Mensal (MRR)", kind: "currency" },
   { id: "newClients", label: "Novos Clientes", kind: "number" },
   { id: "churn", label: "Clientes Cancelados", kind: "number" },
-  { id: "cac", label: "CAC (Custo de Aquisição)", kind: "currency" },
-  { id: "ltv", label: "LTV (Valor Vitalício)", kind: "currency" },
+  { id: "totalCosts", label: "Custos Totais", kind: "currency" },
+  { id: "cac", label: "CAC", kind: "currency" },
+  { id: "ltv", label: "LTV", kind: "currency" },
 ];
 
 function getPeriodRange(filter: PeriodFilter): { start: Date; end: Date } {
@@ -69,7 +70,7 @@ function getPeriodRange(filter: PeriodFilter): { start: Date; end: Date } {
 }
 
 function formatMonth(d: Date) {
-  return format(d, "M/yy");
+  return format(d, "MMM/yy", { locale: ptBR });
 }
 
 function formatValue(kind: MetricOption["kind"], value: number | null | undefined) {
@@ -148,9 +149,13 @@ export const MetricsBarExplorer = () => {
         ltv: item.mrr * 12, // Estimativa simples: MRR * 12
       };
     }).sort((a, b) => {
-      const [monthA, yearA] = a.month.split('/').map(Number);
-      const [monthB, yearB] = b.month.split('/').map(Number);
-      return yearA === yearB ? monthA - monthB : yearA - yearB;
+      try {
+        const dateA = parse(a.month, "MMM/yy", new Date(), { locale: ptBR });
+        const dateB = parse(b.month, "MMM/yy", new Date(), { locale: ptBR });
+        return dateA.getTime() - dateB.getTime();
+      } catch {
+        return 0;
+      }
     });
   }, [monthlyMetrics, costsByMonth]);
 
@@ -170,8 +175,8 @@ export const MetricsBarExplorer = () => {
 
   const filteredClients = selectedPoint 
     ? getClientsForPeriod({
-        monthStr: selectedPoint.month.split('/')[0],
-        yearStr: selectedPoint.month.split('/')[1],
+        monthStr: String(parse(selectedPoint.month, "MMM/yy", new Date(), { locale: ptBR }).getMonth() + 1),
+        yearStr: String(parse(selectedPoint.month, "MMM/yy", new Date(), { locale: ptBR }).getFullYear()),
         metric: selectedPoint.metric,
         clients: clients || []
       })
