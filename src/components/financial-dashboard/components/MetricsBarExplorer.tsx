@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetricsData } from "@/components/clients/metrics/useMetricsData";
 import { useCosts } from "@/hooks/queries/useCosts";
 import { useClients } from "@/hooks/queries/useClients";
-import { formatCurrency, formatPercentage } from "@/utils/formatters";
+import { formatBrazilianCurrency } from "@/utils/currencyUtils";
 import { BarChart3 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { DetailsDialog } from "@/components/clients/metrics/components/DetailsDialog";
 import { useClientFiltering } from "@/components/clients/metrics/hooks/useClientFiltering";
 import { Cost } from "@/types/cost";
+import { format } from "date-fns";
 
 export type PeriodFilter = 
   | 'last-3-months' 
@@ -37,56 +38,56 @@ const METRICS: MetricOption[] = [
   { id: "ltv", label: "LTV (Valor Vitalício)", kind: "currency" },
 ];
 
-const getPeriodRange = (filter: PeriodFilter) => {
-  const now = new Date();
-  const start = new Date();
-  
+function getPeriodRange(filter: PeriodFilter): { start: Date; end: Date } {
+  const end = new Date();
+  let start = new Date(end);
   switch (filter) {
     case "last-3-months":
-      start.setMonth(now.getMonth() - 3);
+      start = new Date(end.getFullYear(), end.getMonth() - 2, 1);
       break;
     case "last-6-months":
-      start.setMonth(now.getMonth() - 6);
+      start = new Date(end.getFullYear(), end.getMonth() - 5, 1);
       break;
     case "last-12-months":
-      start.setFullYear(now.getFullYear() - 1);
+      start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
       break;
     case "last-24-months":
-      start.setFullYear(now.getFullYear() - 2);
+      start = new Date(end.getFullYear(), end.getMonth() - 23, 1);
       break;
     case "this-year":
-      start.setMonth(0);
-      start.setDate(1);
+      start = new Date(end.getFullYear(), 0, 1);
       break;
     case "last-year":
-      start.setFullYear(now.getFullYear() - 1, 0, 1);
-      now.setFullYear(now.getFullYear() - 1, 11, 31);
+      start = new Date(end.getFullYear() - 1, 0, 1);
+      // fim do ano passado
+      end.setFullYear(end.getFullYear() - 1, 11, 31);
       break;
   }
-  
-  return { start, end: now };
-};
+  // Normalizar fim para último dia do mês atual do range
+  const normalizedEnd = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+  return { start, end: normalizedEnd };
+}
 
-const formatMonth = (d: Date) => {
-  return `${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
-};
+function formatMonth(d: Date) {
+  return format(d, "M/yy");
+}
 
-const formatValue = (kind: MetricOption["kind"], value: number | null | undefined) => {
-  if (value == null) return "R$ 0";
-  
+function formatValue(kind: MetricOption["kind"], value: number | null | undefined) {
+  if (value === null || value === undefined || isNaN(value)) return "-";
   switch (kind) {
     case "currency":
-      return formatCurrency(value);
+      return `R$ ${formatBrazilianCurrency(value)}`;
     case "percent":
-      return formatPercentage(value);
+      return `${value.toFixed(1)}%`;
     case "ratio":
-      return `${value.toFixed(1)}x`;
+      if (!isFinite(value)) return "-";
+      return value.toFixed(2) + "x";
     case "number":
-      return value.toString();
+      return `${Math.round(value)}`;
     default:
-      return value.toString();
+      return `${Math.round(value)}`;
   }
-};
+}
 
 const aggregateCostsByMonth = (costs: Cost[]) => {
   const costsByMonth: Record<string, number> = {};
@@ -109,40 +110,49 @@ export const MetricsBarExplorer = () => {
     value: number;
   } | null>(null);
 
-  const dateRange = getPeriodRange(period);
+  const dateRange = useMemo(() => getPeriodRange(period), [period]);
   
-  const { data: monthlyMetrics, isLoading: loadingMetrics } = useMetricsData(dateRange);
-  const { costs: costsData, isLoading: loadingCosts } = useCosts({
-    startDate: dateRange.start.toISOString().split('T')[0],
-    endDate: dateRange.end.toISOString().split('T')[0]
+  const { data: monthlyMetrics = [], isLoading: loadingMetrics } = useMetricsData({
+    start: dateRange.start,
+    end: dateRange.end,
   });
+  
+  const { costs: costsData = [], isLoading: loadingCosts } = useCosts({
+    startDate: format(dateRange.start, "yyyy-MM-dd"),
+    endDate: format(dateRange.end, "yyyy-MM-dd"),
+  });
+  
   const { clients, isLoading: loadingClients } = useClients();
 
   const { getClientsForPeriod } = useClientFiltering();
 
   // Agregar custos por mês
-  const costsByMonth = aggregateCostsByMonth(costsData || []);
+  const costsByMonth = useMemo(() => aggregateCostsByMonth(costsData || []), [costsData]);
 
   // Processar dados para o gráfico
-  const chartData = (monthlyMetrics || []).map(item => {
-    const monthCosts = costsByMonth[item.month] || 0;
-    const profit = item.mrr - monthCosts;
+  const chartData = useMemo(() => {
+    console.log('📊 Processando dados para gráfico:', { monthlyMetrics, costsByMonth });
     
-    return {
-      month: item.month,
-      mrr: item.mrr,
-      totalCosts: monthCosts,
-      profit: profit,
-      newClients: item.newClients,
-      churn: item.churn,
-      cac: item.newClients > 0 ? monthCosts / item.newClients : 0,
-      ltv: item.mrr * 12, // Estimativa simples: MRR * 12
-    };
-  }).sort((a, b) => {
-    const [monthA, yearA] = a.month.split('/').map(Number);
-    const [monthB, yearB] = b.month.split('/').map(Number);
-    return yearA === yearB ? monthA - monthB : yearA - yearB;
-  });
+    return (monthlyMetrics || []).map(item => {
+      const monthCosts = costsByMonth[item.month] || 0;
+      const profit = item.mrr - monthCosts;
+      
+      return {
+        month: item.month,
+        mrr: item.mrr,
+        totalCosts: monthCosts,
+        profit: profit,
+        newClients: item.newClients,
+        churn: item.churn,
+        cac: item.newClients > 0 ? monthCosts / item.newClients : 0,
+        ltv: item.mrr * 12, // Estimativa simples: MRR * 12
+      };
+    }).sort((a, b) => {
+      const [monthA, yearA] = a.month.split('/').map(Number);
+      const [monthB, yearB] = b.month.split('/').map(Number);
+      return yearA === yearB ? monthA - monthB : yearA - yearB;
+    });
+  }, [monthlyMetrics, costsByMonth]);
 
   const selected = METRICS.find((m) => m.id === metric)!;
   const primaryColor = "#ff6e00";
