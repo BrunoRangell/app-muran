@@ -59,7 +59,7 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
 
       <div className="space-y-2">
         <InteractiveMetricCard
-          title="MRR"
+          title="Receita mensal prevista"
           value={formatCurrency(metrics?.mrr || 0)}
           icon={DollarSign}
           trend={metrics?.trends?.mrrTrend}
