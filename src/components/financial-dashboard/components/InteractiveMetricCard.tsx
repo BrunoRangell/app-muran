@@ -67,7 +67,7 @@ export const InteractiveMetricCard = ({
               ) : (
                 <ArrowDown className="h-3 w-3" />
               )}
-              <span>{Math.abs(trend.value)}%</span>
+              <span>{Math.abs(trend.value).toFixed(1)}%</span>
               <span className="text-muted-foreground">vs anterior</span>
             </div>
           )}
