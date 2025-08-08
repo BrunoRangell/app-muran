@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { FinancialMetrics } from "@/components/clients/FinancialMetrics";
 import { MetricsExplorer } from "./MetricsExplorer";
+import { MetricsBarExplorer } from "./MetricsBarExplorer";
 import { BarChart3 } from "lucide-react";
 
 interface InteractiveChartsProps {
@@ -14,6 +15,7 @@ export const InteractiveCharts = ({ filters }: InteractiveChartsProps) => {
     <div className="space-y-4">
       <FinancialMetrics />
       <MetricsExplorer />
+      <MetricsBarExplorer />
     </div>
   );
 };
