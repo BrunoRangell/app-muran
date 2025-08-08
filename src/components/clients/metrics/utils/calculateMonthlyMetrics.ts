@@ -1,6 +1,7 @@
 
 import { Client } from "../../types";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { 
   isClientActiveInMonth, 
   isClientNewInMonth, 
@@ -98,7 +99,7 @@ export const calculateMonthlyMetrics = async (
       isClientNewInMonth(client, monthStart, monthEnd)
     );
 
-    const monthStr = format(currentDate, 'M/yy'); // Formato numérico para consistência
+    const monthStr = format(currentDate, 'MMM/yy', { locale: ptBR }); // Formato numérico para consistência
 
     const result = {
       month: monthStr,
@@ -121,7 +122,7 @@ export const calculateMonthlyMetrics = async (
     console.error("Error in calculateMonthlyMetrics:", error, currentDate);
     
     // Retornar dados padrão em caso de erro
-    const fallbackMonth = format(currentDate, 'M/yy');
+    const fallbackMonth = format(currentDate, 'MMM/yy', { locale: ptBR });
     return {
       month: fallbackMonth,
       mrr: 0,

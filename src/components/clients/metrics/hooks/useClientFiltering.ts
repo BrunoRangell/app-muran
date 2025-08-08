@@ -71,7 +71,7 @@ export const useClientFiltering = () => {
     let filteredClients = [];
 
     switch (metric) {
-      case 'Clientes Adquiridos':
+      case 'Novos Clientes':
         filteredClients = clients.filter(client => {
           const isNew = isClientNewInMonth(client, startDate, endDate);
           if (isNew) {

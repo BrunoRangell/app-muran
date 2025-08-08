@@ -104,7 +104,7 @@ const aggregateCostsByMonth = (costs: Cost[]) => {
 
 export const MetricsBarExplorer = () => {
   const [period, setPeriod] = useState<PeriodFilter>("last-12-months");
-  const [metric, setMetric] = useState<MetricId>("profit");
+  const [metric, setMetric] = useState<MetricId>("mrr");
   const [selectedPoint, setSelectedPoint] = useState<{
     month: string;
     metric: string;
