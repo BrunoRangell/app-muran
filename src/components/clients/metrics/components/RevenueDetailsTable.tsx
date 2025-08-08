@@ -14,6 +14,7 @@ interface RevenueDetailsTableProps {
 interface PaymentWithClient {
   id: number;
   amount: number;
+  status?: string;
   clients: {
     company_name: string;
     first_payment_date: string;
@@ -30,63 +31,96 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
   const { data: revenueData, isLoading, error } = useQuery({
     queryKey: ['revenue-details', monthStr],
     queryFn: async () => {
-      console.log('Buscando dados de receita para:', { monthStr, monthStart, monthEnd });
+      console.log('=== Iniciando busca de receita ===');
+      console.log('Parâmetros:', { monthStr, monthStart, monthEnd });
       
-      // Primeiro, buscar pagamentos reais
-      const { data: payments, error: paymentsError } = await supabase
-        .from("payments")
-        .select(`
-          id,
-          amount,
-          clients!client_id(
-            company_name,
-            first_payment_date
-          )
-        `)
-        .gte("reference_month", monthStart.toISOString().split('T')[0])
-        .lt("reference_month", new Date(fullYear, parseInt(month), 1).toISOString().split('T')[0]);
+      try {
+        // Buscar pagamentos reais com valor > 0
+        const { data: payments, error: paymentsError } = await supabase
+          .from("payments")
+          .select(`
+            id,
+            amount,
+            clients!client_id(
+              company_name,
+              first_payment_date
+            )
+          `)
+          .gte("reference_month", monthStart.toISOString().split('T')[0])
+          .lt("reference_month", new Date(fullYear, parseInt(month), 1).toISOString().split('T')[0])
+          .gt("amount", 0); // Apenas pagamentos com valor > 0
 
-      if (paymentsError) {
-        console.error('Erro ao buscar pagamentos:', paymentsError);
-      }
+        console.log('Query de pagamentos:', { paymentsError, paymentsCount: payments?.length || 0 });
+        console.log('Pagamentos encontrados:', payments);
 
-      console.log('Pagamentos encontrados:', payments?.length || 0);
+        if (paymentsError) {
+          console.error('Erro ao buscar pagamentos:', paymentsError);
+          throw paymentsError;
+        }
 
-      // Se não há pagamentos, buscar clientes ativos no período
-      if (!payments || payments.length === 0) {
+        // Verificar se há pagamentos válidos (com valor > 0 e dados completos)
+        const validPayments = payments?.filter(payment => 
+          payment.amount > 0 && 
+          payment.clients?.company_name
+        ) || [];
+
+        console.log('Pagamentos válidos:', validPayments.length);
+
+        if (validPayments.length > 0) {
+          console.log('=== Retornando pagamentos reais ===');
+          return {
+            type: 'payments',
+            data: validPayments as PaymentWithClient[]
+          };
+        }
+
+        // Fallback: buscar clientes ativos no período
+        console.log('=== Buscando clientes ativos (fallback) ===');
         const { data: clients, error: clientsError } = await supabase
           .from("clients")
-          .select("*");
+          .select("*")
+          .eq("status", "active");
 
         if (clientsError) {
           console.error('Erro ao buscar clientes:', clientsError);
           throw clientsError;
         }
 
-        // Filtrar clientes ativos no mês
+        console.log('Total de clientes ativos:', clients?.length || 0);
+
+        // Filtrar clientes ativos no mês específico
         const activeClients = clients?.filter(client => 
           isClientActiveInMonth(client, monthStart, new Date(fullYear, parseInt(month), 0))
         ) || [];
 
-        console.log('Clientes ativos encontrados:', activeClients.length);
+        console.log('Clientes ativos no mês:', activeClients.length);
 
+        if (activeClients.length === 0) {
+          console.log('=== Nenhum cliente ativo encontrado ===');
+          return {
+            type: 'estimated',
+            data: []
+          };
+        }
+
+        console.log('=== Retornando receita estimada ===');
         return {
           type: 'estimated',
           data: activeClients.map(client => ({
             id: client.id,
             amount: client.contract_value || 0,
+            status: 'estimado',
             clients: {
               company_name: client.company_name,
               first_payment_date: client.first_payment_date
             }
           }))
         };
-      }
 
-      return {
-        type: 'payments',
-        data: payments as PaymentWithClient[]
-      };
+      } catch (error) {
+        console.error('=== Erro na busca de receita ===', error);
+        throw error;
+      }
     }
   });
 
