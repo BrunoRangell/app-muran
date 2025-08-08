@@ -2,6 +2,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClientDetailsTable } from "./ClientDetailsTable";
 import { RevenueDetailsTable } from "./RevenueDetailsTable";
+import { ProfitDetailsTable } from "../../../financial-dashboard/components/ProfitDetailsTable";
+import { CostsDetailsTable } from "../../../financial-dashboard/components/CostsDetailsTable";
+import { CACDetailsTable } from "../../../financial-dashboard/components/CACDetailsTable";
+import { LTVDetailsTable } from "../../../financial-dashboard/components/LTVDetailsTable";
 
 interface DetailsDialogProps {
   selectedPoint: {
@@ -24,14 +28,27 @@ export const DetailsDialog = ({ selectedPoint, onOpenChange, clients }: DetailsD
           </DialogTitle>
         </DialogHeader>
         
-        {selectedPoint?.metric === 'Receita Mensal' ? (
-          <RevenueDetailsTable monthStr={selectedPoint.month} />
-        ) : (
-          <ClientDetailsTable 
-            clients={clients}
-            metric={selectedPoint?.metric || ''}
-          />
-        )}
+        {(() => {
+          switch (selectedPoint?.metric) {
+            case 'Receita Mensal':
+              return <RevenueDetailsTable monthStr={selectedPoint.month} />;
+            case 'Lucro':
+              return <ProfitDetailsTable monthStr={selectedPoint.month} />;
+            case 'Custos Totais':
+              return <CostsDetailsTable monthStr={selectedPoint.month} />;
+            case 'CAC':
+              return <CACDetailsTable monthStr={selectedPoint.month} />;
+            case 'LTV':
+              return <LTVDetailsTable monthStr={selectedPoint.month} />;
+            default:
+              return (
+                <ClientDetailsTable 
+                  clients={clients}
+                  metric={selectedPoint?.metric || ''}
+                />
+              );
+          }
+        })()}
       </DialogContent>
     </Dialog>
   );
