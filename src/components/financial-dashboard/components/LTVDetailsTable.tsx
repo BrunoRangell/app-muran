@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { formatCurrency } from "@/utils/formatters";
 import { format, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseMonthString } from "@/utils/monthParser";
 
 interface LTVDetailsTableProps {
   monthStr: string; // formato "Jan/25"
@@ -22,16 +23,9 @@ interface ClientLTV {
 }
 
 export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
-  // Converter monthStr (ex: "Jan/25") para período de busca
-  const monthMapping: { [key: string]: number } = {
-    'jan': 1, 'fev': 2, 'mar': 3, 'abr': 4, 'mai': 5, 'jun': 6,
-    'jul': 7, 'ago': 8, 'set': 9, 'out': 10, 'nov': 11, 'dez': 12
-  };
-  
-  const [monthAbbr, yearStr] = monthStr.toLowerCase().split('/');
-  const month = monthMapping[monthAbbr];
-  const fullYear = parseInt(yearStr) < 50 ? 2000 + parseInt(yearStr) : 1900 + parseInt(yearStr);
-  const referenceDate = new Date(fullYear, month - 1, 1);
+  // Parse monthStr (example: "Jan/25" or "6/25")
+  const { monthEnd } = parseMonthString(monthStr);
+  const referenceDate = monthEnd; // Last day of the month
 
   const { data: clientsLTV, isLoading, error } = useQuery({
     queryKey: ['ltv-details', monthStr],
@@ -76,8 +70,9 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
         
         const monthsActive = Math.max(1, differenceInMonths(endDate, startDate) + 1);
         
-        // LTV = Total pago
-        const ltv = totalPaid;
+        // Calculate LTV using the same formula as financialCalculations.ts
+        // LTV = contract_value * monthsActive (representing ticket médio * retenção)
+        const ltv = client.contract_value * monthsActive;
 
         clientsWithLTV.push({
           id: client.id,

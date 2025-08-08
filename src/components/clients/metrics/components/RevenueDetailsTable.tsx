@@ -6,9 +6,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Client } from "../../types";
 import { isClientActiveInMonth } from "../utils/dateFilters";
+import { parseMonthString } from "@/utils/monthParser";
 
 interface RevenueDetailsTableProps {
-  monthStr: string; // formato "6/25"
+  monthStr: string; // formato "Jan/25" ou "6/25"
 }
 
 interface PaymentWithClient {
@@ -23,11 +24,8 @@ interface PaymentWithClient {
 }
 
 export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
-  // Converter monthStr (ex: "6/25") para período de busca
-  const [month, year] = monthStr.split('/');
-  const fullYear = parseInt(year) < 50 ? 2000 + parseInt(year) : 1900 + parseInt(year);
-  const monthStart = new Date(fullYear, parseInt(month) - 1, 1);
-  const monthEnd = new Date(fullYear, parseInt(month), 0);
+  // Converter monthStr (ex: "Jan/25" ou "6/25") para período de busca
+  const { monthStart, monthEnd, fullYear, month } = parseMonthString(monthStr);
 
   const { data: revenueData, isLoading, error } = useQuery({
     queryKey: ['revenue-details', monthStr],
@@ -50,7 +48,7 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
             )
           `)
           .gte("reference_month", monthStart.toISOString().split('T')[0])
-          .lt("reference_month", new Date(fullYear, parseInt(month), 1).toISOString().split('T')[0])
+          .lt("reference_month", new Date(fullYear, month + 1, 1).toISOString().split('T')[0])
           .gt("amount", 0); // Apenas pagamentos com valor > 0
 
         console.log('Query de pagamentos:', { paymentsError, paymentsCount: payments?.length || 0 });

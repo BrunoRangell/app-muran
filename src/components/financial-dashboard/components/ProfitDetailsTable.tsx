@@ -2,23 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { formatCurrency } from "@/utils/formatters";
+import { parseMonthString } from "@/utils/monthParser";
 
 interface ProfitDetailsTableProps {
   monthStr: string; // formato "Jan/25"
 }
 
 export const ProfitDetailsTable = ({ monthStr }: ProfitDetailsTableProps) => {
-  // Converter monthStr (ex: "Jan/25") para período de busca
-  const monthMapping: { [key: string]: number } = {
-    'jan': 1, 'fev': 2, 'mar': 3, 'abr': 4, 'mai': 5, 'jun': 6,
-    'jul': 7, 'ago': 8, 'set': 9, 'out': 10, 'nov': 11, 'dez': 12
-  };
-  
-  const [monthAbbr, yearStr] = monthStr.toLowerCase().split('/');
-  const month = monthMapping[monthAbbr];
-  const fullYear = parseInt(yearStr) < 50 ? 2000 + parseInt(yearStr) : 1900 + parseInt(yearStr);
-  const monthStart = new Date(fullYear, month - 1, 1);
-  const monthEnd = new Date(fullYear, month, 0);
+  // Parse monthStr to get start and end dates
+  const { monthStart, monthEnd, fullYear, month } = parseMonthString(monthStr);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['profit-details', monthStr],
@@ -28,7 +20,7 @@ export const ProfitDetailsTable = ({ monthStr }: ProfitDetailsTableProps) => {
         .from("payments")
         .select("amount")
         .gte("reference_month", monthStart.toISOString().split('T')[0])
-        .lt("reference_month", new Date(fullYear, month, 1).toISOString().split('T')[0])
+        .lt("reference_month", new Date(fullYear, month + 1, 1).toISOString().split('T')[0])
         .gt("amount", 0);
 
       if (paymentsError) throw paymentsError;
