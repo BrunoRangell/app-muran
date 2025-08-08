@@ -48,14 +48,6 @@ export const FinancialMetrics = () => {
         yAxisId: "clients"
       });
     }
-    if (selectedMetrics.churnRate) {
-      lines.push({
-        key: "churnRate",
-        name: "Churn Rate",
-        color: METRIC_COLORS.churnRate,
-        yAxisId: "percentage"
-      });
-    }
     if (selectedMetrics.newClients) {
       lines.push({
         key: "newClients",

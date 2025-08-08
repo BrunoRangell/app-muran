@@ -20,7 +20,6 @@ export const useFinancialMetrics = () => {
     mrr: true,
     clients: false,
     churn: false,
-    churnRate: false,
     newClients: false,
   });
 
