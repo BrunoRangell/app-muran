@@ -48,8 +48,8 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
           <Activity className="h-5 w-5 text-purple-600" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-muran-dark">Performance KPIs</h3>
-          <p className="text-gray-600">Indicadores de desempenho chave</p>
+          <h3 className="text-xl font-bold text-muran-dark">Saúde Financeira de Longo Prazo</h3>
+          <p className="text-gray-600">Indicadores de sustentabilidade financeira</p>
         </div>
       </div>
 
@@ -70,30 +70,6 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
           trend={{ value: 22.3, isPositive: true }}
           color={ltvcacRatio >= 3 ? "bg-green-500" : ltvcacRatio >= 2 ? "bg-yellow-500" : "bg-red-500"}
           description="Rel. Lifetime Value vs CAC"
-        />
-
-        <InteractiveMetricCard
-          title="Crescimento MRR"
-          value={`${(metrics?.mrrGrowthRate || 0).toFixed(1)}%`}
-          icon={Award}
-          trend={{ 
-            value: Math.abs(metrics?.mrrGrowthRate || 0), 
-            isPositive: (metrics?.mrrGrowthRate || 0) >= 0 
-          }}
-          color={(metrics?.mrrGrowthRate || 0) >= 0 ? "bg-green-500" : "bg-red-500"}
-          description="Crescimento mensal da receita vs mês anterior"
-        />
-
-        <InteractiveMetricCard
-          title="Score de Saúde"
-          value={`${Math.round(metrics?.healthScore || 0)}/100`}
-          icon={Activity}
-          trend={{ value: 5.2, isPositive: true }}
-          color={
-            (metrics?.healthScore || 0) >= 80 ? "bg-green-500" :
-            (metrics?.healthScore || 0) >= 60 ? "bg-yellow-500" : "bg-red-500"
-          }
-          description="Indicador geral de saúde financeira baseado em múltiplos KPIs"
         />
       </div>
     </Card>

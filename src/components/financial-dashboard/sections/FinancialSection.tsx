@@ -57,7 +57,7 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <InteractiveMetricCard
           title="Receita Mensal Prevista"
           value={formatCurrency(metrics?.mrr || 0)}
@@ -92,6 +92,18 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
           trend={{ value: 3.1, isPositive: marginProfit >= 0 }}
           color={marginProfit >= 20 ? "bg-green-500" : marginProfit >= 10 ? "bg-yellow-500" : "bg-red-500"}
           description="Percentual do lucro sobre receita"
+        />
+
+        <InteractiveMetricCard
+          title="Crescimento da Receita"
+          value={`${(metrics?.mrrGrowthRate || 0).toFixed(1)}%`}
+          icon={TrendingUp}
+          trend={{ 
+            value: Math.abs(metrics?.mrrGrowthRate || 0), 
+            isPositive: (metrics?.mrrGrowthRate || 0) >= 0 
+          }}
+          color={(metrics?.mrrGrowthRate || 0) >= 0 ? "bg-green-500" : "bg-red-500"}
+          description="Crescimento mensal da receita vs mês anterior"
         />
       </div>
     </Card>
