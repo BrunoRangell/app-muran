@@ -1,5 +1,5 @@
 
-import { Users, UserPlus, UserMinus, Clock, Target } from "lucide-react";
+import { Users, UserPlus, UserMinus, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CostFilters } from "@/types/cost";
 import { InteractiveMetricCard } from "../components/InteractiveMetricCard";
@@ -36,12 +36,6 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
     }).format(value);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
 
   return (
     <Card className="p-6 border-l-4 border-l-blue-500">
@@ -55,7 +49,7 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InteractiveMetricCard
           title="Clientes Ativos"
           value={metrics?.activeClientsCount?.toString() || "0"}
@@ -92,14 +86,6 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
           description="Tempo médio de permanência"
         />
 
-        <InteractiveMetricCard
-          title="Receita Média por Cliente"
-          value={formatCurrency(metrics?.averageTicket || 0)}
-          icon={Target}
-          trend={{ value: 8.3, isPositive: true }}
-          color="bg-blue-500"
-          description="Receita média gerada por cada cliente ativo"
-        />
       </div>
     </Card>
   );

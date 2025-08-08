@@ -25,18 +25,29 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     isClientNewInMonth(client, currentMonthStart, currentMonthEnd)
   ).length;
 
-  // Calcular MRR do mês anterior para crescimento
+  // Calcular crescimento da receita baseado em payments
   const lastMonthStart = startOfMonth(subMonths(today, 1));
   const lastMonthEnd = endOfMonth(subMonths(today, 1));
-  const lastMonthActiveClients = clients.filter(client => {
-    const firstPayment = parseISO(client.first_payment_date);
-    const lastPayment = client.last_payment_date ? parseISO(client.last_payment_date) : null;
-    return firstPayment <= lastMonthEnd && (!lastPayment || lastPayment >= lastMonthStart);
-  });
-  const lastMonthMRR = lastMonthActiveClients.reduce((sum, client) => sum + Number(client.contract_value), 0);
   
-  // Crescimento MRR
-  const mrrGrowthRate = lastMonthMRR > 0 ? ((mrr - lastMonthMRR) / lastMonthMRR) * 100 : 0;
+  // Buscar payments do mês atual
+  const { data: currentMonthPayments } = await supabase
+    .from("payments")
+    .select("amount")
+    .gte("reference_month", currentMonthStart.toISOString().split('T')[0])
+    .lte("reference_month", currentMonthEnd.toISOString().split('T')[0]);
+  
+  // Buscar payments do mês anterior
+  const { data: lastMonthPayments } = await supabase
+    .from("payments")
+    .select("amount")
+    .gte("reference_month", lastMonthStart.toISOString().split('T')[0])
+    .lte("reference_month", lastMonthEnd.toISOString().split('T')[0]);
+  
+  const currentMonthRevenue = (currentMonthPayments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const lastMonthRevenue = (lastMonthPayments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+  
+  // Crescimento da receita
+  const mrrGrowthRate = lastMonthRevenue > 0 ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0;
 
   // Ticket Médio
   const averageTicket = activeClientsCount > 0 ? mrr / activeClientsCount : 0;
@@ -52,21 +63,22 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
 
   const averageRetention = retentionPeriods.reduce((sum, months) => sum + months, 0) / totalClients;
 
-  // Churn Rate (últimos 3 meses)
-  const churned = clients.filter(client => 
+  // Churn Rate (apenas mês atual)
+  const churnedThisMonth = clients.filter(client => 
     client.status === "inactive" && 
     client.last_payment_date && 
-    parseISO(client.last_payment_date) >= threeMonthsAgo
+    parseISO(client.last_payment_date) >= currentMonthStart &&
+    parseISO(client.last_payment_date) <= currentMonthEnd
   ).length;
 
-  const activeClientsThreeMonthsAgo = clients.filter(client => 
-    client.first_payment_date && 
-    parseISO(client.first_payment_date) <= threeMonthsAgo &&
-    (!client.last_payment_date || parseISO(client.last_payment_date) > threeMonthsAgo)
-  ).length;
+  const activeClientsThisMonth = clients.filter(client => {
+    const firstPayment = parseISO(client.first_payment_date);
+    const lastPayment = client.last_payment_date ? parseISO(client.last_payment_date) : null;
+    return firstPayment <= currentMonthEnd && (!lastPayment || lastPayment >= currentMonthStart);
+  }).length;
 
-  const churnRate = activeClientsThreeMonthsAgo > 0 
-    ? (churned / activeClientsThreeMonthsAgo) * 100 
+  const churnRate = activeClientsThisMonth > 0 
+    ? (churnedThisMonth / activeClientsThisMonth) * 100 
     : 0;
 
   // LTV (Lifetime Value) - usando ticket médio * retenção média
@@ -122,8 +134,8 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     ltv,
     activeClientsCount,
     totalClients,
-    churned,
-    activeClientsThreeMonthsAgo,
+    churnedThisMonth,
+    activeClientsThisMonth,
     averageTicket,
     totalCosts,
     newClientsThisMonth,
