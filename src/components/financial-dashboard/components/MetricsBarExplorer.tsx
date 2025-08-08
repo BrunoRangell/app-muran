@@ -176,7 +176,7 @@ export const MetricsBarExplorer = () => {
   const filteredClients = selectedPoint 
     ? getClientsForPeriod({
         monthStr: String(parse(selectedPoint.month, "MMM/yy", new Date(), { locale: ptBR }).getMonth() + 1),
-        yearStr: String(parse(selectedPoint.month, "MMM/yy", new Date(), { locale: ptBR }).getFullYear()),
+        yearStr: String(parse(selectedPoint.month, "MMM/yy", new Date(), { locale: ptBR }).getFullYear() % 100),
         metric: selectedPoint.metric,
         clients: clients || []
       })
