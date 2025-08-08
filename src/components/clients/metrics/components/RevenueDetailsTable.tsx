@@ -14,10 +14,11 @@ interface RevenueDetailsTableProps {
 interface PaymentWithClient {
   id: number;
   amount: number;
-  status?: string;
+  client_id: string;
   clients: {
     company_name: string;
     first_payment_date: string;
+    status: string;
   };
 }
 
@@ -35,7 +36,7 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
       console.log('Parâmetros:', { monthStr, monthStart, monthEnd });
       
       try {
-        // Buscar pagamentos reais com valor > 0 usando JOIN manual para evitar erro de relacionamento duplicado
+        // Buscar apenas pagamentos reais com valor > 0
         const { data: payments, error: paymentsError } = await supabase
           .from("payments")
           .select(`
@@ -44,7 +45,8 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
             client_id,
             clients:client_id(
               company_name,
-              first_payment_date
+              first_payment_date,
+              status
             )
           `)
           .gte("reference_month", monthStart.toISOString().split('T')[0])
@@ -52,70 +54,23 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
           .gt("amount", 0); // Apenas pagamentos com valor > 0
 
         console.log('Query de pagamentos:', { paymentsError, paymentsCount: payments?.length || 0 });
-        console.log('Pagamentos encontrados:', payments);
 
         if (paymentsError) {
           console.error('Erro ao buscar pagamentos:', paymentsError);
           throw paymentsError;
         }
 
-        // Verificar se há pagamentos válidos (com valor > 0 e dados completos)
+        // Filtrar pagamentos válidos
         const validPayments = payments?.filter(payment => 
           payment.amount > 0 && 
           payment.clients?.company_name
         ) || [];
 
-        console.log('Pagamentos válidos:', validPayments.length);
+        console.log('Pagamentos encontrados:', validPayments.length);
 
-        if (validPayments.length > 0) {
-          console.log('=== Retornando pagamentos reais ===');
-          return {
-            type: 'payments',
-            data: validPayments as PaymentWithClient[]
-          };
-        }
-
-        // Fallback: buscar clientes ativos no período
-        console.log('=== Buscando clientes ativos (fallback) ===');
-        const { data: clients, error: clientsError } = await supabase
-          .from("clients")
-          .select("*")
-          .eq("status", "active");
-
-        if (clientsError) {
-          console.error('Erro ao buscar clientes:', clientsError);
-          throw clientsError;
-        }
-
-        console.log('Total de clientes ativos:', clients?.length || 0);
-
-        // Filtrar clientes ativos no mês específico
-        const activeClients = clients?.filter(client => 
-          isClientActiveInMonth(client, monthStart, new Date(fullYear, parseInt(month), 0))
-        ) || [];
-
-        console.log('Clientes ativos no mês:', activeClients.length);
-
-        if (activeClients.length === 0) {
-          console.log('=== Nenhum cliente ativo encontrado ===');
-          return {
-            type: 'estimated',
-            data: []
-          };
-        }
-
-        console.log('=== Retornando receita estimada ===');
         return {
-          type: 'estimated',
-          data: activeClients.map(client => ({
-            id: client.id,
-            amount: client.contract_value || 0,
-            status: 'estimado',
-            clients: {
-              company_name: client.company_name,
-              first_payment_date: client.first_payment_date
-            }
-          }))
+          type: 'payments',
+          data: validPayments as PaymentWithClient[]
         };
 
       } catch (error) {
@@ -147,33 +102,21 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
     return (
       <div className="text-center py-8">
         <div className="text-sm text-muted-foreground">
-          Nenhum dado de receita encontrado para este período
+          Nenhum pagamento registrado para este período
         </div>
       </div>
     );
   }
 
-  const { type, data } = revenueData;
+  const { data } = revenueData;
 
   return (
     <div className="space-y-4">
-      {type === 'estimated' && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-amber-700 text-sm">
-            <span className="inline-block w-2 h-2 bg-amber-500 rounded-full"></span>
-            <span className="font-medium">Receita Estimada</span>
-          </div>
-          <p className="text-xs text-amber-600 mt-1">
-            Valores baseados nos contratos ativos (sem pagamentos registrados para este mês)
-          </p>
-        </div>
-      )}
-      
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Empresa</TableHead>
-            <TableHead>{type === 'payments' ? 'Valor Pago' : 'Valor do Contrato'}</TableHead>
+            <TableHead>Valor Pago</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Início</TableHead>
           </TableRow>
@@ -187,11 +130,11 @@ export const RevenueDetailsTable = ({ monthStr }: RevenueDetailsTableProps) => {
               <TableCell>{formatCurrency(item.amount)}</TableCell>
               <TableCell>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  type === 'payments' 
+                  item.clients?.status === 'active' 
                     ? 'bg-green-100 text-green-800' 
-                    : 'bg-amber-100 text-amber-800'
+                    : 'bg-red-100 text-red-800'
                 }`}>
-                  {type === 'payments' ? 'Pago' : 'Estimado'}
+                  {item.clients?.status === 'active' ? 'Ativo' : 'Inativo'}
                 </span>
               </TableCell>
               <TableCell>

@@ -29,7 +29,15 @@ export const ClientDetailsTable = ({ clients, metric }: ClientDetailsTableProps)
           <TableRow key={client.id}>
             <TableCell className="font-medium">{client.company_name}</TableCell>
             <TableCell>{formatCurrency(client.contract_value)}</TableCell>
-            <TableCell>{client.status}</TableCell>
+            <TableCell>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                client.status === 'active' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {client.status === 'active' ? 'Ativo' : 'Inativo'}
+              </span>
+            </TableCell>
             <TableCell>{client.acquisition_channel}</TableCell>
             <TableCell>
               {format(new Date(client.first_payment_date), 'dd/MM/yyyy')}
