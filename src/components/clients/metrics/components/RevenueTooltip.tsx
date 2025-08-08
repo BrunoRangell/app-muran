@@ -15,19 +15,6 @@ export const RevenueTooltip = ({ paymentDetails, totalRevenue }: RevenueTooltipP
     );
   }
 
-  if (!paymentDetails.length && totalRevenue > 0) {
-    return (
-      <div className="text-sm">
-        <div className="font-semibold text-amber-600">
-          Total: {formatCurrency(totalRevenue)}
-        </div>
-        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-          <span className="inline-block w-2 h-2 bg-amber-400 rounded-full"></span>
-          Receita estimada (baseada em contratos ativos)
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-2">
