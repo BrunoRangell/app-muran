@@ -1,6 +1,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClientDetailsTable } from "./ClientDetailsTable";
+import { RevenueDetailsTable } from "./RevenueDetailsTable";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -35,10 +36,14 @@ export const DetailsDialog = ({ selectedPoint, onOpenChange, clients }: DetailsD
           </DialogTitle>
         </DialogHeader>
         
-        <ClientDetailsTable 
-          clients={clients}
-          metric={selectedPoint?.metric || ''}
-        />
+        {selectedPoint?.metric === 'Receita Mensal' ? (
+          <RevenueDetailsTable monthStr={selectedPoint.month} />
+        ) : (
+          <ClientDetailsTable 
+            clients={clients}
+            metric={selectedPoint?.metric || ''}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

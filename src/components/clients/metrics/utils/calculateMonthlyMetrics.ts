@@ -60,11 +60,18 @@ export const calculateMonthlyMetrics = async (
 
     const activeClientsAtStartOfMonth = getActiveClientsAtStartOfMonth(clients, monthStart);
 
-    // Para o gráfico, usar APENAS receita real baseada em pagamentos
+    // Para o gráfico, usar receita real baseada em pagamentos
     const paymentMetrics = await calculatePaymentBasedMRR(monthStart, monthEnd);
     
-    // Usar apenas dados reais de pagamentos - se não há dados, fica 0
-    const mrrValue = paymentMetrics.monthlyRevenue;
+    // Se não há pagamentos registrados, calcular baseado em contratos ativos como fallback
+    let mrrValue = paymentMetrics.monthlyRevenue;
+    
+    if (mrrValue === 0 && activeClientsInMonth.length > 0) {
+      // Fallback: somar valores de contratos dos clientes ativos no mês
+      mrrValue = activeClientsInMonth.reduce((total, client) => {
+        return total + (client.contract_value || 0);
+      }, 0);
+    }
 
     // Buscar detalhes dos pagamentos para o tooltip
     const { data: payments } = await supabase
