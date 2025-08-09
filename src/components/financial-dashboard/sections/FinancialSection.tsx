@@ -53,7 +53,6 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
         </div>
         <div>
           <h3 className="text-sm font-bold text-foreground">Métricas Financeiras</h3>
-          <p className="text-xs text-muted-foreground">Indicadores de receita</p>
         </div>
       </div>
 

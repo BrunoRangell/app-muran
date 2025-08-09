@@ -45,7 +45,6 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
         </div>
         <div>
           <h3 className="text-sm font-bold text-foreground">Base de Clientes</h3>
-          <p className="text-xs text-muted-foreground">Crescimento e retenção</p>
         </div>
       </div>
 

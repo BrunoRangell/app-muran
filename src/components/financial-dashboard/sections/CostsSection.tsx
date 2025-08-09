@@ -47,7 +47,6 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
         </div>
         <div>
           <h3 className="text-sm font-bold text-foreground">Análise de Custos</h3>
-          <p className="text-xs text-muted-foreground">Gastos e eficiência</p>
         </div>
       </div>
 

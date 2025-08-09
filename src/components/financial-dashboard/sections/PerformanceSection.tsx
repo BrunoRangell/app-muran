@@ -46,7 +46,6 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
         </div>
         <div>
           <h3 className="text-sm font-bold text-foreground">Saúde Financeira</h3>
-          <p className="text-xs text-muted-foreground">Sustentabilidade</p>
         </div>
       </div>
 
