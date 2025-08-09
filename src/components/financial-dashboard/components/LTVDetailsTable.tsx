@@ -88,6 +88,13 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
       const averageLTV = clientsWithLTV.length > 0 
         ? clientsWithLTV.reduce((sum, client) => sum + client.ltv, 0) / clientsWithLTV.length 
         : 0;
+        
+      console.log(`📊 LTVDetailsTable para ${monthStr}:`, {
+        totalClientes: activeClientsInMonth.length,
+        clientesComPayments: clientsWithLTV.length,
+        ltvMedio: averageLTV,
+        somaTotal: clientsWithLTV.reduce((sum, client) => sum + client.ltv, 0)
+      });
 
       return {
         clients: clientsWithLTV,

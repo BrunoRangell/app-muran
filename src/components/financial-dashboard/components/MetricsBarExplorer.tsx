@@ -128,8 +128,8 @@ const calculateAverageLTV = async (monthStr: string, clients: Client[]): Promise
     });
 
     // Parse da string do mês (ex: "Jan/25")
-    const parsedMonth = parseMonthString(monthStr);
-    const referenceDate = parsedMonth.monthStart;
+    const { monthStart, monthEnd } = parseMonthString(monthStr);
+    const referenceDate = monthEnd;
     
     // Filtrar clientes que estavam ativos no mês específico
     const activeClientsInMonth = clients.filter(client => {
@@ -139,10 +139,12 @@ const calculateAverageLTV = async (monthStr: string, clients: Client[]): Promise
       // Cliente estava ativo se começou antes/durante o mês de referência
       // e não cancelou antes do mês de referência
       const wasActive = firstPaymentDate <= referenceDate &&
-        (!lastPaymentDate || lastPaymentDate >= referenceDate);
+        (!lastPaymentDate || lastPaymentDate >= monthStart);
       
       return wasActive;
     });
+    
+    console.log(`👥 Clientes ativos em ${monthStr}: ${activeClientsInMonth.length}/${clients.length}`);
     
     if (activeClientsInMonth.length === 0) return 0;
     
@@ -155,12 +157,16 @@ const calculateAverageLTV = async (monthStr: string, clients: Client[]): Promise
     
     // Retornar a média dos LTVs reais
     const totalLTV = ltvValues.reduce((sum, ltv) => sum + ltv, 0);
-    return totalLTV / ltvValues.length;
+    const averageLTV = totalLTV / ltvValues.length;
     
-  } catch (error) {
-    console.error('Erro ao calcular LTV médio:', error);
-    return 0;
-  }
+    console.log(`💰 LTV calculado para ${monthStr}: R$ ${averageLTV.toFixed(2)} (${ltvValues.length} clientes, total: R$ ${totalLTV.toFixed(2)})`);
+    
+    return averageLTV;
+    
+    } catch (error) {
+      console.error(`❌ Erro ao calcular LTV para ${monthStr}:`, error);
+      return 0;
+    }
 };
 
 export const MetricsBarExplorer = () => {

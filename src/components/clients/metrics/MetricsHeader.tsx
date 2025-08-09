@@ -42,8 +42,8 @@ export const MetricsHeader = ({ metrics, formatCurrency, formatDecimal }: Metric
       <MetricCard
         icon={CreditCard}
         title="LTV Médio"
-        value={(metrics.ltv || 0) / (metrics.totalClients || 1)}
-        tooltip="Lifetime Value Médio - Valor médio gerado por cliente durante sua permanência. Calculado dividindo o LTV total pelo número de clientes"
+        value={metrics.ltv || 0}
+        tooltip="Lifetime Value Médio - Valor médio gerado por cliente baseado na soma real de payments. Já calculado como média no sistema"
         formatter={formatCurrency}
       />
 
