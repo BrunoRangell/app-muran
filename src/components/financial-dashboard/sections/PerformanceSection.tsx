@@ -17,8 +17,8 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
       <Card className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-          <div className="grid grid-cols-2 gap-4">
-            {[...Array(4)].map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[...Array(2)].map((_, i) => (
               <div key={i} className="h-24 bg-gray-200 rounded"></div>
             ))}
           </div>
@@ -46,27 +46,26 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
         </div>
         <div>
           <h3 className="text-sm font-bold text-foreground">Saúde Financeira</h3>
-          <p className="text-xs text-muted-foreground">Sustentabilidade</p>
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
         <InteractiveMetricCard
           title="LTV Médio"
           value={formatCurrency(metrics?.ltv || 0)}
           icon={Target}
-          trend={{ value: 15.8, isPositive: true }}
+          trend={metrics?.trends?.ltvTrend}
           color="bg-green-500"
           description="Valor médio do tempo de vida do cliente"
         />
 
         <InteractiveMetricCard
           title="LTV:CAC Ratio"
-          value={`${ltvCacRatio.toFixed(1)}:1`}
+          value={`${ltvCacRatio.toFixed(1)}x`}
           icon={TrendingUp}
-          trend={{ value: 23.7, isPositive: true }}
+          trend={metrics?.trends?.ltvCacRatioTrend}
           color={ltvCacRatio >= 3 ? "bg-green-500" : ltvCacRatio >= 2 ? "bg-yellow-500" : "bg-red-500"}
-          description="Relação entre LTV e CAC - ideal acima de 3:1"
+          description="Relação entre LTV e CAC - ideal acima de 3x"
         />
       </div>
     </Card>

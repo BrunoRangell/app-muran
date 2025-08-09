@@ -1,6 +1,7 @@
 
 import { Client } from "../../types";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { 
   isClientActiveInMonth, 
   isClientNewInMonth, 
@@ -60,11 +61,11 @@ export const calculateMonthlyMetrics = async (
 
     const activeClientsAtStartOfMonth = getActiveClientsAtStartOfMonth(clients, monthStart);
 
-    // Para o gráfico, usar APENAS receita real baseada em pagamentos
+    // Para o gráfico, usar receita real baseada em pagamentos
     const paymentMetrics = await calculatePaymentBasedMRR(monthStart, monthEnd);
     
-    // Usar apenas dados reais de pagamentos - se não há dados, fica 0
-    const mrrValue = paymentMetrics.monthlyRevenue;
+    // Usar apenas receita real de pagamentos, sem fallback
+    let mrrValue = paymentMetrics.monthlyRevenue;
 
     // Buscar detalhes dos pagamentos para o tooltip
     const { data: payments } = await supabase
@@ -81,7 +82,7 @@ export const calculateMonthlyMetrics = async (
       company_name: payment.clients?.company_name || 'Cliente não encontrado',
       amount: Number(payment.amount),
       status: 'RECEBIDO' // Todos os pagamentos na tabela são considerados recebidos
-    })) || [];
+    })).filter(payment => payment.amount > 0) || []; // Filtrar apenas pagamentos com valor real
 
     // Criar detalhes dos clientes ativos com último pagamento
     const clientDetails: ClientDetail[] = activeClientsInMonth.map(client => ({
@@ -98,7 +99,7 @@ export const calculateMonthlyMetrics = async (
       isClientNewInMonth(client, monthStart, monthEnd)
     );
 
-    const monthStr = format(currentDate, 'M/yy'); // Formato numérico para consistência
+    const monthStr = format(currentDate, 'MMM/yy', { locale: ptBR }); // Formato numérico para consistência
 
     const result = {
       month: monthStr,
@@ -121,7 +122,7 @@ export const calculateMonthlyMetrics = async (
     console.error("Error in calculateMonthlyMetrics:", error, currentDate);
     
     // Retornar dados padrão em caso de erro
-    const fallbackMonth = format(currentDate, 'M/yy');
+    const fallbackMonth = format(currentDate, 'MMM/yy', { locale: ptBR });
     return {
       month: fallbackMonth,
       mrr: 0,

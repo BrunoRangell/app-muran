@@ -8,7 +8,6 @@ interface MetricsSwitchProps {
     mrr: boolean;
     clients: boolean;
     churn: boolean;
-    churnRate: boolean;
     newClients: boolean;
   };
   onMetricChange: (metric: string, checked: boolean) => void;
@@ -17,7 +16,7 @@ interface MetricsSwitchProps {
 export const MetricsSwitch = ({ selectedMetrics, onMetricChange }: MetricsSwitchProps) => {
   return (
     <ScrollArea className="w-full p-4 border rounded-lg">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <div className="flex items-center space-x-2">
           <Switch
             id="mrr"
@@ -43,15 +42,6 @@ export const MetricsSwitch = ({ selectedMetrics, onMetricChange }: MetricsSwitch
             onCheckedChange={(checked) => onMetricChange('churn', checked)}
           />
           <Label htmlFor="churn">Clientes Cancelados</Label>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="churnRate"
-            checked={selectedMetrics.churnRate}
-            onCheckedChange={(checked) => onMetricChange('churnRate', checked)}
-          />
-          <Label htmlFor="churnRate">Churn Rate</Label>
         </div>
 
         <div className="flex items-center space-x-2">

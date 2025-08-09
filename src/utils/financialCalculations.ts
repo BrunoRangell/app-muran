@@ -1,9 +1,47 @@
-
 import { differenceInMonths, parseISO, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { Client } from "@/components/clients/types";
 import { supabase } from "@/integrations/supabase/client";
-import { calculateCurrentMRR } from "./paymentCalculations";
 import { isClientNewInMonth } from "@/components/clients/metrics/utils/dateFilters";
+import { calculateCAC, calculatePreviousMonthMetrics, calculateTrend } from './trendsCalculations';
+
+// Nova função para calcular LTV baseado em payments reais
+export const calculateRealLTV = async (clients: Client[]) => {
+  // Buscar todos os payments agrupados por cliente
+  const { data: paymentsData, error } = await supabase
+    .from("payments")
+    .select("client_id, amount");
+
+  if (error) {
+    console.error("Erro ao buscar payments:", error);
+    return { averageLTV: 0, individualLTVs: {} };
+  }
+
+  // Agrupar payments por cliente
+  const paymentsByClient: Record<string, number> = {};
+  (paymentsData || []).forEach(payment => {
+    const clientId = payment.client_id;
+    if (clientId) {
+      paymentsByClient[clientId] = (paymentsByClient[clientId] || 0) + Number(payment.amount);
+    }
+  });
+
+  // Calcular LTV individual para cada cliente (incluindo ativos e inativos)
+  const individualLTVs: Record<string, number> = {};
+  let totalLTV = 0;
+  let clientsWithPayments = 0;
+
+  clients.forEach(client => {
+    const clientLTV = paymentsByClient[client.id] || 0;
+    individualLTVs[client.id] = clientLTV;
+    totalLTV += clientLTV;
+    if (clientLTV > 0) clientsWithPayments++;
+  });
+
+  // LTV médio = soma de todos os LTVs individuais / total de clientes
+  const averageLTV = clients.length > 0 ? totalLTV / clients.length : 0;
+
+  return { averageLTV, individualLTVs };
+};
 
 export const calculateFinancialMetrics = async (clients: Client[]) => {
   const today = new Date();
@@ -81,11 +119,11 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     ? (churnedThisMonth / activeClientsThisMonth) * 100 
     : 0;
 
-  // LTV (Lifetime Value) - usando ticket médio * retenção média
-  const ltv = averageTicket * averageRetention;
+  // LTV baseado em payments reais
+  const { averageLTV: ltv } = await calculateRealLTV(clients);
   
-  // CAC fixo por enquanto
-  const cac = 1250;
+  // CAC baseado em custos de marketing e vendas
+  const cac = await calculateCAC(clients, today);
   
   // LTV:CAC Ratio
   const ltvCacRatio = cac > 0 ? ltv / cac : 0;
@@ -126,6 +164,10 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
 
   const totalCosts = (costs || []).reduce((acc, cost) => acc + Number(cost.amount), 0);
 
+  // Calculate month-over-month trends
+  const previousDate = subMonths(today, 1);
+  const previousMetrics = await calculatePreviousMonthMetrics(clients, previousDate);
+
   console.log("Financial metrics calculated:", {
     mrr: `R$ ${mrr.toLocaleString('pt-BR')} (Receita Mensal Prevista)`,
     arr: `R$ ${arr.toLocaleString('pt-BR')}`,
@@ -155,10 +197,20 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     totalClients,
     averageTicket,
     totalCosts,
-    newClientsThisMonth,
+    newClientsCount: newClientsThisMonth,
     mrrGrowthRate,
     ltvCacRatio,
     healthScore,
-    cac
+    cac,
+    trends: {
+      mrrTrend: calculateTrend(mrr, previousMetrics.mrr),
+      averageTicketTrend: calculateTrend(averageTicket, previousMetrics.averageTicket),
+      newClientsTrend: calculateTrend(newClientsThisMonth, previousMetrics.newClientsCount),
+      churnRateTrend: calculateTrend(churnRate, previousMetrics.churnRate, true), // true = lower is better
+      totalCostsTrend: calculateTrend(totalCosts || 0, previousMetrics.totalCosts, true),
+      cacTrend: calculateTrend(cac, previousMetrics.cac, true),
+      ltvTrend: calculateTrend(ltv, previousMetrics.ltv),
+      ltvCacRatioTrend: calculateTrend(ltvCacRatio, previousMetrics.ltvCacRatio),
+    }
   };
 };

@@ -2,6 +2,7 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Client } from "../../types";
+import { isClientActiveInMonth, isClientNewInMonth, isClientChurnedInMonth } from "../utils/dateFilters";
 
 interface FilterParams {
   monthStr: string;
@@ -70,36 +71,34 @@ export const useClientFiltering = () => {
     let filteredClients = [];
 
     switch (metric) {
-      case 'Clientes Adquiridos':
+      case 'Novos Clientes':
         filteredClients = clients.filter(client => {
-          if (!client.first_payment_date) return false;
-          const date = new Date(client.first_payment_date);
-          const isInPeriod = date >= startDate && date <= endDate;
-          if (isInPeriod) {
+          const isNew = isClientNewInMonth(client, startDate, endDate);
+          if (isNew) {
             console.log('Cliente adquirido encontrado:', client.company_name, client.first_payment_date);
           }
-          return isInPeriod;
+          // Debug específico para Orientista
+          if (client.company_name?.toLowerCase().includes('orientista')) {
+            console.log('🔍 DEBUG ORIENTISTA - Novo Cliente:', {
+              company: client.company_name,
+              first_payment: client.first_payment_date,
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              isNew,
+              calculatedDate: client.first_payment_date ? new Date(client.first_payment_date).toISOString() : 'null'
+            });
+          }
+          return isNew;
         });
         break;
         
       case 'Clientes Cancelados':
         filteredClients = clients.filter(client => {
-          if (!client.last_payment_date) return false;
-          const date = new Date(client.last_payment_date);
-          const isInPeriod = date >= startDate && date <= endDate && client.status === 'inactive';
-          if (isInPeriod) {
+          const isChurned = isClientChurnedInMonth(client, startDate, endDate) && client.status === 'inactive';
+          if (isChurned) {
             console.log('Cliente cancelado encontrado:', client.company_name, client.last_payment_date);
           }
-          return isInPeriod;
-        });
-        break;
-        
-      case 'Churn Rate':
-        filteredClients = clients.filter(client => {
-          if (!client.last_payment_date) return false;
-          const date = new Date(client.last_payment_date);
-          const isInPeriod = date >= startDate && date <= endDate && client.status === 'inactive';
-          return isInPeriod;
+          return isChurned;
         });
         break;
         
@@ -107,15 +106,29 @@ export const useClientFiltering = () => {
       case 'Total de Clientes':
       default:
         filteredClients = clients.filter(client => {
-          if (!client.first_payment_date) return false;
-          const startClient = new Date(client.first_payment_date);
-          const endClient = client.last_payment_date ? new Date(client.last_payment_date) : new Date();
-          const isActive = startClient <= endDate && endClient >= startDate;
+          const isActive = isClientActiveInMonth(client, startDate, endDate);
           if (isActive && metric === 'Total de Clientes') {
             console.log('Cliente ativo encontrado:', client.company_name, {
               first_payment: client.first_payment_date,
               last_payment: client.last_payment_date,
               status: client.status
+            });
+          }
+          // Debug específico para Orientista
+          if (client.company_name?.toLowerCase().includes('orientista')) {
+            console.log('🔍 DEBUG ORIENTISTA - Cliente Ativo:', {
+              company: client.company_name,
+              first_payment: client.first_payment_date,
+              last_payment: client.last_payment_date,
+              status: client.status,
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString(),
+              isActive,
+              calculatedStartDate: client.first_payment_date ? (() => {
+                const date = new Date(client.first_payment_date);
+                date.setDate(date.getDate() + 1);
+                return date.toISOString();
+              })() : 'null'
             });
           }
           return isActive;

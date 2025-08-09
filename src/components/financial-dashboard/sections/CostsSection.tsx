@@ -17,7 +17,7 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
       <Card className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-24 bg-gray-200 rounded"></div>
             ))}
@@ -47,43 +47,42 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
         </div>
         <div>
           <h3 className="text-sm font-bold text-foreground">Análise de Custos</h3>
-          <p className="text-xs text-muted-foreground">Gastos e eficiência</p>
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
         <InteractiveMetricCard
           title="Total de Custos"
           value={formatCurrency(metrics?.totalCosts || 0)}
           icon={CreditCard}
-          trend={{ value: -3.2, isPositive: false }}
+          trend={metrics?.trends?.totalCostsTrend}
           color="bg-red-500"
           description="Custos totais do período"
         />
 
         <InteractiveMetricCard
-          title="CAC"
-          value={formatCurrency(1250)}
+          title="CAC (3 meses)"
+          value={formatCurrency(metrics?.cac || 0)}
           icon={TrendingDown}
-          trend={{ value: -8.1, isPositive: true }}
+          trend={metrics?.trends?.cacTrend}
           color="bg-orange-500"
-          description="Custo de Aquisição de Cliente"
+          description="Custo de Aquisição de Cliente dos últimos 3 meses"
         />
 
         <InteractiveMetricCard
-          title="Custo por Cliente"
+          title="Custo mensal por cliente"
           value={formatCurrency(costPerClient)}
           icon={Calculator}
-          trend={{ value: 2.3, isPositive: false }}
+          trend={metrics?.trends?.totalCostsTrend}
           color="bg-yellow-500"
-          description="Custo médio por cliente ativo"
+          description="Custo médio mensal por cliente ativo"
         />
 
         <InteractiveMetricCard
           title="Custo vs Receita"
           value={`${costToRevenueRatio.toFixed(1)}%`}
           icon={AlertTriangle}
-          trend={{ value: -1.5, isPositive: true }}
+          trend={metrics?.trends?.totalCostsTrend}
           color={costToRevenueRatio <= 30 ? "bg-green-500" : costToRevenueRatio <= 50 ? "bg-yellow-500" : "bg-red-500"}
           description="Percentual dos custos sobre receita"
         />

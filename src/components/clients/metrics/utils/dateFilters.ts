@@ -19,9 +19,23 @@ export const isClientActiveInMonth = (client: Client, monthStart: Date, monthEnd
     if (!isValid(clientStart)) return false;
     if (client.last_payment_date && !isValid(clientEnd)) return false;
 
-    return isWithinInterval(monthStart, { start: clientStart, end: clientEnd }) ||
-           isWithinInterval(monthEnd, { start: clientStart, end: clientEnd }) ||
-           (clientStart <= monthStart && clientEnd >= monthEnd);
+    // Debug específico para Orientista
+    if (client.company_name?.toLowerCase().includes('orientista')) {
+      console.log('🔍 DEBUG ORIENTISTA - isClientActiveInMonth:', {
+        company: client.company_name,
+        clientStart: clientStart.toISOString(),
+        clientEnd: clientEnd.toISOString(),
+        monthStart: monthStart.toISOString(),
+        monthEnd: monthEnd.toISOString(),
+        condition1: clientStart <= monthEnd,
+        condition2: clientEnd >= monthStart,
+        result: clientStart <= monthEnd && clientEnd >= monthStart
+      });
+    }
+
+    // Lógica simplificada: há sobreposição se o cliente começou antes do fim do mês
+    // E ainda está ativo após o início do mês
+    return clientStart <= monthEnd && clientEnd >= monthStart;
   } catch (error) {
     console.error("Error processing active client:", client, error);
     return false;

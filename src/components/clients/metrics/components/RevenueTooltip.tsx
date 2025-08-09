@@ -15,30 +15,25 @@ export const RevenueTooltip = ({ paymentDetails, totalRevenue }: RevenueTooltipP
     );
   }
 
-  if (!paymentDetails.length && totalRevenue > 0) {
-    return (
-      <div className="text-sm">
-        <div className="font-semibold text-primary">
-          Total: {formatCurrency(totalRevenue)}
-        </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          Receita calculada baseada nos contratos ativos
-        </div>
-      </div>
-    );
-  }
+
+  // Filtrar apenas pagamentos com valor real
+  const realPayments = paymentDetails.filter(payment => payment.amount > 0);
 
   return (
     <div className="space-y-2">
-      <div className="font-semibold text-sm">
+      <div className="font-semibold text-sm flex items-center gap-2">
+        <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
         Total: {formatCurrency(totalRevenue)}
       </div>
+      <div className="text-xs text-muted-foreground mb-2">
+        Valores efetivamente pagos
+      </div>
       <div className="max-h-32 overflow-y-auto space-y-1">
-        {paymentDetails.map((payment, index) => (
+        {realPayments.map((payment, index) => (
           <div key={index} className="flex justify-between items-center text-xs bg-gray-50 p-2 rounded">
             <div className="flex-1 truncate">
               <div className="font-medium">{payment.company_name}</div>
-              <div className="text-gray-500 capitalize">{payment.status}</div>
+              <div className="text-green-600 capitalize font-medium">{payment.status}</div>
             </div>
             <div className="font-semibold text-primary">
               {formatCurrency(payment.amount)}

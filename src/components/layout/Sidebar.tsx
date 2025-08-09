@@ -42,7 +42,6 @@ const adminMenuItems: MenuItem[] = [
     submenu: financialSubMenu
   },
   { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
 ];
@@ -50,7 +49,7 @@ const adminMenuItems: MenuItem[] = [
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Equipe", path: "/equipe" },
-  { icon: ListTodo, label: "Gestão de Tarefas", path: "/tarefas" },
+  
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
 ];

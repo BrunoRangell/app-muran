@@ -1,8 +1,11 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClientDetailsTable } from "./ClientDetailsTable";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { RevenueDetailsTable } from "./RevenueDetailsTable";
+import { ProfitDetailsTable } from "../../../financial-dashboard/components/ProfitDetailsTable";
+import { CostsDetailsTable } from "../../../financial-dashboard/components/CostsDetailsTable";
+import { CACDetailsTable } from "../../../financial-dashboard/components/CACDetailsTable";
+import { LTVDetailsTable } from "../../../financial-dashboard/components/LTVDetailsTable";
 
 interface DetailsDialogProps {
   selectedPoint: {
@@ -15,30 +18,37 @@ interface DetailsDialogProps {
 }
 
 export const DetailsDialog = ({ selectedPoint, onOpenChange, clients }: DetailsDialogProps) => {
-  const formatMonthYear = (monthYear: string) => {
-    try {
-      const [month, year] = monthYear.split('/');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      return format(date, "MMM'/'yy", { locale: ptBR }).toLowerCase();
-    } catch (error) {
-      console.error('Erro ao formatar mês:', error, monthYear);
-      return monthYear;
-    }
-  };
 
   return (
     <Dialog open={!!selectedPoint} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {selectedPoint?.metric} - {selectedPoint?.month ? formatMonthYear(selectedPoint.month) : ''}
+            {selectedPoint?.metric} - {selectedPoint?.month || ''}
           </DialogTitle>
         </DialogHeader>
         
-        <ClientDetailsTable 
-          clients={clients}
-          metric={selectedPoint?.metric || ''}
-        />
+        {(() => {
+          switch (selectedPoint?.metric) {
+            case 'Receita Mensal':
+              return <RevenueDetailsTable monthStr={selectedPoint.month} />;
+            case 'Lucro':
+              return <ProfitDetailsTable monthStr={selectedPoint.month} />;
+            case 'Custos Totais':
+              return <CostsDetailsTable monthStr={selectedPoint.month} />;
+            case 'CAC':
+              return <CACDetailsTable monthStr={selectedPoint.month} />;
+            case 'LTV':
+              return <LTVDetailsTable monthStr={selectedPoint.month} />;
+            default:
+              return (
+                <ClientDetailsTable 
+                  clients={clients}
+                  metric={selectedPoint?.metric || ''}
+                />
+              );
+          }
+        })()}
       </DialogContent>
     </Dialog>
   );
