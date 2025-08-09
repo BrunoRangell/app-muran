@@ -49,7 +49,7 @@ const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 10
 const Clients = lazyWithTimeout(() => import("@/pages/Clients"));
 const NotFound = lazyWithTimeout(() => import("@/pages/NotFound"));
 const Managers = lazyWithTimeout(() => import("@/pages/Managers"));
-const Tasks = lazyWithTimeout(() => import("@/pages/Tasks"));
+
 const FinancialReport = lazyWithTimeout(() => import("@/pages/FinancialReport"));
 const RecebimentosNova = lazyWithTimeout(() => import("@/pages/RecebimentosNova"));
 const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
@@ -113,7 +113,7 @@ function App() {
           
           {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
-          <Route path="/tarefas" element={<Tasks />} />
+          
           <Route path="/saude-campanhas" element={<CampaignHealth />} />
           <Route path="*" element={<NotFound />} />
         </Route>

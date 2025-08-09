@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export const Layout = () => {
   const location = useLocation();
-  const isTasksPage = location.pathname === "/tarefas";
+  
   const isSettingsPage = location.pathname === "/configuracoes";
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -43,7 +43,7 @@ export const Layout = () => {
       <main 
         className={cn(
           "flex-1 transition-all duration-300 ease-in-out",
-          isTasksPage || isSettingsPage ? "p-0" : "p-4 md:p-8",
+          isSettingsPage ? "p-0" : "p-4 md:p-8",
           isMobile 
             ? "mt-16" 
             : isCollapsed 
