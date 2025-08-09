@@ -4,19 +4,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { isClientNewInMonth } from "@/components/clients/metrics/utils/dateFilters";
 import { calculateCAC, calculatePreviousMonthMetrics, calculateTrend } from './trendsCalculations';
 
-// Nova função para calcular LTV baseado em payments reais
-export const calculateRealLTV = async (clients: Client[]) => {
-  // Buscar todos os payments agrupados por cliente
+// Nova função para calcular LTV dos últimos 12 meses (Painel Saúde Financeira)
+export const calculateLTV12Months = async (clients: Client[]) => {
+  const today = new Date();
+  const twelveMonthsAgo = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+  
+  // Buscar todos os payments dos últimos 12 meses
   const { data: paymentsData, error } = await supabase
     .from("payments")
-    .select("client_id, amount");
+    .select("client_id, amount")
+    .gte("reference_month", twelveMonthsAgo.toISOString().split('T')[0])
+    .lte("reference_month", today.toISOString().split('T')[0]);
 
   if (error) {
-    console.error("Erro ao buscar payments:", error);
+    console.error("Erro ao buscar payments dos últimos 12 meses:", error);
     return { averageLTV: 0, individualLTVs: {} };
   }
 
-  // Agrupar payments por cliente
+  // Agrupar payments por cliente nos últimos 12 meses
   const paymentsByClient: Record<string, number> = {};
   (paymentsData || []).forEach(payment => {
     const clientId = payment.client_id;
@@ -25,20 +30,37 @@ export const calculateRealLTV = async (clients: Client[]) => {
     }
   });
 
-  // Calcular LTV individual para cada cliente (incluindo ativos e inativos)
-  const individualLTVs: Record<string, number> = {};
-  let totalLTV = 0;
-  let clientsWithPayments = 0;
-
-  clients.forEach(client => {
-    const clientLTV = paymentsByClient[client.id] || 0;
-    individualLTVs[client.id] = clientLTV;
-    totalLTV += clientLTV;
-    if (clientLTV > 0) clientsWithPayments++;
+  // Filtrar apenas clientes que estiveram ativos nos últimos 12 meses (ativos e inativos)
+  const activeClientsInPeriod = clients.filter(client => {
+    const firstPayment = parseISO(client.first_payment_date);
+    const lastPayment = client.last_payment_date ? parseISO(client.last_payment_date) : today;
+    
+    // Cliente esteve ativo se:
+    // - Primeiro pagamento foi antes ou durante o período E
+    // - Último pagamento foi dentro do período (ou ainda está ativo)
+    return firstPayment <= today && lastPayment >= twelveMonthsAgo;
   });
 
-  // LTV médio = soma de todos os LTVs individuais / total de clientes
-  const averageLTV = clients.length > 0 ? totalLTV / clients.length : 0;
+  // Calcular soma total de payments e contar clientes que fizeram pagamentos
+  let totalPayments = 0;
+  let clientsWithPayments = 0;
+
+  activeClientsInPeriod.forEach(client => {
+    const clientPayments = paymentsByClient[client.id] || 0;
+    if (clientPayments > 0) {
+      totalPayments += clientPayments;
+      clientsWithPayments++;
+    }
+  });
+
+  // LTV = Soma dos payments dos últimos 12 meses / Quantidade de clientes ativos nos últimos 12 meses
+  const averageLTV = clientsWithPayments > 0 ? totalPayments / clientsWithPayments : 0;
+
+  // Para compatibilidade, também retornar individualLTVs
+  const individualLTVs: Record<string, number> = {};
+  activeClientsInPeriod.forEach(client => {
+    individualLTVs[client.id] = paymentsByClient[client.id] || 0;
+  });
 
   return { averageLTV, individualLTVs };
 };
@@ -119,8 +141,8 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     ? (churnedThisMonth / activeClientsThisMonth) * 100 
     : 0;
 
-  // LTV baseado em payments reais
-  const { averageLTV: ltv } = await calculateRealLTV(clients);
+  // LTV baseado em payments dos últimos 12 meses
+  const { averageLTV: ltv } = await calculateLTV12Months(clients);
   
   // CAC baseado em custos de marketing e vendas
   const cac = await calculateCAC(clients, today);

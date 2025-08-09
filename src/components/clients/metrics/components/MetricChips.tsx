@@ -7,6 +7,7 @@ interface MetricChipsProps {
     clients: boolean;
     churn: boolean;
     newClients: boolean;
+    ltv: boolean;
   };
   onMetricChange: (metric: string, checked: boolean) => void;
 }
@@ -16,6 +17,7 @@ const METRICS_CONFIG = [
   { key: 'clients', label: 'Clientes Ativos', color: METRIC_COLORS.clients },
   { key: 'newClients', label: 'Novos Clientes', color: METRIC_COLORS.newClients },
   { key: 'churn', label: 'Churn', color: METRIC_COLORS.churn },
+  { key: 'ltv', label: 'LTV 12 meses', color: METRIC_COLORS.ltv },
 ];
 
 export const MetricChips = ({ selectedMetrics, onMetricChange }: MetricChipsProps) => {

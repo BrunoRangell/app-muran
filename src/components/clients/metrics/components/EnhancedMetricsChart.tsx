@@ -29,6 +29,7 @@ interface EnhancedMetricsChartProps {
     clients: boolean;
     churn: boolean;
     newClients: boolean;
+    ltv: boolean;
   };
   onMetricChange: (metric: string, checked: boolean) => void;
 }
