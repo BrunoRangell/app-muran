@@ -51,7 +51,7 @@ export const CostsSection = ({ filters }: CostsSectionProps) => {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <InteractiveMetricCard
           title="Total de Custos"
           value={formatCurrency(metrics?.totalCosts || 0)}

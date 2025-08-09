@@ -49,7 +49,7 @@ export const ClientsSection = ({ filters }: ClientsSectionProps) => {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <InteractiveMetricCard
           title="Clientes Ativos"
           value={metrics?.activeClientsCount?.toString() || "0"}
