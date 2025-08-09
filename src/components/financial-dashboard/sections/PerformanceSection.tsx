@@ -17,8 +17,8 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
       <Card className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-          <div className="grid grid-cols-2 gap-4">
-            {[...Array(4)].map((_, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[...Array(2)].map((_, i) => (
               <div key={i} className="h-24 bg-gray-200 rounded"></div>
             ))}
           </div>
@@ -50,7 +50,7 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <InteractiveMetricCard
           title="LTV Médio"
           value={formatCurrency(metrics?.ltv || 0)}
