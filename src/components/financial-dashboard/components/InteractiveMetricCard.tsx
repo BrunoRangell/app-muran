@@ -28,7 +28,7 @@ export const InteractiveMetricCard = ({
 }: InteractiveMetricCardProps) => {
   return (
     <Card 
-      className={`p-2 hover:shadow-lg transition-all duration-200 cursor-pointer border-l-2 ${
+      className={`p-1.5 hover:shadow-lg transition-all duration-200 cursor-pointer border-l-2 ${
         onClick ? 'hover:scale-[1.01]' : ''
       } group h-fit`}
       style={{ borderLeftColor: color.replace('bg-', '#') }}
@@ -36,7 +36,7 @@ export const InteractiveMetricCard = ({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1 mb-1">
+          <div className="flex items-center gap-1 mb-0.5">
             <h4 className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors truncate">
               {title}
             </h4>
@@ -52,7 +52,7 @@ export const InteractiveMetricCard = ({
             </TooltipProvider>
           </div>
           
-          <div className="mb-1">
+          <div className="mb-0.5">
             <span className="text-lg font-bold text-foreground group-hover:text-muran-primary transition-colors">
               {value}
             </span>

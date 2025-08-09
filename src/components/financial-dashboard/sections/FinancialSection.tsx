@@ -57,7 +57,7 @@ export const FinancialSection = ({ filters }: FinancialSectionProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
         <InteractiveMetricCard
           title="Receita mensal prevista"
           value={formatCurrency(metrics?.mrr || 0)}

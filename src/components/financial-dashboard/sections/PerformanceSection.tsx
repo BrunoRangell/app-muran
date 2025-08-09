@@ -50,7 +50,7 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
         <InteractiveMetricCard
           title="LTV Médio"
           value={formatCurrency(metrics?.ltv || 0)}

@@ -12,9 +12,9 @@ interface UnifiedDashboardProps {
 
 export const UnifiedDashboard = ({ filters }: UnifiedDashboardProps) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Layout Vertical dos Painéis */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <FinancialSection filters={filters} />
         <ClientsSection filters={filters} />
         <CostsSection filters={filters} />
