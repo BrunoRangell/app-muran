@@ -56,6 +56,14 @@ export const FinancialMetrics = () => {
         yAxisId: "clients"
       });
     }
+    if (selectedMetrics.ltv) {
+      lines.push({
+        key: "ltv",
+        name: "LTV 12 meses",
+        color: METRIC_COLORS.ltv,
+        yAxisId: "mrr"
+      });
+    }
     return lines;
   };
 

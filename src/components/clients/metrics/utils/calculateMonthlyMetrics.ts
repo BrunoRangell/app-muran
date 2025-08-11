@@ -9,6 +9,7 @@ import {
   getActiveClientsAtStartOfMonth 
 } from "./dateFilters";
 import { calculatePaymentBasedMRR } from "@/utils/paymentCalculations";
+import { calculateMovingLTV12Months } from "@/utils/movingLTVCalculations";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface PaymentDetail {
@@ -29,6 +30,7 @@ interface MonthlyMetrics {
   churn: number;
   churnRate: number;
   newClients: number;
+  ltv: number;
   paymentDetails?: PaymentDetail[];
   clientDetails?: ClientDetail[];
   churnedClients?: string[];
@@ -66,6 +68,9 @@ export const calculateMonthlyMetrics = async (
     
     // Usar apenas receita real de pagamentos, sem fallback
     let mrrValue = paymentMetrics.monthlyRevenue;
+
+    // Calcular LTV móvel de 12 meses para este mês
+    const ltvValue = await calculateMovingLTV12Months(clients, currentDate);
 
     // Buscar detalhes dos pagamentos para o tooltip
     const { data: payments } = await supabase
@@ -110,6 +115,7 @@ export const calculateMonthlyMetrics = async (
         ? (churned / activeClientsAtStartOfMonth) * 100 
         : 0,
       newClients: newClients,
+      ltv: ltvValue, // LTV móvel de 12 meses
       paymentDetails,
       clientDetails,
       churnedClients: churnedClientList.map(c => c.company_name),
@@ -129,7 +135,8 @@ export const calculateMonthlyMetrics = async (
       clients: 0,
       churn: 0,
       churnRate: 0,
-      newClients: 0
+      newClients: 0,
+      ltv: 0
     };
   }
 };

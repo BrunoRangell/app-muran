@@ -51,12 +51,12 @@ export const PerformanceSection = ({ filters }: PerformanceSectionProps) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
         <InteractiveMetricCard
-          title="LTV Médio"
+          title="LTV (últimos 12 meses)"
           value={formatCurrency(metrics?.ltv || 0)}
           icon={Target}
           trend={metrics?.trends?.ltvTrend}
           color="bg-green-500"
-          description="Valor médio do tempo de vida do cliente"
+          description="Soma dos pagamentos dos últimos 12 meses dividido por clientes ativos no período"
         />
 
         <InteractiveMetricCard

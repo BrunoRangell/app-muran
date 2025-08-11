@@ -21,6 +21,7 @@ export const useFinancialMetrics = () => {
     clients: false,
     churn: false,
     newClients: false,
+    ltv: false,
   });
 
   const handlePeriodChange = (value: PeriodFilter) => {

@@ -3,44 +3,11 @@ import { Client } from "@/components/clients/types";
 import { supabase } from "@/integrations/supabase/client";
 import { isClientNewInMonth } from "@/components/clients/metrics/utils/dateFilters";
 import { calculateCAC, calculatePreviousMonthMetrics, calculateTrend } from './trendsCalculations';
+import { calculateLTVForDashboard } from './unifiedLTVCalculations';
 
-// Nova função para calcular LTV baseado em payments reais
-export const calculateRealLTV = async (clients: Client[]) => {
-  // Buscar todos os payments agrupados por cliente
-  const { data: paymentsData, error } = await supabase
-    .from("payments")
-    .select("client_id, amount");
-
-  if (error) {
-    console.error("Erro ao buscar payments:", error);
-    return { averageLTV: 0, individualLTVs: {} };
-  }
-
-  // Agrupar payments por cliente
-  const paymentsByClient: Record<string, number> = {};
-  (paymentsData || []).forEach(payment => {
-    const clientId = payment.client_id;
-    if (clientId) {
-      paymentsByClient[clientId] = (paymentsByClient[clientId] || 0) + Number(payment.amount);
-    }
-  });
-
-  // Calcular LTV individual para cada cliente (incluindo ativos e inativos)
-  const individualLTVs: Record<string, number> = {};
-  let totalLTV = 0;
-  let clientsWithPayments = 0;
-
-  clients.forEach(client => {
-    const clientLTV = paymentsByClient[client.id] || 0;
-    individualLTVs[client.id] = clientLTV;
-    totalLTV += clientLTV;
-    if (clientLTV > 0) clientsWithPayments++;
-  });
-
-  // LTV médio = soma de todos os LTVs individuais / total de clientes
-  const averageLTV = clients.length > 0 ? totalLTV / clients.length : 0;
-
-  return { averageLTV, individualLTVs };
+// Função atualizada para usar o cálculo unificado de LTV
+export const calculateLTV12Months = async (clients: Client[]) => {
+  return await calculateLTVForDashboard(clients);
 };
 
 export const calculateFinancialMetrics = async (clients: Client[]) => {
@@ -119,8 +86,8 @@ export const calculateFinancialMetrics = async (clients: Client[]) => {
     ? (churnedThisMonth / activeClientsThisMonth) * 100 
     : 0;
 
-  // LTV baseado em payments reais
-  const { averageLTV: ltv } = await calculateRealLTV(clients);
+  // LTV baseado em payments dos últimos 12 meses
+  const { averageLTV: ltv } = await calculateLTV12Months(clients);
   
   // CAC baseado em custos de marketing e vendas
   const cac = await calculateCAC(clients, today);

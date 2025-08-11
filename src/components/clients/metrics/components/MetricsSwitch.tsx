@@ -9,6 +9,7 @@ interface MetricsSwitchProps {
     clients: boolean;
     churn: boolean;
     newClients: boolean;
+    ltv: boolean;
   };
   onMetricChange: (metric: string, checked: boolean) => void;
 }
@@ -51,6 +52,15 @@ export const MetricsSwitch = ({ selectedMetrics, onMetricChange }: MetricsSwitch
             onCheckedChange={(checked) => onMetricChange('newClients', checked)}
           />
           <Label htmlFor="newClients">Clientes Adquiridos</Label>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="ltv"
+            checked={selectedMetrics.ltv}
+            onCheckedChange={(checked) => onMetricChange('ltv', checked)}
+          />
+          <Label htmlFor="ltv">LTV 12 meses</Label>
         </div>
       </div>
     </ScrollArea>
