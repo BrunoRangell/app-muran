@@ -3,6 +3,13 @@ import { Client } from "@/components/clients/types";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
+ * Normaliza a data removendo horas/minutos/segundos para garantir consistência
+ */
+const normalizeDate = (date: Date): Date => {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+};
+
+/**
  * Função unificada para calcular LTV de 12 meses
  * Usa o mesmo período e critérios para painel e gráfico de barras
  * 
@@ -11,32 +18,45 @@ import { supabase } from "@/integrations/supabase/client";
  * @returns LTV calculado para o período
  */
 export const calculateLTV12MonthsPeriod = async (clients: Client[], targetMonth: Date) => {
-  // Calcular período de 12 meses: (M-11) até M
-  const endOfPeriod = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0); // Último dia do mês
-  const startOfPeriod = new Date(targetMonth.getFullYear() - 1, targetMonth.getMonth(), 1); // Primeiro dia do mês 12 meses atrás
+  // Normalizar a data de referência
+  const normalizedTargetMonth = normalizeDate(targetMonth);
   
-  console.log(`[Unified LTV] Calculating for ${targetMonth.toISOString()}: ${startOfPeriod.toISOString()} to ${endOfPeriod.toISOString()}`);
+  // Calcular período EXATO de 12 meses: (M-11) até M
+  const endOfPeriod = new Date(normalizedTargetMonth.getFullYear(), normalizedTargetMonth.getMonth() + 1, 0); // Último dia do mês
+  const startOfPeriod = new Date(normalizedTargetMonth.getFullYear(), normalizedTargetMonth.getMonth() - 11, 1); // Primeiro dia 11 meses atrás (12 meses total)
+  
+  const startDateStr = startOfPeriod.toISOString().split('T')[0];
+  const endDateStr = endOfPeriod.toISOString().split('T')[0];
+  
+  console.log(`[Unified LTV] === CÁLCULO LTV UNIFICADO ===`);
+  console.log(`[Unified LTV] Target Month: ${normalizedTargetMonth.toISOString().split('T')[0]}`);
+  console.log(`[Unified LTV] Period: ${startDateStr} to ${endDateStr}`);
+  console.log(`[Unified LTV] Total clients input: ${clients.length}`);
   
   // Buscar payments no período de 12 meses
   const { data: paymentsData, error } = await supabase
     .from("payments")
-    .select("client_id, amount")
-    .gte("reference_month", startOfPeriod.toISOString().split('T')[0])
-    .lte("reference_month", endOfPeriod.toISOString().split('T')[0]);
+    .select("client_id, amount, reference_month")
+    .gte("reference_month", startDateStr)
+    .lte("reference_month", endDateStr);
 
   if (error) {
     console.error("Erro ao buscar payments para LTV unificado:", error);
     return 0;
   }
 
+  console.log(`[Unified LTV] Payments found: ${paymentsData?.length || 0}`);
+
   // Agrupar payments por cliente no período
   const paymentsByClient: Record<string, number> = {};
   (paymentsData || []).forEach(payment => {
     const clientId = payment.client_id;
-    if (clientId) {
+    if (clientId && Number(payment.amount) > 0) {
       paymentsByClient[clientId] = (paymentsByClient[clientId] || 0) + Number(payment.amount);
     }
   });
+
+  console.log(`[Unified LTV] Clients with payments > 0: ${Object.keys(paymentsByClient).length}`);
 
   // Filtrar clientes que estiveram ativos no período de 12 meses
   const activeClientsInPeriod = clients.filter(client => {
@@ -48,6 +68,8 @@ export const calculateLTV12MonthsPeriod = async (clients: Client[], targetMonth:
     // - Último pagamento foi dentro do período (ou ainda está ativo)
     return firstPayment <= endOfPeriod && lastPayment >= startOfPeriod;
   });
+
+  console.log(`[Unified LTV] Active clients in period: ${activeClientsInPeriod.length}`);
 
   // Calcular soma total de payments e contar apenas clientes que fizeram pagamentos > 0 no período
   let totalPayments = 0;
@@ -61,16 +83,19 @@ export const calculateLTV12MonthsPeriod = async (clients: Client[], targetMonth:
     }
   });
 
-  console.log(`[Unified LTV] Results:`, {
-    period: `${startOfPeriod.toISOString().split('T')[0]} to ${endOfPeriod.toISOString().split('T')[0]}`,
-    totalPayments,
+  const ltv = clientsWithPositivePayments > 0 ? totalPayments / clientsWithPositivePayments : 0;
+
+  console.log(`[Unified LTV] FINAL RESULTS:`, {
+    period: `${startDateStr} to ${endDateStr}`,
+    totalPayments: totalPayments.toFixed(2),
     clientsWithPositivePayments,
     activeClientsInPeriod: activeClientsInPeriod.length,
-    ltv: clientsWithPositivePayments > 0 ? totalPayments / clientsWithPositivePayments : 0
+    ltv: ltv.toFixed(2)
   });
+  console.log(`[Unified LTV] === FIM CÁLCULO ===`);
 
   // LTV = Soma dos pagamentos > 0 no período / Quantidade de clientes que pagaram > 0 no período
-  return clientsWithPositivePayments > 0 ? totalPayments / clientsWithPositivePayments : 0;
+  return ltv;
 };
 
 /**
