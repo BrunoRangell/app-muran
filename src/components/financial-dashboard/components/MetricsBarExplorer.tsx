@@ -39,7 +39,7 @@ const METRICS: MetricOption[] = [
   { id: "churn", label: "Clientes Cancelados", kind: "number" },
   { id: "totalCosts", label: "Custos Totais", kind: "currency" },
   { id: "cac", label: "CAC", kind: "currency" },
-  { id: "ltv", label: "LTV", kind: "currency" },
+  { id: "ltv", label: "LTV (12 meses)", kind: "currency" },
 ];
 
 function getPeriodRange(filter: PeriodFilter): { start: Date; end: Date } {
@@ -337,6 +337,27 @@ export const MetricsBarExplorer = () => {
               labelStyle={{ color: "hsl(var(--foreground))" }}
               formatter={(value) => [formatValue(selected.kind, Number(value)), selected.label]}
               cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  return (
+                    <div style={{ 
+                      background: "hsl(var(--card))", 
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      padding: "12px"
+                    }}>
+                      <p style={{ color: "hsl(var(--foreground))", fontWeight: "medium" }}>{label}</p>
+                      <p style={{ color: "hsl(var(--primary))" }}>
+                        {`${selected.label}: ${formatValue(selected.kind, Number(payload[0].value))}`}
+                      </p>
+                      <p style={{ color: "hsl(var(--muted-foreground))", fontSize: "11px", marginTop: "4px" }}>
+                        Clique para ver detalhes
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
             />
             <Bar 
               dataKey={metric} 
@@ -351,9 +372,11 @@ export const MetricsBarExplorer = () => {
       </div>
 
       <div className="text-xs text-muted-foreground space-y-1">
-        <p>💡 <strong>Dica:</strong> Clique nas barras para ver detalhes do mês</p>
-        {(metric === "cac" || metric === "ltv") && (
-          <p>ℹ️ CAC = Custos ÷ Novos Clientes | LTV = Payments dos últimos 12 meses ÷ Clientes ativos no período</p>
+        {metric === "cac" && (
+          <p>ℹ️ CAC = Custos ÷ Novos Clientes</p>
+        )}
+        {metric === "ltv" && (
+          <p>ℹ️ LTV = Payments dos últimos 12 meses ÷ Clientes ativos no período</p>
         )}
         {isCalculatingLTV && metric === "ltv" && (
           <p className="text-primary">🔄 Calculando LTV baseado em payments reais...</p>

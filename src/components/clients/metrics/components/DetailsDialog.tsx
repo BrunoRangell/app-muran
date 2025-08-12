@@ -38,7 +38,7 @@ export const DetailsDialog = ({ selectedPoint, onOpenChange, clients }: DetailsD
               return <CostsDetailsTable monthStr={selectedPoint.month} />;
             case 'CAC':
               return <CACDetailsTable monthStr={selectedPoint.month} />;
-            case 'LTV':
+            case 'LTV (12 meses)':
               return <LTVDetailsTable monthStr={selectedPoint.month} />;
             default:
               return (
