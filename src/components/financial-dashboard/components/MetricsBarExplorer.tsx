@@ -14,7 +14,7 @@ import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseMonthString } from "@/utils/monthParser";
 import { Client } from "@/components/clients/types";
-import { supabase } from "@/integrations/supabase/client";
+import { calculateLTVForChart } from "@/utils/unifiedLTVCalculations";
 
 export type PeriodFilter = 
   | 'last-3-months' 
@@ -105,68 +105,25 @@ const aggregateCostsByMonth = (costs: Cost[]) => {
   return costsByMonth;
 };
 
-// Função para calcular LTV médio baseado em payments reais
-const calculateAverageLTV = async (monthStr: string, clients: Client[]): Promise<number> => {
+// Função para calcular LTV usando o cálculo unificado (12 meses)
+const calculateLTVForMonth = async (monthStr: string, clients: Client[]): Promise<number> => {
   try {
-    // Buscar todos os payments
-    const { data: paymentsData, error } = await supabase
-      .from("payments")
-      .select("client_id, amount");
-
-    if (error) {
-      console.error('Erro ao buscar payments:', error);
-      return 0;
-    }
-
-    // Agrupar payments por cliente
-    const paymentsByClient: Record<string, number> = {};
-    (paymentsData || []).forEach(payment => {
-      const clientId = payment.client_id;
-      if (clientId) {
-        paymentsByClient[clientId] = (paymentsByClient[clientId] || 0) + Number(payment.amount);
-      }
-    });
-
-    // Parse da string do mês (ex: "Jan/25")
-    const { monthStart, monthEnd } = parseMonthString(monthStr);
-    const referenceDate = monthEnd;
+    // Parse da string do mês (ex: "Jan/25") para obter a data de referência
+    const { monthEnd } = parseMonthString(monthStr);
     
-    // Filtrar clientes que estavam ativos no mês específico
-    const activeClientsInMonth = clients.filter(client => {
-      const firstPaymentDate = new Date(client.first_payment_date);
-      const lastPaymentDate = client.last_payment_date ? new Date(client.last_payment_date) : null;
-      
-      // Cliente estava ativo se começou antes/durante o mês de referência
-      // e não cancelou antes do mês de referência
-      const wasActive = firstPaymentDate <= referenceDate &&
-        (!lastPaymentDate || lastPaymentDate >= monthStart);
-      
-      return wasActive;
-    });
+    console.log(`[MetricsBarExplorer] Calculando LTV para ${monthStr} usando método unificado`);
     
-    console.log(`👥 Clientes ativos em ${monthStr}: ${activeClientsInMonth.length}/${clients.length}`);
+    // Usar a função unificada que calcula LTV dos últimos 12 meses
+    const ltv = await calculateLTVForChart(clients, monthEnd);
     
-    if (activeClientsInMonth.length === 0) return 0;
+    console.log(`[MetricsBarExplorer] LTV calculado para ${monthStr}: R$ ${ltv.toFixed(2)}`);
     
-    // Calcular LTV individual para cada cliente ativo (soma de payments reais)
-    const ltvValues = activeClientsInMonth
-      .map(client => paymentsByClient[client.id] || 0)
-      .filter(ltv => ltv > 0); // Só considerar clientes que fizeram payments
+    return ltv;
     
-    if (ltvValues.length === 0) return 0;
-    
-    // Retornar a média dos LTVs reais
-    const totalLTV = ltvValues.reduce((sum, ltv) => sum + ltv, 0);
-    const averageLTV = totalLTV / ltvValues.length;
-    
-    console.log(`💰 LTV calculado para ${monthStr}: R$ ${averageLTV.toFixed(2)} (${ltvValues.length} clientes, total: R$ ${totalLTV.toFixed(2)})`);
-    
-    return averageLTV;
-    
-    } catch (error) {
-      console.error(`❌ Erro ao calcular LTV para ${monthStr}:`, error);
-      return 0;
-    }
+  } catch (error) {
+    console.error(`❌ Erro ao calcular LTV para ${monthStr}:`, error);
+    return 0;
+  }
 };
 
 export const MetricsBarExplorer = () => {
@@ -245,12 +202,12 @@ export const MetricsBarExplorer = () => {
       try {
         const updatedData = await Promise.all(
           basicData.map(async (item) => {
-            const averageLTV = await calculateAverageLTV(item.month, clients);
-            console.log(`💰 LTV calculado para ${item.month}: R$ ${averageLTV.toFixed(2)}`);
+            const ltv = await calculateLTVForMonth(item.month, clients);
+            console.log(`💰 LTV unificado calculado para ${item.month}: R$ ${ltv.toFixed(2)}`);
             
             return {
               ...item,
-              ltv: averageLTV,
+              ltv: ltv,
             };
           })
         );
@@ -396,7 +353,7 @@ export const MetricsBarExplorer = () => {
       <div className="text-xs text-muted-foreground space-y-1">
         <p>💡 <strong>Dica:</strong> Clique nas barras para ver detalhes do mês</p>
         {(metric === "cac" || metric === "ltv") && (
-          <p>ℹ️ CAC = Custos ÷ Novos Clientes | LTV = Média da soma real de payments de cada cliente</p>
+          <p>ℹ️ CAC = Custos ÷ Novos Clientes | LTV = Payments dos últimos 12 meses ÷ Clientes ativos no período</p>
         )}
         {isCalculatingLTV && metric === "ltv" && (
           <p className="text-primary">🔄 Calculando LTV baseado em payments reais...</p>
