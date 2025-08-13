@@ -184,7 +184,7 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
                       <TooltipTrigger>
                         <InfoIcon className="h-4 w-4 text-muted-foreground" />
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent side="left" avoidCollisions={true} className="z-[60]">
                         <p>Payments dos últimos 12 meses ÷ Clientes ativos no período</p>
                       </TooltipContent>
                     </Tooltip>
@@ -204,8 +204,6 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
             <TableRow>
               <TableHead>Empresa</TableHead>
               <TableHead className="text-right">Payments (12 meses)</TableHead>
-              <TableHead className="text-right">LTV Individual</TableHead>
-              <TableHead>Data de Início</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -213,14 +211,18 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
               <TableRow key={client.id}>
                 <TableCell className="font-medium">{client.company_name}</TableCell>
                 <TableCell className="text-right">{formatCurrency(client.total_payments)}</TableCell>
-                <TableCell className="text-right font-medium text-primary">{formatCurrency(client.ltv)}</TableCell>
-                <TableCell>
-                  {format(new Date(client.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })}
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+        
+        {/* Total dos Payments */}
+        <div className="mt-4 pt-4 border-t bg-muted/20 rounded-lg p-3">
+          <div className="flex justify-between items-center font-semibold">
+            <span>Total dos Payments (12 meses):</span>
+            <span className="text-primary">{formatCurrency(clientsLTV.totalPaymentsLast12Months)}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
