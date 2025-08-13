@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseMonthString } from "@/utils/monthParser";
 import { InfoIcon } from "lucide-react";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface LTVDetailsTableProps {
   monthStr: string; // formato "Jan/25"
@@ -114,6 +115,7 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
         clients: clientsWithLTV,
         averageLTV,
         totalActiveClients: clientsWithLTV.length,
+        totalPaymentsLast12Months,
         period: `${startDateStr} a ${endDateStr}`
       };
     }
@@ -172,8 +174,22 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
                 <div className="text-2xl font-bold text-primary">{formatCurrency(clientsLTV.averageLTV)}</div>
               </div>
               <div className="bg-background/50 p-3 rounded-lg">
-                <span className="text-sm text-muted-foreground block">Fórmula:</span>
-                <div className="text-sm font-medium">Payments dos últimos 12 meses ÷ Clientes ativos no período</div>
+                <span className="text-sm text-muted-foreground block">Cálculo:</span>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <span>
+                    {formatCurrency(clientsLTV.totalPaymentsLast12Months)} / {clientsLTV.totalActiveClients} = {formatCurrency(clientsLTV.averageLTV)}
+                  </span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Payments dos últimos 12 meses ÷ Clientes ativos no período</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             </div>
           </div>
