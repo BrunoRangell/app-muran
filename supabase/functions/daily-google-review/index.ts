@@ -169,7 +169,7 @@ async function fetchRealAccountName(
     `;
     
     const response = await fetch(
-      `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
+      `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
       {
         method: "POST",
         headers: headers,
@@ -266,7 +266,7 @@ async function fetchDailySpend(
     `;
     
     const response = await fetch(
-      `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
+      `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
       {
         method: "POST",
         headers: headers,
@@ -639,7 +639,7 @@ async function processGoogleReview(req: Request) {
       console.log(`📊 Consultando gasto total do mês para a conta ${googleAccountId}, período: ${startDate} a ${endDate}`);
       
       const monthlyResponse = await fetch(
-        `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
+        `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
         {
           method: "POST",
           headers: headers,
@@ -679,7 +679,7 @@ async function processGoogleReview(req: Request) {
       console.log(`🔍 Consultando orçamentos REAIS das campanhas ativas para a conta ${googleAccountId}`);
       
       const campaignsResponse = await fetch(
-        `https://googleads.googleapis.com/v18/customers/${googleAccountId}/googleAds:search`,
+        `https://googleads.googleapis.com/v21/customers/${googleAccountId}/googleAds:search`,
         {
           method: "POST",
           headers: headers,

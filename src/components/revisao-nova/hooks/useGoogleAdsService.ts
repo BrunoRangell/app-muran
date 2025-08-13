@@ -112,7 +112,7 @@ export const useGoogleAdsService = () => {
       
       try {
         const response = await axios.post(
-          `https://googleads.googleapis.com/v18/customers/${managerCustomerId}/googleAds:search`,
+          `https://googleads.googleapis.com/v21/customers/${managerCustomerId}/googleAds:search`,
           { query },
           { headers }
         );
@@ -186,7 +186,7 @@ export const useGoogleAdsService = () => {
       
       try {
         const response = await axios.post(
-          `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
+          `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`,
           { query },
           { headers }
         );
@@ -255,7 +255,7 @@ export const useGoogleAdsService = () => {
       
       try {
         const response = await axios.post(
-          `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:search`,
+          `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`,
           { query },
           { headers }
         );

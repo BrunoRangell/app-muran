@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseMonthString } from "@/utils/monthParser";
 import { InfoIcon } from "lucide-react";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface LTVDetailsTableProps {
   monthStr: string; // formato "Jan/25"
@@ -114,6 +115,7 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
         clients: clientsWithLTV,
         averageLTV,
         totalActiveClients: clientsWithLTV.length,
+        totalPaymentsLast12Months,
         period: `${startDateStr} a ${endDateStr}`
       };
     }
@@ -172,8 +174,22 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
                 <div className="text-2xl font-bold text-primary">{formatCurrency(clientsLTV.averageLTV)}</div>
               </div>
               <div className="bg-background/50 p-3 rounded-lg">
-                <span className="text-sm text-muted-foreground block">Fórmula:</span>
-                <div className="text-sm font-medium">Payments dos últimos 12 meses ÷ Clientes ativos no período</div>
+                <span className="text-sm text-muted-foreground block">Cálculo:</span>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <span>
+                    {formatCurrency(clientsLTV.totalPaymentsLast12Months)} / {clientsLTV.totalActiveClients} = {formatCurrency(clientsLTV.averageLTV)}
+                  </span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left" avoidCollisions={true} className="z-[60]">
+                        <p>Payments dos últimos 12 meses ÷ Clientes ativos no período</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             </div>
           </div>
@@ -188,8 +204,6 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
             <TableRow>
               <TableHead>Empresa</TableHead>
               <TableHead className="text-right">Payments (12 meses)</TableHead>
-              <TableHead className="text-right">LTV Individual</TableHead>
-              <TableHead>Data de Início</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -197,14 +211,18 @@ export const LTVDetailsTable = ({ monthStr }: LTVDetailsTableProps) => {
               <TableRow key={client.id}>
                 <TableCell className="font-medium">{client.company_name}</TableCell>
                 <TableCell className="text-right">{formatCurrency(client.total_payments)}</TableCell>
-                <TableCell className="text-right font-medium text-primary">{formatCurrency(client.ltv)}</TableCell>
-                <TableCell>
-                  {format(new Date(client.first_payment_date), 'dd/MM/yyyy', { locale: ptBR })}
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+        
+        {/* Total dos Payments */}
+        <div className="mt-4 pt-4 border-t bg-muted/20 rounded-lg p-3">
+          <div className="flex justify-between items-center font-semibold">
+            <span>Total dos Payments (12 meses):</span>
+            <span className="text-primary">{formatCurrency(clientsLTV.totalPaymentsLast12Months)}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
