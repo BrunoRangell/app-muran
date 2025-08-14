@@ -318,7 +318,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         AND segments.date = '${today}'
     `;
     
-    const googleAdsUrl = `https://googleads.googleapis.com/v20/customers/${clientCustomerId}/googleAds:search`;
+    const googleAdsUrl = `https://googleads.googleapis.com/v21/customers/${clientCustomerId}/googleAds:search`;
     
     const headers: { [key: string]: string } = {
       'Authorization': `Bearer ${accessToken}`,
