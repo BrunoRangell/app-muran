@@ -1,21 +1,17 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { CostFilters } from "@/types/cost";
-import { CostsMetrics } from "@/components/costs/CostsMetrics";
-import { CostsTable } from "@/components/costs/CostsTable";
-import { CostsFiltersBar } from "@/components/costs/CostsFiltersBar";
+import { CostFilters, Cost } from "@/types/cost";
 import { NewCostDialog } from "@/components/costs/NewCostDialog";
 import { EditCostDialog } from "@/components/costs/EditCostDialog";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { Cost } from "@/types/cost";
-import { DateFilter } from "@/components/costs/filters/DateFilter";
-import { Separator } from "@/components/ui/separator";
-import { ImportCostsDialog } from "@/components/costs/filters/import/ImportCostsDialog";
 import { Toaster } from "@/components/ui/toaster";
+import { CostsPageHeader } from "@/components/costs/enhanced/CostsPageHeader";
+import { CostsMetricsGrid } from "@/components/costs/enhanced/CostsMetricsGrid";
+import { SmartFiltersBar } from "@/components/costs/enhanced/SmartFiltersBar";
+import { EnhancedCostsTable } from "@/components/costs/enhanced/EnhancedCostsTable";
+import { CostsVisualization } from "@/components/costs/enhanced/CostsVisualization";
+import { DateFilter } from "@/components/costs/filters/DateFilter";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
@@ -63,81 +59,51 @@ export default function Costs() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Registro de Custos</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gerencie e acompanhe todos os custos do seu negócio
-          </p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header padronizado */}
+        <div className="mb-6">
+          <CostsPageHeader onNewCostClick={() => setIsNewCostOpen(true)} />
         </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <DateFilter filters={filters} onFiltersChange={setFilters} />
-          <div className="flex items-center gap-2">
-            <Button onClick={() => setIsNewCostOpen(true)} className="bg-muran-primary hover:bg-muran-primary/90">
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar custo manualmente
-            </Button>
-            <ImportCostsDialog />
-          </div>
+
+        {/* Métricas em grid */}
+        <div className="mb-6">
+          <CostsMetricsGrid costs={costs || []} />
         </div>
-      </div>
 
-      <Separator className="my-6" />
-
-      <Card className="p-6 bg-gray-50">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <h4 className="text-sm font-medium text-gray-500">Total de Custos</h4>
-            <p className="text-2xl font-bold text-gray-900">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                .format((costs || []).reduce((sum, cost) => sum + cost.amount, 0))}
-            </p>
-          </div>
-          
-          <div>
-            <h4 className="text-sm font-medium text-gray-500">Média Mensal</h4>
-            <p className="text-2xl font-bold text-gray-900">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-                .format((costs || []).reduce((sum, cost) => sum + cost.amount, 0) / 
-                  Math.max(1, new Set((costs || []).map(c => c.date.substring(0, 7))).size))}
-            </p>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-medium text-gray-500">Quantidade de Registros</h4>
-            <p className="text-2xl font-bold text-gray-900">{(costs || []).length}</p>
-          </div>
+        {/* Filtros inteligentes */}
+        <div className="mb-6">
+          <SmartFiltersBar filters={filters} onFiltersChange={setFilters} />
         </div>
-      </Card>
 
-      <CostsMetrics costs={costs || []} filters={filters} />
-
-      <Card className="overflow-hidden">
-        <div className="p-4 bg-gray-50 border-b">
-          <CostsFiltersBar filters={filters} onFiltersChange={setFilters} />
+        {/* Visualizações (gráficos) */}
+        <div className="mb-6">
+          <CostsVisualization costs={costs || []} filters={filters} />
         </div>
-        <div className="p-4">
-          <CostsTable 
+
+        {/* Tabela aprimorada */}
+        <div className="mb-6">
+          <EnhancedCostsTable 
             costs={costs || []} 
             isLoading={isLoading} 
             onEditClick={setSelectedCost}
           />
         </div>
-      </Card>
 
-      <NewCostDialog
-        open={isNewCostOpen}
-        onOpenChange={setIsNewCostOpen}
-      />
+        {/* Diálogos */}
+        <NewCostDialog
+          open={isNewCostOpen}
+          onOpenChange={setIsNewCostOpen}
+        />
 
-      <EditCostDialog 
-        cost={selectedCost}
-        open={!!selectedCost}
-        onOpenChange={(open) => !open && setSelectedCost(null)}
-      />
+        <EditCostDialog 
+          cost={selectedCost}
+          open={!!selectedCost}
+          onOpenChange={(open) => !open && setSelectedCost(null)}
+        />
 
-      <Toaster />
+        <Toaster />
+      </div>
     </div>
   );
 }
