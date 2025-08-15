@@ -13,11 +13,11 @@ interface EnhancedCostsTableProps {
   costs: Cost[];
   isLoading: boolean;
   onEditClick: (cost: Cost) => void;
-  deleteCost: {
+  deleteCost?: {
     mutateAsync: (id: number) => Promise<void>;
     isPending: boolean;
   };
-  deleteCosts: {
+  deleteCosts?: {
     mutateAsync: (ids: number[]) => Promise<void>;
     isPending: boolean;
   };
@@ -79,7 +79,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
   };
 
   const handleSingleDelete = async () => {
-    if (!costToDelete) return;
+    if (!costToDelete || !deleteCost) return;
     
     try {
       await deleteCost.mutateAsync(costToDelete.id);
@@ -90,7 +90,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
   };
 
   const handleBulkDelete = async () => {
-    if (selectedCosts.length === 0) return;
+    if (selectedCosts.length === 0 || !deleteCosts) return;
     
     try {
       await deleteCosts.mutateAsync(selectedCosts);
@@ -159,7 +159,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
                   variant="destructive"
                   size="sm"
                   onClick={() => setShowBulkDeleteDialog(true)}
-                  disabled={deleteCosts.isPending}
+                  disabled={deleteCosts?.isPending || false}
                 >
                   Excluir selecionados
                 </Button>
@@ -264,7 +264,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
                             size="sm"
                             onClick={() => setCostToDelete(cost)}
                             className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            disabled={deleteCost.isPending}
+                            disabled={deleteCost?.isPending || false}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -304,9 +304,9 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
             <AlertDialogAction
               onClick={handleSingleDelete}
               className="bg-red-600 hover:bg-red-700"
-              disabled={deleteCost.isPending}
+              disabled={deleteCost?.isPending || false}
             >
-              {deleteCost.isPending ? "Excluindo..." : "Excluir"}
+              {deleteCost?.isPending ? "Excluindo..." : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -326,9 +326,9 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
             <AlertDialogAction
               onClick={handleBulkDelete}
               className="bg-red-600 hover:bg-red-700"
-              disabled={deleteCosts.isPending}
+              disabled={deleteCosts?.isPending || false}
             >
-              {deleteCosts.isPending ? "Excluindo..." : "Excluir todos"}
+              {deleteCosts?.isPending ? "Excluindo..." : "Excluir todos"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
