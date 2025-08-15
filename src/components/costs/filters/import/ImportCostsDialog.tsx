@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Upload } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { ImportTransactionsTable } from "./ImportTransactionsTable";
 import { Transaction } from "./types";
 import { useTransactionParser } from "./useTransactionParser";
@@ -24,7 +24,7 @@ export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  
   const { parseOFXFile } = useTransactionParser();
   const { importTransactions } = useImportService();
   const queryClient = useQueryClient();
@@ -54,20 +54,12 @@ export function ImportCostsDialog() {
     const selectedTransactions = transactions.filter(t => t.selected);
     
     if (selectedTransactions.length === 0) {
-      toast({
-        title: "Nenhuma transação selecionada",
-        description: "Selecione ao menos uma transação para importar.",
-        variant: "destructive"
-      });
+      toast.error("Selecione ao menos uma transação para importar.");
       return;
     }
 
     if (!validateTransactions(selectedTransactions)) {
-      toast({
-        title: "Erro de validação",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive"
-      });
+      toast.error("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
 
@@ -77,20 +69,13 @@ export function ImportCostsDialog() {
       
       if (importedCount > 0) {
         await queryClient.invalidateQueries({ queryKey: ["costs"] });
-        toast({
-          title: "Importação concluída",
-          description: `${importedCount} transações foram importadas com sucesso.`
-        });
+        toast.success(`${importedCount} transações foram importadas com sucesso.`);
         setIsOpen(false);
         setTransactions([]);
       }
     } catch (error) {
       console.error("Erro ao importar transações:", error);
-      toast({
-        title: "Erro ao importar",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao importar as transações. Tente novamente.",
-        variant: "destructive"
-      });
+      toast.error(error instanceof Error ? error.message : "Ocorreu um erro ao importar as transações. Tente novamente.");
     } finally {
       setIsLoading(false);
     }

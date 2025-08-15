@@ -1,10 +1,9 @@
 
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { parseOFX } from "./ofxParser";
 import { Transaction } from "./types";
 
 export function useTransactionParser() {
-  const { toast } = useToast();
 
   const parseOFXFile = async (file: File): Promise<Transaction[]> => {
     try {
@@ -33,11 +32,7 @@ export function useTransactionParser() {
       return transactions;
     } catch (error) {
       console.error("Erro ao processar arquivo OFX:", error);
-      toast({
-        title: "Erro ao processar arquivo",
-        description: error instanceof Error ? error.message : "Erro desconhecido ao processar o arquivo",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Erro desconhecido ao processar o arquivo");
       throw error;
     }
   };
