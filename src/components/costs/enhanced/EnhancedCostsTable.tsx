@@ -3,10 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Edit, Trash2, Calendar, DollarSign } from "lucide-react";
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -14,11 +13,20 @@ interface EnhancedCostsTableProps {
   costs: Cost[];
   isLoading: boolean;
   onEditClick: (cost: Cost) => void;
+  deleteCost: {
+    mutateAsync: (id: number) => Promise<void>;
+    isPending: boolean;
+  };
+  deleteCosts: {
+    mutateAsync: (ids: number[]) => Promise<void>;
+    isPending: boolean;
+  };
 }
 
-export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCostsTableProps) {
+export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, deleteCosts }: EnhancedCostsTableProps) {
   const [costToDelete, setCostToDelete] = useState<Cost | null>(null);
-  const queryClient = useQueryClient();
+  const [selectedCosts, setSelectedCosts] = useState<number[]>([]);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   // Buscar informações de categorias diretamente do componente CategoryFilters
   const getCategoryName = (categoryId: string): string => {
@@ -46,24 +54,55 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
       .join(", ");
   };
 
-  const handleDelete = async () => {
+  const isAllSelected = useMemo(() => {
+    return costs.length > 0 && selectedCosts.length === costs.length;
+  }, [costs.length, selectedCosts.length]);
+
+  const isIndeterminate = useMemo(() => {
+    return selectedCosts.length > 0 && selectedCosts.length < costs.length;
+  }, [costs.length, selectedCosts.length]);
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedCosts([]);
+    } else {
+      setSelectedCosts(costs.map(cost => cost.id));
+    }
+  };
+
+  const handleSelectCost = (costId: number) => {
+    setSelectedCosts(prev => 
+      prev.includes(costId) 
+        ? prev.filter(id => id !== costId)
+        : [...prev, costId]
+    );
+  };
+
+  const handleSingleDelete = async () => {
     if (!costToDelete) return;
-
+    
     try {
-      const { error } = await supabase
-        .from("costs")
-        .delete()
-        .eq("id", costToDelete.id);
-
-      if (error) throw error;
-
-      queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast.success("Custo excluído com sucesso!");
+      await deleteCost.mutateAsync(costToDelete.id);
       setCostToDelete(null);
     } catch (error) {
-      console.error("Erro ao excluir custo:", error);
-      toast.error("Erro ao excluir custo");
+      // Error handling is done in the mutation
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCosts.length === 0) return;
+    
+    try {
+      await deleteCosts.mutateAsync(selectedCosts);
+      setSelectedCosts([]);
+      setShowBulkDeleteDialog(false);
+    } catch (error) {
+      // Error handling is done in the mutation
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedCosts([]);
   };
 
   const formatCurrency = (value: number): string => {
@@ -103,9 +142,29 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Lista de Custos
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Lista de Custos
+            </div>
+            {selectedCosts.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {selectedCosts.length} selecionado{selectedCosts.length > 1 ? 's' : ''}
+                </span>
+                <Button variant="outline" size="sm" onClick={clearSelection}>
+                  Limpar seleção
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowBulkDeleteDialog(true)}
+                  disabled={deleteCosts.isPending}
+                >
+                  Excluir selecionados
+                </Button>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -113,6 +172,14 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Selecionar todos"
+                      {...(isIndeterminate && { "data-state": "indeterminate" })}
+                    />
+                  </TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categorias</TableHead>
                   <TableHead>Data</TableHead>
@@ -124,7 +191,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
               <TableBody>
                 {costs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <Calendar className="h-8 w-8 text-gray-400" />
                         <p className="text-gray-500">Nenhum custo encontrado</p>
@@ -137,6 +204,13 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
                 ) : (
                   costs.map((cost) => (
                     <TableRow key={cost.id} className="hover:bg-gray-50/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCosts.includes(cost.id)}
+                          onCheckedChange={() => handleSelectCost(cost.id)}
+                          aria-label={`Selecionar ${cost.name}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span>{cost.name}</span>
@@ -190,6 +264,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
                             size="sm"
                             onClick={() => setCostToDelete(cost)}
                             className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            disabled={deleteCost.isPending}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -227,10 +302,33 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick }: EnhancedCo
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={handleSingleDelete}
               className="bg-red-600 hover:bg-red-700"
+              disabled={deleteCost.isPending}
             >
-              Excluir
+              {deleteCost.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão em lote</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir {selectedCosts.length} custo{selectedCosts.length > 1 ? 's' : ''} selecionado{selectedCosts.length > 1 ? 's' : ''}? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteCosts.isPending}
+            >
+              {deleteCosts.isPending ? "Excluindo..." : "Excluir todos"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

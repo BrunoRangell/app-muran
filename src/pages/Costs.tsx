@@ -1,62 +1,22 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { CostFilters, Cost } from "@/types/cost";
 import { NewCostDialog } from "@/components/costs/NewCostDialog";
 import { EditCostDialog } from "@/components/costs/EditCostDialog";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { CostsPageHeader } from "@/components/costs/enhanced/CostsPageHeader";
 import { CostsMetricsGrid } from "@/components/costs/enhanced/CostsMetricsGrid";
 import { SmartFiltersBar } from "@/components/costs/enhanced/SmartFiltersBar";
 import { EnhancedCostsTable } from "@/components/costs/enhanced/EnhancedCostsTable";
 import { CostsVisualization } from "@/components/costs/enhanced/CostsVisualization";
-import { DateFilter } from "@/components/costs/filters/DateFilter";
+import { useCosts } from "@/hooks/queries/useCosts";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
   const [selectedCost, setSelectedCost] = useState<Cost | null>(null);
   const [filters, setFilters] = useState<CostFilters>({});
 
-  const { data: costs, isLoading } = useQuery({
-    queryKey: ["costs", filters],
-    queryFn: async () => {
-      console.log('Buscando custos com filtros:', filters);
-      
-      let query = supabase
-        .from("costs")
-        .select("*, costs_categories(category_id)")
-        .order("date", { ascending: false });
-
-      if (filters.startDate) {
-        query = query.gte("date", filters.startDate);
-      }
-      if (filters.endDate) {
-        query = query.lte("date", filters.endDate);
-      }
-      if (filters.categories && filters.categories.length > 0) {
-        query = query.in("costs_categories.category_id", filters.categories);
-      }
-      if (filters.search) {
-        query = query.ilike("name", `%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Erro ao buscar custos:", error);
-        throw error;
-      }
-
-      const processedData = data.map(cost => ({
-        ...cost,
-        categories: cost.costs_categories.map((cc: any) => cc.category_id)
-      }));
-
-      console.log('Custos retornados:', processedData);
-      return processedData;
-    },
-  });
+  const { costs, isLoading, deleteCost, deleteCosts } = useCosts(filters);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -68,7 +28,7 @@ export default function Costs() {
 
         {/* Métricas em grid */}
         <div className="mb-6">
-          <CostsMetricsGrid costs={costs || []} />
+          <CostsMetricsGrid costs={costs} />
         </div>
 
         {/* Filtros inteligentes */}
@@ -78,15 +38,17 @@ export default function Costs() {
 
         {/* Visualizações (gráficos) */}
         <div className="mb-6">
-          <CostsVisualization costs={costs || []} filters={filters} />
+          <CostsVisualization costs={costs} filters={filters} />
         </div>
 
         {/* Tabela aprimorada */}
         <div className="mb-6">
           <EnhancedCostsTable 
-            costs={costs || []} 
+            costs={costs} 
             isLoading={isLoading} 
             onEditClick={setSelectedCost}
+            deleteCost={deleteCost}
+            deleteCosts={deleteCosts}
           />
         </div>
 

@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Cost, CostFilters } from "@/types/cost";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 export const useCosts = (filters?: CostFilters) => {
   const queryClient = useQueryClient();
@@ -54,18 +54,11 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo cadastrado com sucesso!",
-      });
+      toast.success("Custo cadastrado com sucesso!");
     },
     onError: (error) => {
       console.error("Erro ao criar custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível cadastrar o custo",
-        variant: "destructive",
-      });
+      toast.error("Não foi possível cadastrar o custo");
     },
   });
 
@@ -84,18 +77,11 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo atualizado com sucesso!",
-      });
+      toast.success("Custo atualizado com sucesso!");
     },
     onError: (error) => {
       console.error("Erro ao atualizar custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o custo",
-        variant: "destructive",
-      });
+      toast.error("Não foi possível atualizar o custo");
     },
   });
 
@@ -110,18 +96,30 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo excluído com sucesso!",
-      });
+      toast.success("Custo excluído com sucesso!");
     },
     onError: (error) => {
       console.error("Erro ao excluir custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o custo",
-        variant: "destructive",
-      });
+      toast.error("Não foi possível excluir o custo");
+    },
+  });
+
+  const deleteCosts = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const { error } = await supabase
+        .from("costs")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      toast.success(`${ids.length} custo${ids.length > 1 ? 's' : ''} excluído${ids.length > 1 ? 's' : ''} com sucesso!`);
+    },
+    onError: (error) => {
+      console.error("Erro ao excluir custos:", error);
+      toast.error("Não foi possível excluir os custos selecionados");
     },
   });
 
@@ -132,5 +130,6 @@ export const useCosts = (filters?: CostFilters) => {
     createCost,
     updateCost,
     deleteCost,
+    deleteCosts,
   };
 };
