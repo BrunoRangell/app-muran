@@ -10,7 +10,7 @@ interface CreatedCost {
   date: string;
 }
 
-export async function createCost(transaction: Transaction, categoryId: CostCategory): Promise<CreatedCost> {
+export async function createCost(transaction: Transaction, categoryId?: CostCategory): Promise<CreatedCost> {
   // Inserir o custo
   console.log("[Custo] Inserindo custo para transação com dados:", {
     name: transaction.name,
@@ -47,7 +47,8 @@ export async function createCost(transaction: Transaction, categoryId: CostCateg
   return cost;
 }
 
-export async function assignCategoryToCost(costId: number, categoryId: CostCategory) {
+export async function assignCategoryToCost(costId: number, categoryId?: CostCategory) {
+  if (!categoryId) return; // Skip if no category provided
   console.log("[Categoria] Inserindo relação com custo. ID:", costId, "Categoria:", categoryId);
   const { error: categoriesError } = await supabase
     .from('costs_categories')

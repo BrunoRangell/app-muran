@@ -82,13 +82,13 @@ export function ImportTransactionsTable({
             <TableCell>
               <div className="space-y-1">
                 <Select
-                  value={transaction.category}
+                  value={transaction.category || ""}
                   onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
                 >
                   <SelectTrigger 
                     className={`w-[250px] ${errors[`category-${transaction.fitid}`] ? "border-red-500" : ""}`}
                   >
-                    <SelectValue placeholder="Selecionar categoria">
+                    <SelectValue placeholder="Sem categoria (pode adicionar depois)">
                       {getCategoryName(transaction.category)}
                     </SelectValue>
                   </SelectTrigger>

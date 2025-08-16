@@ -39,12 +39,7 @@ export function useImportService() {
           console.log("[Transação] Iniciando processamento:", transaction.name);
           console.log("[Transação] Detalhes completos:", transaction);
           
-          // Verificar se tem categoria selecionada
-          if (!transaction.category) {
-            console.warn("[Categoria] Transação sem categoria, pulando...");
-            skippedCount++;
-            continue;
-          }
+          // Categoria agora é opcional - se não tiver, ainda importa
 
           // Criar transação com timeout para evitar travamento
           const timeoutPromise = new Promise((_, reject) => 

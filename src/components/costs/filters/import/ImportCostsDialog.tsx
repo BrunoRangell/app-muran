@@ -17,15 +17,20 @@ import { useTransactionParser } from "./useTransactionParser";
 import { useImportService } from "./useImportService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileUploadForm } from "./components/FileUploadForm";
+import { EnhancedFileUpload } from "./components/EnhancedFileUpload";
+import { CSVMappingDialog, CSVMapping } from "./components/CSVMappingDialog";
 import { useTransactionValidation } from "./hooks/useTransactionValidation";
 
 export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCSVMapping, setShowCSVMapping] = useState(false);
+  const [csvFile, setCSVFile] = useState<File | null>(null);
+  const [csvColumns, setCSVColumns] = useState<string[]>([]);
+  const [csvPreview, setCSVPreview] = useState<string[][]>([]);
   
-  const { parseOFXFile } = useTransactionParser();
+  const { parseOFXFile, parseCSVFile, detectColumns } = useTransactionParser();
   const { importTransactions } = useImportService();
   const queryClient = useQueryClient();
   const { errors, validateTransactions, clearError } = useTransactionValidation();
@@ -87,60 +92,73 @@ export function ImportCostsDialog() {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Upload className="h-4 w-4" />
-          Importar OFX
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle>Importar custos do OFX</DialogTitle>
-          <DialogDescription>
-            Selecione um arquivo OFX do seu banco para importar as transações como custos.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="flex-1 min-h-0">
-          {transactions.length === 0 ? (
-            <FileUploadForm
-              isLoading={isLoading}
-              onTransactionsLoaded={setTransactions}
-              parseOFXFile={parseOFXFile}
-            />
-          ) : (
-            <div className="space-y-4">
-              <ScrollArea className="h-[calc(80vh-220px)] w-full rounded-md border p-4">
-                <ImportTransactionsTable
-                  transactions={transactions}
-                  onNameChange={handleNameChange}
-                  onSelectionChange={handleSelectionChange}
-                  onCategoryChange={handleCategoryChange}
-                  errors={errors}
-                />
-              </ScrollArea>
+    <>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="gap-2">
+            <Upload className="h-4 w-4" />
+            Importar OFX/CSV
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-5xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Importar custos</DialogTitle>
+            <DialogDescription>
+              Selecione um arquivo OFX ou CSV para importar transações como custos. Categoria é opcional e pode ser adicionada depois.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 min-h-0">
+            {transactions.length === 0 ? (
+              <EnhancedFileUpload
+                isLoading={isLoading}
+                onTransactionsLoaded={setTransactions}
+                parseOFXFile={parseOFXFile}
+                parseCSVFile={parseCSVFile}
+              />
+            ) : (
+              <div className="space-y-4">
+                <ScrollArea className="h-[calc(80vh-220px)] w-full rounded-md border p-4">
+                  <ImportTransactionsTable
+                    transactions={transactions}
+                    onNameChange={handleNameChange}
+                    onSelectionChange={handleSelectionChange}
+                    onCategoryChange={handleCategoryChange}
+                    errors={errors}
+                  />
+                </ScrollArea>
 
-              <div className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={handleCancel}
-                  disabled={isLoading}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  onClick={handleImport}
-                  disabled={isLoading || !transactions.some(t => t.selected)}
-                  className="bg-muran-primary hover:bg-muran-primary/90"
-                >
-                  {isLoading ? "Importando..." : "Importar Selecionados"}
-                </Button>
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCancel}
+                    disabled={isLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={handleImport}
+                    disabled={isLoading || !transactions.some(t => t.selected)}
+                    className="bg-muran-primary hover:bg-muran-primary/90"
+                  >
+                    {isLoading ? "Importando..." : "Importar Selecionados"}
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <CSVMappingDialog
+        open={showCSVMapping}
+        onOpenChange={setShowCSVMapping}
+        columns={csvColumns}
+        previewData={csvPreview}
+        onConfirm={(mapping: CSVMapping) => {
+          setShowCSVMapping(false);
+        }}
+      />
+    </>
   );
 }

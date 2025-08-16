@@ -16,10 +16,7 @@ export function useTransactionValidation() {
         newErrors[`name-${transaction.fitid}`] = "Nome é obrigatório";
         hasErrors = true;
       }
-      if (!transaction.category) {
-        newErrors[`category-${transaction.fitid}`] = "Categoria é obrigatória";
-        hasErrors = true;
-      }
+      // Categoria agora é opcional
     });
 
     setErrors(newErrors);
