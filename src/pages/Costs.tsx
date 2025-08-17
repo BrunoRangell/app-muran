@@ -9,14 +9,19 @@ import { CostsMetricsGrid } from "@/components/costs/enhanced/CostsMetricsGrid";
 import { SmartFiltersBar } from "@/components/costs/enhanced/SmartFiltersBar";
 import { EnhancedCostsTable } from "@/components/costs/enhanced/EnhancedCostsTable";
 import { CostsVisualization } from "@/components/costs/enhanced/CostsVisualization";
+import { MonthTabs } from "@/components/costs/enhanced/MonthTabs";
 import { useCosts } from "@/hooks/queries/useCosts";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
   const [selectedCost, setSelectedCost] = useState<Cost | null>(null);
   const [filters, setFilters] = useState<CostFilters>({});
+  const [selectedMonth, setSelectedMonth] = useState<string | undefined>();
 
-  const { costs, isLoading, deleteCost, deleteCosts } = useCosts(filters);
+  const { costs, isLoading, deleteCost, deleteCosts, updateCostCategory } = useCosts({
+    ...filters,
+    monthFilter: selectedMonth
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -29,6 +34,15 @@ export default function Costs() {
         {/* Métricas em grid */}
         <div className="mb-6">
           <CostsMetricsGrid costs={costs} />
+        </div>
+
+        {/* Abas de meses */}
+        <div className="mb-6">
+          <MonthTabs 
+            costs={costs} 
+            onMonthChange={setSelectedMonth} 
+            selectedMonth={selectedMonth} 
+          />
         </div>
 
         {/* Filtros inteligentes */}
@@ -49,6 +63,7 @@ export default function Costs() {
             onEditClick={setSelectedCost}
             deleteCost={deleteCost}
             deleteCosts={deleteCosts}
+            updateCostCategory={updateCostCategory}
           />
         </div>
 

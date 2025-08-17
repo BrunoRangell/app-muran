@@ -88,7 +88,7 @@ export function ImportTransactionsTable({
                   <SelectTrigger 
                     className={`w-[250px] ${errors[`category-${transaction.fitid}`] ? "border-red-500" : ""}`}
                   >
-                    <SelectValue placeholder="Sem categoria (pode adicionar depois)">
+                    <SelectValue placeholder="Sem categoria">
                       {getCategoryName(transaction.category)}
                     </SelectValue>
                   </SelectTrigger>

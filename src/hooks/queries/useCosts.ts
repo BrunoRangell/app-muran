@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Cost, CostFilters } from "@/types/cost";
 import { toast } from "sonner";
 
-export const useCosts = (filters?: CostFilters) => {
+export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
   const queryClient = useQueryClient();
 
   const costsQuery = useQuery({
@@ -25,6 +25,14 @@ export const useCosts = (filters?: CostFilters) => {
 
       if (filters?.endDate) {
         query = query.lte("date", filters.endDate);
+      }
+
+      // Filtro por mês específico
+      if (filters?.monthFilter) {
+        const [year, month] = filters.monthFilter.split('-');
+        const startDate = `${year}-${month}-01`;
+        const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
+        query = query.gte("date", startDate).lte("date", endDate);
       }
 
       // Note: category filtering would need to be done through costs_categories join
@@ -85,6 +93,40 @@ export const useCosts = (filters?: CostFilters) => {
     },
   });
 
+  const updateCostCategory = useMutation({
+    mutationFn: async ({ costId, categories }: { costId: number; categories: string[] }) => {
+      // Primeiro, deletar categorias existentes
+      await supabase
+        .from("costs_categories")
+        .delete()
+        .eq("cost_id", costId);
+
+      // Se há categorias para adicionar, inserir as novas
+      if (categories.length > 0) {
+        const { error } = await supabase
+          .from("costs_categories")
+          .insert(
+            categories.map(categoryId => ({
+              cost_id: costId,
+              category_id: categoryId
+            }))
+          );
+
+        if (error) throw error;
+      }
+
+      return { costId, categories };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      toast.success("Categoria atualizada com sucesso!");
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar categoria:", error);
+      toast.error("Não foi possível atualizar a categoria");
+    },
+  });
+
   const deleteCost = useMutation({
     mutationFn: async (id: number) => {
       const { error } = await supabase
@@ -129,6 +171,7 @@ export const useCosts = (filters?: CostFilters) => {
     error: costsQuery.error,
     createCost,
     updateCost,
+    updateCostCategory,
     deleteCost,
     deleteCosts,
   };

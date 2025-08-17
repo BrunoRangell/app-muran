@@ -1,4 +1,4 @@
-import { Cost } from "@/types/cost";
+import { Cost, CostCategory } from "@/types/cost";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Edit, Trash2, Calendar, DollarSign } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { InlineCategoryEditor } from "./InlineCategoryEditor";
 
 interface EnhancedCostsTableProps {
   costs: Cost[];
@@ -21,9 +22,13 @@ interface EnhancedCostsTableProps {
     mutateAsync: (ids: number[]) => Promise<void>;
     isPending: boolean;
   };
+  updateCostCategory?: {
+    mutateAsync: (params: { costId: number; categories: string[] }) => Promise<{ costId: number; categories: string[] }>;
+    isPending: boolean;
+  };
 }
 
-export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, deleteCosts }: EnhancedCostsTableProps) {
+export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, deleteCosts, updateCostCategory }: EnhancedCostsTableProps) {
   const [costToDelete, setCostToDelete] = useState<Cost | null>(null);
   const [selectedCosts, setSelectedCosts] = useState<number[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
@@ -103,6 +108,19 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
 
   const clearSelection = () => {
     setSelectedCosts([]);
+  };
+
+  const handleCategoryUpdate = async (costId: number, categories: CostCategory[]) => {
+    if (!updateCostCategory) return;
+    
+    try {
+      await updateCostCategory.mutateAsync({
+        costId,
+        categories: categories as string[]
+      });
+    } catch (error) {
+      // Error handling is done in the mutation
+    }
   };
 
   const formatCurrency = (value: number): string => {
@@ -222,19 +240,11 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {cost.categories && cost.categories.length > 0 ? (
-                            cost.categories.map((categoryId, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {getCategoryName(categoryId)}
-                              </Badge>
-                            ))
-                          ) : (
-                            <Badge variant="outline" className="text-xs">
-                              Sem categoria
-                            </Badge>
-                          )}
-                        </div>
+                        <InlineCategoryEditor
+                          cost={cost}
+                          onCategoryUpdate={handleCategoryUpdate}
+                          isUpdating={updateCostCategory?.isPending || false}
+                        />
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
