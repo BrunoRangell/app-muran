@@ -39,7 +39,7 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
       // For now, we'll skip this filter to avoid the type issue
 
       if (filters?.search) {
-        query = query.ilike("name", `%${filters.search}%`);
+        query = query.or(`name.ilike.%${filters.search}%,original_name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
       }
 
       const { data, error } = await query;
