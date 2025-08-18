@@ -4,12 +4,12 @@ import { CostFilters, Cost } from "@/types/cost";
 import { NewCostDialog } from "@/components/costs/NewCostDialog";
 import { EditCostDialog } from "@/components/costs/EditCostDialog";
 import { Toaster } from "@/components/ui/sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CostsPageHeader } from "@/components/costs/enhanced/CostsPageHeader";
-import { CostsMetricsGrid } from "@/components/costs/enhanced/CostsMetricsGrid";
 import { SmartFiltersBar } from "@/components/costs/enhanced/SmartFiltersBar";
-import { EnhancedCostsTable } from "@/components/costs/enhanced/EnhancedCostsTable";
-import { CostsVisualization } from "@/components/costs/enhanced/CostsVisualization";
 import { MonthTabs } from "@/components/costs/enhanced/MonthTabs";
+import { CostsAnalyticsTab } from "@/components/costs/analytics/CostsAnalyticsTab";
+import { CostsListingTab } from "@/components/costs/listing/CostsListingTab";
 import { useCosts } from "@/hooks/queries/useCosts";
 
 export default function Costs() {
@@ -31,12 +31,7 @@ export default function Costs() {
           <CostsPageHeader onNewCostClick={() => setIsNewCostOpen(true)} />
         </div>
 
-        {/* Métricas em grid */}
-        <div className="mb-6">
-          <CostsMetricsGrid costs={costs} />
-        </div>
-
-        {/* Abas de meses */}
+        {/* Abas de meses - compartilhadas */}
         <div className="mb-6">
           <MonthTabs 
             costs={costs} 
@@ -45,27 +40,33 @@ export default function Costs() {
           />
         </div>
 
-        {/* Filtros inteligentes */}
+        {/* Filtros inteligentes - compartilhados */}
         <div className="mb-6">
           <SmartFiltersBar filters={filters} onFiltersChange={setFilters} />
         </div>
 
-        {/* Visualizações (gráficos) */}
-        <div className="mb-6">
-          <CostsVisualization costs={costs} filters={filters} />
-        </div>
-
-        {/* Tabela aprimorada */}
-        <div className="mb-6">
-          <EnhancedCostsTable 
-            costs={costs} 
-            isLoading={isLoading} 
-            onEditClick={setSelectedCost}
-            deleteCost={deleteCost}
-            deleteCosts={deleteCosts}
-            updateCostCategory={updateCostCategory}
-          />
-        </div>
+        {/* Sistema de Abas Principal */}
+        <Tabs defaultValue="analytics" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="analytics">Análise</TabsTrigger>
+            <TabsTrigger value="listing">Listagem</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="analytics">
+            <CostsAnalyticsTab costs={costs} filters={filters} />
+          </TabsContent>
+          
+          <TabsContent value="listing">
+            <CostsListingTab 
+              costs={costs} 
+              isLoading={isLoading} 
+              onEditClick={setSelectedCost}
+              deleteCost={deleteCost}
+              deleteCosts={deleteCosts}
+              updateCostCategory={updateCostCategory}
+            />
+          </TabsContent>
+        </Tabs>
 
         {/* Diálogos */}
         <NewCostDialog
