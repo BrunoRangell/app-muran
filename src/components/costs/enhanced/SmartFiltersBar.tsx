@@ -12,25 +12,23 @@ interface SmartFiltersBarProps {
 
 export function SmartFiltersBar({ filters, onFiltersChange }: SmartFiltersBarProps) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="space-y-4">
-          {/* Filtros Rápidos de Período */}
-          <PeriodQuickFilters filters={filters} onFiltersChange={onFiltersChange} />
-          
-          <Separator />
-          
-          {/* Busca e Categorias */}
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <SearchFilter filters={filters} onFiltersChange={onFiltersChange} />
-            </div>
-            <div className="flex items-center gap-4">
-              <CategoryFilters filters={filters} onFiltersChange={onFiltersChange} />
-            </div>
-          </div>
+    <div className="space-y-4">
+      {/* Filtros Rápidos de Período */}
+      <div>
+        <PeriodQuickFilters filters={filters} onFiltersChange={onFiltersChange} />
+      </div>
+      
+      <Separator className="my-4" />
+      
+      {/* Busca e Categorias */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex-1">
+          <SearchFilter filters={filters} onFiltersChange={onFiltersChange} />
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex items-center gap-4">
+          <CategoryFilters filters={filters} onFiltersChange={onFiltersChange} />
+        </div>
+      </div>
+    </div>
   );
 }
