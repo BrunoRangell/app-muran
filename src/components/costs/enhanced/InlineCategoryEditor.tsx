@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Cost, CostCategory } from "@/types/cost";
 import { COST_CATEGORIES } from "@/components/costs/schemas/costFormSchema";
+import { CategorySelector } from "./CategorySelector";
 import { toast } from "sonner";
 
 interface InlineCategoryEditorProps {
@@ -33,20 +27,20 @@ export function InlineCategoryEditor({ cost, onCategoryUpdate, isUpdating }: Inl
     setSelectedCategory("");
   };
 
-  const handleCategorySelect = async (categoryId: string) => {
+  const handleCategorySelect = async (categoryId?: CostCategory) => {
     if (!categoryId) return;
 
     const newCategories = cost.categories || [];
     
     // Verificar se a categoria já existe
-    if (newCategories.includes(categoryId as CostCategory)) {
+    if (newCategories.includes(categoryId)) {
       toast.error("Esta categoria já foi adicionada");
       setIsEditing(false);
       return;
     }
 
     // Adicionar nova categoria
-    const updatedCategories = [...newCategories, categoryId as CostCategory];
+    const updatedCategories = [...newCategories, categoryId];
     
     try {
       await onCategoryUpdate(cost.id, updatedCategories);
@@ -121,41 +115,24 @@ export function InlineCategoryEditor({ cost, onCategoryUpdate, isUpdating }: Inl
 
       {/* Editor inline */}
       {isEditing && (
-        <div className="flex items-center gap-1">
-          <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as CostCategory | "")}>
-            <SelectTrigger className="h-7 w-[180px] text-xs">
-              <SelectValue placeholder="Selecionar categoria" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[200px]">
-              {availableCategories.map((category) => (
-                <SelectItem key={category.id} value={category.id} className="text-xs">
-                  <div className="flex flex-col">
-                    <span className="font-medium">{category.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {category.description}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCategorySelect(selectedCategory)}
-            disabled={!selectedCategory || isUpdating}
-            className="h-7 w-7 p-0"
-          >
-            <Check className="h-3 w-3" />
-          </Button>
+        <div className="flex items-center gap-2">
+          <CategorySelector
+            value={selectedCategory || undefined}
+            onValueChange={(value) => {
+              if (value) {
+                handleCategorySelect(value);
+              }
+            }}
+            placeholder="Buscar e selecionar categoria"
+            excludeCategories={cost.categories || []}
+          />
           
           <Button
             variant="ghost"
             size="sm"
             onClick={handleCancel}
             disabled={isUpdating}
-            className="h-7 w-7 p-0"
+            className="h-8 w-8 p-0"
           >
             <X className="h-3 w-3" />
           </Button>
