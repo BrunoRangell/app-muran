@@ -13,7 +13,7 @@ interface BulkCategoryEditorProps {
   onClose: () => void;
   selectedCostIds: number[];
   selectedCosts: Array<{ id: number; name: string; categories?: CostCategory[] }>;
-  onApply: (params: { costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }) => void;
+  onApply: (params: { costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -28,17 +28,22 @@ export function BulkCategoryEditor({
   const [operation, setOperation] = useState<'add' | 'remove' | 'replace'>('add');
   const [selectedCategory, setSelectedCategory] = useState<CostCategory>();
 
-  const handleApply = () => {
+  const handleApply = async () => {
     if (!selectedCategory) return;
 
-    onApply({
-      costIds: selectedCostIds,
-      categories: [selectedCategory],
-      operation
-    });
+    try {
+      await onApply({
+        costIds: selectedCostIds,
+        categories: [selectedCategory],
+        operation
+      });
 
-    onClose();
-    setSelectedCategory(undefined);
+      onClose();
+      setSelectedCategory(undefined);
+    } catch (error) {
+      // onApply já trata o erro, apenas não fechamos o modal em caso de erro
+      console.error("Erro na aplicação em massa:", error);
+    }
   };
 
   const handleClose = () => {

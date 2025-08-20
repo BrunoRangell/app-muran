@@ -236,8 +236,8 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
 
       return { costIds, categories, operation };
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["costs"] });
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ["costs"] });
       const operationText = {
         add: 'adicionadas',
         remove: 'removidas',
