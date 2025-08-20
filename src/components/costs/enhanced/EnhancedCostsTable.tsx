@@ -9,6 +9,7 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { InlineCategoryEditor } from "./InlineCategoryEditor";
+import { BulkCategoryEditor } from "./BulkCategoryEditor";
 
 interface EnhancedCostsTableProps {
   costs: Cost[];
@@ -26,12 +27,17 @@ interface EnhancedCostsTableProps {
     mutateAsync: (params: { costId: number; categories: string[] }) => Promise<{ costId: number; categories: string[] }>;
     isPending: boolean;
   };
+  updateMultipleCostCategories?: {
+    mutateAsync: (params: { costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }) => Promise<{ costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }>;
+    isPending: boolean;
+  };
 }
 
-export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, deleteCosts, updateCostCategory }: EnhancedCostsTableProps) {
+export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, deleteCosts, updateCostCategory, updateMultipleCostCategories }: EnhancedCostsTableProps) {
   const [costToDelete, setCostToDelete] = useState<Cost | null>(null);
   const [selectedCosts, setSelectedCosts] = useState<number[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkCategoryEditor, setShowBulkCategoryEditor] = useState(false);
 
   // Buscar informações de categorias diretamente do componente CategoryFilters
   const getCategoryName = (categoryId: string): string => {
@@ -123,6 +129,19 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
     }
   };
 
+  const handleBulkCategoryUpdate = async (params: { costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }) => {
+    if (!updateMultipleCostCategories) return;
+    
+    try {
+      await updateMultipleCostCategories.mutateAsync(params);
+      setSelectedCosts([]); // Limpar seleção após operação
+    } catch (error) {
+      // Error handling is done in the mutation
+    }
+  };
+
+  const selectedCostData = selectedCosts.map(id => costs.find(cost => cost.id === id)).filter(Boolean) as Cost[];
+
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('pt-BR', { 
       style: 'currency', 
@@ -172,6 +191,14 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
                 </span>
                 <Button variant="outline" size="sm" onClick={clearSelection}>
                   Limpar seleção
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBulkCategoryEditor(true)}
+                  disabled={updateMultipleCostCategories?.isPending || false}
+                >
+                  Editar categorias
                 </Button>
                 <Button
                   variant="destructive"
@@ -343,6 +370,15 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BulkCategoryEditor
+        isOpen={showBulkCategoryEditor}
+        onClose={() => setShowBulkCategoryEditor(false)}
+        selectedCostIds={selectedCosts}
+        selectedCosts={selectedCostData}
+        onApply={handleBulkCategoryUpdate}
+        isLoading={updateMultipleCostCategories?.isPending || false}
+      />
     </>
   );
 }

@@ -16,7 +16,7 @@ export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
   const [selectedCost, setSelectedCost] = useState<Cost | null>(null);
   const [filters, setFilters] = useState<CostFilters>({});
-  const { costs, isLoading, deleteCost, deleteCosts, updateCostCategory } = useCosts(filters);
+  const { costs, isLoading, deleteCost, deleteCosts, updateCostCategory, updateMultipleCostCategories } = useCosts(filters);
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,6 +58,7 @@ export default function Costs() {
                   deleteCost={deleteCost}
                   deleteCosts={deleteCosts}
                   updateCostCategory={updateCostCategory}
+                  updateMultipleCostCategories={updateMultipleCostCategories}
                 />
               </TabsContent>
             </div>

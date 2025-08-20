@@ -35,9 +35,6 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
         query = query.gte("date", startDate).lte("date", endDate);
       }
 
-      // Note: category filtering would need to be done through costs_categories join
-      // For now, we'll skip this filter to avoid the type issue
-
       if (filters?.search) {
         query = query.or(`name.ilike.%${filters.search}%,original_name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
       }
@@ -45,7 +42,14 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Cost[];
+      
+      // Transformar os dados para incluir o array de categorias
+      const transformedData = data?.map(cost => ({
+        ...cost,
+        categories: cost.costs_categories?.map((cc: any) => cc.category_id) || []
+      })) || [];
+
+      return transformedData as Cost[];
     },
   });
 
@@ -165,6 +169,88 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
     },
   });
 
+  const updateMultipleCostCategories = useMutation({
+    mutationFn: async ({ 
+      costIds, 
+      categories, 
+      operation 
+    }: { 
+      costIds: number[]; 
+      categories: string[]; 
+      operation: 'add' | 'remove' | 'replace' 
+    }) => {
+      if (operation === 'replace') {
+        // Para substituir: deletar todas as categorias existentes e inserir as novas
+        for (const costId of costIds) {
+          await supabase
+            .from("costs_categories")
+            .delete()
+            .eq("cost_id", costId);
+
+          if (categories.length > 0) {
+            const { error } = await supabase
+              .from("costs_categories")
+              .insert(
+                categories.map(categoryId => ({
+                  cost_id: costId,
+                  category_id: categoryId
+                }))
+              );
+
+            if (error) throw error;
+          }
+        }
+      } else if (operation === 'add') {
+        // Para adicionar: inserir apenas as categorias que não existem
+        for (const costId of costIds) {
+          for (const categoryId of categories) {
+            // Verificar se já existe
+            const { data: existing } = await supabase
+              .from("costs_categories")
+              .select("*")
+              .eq("cost_id", costId)
+              .eq("category_id", categoryId)
+              .single();
+
+            if (!existing) {
+              const { error } = await supabase
+                .from("costs_categories")
+                .insert({ cost_id: costId, category_id: categoryId });
+
+              if (error) throw error;
+            }
+          }
+        }
+      } else if (operation === 'remove') {
+        // Para remover: deletar as categorias especificadas
+        for (const costId of costIds) {
+          const { error } = await supabase
+            .from("costs_categories")
+            .delete()
+            .eq("cost_id", costId)
+            .in("category_id", categories);
+
+          if (error) throw error;
+        }
+      }
+
+      return { costIds, categories, operation };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      const operationText = {
+        add: 'adicionadas',
+        remove: 'removidas',
+        replace: 'atualizadas'
+      }[data.operation];
+      toast.success(`Categorias ${operationText} em ${data.costIds.length} custo${data.costIds.length > 1 ? 's' : ''}!`);
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar categorias em massa:", error);
+      toast.error("Não foi possível atualizar as categorias");
+    },
+  });
+
   return {
     costs: costsQuery.data || [],
     isLoading: costsQuery.isLoading,
@@ -172,6 +258,7 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
     createCost,
     updateCost,
     updateCostCategory,
+    updateMultipleCostCategories,
     deleteCost,
     deleteCosts,
   };

@@ -17,6 +17,10 @@ interface CostsListingTabProps {
     mutateAsync: (params: { costId: number; categories: string[] }) => Promise<{ costId: number; categories: string[] }>;
     isPending: boolean;
   };
+  updateMultipleCostCategories?: {
+    mutateAsync: (params: { costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }) => Promise<{ costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }>;
+    isPending: boolean;
+  };
 }
 
 export function CostsListingTab({ 
@@ -25,7 +29,8 @@ export function CostsListingTab({
   onEditClick, 
   deleteCost, 
   deleteCosts, 
-  updateCostCategory 
+  updateCostCategory,
+  updateMultipleCostCategories
 }: CostsListingTabProps) {
   return (
     <div>
@@ -36,6 +41,7 @@ export function CostsListingTab({
         deleteCost={deleteCost}
         deleteCosts={deleteCosts}
         updateCostCategory={updateCostCategory}
+        updateMultipleCostCategories={updateMultipleCostCategories}
       />
     </div>
   );
