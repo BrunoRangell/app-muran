@@ -140,7 +140,10 @@ export function PeriodQuickFilters({ filters, onFiltersChange }: PeriodQuickFilt
           Ano Passado
         </Button>
         
-        <ImprovedCustomDatePicker filters={filters} onFiltersChange={onFiltersChange} />
+        <ImprovedCustomDatePicker 
+          filters={filters} 
+          onFiltersChange={onFiltersChange} 
+        />
       </div>
 
       {hasDateFilter && (
