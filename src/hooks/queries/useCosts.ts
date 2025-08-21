@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Cost, CostFilters } from "@/types/cost";
 import { toast } from "sonner";
+import { normalizeSearchTerm } from "@/utils/searchUtils";
 
 export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
   const queryClient = useQueryClient();
@@ -36,7 +37,8 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
       }
 
       if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,original_name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        const normalizedSearch = normalizeSearchTerm(filters.search);
+        query = query.or(`name.ilike.%${normalizedSearch}%,original_name.ilike.%${normalizedSearch}%,description.ilike.%${normalizedSearch}%`);
       }
 
       const { data, error } = await query;
@@ -237,7 +239,8 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
       return { costIds, categories, operation };
     },
     onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ["costs"] });
+      await queryClient.invalidateQueries({ queryKey: ["costs"], exact: false });
+      await queryClient.refetchQueries({ queryKey: ["costs"], exact: false });
       const operationText = {
         add: 'adicionadas',
         remove: 'removidas',
