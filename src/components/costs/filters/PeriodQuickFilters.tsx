@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { CostFilters } from "@/types/cost";
 import { Badge } from "@/components/ui/badge";
-import { ImprovedCustomDatePicker } from "./ImprovedCustomDatePicker";
+import { SimplePeriodPicker } from "./SimplePeriodPicker";
 import { X } from "lucide-react";
 
 interface PeriodQuickFiltersProps {
@@ -140,7 +140,7 @@ export function PeriodQuickFilters({ filters, onFiltersChange }: PeriodQuickFilt
           Ano Passado
         </Button>
         
-        <ImprovedCustomDatePicker 
+        <SimplePeriodPicker 
           filters={filters} 
           onFiltersChange={onFiltersChange} 
         />

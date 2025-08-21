@@ -239,13 +239,29 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
       return { costIds, categories, operation };
     },
     onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ["costs"], exact: false });
-      await queryClient.refetchQueries({ queryKey: ["costs"], exact: false });
+      // Invalidação mais robusta da query de custos
+      await queryClient.invalidateQueries({ 
+        queryKey: ["costs"], 
+        exact: false, 
+        refetchType: 'active' 
+      });
+      
+      // Pequeno delay para garantir que a invalidação seja processada
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Refetch forçado para garantir que os dados sejam atualizados
+      await queryClient.refetchQueries({ 
+        queryKey: ["costs"], 
+        exact: false,
+        type: 'active'
+      });
+      
       const operationText = {
         add: 'adicionadas',
         remove: 'removidas',
         replace: 'atualizadas'
       }[data.operation];
+      
       toast.success(`Categorias ${operationText} em ${data.costIds.length} custo${data.costIds.length > 1 ? 's' : ''}!`);
     },
     onError: (error) => {
