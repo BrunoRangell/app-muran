@@ -31,10 +31,10 @@ export default function Costs() {
           <Tabs defaultValue="analytics" className="w-full">
             <div className="border-b bg-muted/50 rounded-t-lg">
               <TabsList className="w-full justify-start h-auto p-1 bg-transparent">
-                <TabsTrigger value="analytics" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <TabsTrigger value="analytics">
                   Análise
                 </TabsTrigger>
-                <TabsTrigger value="listing" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <TabsTrigger value="listing">
                   Listagem
                 </TabsTrigger>
               </TabsList>
