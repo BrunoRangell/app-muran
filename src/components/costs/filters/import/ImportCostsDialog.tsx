@@ -20,10 +20,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { EnhancedFileUpload } from "./components/EnhancedFileUpload";
 import { CSVMappingDialog, CSVMapping } from "./components/CSVMappingDialog";
 import { useTransactionValidation } from "./hooks/useTransactionValidation";
+import { ImportSearchFilter } from "./ImportSearchFilter";
+import { matchesSearchTerms } from "@/utils/searchUtils";
 
 export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showCSVMapping, setShowCSVMapping] = useState(false);
   const [csvFile, setCSVFile] = useState<File | null>(null);
@@ -88,8 +91,14 @@ export function ImportCostsDialog() {
 
   const handleCancel = () => {
     setTransactions([]);
+    setSearchTerm("");
     setIsOpen(false);
   };
+
+  // Filtrar transações baseado na pesquisa
+  const filteredTransactions = transactions.filter(transaction =>
+    matchesSearchTerms(transaction.name, searchTerm)
+  );
 
   return (
     <>
@@ -118,9 +127,19 @@ export function ImportCostsDialog() {
               />
             ) : (
               <div className="space-y-4">
-                <ScrollArea className="h-[calc(80vh-220px)] w-full rounded-md border p-4">
+                <div className="flex items-center justify-between">
+                  <ImportSearchFilter
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                  />
+                  <div className="text-sm text-muted-foreground">
+                    {filteredTransactions.length} de {transactions.length} transações
+                  </div>
+                </div>
+                
+                <ScrollArea className="h-[calc(80vh-280px)] w-full rounded-md border p-4">
                   <ImportTransactionsTable
-                    transactions={transactions}
+                    transactions={filteredTransactions}
                     onNameChange={handleNameChange}
                     onSelectionChange={handleSelectionChange}
                     onCategoryChange={handleCategoryChange}

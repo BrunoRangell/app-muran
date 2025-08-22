@@ -28,10 +28,10 @@ export function ImportTransactionsTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[50px]">Selecionar</TableHead>
-            <TableHead className="min-w-[300px]">Nome</TableHead>
-            <TableHead>Data</TableHead>
-            <TableHead>Valor</TableHead>
-            <TableHead>Categoria</TableHead>
+            <TableHead className="min-w-[400px]">Nome</TableHead>
+            <TableHead className="w-[120px]">Data</TableHead>
+            <TableHead className="w-[140px]">Valor</TableHead>
+            <TableHead className="w-[200px]">Categoria</TableHead>
           </TableRow>
         </TableHeader>
       <TableBody>
@@ -52,13 +52,13 @@ export function ImportTransactionsTable({
                     <Input
                       value={transaction.name}
                       onChange={(e) => onNameChange(transaction.fitid, e.target.value)}
-                      className={`min-w-[300px] h-10 ${errors[`name-${transaction.fitid}`] ? "border-red-500" : ""}`}
+                      className={`min-w-[400px] h-10 ${errors[`name-${transaction.fitid}`] ? "border-red-500" : ""}`}
                       placeholder="Nome da transação"
                     />
                   </TooltipTrigger>
-                  {transaction.name.length > 50 && (
+                  {transaction.name.length > 60 && (
                     <TooltipContent>
-                      <p className="max-w-xs">{transaction.name}</p>
+                      <p className="max-w-md break-words">{transaction.name}</p>
                     </TooltipContent>
                   )}
                 </Tooltip>
