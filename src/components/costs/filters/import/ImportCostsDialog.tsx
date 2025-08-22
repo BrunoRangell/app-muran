@@ -109,7 +109,7 @@ export function ImportCostsDialog() {
             Importar OFX/CSV
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-5xl max-h-[80vh]">
+        <DialogContent className="max-w-6xl max-h-[90vh] w-[95vw]">
           <DialogHeader>
             <DialogTitle>Importar custos</DialogTitle>
             <DialogDescription>
