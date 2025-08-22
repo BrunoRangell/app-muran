@@ -132,21 +132,6 @@ export function SimplePeriodPicker({ filters, onFiltersChange }: SimplePeriodPic
         <div className="p-4 border-b border-border/50">
           <h4 className="text-sm font-medium text-foreground mb-3">Período Personalizado</h4>
           
-          {/* Atalhos rápidos */}
-          <div className="grid grid-cols-1 gap-2 mb-4">
-            {quickOptions.map((option) => (
-              <Button
-                key={option.key}
-                size="sm"
-                variant="ghost"
-                onClick={() => handleQuickSelect(option.key)}
-                className="h-8 text-xs justify-start hover:bg-muran-primary/10 hover:text-muran-primary"
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-
           {/* Campos de data */}
           <div className="space-y-3">
             <div className="space-y-1">
