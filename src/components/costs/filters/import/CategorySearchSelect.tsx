@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CostCategory } from "@/types/cost";
-import { COST_CATEGORIES } from "../../schemas/costFormSchema";
+import { COST_CATEGORIES } from "../../constants/categories";
 import { Button } from "@/components/ui/button";
 import {
   Command,

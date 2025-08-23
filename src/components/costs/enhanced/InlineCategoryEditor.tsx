@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, X, Loader2 } from "lucide-react";
 import { Cost, CostCategory } from "@/types/cost";
-import { COST_CATEGORIES } from "@/components/costs/schemas/costFormSchema";
+import { COST_CATEGORIES } from "@/components/costs/constants/categories";
 import { CategorySelector } from "./CategorySelector";
 import { toast } from "sonner";
 

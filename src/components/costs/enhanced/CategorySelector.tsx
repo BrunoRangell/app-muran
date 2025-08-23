@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { CostCategory } from "@/types/cost";
-import { COST_CATEGORIES } from "@/components/costs/schemas/costFormSchema";
+import { COST_CATEGORIES } from "@/components/costs/constants/categories";
 
 interface CategorySelectorProps {
   value?: CostCategory;

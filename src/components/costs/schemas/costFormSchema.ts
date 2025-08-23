@@ -1,6 +1,7 @@
 
 import { z } from "zod";
 import { CostCategory, CategoryInfo } from "@/types/cost";
+import { COST_CATEGORIES } from "@/components/costs/constants/categories";
 
 export const costFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
