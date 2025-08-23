@@ -37,9 +37,6 @@ export function BulkCategoryEditor({
         categories: [selectedCategory],
         operation
       });
-
-      // Aguardar um pouco para garantir que a invalidação seja processada
-      await new Promise(resolve => setTimeout(resolve, 150));
       
       onClose();
       setSelectedCategory(undefined);

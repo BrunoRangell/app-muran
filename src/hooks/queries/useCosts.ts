@@ -239,17 +239,7 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
       return { costIds, categories, operation };
     },
     onSuccess: async (data) => {
-      // Invalidação mais robusta da query de custos
-      await queryClient.invalidateQueries({ 
-        queryKey: ["costs"], 
-        exact: false, 
-        refetchType: 'active' 
-      });
-      
-      // Pequeno delay para garantir que a invalidação seja processada
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Refetch forçado para garantir que os dados sejam atualizados
+      // Refetch forçado para garantir que os dados sejam atualizados imediatamente
       await queryClient.refetchQueries({ 
         queryKey: ["costs"], 
         exact: false,

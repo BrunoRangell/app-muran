@@ -134,10 +134,6 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
     
     try {
       await updateMultipleCostCategories.mutateAsync(params);
-      
-      // Aguardar a invalidação ser processada completamente antes de limpar seleção
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
       setSelectedCosts([]); // Limpar seleção após operação
     } catch (error) {
       // Error handling is done in the mutation
