@@ -28,7 +28,7 @@ export default function Costs() {
 
         {/* Sistema de Abas Principal */}
         <div className="bg-card rounded-lg border shadow-sm">
-          <Tabs defaultValue="analytics" className="w-full">
+          <Tabs defaultValue="analytics" className="w-full" onValueChange={() => setFilters({})}>
             <div className="border-b bg-muted/50 rounded-t-lg">
               <TabsList className="w-full justify-start h-auto p-1 bg-transparent">
                 <TabsTrigger value="analytics">

@@ -2,43 +2,33 @@ import { CostCategory, CategoryInfo } from "@/types/cost";
 
 export const COST_CATEGORIES: CategoryInfo[] = [
   {
-    id: 'marketing' as CostCategory,
-    name: 'Marketing',
-    description: 'Gastos relacionados a marketing e publicidade'
+    id: 'marketing_vendas' as CostCategory,
+    name: 'Marketing & Vendas',
+    description: 'Atrair clientes e aumentar as vendas: anúncios online, comissões de vendas, eventos de networking, patrocínios comerciais'
   },
   {
-    id: 'vendas' as CostCategory,
-    name: 'Vendas',
-    description: 'Despesas do processo de vendas'
+    id: 'pessoal_colaboradores' as CostCategory,
+    name: 'Pessoal & Colaboradores',
+    description: 'Pessoas ligadas diretamente à operação: Salários, prestadores de serviço, bonificações por serviço'
   },
   {
-    id: 'plataformas_ferramentas' as CostCategory,
-    name: 'Plataformas e Ferramentas',
-    description: 'Softwares, plataformas e ferramentas de trabalho'
+    id: 'servicos_especializados' as CostCategory,
+    name: 'Serviços Especializados',
+    description: 'Serviços que não são ligados à operação: Contabilidade, jurídico, consultoria'
   },
   {
-    id: 'despesas_pessoal' as CostCategory,
-    name: 'Despesas de Pessoal',
-    description: 'Salários, benefícios e gastos com funcionários'
+    id: 'infraestrutura_operacional' as CostCategory,
+    name: 'Infraestrutura & Operacional',
+    description: 'Manter o funcionamento do dia a dia: Escritório, plataformas, ferramentas digitais, materiais'
   },
   {
-    id: 'taxas_impostos' as CostCategory,
-    name: 'Taxas e Impostos',
-    description: 'Impostos, taxas governamentais e obrigações fiscais'
+    id: 'impostos_taxas' as CostCategory,
+    name: 'Impostos & Taxas',
+    description: 'Impostos, contribuições, taxas obrigatórias'
   },
   {
-    id: 'servicos_profissionais' as CostCategory,
-    name: 'Serviços Profissionais',
-    description: 'Consultoria, assessoria e serviços terceirizados'
-  },
-  {
-    id: 'eventos_networking' as CostCategory,
-    name: 'Eventos e Networking',
-    description: 'Participação em eventos, networking e capacitação'
-  },
-  {
-    id: 'acoes_sociais' as CostCategory,
-    name: 'Ações Sociais',
-    description: 'Investimentos em responsabilidade social e ambiental'
+    id: 'doacoes_acoes_sociais' as CostCategory,
+    name: 'Doações e Ações Sociais',
+    description: 'Doações para instituições, projetos comunitários, patrocínios sociais'
   }
 ];
