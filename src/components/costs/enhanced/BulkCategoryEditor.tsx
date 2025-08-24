@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CostCategory } from "@/types/cost";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -120,22 +120,20 @@ export function BulkCategoryEditor({
     setHasChanges(false);
   };
 
-  // Inicializar categorias selecionadas baseado no estado atual
-  const initializeSelectedCategories = () => {
-    const initialSelected = new Set<CostCategory>();
-    COST_CATEGORIES.forEach(category => {
-      const state = getCategoryState(category.id);
-      if (state === 'all') {
-        initialSelected.add(category.id);
-      }
-    });
-    setSelectedCategories(initialSelected);
-  };
-
-  // Executar inicialização quando o modal abrir
-  if (isOpen && selectedCategories.size === 0 && !hasChanges) {
-    initializeSelectedCategories();
-  }
+  // useEffect para inicializar as categorias quando o modal abrir
+  useEffect(() => {
+    if (isOpen && selectedCosts.length > 0) {
+      const initialSelected = new Set<CostCategory>();
+      COST_CATEGORIES.forEach(category => {
+        const state = getCategoryState(category.id);
+        if (state === 'all') {
+          initialSelected.add(category.id);
+        }
+      });
+      setSelectedCategories(initialSelected);
+      setHasChanges(false);
+    }
+  }, [isOpen, selectedCosts]);
 
   const changes = getChangesToApply();
 
