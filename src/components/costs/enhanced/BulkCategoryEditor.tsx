@@ -70,17 +70,33 @@ export function BulkCategoryEditor({
     }
     
     setSelectedCategories(newSelected);
-    setHasChanges(true);
+    
+    // Verificar se há mudanças comparando com o estado inicial
+    const hasActualChanges = !areSetsEqual(newSelected, initialCategoryState);
+    setHasChanges(hasActualChanges);
   };
 
   const clearAllCategories = () => {
-    setSelectedCategories(new Set());
-    setHasChanges(true);
+    const newSelected = new Set<CostCategory>();
+    setSelectedCategories(newSelected);
+    const hasActualChanges = !areSetsEqual(newSelected, initialCategoryState);
+    setHasChanges(hasActualChanges);
   };
 
   const selectAllCategories = () => {
-    setSelectedCategories(new Set(COST_CATEGORIES.map(cat => cat.id)));
-    setHasChanges(true);
+    const newSelected = new Set(COST_CATEGORIES.map(cat => cat.id));
+    setSelectedCategories(newSelected);
+    const hasActualChanges = !areSetsEqual(newSelected, initialCategoryState);
+    setHasChanges(hasActualChanges);
+  };
+
+  // Função auxiliar para comparar dois Sets
+  const areSetsEqual = (set1: Set<CostCategory>, set2: Set<CostCategory>) => {
+    if (set1.size !== set2.size) return false;
+    for (const item of set1) {
+      if (!set2.has(item)) return false;
+    }
+    return true;
   };
 
   const handleApply = async () => {
@@ -121,7 +137,10 @@ export function BulkCategoryEditor({
     setHasChanges(false);
   };
 
-  // useEffect para inicializar as categorias quando o modal abrir
+  // Criar estado inicial das categorias para comparação
+  const [initialCategoryState, setInitialCategoryState] = useState<Set<CostCategory>>(new Set());
+
+  // useEffect para capturar o estado inicial quando o modal abrir
   useEffect(() => {
     if (isOpen && selectedCosts.length > 0) {
       const initialSelected = new Set<CostCategory>();
@@ -131,6 +150,7 @@ export function BulkCategoryEditor({
           initialSelected.add(category.id);
         }
       });
+      setInitialCategoryState(initialSelected);
       setSelectedCategories(initialSelected);
       setHasChanges(false);
     }
@@ -250,7 +270,7 @@ export function BulkCategoryEditor({
             </div>
 
             {/* Preview das mudanças */}
-            {hasChanges && (changes.add.length > 0 || changes.remove.length > 0) && (
+            {(changes.add.length > 0 || changes.remove.length > 0) && (
               <div className="p-3 bg-muted rounded-md space-y-2">
                 <Label className="text-sm font-medium">Mudanças a serem aplicadas:</Label>
                 
