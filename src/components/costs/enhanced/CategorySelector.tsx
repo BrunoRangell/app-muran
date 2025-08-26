@@ -24,6 +24,7 @@ interface CategorySelectorProps {
   hasError?: boolean;
   placeholder?: string;
   excludeCategories?: CostCategory[];
+  autoOpen?: boolean;
 }
 
 export function CategorySelector({ 
@@ -31,9 +32,10 @@ export function CategorySelector({
   onValueChange, 
   hasError = false, 
   placeholder = "Selecionar categoria",
-  excludeCategories = []
+  excludeCategories = [],
+  autoOpen = false
 }: CategorySelectorProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
 
   const getCategoryName = (categoryId: string): string => {
     const category = COST_CATEGORIES.find(c => c.id === categoryId);
@@ -63,11 +65,7 @@ export function CategorySelector({
       </PopoverTrigger>
       <PopoverContent className="w-[280px] p-0 z-50" align="start">
         <Command shouldFilter={false}>
-          <CommandInput 
-            placeholder="Buscar categoria..." 
-            className="h-9"
-          />
-          <CommandList className="max-h-[240px]">
+          <CommandList className="max-h-[400px]">
             <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
             <CommandGroup>
               <CommandItem

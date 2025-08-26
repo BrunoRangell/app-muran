@@ -146,6 +146,7 @@ export function InlineCategoryEditor({ cost, onCategoryUpdate, isUpdating }: Inl
               }}
               placeholder="Selecionar categoria"
               excludeCategories={localCategories}
+              autoOpen={true}
             />
           </div>
           
