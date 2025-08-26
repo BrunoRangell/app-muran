@@ -25,6 +25,8 @@ interface CategorySelectorProps {
   placeholder?: string;
   excludeCategories?: CostCategory[];
   autoOpen?: boolean;
+  compact?: boolean;
+  absolute?: boolean;
 }
 
 export function CategorySelector({ 
@@ -33,7 +35,9 @@ export function CategorySelector({
   hasError = false, 
   placeholder = "Selecionar categoria",
   excludeCategories = [],
-  autoOpen = false
+  autoOpen = false,
+  compact = false,
+  absolute = false
 }: CategorySelectorProps) {
   const [open, setOpen] = useState(autoOpen);
 
@@ -54,7 +58,8 @@ export function CategorySelector({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-[200px] justify-between text-left font-normal h-8 px-3 text-xs",
+            compact ? "min-w-fit" : "w-[200px]",
+            "justify-between text-left font-normal h-8 px-3 text-xs",
             !value && "text-muted-foreground",
             hasError && "border-destructive"
           )}
@@ -63,7 +68,13 @@ export function CategorySelector({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0 z-50" align="start">
+      <PopoverContent 
+        className={cn(
+          "w-[280px] p-0 z-50",
+          absolute && "absolute top-0 left-0"
+        )} 
+        align="start"
+      >
         <Command shouldFilter={false}>
           <CommandList className="max-h-[400px]">
             <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>

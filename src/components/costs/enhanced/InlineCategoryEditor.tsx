@@ -133,10 +133,10 @@ export function InlineCategoryEditor({ cost, onCategoryUpdate, isUpdating }: Inl
         </Button>
       )}
 
-      {/* Editor inline */}
+      {/* Editor inline - posicionado de forma absoluta para não afetar layout */}
       {isEditing && (
-        <div className="flex items-center gap-2 min-w-fit">
-          <div className="relative">
+        <div className="relative">
+          <div className="absolute top-0 left-0 z-50 flex items-center gap-2 bg-background border rounded-md shadow-lg p-1">
             <CategorySelector
               value={selectedCategory || undefined}
               onValueChange={(value) => {
@@ -147,18 +147,20 @@ export function InlineCategoryEditor({ cost, onCategoryUpdate, isUpdating }: Inl
               placeholder="Selecionar categoria"
               excludeCategories={localCategories}
               autoOpen={true}
+              compact={true}
+              absolute={true}
             />
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancel}
+              disabled={isUpdating}
+              className="h-8 w-8 p-0 shrink-0"
+            >
+              <X className="h-3 w-3" />
+            </Button>
           </div>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCancel}
-            disabled={isUpdating}
-            className="h-8 w-8 p-0 shrink-0"
-          >
-            <X className="h-3 w-3" />
-          </Button>
         </div>
       )}
     </div>
