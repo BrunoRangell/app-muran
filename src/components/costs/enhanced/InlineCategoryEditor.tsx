@@ -135,24 +135,26 @@ export function InlineCategoryEditor({ cost, onCategoryUpdate, isUpdating }: Inl
 
       {/* Editor inline */}
       {isEditing && (
-        <div className="flex items-center gap-2">
-          <CategorySelector
-            value={selectedCategory || undefined}
-            onValueChange={(value) => {
-              if (value) {
-                handleCategorySelect(value);
-              }
-            }}
-            placeholder="Buscar e selecionar categoria"
-            excludeCategories={localCategories}
-          />
+        <div className="flex items-center gap-2 min-w-fit">
+          <div className="relative">
+            <CategorySelector
+              value={selectedCategory || undefined}
+              onValueChange={(value) => {
+                if (value) {
+                  handleCategorySelect(value);
+                }
+              }}
+              placeholder="Selecionar categoria"
+              excludeCategories={localCategories}
+            />
+          </div>
           
           <Button
             variant="ghost"
             size="sm"
             onClick={handleCancel}
             disabled={isUpdating}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 shrink-0"
           >
             <X className="h-3 w-3" />
           </Button>

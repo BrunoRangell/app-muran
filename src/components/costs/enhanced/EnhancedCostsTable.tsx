@@ -226,7 +226,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
                     />
                   </TableHead>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Categorias</TableHead>
+                  <TableHead className="min-w-[200px] max-w-[300px] w-[250px]">Categorias</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead>Descrição</TableHead>
@@ -266,7 +266,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="min-w-[200px] max-w-[300px] w-[250px]">
                         <InlineCategoryEditor
                           cost={cost}
                           onCategoryUpdate={handleCategoryUpdate}

@@ -52,7 +52,7 @@ export function CategorySelector({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-[300px] justify-between text-left font-normal h-8 px-3 text-xs",
+            "w-[200px] justify-between text-left font-normal h-8 px-3 text-xs",
             !value && "text-muted-foreground",
             hasError && "border-destructive"
           )}
@@ -61,13 +61,13 @@ export function CategorySelector({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
-        <Command>
+      <PopoverContent className="w-[280px] p-0 z-50" align="start">
+        <Command shouldFilter={false}>
           <CommandInput 
             placeholder="Buscar categoria..." 
             className="h-9"
           />
-          <CommandList className="max-h-[200px]">
+          <CommandList className="max-h-[240px]">
             <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
             <CommandGroup>
               <CommandItem
@@ -89,9 +89,9 @@ export function CategorySelector({
               {availableCategories.map((category) => (
                 <CommandItem
                   key={category.id}
-                  value={category.id}
-                  onSelect={(currentValue) => {
-                    onValueChange(currentValue as CostCategory);
+                  value={`${category.name} ${category.description}`}
+                  onSelect={() => {
+                    onValueChange(category.id as CostCategory);
                     setOpen(false);
                   }}
                   className="text-xs"
