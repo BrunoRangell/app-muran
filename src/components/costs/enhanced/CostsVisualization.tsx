@@ -2,15 +2,16 @@ import { useState } from "react";
 import { Cost, CostFilters } from "@/types/cost";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Table as TableIcon, Eye, EyeOff } from "lucide-react";
-import { CostsMetrics } from "@/components/costs/CostsMetrics";
+import { BarChart3, Eye, EyeOff } from "lucide-react";
+import { CostsChartControls } from "../charts/CostsChartControls";
 
 interface CostsVisualizationProps {
   costs: Cost[];
   filters: CostFilters;
+  onRefresh?: () => void;
 }
 
-export function CostsVisualization({ costs, filters }: CostsVisualizationProps) {
+export function CostsVisualization({ costs, filters, onRefresh }: CostsVisualizationProps) {
   const [showCharts, setShowCharts] = useState(true);
 
   return (
@@ -19,7 +20,7 @@ export function CostsVisualization({ costs, filters }: CostsVisualizationProps) 
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Visualizações
+            Análise Visual de Custos
           </CardTitle>
           <Button
             variant="outline"
@@ -43,8 +44,12 @@ export function CostsVisualization({ costs, filters }: CostsVisualizationProps) 
       </CardHeader>
       
       {showCharts && (
-        <CardContent>
-          <CostsMetrics costs={costs} filters={filters} />
+        <CardContent className="pt-6">
+          <CostsChartControls 
+            costs={costs} 
+            filters={filters}
+            onRefresh={onRefresh}
+          />
         </CardContent>
       )}
     </Card>
