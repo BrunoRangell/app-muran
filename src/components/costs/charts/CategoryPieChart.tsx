@@ -99,23 +99,23 @@ export function CategoryPieChart({ costs }: CategoryPieChartProps) {
   }
 
   return (
-    <ChartContainer config={chartConfig} className="h-[500px] w-full">
+    <ChartContainer config={chartConfig} className="h-[650px] w-full">
       <div className="space-y-4">
         <div className="text-center">
           <div className="text-2xl font-bold">{formatCurrency(totalAmount)}</div>
           <div className="text-sm text-muted-foreground">Total de Custos</div>
         </div>
         
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+        <ResponsiveContainer width="100%" height={400}>
+          <PieChart margin={{ top: 40, right: 40, bottom: 40, left: 40 }}>
             <Pie
               data={chartData}
               dataKey="value"
               nameKey="category"
               cx="50%"
               cy="50%"
-              outerRadius={100}
-              innerRadius={40}
+              outerRadius={80}
+              innerRadius={30}
               paddingAngle={2}
             >
               {chartData.map((entry, index) => (
@@ -126,7 +126,8 @@ export function CategoryPieChart({ costs }: CategoryPieChartProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number) => [formatCurrency(value), "Valor"]}
+              labelFormatter={(label) => label}
+              formatter={(value: number, name: string) => [formatCurrency(value), name]}
               contentStyle={{
                 background: 'hsl(var(--background))',
                 border: '1px solid hsl(var(--border))',
