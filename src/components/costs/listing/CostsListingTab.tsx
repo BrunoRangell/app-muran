@@ -1,6 +1,11 @@
 import { Cost, CostFilters } from "@/types/cost";
 import { EnhancedCostsTable } from "@/components/costs/enhanced/EnhancedCostsTable";
 
+interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
+}
+
 interface CostsListingTabProps {
   costs: Cost[];
   isLoading: boolean;
@@ -21,6 +26,8 @@ interface CostsListingTabProps {
     mutateAsync: (params: { costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }) => Promise<{ costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }>;
     isPending: boolean;
   };
+  sortConfig: SortConfig;
+  onSort: (key: string) => void;
 }
 
 export function CostsListingTab({ 
@@ -30,7 +37,9 @@ export function CostsListingTab({
   deleteCost, 
   deleteCosts, 
   updateCostCategory,
-  updateMultipleCostCategories
+  updateMultipleCostCategories,
+  sortConfig,
+  onSort
 }: CostsListingTabProps) {
   return (
     <div>
@@ -42,6 +51,8 @@ export function CostsListingTab({
         deleteCosts={deleteCosts}
         updateCostCategory={updateCostCategory}
         updateMultipleCostCategories={updateMultipleCostCategories}
+        sortConfig={sortConfig}
+        onSort={onSort}
       />
     </div>
   );

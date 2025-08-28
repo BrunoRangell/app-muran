@@ -4,12 +4,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Edit, Trash2, Calendar, DollarSign } from "lucide-react";
+import { Edit, Trash2, Calendar, DollarSign, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { InlineCategoryEditor } from "./InlineCategoryEditor";
 import { BulkCategoryEditor } from "./BulkCategoryEditor";
+
+interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
+}
 
 interface EnhancedCostsTableProps {
   costs: Cost[];
@@ -31,9 +36,11 @@ interface EnhancedCostsTableProps {
     mutateAsync: (params: { costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }) => Promise<{ costIds: number[]; categories: string[]; operation: 'add' | 'remove' | 'replace' }>;
     isPending: boolean;
   };
+  sortConfig: SortConfig;
+  onSort: (key: string) => void;
 }
 
-export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, deleteCosts, updateCostCategory, updateMultipleCostCategories }: EnhancedCostsTableProps) {
+export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, deleteCosts, updateCostCategory, updateMultipleCostCategories, sortConfig, onSort }: EnhancedCostsTableProps) {
   const [costToDelete, setCostToDelete] = useState<Cost | null>(null);
   const [selectedCosts, setSelectedCosts] = useState<number[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
@@ -153,7 +160,48 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  const totalAmount = costs.reduce((sum, cost) => sum + cost.amount, 0);
+  const sortedCosts = useMemo(() => {
+    if (!sortConfig.key) return costs;
+
+    return [...costs].sort((a, b) => {
+      let aValue: any = a[sortConfig.key as keyof Cost];
+      let bValue: any = b[sortConfig.key as keyof Cost];
+
+      // Tratamento especial para categorias
+      if (sortConfig.key === 'categories') {
+        aValue = getCategoryNames(a);
+        bValue = getCategoryNames(b);
+      }
+
+      // Tratamento especial para datas
+      if (sortConfig.key === 'date') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      }
+
+      // Tratamento especial para valores numéricos
+      if (sortConfig.key === 'amount') {
+        aValue = Number(aValue);
+        bValue = Number(bValue);
+      }
+
+      // Comparação padrão para strings
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [costs, sortConfig, getCategoryNames]);
+
+  const totalAmount = sortedCosts.reduce((sum, cost) => sum + cost.amount, 0);
 
   if (isLoading) {
     return (
@@ -225,16 +273,80 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
                       {...(isIndeterminate && { "data-state": "indeterminate" })}
                     />
                   </TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="min-w-[200px] max-w-[300px] w-[250px]">Categorias</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => onSort('name')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Nome
+                      {sortConfig.key === 'name' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ArrowUp className="h-4 w-4 text-muran-primary" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4 text-muran-primary" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="min-w-[200px] max-w-[300px] w-[250px] cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => onSort('categories')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Categorias
+                      {sortConfig.key === 'categories' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ArrowUp className="h-4 w-4 text-muran-primary" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4 text-muran-primary" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => onSort('date')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Data
+                      {sortConfig.key === 'date' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ArrowUp className="h-4 w-4 text-muran-primary" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4 text-muran-primary" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-right cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => onSort('amount')}
+                  >
+                    <div className="flex items-center justify-end gap-2">
+                      Valor
+                      {sortConfig.key === 'amount' ? (
+                        sortConfig.direction === 'asc' ? (
+                          <ArrowUp className="h-4 w-4 text-muran-primary" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4 text-muran-primary" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {costs.length === 0 ? (
+                {sortedCosts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
@@ -247,7 +359,7 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
                     </TableCell>
                   </TableRow>
                 ) : (
-                  costs.map((cost) => (
+                  sortedCosts.map((cost) => (
                     <TableRow key={cost.id} className="hover:bg-gray-50/50">
                       <TableCell>
                         <Checkbox
@@ -314,10 +426,10 @@ export function EnhancedCostsTable({ costs, isLoading, onEditClick, deleteCost, 
             </Table>
           </div>
           
-          {costs.length > 0 && (
+          {sortedCosts.length > 0 && (
             <div className="flex justify-between items-center pt-4 border-t mt-4">
               <div className="text-sm text-gray-600">
-                {costs.length} registro{costs.length !== 1 ? 's' : ''}
+                {sortedCosts.length} registro{sortedCosts.length !== 1 ? 's' : ''}
               </div>
               <div className="text-sm font-medium">
                 Total: {formatCurrency(totalAmount)}
