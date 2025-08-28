@@ -41,6 +41,25 @@ export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
         query = query.or(`name.ilike.%${normalizedSearch}%,original_name.ilike.%${normalizedSearch}%,description.ilike.%${normalizedSearch}%`);
       }
 
+      let categoryFilteredCosts: number[] | null = null;
+
+      // Filtro por categorias
+      if (filters?.categories && filters.categories.length > 0) {
+        const { data: categoryData } = await supabase
+          .from("costs_categories")
+          .select("cost_id")
+          .in("category_id", filters.categories);
+        
+        categoryFilteredCosts = categoryData?.map(item => item.cost_id) || [];
+        
+        if (categoryFilteredCosts.length === 0) {
+          // Se não há custos com essas categorias, retornar array vazio
+          return [];
+        }
+        
+        query = query.in("id", categoryFilteredCosts);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
