@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { detectCSVMapping, validateCSVMapping } from "../utils/csvUtils";
 
 interface CSVMappingDialogProps {
   open: boolean;
@@ -49,10 +50,26 @@ export function CSVMappingDialog({
     separator: ",",
   });
 
+  // Auto-detectar mapeamento quando colunas mudam
+  useEffect(() => {
+    if (columns.length > 0) {
+      const autoMapping = detectCSVMapping(columns);
+      setMapping(prev => ({
+        ...prev,
+        ...autoMapping,
+      }));
+    }
+  }, [columns]);
+
   const handleConfirm = () => {
+    if (!validateCSVMapping(mapping)) {
+      return; // Não permitir confirmar se mapeamento inválido
+    }
     onConfirm(mapping);
     onOpenChange(false);
   };
+
+  const isValidMapping = validateCSVMapping(mapping);
 
   const updateMapping = (field: keyof CSVMapping, value: any) => {
     setMapping(prev => ({ ...prev, [field]: value }));
@@ -188,7 +205,11 @@ export function CSVMappingDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleConfirm}>
+            <Button 
+              onClick={handleConfirm}
+              disabled={!isValidMapping}
+              className="bg-muran-primary hover:bg-muran-primary/90"
+            >
               Importar CSV
             </Button>
           </div>

@@ -22,6 +22,7 @@ import { CSVMappingDialog, CSVMapping } from "./components/CSVMappingDialog";
 import { useTransactionValidation } from "./hooks/useTransactionValidation";
 import { ImportSearchFilter } from "./ImportSearchFilter";
 import { matchesSearchTerms } from "@/utils/searchUtils";
+import { detectCSVMapping } from "./utils/csvUtils";
 
 export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,6 +38,24 @@ export function ImportCostsDialog() {
   const { importTransactions } = useImportService();
   const queryClient = useQueryClient();
   const { errors, validateTransactions, clearError } = useTransactionValidation();
+
+  const handleCSVMappingConfirm = async (mapping: CSVMapping) => {
+    if (!csvFile) return;
+    
+    setIsLoading(true);
+    try {
+      const parsedTransactions = await parseCSVFile(csvFile, mapping);
+      setTransactions(parsedTransactions);
+      setShowCSVMapping(false);
+      setCSVFile(null);
+      toast.success(`${parsedTransactions.length} transações carregadas do CSV`);
+    } catch (error) {
+      console.error("Erro ao processar CSV:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao processar CSV");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleNameChange = (fitid: string, newName: string) => {
     setTransactions(prev => 
@@ -95,6 +114,13 @@ export function ImportCostsDialog() {
     setIsOpen(false);
   };
 
+  const handleCSVDetected = (file: File, columns: string[], preview: string[][]) => {
+    setCSVFile(file);
+    setCSVColumns(columns);
+    setCSVPreview(preview);
+    setShowCSVMapping(true);
+  };
+
   // Filtrar transações baseado na pesquisa
   const filteredTransactions = transactions.filter(transaction =>
     matchesSearchTerms(transaction.name, searchTerm)
@@ -124,6 +150,8 @@ export function ImportCostsDialog() {
                 onTransactionsLoaded={setTransactions}
                 parseOFXFile={parseOFXFile}
                 parseCSVFile={parseCSVFile}
+                detectColumns={detectColumns}
+                onCSVDetected={handleCSVDetected}
               />
             ) : (
               <div className="space-y-4">
@@ -174,9 +202,7 @@ export function ImportCostsDialog() {
         onOpenChange={setShowCSVMapping}
         columns={csvColumns}
         previewData={csvPreview}
-        onConfirm={(mapping: CSVMapping) => {
-          setShowCSVMapping(false);
-        }}
+        onConfirm={handleCSVMappingConfirm}
       />
     </>
   );

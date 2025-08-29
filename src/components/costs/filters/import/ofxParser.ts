@@ -11,9 +11,11 @@ export function parseOFX(ofxText: string) {
     if (line.startsWith('<STMTTRN>')) {
       currentTransaction = {};
     } else if (line.startsWith('</STMTTRN>')) {
-      // Verificamos se é um custo: deve ter valor negativo (não importa o TRNTYPE)
+      // Incluir todas as transações válidas (débitos e créditos)
       if (Object.keys(currentTransaction).length > 0 && 
-          Number(currentTransaction.amount) < 0) {
+          currentTransaction.amount && 
+          currentTransaction.date &&
+          (currentTransaction.name || currentTransaction.memo)) {
         transactions.push(currentTransaction);
       }
     } else if (line.startsWith('<TRNTYPE>')) {
@@ -29,12 +31,20 @@ export function parseOFX(ofxText: string) {
       currentTransaction.amount = line.replace('<TRNAMT>', '').replace('</TRNAMT>', '');
     } else if (line.startsWith('<FITID>')) {
       currentTransaction.fitId = line.replace('<FITID>', '').replace('</FITID>', '');
-    } else if (line.startsWith('<NAME>') || line.startsWith('<MEMO>')) {
-      currentTransaction.name = line
-        .replace('<NAME>', '')
-        .replace('</NAME>', '')
-        .replace('<MEMO>', '')
-        .replace('</MEMO>', '');
+    } else if (line.startsWith('<NAME>')) {
+      currentTransaction.name = line.replace('<NAME>', '').replace('</NAME>', '');
+    } else if (line.startsWith('<MEMO>')) {
+      currentTransaction.memo = line.replace('<MEMO>', '').replace('</MEMO>', '');
+      // Se não há nome, usar memo como nome
+      if (!currentTransaction.name) {
+        currentTransaction.name = currentTransaction.memo;
+      }
+    } else if (line.startsWith('<PAYEE>')) {
+      currentTransaction.payee = line.replace('<PAYEE>', '').replace('</PAYEE>', '');
+      // Se não há nome nem memo, usar payee como nome
+      if (!currentTransaction.name && !currentTransaction.memo) {
+        currentTransaction.name = currentTransaction.payee;
+      }
     }
   }
   

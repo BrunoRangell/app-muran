@@ -83,6 +83,9 @@ function parseDate(dateStr: string): Date {
     /(\d{2})\/(\d{2})\/(\d{4})/, // DD/MM/YYYY
     /(\d{4})-(\d{2})-(\d{2})/, // YYYY-MM-DD
     /(\d{2})-(\d{2})-(\d{4})/, // DD-MM-YYYY
+    /(\d{1,2})\/(\d{1,2})\/(\d{2})/, // DD/MM/YY ou D/M/YY
+    /(\d{2})\/(\d{2})\/(\d{2})/, // DD/MM/YY
+    /(\d{4})(\d{2})(\d{2})/, // YYYYMMDD (sem separadores)
   ];
 
   for (const format of formats) {
@@ -90,6 +93,14 @@ function parseDate(dateStr: string): Date {
     if (match) {
       if (format === formats[1]) { // YYYY-MM-DD
         return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+      } else if (format === formats[5]) { // YYYYMMDD
+        return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+      } else if (format === formats[3] || format === formats[4]) { // DD/MM/YY
+        let year = parseInt(match[3]);
+        // Se ano tem 2 dígitos, assumir século 21 se < 50, senão século 20
+        if (year < 50) year += 2000;
+        else if (year < 100) year += 1900;
+        return new Date(year, parseInt(match[2]) - 1, parseInt(match[1]));
       } else { // DD/MM/YYYY or DD-MM-YYYY
         return new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]));
       }
@@ -101,14 +112,44 @@ function parseDate(dateStr: string): Date {
 
 function parseAmount(amountStr: string): number {
   // Remover símbolos de moeda e espaços
-  let cleaned = amountStr.replace(/[R$\s]/g, '');
+  let cleaned = amountStr.replace(/[R$€$£¥\s]/g, '');
   
-  // Trocar vírgula por ponto se for decimal brasileiro
-  if (cleaned.includes(',') && !cleaned.includes('.')) {
-    cleaned = cleaned.replace(',', '.');
-  } else if (cleaned.includes(',') && cleaned.includes('.')) {
-    // Se tem ambos, assumir que vírgula é separador de milhares
-    cleaned = cleaned.replace(',', '');
+  // Detectar valores negativos (parênteses, sinal negativo no final)
+  let isNegative = false;
+  if (cleaned.includes('(') && cleaned.includes(')')) {
+    isNegative = true;
+    cleaned = cleaned.replace(/[()]/g, '');
+  } else if (cleaned.endsWith('-')) {
+    isNegative = true;
+    cleaned = cleaned.slice(0, -1);
+  } else if (cleaned.startsWith('-')) {
+    isNegative = true;
+    cleaned = cleaned.slice(1);
+  }
+  
+  // Detectar formato de número (brasileiro vs internacional)
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    // Se tem ambos, determinar qual é separador decimal
+    const lastComma = cleaned.lastIndexOf(',');
+    const lastDot = cleaned.lastIndexOf('.');
+    
+    if (lastDot > lastComma) {
+      // Ponto é decimal, vírgula é milhares: 1,234.56
+      cleaned = cleaned.replace(/,/g, '');
+    } else {
+      // Vírgula é decimal, ponto é milhares: 1.234,56
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    }
+  } else if (cleaned.includes(',')) {
+    // Apenas vírgula - pode ser decimal brasileiro ou separador de milhares
+    const parts = cleaned.split(',');
+    if (parts.length === 2 && parts[1].length <= 2) {
+      // Provavelmente decimal brasileiro: 123,45
+      cleaned = cleaned.replace(',', '.');
+    } else {
+      // Provavelmente separador de milhares: 1,234,567
+      cleaned = cleaned.replace(/,/g, '');
+    }
   }
 
   const amount = parseFloat(cleaned);
@@ -117,7 +158,7 @@ function parseAmount(amountStr: string): number {
     throw new Error(`Valor não reconhecido: ${amountStr}`);
   }
   
-  return amount;
+  return isNegative ? -amount : amount;
 }
 
 export function detectCSVColumns(text: string): string[] {

@@ -11,13 +11,17 @@ interface EnhancedFileUploadProps {
   onTransactionsLoaded: (transactions: Transaction[]) => void;
   parseOFXFile: (file: File) => Promise<Transaction[]>;
   parseCSVFile?: (file: File, options: any) => Promise<Transaction[]>;
+  detectColumns: (file: File) => Promise<string[]>;
+  onCSVDetected: (file: File, columns: string[], preview: string[][]) => void;
 }
 
 export function EnhancedFileUpload({ 
   isLoading, 
   onTransactionsLoaded, 
   parseOFXFile,
-  parseCSVFile 
+  parseCSVFile,
+  detectColumns,
+  onCSVDetected
 }: EnhancedFileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -62,27 +66,26 @@ export function EnhancedFileUpload({
 
       setUploadProgress(50);
       
-      let transactions: Transaction[];
-      
       if (isOFX) {
-        transactions = await parseOFXFile(file);
-      } else if (isCSV && parseCSVFile) {
-        // Para CSV, usar configurações padrão por enquanto
-        transactions = await parseCSVFile(file, {
-          dateColumn: 0,
-          descriptionColumn: 1,
-          amountColumn: 2,
-          skipFirstRow: true
-        });
+        const transactions = await parseOFXFile(file);
+        setUploadProgress(100);
+        onTransactionsLoaded(transactions);
+        toast.success(`${transactions.length} transações carregadas do arquivo OFX`);
+      } else if (isCSV) {
+        // Para CSV, detectar colunas e mostrar dialog de mapeamento
+        const columns = await detectColumns(file);
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        const preview = lines.slice(0, 3).map(line => 
+          line.split(/[,;|\t]/).map(col => col.replace(/^"|"$/g, '').trim())
+        );
+        
+        setUploadProgress(100);
+        onCSVDetected(file, columns, preview);
+        toast.info("CSV detectado. Configure o mapeamento das colunas.");
       } else {
-        throw new Error("Parser CSV não disponível");
+        throw new Error("Tipo de arquivo não suportado");
       }
-
-      setUploadProgress(100);
-      
-      onTransactionsLoaded(transactions);
-      
-      toast.success(`${transactions.length} transações carregadas do arquivo ${file.name}`);
       
     } catch (error) {
       console.error("Erro ao processar arquivo:", error);
