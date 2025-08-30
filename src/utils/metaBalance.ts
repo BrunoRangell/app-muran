@@ -1,7 +1,8 @@
 /**
  * Extrai o saldo numérico a partir de uma string exibida pela API Meta Ads.
  * Exemplo de entrada: "Saldo disponível (R$310,29 BRL)".
- * Se não for possível extrair o valor e houver spendCap, retorna (spendCap - amountSpent) / 100.
+ * Se não for possível extrair o valor e houver spendCap, retorna spendCap - amountSpent.
+ * Os valores de spendCap e amountSpent devem estar em reais.
  * Caso contrário, retorna null indicando saldo indisponível.
  */
 export const parseMetaBalance = (
@@ -24,7 +25,7 @@ export const parseMetaBalance = (
       amountSpent !== undefined && amountSpent !== null
         ? Number(amountSpent)
         : 0;
-    return (Number(spendCap) - spent) / 100;
+    return Number(spendCap) - spent;
   }
 
   return null;
