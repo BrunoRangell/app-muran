@@ -2,18 +2,30 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { parseMetaBalance } from "@/utils/metaBalance";
 
+interface FundingEvent {
+  event_time?: string;
+  created_time?: string;
+  time_created?: string;
+  timestamp?: string;
+  date?: string;
+  amount?: number | string | { value?: number; amount?: number };
+  value?: number | string;
+}
+
 export interface ApiAccount {
   id: string | null;
-  status_code?: any;
+  status_code?: unknown;
   status_label: string;
   status_tone: "ok" | "warn" | "crit" | "info";
   billing_model: "pre" | "pos";
+  is_prepay_account?: boolean;
   balance_type: "numeric" | "credit_card" | "unavailable";
-  balance_value?: number;
+  balance_value?: number | null;
   balance_source?: string;
   balance_percent?: number;
   last_recharge_date?: string;
   last_recharge_amount?: number;
+  last_funding_event?: FundingEvent;
   badges?: string[];
 }
 
@@ -34,30 +46,57 @@ export const useMetaBalance = (accountId?: string) => {
         throw error;
       }
 
-      const clients = (data || []) as any[];
-      return clients.map(client => {
-        const meta = client.meta as any;
-        if (meta) {
-          const balance = parseMetaBalance(
-            meta.balance,
-            meta.spend_cap,
-            meta.amount_spent
-          );
-
-          if (balance !== null) {
-            meta.balance_type = "numeric";
-            meta.balance_value = balance;
-            meta.balance_source = meta.balance
-              ? "display_string"
-              : meta.spend_cap > 0
-              ? "spend_cap_minus_spent"
-              : undefined;
-
-            if (meta.spend_cap && meta.spend_cap > 0) {
-              meta.balance_percent = balance / meta.spend_cap;
-            }
+        const clients = (data || []) as ApiClient[];
+        return clients.map(client => {
+          const meta = client.meta;
+          if (meta) {
+          if (meta.is_prepay_account === false) {
+            meta.balance_type = "credit_card";
+            meta.balance_value = null;
+            meta.balance_percent = undefined;
           } else {
-            meta.balance_type = "unavailable";
+            const balance = parseMetaBalance(
+              meta.balance,
+              meta.spend_cap,
+              meta.amount_spent
+            );
+
+            if (balance !== null) {
+              meta.balance_type = "numeric";
+              meta.balance_value = balance;
+              meta.balance_source = meta.balance
+                ? "display_string"
+                : meta.spend_cap > 0
+                ? "spend_cap_minus_spent"
+                : undefined;
+
+              if (meta.spend_cap && meta.spend_cap > 0) {
+                meta.balance_percent = balance / meta.spend_cap;
+              }
+            } else {
+              meta.balance_type = "unavailable";
+            }
+          }
+
+          if (meta.last_funding_event) {
+            const event = meta.last_funding_event;
+            const date =
+              event?.event_time ||
+              event?.created_time ||
+              event?.time_created ||
+              event?.timestamp ||
+              event?.date;
+            const amountRaw =
+              (typeof event?.amount === "object"
+                ? event.amount?.value ?? event.amount?.amount
+                : event?.amount) ?? event?.value;
+            if (date && amountRaw !== undefined && amountRaw !== null) {
+              meta.last_recharge_date = String(date).split("T")[0];
+              const amt = typeof amountRaw === "number" ? amountRaw : parseFloat(amountRaw);
+              if (!isNaN(amt)) {
+                meta.last_recharge_amount = amt;
+              }
+            }
           }
         }
 

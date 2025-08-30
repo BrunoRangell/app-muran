@@ -3,7 +3,7 @@ import { useMetaBalance, ApiClient, ApiAccount } from "@/hooks/useMetaBalance";
 
 interface AccountInfo {
   id: string | null;
-  status?: { code: any; label: string; tone: "ok" | "warn" | "crit" | "info" };
+  status?: { code: unknown; label: string; tone: "ok" | "warn" | "crit" | "info" };
   billing_model?: "pre" | "pos";
   saldo?: {
     type: "numeric" | "credit_card" | "unavailable";
@@ -129,7 +129,7 @@ function Card({ platform, obj }: CardProps) {
       <span className="font-semibold text-gray-600">Última recarga:</span> <span>—</span>
     </>
   );
-  if (obj.saldo?.type === "numeric" && obj.ultima_recarga) {
+  if (obj.ultima_recarga) {
     const d = new Date(obj.ultima_recarga.date + "T00:00:00");
     const date = d.toLocaleDateString("pt-BR");
     lastHtml = (
