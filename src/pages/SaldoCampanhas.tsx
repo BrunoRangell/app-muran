@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMetaBalance, ApiClient, ApiAccount } from "@/hooks/useMetaBalance";
+import { UnifiedLoadingState } from "@/components/common/UnifiedLoadingState";
+import { AlertCircle } from "lucide-react";
 
 interface AccountInfo {
   id: string | null;
@@ -196,7 +198,13 @@ function Card({ platform, obj }: CardProps) {
 export default function SaldoCampanhas() {
   const [search, setSearch] = useState("");
   const [clients, setClients] = useState<ClientData[]>([]);
-  const { data: apiClients, refetch, isFetching } = useMetaBalance();
+  const {
+    data: apiClients,
+    refetch,
+    isFetching,
+    isLoading,
+    error,
+  } = useMetaBalance();
 
   useEffect(() => {
     if (apiClients) {
@@ -224,6 +232,28 @@ export default function SaldoCampanhas() {
   const filtered = clients.filter(client =>
     client.cliente.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4">
+        <AlertCircle className="h-12 w-12" />
+        <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
+        <p className="text-center text-gray-600">
+          Não foi possível carregar a lista de clientes.
+          <br />
+          Por favor, tente novamente.
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <UnifiedLoadingState message="Carregando..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f6fb] text-[#1f2937]">
