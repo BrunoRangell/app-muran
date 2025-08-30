@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useMetaBalance, ApiClient, ApiAccount } from "@/hooks/useMetaBalance";
 
 interface AccountInfo {
   id: string | null;
-  status: { code: any; label: string; tone: "ok" | "warn" | "crit" | "info" };
-  billing_model: "pre" | "pos";
-  saldo: {
+  status?: { code: any; label: string; tone: "ok" | "warn" | "crit" | "info" };
+  billing_model?: "pre" | "pos";
+  saldo?: {
     type: "numeric" | "credit_card" | "unavailable";
     value?: number;
     source?: string;
     percent?: number;
   } | null;
-  ultima_recarga: { date: string; amount: number } | null;
-  badges: string[];
+  ultima_recarga?: { date: string; amount: number } | null;
+  badges?: string[];
 }
 
 interface ClientData {
@@ -20,84 +21,39 @@ interface ClientData {
   google?: AccountInfo;
 }
 
-const data: ClientData[] = [
-  {
-    cliente: "Megha Imóveis",
-    meta: {
-      id: "act_192612319156232",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: 91.81, source: "operational", percent: 0.22 },
-      ultima_recarga: { date: "2025-08-01", amount: 900.0 },
-      badges: []
+function mapAccount(api: ApiAccount): AccountInfo {
+  return {
+    id: api.id,
+    status: {
+      code: api.status_code,
+      label: api.status_label,
+      tone: api.status_tone,
     },
-    google: {
-      id: "123-456-7890",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "credit_card" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Simmons Colchões",
-    meta: {
-      id: "act_5616617858447105",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pre",
-      saldo: { type: "numeric", value: 310.29, source: "display_string", percent: 0.68 },
-      ultima_recarga: { date: "2025-08-18", amount: 500.0 },
-      badges: []
-    },
-    google: {
-      id: "234-567-8901",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "credit_card" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Elegance Móveis",
-    meta: {
-      id: "act_23846346246380483",
-      status: { code: 2, label: "Inativa", tone: "crit" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: -23.27, source: "operational", percent: 0 },
-      ultima_recarga: { date: "2025-07-28", amount: 300.0 },
-      badges: ["erro_pagamento"]
-    },
-    google: {
-      id: null,
-      status: { code: "NONE", label: "Não conectado", tone: "info" },
-      billing_model: "pos",
-      saldo: { type: "unavailable" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Astra Design",
-    meta: {
-      id: "act_1111111111111",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pre",
-      saldo: { type: "numeric", value: 154.1, source: "display_string", percent: 0.45 },
-      ultima_recarga: { date: "2025-08-20", amount: 200.0 },
-      badges: []
-    },
-    google: {
-      id: "999-222-3333",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: 75.0, source: "budget_remaining", percent: 0.3 },
-      ultima_recarga: null,
-      badges: []
-    }
-  }
-];
+    billing_model: api.billing_model,
+    saldo:
+      api.balance_type === "numeric"
+        ? {
+            type: "numeric",
+            value: api.balance_value,
+            source: api.balance_source,
+            percent: api.balance_percent,
+          }
+        : { type: api.balance_type },
+    ultima_recarga:
+      api.last_recharge_date && api.last_recharge_amount !== undefined
+        ? { date: api.last_recharge_date, amount: api.last_recharge_amount }
+        : null,
+    badges: api.badges || [],
+  };
+}
+
+function mapClient(api: ApiClient): ClientData {
+  return {
+    cliente: api.client,
+    meta: api.meta ? mapAccount(api.meta) : undefined,
+    google: api.google ? mapAccount(api.google) : undefined,
+  };
+}
 
 function pctToClass(p: number) {
   if (p <= 0.25) return "crit";
@@ -118,7 +74,7 @@ const toneStyles: Record<string, string> = {
   ok: "bg-green-100 text-green-800 border-green-200",
   warn: "bg-yellow-100 text-yellow-800 border-yellow-200",
   crit: "bg-red-100 text-red-800 border-red-200",
-  info: "bg-blue-100 text-blue-800 border-blue-200"
+  info: "bg-blue-100 text-blue-800 border-blue-200",
 };
 
 function Card({ platform, obj }: CardProps) {
@@ -161,7 +117,7 @@ function Card({ platform, obj }: CardProps) {
       display_string: "display_string",
       spendcap_minus_spent: "spend_cap − amount_spent",
       operational: "operacional (recargas − Insights)",
-      budget_remaining: "orçamento restante"
+      budget_remaining: "orçamento restante",
     };
     fonte = map[src] || src;
   } else if (obj.saldo?.type === "credit_card") {
@@ -239,7 +195,14 @@ function Card({ platform, obj }: CardProps) {
 
 export default function SaldoCampanhas() {
   const [search, setSearch] = useState("");
-  const [clients, setClients] = useState<ClientData[]>(data);
+  const [clients, setClients] = useState<ClientData[]>([]);
+  const { data: apiClients } = useMetaBalance();
+
+  useEffect(() => {
+    if (apiClients) {
+      setClients(apiClients.map(mapClient));
+    }
+  }, [apiClients]);
 
   const handleSort = () => {
     setClients(prev => {
@@ -332,4 +295,3 @@ export default function SaldoCampanhas() {
     </div>
   );
 }
-
