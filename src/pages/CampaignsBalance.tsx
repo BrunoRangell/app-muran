@@ -20,85 +20,6 @@ interface ClientData {
   google?: AccountData;
 }
 
-const initialData: ClientData[] = [
-  {
-    cliente: "Megha Imóveis",
-    meta: {
-      id: "act_192612319156232",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: 91.81, source: "operational", percent: 0.22 },
-      ultima_recarga: { date: "2025-08-01", amount: 900.0 },
-      badges: []
-    },
-    google: {
-      id: "123-456-7890",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "credit_card" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Simmons Colchões",
-    meta: {
-      id: "act_5616617858447105",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pre",
-      saldo: { type: "numeric", value: 310.29, source: "display_string", percent: 0.68 },
-      ultima_recarga: { date: "2025-08-18", amount: 500.0 },
-      badges: []
-    },
-    google: {
-      id: "234-567-8901",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "credit_card" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Elegance Móveis",
-    meta: {
-      id: "act_23846346246380483",
-      status: { code: 2, label: "Inativa", tone: "crit" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: -23.27, source: "operational", percent: 0 },
-      ultima_recarga: { date: "2025-07-28", amount: 300.0 },
-      badges: ["erro_pagamento"]
-    },
-    google: {
-      id: null,
-      status: { code: "NONE", label: "Não conectado", tone: "info" },
-      billing_model: "pos",
-      saldo: { type: "unavailable" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Astra Design",
-    meta: {
-      id: "act_1111111111111",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pre",
-      saldo: { type: "numeric", value: 154.1, source: "display_string", percent: 0.45 },
-      ultima_recarga: { date: "2025-08-20", amount: 200.0 },
-      badges: []
-    },
-    google: {
-      id: "999-222-3333",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: 75.0, source: "budget_remaining", percent: 0.3 },
-      ultima_recarga: null,
-      badges: []
-    }
-  }
-];
-
 function pctToClass(p: number) {
   if (p <= 0.25) return "crit";
   if (p <= 0.5) return "warn";
@@ -109,12 +30,6 @@ function money(v?: number) {
   return (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-interface AccountCardProps {
-  platform: "meta" | "google";
-  data?: AccountData;
-}
-
-const AccountCard = ({ platform, data }: AccountCardProps) => {
   if (!data) {
     return (
       <article className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 h-full flex items-center justify-center">
@@ -160,14 +75,6 @@ const AccountCard = ({ platform, data }: AccountCardProps) => {
     fonte = "pagamento automático";
   }
 
-  let lastContent: string;
-  if (data.saldo?.type === "numeric" && data.ultima_recarga) {
-    const d = new Date(data.ultima_recarga.date + "T00:00:00");
-    lastContent = `${d.toLocaleDateString("pt-BR")} — ${money(data.ultima_recarga.amount)}`;
-  } else {
-    lastContent = "—";
-  }
-
   const idText = data.id ? (isMeta ? data.id : `CID ${data.id}`) : "—";
 
   return (
@@ -189,19 +96,13 @@ const AccountCard = ({ platform, data }: AccountCardProps) => {
       <div className="grid grid-cols-[1fr_auto] items-center gap-2">
         <div className="text-xs text-gray-500">Saldo restante</div>
         <div className={`text-xl font-black ${data.saldo?.type === "numeric" ? "text-gray-900" : "text-gray-500 font-bold"}`}>{saldoValue}</div>
-        <div className={`col-span-2 h-2 rounded-full border overflow-hidden ${batteryClass === "ok" ? "border-green-200 bg-green-50" : batteryClass === "warn" ? "border-yellow-200 bg-yellow-50" : batteryClass === "crit" ? "border-red-200 bg-red-50" : "border-blue-200 bg-blue-50"}`}> 
           <span className={`block h-full ${batteryClass === "ok" ? "bg-green-500" : batteryClass === "warn" ? "bg-yellow-400" : batteryClass === "crit" ? "bg-red-400" : "bg-blue-400"}`} style={{ width: `${batteryPercent * 100}%` }}></span>
         </div>
         <div className="col-span-2 text-xs text-gray-500">Fonte: {fonte}</div>
       </div>
 
       <div className="flex items-center gap-1 text-xs text-gray-500">
-        <span className="font-semibold text-gray-700">Última recarga:</span> <span>{lastContent}</span>
-      </div>
 
-      <div className="flex justify-end gap-2">
-        {data.billing_model === "pos" && data.saldo?.type !== "numeric" && (
-          <button className="bg-[#ff7a00] text-white rounded-md px-3 py-1 text-sm font-bold">Definir saldo atual</button>
         )}
         <button className="border border-gray-200 rounded-md px-3 py-1 text-sm">Histórico</button>
         <button className="border border-gray-200 rounded-md px-3 py-1 text-sm">Abrir no {isMeta ? "Gerenciador" : "Ads"}</button>
@@ -211,8 +112,6 @@ const AccountCard = ({ platform, data }: AccountCardProps) => {
 };
 
 export default function CampaignsBalance() {
-  const [clients, setClients] = useState<ClientData[]>(initialData);
-  const [query, setQuery] = useState("");
 
   const handleSort = () => {
     const sorted = [...clients].sort((a, b) => {
@@ -225,6 +124,7 @@ export default function CampaignsBalance() {
     setClients(sorted);
   };
 
+
   const filtered = clients.filter(c => c.cliente.toLowerCase().includes(query.toLowerCase()));
 
   return (
@@ -235,7 +135,7 @@ export default function CampaignsBalance() {
             <div className="font-extrabold text-xl">Saúde das Contas</div>
             <div className="text-xs text-gray-500">Wireframe com cards padronizados (Meta | Google por cliente)</div>
           </div>
-          <button className="bg-[#ff7a00] text-white rounded-md px-3 py-2 font-bold flex items-center gap-2">⟳ Atualizar</button>
+
         </header>
 
         <div className="flex flex-wrap gap-2 bg-white border border-gray-200 rounded-xl p-3 shadow mb-4">
@@ -272,7 +172,6 @@ export default function CampaignsBalance() {
                 Cliente: <strong>{client.cliente}</strong>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <AccountCard platform="meta" data={client.meta} />
                 <AccountCard platform="google" data={client.google} />
               </div>
             </div>
