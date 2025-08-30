@@ -36,9 +36,9 @@ const financialSubMenu: MenuItem[] = [
 
 const adminMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
-  { 
-    icon: DollarSign, 
-    label: "Financeiro Muran", 
+  {
+    icon: DollarSign,
+    label: "Financeiro Muran",
     path: "/clientes",
     submenu: financialSubMenu
   },
@@ -51,7 +51,7 @@ const adminMenuItems: MenuItem[] = [
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Equipe", path: "/equipe" },
-  
+
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
   { icon: Wallet, label: "Saldo campanhas", path: "/saldo-campanhas" },

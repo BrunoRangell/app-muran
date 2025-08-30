@@ -1,13 +1,11 @@
 
 export type CostCategory = 
-  | 'marketing'
-  | 'vendas'
-  | 'plataformas_ferramentas'
-  | 'despesas_pessoal'
-  | 'taxas_impostos'
-  | 'servicos_profissionais'
-  | 'eventos_networking'
-  | 'acoes_sociais';
+  | 'marketing_vendas'
+  | 'pessoal_colaboradores'
+  | 'servicos_especializados'
+  | 'infraestrutura_operacional'
+  | 'impostos_taxas'
+  | 'doacoes_acoes_sociais';
 
 export interface Cost {
   id: number;

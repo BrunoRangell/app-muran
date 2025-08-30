@@ -2,9 +2,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Cost, CostFilters } from "@/types/cost";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
+import { normalizeSearchTerm } from "@/utils/searchUtils";
 
-export const useCosts = (filters?: CostFilters) => {
+export const useCosts = (filters?: CostFilters & { monthFilter?: string }) => {
   const queryClient = useQueryClient();
 
   const costsQuery = useQuery({
@@ -27,17 +28,49 @@ export const useCosts = (filters?: CostFilters) => {
         query = query.lte("date", filters.endDate);
       }
 
-      // Note: category filtering would need to be done through costs_categories join
-      // For now, we'll skip this filter to avoid the type issue
+      // Filtro por mês específico
+      if (filters?.monthFilter) {
+        const [year, month] = filters.monthFilter.split('-');
+        const startDate = `${year}-${month}-01`;
+        const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
+        query = query.gte("date", startDate).lte("date", endDate);
+      }
 
       if (filters?.search) {
-        query = query.ilike("name", `%${filters.search}%`);
+        const normalizedSearch = normalizeSearchTerm(filters.search);
+        query = query.or(`name.ilike.%${normalizedSearch}%,original_name.ilike.%${normalizedSearch}%,description.ilike.%${normalizedSearch}%`);
+      }
+
+      let categoryFilteredCosts: number[] | null = null;
+
+      // Filtro por categorias
+      if (filters?.categories && filters.categories.length > 0) {
+        const { data: categoryData } = await supabase
+          .from("costs_categories")
+          .select("cost_id")
+          .in("category_id", filters.categories);
+        
+        categoryFilteredCosts = categoryData?.map(item => item.cost_id) || [];
+        
+        if (categoryFilteredCosts.length === 0) {
+          // Se não há custos com essas categorias, retornar array vazio
+          return [];
+        }
+        
+        query = query.in("id", categoryFilteredCosts);
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Cost[];
+      
+      // Transformar os dados para incluir o array de categorias
+      const transformedData = data?.map(cost => ({
+        ...cost,
+        categories: cost.costs_categories?.map((cc: any) => cc.category_id) || []
+      })) || [];
+
+      return transformedData as Cost[];
     },
   });
 
@@ -54,18 +87,11 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo cadastrado com sucesso!",
-      });
+      toast.success("Custo cadastrado com sucesso!");
     },
     onError: (error) => {
       console.error("Erro ao criar custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível cadastrar o custo",
-        variant: "destructive",
-      });
+      toast.error("Não foi possível cadastrar o custo");
     },
   });
 
@@ -84,18 +110,45 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo atualizado com sucesso!",
-      });
+      toast.success("Custo atualizado com sucesso!");
     },
     onError: (error) => {
       console.error("Erro ao atualizar custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o custo",
-        variant: "destructive",
-      });
+      toast.error("Não foi possível atualizar o custo");
+    },
+  });
+
+  const updateCostCategory = useMutation({
+    mutationFn: async ({ costId, categories }: { costId: number; categories: string[] }) => {
+      // Primeiro, deletar categorias existentes
+      await supabase
+        .from("costs_categories")
+        .delete()
+        .eq("cost_id", costId);
+
+      // Se há categorias para adicionar, inserir as novas
+      if (categories.length > 0) {
+        const { error } = await supabase
+          .from("costs_categories")
+          .insert(
+            categories.map(categoryId => ({
+              cost_id: costId,
+              category_id: categoryId
+            }))
+          );
+
+        if (error) throw error;
+      }
+
+      return { costId, categories };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      toast.success("Categoria atualizada com sucesso!");
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar categoria:", error);
+      toast.error("Não foi possível atualizar a categoria");
     },
   });
 
@@ -110,18 +163,119 @@ export const useCosts = (filters?: CostFilters) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["costs"] });
-      toast({
-        title: "Sucesso",
-        description: "Custo excluído com sucesso!",
-      });
+      toast.success("Custo excluído com sucesso!");
     },
     onError: (error) => {
       console.error("Erro ao excluir custo:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o custo",
-        variant: "destructive",
+      toast.error("Não foi possível excluir o custo");
+    },
+  });
+
+  const deleteCosts = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const { error } = await supabase
+        .from("costs")
+        .delete()
+        .in("id", ids);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      toast.success(`${ids.length} custo${ids.length > 1 ? 's' : ''} excluído${ids.length > 1 ? 's' : ''} com sucesso!`);
+    },
+    onError: (error) => {
+      console.error("Erro ao excluir custos:", error);
+      toast.error("Não foi possível excluir os custos selecionados");
+    },
+  });
+
+  const updateMultipleCostCategories = useMutation({
+    mutationFn: async ({ 
+      costIds, 
+      categories, 
+      operation 
+    }: { 
+      costIds: number[]; 
+      categories: string[]; 
+      operation: 'add' | 'remove' | 'replace' 
+    }) => {
+      if (operation === 'replace') {
+        // Para substituir: deletar todas as categorias existentes e inserir as novas
+        for (const costId of costIds) {
+          await supabase
+            .from("costs_categories")
+            .delete()
+            .eq("cost_id", costId);
+
+          if (categories.length > 0) {
+            const { error } = await supabase
+              .from("costs_categories")
+              .insert(
+                categories.map(categoryId => ({
+                  cost_id: costId,
+                  category_id: categoryId
+                }))
+              );
+
+            if (error) throw error;
+          }
+        }
+      } else if (operation === 'add') {
+        // Para adicionar: inserir apenas as categorias que não existem
+        for (const costId of costIds) {
+          for (const categoryId of categories) {
+            // Verificar se já existe
+            const { data: existing } = await supabase
+              .from("costs_categories")
+              .select("*")
+              .eq("cost_id", costId)
+              .eq("category_id", categoryId)
+              .single();
+
+            if (!existing) {
+              const { error } = await supabase
+                .from("costs_categories")
+                .insert({ cost_id: costId, category_id: categoryId });
+
+              if (error) throw error;
+            }
+          }
+        }
+      } else if (operation === 'remove') {
+        // Para remover: deletar as categorias especificadas
+        for (const costId of costIds) {
+          const { error } = await supabase
+            .from("costs_categories")
+            .delete()
+            .eq("cost_id", costId)
+            .in("category_id", categories);
+
+          if (error) throw error;
+        }
+      }
+
+      return { costIds, categories, operation };
+    },
+    onSuccess: async (data) => {
+      // Refetch forçado para garantir que os dados sejam atualizados imediatamente
+      await queryClient.refetchQueries({ 
+        queryKey: ["costs"], 
+        exact: false,
+        type: 'active'
       });
+      
+      const operationText = {
+        add: 'adicionadas',
+        remove: 'removidas',
+        replace: 'atualizadas'
+      }[data.operation];
+      
+      toast.success(`Categorias ${operationText} em ${data.costIds.length} custo${data.costIds.length > 1 ? 's' : ''}!`);
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar categorias em massa:", error);
+      toast.error("Não foi possível atualizar as categorias");
     },
   });
 
@@ -131,6 +285,9 @@ export const useCosts = (filters?: CostFilters) => {
     error: costsQuery.error,
     createCost,
     updateCost,
+    updateCostCategory,
+    updateMultipleCostCategories,
     deleteCost,
+    deleteCosts,
   };
 };

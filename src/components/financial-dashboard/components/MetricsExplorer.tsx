@@ -111,7 +111,7 @@ function aggregateCostsByMonth(costs: Cost[]) {
 
     // Se a API já traz categories no objeto Cost, usamos, senão consideramos 0 para marketing/vendas
     const categories = (c as any).categories as Cost["categories"] | undefined;
-    const isMktSales = categories?.some((cat) => cat === "marketing" || cat === "vendas");
+    const isMktSales = categories?.some((cat) => cat === "marketing_vendas");
     marketingSales[month] = (marketingSales[month] || 0) + (isMktSales ? amount : 0);
   }
   return { totals, marketingSales };

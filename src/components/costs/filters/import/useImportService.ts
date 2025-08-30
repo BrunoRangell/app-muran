@@ -1,5 +1,5 @@
 
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Transaction } from "./types";
 import { checkExistingTransactions } from "./services/existingTransactionsService";
 import { 
@@ -9,7 +9,6 @@ import {
 } from "./services/costCreationService";
 
 export function useImportService() {
-  const { toast } = useToast();
 
   const importTransactions = async (selectedTransactions: Transaction[]): Promise<number> => {
     try {
@@ -26,46 +25,50 @@ export function useImportService() {
       console.log("Detalhes das novas transações:", newTransactions);
 
       if (newTransactions.length === 0) {
-        toast({
-          title: "Transações já importadas",
-          description: "Todas as transações selecionadas já foram importadas anteriormente.",
-          variant: "destructive"
-        });
+        toast.error("Todas as transações selecionadas já foram importadas anteriormente.");
         return 0;
       }
 
       let importedCount = 0;
       let skippedCount = 0;
 
-      // Importar transações como custos
+      // Importar transações como custos com timeout
       for (const transaction of newTransactions) {
         try {
           console.log("----------------------------------");
           console.log("[Transação] Iniciando processamento:", transaction.name);
           console.log("[Transação] Detalhes completos:", transaction);
           
-          // Verificar se tem categoria selecionada
-          if (!transaction.category) {
-            console.warn("[Categoria] Transação sem categoria, pulando...");
-            skippedCount++;
-            continue;
-          }
+          // Categoria agora é opcional - se não tiver, ainda importa
 
-          // Criar e categorizar o custo
-          const cost = await createCost(transaction, transaction.category);
-          await assignCategoryToCost(cost.id, transaction.category);
-          await registerImportedTransaction(transaction.fitid, cost.id);
+          // Criar transação com timeout para evitar travamento
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout: Operação demorou mais de 30 segundos')), 30000)
+          );
+
+          const operationPromise = (async () => {
+            const cost = await createCost(transaction, transaction.category);
+            await assignCategoryToCost(cost.id, transaction.category);
+            await registerImportedTransaction(transaction.fitid, cost.id);
+            return cost;
+          })();
+
+          await Promise.race([operationPromise, timeoutPromise]);
           
           importedCount++;
+          console.log("[Transação] Processada com sucesso:", transaction.name);
 
         } catch (error) {
           console.error("[ERRO] Falha ao processar transação:", error);
-          toast({
-            title: "Erro ao importar transação",
-            description: `Erro ao importar "${transaction.name}": ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-            variant: "destructive"
-          });
-          throw error;
+          skippedCount++;
+          
+          // Não interromper o processo por uma transação com erro
+          if (error instanceof Error && error.message.includes('Timeout')) {
+            console.error("[TIMEOUT] Transação travou:", transaction.name);
+            toast.error(`Timeout ao importar "${transaction.name}". Transação pulada.`);
+          } else {
+            toast.error(`Erro ao importar "${transaction.name}": ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+          }
         }
       }
 
@@ -84,22 +87,18 @@ export function useImportService() {
           description += `${skippedCount} transações puladas por falta de categoria.`;
         }
         
-        toast({
-          title: "Importação concluída",
-          description: description.trim(),
-          variant: importedCount > 0 ? "default" : "destructive"
-        });
+        if (importedCount > 0) {
+          toast.success(description.trim());
+        } else {
+          toast.error(description.trim());
+        }
       }
 
       return importedCount;
       
     } catch (error) {
       console.error("Erro geral na importação:", error);
-      toast({
-        title: "Erro na importação",
-        description: error instanceof Error ? error.message : "Ocorreu um erro durante o processo de importação.",
-        variant: "destructive"
-      });
+      toast.error(error instanceof Error ? error.message : "Ocorreu um erro durante o processo de importação.");
       throw error;
     }
   };
