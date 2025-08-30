@@ -1,16 +1,16 @@
 
 import { useLocation } from "react-router-dom";
-import { 
-  Users, 
+import {
+  Users,
   DollarSign,
   Home,
-  ListTodo,
   Receipt,
   CreditCard,
   BarChart3,
   Menu,
   ChevronLeft,
-  Activity
+  Activity,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -35,23 +35,25 @@ const financialSubMenu: MenuItem[] = [
 
 const adminMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
-  { 
-    icon: DollarSign, 
-    label: "Financeiro Muran", 
+  {
+    icon: DollarSign,
+    label: "Financeiro Muran",
     path: "/clientes",
     submenu: financialSubMenu
   },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
-  { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
+  { icon: Activity, label: "Saúde", path: "/saude" },
+  { icon: Sparkles, label: "Mensagem", path: "/mensagem" },
 ];
 
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
   { icon: Users, label: "Equipe", path: "/equipe" },
-  
+
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
-  { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
+  { icon: Activity, label: "Saúde", path: "/saude" },
+  { icon: Sparkles, label: "Mensagem", path: "/mensagem" },
 ];
 
 export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {

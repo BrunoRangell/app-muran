@@ -1,0 +1,85 @@
+.health-page {
+  --bg:#f4f6fb; --panel:#ffffff; --line:#e7ecf5; --soft:#fbfdff;
+  --text:#1f2937; --muted:#6b7280; --brand:#ff7a00;
+  --ok:#21b77a; --warn:#f59e0b; --crit:#ef4444; --info:#3b82f6;
+  --ok-soft:#eaf9f2; --warn-soft:#fff7e8; --crit-soft:#ffefef; --info-soft:#eef5ff;
+  --radius:14px; --shadow:0 6px 18px rgba(15,23,42,.06);
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  min-height:100vh;
+}
+
+.health-page *{box-sizing:border-box}
+
+.health-page .container{max-width:1220px;margin:28px auto;padding:0 24px}
+
+.health-page header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+.health-page .title{font-weight:800;font-size:22px}
+.health-page .muted{color:var(--muted);font-size:12px}
+
+.health-page .btn{background:var(--brand);color:white;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+.health-page .btn.ghost{background:transparent;border:1px solid var(--line);color:#111827}
+.health-page .btn.sm{padding:8px 10px;font-size:13px}
+.health-page .btn.icon{display:inline-flex;align-items:center;gap:8px}
+
+/* Tabs */
+.health-page .tabs{display:flex;gap:8px;margin:10px 0 14px}
+.health-page .tab{padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:700;font-size:14px}
+.health-page .tab.active{box-shadow:var(--shadow)}
+
+/* Summary */
+.health-page .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:10px}
+.health-page .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.health-page .kpi .label{display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:700}
+.health-page .kpi .v{font-size:24px;font-weight:800;margin-top:6px}
+.health-page .badge{width:22px;height:22px;border-radius:999px;display:inline-grid;place-items:center;color:#fff;font-weight:800}
+.health-page .b-crit{background:var(--crit)} .health-page .b-warn{background:var(--warn)} .health-page .b-ok{background:var(--ok)} .health-page .b-info{background:var(--info)}
+
+/* Toolbar */
+.health-page .toolbar{margin:8px 0 16px;display:flex;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+.health-page input[type=text], .health-page select{background:#fff;border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:10px}
+.health-page .grow{flex:1;min-width:260px}
+
+/* Grid de clientes: 2 cards (Meta|Google) por linha */
+.health-page .clients{display:grid;grid-template-columns:1fr;gap:14px}
+.health-page .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* Card padronizado */
+.health-page .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);min-height:200px;display:grid;grid-template-rows:auto auto auto auto;gap:10px}
+.health-page .head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.health-page .left{display:flex;align-items:center;gap:10px;min-width:0}
+.health-page .logo{width:22px;height:22px;border-radius:6px;background:#111;display:inline-block}
+.health-page .logo.meta{background:#4267B2}
+.health-page .logo.google{background:#34A853}
+.health-page .name{font-weight:800;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+.health-page .accid{font-size:12px;color:var(--muted)}
+.health-page .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.health-page .chip{padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;border:1px solid var(--line);background:#f4f6fb;color:#374151}
+.health-page .chip.ok{background:var(--ok-soft);color:#065f46;border-color:#ccf3e1}
+.health-page .chip.warn{background:var(--warn-soft);color:#92400e;border-color:#ffe4b5}
+.health-page .chip.crit{background:var(--crit-soft);color:#991b1b;border-color:#ffd2d2}
+.health-page .chip.info{background:var(--info-soft);color:#1e40af;border-color:#cfe0ff}
+
+/* Saldo */
+.health-page .saldo{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px}
+.health-page .saldo .label{font-size:12px;color:var(--muted)}
+.health-page .saldo .value{font-size:22px;font-weight:900}
+.health-page .saldo .value.muted{font-weight:700;color:#6b7280}
+.health-page .battery{grid-column:1/-1;height:8px;border:1px solid var(--line);border-radius:999px;background:#f1f5f9;position:relative;overflow:hidden}
+.health-page .battery>span{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#21b77a,#74e0b8)}
+.health-page .battery.warn>span{background:linear-gradient(90deg,#ffcc66,#ffe39d)}
+.health-page .battery.crit>span{background:linear-gradient(90deg,#ff6b6b,#ff9d9d)}
+.health-page .hint{grid-column:1/-1;color:var(--muted);font-size:12px}
+
+/* Última recarga (sempre reserva a linha) */
+.health-page .last{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12px}
+.health-page .last .label{font-weight:700;color:#374151}
+
+/* Rodapé */
+.health-page .actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* Estado "sem conta" mantém altura */
+.health-page .empty{opacity:.75;display:grid;place-items:center;border-style:dashed}
+
+@media (max-width:1024px){.health-page .row{grid-template-columns:1fr}}
