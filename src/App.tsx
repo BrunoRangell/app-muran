@@ -56,6 +56,7 @@ const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
 const CampaignHealth = lazy(() => import("@/pages/CampaignHealth"));
+const Mensagem = lazyWithTimeout(() => import("@/pages/Mensagem"));
 
 function App() {
   return (
@@ -115,6 +116,7 @@ function App() {
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
           
           <Route path="/saude-campanhas" element={<CampaignHealth />} />
+          <Route path="/mensagem" element={<Mensagem />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
