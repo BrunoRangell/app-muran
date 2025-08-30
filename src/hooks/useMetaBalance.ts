@@ -23,6 +23,9 @@ export interface ApiAccount {
   balance_value?: number | null;
   balance_source?: string;
   balance_percent?: number;
+  spend_cap?: number | string | null;
+  amount_spent?: number | string | null;
+  expired_funding_source_details?: { display_string?: string } | null;
   last_recharge_date?: string;
   last_recharge_amount?: number;
   last_funding_event?: FundingEvent;
@@ -55,23 +58,35 @@ export const useMetaBalance = (accountId?: string) => {
             meta.balance_value = null;
             meta.balance_percent = undefined;
           } else {
+            const spendCap =
+              meta.spend_cap !== undefined && meta.spend_cap !== null
+                ? Number(meta.spend_cap) / 100
+                : undefined;
+            const amountSpent =
+              meta.amount_spent !== undefined && meta.amount_spent !== null
+                ? Number(meta.amount_spent) / 100
+                : undefined;
+
+            meta.spend_cap = spendCap;
+            meta.amount_spent = amountSpent;
+
             const balance = parseMetaBalance(
-              meta.balance,
-              meta.spend_cap,
-              meta.amount_spent
+              meta.expired_funding_source_details?.display_string,
+              spendCap,
+              amountSpent
             );
 
             if (balance !== null) {
               meta.balance_type = "numeric";
               meta.balance_value = balance;
-              meta.balance_source = meta.balance
+              meta.balance_source = meta.expired_funding_source_details?.display_string
                 ? "display_string"
-                : meta.spend_cap > 0
+                : spendCap && spendCap > 0
                 ? "spend_cap_minus_spent"
                 : undefined;
 
-              if (meta.spend_cap && meta.spend_cap > 0) {
-                meta.balance_percent = balance / meta.spend_cap;
+              if (spendCap && spendCap > 0) {
+                meta.balance_percent = balance / spendCap;
               }
             } else {
               meta.balance_type = "unavailable";
@@ -92,9 +107,10 @@ export const useMetaBalance = (accountId?: string) => {
                 : event?.amount) ?? event?.value;
             if (date && amountRaw !== undefined && amountRaw !== null) {
               meta.last_recharge_date = String(date).split("T")[0];
-              const amt = typeof amountRaw === "number" ? amountRaw : parseFloat(amountRaw);
+              const amt =
+                typeof amountRaw === "number" ? amountRaw : parseFloat(amountRaw);
               if (!isNaN(amt)) {
-                meta.last_recharge_amount = amt;
+                meta.last_recharge_amount = amt / 100;
               }
             }
           }
