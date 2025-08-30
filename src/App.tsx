@@ -106,9 +106,9 @@ function App() {
             }
           />
           {/* Página principal de revisão diária */}
-          <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
-          
-          {/* Redirecionamentos das páginas antigas */}
+            <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
+
+            {/* Redirecionamentos das páginas antigas */}
           <Route path="/revisoes-diarias" element={<Navigate to="/revisao-diaria-avancada" replace />} />
           <Route path="/revisao-meta" element={<Navigate to="/revisao-diaria-avancada" replace />} />
           
