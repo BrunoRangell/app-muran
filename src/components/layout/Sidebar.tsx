@@ -10,7 +10,8 @@ import {
   BarChart3,
   Menu,
   ChevronLeft,
-  Activity
+  Activity,
+  Wallet
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -44,6 +45,7 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
+  { icon: Wallet, label: "Saldo campanhas", path: "/saldo-campanhas" },
 ];
 
 const regularMenuItems: MenuItem[] = [
@@ -52,6 +54,7 @@ const regularMenuItems: MenuItem[] = [
   
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
+  { icon: Wallet, label: "Saldo campanhas", path: "/saldo-campanhas" },
 ];
 
 export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
