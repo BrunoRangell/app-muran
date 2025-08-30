@@ -196,7 +196,7 @@ function Card({ platform, obj }: CardProps) {
 export default function SaldoCampanhas() {
   const [search, setSearch] = useState("");
   const [clients, setClients] = useState<ClientData[]>([]);
-  const { data: apiClients } = useMetaBalance();
+  const { data: apiClients, refetch, isFetching } = useMetaBalance();
 
   useEffect(() => {
     if (apiClients) {
@@ -235,8 +235,12 @@ export default function SaldoCampanhas() {
               Wireframe com cards padronizados (Meta | Google por cliente)
             </div>
           </div>
-          <button className="bg-[#ff7a00] text-white rounded-lg px-3 py-2 font-bold">
-            ⟳ Atualizar
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="bg-[#ff7a00] text-white rounded-lg px-3 py-2 font-bold disabled:opacity-50"
+          >
+            {isFetching ? "Atualizando…" : "⟳ Atualizar"}
           </button>
         </header>
 
