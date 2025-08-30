@@ -18,40 +18,60 @@ import { useImportService } from "./useImportService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQueryClient } from "@tanstack/react-query";
 import { EnhancedFileUpload } from "./components/EnhancedFileUpload";
-import { CSVMappingDialog, CSVMapping } from "./components/CSVMappingDialog";
+import { UniversalMappingDialog } from "./components/UniversalMappingDialog";
+import { UniversalMapping, FilePreview, OFXPreview } from "./types/mapping";
+import { createPreviewFromFile, parseWithMapping } from "./utils/universalParser";
 import { useTransactionValidation } from "./hooks/useTransactionValidation";
 import { ImportSearchFilter } from "./ImportSearchFilter";
 import { matchesSearchTerms } from "@/utils/searchUtils";
-import { detectCSVMapping } from "./utils/csvUtils";
 
 export function ImportCostsDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showCSVMapping, setShowCSVMapping] = useState(false);
-  const [csvFile, setCSVFile] = useState<File | null>(null);
-  const [csvColumns, setCSVColumns] = useState<string[]>([]);
-  const [csvPreview, setCSVPreview] = useState<string[][]>([]);
+  const [showMapping, setShowMapping] = useState(false);
+  const [filePreview, setFilePreview] = useState<FilePreview | OFXPreview | null>(null);
+  const [currentFileType, setCurrentFileType] = useState<'csv' | 'ofx'>('csv');
   
-  const { parseOFXFile, parseCSVFile, detectColumns } = useTransactionParser();
+  const { parseOFXFile } = useTransactionParser();
   const { importTransactions } = useImportService();
   const queryClient = useQueryClient();
   const { errors, validateTransactions, clearError } = useTransactionValidation();
 
-  const handleCSVMappingConfirm = async (mapping: CSVMapping) => {
-    if (!csvFile) return;
-    
-    setIsLoading(true);
+  const handleFileDetected = async (file: File, fileType: 'csv' | 'ofx') => {
     try {
-      const parsedTransactions = await parseCSVFile(csvFile, mapping);
-      setTransactions(parsedTransactions);
-      setShowCSVMapping(false);
-      setCSVFile(null);
-      toast.success(`${parsedTransactions.length} transações carregadas do CSV`);
+      setIsLoading(true);
+      const preview = await createPreviewFromFile(file);
+      setFilePreview(preview);
+      setCurrentFileType(fileType);
+      setShowMapping(true);
     } catch (error) {
-      console.error("Erro ao processar CSV:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao processar CSV");
+      toast.error("Erro ao processar arquivo");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMappingConfirm = async (mapping: UniversalMapping) => {
+    try {
+      setIsLoading(true);
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      const file = fileInput?.files?.[0];
+      
+      if (!file) {
+        throw new Error("Arquivo não encontrado");
+      }
+      
+      const text = await file.text();
+      const parsedTransactions = parseWithMapping(text, mapping);
+      
+      setTransactions(parsedTransactions);
+      setShowMapping(false);
+      
+      toast.success(`${parsedTransactions.length} transações encontradas`);
+    } catch (error) {
+      toast.error("Erro ao processar arquivo");
     } finally {
       setIsLoading(false);
     }
@@ -114,12 +134,6 @@ export function ImportCostsDialog() {
     setIsOpen(false);
   };
 
-  const handleCSVDetected = (file: File, columns: string[], preview: string[][]) => {
-    setCSVFile(file);
-    setCSVColumns(columns);
-    setCSVPreview(preview);
-    setShowCSVMapping(true);
-  };
 
   // Filtrar transações baseado na pesquisa
   const filteredTransactions = transactions.filter(transaction =>
@@ -149,9 +163,7 @@ export function ImportCostsDialog() {
                 isLoading={isLoading}
                 onTransactionsLoaded={setTransactions}
                 parseOFXFile={parseOFXFile}
-                parseCSVFile={parseCSVFile}
-                detectColumns={detectColumns}
-                onCSVDetected={handleCSVDetected}
+                onFileDetected={handleFileDetected}
               />
             ) : (
               <div className="space-y-4">
@@ -197,13 +209,15 @@ export function ImportCostsDialog() {
         </DialogContent>
       </Dialog>
 
-      <CSVMappingDialog
-        open={showCSVMapping}
-        onOpenChange={setShowCSVMapping}
-        columns={csvColumns}
-        previewData={csvPreview}
-        onConfirm={handleCSVMappingConfirm}
-      />
+      {filePreview && (
+        <UniversalMappingDialog
+          open={showMapping}
+          onOpenChange={setShowMapping}
+          fileType={currentFileType}
+          preview={filePreview}
+          onConfirm={handleMappingConfirm}
+        />
+      )}
     </>
   );
 }

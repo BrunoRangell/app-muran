@@ -1,49 +1,34 @@
-import { CSVMapping } from "../components/CSVMappingDialog";
+import { UniversalMapping } from "../types/mapping";
 
 // Detectar automaticamente o mapeamento baseado nos nomes das colunas
-export function detectCSVMapping(columns: string[]): Partial<CSVMapping> {
-  const mapping: Partial<CSVMapping> = {
-    skipFirstRow: true, // Padrão para CSVs com cabeçalho
+export function detectCSVMapping(columns: string[]): Partial<UniversalMapping> {
+  const mapping: Partial<UniversalMapping> = {
+    skipFirstRow: true,
   };
 
   columns.forEach((column, index) => {
     const columnLower = column.toLowerCase().trim();
     
-    // Detectar coluna de data
-    if (!mapping.dateColumn && (
+    if (!mapping.dateField && (
       columnLower.includes('data') ||
-      columnLower.includes('date') ||
-      columnLower.includes('fecha') ||
-      columnLower === 'dt'
+      columnLower.includes('date')
     )) {
-      mapping.dateColumn = index;
+      mapping.dateField = column;
     }
     
-    // Detectar coluna de descrição/nome
-    if (!mapping.descriptionColumn && (
+    if (!mapping.descriptionField && (
       columnLower.includes('descri') ||
       columnLower.includes('histor') ||
-      columnLower.includes('memo') ||
-      columnLower.includes('name') ||
-      columnLower.includes('nome') ||
-      columnLower.includes('estabelecimento') ||
-      columnLower.includes('loja')
+      columnLower.includes('memo')
     )) {
-      mapping.descriptionColumn = index;
+      mapping.descriptionField = column;
     }
     
-    // Detectar coluna de valor
-    if (!mapping.amountColumn && (
+    if (!mapping.amountField && (
       columnLower.includes('valor') ||
-      columnLower.includes('amount') ||
-      columnLower.includes('quantia') ||
-      columnLower.includes('preco') ||
-      columnLower.includes('debito') ||
-      columnLower.includes('credito') ||
-      columnLower === 'r$' ||
-      columnLower === '$'
+      columnLower.includes('amount')
     )) {
-      mapping.amountColumn = index;
+      mapping.amountField = column;
     }
   });
 
@@ -51,16 +36,12 @@ export function detectCSVMapping(columns: string[]): Partial<CSVMapping> {
 }
 
 // Validar se o mapeamento está completo
-export function validateCSVMapping(mapping: CSVMapping): boolean {
-  return (
-    mapping.dateColumn !== undefined &&
-    mapping.descriptionColumn !== undefined &&
-    mapping.amountColumn !== undefined
-  );
+export function validateCSVMapping(mapping: UniversalMapping): boolean {
+  return !!(mapping.dateField && mapping.descriptionField && mapping.amountField);
 }
 
 // Sugestões de perfis para bancos conhecidos
-export const bankProfiles: Record<string, CSVMapping> = {
+export const bankProfiles: Record<string, any> = {
   'itau': {
     dateColumn: 0,
     descriptionColumn: 1,

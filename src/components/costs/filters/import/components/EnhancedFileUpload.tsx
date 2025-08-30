@@ -10,18 +10,14 @@ interface EnhancedFileUploadProps {
   isLoading: boolean;
   onTransactionsLoaded: (transactions: Transaction[]) => void;
   parseOFXFile: (file: File) => Promise<Transaction[]>;
-  parseCSVFile?: (file: File, options: any) => Promise<Transaction[]>;
-  detectColumns: (file: File) => Promise<string[]>;
-  onCSVDetected: (file: File, columns: string[], preview: string[][]) => void;
+  onFileDetected: (file: File, fileType: 'csv' | 'ofx') => void;
 }
 
 export function EnhancedFileUpload({ 
   isLoading, 
   onTransactionsLoaded, 
   parseOFXFile,
-  parseCSVFile,
-  detectColumns,
-  onCSVDetected
+  onFileDetected
 }: EnhancedFileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -54,45 +50,28 @@ export function EnhancedFileUpload({
   };
 
   const handleFileProcess = async (file: File) => {
-    try {
-      setUploadProgress(25);
-      
-      const isOFX = file.name.toLowerCase().endsWith('.ofx');
-      const isCSV = file.name.toLowerCase().endsWith('.csv');
-      
-      if (!isOFX && !isCSV) {
-        throw new Error("Formato de arquivo não suportado");
-      }
+    setUploadProgress(0);
 
-      setUploadProgress(50);
+    try {
+      const fileExtension = file.name.toLowerCase().split('.').pop();
       
-      if (isOFX) {
+      if (fileExtension === 'ofx') {
+        setUploadProgress(50);
         const transactions = await parseOFXFile(file);
         setUploadProgress(100);
         onTransactionsLoaded(transactions);
         toast.success(`${transactions.length} transações carregadas do arquivo OFX`);
-      } else if (isCSV) {
-        // Para CSV, detectar colunas e mostrar dialog de mapeamento
-        const columns = await detectColumns(file);
-        const text = await file.text();
-        const lines = text.split('\n').filter(line => line.trim());
-        const preview = lines.slice(0, 3).map(line => 
-          line.split(/[,;|\t]/).map(col => col.replace(/^"|"$/g, '').trim())
-        );
-        
+      } else if (fileExtension === 'csv') {
+        setUploadProgress(50);
+        onFileDetected(file, 'csv');
         setUploadProgress(100);
-        onCSVDetected(file, columns, preview);
-        toast.info("CSV detectado. Configure o mapeamento das colunas.");
       } else {
-        throw new Error("Tipo de arquivo não suportado");
+        throw new Error('Formato de arquivo não suportado. Use arquivos .ofx ou .csv');
       }
-      
     } catch (error) {
-      console.error("Erro ao processar arquivo:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao processar arquivo");
-      setSelectedFile(null);
-    } finally {
-      setUploadProgress(0);
+      console.error('Erro no processamento do arquivo:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao processar arquivo');
+      clearFile();
     }
   };
 
