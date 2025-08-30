@@ -54,21 +54,67 @@ serve(async (req: Request) => {
     console.log(`🔍 Buscando informações da conta Meta: act_${accountId}`);
     
     const response = await fetch(
-      `https://graph.facebook.com/v18.0/act_${accountId}?fields=name,account_id&access_token=${metaAccessToken}`
+      `https://graph.facebook.com/v18.0/act_${accountId}?fields=name,account_id,balance,currency,expired_funding_source_details,is_prepay_account,spend_cap,amount_spent&access_token=${metaAccessToken}`
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Erro da API Meta (${response.status}):`, errorText);
-      throw new Error(`Erro da API Meta: ${response.status}`);
+      const errorData = await response.json().catch(() => null);
+      const message =
+        errorData?.error?.message || `Erro da API Meta`;
+      console.error(`Erro da API Meta (${response.status}):`, message);
+      return new Response(
+        JSON.stringify({ error: message }),
+        {
+          status: response.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    const data = await response.json();
-    
-    console.log(`✅ Dados da conta Meta obtidos:`, data);
+    const accountData = await response.json();
+
+    let lastFundingEvent = null;
+    if (accountData.is_prepay_account === false) {
+      const fundingResponse = await fetch(
+        `https://graph.facebook.com/v18.0/act_${accountId}/funding_events?limit=1&access_token=${metaAccessToken}`
+      );
+
+      if (!fundingResponse.ok) {
+        const errorData = await fundingResponse.json().catch(() => null);
+        const message =
+          errorData?.error?.message || `Erro da API Meta`;
+        console.error(
+          `Erro da API Meta (funding events ${fundingResponse.status}):`,
+          message,
+        );
+        return new Response(
+          JSON.stringify({ error: message }),
+          {
+            status: fundingResponse.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
+      const fundingData = await fundingResponse.json();
+      lastFundingEvent = fundingData.data?.[0] ?? null;
+    }
+
+    const normalizedData = {
+      id: accountData.account_id ?? accountId,
+      name: accountData.name,
+      is_prepay_account: accountData.is_prepay_account,
+      balance: accountData.balance,
+      currency: accountData.currency,
+      spend_cap: accountData.spend_cap,
+      amount_spent: accountData.amount_spent,
+      last_funding_event: lastFundingEvent,
+    };
+
+    console.log(`✅ Dados da conta Meta obtidos:`, normalizedData);
 
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify(normalizedData),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
