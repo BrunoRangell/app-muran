@@ -56,6 +56,7 @@ const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
 const CampaignHealth = lazy(() => import("@/pages/CampaignHealth"));
+const SaldoCampanhas = lazyWithTimeout(() => import("@/pages/SaldoCampanhas"));
 
 function App() {
   return (
@@ -105,21 +106,22 @@ function App() {
             }
           />
           {/* Página principal de revisão diária */}
-          <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
-          
-          {/* Redirecionamentos das páginas antigas */}
+            <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
+
+            {/* Redirecionamentos das páginas antigas */}
           <Route path="/revisoes-diarias" element={<Navigate to="/revisao-diaria-avancada" replace />} />
           <Route path="/revisao-meta" element={<Navigate to="/revisao-diaria-avancada" replace />} />
           
           {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
           
-          <Route path="/saude-campanhas" element={<CampaignHealth />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
-      <Toaster />
-    </TooltipProvider>
+            <Route path="/saude-campanhas" element={<CampaignHealth />} />
+            <Route path="/saldo-campanhas" element={<SaldoCampanhas />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+        <Toaster />
+      </TooltipProvider>
   );
 }
 
