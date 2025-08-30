@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { CostFilters } from "@/types/cost";
 import { Badge } from "@/components/ui/badge";
-import { SimplePeriodPicker } from "./SimplePeriodPicker";
 import { X } from "lucide-react";
 
 interface PeriodQuickFiltersProps {
@@ -87,63 +86,63 @@ export function PeriodQuickFilters({ filters, onFiltersChange }: PeriodQuickFilt
       <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
+          size="sm"
           onClick={() => {
             const period = getCurrentMonth();
             setPeriod(period.start, period.end);
           }}
-          className="h-9 px-3 text-sm font-medium border-muran-primary/20 hover:bg-muran-primary/5 hover:border-muran-primary/40"
+          className="h-8 text-xs"
         >
           Este Mês
         </Button>
         
         <Button
           variant="outline"
+          size="sm"
           onClick={() => {
             const period = getLastMonth();
             setPeriod(period.start, period.end);
           }}
-          className="h-9 px-3 text-sm font-medium border-muran-primary/20 hover:bg-muran-primary/5 hover:border-muran-primary/40"
+          className="h-8 text-xs"
         >
           Mês Passado
         </Button>
         
         <Button
           variant="outline"
+          size="sm"
           onClick={() => {
             const period = getLast3Months();
             setPeriod(period.start, period.end);
           }}
-          className="h-9 px-3 text-sm font-medium border-muran-primary/20 hover:bg-muran-primary/5 hover:border-muran-primary/40"
+          className="h-8 text-xs"
         >
           Últimos 3 Meses
         </Button>
         
         <Button
           variant="outline"
+          size="sm"
           onClick={() => {
             const period = getCurrentYear();
             setPeriod(period.start, period.end);
           }}
-          className="h-9 px-3 text-sm font-medium border-muran-primary/20 hover:bg-muran-primary/5 hover:border-muran-primary/40"
+          className="h-8 text-xs"
         >
           Este Ano
         </Button>
         
         <Button
           variant="outline"
+          size="sm"
           onClick={() => {
             const period = getLastYear();
             setPeriod(period.start, period.end);
           }}
-          className="h-9 px-3 text-sm font-medium border-muran-primary/20 hover:bg-muran-primary/5 hover:border-muran-primary/40"
+          className="h-8 text-xs"
         >
           Ano Passado
         </Button>
-        
-        <SimplePeriodPicker 
-          filters={filters} 
-          onFiltersChange={onFiltersChange} 
-        />
       </div>
 
       {hasDateFilter && (

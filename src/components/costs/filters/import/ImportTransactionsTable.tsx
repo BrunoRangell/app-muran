@@ -4,8 +4,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CostCategory } from "@/types/cost";
 import { Transaction } from "./types";
-import { CategorySearchSelect } from "./CategorySearchSelect";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { COST_CATEGORIES } from "../../schemas/costFormSchema";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ImportTransactionsTableProps {
   transactions: Transaction[];
@@ -22,18 +30,23 @@ export function ImportTransactionsTable({
   onCategoryChange,
   errors,
 }: ImportTransactionsTableProps) {
+  const getCategoryName = (categoryId?: CostCategory) => {
+    if (!categoryId) return "";
+    const category = COST_CATEGORIES.find(c => c.id === categoryId);
+    return category?.name || "";
+  };
+
   return (
-    <TooltipProvider>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px]">Selecionar</TableHead>
-            <TableHead className="min-w-[400px]">Nome</TableHead>
-            <TableHead className="w-[120px]">Data</TableHead>
-            <TableHead className="w-[140px]">Valor</TableHead>
-            <TableHead className="w-[200px]">Categoria</TableHead>
-          </TableRow>
-        </TableHeader>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[50px]">Selecionar</TableHead>
+          <TableHead>Nome</TableHead>
+          <TableHead>Data</TableHead>
+          <TableHead>Valor</TableHead>
+          <TableHead>Categoria</TableHead>
+        </TableRow>
+      </TableHeader>
       <TableBody>
         {transactions.map((transaction) => (
           <TableRow key={transaction.fitid}>
@@ -47,21 +60,11 @@ export function ImportTransactionsTable({
             </TableCell>
             <TableCell>
               <div className="space-y-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Input
-                      value={transaction.name}
-                      onChange={(e) => onNameChange(transaction.fitid, e.target.value)}
-                      className={`min-w-[400px] h-10 ${errors[`name-${transaction.fitid}`] ? "border-red-500" : ""}`}
-                      placeholder="Nome da transação"
-                    />
-                  </TooltipTrigger>
-                  {transaction.name.length > 60 && (
-                    <TooltipContent>
-                      <p className="max-w-md break-words">{transaction.name}</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
+                <Input
+                  value={transaction.name}
+                  onChange={(e) => onNameChange(transaction.fitid, e.target.value)}
+                  className={errors[`name-${transaction.fitid}`] ? "border-red-500" : ""}
+                />
                 {errors[`name-${transaction.fitid}`] && (
                   <p className="text-sm text-red-500">
                     {errors[`name-${transaction.fitid}`]}
@@ -78,11 +81,46 @@ export function ImportTransactionsTable({
             </TableCell>
             <TableCell>
               <div className="space-y-1">
-                <CategorySearchSelect
+                <Select
                   value={transaction.category}
-                  onValueChange={(value) => onCategoryChange(transaction.fitid, value)}
-                  hasError={!!errors[`category-${transaction.fitid}`]}
-                />
+                  onValueChange={(value) => onCategoryChange(transaction.fitid, value as CostCategory)}
+                >
+                  <SelectTrigger 
+                    className={`w-[250px] ${errors[`category-${transaction.fitid}`] ? "border-red-500" : ""}`}
+                  >
+                    <SelectValue placeholder="Selecionar categoria">
+                      {getCategoryName(transaction.category)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent 
+                    className="bg-popover w-[400px] rounded-md"
+                    position="popper"
+                    side="left"
+                    align="start"
+                    sideOffset={5}
+                  >
+                    <div className="max-h-[300px] overflow-y-auto">
+                      <SelectGroup className="p-2">
+                        {COST_CATEGORIES.map((category) => (
+                          <SelectItem 
+                            key={category.id} 
+                            value={category.id}
+                            className="flex items-center py-2 px-2 cursor-pointer rounded-md data-[highlighted]:bg-accent"
+                          >
+                            <div className="flex flex-col gap-1 ml-6">
+                              <span className="font-medium">
+                                {category.name}
+                              </span>
+                              <span className="text-sm text-muted-foreground pl-2">
+                                {category.description}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </div>
+                  </SelectContent>
+                </Select>
                 {errors[`category-${transaction.fitid}`] && (
                   <p className="text-sm text-red-500">
                     {errors[`category-${transaction.fitid}`]}
@@ -94,6 +132,5 @@ export function ImportTransactionsTable({
         ))}
       </TableBody>
     </Table>
-    </TooltipProvider>
   );
 }
