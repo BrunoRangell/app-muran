@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff, ExternalLink } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff, ExternalLink, Activity } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
@@ -11,6 +11,7 @@ import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/compon
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
@@ -115,6 +116,17 @@ export function CircularBudgetCard({
   };
   const statusInfo = getStatusInfo();
   const accountInfo = getAccountInfo();
+
+  // Buscar informações de veiculação das campanhas - usar o account_id correto
+  const veiculationAccountId = platform === "meta" 
+    ? (client.review?.account_id || client.meta_account_id) 
+    : (client.review?.account_id || client.google_account_id);
+  
+  const { data: veiculationInfo } = useCampaignVeiculationStatus(
+    client.id, 
+    veiculationAccountId, 
+    platform
+  );
 
   // Determinar tipo de orçamento
   const getBudgetType = () => {
@@ -357,6 +369,29 @@ export function CircularBudgetCard({
                   <span className="text-sm">Saldo indisponível</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Seção de Status de Veiculação (apenas para Meta Ads) */}
+          {platform === "meta" && veiculationInfo && veiculationInfo.status !== "no_data" && (
+            <div className="mb-4 p-3 rounded-lg bg-gray-50 border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-medium ${veiculationInfo.badgeColor}`}
+                >
+                  {veiculationInfo.message}
+                </Badge>
+                {veiculationInfo.activeCampaigns > 0 && (
+                  <span className="text-xs text-gray-600">
+                    {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
