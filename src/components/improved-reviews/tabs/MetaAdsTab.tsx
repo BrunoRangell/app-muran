@@ -22,7 +22,6 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
-  const [showOnlyPrepaid, setShowOnlyPrepaid] = useState(false);
   const [showCampaignProblems, setShowCampaignProblems] = useState(false);
   const [sortByBalance, setSortByBalance] = useState(false);
   
@@ -62,14 +61,12 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
   const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
   const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
-  const handlePrepaidFilterChange = (showOnlyPrepaid: boolean) => setShowOnlyPrepaid(showOnlyPrepaid);
   const handleCampaignProblemsFilterChange = (showCampaignProblems: boolean) => setShowCampaignProblems(showCampaignProblems);
   const handleSortByBalanceChange = (sortByBalance: boolean) => setSortByBalance(sortByBalance);
   
   const handleClearAllFilters = () => {
     setShowOnlyAdjustments(false);
     setShowWithoutAccount(false);
-    setShowOnlyPrepaid(false);
     setShowCampaignProblems(false);
     setSortByBalance(false);
   };
@@ -143,14 +140,12 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         viewMode={viewMode}
         showOnlyAdjustments={showOnlyAdjustments}
         showWithoutAccount={showWithoutAccount}
-        showOnlyPrepaid={showOnlyPrepaid}
         showCampaignProblems={showCampaignProblems}
         sortByBalance={sortByBalance}
         onSearchChange={handleSearchChange}
         onViewModeChange={handleViewModeChange}
         onAdjustmentFilterChange={handleAdjustmentFilterChange}
         onAccountFilterChange={handleAccountFilterChange}
-        onPrepaidFilterChange={handlePrepaidFilterChange}
         onCampaignProblemsFilterChange={handleCampaignProblemsFilterChange}
         onSortByBalanceChange={handleSortByBalanceChange}
         onClearAllFilters={handleClearAllFilters}
@@ -165,7 +160,6 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         searchQuery={searchQuery}
         showOnlyAdjustments={showOnlyAdjustments}
         showWithoutAccount={showWithoutAccount}
-        showOnlyPrepaid={showOnlyPrepaid}
         showCampaignProblems={showCampaignProblems}
         sortByBalance={sortByBalance}
         platform="meta"

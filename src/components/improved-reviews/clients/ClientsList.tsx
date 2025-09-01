@@ -11,7 +11,6 @@ interface ClientsListProps {
   searchQuery: string;
   showOnlyAdjustments: boolean;
   showWithoutAccount: boolean;
-  showOnlyPrepaid?: boolean;
   showCampaignProblems?: boolean;
   sortByBalance?: boolean;
   budgetCalculationMode?: "weighted" | "current";
@@ -24,7 +23,6 @@ export function ClientsList({
   searchQuery,
   showOnlyAdjustments,
   showWithoutAccount,
-  showOnlyPrepaid = false,
   showCampaignProblems = false,
   sortByBalance = false,
   budgetCalculationMode,
@@ -65,11 +63,6 @@ export function ClientsList({
       // Filtro de clientes sem conta cadastrada
       const matchesAccountFilter = !showWithoutAccount || !client.hasAccount;
       
-      // Filtro de apenas contas pré-pagas
-      const matchesPrepaidFilter = !showOnlyPrepaid || (
-        client.balance_info?.billing_model === "pre"
-      );
-      
       // Filtro de problemas de campanha (usando veiculação)
       const matchesCampaignProblems = !showCampaignProblems || (
         client.veiculationStatus && 
@@ -78,9 +71,9 @@ export function ClientsList({
          client.veiculationStatus.status === "partial_running")
       );
       
-      return matchesSearch && matchesAdjustment && matchesAccountFilter && matchesPrepaidFilter && matchesCampaignProblems;
+      return matchesSearch && matchesAdjustment && matchesAccountFilter && matchesCampaignProblems;
     });
-  }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, showOnlyPrepaid, showCampaignProblems, platform]);
+  }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, showCampaignProblems, platform]);
   
   // Ordenar clientes com nova lógica de saldo
   const sortedClients = useMemo(() => {

@@ -4,16 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, LayoutGrid, List, Table2, RefreshCcw, TrendingUp, Calculator, Settings, Users } from "lucide-react";
+import { Search, LayoutGrid, List, Table2, RefreshCcw, TrendingUp, Calculator, Settings, Users, AlertTriangle, DollarSign } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { FilterPopover } from "./FilterPopover";
 
 interface FilterBarProps {
   searchQuery: string;
   viewMode: string;
   showOnlyAdjustments: boolean;
   showWithoutAccount: boolean;
-  showOnlyPrepaid?: boolean;
   showCampaignProblems?: boolean;
   sortByBalance?: boolean;
   budgetCalculationMode?: "weighted" | "current";
@@ -21,7 +19,6 @@ interface FilterBarProps {
   onViewModeChange: (mode: "cards" | "table" | "list") => void;
   onAdjustmentFilterChange: (showAdjustments: boolean) => void;
   onAccountFilterChange: (showWithoutAccount: boolean) => void;
-  onPrepaidFilterChange?: (showOnlyPrepaid: boolean) => void;
   onCampaignProblemsFilterChange?: (showCampaignProblems: boolean) => void;
   onSortByBalanceChange?: (sortByBalance: boolean) => void;
   onClearAllFilters?: () => void;
@@ -36,7 +33,6 @@ export function FilterBar({
   viewMode,
   showOnlyAdjustments,
   showWithoutAccount,
-  showOnlyPrepaid = false,
   showCampaignProblems = false,
   sortByBalance = false,
   budgetCalculationMode,
@@ -44,7 +40,6 @@ export function FilterBar({
   onViewModeChange,
   onAdjustmentFilterChange,
   onAccountFilterChange,
-  onPrepaidFilterChange,
   onCampaignProblemsFilterChange,
   onSortByBalanceChange,
   onClearAllFilters,
@@ -72,7 +67,7 @@ export function FilterBar({
           {/* Segunda linha: Filtros e Controles */}
           <div className="flex flex-wrap gap-3 items-center justify-between">
             <div className="flex flex-wrap gap-2 items-center">
-              {/* Filtros Essenciais para Meta Ads - Sempre Visíveis */}
+              {/* Filtros para Meta Ads - Todos Visíveis */}
               {platform === "meta" && (
                 <>
                   <Button
@@ -101,17 +96,34 @@ export function FilterBar({
                     )}
                   </Button>
 
-                  {/* Filtros Secundários */}
-                  {onPrepaidFilterChange && onCampaignProblemsFilterChange && onSortByBalanceChange && onClearAllFilters && (
-                    <FilterPopover
-                      showOnlyPrepaid={showOnlyPrepaid}
-                      showCampaignProblems={showCampaignProblems}
-                      sortByBalance={sortByBalance}
-                      onPrepaidFilterChange={onPrepaidFilterChange}
-                      onCampaignProblemsFilterChange={onCampaignProblemsFilterChange}
-                      onSortByBalanceChange={onSortByBalanceChange}
-                      onClearAllFilters={onClearAllFilters}
-                    />
+                  {onCampaignProblemsFilterChange && (
+                    <Button
+                      variant={showCampaignProblems ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onCampaignProblemsFilterChange(!showCampaignProblems)}
+                      className="h-8 px-3 text-xs gap-1"
+                    >
+                      <AlertTriangle className="h-3 w-3" />
+                      Com problemas de veiculação
+                      {showCampaignProblems && (
+                        <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
+                      )}
+                    </Button>
+                  )}
+
+                  {onSortByBalanceChange && (
+                    <Button
+                      variant={sortByBalance ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onSortByBalanceChange(!sortByBalance)}
+                      className="h-8 px-3 text-xs gap-1"
+                    >
+                      <DollarSign className="h-3 w-3" />
+                      Ordenar pré-pagas por saldo
+                      {sortByBalance && (
+                        <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
+                      )}
+                    </Button>
                   )}
                 </>
               )}
