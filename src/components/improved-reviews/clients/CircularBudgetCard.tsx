@@ -373,7 +373,7 @@ export function CircularBudgetCard({
                        } else {
                          return (
                            <div className="text-xs text-gray-600">
-                             📅 ~{daysUntilEmpty.toFixed(1)} dias restantes
+                             📅 ~{Math.floor(daysUntilEmpty)} dias restantes
                            </div>
                          );
                        }

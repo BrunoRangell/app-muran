@@ -68,13 +68,21 @@ export function ClientsList({
       const aName = a?.company_name || '';
       const bName = b?.company_name || '';
       
-      // Se activeFilter "balance" está ativo, ordenar por saldo (menor primeiro)
+      // Se activeFilter "balance" está ativo, ordenar por dias restantes (menor primeiro)
       if (activeFilter === "balance" && platform === "meta") {
-        const aBalance = a.balance_info?.balance_value || 0;
-        const bBalance = b.balance_info?.balance_value || 0;
+        const calculateDaysRemaining = (client: any) => {
+          const balance = client.balance_info?.balance_value || 0;
+          const dailyBudget = client.meta_daily_budget || 0;
+          
+          if (balance <= 0) return -1; // Saldo esgotado vai primeiro
+          if (dailyBudget <= 0) return Infinity; // Sem limite vai por último
+          return balance / dailyBudget;
+        };
         
-        // Menor saldo primeiro
-        return aBalance - bBalance;
+        const aDays = calculateDaysRemaining(a);
+        const bDays = calculateDaysRemaining(b);
+        
+        return aDays - bDays; // Menos dias primeiro
       }
       
       // Primeiro critério: clientes COM conta aparecem primeiro
