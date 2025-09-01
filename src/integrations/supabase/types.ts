@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -247,8 +247,10 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          is_prepay_account: boolean | null
           is_primary: boolean
           platform: string
+          saldo_restante: number | null
           status: string
           updated_at: string
         }
@@ -259,8 +261,10 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          is_prepay_account?: boolean | null
           is_primary?: boolean
           platform: string
+          saldo_restante?: number | null
           status?: string
           updated_at?: string
         }
@@ -271,8 +275,10 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          is_prepay_account?: boolean | null
           is_primary?: boolean
           platform?: string
+          saldo_restante?: number | null
           status?: string
           updated_at?: string
         }
@@ -727,7 +733,7 @@ export type Database = {
     }
     Functions: {
       calculate_daily_budget: {
-        Args: { budget_amount: number; start_date: string; end_date: string }
+        Args: { budget_amount: number; end_date: string; start_date: string }
         Returns: number
       }
       cleanup_old_logs: {
@@ -751,10 +757,10 @@ export type Database = {
       get_cron_jobs: {
         Args: { job_names: string[] }
         Returns: {
+          active: boolean
           jobid: number
           jobname: string
           schedule: string
-          active: boolean
         }[]
       }
       get_current_user_role: {
@@ -764,11 +770,11 @@ export type Database = {
       insert_daily_budget_review: {
         Args: {
           p_client_id: string
-          p_review_date: string
-          p_meta_daily_budget_current: number
-          p_meta_total_spent: number
           p_meta_account_id: string
           p_meta_account_name: string
+          p_meta_daily_budget_current: number
+          p_meta_total_spent: number
+          p_review_date: string
         }
         Returns: number
       }

@@ -90,6 +90,74 @@ function filterActiveAdsets(adsets: any[], now: Date, campaignId: string = "") {
   return activeAdsets;
 }
 
+// Função para buscar saldo e modelo de cobrança da Meta API
+async function fetchMetaBalance(accountId: string, accessToken: string) {
+  const startTime = Date.now();
+  console.log(`💰 [BALANCE] Iniciando busca de saldo para conta ${accountId}`);
+  
+  try {
+    // Buscar dados da conta Meta para obter funding source
+    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=funding_source,balance&access_token=${accessToken}`;
+    console.log(`📞 [BALANCE] Chamando Meta API para funding source da conta ${accountId}`);
+    
+    const response = await fetch(accountUrl);
+    const responseTime = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`❌ [BALANCE] ERRO na API para conta ${accountId}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData,
+        responseTime: `${responseTime}ms`
+      });
+      return { saldo_restante: null, is_prepay_account: null };
+    }
+
+    const data = await response.json();
+    console.log(`✅ [BALANCE] Dados da conta obtidos:`, {
+      accountId,
+      responseTime: `${responseTime}ms`,
+      hasBalance: !!data.balance,
+      hasFundingSource: !!data.funding_source
+    });
+    
+    let saldo_restante = null;
+    let is_prepay_account = null;
+    
+    // Extrair saldo se disponível
+    if (data.balance) {
+      // Balance vem em centavos de dólar, converter para reais (assumindo 1 USD = 5.5 BRL aproximadamente)
+      saldo_restante = parseFloat(data.balance) / 100 * 5.5;
+      console.log(`💰 [BALANCE] Saldo encontrado: ${data.balance} centavos USD = R$ ${saldo_restante.toFixed(2)}`);
+    }
+    
+    // Determinar se é conta pré-paga baseado no funding source
+    if (data.funding_source) {
+      // Funding source IDs típicos:
+      // - Prepaid: usually contains "prepaid" or specific IDs
+      // - Credit card: different pattern
+      const fundingType = data.funding_source.toLowerCase();
+      is_prepay_account = fundingType.includes('prepaid') || fundingType.includes('pre');
+      console.log(`🏦 [BALANCE] Modelo de cobrança detectado:`, {
+        fundingSource: data.funding_source,
+        isPrepay: is_prepay_account
+      });
+    }
+    
+    return { saldo_restante, is_prepay_account };
+    
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [BALANCE] ERRO EXCEPTION conta ${accountId}:`, {
+      error: error.message,
+      stack: error.stack,
+      responseTime: `${responseTime}ms`
+    });
+    return { saldo_restante: null, is_prepay_account: null };
+  }
+}
+
 // Função para buscar dados reais da Meta Graph API
 async function fetchMetaApiData(accountId: string, accessToken: string, customBudget: any) {
   const totalStartTime = Date.now();
@@ -438,11 +506,17 @@ export async function processReviewRequest(req: Request) {
     console.log(`🚀 [MAIN_FETCH] Iniciando busca principal da Meta API`);
     const metaApiData = await fetchMetaApiData(metaAccount.account_id, metaToken, customBudget);
     
+    // 5.1. BUSCAR SALDO E MODELO DE COBRANÇA
+    console.log(`💰 [BALANCE_FETCH] Buscando saldo e modelo de cobrança`);
+    const balanceData = await fetchMetaBalance(metaAccount.account_id, metaToken);
+    
     console.log(`✅ [MAIN_FETCH] Dados Meta API obtidos:`, {
       daily_budget: metaApiData.daily_budget,
       total_spent: metaApiData.total_spent,
       account_id: metaAccount.account_id,
-      account_name: metaApiData.account_name
+      account_name: metaApiData.account_name,
+      saldo_restante: balanceData.saldo_restante,
+      is_prepay_account: balanceData.is_prepay_account
     });
     
     // 6. 🧹 LIMPEZA AUTOMÁTICA: Remover revisões antigas da tabela budget_reviews
@@ -502,7 +576,7 @@ export async function processReviewRequest(req: Request) {
       }
     }
     
-    // 7. Preparar dados da revisão
+    // 7. Preparar dados da revisão incluindo saldo
     const reviewData = {
       daily_budget_current: metaApiData.daily_budget,
       total_spent: metaApiData.total_spent,
@@ -511,7 +585,9 @@ export async function processReviewRequest(req: Request) {
       custom_budget_id: customBudget?.id || null,
       custom_budget_amount: customBudget?.budget_amount || null,
       custom_budget_start_date: customBudget?.start_date || null,
-      custom_budget_end_date: customBudget?.end_date || null
+      custom_budget_end_date: customBudget?.end_date || null,
+      saldo_restante: balanceData.saldo_restante,
+      is_prepay_account: balanceData.is_prepay_account
     };
     
     console.log(`📋 [REVIEW_DATA] Dados preparados:`, reviewData);

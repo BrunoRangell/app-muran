@@ -31,6 +31,8 @@ export interface ReviewData {
   custom_budget_amount: number | null;
   custom_budget_start_date?: string | null;
   custom_budget_end_date?: string | null;
+  saldo_restante?: number | null;
+  is_prepay_account?: boolean;
 }
 
 // Criação do cliente Supabase
@@ -204,7 +206,7 @@ export async function checkExistingReview(
   return existingReview;
 }
 
-// Atualizar revisão existente na tabela budget_reviews
+// Atualizar revisão existente na tabela budget_reviews e dados de saldo em client_accounts
 export async function updateExistingReview(
   supabase: any, 
   reviewId: string, 
@@ -212,6 +214,7 @@ export async function updateExistingReview(
 ): Promise<void> {
   console.log(`Atualizando revisão existente: ${reviewId}`);
   
+  // Atualizar budget_reviews
   const { error: updateError } = await supabase
     .from("budget_reviews")
     .update({
@@ -230,10 +233,35 @@ export async function updateExistingReview(
     throw new Error(`Erro ao atualizar revisão: ${updateError.message}`);
   }
   
+  // Atualizar dados de saldo em client_accounts se fornecidos
+  if (reviewData.saldo_restante !== undefined || reviewData.is_prepay_account !== undefined) {
+    console.log(`Atualizando saldo e modelo de cobrança em client_accounts para conta ${reviewData.account_id}`);
+    
+    const updateData: any = {};
+    if (reviewData.saldo_restante !== undefined) {
+      updateData.saldo_restante = reviewData.saldo_restante;
+    }
+    if (reviewData.is_prepay_account !== undefined) {
+      updateData.is_prepay_account = reviewData.is_prepay_account;
+    }
+    
+    const { error: accountUpdateError } = await supabase
+      .from("client_accounts")
+      .update(updateData)
+      .eq("account_id", reviewData.account_id)
+      .eq("platform", "meta");
+
+    if (accountUpdateError) {
+      console.error(`⚠️ Erro ao atualizar saldo em client_accounts: ${accountUpdateError.message}`);
+    } else {
+      console.log(`✅ Saldo e modelo de cobrança atualizados em client_accounts`);
+    }
+  }
+  
   console.log(`✅ Revisão ${reviewId} atualizada com sucesso`);
 }
 
-// Criar nova revisão na tabela budget_reviews
+// Criar nova revisão na tabela budget_reviews e atualizar dados de saldo em client_accounts
 export async function createNewReview(
   supabase: any, 
   clientId: string,
@@ -263,6 +291,31 @@ export async function createNewReview(
   if (insertError) {
     console.error(`Erro ao inserir nova revisão:`, insertError);
     throw new Error(`Erro ao inserir nova revisão: ${insertError.message}`);
+  }
+  
+  // Atualizar dados de saldo em client_accounts se fornecidos
+  if (reviewData.saldo_restante !== undefined || reviewData.is_prepay_account !== undefined) {
+    console.log(`Atualizando saldo e modelo de cobrança em client_accounts para conta ${reviewData.account_id}`);
+    
+    const updateData: any = {};
+    if (reviewData.saldo_restante !== undefined) {
+      updateData.saldo_restante = reviewData.saldo_restante;
+    }
+    if (reviewData.is_prepay_account !== undefined) {
+      updateData.is_prepay_account = reviewData.is_prepay_account;
+    }
+    
+    const { error: accountUpdateError } = await supabase
+      .from("client_accounts")
+      .update(updateData)
+      .eq("account_id", reviewData.account_id)
+      .eq("platform", "meta");
+
+    if (accountUpdateError) {
+      console.error(`⚠️ Erro ao atualizar saldo em client_accounts: ${accountUpdateError.message}`);
+    } else {
+      console.log(`✅ Saldo e modelo de cobrança atualizados em client_accounts`);
+    }
   }
   
   console.log(`✅ Nova revisão criada: ID ${newReview.id}`);

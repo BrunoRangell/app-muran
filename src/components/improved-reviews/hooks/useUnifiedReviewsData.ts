@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBudgetCalculator } from "./useBudgetCalculator";
-import { useMetaBalance } from "@/hooks/useMetaBalance";
 
 export type ClientMetrics = {
   totalClients: number;
@@ -23,7 +22,6 @@ export function useUnifiedReviewsData() {
   });
 
   const { calculateBudget } = useBudgetCalculator();
-  const { data: balanceData } = useMetaBalance();
 
   // Fetch clients with their Meta accounts and reviews
   const { 
@@ -214,10 +212,11 @@ export function useUnifiedReviewsData() {
             
             console.log(`🔍 DEBUG - Cliente ${client.company_name}: customBudgetStartDate = ${customBudgetStartDate}, customBudgetEndDate = ${customBudgetEndDate}`);
             
-            // Buscar dados de saldo para esta conta
-            const balanceInfo = balanceData?.find(item => 
-              item.client === client.company_name && item.meta
-            )?.meta;
+            // Buscar dados de saldo direto da conta Meta
+            const balanceInfo = account.saldo_restante !== null || account.is_prepay_account !== null ? {
+              balance: account.saldo_restante || 0,
+              billing_model: account.is_prepay_account ? "pre" : "pos"
+            } : null;
             
             console.log(`💰 Balance data para ${client.company_name}:`, balanceInfo);
             
