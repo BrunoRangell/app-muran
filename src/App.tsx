@@ -57,6 +57,7 @@ const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
 const CampaignHealth = lazy(() => import("@/pages/CampaignHealth"));
 const SaldoCampanhas = lazyWithTimeout(() => import("@/pages/SaldoCampanhas"));
+const UnifiedTrafficCenter = lazyWithTimeout(() => import("@/pages/UnifiedTrafficCenter"));
 
 function App() {
   return (
@@ -117,6 +118,7 @@ function App() {
           
             <Route path="/saude-campanhas" element={<CampaignHealth />} />
             <Route path="/saldo-campanhas" element={<SaldoCampanhas />} />
+            <Route path="/trafego-pago" element={<UnifiedTrafficCenter />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
