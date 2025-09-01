@@ -96,9 +96,9 @@ async function fetchMetaBalance(accountId: string, accessToken: string) {
   console.log(`💰 [BALANCE] Iniciando busca de saldo para conta ${accountId}`);
   
   try {
-    // Buscar dados da conta Meta para obter funding source
-    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=funding_source,balance&access_token=${accessToken}`;
-    console.log(`📞 [BALANCE] Chamando Meta API para funding source da conta ${accountId}`);
+    // Buscar dados da conta Meta incluindo is_prepay_account diretamente
+    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,balance,currency,expired_funding_source_details,is_prepay_account,spend_cap,amount_spent&access_token=${accessToken}`;
+    console.log(`📞 [BALANCE] Chamando Meta API para dados completos da conta ${accountId}`);
     
     const response = await fetch(accountUrl);
     const responseTime = Date.now() - startTime;
@@ -115,35 +115,41 @@ async function fetchMetaBalance(accountId: string, accessToken: string) {
     }
 
     const data = await response.json();
-    console.log(`✅ [BALANCE] Dados da conta obtidos:`, {
+    console.log(`✅ [BALANCE] Dados completos da conta obtidos:`, {
       accountId,
       responseTime: `${responseTime}ms`,
+      accountName: data.name,
       hasBalance: !!data.balance,
-      hasFundingSource: !!data.funding_source
+      hasFundingDetails: !!data.expired_funding_source_details,
+      isPrepayAccount: data.is_prepay_account,
+      currency: data.currency
     });
     
     let saldo_restante = null;
-    let is_prepay_account = null;
     
-    // Extrair saldo se disponível
-    if (data.balance) {
-      // Balance vem em centavos de dólar, converter para reais (assumindo 1 USD = 5.5 BRL aproximadamente)
+    // Extrair saldo primeiro do expired_funding_source_details, depois do balance
+    if (data.expired_funding_source_details?.display_string) {
+      // Usar função utilitária existente para processar display_string
+      console.log(`💰 [BALANCE] Processando display_string: ${data.expired_funding_source_details.display_string}`);
+      
+      // Importar função de parsing do metaBalance.ts seria ideal, mas vamos implementar inline
+      const match = data.expired_funding_source_details.display_string.match(/R\$\s*([\d.,]+)/);
+      if (match && match[1]) {
+        saldo_restante = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+        console.log(`💰 [BALANCE] Saldo extraído do display_string: R$ ${saldo_restante.toFixed(2)}`);
+      }
+    } else if (data.balance) {
+      // Fallback para balance direto (em centavos USD, convertendo para BRL)
       saldo_restante = parseFloat(data.balance) / 100 * 5.5;
-      console.log(`💰 [BALANCE] Saldo encontrado: ${data.balance} centavos USD = R$ ${saldo_restante.toFixed(2)}`);
+      console.log(`💰 [BALANCE] Saldo extraído do balance field: ${data.balance} centavos USD = R$ ${saldo_restante.toFixed(2)}`);
     }
     
-    // Determinar se é conta pré-paga baseado no funding source
-    if (data.funding_source) {
-      // Funding source IDs típicos:
-      // - Prepaid: usually contains "prepaid" or specific IDs
-      // - Credit card: different pattern
-      const fundingType = data.funding_source.toLowerCase();
-      is_prepay_account = fundingType.includes('prepaid') || fundingType.includes('pre');
-      console.log(`🏦 [BALANCE] Modelo de cobrança detectado:`, {
-        fundingSource: data.funding_source,
-        isPrepay: is_prepay_account
-      });
-    }
+    // Usar diretamente o campo is_prepay_account da API Meta
+    const is_prepay_account = data.is_prepay_account || false;
+    console.log(`🏦 [BALANCE] Modelo de cobrança detectado diretamente da API:`, {
+      isPrepayAccount: is_prepay_account,
+      accountType: is_prepay_account ? 'PRÉ-PAGO' : 'PÓS-PAGO'
+    });
     
     return { saldo_restante, is_prepay_account };
     
