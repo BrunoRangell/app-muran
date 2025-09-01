@@ -292,6 +292,66 @@ export function CircularBudgetCard({
             </div>
           </div>
 
+          {/* Seção de Saldo Meta Ads (apenas para Meta) */}
+          {platform === "meta" && client.balance_info && (
+            <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <BadgeDollarSign className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Saldo da Conta</span>
+                </div>
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${
+                    client.balance_info.billing_model === "pre" 
+                      ? "bg-green-100 text-green-800 border-green-200"
+                      : "bg-blue-100 text-blue-800 border-blue-200"
+                  }`}
+                >
+                  {client.balance_info.billing_model === "pre" ? "Pré-paga" : "Pós-paga"}
+                </Badge>
+              </div>
+              
+              {client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-blue-900">
+                      {formatCurrency(client.balance_info.balance_value)}
+                    </span>
+                    {client.balance_info.balance_percent && (
+                      <span className="text-sm text-blue-700">
+                        {Math.round(client.balance_info.balance_percent * 100)}%
+                      </span>
+                    )}
+                  </div>
+                  
+                  {client.balance_info.balance_percent && (
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          client.balance_info.balance_percent < 0.25 
+                            ? "bg-red-500" 
+                            : client.balance_info.balance_percent < 0.5 
+                            ? "bg-yellow-500" 
+                            : "bg-green-500"
+                        }`}
+                        style={{ width: `${Math.max(0, Math.min(100, client.balance_info.balance_percent * 100))}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : client.balance_info.balance_type === "credit_card" ? (
+                <div className="text-blue-800">
+                  <span className="text-sm">💳 Cartão de crédito</span>
+                </div>
+              ) : (
+                <div className="text-gray-600">
+                  <span className="text-sm">Saldo indisponível</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Layout principal com informações organizadas */}
           <div className="grid grid-cols-3 gap-4 items-center mb-5">
             {/* Coluna 1: Orçamento e gasto */}
