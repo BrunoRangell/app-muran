@@ -106,10 +106,6 @@ function App() {
           />
           {/* Página principal de revisão diária */}
             <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
-
-            {/* Redirecionamentos das páginas antigas */}
-          <Route path="/revisoes-diarias" element={<Navigate to="/revisao-diaria-avancada" replace />} />
-          <Route path="/revisao-meta" element={<Navigate to="/revisao-diaria-avancada" replace />} />
           
           {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
