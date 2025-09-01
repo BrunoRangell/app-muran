@@ -2,21 +2,28 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, LayoutGrid, List, Table2, Filter, RefreshCcw, TrendingUp, Calculator } from "lucide-react";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Search, LayoutGrid, List, Table2, RefreshCcw, TrendingUp, Calculator } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { FilterPopover } from "./FilterPopover";
 
 interface FilterBarProps {
   searchQuery: string;
   viewMode: string;
   showOnlyAdjustments: boolean;
   showWithoutAccount: boolean;
+  showOnlyPrepaid?: boolean;
+  showCampaignProblems?: boolean;
+  sortByBalance?: boolean;
   budgetCalculationMode?: "weighted" | "current";
   onSearchChange: (query: string) => void;
   onViewModeChange: (mode: "cards" | "table" | "list") => void;
   onAdjustmentFilterChange: (showAdjustments: boolean) => void;
   onAccountFilterChange: (showWithoutAccount: boolean) => void;
+  onPrepaidFilterChange?: (showOnlyPrepaid: boolean) => void;
+  onCampaignProblemsFilterChange?: (showCampaignProblems: boolean) => void;
+  onSortByBalanceChange?: (sortByBalance: boolean) => void;
+  onClearAllFilters?: () => void;
   onBudgetCalculationModeChange?: (mode: "weighted" | "current") => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -28,11 +35,18 @@ export function FilterBar({
   viewMode,
   showOnlyAdjustments,
   showWithoutAccount,
+  showOnlyPrepaid = false,
+  showCampaignProblems = false,
+  sortByBalance = false,
   budgetCalculationMode,
   onSearchChange,
   onViewModeChange,
   onAdjustmentFilterChange,
   onAccountFilterChange,
+  onPrepaidFilterChange,
+  onCampaignProblemsFilterChange,
+  onSortByBalanceChange,
+  onClearAllFilters,
   onBudgetCalculationModeChange,
   onRefresh,
   isRefreshing = false,
@@ -54,28 +68,24 @@ export function FilterBar({
           </div>
           
           <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="show-adjustments" 
-                checked={showOnlyAdjustments} 
-                onCheckedChange={onAdjustmentFilterChange} 
+            {/* Filtros Avançados para Meta Ads */}
+            {platform === "meta" && onPrepaidFilterChange && onCampaignProblemsFilterChange && onSortByBalanceChange && onClearAllFilters && (
+              <FilterPopover
+                showOnlyAdjustments={showOnlyAdjustments}
+                showWithoutAccount={showWithoutAccount}
+                showOnlyPrepaid={showOnlyPrepaid}
+                showCampaignProblems={showCampaignProblems}
+                sortByBalance={sortByBalance}
+                onAdjustmentFilterChange={onAdjustmentFilterChange}
+                onAccountFilterChange={onAccountFilterChange}
+                onPrepaidFilterChange={onPrepaidFilterChange}
+                onCampaignProblemsFilterChange={onCampaignProblemsFilterChange}
+                onSortByBalanceChange={onSortByBalanceChange}
+                onClearAllFilters={onClearAllFilters}
               />
-              <Label htmlFor="show-adjustments" className="text-sm">
-                Necessitam ajustes
-              </Label>
-            </div>
+            )}
             
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="show-without-account" 
-                checked={showWithoutAccount} 
-                onCheckedChange={onAccountFilterChange} 
-              />
-              <Label htmlFor="show-without-account" className="text-sm">
-                Sem conta cadastrada
-              </Label>
-            </div>
-            
+            {/* Cálculo de Orçamento para Google Ads */}
             {platform === "google" && onBudgetCalculationModeChange && (
               <div className="flex items-center space-x-2">
                 <Label className="text-sm text-muted-foreground">Base de cálculo:</Label>
@@ -97,6 +107,7 @@ export function FilterBar({
               </div>
             )}
             
+            {/* Modos de Visualização */}
             <ToggleGroup 
               type="single" 
               value={viewMode} 
@@ -113,6 +124,7 @@ export function FilterBar({
               </ToggleGroupItem>
             </ToggleGroup>
             
+            {/* Botão de Atualizar */}
             {onRefresh && (
               <Button
                 variant="outline"

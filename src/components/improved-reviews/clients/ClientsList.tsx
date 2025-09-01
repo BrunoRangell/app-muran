@@ -11,6 +11,9 @@ interface ClientsListProps {
   searchQuery: string;
   showOnlyAdjustments: boolean;
   showWithoutAccount: boolean;
+  showOnlyPrepaid?: boolean;
+  showCampaignProblems?: boolean;
+  sortByBalance?: boolean;
   budgetCalculationMode?: "weighted" | "current";
   platform?: "meta" | "google";
 }
@@ -21,6 +24,9 @@ export function ClientsList({
   searchQuery,
   showOnlyAdjustments,
   showWithoutAccount,
+  showOnlyPrepaid = false,
+  showCampaignProblems = false,
+  sortByBalance = false,
   budgetCalculationMode,
   platform = "meta"
 }: ClientsListProps) {
@@ -59,16 +65,51 @@ export function ClientsList({
       // Filtro de clientes sem conta cadastrada
       const matchesAccountFilter = !showWithoutAccount || !client.hasAccount;
       
-      return matchesSearch && matchesAdjustment && matchesAccountFilter;
+      // Filtro de apenas contas pré-pagas
+      const matchesPrepaidFilter = !showOnlyPrepaid || (
+        client.balance_info?.billing_model === "pre"
+      );
+      
+      // Filtro de problemas de campanha (usando veiculação)
+      const matchesCampaignProblems = !showCampaignProblems || (
+        client.veiculationStatus && 
+        (client.veiculationStatus.status === "none_running" || 
+         client.veiculationStatus.status === "no_campaigns" ||
+         client.veiculationStatus.status === "partial_running")
+      );
+      
+      return matchesSearch && matchesAdjustment && matchesAccountFilter && matchesPrepaidFilter && matchesCampaignProblems;
     });
-  }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, platform]);
+  }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, showOnlyPrepaid, showCampaignProblems, platform]);
   
-  // Ordenar clientes - PRIORIDADE DE CONTA + ORDEM ALFABÉTICA com validação
+  // Ordenar clientes com nova lógica de saldo
   const sortedClients = useMemo(() => {
     return [...filteredData].sort((a, b) => {
       // VALIDAÇÃO: verificar se ambos os clientes têm company_name
       const aName = a?.company_name || '';
       const bName = b?.company_name || '';
+      
+      // Se sortByBalance está ativo, ordenar pré-pagas por saldo (menor primeiro)
+      if (sortByBalance && platform === "meta") {
+        const aIsPrepaid = a.balance_info?.billing_model === "pre";
+        const bIsPrepaid = b.balance_info?.billing_model === "pre";
+        
+        // Se ambos são pré-pagos, ordenar por saldo
+        if (aIsPrepaid && bIsPrepaid) {
+          const aBalance = a.balance_info?.balance_value || 0;
+          const bBalance = b.balance_info?.balance_value || 0;
+          
+          // Menor saldo primeiro
+          if (aBalance !== bBalance) {
+            return aBalance - bBalance;
+          }
+        }
+        
+        // Pré-pagos aparecem primeiro
+        if (aIsPrepaid !== bIsPrepaid) {
+          return aIsPrepaid ? -1 : 1;
+        }
+      }
       
       // Primeiro critério: clientes COM conta aparecem primeiro
       if (a.hasAccount !== b.hasAccount) {
@@ -84,7 +125,7 @@ export function ClientsList({
         return aName < bName ? -1 : aName > bName ? 1 : 0;
       }
     });
-  }, [filteredData]);
+  }, [filteredData, sortByBalance, platform]);
 
   // Debug log para verificar a lista final
   console.log(`🔍 DEBUG - Lista final de clientes (${platform}):`, {
