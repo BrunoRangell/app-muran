@@ -70,19 +70,6 @@ export function FilterBar({
                     <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
                   )}
                 </Button>
-                
-                <Button
-                  variant={showWithoutAccount ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onAccountFilterChange(!showWithoutAccount)}
-                  className="h-8 px-3 text-xs gap-1"
-                >
-                  <Users className="h-3 w-3" />
-                  Sem conta
-                  {showWithoutAccount && (
-                    <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
-                  )}
-                </Button>
 
                 {onCampaignProblemsFilterChange && (
                   <Button
@@ -92,7 +79,7 @@ export function FilterBar({
                     className="h-8 px-3 text-xs gap-1"
                   >
                     <AlertTriangle className="h-3 w-3" />
-                    Com problemas de veiculação
+                    Problemas de veiculação
                     {showCampaignProblems && (
                       <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
                     )}
@@ -107,12 +94,25 @@ export function FilterBar({
                     className="h-8 px-3 text-xs gap-1"
                   >
                     <DollarSign className="h-3 w-3" />
-                    Ordenar pré-pagas por saldo
+                    Saldo da conta esgotando
                     {sortByBalance && (
                       <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
                     )}
                   </Button>
                 )}
+                
+                <Button
+                  variant={showWithoutAccount ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onAccountFilterChange(!showWithoutAccount)}
+                  className="h-8 px-3 text-xs gap-1"
+                >
+                  <Users className="h-3 w-3" />
+                  Sem conta cadastrada
+                  {showWithoutAccount && (
+                    <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
+                  )}
+                </Button>
               </>
             )}
 
@@ -139,7 +139,7 @@ export function FilterBar({
                   className="h-8 px-3 text-xs gap-1"
                 >
                   <Users className="h-3 w-3" />
-                  Sem conta
+                  Sem conta cadastrada
                   {showWithoutAccount && (
                     <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
                   )}
