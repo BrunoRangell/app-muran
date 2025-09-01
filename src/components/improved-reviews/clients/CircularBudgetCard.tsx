@@ -333,17 +333,52 @@ export function CircularBudgetCard({
               </div>
               
               {client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-blue-900">
-                      {formatCurrency(client.balance_info.balance_value)}
-                    </span>
-                    {client.balance_info.balance_percent && (
-                      <span className="text-sm text-blue-700">
-                        {Math.round(client.balance_info.balance_percent * 100)}%
-                      </span>
-                    )}
-                  </div>
+                   <div className="space-y-2">
+                   <div className="flex items-center justify-between">
+                     <span className="text-lg font-bold text-blue-900">
+                       {formatCurrency(client.balance_info.balance_value)}
+                     </span>
+                     {client.balance_info.balance_percent && (
+                       <span className="text-sm text-blue-700">
+                         {Math.round(client.balance_info.balance_percent * 100)}%
+                       </span>
+                     )}
+                   </div>
+                   
+                   {/* Cálculo dias até esgotar - apenas para pré-pagas */}
+                   {client.balance_info.billing_model === "pre" && (() => {
+                     const balance = client.balance_info.balance_value || 0;
+                     const dailyBudget = client.meta_daily_budget || 0;
+                     
+                     if (balance <= 0) {
+                       return (
+                         <div className="text-xs text-red-600">
+                           📅 Saldo esgotado
+                         </div>
+                       );
+                     } else if (dailyBudget <= 0) {
+                       return (
+                         <div className="text-xs text-gray-600">
+                           📅 Sem limite definido
+                         </div>
+                       );
+                     } else {
+                       const daysUntilEmpty = balance / dailyBudget;
+                       if (daysUntilEmpty > 365) {
+                         return (
+                           <div className="text-xs text-gray-600">
+                             📅 &gt; 1 ano restante
+                           </div>
+                         );
+                       } else {
+                         return (
+                           <div className="text-xs text-gray-600">
+                             📅 ~{daysUntilEmpty.toFixed(1)} dias restantes
+                           </div>
+                         );
+                       }
+                     }
+                   })()}
                   
                   {client.balance_info.balance_percent && (
                     <div className="w-full bg-blue-200 rounded-full h-2">
