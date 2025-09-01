@@ -97,18 +97,17 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
       )}
     >
       {/* Header com logo e botão de toggle */}
-      <div className={cn("mb-8", isCollapsed ? 'flex flex-col items-center space-y-4' : 'relative flex items-center justify-center')}>
+      <div className="mb-8 flex items-center justify-between">
         <SidebarLogo isCollapsed={isCollapsed} />
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={toggleCollapse}
-          className={cn(
-            "text-white hover:bg-muran-complementary/80 p-2 h-8 w-8",
-            !isCollapsed && "absolute right-0 top-1/2 -translate-y-1/2"
-          )}
+          className="text-white hover:bg-white/10 hover:text-white h-10 w-10 shrink-0 transition-all duration-200 hover:scale-105"
+          aria-label={isCollapsed ? "Expandir menu" : "Comprimir menu"}
+          title={isCollapsed ? "Expandir menu" : "Comprimir menu"}
         >
-          {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
+          {isCollapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
         </Button>
       </div>
 
