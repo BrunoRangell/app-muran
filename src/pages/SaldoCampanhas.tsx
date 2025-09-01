@@ -203,7 +203,27 @@ export default function SaldoCampanhas() {
 
   useEffect(() => {
     if (apiClients) {
-      setClients(apiClients.map(mapClient));
+      // Agrupar contas por cliente para evitar duplicatas
+      const clientMap = new Map<string, ClientData>();
+      
+      apiClients.forEach(apiClient => {
+        const mapped = mapClient(apiClient);
+        const existing = clientMap.get(mapped.cliente);
+        
+        if (existing) {
+          // Se cliente já existe, combinar as contas
+          if (mapped.meta && !existing.meta) {
+            existing.meta = mapped.meta;
+          }
+          if (mapped.google && !existing.google) {
+            existing.google = mapped.google;
+          }
+        } else {
+          clientMap.set(mapped.cliente, mapped);
+        }
+      });
+      
+      setClients(Array.from(clientMap.values()));
     }
   }, [apiClients]);
 
@@ -212,19 +232,31 @@ export default function SaldoCampanhas() {
       const sorted = [...prev].sort((a, b) => {
         const getPrePaidBalances = (client: ClientData) => {
           const balances: number[] = [];
-          if (client.meta?.billing_model === "pre" && client.meta.saldo?.type === "numeric") {
-            balances.push(client.meta.saldo.value || 0);
+          if (client.meta?.billing_model === "pre" && client.meta.saldo?.type === "numeric" && client.meta.saldo.value !== undefined) {
+            balances.push(client.meta.saldo.value);
           }
-          if (client.google?.billing_model === "pre" && client.google.saldo?.type === "numeric") {
-            balances.push(client.google.saldo.value || 0);
+          if (client.google?.billing_model === "pre" && client.google.saldo?.type === "numeric" && client.google.saldo.value !== undefined) {
+            balances.push(client.google.saldo.value);
           }
           return balances;
         };
 
-        const aVals = getPrePaidBalances(a);
-        const bVals = getPrePaidBalances(b);
-        const aMin = aVals.length ? Math.min(...aVals) : Number.POSITIVE_INFINITY;
-        const bMin = bVals.length ? Math.min(...bVals) : Number.POSITIVE_INFINITY;
+        const aBalances = getPrePaidBalances(a);
+        const bBalances = getPrePaidBalances(b);
+        
+        // Se nenhum tem saldos pré-pagos, manter ordem atual
+        if (aBalances.length === 0 && bBalances.length === 0) {
+          return 0;
+        }
+        
+        // Se apenas um tem saldos pré-pagos, ele vem primeiro
+        if (aBalances.length === 0) return 1;
+        if (bBalances.length === 0) return -1;
+        
+        // Comparar pelos menores saldos
+        const aMin = Math.min(...aBalances);
+        const bMin = Math.min(...bBalances);
+        
         return aMin - bMin;
       });
       return sorted;
@@ -309,8 +341,8 @@ export default function SaldoCampanhas() {
         </div>
 
         <section className="space-y-4">
-          {filtered.map(client => (
-            <div key={client.cliente}>
+          {filtered.map((client, index) => (
+            <div key={`${client.cliente}-${index}`}>
               <div className="text-sm text-gray-500 mb-1">
                 Cliente: <strong>{client.cliente}</strong>
               </div>
