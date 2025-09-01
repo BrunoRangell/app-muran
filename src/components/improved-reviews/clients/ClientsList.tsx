@@ -48,14 +48,24 @@ export function ClientsList({
            client.veiculationStatus.status === "no_campaigns" ||
            client.veiculationStatus.status === "partial_running");
       } else if (activeFilter === "balance") {
-        matchesActiveFilter = client.balance_info?.billing_model === "pre" &&
-          (client.balance_info?.balance_value || 0) < 100; // saldo baixo
+        const balance = client.balance_info?.balance_value || 0;
+        const dailyBudget = client.meta_daily_budget || 0;
+        const isPrepaid = client.balance_info?.billing_model === "pre";
+        
+        if (!isPrepaid || dailyBudget <= 0) {
+          matchesActiveFilter = false;
+        } else {
+          // Saldo baixo é menor que 3 dias de orçamento
+          const criticalThreshold = dailyBudget * 3;
+          matchesActiveFilter = balance <= criticalThreshold;
+        }
+      } else if (activeFilter === "without-account") {
+        matchesActiveFilter = !client.hasAccount;
       }
       
-      // Filtro de clientes sem conta cadastrada
-      const matchesAccountFilter = !showWithoutAccount || !client.hasAccount;
+      // O filtro de conta agora está integrado no activeFilter
       
-      return matchesSearch && matchesActiveFilter && matchesAccountFilter;
+      return matchesSearch && matchesActiveFilter;
     });
   }, [data, searchQuery, activeFilter, showWithoutAccount, platform]);
   

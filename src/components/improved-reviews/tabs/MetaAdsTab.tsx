@@ -55,7 +55,13 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   // Handlers unificados
   const handleSearchChange = (query: string) => setSearchQuery(query);
   const handleActiveFilterChange = (filter: string) => setActiveFilter(filter);
-  const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
+  const handleAccountFilterChange = (show: boolean) => {
+    if (show && activeFilter !== "without-account") {
+      setActiveFilter("without-account");
+    } else if (!show && activeFilter === "without-account") {
+      setActiveFilter("");
+    }
+  };
   
   const handleClearAllFilters = () => {
     setActiveFilter("");
@@ -121,7 +127,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
       <FilterBar 
         searchQuery={searchQuery}
         activeFilter={activeFilter}
-        showWithoutAccount={showWithoutAccount}
+        showWithoutAccount={activeFilter === "without-account"}
         onSearchChange={handleSearchChange}
         onActiveFilterChange={handleActiveFilterChange}
         onAccountFilterChange={handleAccountFilterChange}
@@ -132,7 +138,7 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         data={data}
         searchQuery={searchQuery}
         activeFilter={activeFilter}
-        showWithoutAccount={showWithoutAccount}
+            showWithoutAccount={activeFilter === "without-account"}
         platform="meta"
       />
     </div>

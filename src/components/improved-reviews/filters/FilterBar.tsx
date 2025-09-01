@@ -57,33 +57,36 @@ export function FilterBar({
                     onValueChange={value => onActiveFilterChange(value || "")}
                     className="h-8"
                   >
-                    <ToggleGroupItem value="adjustments" className="h-8 px-3 text-xs gap-1">
+                    <ToggleGroupItem 
+                      value="adjustments" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
                       <Settings className="h-3 w-3" />
                       Ajuste de orçamento
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="campaigns" className="h-8 px-3 text-xs gap-1">
+                    <ToggleGroupItem 
+                      value="campaigns" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
                       <AlertTriangle className="h-3 w-3" />
                       Campanhas com problemas
                     </ToggleGroupItem>
-                    <ToggleGroupItem value="balance" className="h-8 px-3 text-xs gap-1">
+                    <ToggleGroupItem 
+                      value="balance" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
                       <DollarSign className="h-3 w-3" />
                       Saldo disponível baixo
                     </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="without-account" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <Users className="h-3 w-3" />
+                      Sem conta cadastrada
+                    </ToggleGroupItem>
                   </ToggleGroup>
                 )}
-                
-                <Button
-                  variant={showWithoutAccount ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onAccountFilterChange(!showWithoutAccount)}
-                  className="h-8 px-3 text-xs gap-1"
-                >
-                  <Users className="h-3 w-3" />
-                  Sem conta cadastrada
-                  {showWithoutAccount && (
-                    <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
-                  )}
-                </Button>
               </>
             )}
 
@@ -97,25 +100,22 @@ export function FilterBar({
                     onValueChange={value => onActiveFilterChange(value || "")}
                     className="h-8"
                   >
-                    <ToggleGroupItem value="adjustments" className="h-8 px-3 text-xs gap-1">
+                    <ToggleGroupItem 
+                      value="adjustments" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
                       <Settings className="h-3 w-3" />
                       Ajuste de orçamento
                     </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="without-account" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <Users className="h-3 w-3" />
+                      Sem conta cadastrada
+                    </ToggleGroupItem>
                   </ToggleGroup>
                 )}
-                
-                <Button
-                  variant={showWithoutAccount ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onAccountFilterChange(!showWithoutAccount)}
-                  className="h-8 px-3 text-xs gap-1"
-                >
-                  <Users className="h-3 w-3" />
-                  Sem conta cadastrada
-                  {showWithoutAccount && (
-                    <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
-                  )}
-                </Button>
 
                 {/* Cálculo de Orçamento */}
                 {onBudgetCalculationModeChange && (
