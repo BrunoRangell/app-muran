@@ -116,7 +116,6 @@ function App() {
           
             <Route path="/saude-campanhas" element={<CampaignHealth />} />
             <Route path="/saldo-campanhas" element={<Navigate to="/revisao-diaria-avancada" replace />} />
-            <Route path="/trafego-pago" element={<Navigate to="/saude-campanhas" replace />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
