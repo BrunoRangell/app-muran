@@ -13,8 +13,7 @@ import { MetricsPanel } from "@/components/improved-reviews/dashboard/MetricsPan
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
-  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("");
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
@@ -89,8 +88,7 @@ export const GoogleAdsDashboard = () => {
 
   // Handlers para filtros
   const handleSearchChange = (query: string) => setSearchQuery(query);
-  const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
-  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
+  const handleActiveFilterChange = (filter: string) => setActiveFilter(filter);
   const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
 
   return (
@@ -109,24 +107,19 @@ export const GoogleAdsDashboard = () => {
       {/* Barra de filtros unificada */}
       <FilterBar 
         searchQuery={searchQuery}
-        viewMode={viewMode}
-        showOnlyAdjustments={showOnlyAdjustments}
+        activeFilter={activeFilter}
         showWithoutAccount={showWithoutAccount}
         onSearchChange={handleSearchChange}
-        onViewModeChange={handleViewModeChange}
-        onAdjustmentFilterChange={handleAdjustmentFilterChange}
+        onActiveFilterChange={handleActiveFilterChange}
         onAccountFilterChange={handleAccountFilterChange}
-        onRefresh={handleRefresh}
-        isRefreshing={isLoading}
         platform="google"
       />
       
       {/* Lista de clientes unificada */}
       <ClientsList 
         data={data}
-        viewMode={viewMode}
         searchQuery={searchQuery}
-        showOnlyAdjustments={showOnlyAdjustments}
+        activeFilter={activeFilter}
         showWithoutAccount={showWithoutAccount}
         platform="google"
       />

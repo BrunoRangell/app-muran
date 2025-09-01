@@ -106,6 +106,27 @@ export function useUnifiedReviewsData() {
       }
       
       console.log("✅ Orçamentos personalizados ativos:", activeCustomBudgets?.length || 0);
+
+      // Buscar dados de campaign_health para hoje
+      const { data: campaignHealthData, error: campaignHealthError } = await supabase
+        .from("campaign_health")
+        .select("*")
+        .eq("snapshot_date", todayStr)
+        .eq("platform", "meta");
+
+      if (campaignHealthError) {
+        console.error("❌ Erro ao buscar campaign_health:", campaignHealthError);
+        throw campaignHealthError;
+      }
+
+      console.log("✅ Dados de campaign_health encontrados:", campaignHealthData?.length || 0);
+
+      // Mapear dados de campaign_health por client_id e account_id
+      const campaignHealthByClientAccount = new Map();
+      campaignHealthData?.forEach(health => {
+        const key = `${health.client_id}_${health.account_id}`;
+        campaignHealthByClientAccount.set(key, health);
+      });
       
       // Mapear orçamentos personalizados por client_id
       const customBudgetsByClientId = new Map();
@@ -212,6 +233,16 @@ export function useUnifiedReviewsData() {
             
             console.log(`🔍 DEBUG - Cliente ${client.company_name}: customBudgetStartDate = ${customBudgetStartDate}, customBudgetEndDate = ${customBudgetEndDate}`);
             
+            // Buscar dados de saldo direto da conta Meta
+            const balanceInfo = account.saldo_restante !== null || account.is_prepay_account !== null ? {
+              balance: account.saldo_restante || 0,
+              balance_type: account.is_prepay_account === false ? "credit_card" : (account.saldo_restante !== null ? "numeric" : "unavailable"),
+              balance_value: account.saldo_restante,
+              billing_model: account.is_prepay_account ? "pre" : "pos"
+            } : null;
+            
+            console.log(`💰 Balance data para ${client.company_name}:`, balanceInfo);
+            
             // Calcular orçamento - CORREÇÃO: Passar customBudgetStartDate
             const budgetCalc = calculateBudget({
               monthlyBudget: monthlyBudget,
@@ -223,6 +254,66 @@ export function useUnifiedReviewsData() {
             });
             
             const needsAdjustment = budgetCalc.needsBudgetAdjustment;
+            
+            // Buscar dados de veiculação para este cliente/conta
+            const healthKey = `${client.id}_${account.id}`;
+            const healthData = campaignHealthByClientAccount.get(healthKey);
+            
+            // Determinar status de veiculação
+            const getVeiculationStatus = (healthData: any) => {
+              if (!healthData) {
+                return {
+                  status: "no_data",
+                  activeCampaigns: 0,
+                  campaignsWithoutDelivery: 0,
+                  message: "Sem dados de veiculação",
+                  badgeColor: "bg-gray-500"
+                };
+              }
+
+              const activeCampaigns = healthData.active_campaigns_count || 0;
+              const campaignsWithoutDelivery = healthData.unserved_campaigns_count || 0;
+
+              if (activeCampaigns === 0) {
+                return {
+                  status: "no_campaigns",
+                  activeCampaigns: 0,
+                  campaignsWithoutDelivery: 0,
+                  message: "Nenhuma campanha ativa",
+                  badgeColor: "bg-gray-500"
+                };
+              }
+
+              if (campaignsWithoutDelivery === 0) {
+                return {
+                  status: "all_running",
+                  activeCampaigns,
+                  campaignsWithoutDelivery: 0,
+                  message: "Todas as campanhas rodando",
+                  badgeColor: "bg-green-500"
+                };
+              }
+
+              if (campaignsWithoutDelivery === activeCampaigns) {
+                return {
+                  status: "none_running",
+                  activeCampaigns,
+                  campaignsWithoutDelivery,
+                  message: "Nenhuma campanha com entrega",
+                  badgeColor: "bg-red-500"
+                };
+              }
+
+              return {
+                status: "partial_running",
+                activeCampaigns,
+                campaignsWithoutDelivery,
+                message: `${campaignsWithoutDelivery} de ${activeCampaigns} sem entrega`,
+                badgeColor: "bg-yellow-500"
+              };
+            };
+
+            const veiculationStatus = getVeiculationStatus(healthData);
             
             const clientData = {
               ...client,
@@ -238,7 +329,10 @@ export function useUnifiedReviewsData() {
               needsAdjustment: needsAdjustment,
               customBudget: customBudget,
               isUsingCustomBudget: isUsingCustomBudget,
-              hasAccount: true
+              hasAccount: true,
+              meta_daily_budget: review?.daily_budget_current || 0,
+              balance_info: balanceInfo || null,
+              veiculationStatus: veiculationStatus
             };
             
             console.log(`📝 Cliente processado: ${client.company_name} (${account.account_name})`, {
@@ -279,7 +373,14 @@ export function useUnifiedReviewsData() {
             needsAdjustment: false,
             customBudget: null,
             isUsingCustomBudget: false,
-            hasAccount: false
+            hasAccount: false,
+            veiculationStatus: {
+              status: "no_data",
+              activeCampaigns: 0,
+              campaignsWithoutDelivery: 0,
+              message: "Sem conta cadastrada",
+              badgeColor: "bg-gray-500"
+            }
           };
           
           console.log(`📝 Cliente SEM CONTA processado: ${client.company_name}`);

@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useMetaBalance, ApiClient, ApiAccount } from "@/hooks/useMetaBalance";
+import { UnifiedLoadingState } from "@/components/common/UnifiedLoadingState";
+import { AlertCircle } from "lucide-react";
 
 interface AccountInfo {
   id: string | null;
-  status: { code: any; label: string; tone: "ok" | "warn" | "crit" | "info" };
-  billing_model: "pre" | "pos";
-  saldo: {
+  account_name?: string;
+  status?: { code: unknown; label: string; tone: "ok" | "warn" | "crit" | "info" };
+  billing_model?: "pre" | "pos";
+  saldo?: {
     type: "numeric" | "credit_card" | "unavailable";
     value?: number;
     source?: string;
     percent?: number;
   } | null;
-  ultima_recarga: { date: string; amount: number } | null;
-  badges: string[];
+  ultima_recarga?: { date: string; amount: number } | null;
+  badges?: string[];
 }
 
 interface ClientData {
@@ -20,84 +24,40 @@ interface ClientData {
   google?: AccountInfo;
 }
 
-const data: ClientData[] = [
-  {
-    cliente: "Megha Imóveis",
-    meta: {
-      id: "act_192612319156232",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: 91.81, source: "operational", percent: 0.22 },
-      ultima_recarga: { date: "2025-08-01", amount: 900.0 },
-      badges: []
+function mapAccount(api: ApiAccount): AccountInfo {
+  return {
+    id: api.id,
+    account_name: api.account_name,
+    status: {
+      code: api.status_code,
+      label: api.status_label,
+      tone: api.status_tone,
     },
-    google: {
-      id: "123-456-7890",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "credit_card" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Simmons Colchões",
-    meta: {
-      id: "act_5616617858447105",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pre",
-      saldo: { type: "numeric", value: 310.29, source: "display_string", percent: 0.68 },
-      ultima_recarga: { date: "2025-08-18", amount: 500.0 },
-      badges: []
-    },
-    google: {
-      id: "234-567-8901",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "credit_card" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Elegance Móveis",
-    meta: {
-      id: "act_23846346246380483",
-      status: { code: 2, label: "Inativa", tone: "crit" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: -23.27, source: "operational", percent: 0 },
-      ultima_recarga: { date: "2025-07-28", amount: 300.0 },
-      badges: ["erro_pagamento"]
-    },
-    google: {
-      id: null,
-      status: { code: "NONE", label: "Não conectado", tone: "info" },
-      billing_model: "pos",
-      saldo: { type: "unavailable" },
-      ultima_recarga: null,
-      badges: []
-    }
-  },
-  {
-    cliente: "Astra Design",
-    meta: {
-      id: "act_1111111111111",
-      status: { code: 1, label: "Ativa", tone: "ok" },
-      billing_model: "pre",
-      saldo: { type: "numeric", value: 154.1, source: "display_string", percent: 0.45 },
-      ultima_recarga: { date: "2025-08-20", amount: 200.0 },
-      badges: []
-    },
-    google: {
-      id: "999-222-3333",
-      status: { code: "ENABLED", label: "Ativa", tone: "ok" },
-      billing_model: "pos",
-      saldo: { type: "numeric", value: 75.0, source: "budget_remaining", percent: 0.3 },
-      ultima_recarga: null,
-      badges: []
-    }
-  }
-];
+    billing_model: api.billing_model,
+    saldo:
+      api.balance_type === "numeric"
+        ? {
+            type: "numeric",
+            value: api.balance_value,
+            source: api.balance_source,
+            percent: api.balance_percent,
+          }
+        : { type: api.balance_type },
+    ultima_recarga:
+      api.last_recharge_date && api.last_recharge_amount !== undefined
+        ? { date: api.last_recharge_date, amount: api.last_recharge_amount }
+        : null,
+    badges: api.badges || [],
+  };
+}
+
+function mapClient(api: ApiClient): ClientData {
+  return {
+    cliente: api.client,
+    meta: api.meta ? mapAccount(api.meta) : undefined,
+    google: api.google ? mapAccount(api.google) : undefined,
+  };
+}
 
 function pctToClass(p: number) {
   if (p <= 0.25) return "crit";
@@ -118,12 +78,12 @@ const toneStyles: Record<string, string> = {
   ok: "bg-green-100 text-green-800 border-green-200",
   warn: "bg-yellow-100 text-yellow-800 border-yellow-200",
   crit: "bg-red-100 text-red-800 border-red-200",
-  info: "bg-blue-100 text-blue-800 border-blue-200"
+  info: "bg-blue-100 text-blue-800 border-blue-200",
 };
 
 function Card({ platform, obj }: CardProps) {
   const isMeta = platform === "meta";
-  const plabel = isMeta ? "Meta Ads" : "Google Ads";
+  const plabel = isMeta ? (obj.account_name || "Meta Ads") : "Google Ads";
   const logoClass = isMeta ? "bg-[#4267B2]" : "bg-[#34A853]";
 
   const tone = obj.status?.tone || "info";
@@ -154,26 +114,12 @@ function Card({ platform, obj }: CardProps) {
     batteryPercent = 0;
   }
 
-  let fonte = "—";
-  if (obj.saldo?.type === "numeric") {
-    const src = obj.saldo?.source || "—";
-    const map: Record<string, string> = {
-      display_string: "display_string",
-      spendcap_minus_spent: "spend_cap − amount_spent",
-      operational: "operacional (recargas − Insights)",
-      budget_remaining: "orçamento restante"
-    };
-    fonte = map[src] || src;
-  } else if (obj.saldo?.type === "credit_card") {
-    fonte = "pagamento automático";
-  }
-
   let lastHtml: JSX.Element = (
     <>
       <span className="font-semibold text-gray-600">Última recarga:</span> <span>—</span>
     </>
   );
-  if (obj.saldo?.type === "numeric" && obj.ultima_recarga) {
+  if (obj.ultima_recarga) {
     const d = new Date(obj.ultima_recarga.date + "T00:00:00");
     const date = d.toLocaleDateString("pt-BR");
     lastHtml = (
@@ -219,7 +165,6 @@ function Card({ platform, obj }: CardProps) {
             style={{ width: `${batteryPercent * 100}%` }}
           ></span>
         </div>
-        <div className="col-span-2 text-xs text-gray-500">Fonte: {fonte}</div>
       </div>
 
       <div className="flex items-center gap-2 text-xs text-gray-500">{lastHtml}</div>
@@ -228,8 +173,14 @@ function Card({ platform, obj }: CardProps) {
         {obj.billing_model === "pos" && obj.saldo?.type !== "numeric" && (
           <button className="px-3 py-1 rounded-md text-sm bg-[#ff7a00] text-white">Definir saldo atual</button>
         )}
-        <button className="px-3 py-1 rounded-md text-sm border border-gray-200">Histórico</button>
-        <button className="px-3 py-1 rounded-md text-sm border border-gray-200">
+        <button 
+          className="px-3 py-1 rounded-md text-sm border border-gray-200 hover:bg-gray-50"
+          onClick={() => {
+            if (isMeta && obj.id) {
+              window.open(`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${obj.id}`, '_blank');
+            }
+          }}
+        >
           Abrir no {isMeta ? "Gerenciador" : "Ads"}
         </button>
       </div>
@@ -237,43 +188,138 @@ function Card({ platform, obj }: CardProps) {
   );
 }
 
-export default function SaldoCampanhas() {
+export function BalanceSection() {
   const [search, setSearch] = useState("");
-  const [clients, setClients] = useState<ClientData[]>(data);
+  const [billingFilter, setBillingFilter] = useState<"" | "pre" | "pos">("");
+  const [clients, setClients] = useState<ClientData[]>([]);
+  const {
+    data: apiClients,
+    refetch,
+    isFetching,
+    isLoading,
+    error,
+  } = useMetaBalance();
+
+  useEffect(() => {
+    if (apiClients) {
+      // Agrupar contas por cliente para evitar duplicatas
+      const clientMap = new Map<string, ClientData>();
+      
+      apiClients.forEach(apiClient => {
+        const mapped = mapClient(apiClient);
+        const existing = clientMap.get(mapped.cliente);
+        
+        if (existing) {
+          // Se cliente já existe, combinar as contas
+          if (mapped.meta && !existing.meta) {
+            existing.meta = mapped.meta;
+          }
+          if (mapped.google && !existing.google) {
+            existing.google = mapped.google;
+          }
+        } else {
+          clientMap.set(mapped.cliente, mapped);
+        }
+      });
+      
+      setClients(Array.from(clientMap.values()));
+    }
+  }, [apiClients]);
 
   const handleSort = () => {
     setClients(prev => {
       const sorted = [...prev].sort((a, b) => {
-        const aVals = [a.meta?.saldo, a.google?.saldo]
-          .filter(s => s && s.type === "numeric")
-          .map(s => s!.value as number);
-        const bVals = [b.meta?.saldo, b.google?.saldo]
-          .filter(s => s && s.type === "numeric")
-          .map(s => s!.value as number);
-        const aMin = aVals.length ? Math.min(...aVals) : Number.POSITIVE_INFINITY;
-        const bMin = bVals.length ? Math.min(...bVals) : Number.POSITIVE_INFINITY;
+        const getPrePaidBalances = (client: ClientData) => {
+          const balances: number[] = [];
+          if (client.meta?.billing_model === "pre" && client.meta.saldo?.type === "numeric" && client.meta.saldo.value !== undefined) {
+            balances.push(client.meta.saldo.value);
+          }
+          if (client.google?.billing_model === "pre" && client.google.saldo?.type === "numeric" && client.google.saldo.value !== undefined) {
+            balances.push(client.google.saldo.value);
+          }
+          return balances;
+        };
+
+        const aBalances = getPrePaidBalances(a);
+        const bBalances = getPrePaidBalances(b);
+        
+        // Se nenhum tem saldos pré-pagos, manter ordem atual
+        if (aBalances.length === 0 && bBalances.length === 0) {
+          return 0;
+        }
+        
+        // Se apenas um tem saldos pré-pagos, ele vem primeiro
+        if (aBalances.length === 0) return 1;
+        if (bBalances.length === 0) return -1;
+        
+        // Comparar pelos menores saldos
+        const aMin = Math.min(...aBalances);
+        const bMin = Math.min(...bBalances);
+        
         return aMin - bMin;
       });
       return sorted;
     });
   };
 
-  const filtered = clients.filter(client =>
-    client.cliente.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = clients.filter(client => {
+    const matchesSearch = client.cliente.toLowerCase().includes(search.toLowerCase());
+    
+    if (!billingFilter) return matchesSearch;
+    
+    const hasMatchingBilling = 
+      (client.meta?.billing_model === billingFilter) || 
+      (client.google?.billing_model === billingFilter);
+    
+    return matchesSearch && hasMatchingBilling;
+  });
+
+  if (error) {
+    return (
+      <div className="bg-gray-50 -mx-4 -my-6 px-4 py-6 min-h-[calc(100vh-200px)]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col items-center justify-center p-8 text-red-500 gap-4">
+            <AlertCircle className="h-12 w-12" />
+            <h2 className="text-xl font-semibold">Erro ao carregar dados</h2>
+            <p className="text-center text-gray-600">
+              Não foi possível carregar a lista de clientes.
+              <br />
+              Por favor, tente novamente.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-gray-50 -mx-4 -my-6 px-4 py-6 min-h-[calc(100vh-200px)]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center py-16">
+            <UnifiedLoadingState message="Carregando..." />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#f4f6fb] text-[#1f2937]">
-      <div className="max-w-[1220px] mx-auto p-6">
+    <div className="bg-[#f4f6fb] text-[#1f2937] -mx-4 -my-6 px-4 py-6 min-h-[calc(100vh-200px)]">
+      <div className="max-w-[1220px] mx-auto">
         <header className="flex items-end justify-between mb-4">
           <div>
-            <h1 className="font-extrabold text-xl">Saúde das Contas</h1>
+            <h2 className="font-extrabold text-xl text-[#321e32]">Saúde das Contas</h2>
             <div className="text-xs text-gray-500">
-              Wireframe com cards padronizados (Meta | Google por cliente)
+              Acompanhamento de saldos das contas Meta e Google por cliente
             </div>
           </div>
-          <button className="bg-[#ff7a00] text-white rounded-lg px-3 py-2 font-bold">
-            ⟳ Atualizar
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="bg-[#ff7a00] text-white rounded-lg px-3 py-2 font-bold disabled:opacity-50"
+          >
+            {isFetching ? "Atualizando…" : "⟳ Atualizar"}
           </button>
         </header>
 
@@ -284,16 +330,14 @@ export default function SaldoCampanhas() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <select className="border border-gray-200 rounded-lg px-3 py-2">
-            <option value="">Tipo (todos)</option>
+          <select 
+            className="border border-gray-200 rounded-lg px-3 py-2"
+            value={billingFilter}
+            onChange={e => setBillingFilter(e.target.value as "" | "pre" | "pos")}
+          >
+            <option value="">Modelo de cobrança (todos)</option>
             <option value="pre">Pré-paga</option>
             <option value="pos">Pós-paga</option>
-          </select>
-          <select className="border border-gray-200 rounded-lg px-3 py-2">
-            <option value="">Urgência (todas)</option>
-            <option value="crit">Crítico</option>
-            <option value="warn">Alto</option>
-            <option value="ok">OK</option>
           </select>
           <button
             onClick={handleSort}
@@ -304,8 +348,8 @@ export default function SaldoCampanhas() {
         </div>
 
         <section className="space-y-4">
-          {filtered.map(client => (
-            <div key={client.cliente}>
+          {filtered.map((client, index) => (
+            <div key={`${client.cliente}-${index}`}>
               <div className="text-sm text-gray-500 mb-1">
                 Cliente: <strong>{client.cliente}</strong>
               </div>
@@ -332,4 +376,3 @@ export default function SaldoCampanhas() {
     </div>
   );
 }
-

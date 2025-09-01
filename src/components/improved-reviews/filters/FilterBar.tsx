@@ -1,49 +1,41 @@
-
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, LayoutGrid, List, Table2, Filter, RefreshCcw, TrendingUp, Calculator } from "lucide-react";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Search, TrendingUp, Calculator, Settings, Users, AlertTriangle, DollarSign } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface FilterBarProps {
   searchQuery: string;
-  viewMode: string;
-  showOnlyAdjustments: boolean;
+  activeFilter?: string;
   showWithoutAccount: boolean;
   budgetCalculationMode?: "weighted" | "current";
   onSearchChange: (query: string) => void;
-  onViewModeChange: (mode: "cards" | "table" | "list") => void;
-  onAdjustmentFilterChange: (showAdjustments: boolean) => void;
+  onActiveFilterChange?: (filter: string) => void;
   onAccountFilterChange: (showWithoutAccount: boolean) => void;
   onBudgetCalculationModeChange?: (mode: "weighted" | "current") => void;
-  onRefresh?: () => void;
-  isRefreshing?: boolean;
   platform?: "meta" | "google";
 }
 
 export function FilterBar({
   searchQuery,
-  viewMode,
-  showOnlyAdjustments,
+  activeFilter = "",
   showWithoutAccount,
   budgetCalculationMode,
   onSearchChange,
-  onViewModeChange,
-  onAdjustmentFilterChange,
+  onActiveFilterChange,
   onAccountFilterChange,
   onBudgetCalculationModeChange,
-  onRefresh,
-  isRefreshing = false,
   platform = "meta"
 }: FilterBarProps) {
   return (
     <Card className="shadow-sm">
       <CardContent className="p-4">
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+        <div className="space-y-4">
+          {/* Primeira linha: Busca */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
               type="text" 
               placeholder={`Buscar clientes ${platform === "meta" ? "Meta" : "Google"} Ads...`} 
@@ -52,78 +44,101 @@ export function FilterBar({
               onChange={e => onSearchChange(e.target.value)} 
             />
           </div>
-          
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="show-adjustments" 
-                checked={showOnlyAdjustments} 
-                onCheckedChange={onAdjustmentFilterChange} 
-              />
-              <Label htmlFor="show-adjustments" className="text-sm">
-                Necessitam ajustes
-              </Label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="show-without-account" 
-                checked={showWithoutAccount} 
-                onCheckedChange={onAccountFilterChange} 
-              />
-              <Label htmlFor="show-without-account" className="text-sm">
-                Sem conta cadastrada
-              </Label>
-            </div>
-            
-            {platform === "google" && onBudgetCalculationModeChange && (
-              <div className="flex items-center space-x-2">
-                <Label className="text-sm text-muted-foreground">Base de cálculo:</Label>
-                <ToggleGroup 
-                  type="single" 
-                  value={budgetCalculationMode || "weighted"} 
-                  onValueChange={value => value && onBudgetCalculationModeChange(value as "weighted" | "current")}
-                  className="h-8"
-                >
-                  <ToggleGroupItem value="weighted" className="h-8 px-3 text-xs">
-                    <TrendingUp className="h-3 w-3 mr-1" />
-                    Média Pond
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="current" className="h-8 px-3 text-xs">
-                    <Calculator className="h-3 w-3 mr-1" />
-                    Orç. atual
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
+
+          {/* Segunda linha: Filtros */}
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Filtros para Meta Ads */}
+            {platform === "meta" && (
+              <>
+                {onActiveFilterChange && (
+                  <ToggleGroup 
+                    type="single" 
+                    value={activeFilter} 
+                    onValueChange={value => onActiveFilterChange(value || "")}
+                    className="h-8"
+                  >
+                    <ToggleGroupItem 
+                      value="adjustments" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <Settings className="h-3 w-3" />
+                      Ajuste de orçamento
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="campaigns" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <AlertTriangle className="h-3 w-3" />
+                      Campanhas com problemas
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="balance" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <DollarSign className="h-3 w-3" />
+                      Saldo disponível baixo
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="without-account" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <Users className="h-3 w-3" />
+                      Sem conta cadastrada
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                )}
+              </>
             )}
-            
-            <ToggleGroup 
-              type="single" 
-              value={viewMode} 
-              onValueChange={value => value && onViewModeChange(value as any)}
-            >
-              <ToggleGroupItem value="cards" aria-label="Ver como cards">
-                <LayoutGrid className="h-4 w-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="list" aria-label="Ver como lista">
-                <List className="h-4 w-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="table" aria-label="Ver como tabela">
-                <Table2 className="h-4 w-4" />
-              </ToggleGroupItem>
-            </ToggleGroup>
-            
-            {onRefresh && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onRefresh}
-                disabled={isRefreshing}
-                className="flex items-center gap-2"
-              >
-                <RefreshCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {isRefreshing ? 'Atualizando...' : 'Atualizar'}
-              </Button>
+
+            {/* Filtros para Google Ads */}
+            {platform === "google" && (
+              <>
+                {onActiveFilterChange && (
+                  <ToggleGroup 
+                    type="single" 
+                    value={activeFilter} 
+                    onValueChange={value => onActiveFilterChange(value || "")}
+                    className="h-8"
+                  >
+                    <ToggleGroupItem 
+                      value="adjustments" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <Settings className="h-3 w-3" />
+                      Ajuste de orçamento
+                    </ToggleGroupItem>
+                    <ToggleGroupItem 
+                      value="without-account" 
+                      className="h-8 px-3 text-xs gap-1 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md"
+                    >
+                      <Users className="h-3 w-3" />
+                      Sem conta cadastrada
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                )}
+
+                {/* Cálculo de Orçamento */}
+                {onBudgetCalculationModeChange && (
+                  <div className="flex items-center space-x-2">
+                    <Label className="text-sm text-muted-foreground">Base de cálculo:</Label>
+                    <ToggleGroup 
+                      type="single" 
+                      value={budgetCalculationMode || "weighted"} 
+                      onValueChange={value => value && onBudgetCalculationModeChange(value as "weighted" | "current")}
+                      className="h-8"
+                    >
+                      <ToggleGroupItem value="weighted" className="h-8 px-3 text-xs">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        Média Pond
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="current" className="h-8 px-3 text-xs">
+                        <Calculator className="h-3 w-3 mr-1" />
+                        Orç. atual
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff, ExternalLink } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff, ExternalLink, Activity } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
@@ -11,6 +11,7 @@ import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/compon
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
@@ -115,6 +116,17 @@ export function CircularBudgetCard({
   };
   const statusInfo = getStatusInfo();
   const accountInfo = getAccountInfo();
+
+  // Buscar informações de veiculação das campanhas - usar o account_id correto
+  const veiculationAccountId = platform === "meta" 
+    ? (client.review?.account_id || client.meta_account_id) 
+    : (client.review?.account_id || client.google_account_id);
+  
+  const { data: veiculationInfo } = useCampaignVeiculationStatus(
+    client.id, 
+    veiculationAccountId, 
+    platform
+  );
 
   // Determinar tipo de orçamento
   const getBudgetType = () => {
@@ -291,6 +303,132 @@ export function CircularBudgetCard({
                )}
             </div>
           </div>
+
+          {/* Seção de Saldo Meta Ads (apenas para Meta) */}
+          {platform === "meta" && client.balance_info && (
+            <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <BadgeDollarSign className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Saldo da Conta</span>
+                </div>
+                <a 
+                  href={`https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Ver saldo
+                </a>
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${
+                    client.balance_info.billing_model === "pre" 
+                      ? "bg-green-100 text-green-800 border-green-200"
+                      : "bg-blue-100 text-blue-800 border-blue-200"
+                  }`}
+                >
+                  {client.balance_info.billing_model === "pre" ? "Pré-paga" : "Pós-paga"}
+                </Badge>
+              </div>
+              
+              {client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
+                   <div className="space-y-2">
+                   <div className="flex items-center justify-between">
+                     <span className="text-lg font-bold text-blue-900">
+                       {formatCurrency(client.balance_info.balance_value)}
+                     </span>
+                     {client.balance_info.balance_percent && (
+                       <span className="text-sm text-blue-700">
+                         {Math.round(client.balance_info.balance_percent * 100)}%
+                       </span>
+                     )}
+                   </div>
+                   
+                   {/* Cálculo dias até esgotar - apenas para pré-pagas */}
+                   {client.balance_info.billing_model === "pre" && (() => {
+                     const balance = client.balance_info.balance_value || 0;
+                     const dailyBudget = client.meta_daily_budget || 0;
+                     
+                     if (balance <= 0) {
+                       return (
+                         <div className="text-xs text-red-600">
+                           📅 Saldo esgotado
+                         </div>
+                       );
+                     } else if (dailyBudget <= 0) {
+                       return (
+                         <div className="text-xs text-gray-600">
+                           📅 Sem limite definido
+                         </div>
+                       );
+                     } else {
+                       const daysUntilEmpty = balance / dailyBudget;
+                       if (daysUntilEmpty > 365) {
+                         return (
+                           <div className="text-xs text-gray-600">
+                             📅 &gt; 1 ano restante
+                           </div>
+                         );
+                       } else {
+                         return (
+                           <div className="text-xs text-gray-600">
+                             📅 ~{Math.floor(daysUntilEmpty)} dias restantes
+                           </div>
+                         );
+                       }
+                     }
+                   })()}
+                  
+                  {client.balance_info.balance_percent && (
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          client.balance_info.balance_percent < 0.25 
+                            ? "bg-red-500" 
+                            : client.balance_info.balance_percent < 0.5 
+                            ? "bg-yellow-500" 
+                            : "bg-green-500"
+                        }`}
+                        style={{ width: `${Math.max(0, Math.min(100, client.balance_info.balance_percent * 100))}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : client.balance_info.balance_type === "credit_card" ? (
+                <div className="text-blue-800">
+                  <span className="text-sm">💳 Cartão de crédito</span>
+                </div>
+              ) : (
+                <div className="text-gray-600">
+                  <span className="text-sm">Saldo indisponível</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Seção de Status de Veiculação (apenas para Meta Ads) */}
+          {platform === "meta" && veiculationInfo && veiculationInfo.status !== "no_data" && (
+            <div className="mb-4 p-3 rounded-lg bg-gray-50 border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="h-4 w-4 text-gray-600" />
+                <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-medium ${veiculationInfo.badgeColor}`}
+                >
+                  {veiculationInfo.message}
+                </Badge>
+                {veiculationInfo.activeCampaigns > 0 && (
+                  <span className="text-xs text-gray-600">
+                    {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Layout principal com informações organizadas */}
           <div className="grid grid-cols-3 gap-4 items-center mb-5">

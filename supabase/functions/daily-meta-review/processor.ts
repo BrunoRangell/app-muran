@@ -90,6 +90,80 @@ function filterActiveAdsets(adsets: any[], now: Date, campaignId: string = "") {
   return activeAdsets;
 }
 
+// Função para buscar saldo e modelo de cobrança da Meta API
+async function fetchMetaBalance(accountId: string, accessToken: string) {
+  const startTime = Date.now();
+  console.log(`💰 [BALANCE] Iniciando busca de saldo para conta ${accountId}`);
+  
+  try {
+    // Buscar dados da conta Meta incluindo is_prepay_account diretamente
+    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,balance,currency,expired_funding_source_details,is_prepay_account,spend_cap,amount_spent&access_token=${accessToken}`;
+    console.log(`📞 [BALANCE] Chamando Meta API para dados completos da conta ${accountId}`);
+    
+    const response = await fetch(accountUrl);
+    const responseTime = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`❌ [BALANCE] ERRO na API para conta ${accountId}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData,
+        responseTime: `${responseTime}ms`
+      });
+      return { saldo_restante: null, is_prepay_account: null };
+    }
+
+    const data = await response.json();
+    console.log(`✅ [BALANCE] Dados completos da conta obtidos:`, {
+      accountId,
+      responseTime: `${responseTime}ms`,
+      accountName: data.name,
+      hasBalance: !!data.balance,
+      hasFundingDetails: !!data.expired_funding_source_details,
+      isPrepayAccount: data.is_prepay_account,
+      currency: data.currency
+    });
+    
+    let saldo_restante = null;
+    
+    // Extrair saldo primeiro do expired_funding_source_details, depois do balance
+    if (data.expired_funding_source_details?.display_string) {
+      // Usar função utilitária existente para processar display_string
+      console.log(`💰 [BALANCE] Processando display_string: ${data.expired_funding_source_details.display_string}`);
+      
+      // Importar função de parsing do metaBalance.ts seria ideal, mas vamos implementar inline
+      const match = data.expired_funding_source_details.display_string.match(/R\$\s*([\d.,]+)/);
+      if (match && match[1]) {
+        saldo_restante = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+        console.log(`💰 [BALANCE] Saldo extraído do display_string: R$ ${saldo_restante.toFixed(2)}`);
+      }
+    } else if (data.balance) {
+      // Fallback para balance direto (em centavos USD, convertendo para BRL)
+      saldo_restante = parseFloat(data.balance) / 100 * 5.5;
+      console.log(`💰 [BALANCE] Saldo extraído do balance field: ${data.balance} centavos USD = R$ ${saldo_restante.toFixed(2)}`);
+    }
+    
+    // Usar diretamente o campo is_prepay_account da API Meta
+    const is_prepay_account = data.is_prepay_account || false;
+    console.log(`🏦 [BALANCE] Modelo de cobrança detectado diretamente da API:`, {
+      isPrepayAccount: is_prepay_account,
+      accountType: is_prepay_account ? 'PRÉ-PAGO' : 'PÓS-PAGO'
+    });
+    
+    return { saldo_restante, is_prepay_account };
+    
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [BALANCE] ERRO EXCEPTION conta ${accountId}:`, {
+      error: error.message,
+      stack: error.stack,
+      responseTime: `${responseTime}ms`
+    });
+    return { saldo_restante: null, is_prepay_account: null };
+  }
+}
+
 // Função para buscar dados reais da Meta Graph API
 async function fetchMetaApiData(accountId: string, accessToken: string, customBudget: any) {
   const totalStartTime = Date.now();
@@ -438,11 +512,17 @@ export async function processReviewRequest(req: Request) {
     console.log(`🚀 [MAIN_FETCH] Iniciando busca principal da Meta API`);
     const metaApiData = await fetchMetaApiData(metaAccount.account_id, metaToken, customBudget);
     
+    // 5.1. BUSCAR SALDO E MODELO DE COBRANÇA
+    console.log(`💰 [BALANCE_FETCH] Buscando saldo e modelo de cobrança`);
+    const balanceData = await fetchMetaBalance(metaAccount.account_id, metaToken);
+    
     console.log(`✅ [MAIN_FETCH] Dados Meta API obtidos:`, {
       daily_budget: metaApiData.daily_budget,
       total_spent: metaApiData.total_spent,
       account_id: metaAccount.account_id,
-      account_name: metaApiData.account_name
+      account_name: metaApiData.account_name,
+      saldo_restante: balanceData.saldo_restante,
+      is_prepay_account: balanceData.is_prepay_account
     });
     
     // 6. 🧹 LIMPEZA AUTOMÁTICA: Remover revisões antigas da tabela budget_reviews
@@ -502,7 +582,7 @@ export async function processReviewRequest(req: Request) {
       }
     }
     
-    // 7. Preparar dados da revisão
+    // 7. Preparar dados da revisão incluindo saldo
     const reviewData = {
       daily_budget_current: metaApiData.daily_budget,
       total_spent: metaApiData.total_spent,
@@ -511,7 +591,9 @@ export async function processReviewRequest(req: Request) {
       custom_budget_id: customBudget?.id || null,
       custom_budget_amount: customBudget?.budget_amount || null,
       custom_budget_start_date: customBudget?.start_date || null,
-      custom_budget_end_date: customBudget?.end_date || null
+      custom_budget_end_date: customBudget?.end_date || null,
+      saldo_restante: balanceData.saldo_restante,
+      is_prepay_account: balanceData.is_prepay_account
     };
     
     console.log(`📋 [REVIEW_DATA] Dados preparados:`, reviewData);

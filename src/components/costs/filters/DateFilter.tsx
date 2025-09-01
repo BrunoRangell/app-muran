@@ -88,8 +88,8 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
     setDate({ from: start, to: end });
     onFiltersChange({
       ...filters,
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0],
+      startDate: format(start, "yyyy-MM-dd"),
+      endDate: format(end, "yyyy-MM-dd"),
     });
   };
 
@@ -99,16 +99,18 @@ export function DateFilter({ filters, onFiltersChange }: DateFilterProps) {
     
     if (range?.from) {
       const start = new Date(range.from);
+      start.setUTCHours(0, 0, 0, 0);
       
       let end;
       if (range.to) {
         end = new Date(range.to);
+        end.setUTCHours(23, 59, 59, 999);
       }
 
       onFiltersChange({
         ...filters,
-        startDate: start.toISOString().split('T')[0],
-        endDate: end ? end.toISOString().split('T')[0] : undefined,
+        startDate: format(start, "yyyy-MM-dd"),
+        endDate: end ? format(end, "yyyy-MM-dd") : undefined,
       });
     } else {
       const { startDate, endDate, ...restFilters } = filters;

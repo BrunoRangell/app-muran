@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
@@ -19,8 +18,7 @@ interface MetaAdsTabProps {
 
 export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
-  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("");
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
@@ -54,18 +52,20 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
     };
   }, [startPolling]);
 
-  // Handlers unificados para reduzir duplicação
+  // Handlers unificados
   const handleSearchChange = (query: string) => setSearchQuery(query);
-  const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
-  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
-  const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
-
-  const handleRefresh = async () => {
-    console.log("🔄 Atualizando dados do Meta Ads...");
-    await forceDataRefresh();
-    await refreshData();
-    await refetchTodayCheck();
-    if (onRefreshCompleted) onRefreshCompleted();
+  const handleActiveFilterChange = (filter: string) => setActiveFilter(filter);
+  const handleAccountFilterChange = (show: boolean) => {
+    if (show && activeFilter !== "without-account") {
+      setActiveFilter("without-account");
+    } else if (!show && activeFilter === "without-account") {
+      setActiveFilter("");
+    }
+  };
+  
+  const handleClearAllFilters = () => {
+    setActiveFilter("");
+    setShowWithoutAccount(false);
   };
 
   const handleBatchReview = () => {
@@ -126,23 +126,19 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
       
       <FilterBar 
         searchQuery={searchQuery}
-        viewMode={viewMode}
-        showOnlyAdjustments={showOnlyAdjustments}
-        showWithoutAccount={showWithoutAccount}
+        activeFilter={activeFilter}
+        showWithoutAccount={activeFilter === "without-account"}
         onSearchChange={handleSearchChange}
-        onViewModeChange={handleViewModeChange}
-        onAdjustmentFilterChange={handleAdjustmentFilterChange}
+        onActiveFilterChange={handleActiveFilterChange}
         onAccountFilterChange={handleAccountFilterChange}
-        onRefresh={handleRefresh}
-        isRefreshing={isLoading}
+        platform="meta"
       />
       
       <ClientsList 
         data={data}
-        viewMode={viewMode}
         searchQuery={searchQuery}
-        showOnlyAdjustments={showOnlyAdjustments}
-        showWithoutAccount={showWithoutAccount}
+        activeFilter={activeFilter}
+            showWithoutAccount={activeFilter === "without-account"}
         platform="meta"
       />
     </div>
