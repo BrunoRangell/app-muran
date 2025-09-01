@@ -330,6 +330,7 @@ export function useUnifiedReviewsData() {
               customBudget: customBudget,
               isUsingCustomBudget: isUsingCustomBudget,
               hasAccount: true,
+              meta_daily_budget: review?.daily_budget_current || 0,
               balance_info: balanceInfo || null,
               veiculationStatus: veiculationStatus
             };
