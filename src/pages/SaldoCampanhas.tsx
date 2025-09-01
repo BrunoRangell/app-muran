@@ -191,6 +191,7 @@ function Card({ platform, obj }: CardProps) {
 
 export default function SaldoCampanhas() {
   const [search, setSearch] = useState("");
+  const [billingFilter, setBillingFilter] = useState<"" | "pre" | "pos">("");
   const [clients, setClients] = useState<ClientData[]>([]);
   const {
     data: apiClients,
@@ -209,12 +210,19 @@ export default function SaldoCampanhas() {
   const handleSort = () => {
     setClients(prev => {
       const sorted = [...prev].sort((a, b) => {
-        const aVals = [a.meta?.saldo, a.google?.saldo]
-          .filter(s => s && s.type === "numeric")
-          .map(s => s!.value as number);
-        const bVals = [b.meta?.saldo, b.google?.saldo]
-          .filter(s => s && s.type === "numeric")
-          .map(s => s!.value as number);
+        const getPrePaidBalances = (client: ClientData) => {
+          const balances: number[] = [];
+          if (client.meta?.billing_model === "pre" && client.meta.saldo?.type === "numeric") {
+            balances.push(client.meta.saldo.value || 0);
+          }
+          if (client.google?.billing_model === "pre" && client.google.saldo?.type === "numeric") {
+            balances.push(client.google.saldo.value || 0);
+          }
+          return balances;
+        };
+
+        const aVals = getPrePaidBalances(a);
+        const bVals = getPrePaidBalances(b);
         const aMin = aVals.length ? Math.min(...aVals) : Number.POSITIVE_INFINITY;
         const bMin = bVals.length ? Math.min(...bVals) : Number.POSITIVE_INFINITY;
         return aMin - bMin;
@@ -223,9 +231,17 @@ export default function SaldoCampanhas() {
     });
   };
 
-  const filtered = clients.filter(client =>
-    client.cliente.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = clients.filter(client => {
+    const matchesSearch = client.cliente.toLowerCase().includes(search.toLowerCase());
+    
+    if (!billingFilter) return matchesSearch;
+    
+    const hasMatchingBilling = 
+      (client.meta?.billing_model === billingFilter) || 
+      (client.google?.billing_model === billingFilter);
+    
+    return matchesSearch && hasMatchingBilling;
+  });
 
   if (error) {
     return (
@@ -275,16 +291,14 @@ export default function SaldoCampanhas() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <select className="border border-gray-200 rounded-lg px-3 py-2">
-            <option value="">Tipo (todos)</option>
+          <select 
+            className="border border-gray-200 rounded-lg px-3 py-2"
+            value={billingFilter}
+            onChange={e => setBillingFilter(e.target.value as "" | "pre" | "pos")}
+          >
+            <option value="">Modelo de cobrança (todos)</option>
             <option value="pre">Pré-paga</option>
             <option value="pos">Pós-paga</option>
-          </select>
-          <select className="border border-gray-200 rounded-lg px-3 py-2">
-            <option value="">Urgência (todas)</option>
-            <option value="crit">Crítico</option>
-            <option value="warn">Alto</option>
-            <option value="ok">OK</option>
           </select>
           <button
             onClick={handleSort}
