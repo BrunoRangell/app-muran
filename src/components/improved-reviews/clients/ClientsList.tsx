@@ -48,17 +48,9 @@ export function ClientsList({
            client.veiculationStatus.status === "no_campaigns" ||
            client.veiculationStatus.status === "partial_running");
       } else if (activeFilter === "balance") {
-        const balance = client.balance_info?.balance_value || 0;
-        const dailyBudget = client.meta_daily_budget || 0;
+        // Mostrar TODAS as contas pré-pagas, sem exceção
         const isPrepaid = client.balance_info?.billing_model === "pre";
-        
-        if (!isPrepaid || dailyBudget <= 0) {
-          matchesActiveFilter = false;
-        } else {
-          // Saldo baixo é menor que 3 dias de orçamento
-          const criticalThreshold = dailyBudget * 3;
-          matchesActiveFilter = balance <= criticalThreshold;
-        }
+        matchesActiveFilter = isPrepaid;
       } else if (activeFilter === "without-account") {
         matchesActiveFilter = !client.hasAccount;
       }
@@ -76,26 +68,13 @@ export function ClientsList({
       const aName = a?.company_name || '';
       const bName = b?.company_name || '';
       
-      // Se activeFilter "balance" está ativo, ordenar pré-pagas por saldo (menor primeiro)
+      // Se activeFilter "balance" está ativo, ordenar por saldo (menor primeiro)
       if (activeFilter === "balance" && platform === "meta") {
-        const aIsPrepaid = a.balance_info?.billing_model === "pre";
-        const bIsPrepaid = b.balance_info?.billing_model === "pre";
+        const aBalance = a.balance_info?.balance_value || 0;
+        const bBalance = b.balance_info?.balance_value || 0;
         
-        // Se ambos são pré-pagos, ordenar por saldo
-        if (aIsPrepaid && bIsPrepaid) {
-          const aBalance = a.balance_info?.balance_value || 0;
-          const bBalance = b.balance_info?.balance_value || 0;
-          
-          // Menor saldo primeiro
-          if (aBalance !== bBalance) {
-            return aBalance - bBalance;
-          }
-        }
-        
-        // Pré-pagos aparecem primeiro
-        if (aIsPrepaid !== bIsPrepaid) {
-          return aIsPrepaid ? -1 : 1;
-        }
+        // Menor saldo primeiro
+        return aBalance - bBalance;
       }
       
       // Primeiro critério: clientes COM conta aparecem primeiro
