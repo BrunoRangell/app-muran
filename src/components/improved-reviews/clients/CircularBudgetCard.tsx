@@ -299,6 +299,14 @@ export function CircularBudgetCard({
                 <div className="flex items-center gap-2">
                   <BadgeDollarSign className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-medium text-blue-800">Saldo da Conta</span>
+                  <a 
+                    href={`https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Ver saldo
+                  </a>
                 </div>
                 <Badge 
                   variant="outline" 

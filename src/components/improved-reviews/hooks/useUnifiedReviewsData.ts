@@ -215,6 +215,8 @@ export function useUnifiedReviewsData() {
             // Buscar dados de saldo direto da conta Meta
             const balanceInfo = account.saldo_restante !== null || account.is_prepay_account !== null ? {
               balance: account.saldo_restante || 0,
+              balance_type: account.saldo_restante !== null ? "numeric" : (account.is_prepay_account === false ? "credit_card" : "unavailable"),
+              balance_value: account.saldo_restante,
               billing_model: account.is_prepay_account ? "pre" : "pos"
             } : null;
             
