@@ -49,13 +49,8 @@ export function HealthSection() {
 
   const handlePlatformAction = (action: "details" | "review" | "configure", clientId: string, platform: 'meta' | 'google') => {
     if (action === 'configure') {
-      // Navegar para a aba de revisões, sub-aba de orçamentos
-      navigate('/trafego-pago#revisoes');
-      setTimeout(() => {
-        window.location.hash = 'revisoes';
-        // Trigger hash change for reviews section
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
-      }, 100);
+      // Navegar para a página de revisões diárias
+      navigate('/revisao-diaria-avancada');
       return;
     }
 
