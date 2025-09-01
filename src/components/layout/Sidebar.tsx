@@ -45,7 +45,7 @@ const adminMenuItems: MenuItem[] = [
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
-  { icon: Wallet, label: "Saldo campanhas", path: "/saldo-campanhas" },
+  { icon: Wallet, label: "Central de Tráfego", path: "/trafego-pago" },
 ];
 
 const regularMenuItems: MenuItem[] = [
@@ -54,7 +54,7 @@ const regularMenuItems: MenuItem[] = [
   
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
   { icon: Activity, label: "Saúde das Campanhas", path: "/saude-campanhas" },
-  { icon: Wallet, label: "Saldo campanhas", path: "/saldo-campanhas" },
+  { icon: Wallet, label: "Central de Tráfego", path: "/trafego-pago" },
 ];
 
 export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
