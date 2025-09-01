@@ -19,7 +19,7 @@ interface GoogleAdsTabProps {
 
 export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("");
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const [budgetCalculationMode, setBudgetCalculationMode] = useState<"weighted" | "current">(() => {
     return (localStorage.getItem("googleAds_budgetCalculationMode") as "weighted" | "current") || "weighted";
@@ -77,7 +77,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
 
   // Handlers unificados
   const handleSearchChange = (query: string) => setSearchQuery(query);
-  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
+  const handleActiveFilterChange = (filter: string) => setActiveFilter(filter);
   const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
   const handleBudgetCalculationModeChange = (mode: "weighted" | "current") => {
     setBudgetCalculationMode(mode);
@@ -148,11 +148,11 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
           
           <FilterBar 
             searchQuery={searchQuery}
-            showOnlyAdjustments={showOnlyAdjustments}
+            activeFilter={activeFilter}
             showWithoutAccount={showWithoutAccount}
             budgetCalculationMode={budgetCalculationMode}
             onSearchChange={handleSearchChange}
-            onAdjustmentFilterChange={handleAdjustmentFilterChange}
+            onActiveFilterChange={handleActiveFilterChange}
             onAccountFilterChange={handleAccountFilterChange}
             onBudgetCalculationModeChange={handleBudgetCalculationModeChange}
             platform="google"
@@ -161,7 +161,7 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
           <ClientsList 
             data={data}
             searchQuery={searchQuery}
-            showOnlyAdjustments={showOnlyAdjustments}
+            activeFilter={activeFilter}
             showWithoutAccount={showWithoutAccount}
             budgetCalculationMode={budgetCalculationMode}
             platform="google"

@@ -8,32 +8,24 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface FilterBarProps {
   searchQuery: string;
-  showOnlyAdjustments: boolean;
+  activeFilter?: string;
   showWithoutAccount: boolean;
-  showCampaignProblems?: boolean;
-  sortByBalance?: boolean;
   budgetCalculationMode?: "weighted" | "current";
   onSearchChange: (query: string) => void;
-  onAdjustmentFilterChange: (showAdjustments: boolean) => void;
+  onActiveFilterChange?: (filter: string) => void;
   onAccountFilterChange: (showWithoutAccount: boolean) => void;
-  onCampaignProblemsFilterChange?: (showCampaignProblems: boolean) => void;
-  onSortByBalanceChange?: (sortByBalance: boolean) => void;
   onBudgetCalculationModeChange?: (mode: "weighted" | "current") => void;
   platform?: "meta" | "google";
 }
 
 export function FilterBar({
   searchQuery,
-  showOnlyAdjustments,
+  activeFilter = "",
   showWithoutAccount,
-  showCampaignProblems = false,
-  sortByBalance = false,
   budgetCalculationMode,
   onSearchChange,
-  onAdjustmentFilterChange,
+  onActiveFilterChange,
   onAccountFilterChange,
-  onCampaignProblemsFilterChange,
-  onSortByBalanceChange,
   onBudgetCalculationModeChange,
   platform = "meta"
 }: FilterBarProps) {
@@ -58,47 +50,26 @@ export function FilterBar({
             {/* Filtros para Meta Ads */}
             {platform === "meta" && (
               <>
-                <Button
-                  variant={showOnlyAdjustments ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onAdjustmentFilterChange(!showOnlyAdjustments)}
-                  className="h-8 px-3 text-xs gap-1"
-                >
-                  <Settings className="h-3 w-3" />
-                  Necessitam ajustes
-                  {showOnlyAdjustments && (
-                    <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
-                  )}
-                </Button>
-
-                {onCampaignProblemsFilterChange && (
-                  <Button
-                    variant={showCampaignProblems ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => onCampaignProblemsFilterChange(!showCampaignProblems)}
-                    className="h-8 px-3 text-xs gap-1"
+                {onActiveFilterChange && (
+                  <ToggleGroup 
+                    type="single" 
+                    value={activeFilter} 
+                    onValueChange={value => onActiveFilterChange(value || "")}
+                    className="h-8"
                   >
-                    <AlertTriangle className="h-3 w-3" />
-                    Problemas de veiculação
-                    {showCampaignProblems && (
-                      <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
-                    )}
-                  </Button>
-                )}
-
-                {onSortByBalanceChange && (
-                  <Button
-                    variant={sortByBalance ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => onSortByBalanceChange(!sortByBalance)}
-                    className="h-8 px-3 text-xs gap-1"
-                  >
-                    <DollarSign className="h-3 w-3" />
-                    Saldo da conta esgotando
-                    {sortByBalance && (
-                      <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
-                    )}
-                  </Button>
+                    <ToggleGroupItem value="adjustments" className="h-8 px-3 text-xs gap-1">
+                      <Settings className="h-3 w-3" />
+                      Ajuste de orçamento
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="campaigns" className="h-8 px-3 text-xs gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Campanhas com problemas
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="balance" className="h-8 px-3 text-xs gap-1">
+                      <DollarSign className="h-3 w-3" />
+                      Saldo disponível baixo
+                    </ToggleGroupItem>
+                  </ToggleGroup>
                 )}
                 
                 <Button
@@ -119,18 +90,19 @@ export function FilterBar({
             {/* Filtros para Google Ads */}
             {platform === "google" && (
               <>
-                <Button
-                  variant={showOnlyAdjustments ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => onAdjustmentFilterChange(!showOnlyAdjustments)}
-                  className="h-8 px-3 text-xs gap-1"
-                >
-                  <Settings className="h-3 w-3" />
-                  Necessitam ajustes
-                  {showOnlyAdjustments && (
-                    <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">✓</Badge>
-                  )}
-                </Button>
+                {onActiveFilterChange && (
+                  <ToggleGroup 
+                    type="single" 
+                    value={activeFilter} 
+                    onValueChange={value => onActiveFilterChange(value || "")}
+                    className="h-8"
+                  >
+                    <ToggleGroupItem value="adjustments" className="h-8 px-3 text-xs gap-1">
+                      <Settings className="h-3 w-3" />
+                      Ajuste de orçamento
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                )}
                 
                 <Button
                   variant={showWithoutAccount ? "default" : "outline"}

@@ -18,10 +18,8 @@ interface MetaAdsTabProps {
 
 export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("");
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
-  const [showCampaignProblems, setShowCampaignProblems] = useState(false);
-  const [sortByBalance, setSortByBalance] = useState(false);
   
   const { data, isLoading, error, metrics, refreshData } = useUnifiedReviewsData();
   const { data: todayReviews, refetch: refetchTodayCheck } = useTodayReviewsCheck();
@@ -56,16 +54,12 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
 
   // Handlers unificados
   const handleSearchChange = (query: string) => setSearchQuery(query);
-  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
+  const handleActiveFilterChange = (filter: string) => setActiveFilter(filter);
   const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
-  const handleCampaignProblemsFilterChange = (showCampaignProblems: boolean) => setShowCampaignProblems(showCampaignProblems);
-  const handleSortByBalanceChange = (sortByBalance: boolean) => setSortByBalance(sortByBalance);
   
   const handleClearAllFilters = () => {
-    setShowOnlyAdjustments(false);
+    setActiveFilter("");
     setShowWithoutAccount(false);
-    setShowCampaignProblems(false);
-    setSortByBalance(false);
   };
 
   const handleBatchReview = () => {
@@ -126,25 +120,19 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
       
       <FilterBar 
         searchQuery={searchQuery}
-        showOnlyAdjustments={showOnlyAdjustments}
+        activeFilter={activeFilter}
         showWithoutAccount={showWithoutAccount}
-        showCampaignProblems={showCampaignProblems}
-        sortByBalance={sortByBalance}
         onSearchChange={handleSearchChange}
-        onAdjustmentFilterChange={handleAdjustmentFilterChange}
+        onActiveFilterChange={handleActiveFilterChange}
         onAccountFilterChange={handleAccountFilterChange}
-        onCampaignProblemsFilterChange={handleCampaignProblemsFilterChange}
-        onSortByBalanceChange={handleSortByBalanceChange}
         platform="meta"
       />
       
       <ClientsList 
         data={data}
         searchQuery={searchQuery}
-        showOnlyAdjustments={showOnlyAdjustments}
+        activeFilter={activeFilter}
         showWithoutAccount={showWithoutAccount}
-        showCampaignProblems={showCampaignProblems}
-        sortByBalance={sortByBalance}
         platform="meta"
       />
     </div>

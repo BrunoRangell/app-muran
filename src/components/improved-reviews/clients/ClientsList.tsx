@@ -6,10 +6,8 @@ import { useMemo } from "react";
 interface ClientsListProps {
   data: any[] | undefined;
   searchQuery: string;
-  showOnlyAdjustments: boolean;
+  activeFilter?: string;
   showWithoutAccount: boolean;
-  showCampaignProblems?: boolean;
-  sortByBalance?: boolean;
   budgetCalculationMode?: "weighted" | "current";
   platform?: "meta" | "google";
 }
@@ -17,10 +15,8 @@ interface ClientsListProps {
 export function ClientsList({
   data,
   searchQuery,
-  showOnlyAdjustments,
+  activeFilter = "",
   showWithoutAccount,
-  showCampaignProblems = false,
-  sortByBalance = false,
   budgetCalculationMode,
   platform = "meta"
 }: ClientsListProps) {
@@ -42,34 +38,26 @@ export function ClientsList({
         (client[`${platform}_account_name`] && 
           client[`${platform}_account_name`].toLowerCase().includes(searchQuery.toLowerCase()));
       
-      // Filtro de apenas ajustes necessários
-      const matchesAdjustment = !showOnlyAdjustments || client.needsAdjustment;
-      
-      // Debug log para verificar o filtro de ajustes
-      if (showOnlyAdjustments) {
-        console.log(`🔍 DEBUG - Filtro "necessitam ajustes" para ${client.company_name}:`, {
-          needsAdjustment: client.needsAdjustment,
-          budgetDifference: client.budgetCalculation?.budgetDifference,
-          needsBudgetAdjustment: client.budgetCalculation?.needsBudgetAdjustment,
-          needsAdjustmentBasedOnAverage: client.budgetCalculation?.needsAdjustmentBasedOnAverage,
-          passedFilter: matchesAdjustment
-        });
+      // Filtro de activeFilter (seleção exclusiva)
+      let matchesActiveFilter = true;
+      if (activeFilter === "adjustments") {
+        matchesActiveFilter = client.needsAdjustment;
+      } else if (activeFilter === "campaigns") {
+        matchesActiveFilter = client.veiculationStatus && 
+          (client.veiculationStatus.status === "none_running" || 
+           client.veiculationStatus.status === "no_campaigns" ||
+           client.veiculationStatus.status === "partial_running");
+      } else if (activeFilter === "balance") {
+        matchesActiveFilter = client.balance_info?.billing_model === "pre" &&
+          (client.balance_info?.balance_value || 0) < 100; // saldo baixo
       }
       
       // Filtro de clientes sem conta cadastrada
       const matchesAccountFilter = !showWithoutAccount || !client.hasAccount;
       
-      // Filtro de problemas de campanha (usando veiculação)
-      const matchesCampaignProblems = !showCampaignProblems || (
-        client.veiculationStatus && 
-        (client.veiculationStatus.status === "none_running" || 
-         client.veiculationStatus.status === "no_campaigns" ||
-         client.veiculationStatus.status === "partial_running")
-      );
-      
-      return matchesSearch && matchesAdjustment && matchesAccountFilter && matchesCampaignProblems;
+      return matchesSearch && matchesActiveFilter && matchesAccountFilter;
     });
-  }, [data, searchQuery, showOnlyAdjustments, showWithoutAccount, showCampaignProblems, platform]);
+  }, [data, searchQuery, activeFilter, showWithoutAccount, platform]);
   
   // Ordenar clientes com nova lógica de saldo
   const sortedClients = useMemo(() => {
@@ -78,8 +66,8 @@ export function ClientsList({
       const aName = a?.company_name || '';
       const bName = b?.company_name || '';
       
-      // Se sortByBalance está ativo, ordenar pré-pagas por saldo (menor primeiro)
-      if (sortByBalance && platform === "meta") {
+      // Se activeFilter "balance" está ativo, ordenar pré-pagas por saldo (menor primeiro)
+      if (activeFilter === "balance" && platform === "meta") {
         const aIsPrepaid = a.balance_info?.billing_model === "pre";
         const bIsPrepaid = b.balance_info?.billing_model === "pre";
         
@@ -114,14 +102,14 @@ export function ClientsList({
         return aName < bName ? -1 : aName > bName ? 1 : 0;
       }
     });
-  }, [filteredData, sortByBalance, platform]);
+  }, [filteredData, activeFilter, platform]);
 
   // Debug log para verificar a lista final
   console.log(`🔍 DEBUG - Lista final de clientes (${platform}):`, {
     totalClients: data?.length || 0,
     filteredClients: filteredData.length,
     sortedClients: sortedClients.length,
-    showOnlyAdjustments,
+    activeFilter,
     clientsNeedingAdjustment: data?.filter(c => c.needsAdjustment).length || 0
   });
 

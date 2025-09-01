@@ -13,7 +13,7 @@ import { MetricsPanel } from "@/components/improved-reviews/dashboard/MetricsPan
 export const GoogleAdsDashboard = () => {
   const [lastBatchReviewTime, setLastBatchReviewTime] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("");
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const { toast } = useToast();
   const { fetchMonthlySpend, isLoading: isApiLoading } = useGoogleAdsService();
@@ -88,7 +88,7 @@ export const GoogleAdsDashboard = () => {
 
   // Handlers para filtros
   const handleSearchChange = (query: string) => setSearchQuery(query);
-  const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
+  const handleActiveFilterChange = (filter: string) => setActiveFilter(filter);
   const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
 
   return (
@@ -107,10 +107,10 @@ export const GoogleAdsDashboard = () => {
       {/* Barra de filtros unificada */}
       <FilterBar 
         searchQuery={searchQuery}
-        showOnlyAdjustments={showOnlyAdjustments}
+        activeFilter={activeFilter}
         showWithoutAccount={showWithoutAccount}
         onSearchChange={handleSearchChange}
-        onAdjustmentFilterChange={handleAdjustmentFilterChange}
+        onActiveFilterChange={handleActiveFilterChange}
         onAccountFilterChange={handleAccountFilterChange}
         platform="google"
       />
@@ -119,7 +119,7 @@ export const GoogleAdsDashboard = () => {
       <ClientsList 
         data={data}
         searchQuery={searchQuery}
-        showOnlyAdjustments={showOnlyAdjustments}
+        activeFilter={activeFilter}
         showWithoutAccount={showWithoutAccount}
         platform="google"
       />
