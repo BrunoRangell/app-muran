@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
@@ -20,7 +19,6 @@ interface GoogleAdsTabProps {
 
 export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"cards" | "table" | "list">("cards");
   const [showOnlyAdjustments, setShowOnlyAdjustments] = useState(false);
   const [showWithoutAccount, setShowWithoutAccount] = useState(false);
   const [budgetCalculationMode, setBudgetCalculationMode] = useState<"weighted" | "current">(() => {
@@ -79,20 +77,11 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
 
   // Handlers unificados
   const handleSearchChange = (query: string) => setSearchQuery(query);
-  const handleViewModeChange = (mode: "cards" | "table" | "list") => setViewMode(mode);
   const handleAdjustmentFilterChange = (showAdjustments: boolean) => setShowOnlyAdjustments(showAdjustments);
   const handleAccountFilterChange = (showWithoutAccount: boolean) => setShowWithoutAccount(showWithoutAccount);
   const handleBudgetCalculationModeChange = (mode: "weighted" | "current") => {
     setBudgetCalculationMode(mode);
     localStorage.setItem("googleAds_budgetCalculationMode", mode);
-  };
-
-  const handleRefresh = async () => {
-    console.log("🔄 Atualizando dados do Google Ads...");
-    await forceDataRefresh();
-    await refreshData();
-    await refetchTodayCheck();
-    if (onRefreshCompleted) onRefreshCompleted();
   };
 
   const handleBatchReview = () => {
@@ -159,23 +148,18 @@ export function GoogleAdsTab({ onRefreshCompleted }: GoogleAdsTabProps = {}) {
           
           <FilterBar 
             searchQuery={searchQuery}
-            viewMode={viewMode}
             showOnlyAdjustments={showOnlyAdjustments}
             showWithoutAccount={showWithoutAccount}
             budgetCalculationMode={budgetCalculationMode}
             onSearchChange={handleSearchChange}
-            onViewModeChange={handleViewModeChange}
             onAdjustmentFilterChange={handleAdjustmentFilterChange}
             onAccountFilterChange={handleAccountFilterChange}
             onBudgetCalculationModeChange={handleBudgetCalculationModeChange}
-            onRefresh={handleRefresh}
-            isRefreshing={isLoading}
             platform="google"
           />
           
           <ClientsList 
             data={data}
-            viewMode={viewMode}
             searchQuery={searchQuery}
             showOnlyAdjustments={showOnlyAdjustments}
             showWithoutAccount={showWithoutAccount}

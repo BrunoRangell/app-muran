@@ -1,13 +1,10 @@
 
 import { ClientCard } from "./ClientCard";
-import { ClientRow } from "./ClientRow";
-import { ClientsTable } from "./ClientsTable";
 import { EmptyState } from "../common/EmptyState";
 import { useMemo } from "react";
 
 interface ClientsListProps {
   data: any[] | undefined;
-  viewMode: string;
   searchQuery: string;
   showOnlyAdjustments: boolean;
   showWithoutAccount: boolean;
@@ -19,7 +16,6 @@ interface ClientsListProps {
 
 export function ClientsList({
   data,
-  viewMode,
   searchQuery,
   showOnlyAdjustments,
   showWithoutAccount,
@@ -138,22 +134,7 @@ export function ClientsList({
     );
   }
 
-  // Renderizar com base no modo de visualização selecionado
-  if (viewMode === "table") {
-    return <ClientsTable data={sortedClients} platform={platform} budgetCalculationMode={budgetCalculationMode} />;
-  }
-  
-  if (viewMode === "list") {
-    return (
-      <div className="space-y-2">
-        {sortedClients.map((client) => (
-          <ClientRow key={`${client.id}-${client[`${platform}_account_id`] || 'default'}`} client={client} platform={platform} budgetCalculationMode={budgetCalculationMode} />
-        ))}
-      </div>
-    );
-  }
-  
-  // Modo padrão: cards
+  // Renderizar apenas em formato de cards
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {sortedClients.map((client) => (
