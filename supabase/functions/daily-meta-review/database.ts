@@ -248,8 +248,7 @@ export async function updateExistingReview(
     const { error: accountUpdateError } = await supabase
       .from("client_accounts")
       .update(updateData)
-      .eq("account_id", reviewData.account_id)
-      .eq("platform", "meta");
+      .eq("id", reviewData.account_id);
 
     if (accountUpdateError) {
       console.error(`⚠️ Erro ao atualizar saldo em client_accounts: ${accountUpdateError.message}`);
@@ -308,8 +307,7 @@ export async function createNewReview(
     const { error: accountUpdateError } = await supabase
       .from("client_accounts")
       .update(updateData)
-      .eq("account_id", reviewData.account_id)
-      .eq("platform", "meta");
+      .eq("id", reviewData.account_id);
 
     if (accountUpdateError) {
       console.error(`⚠️ Erro ao atualizar saldo em client_accounts: ${accountUpdateError.message}`);
