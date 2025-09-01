@@ -29,7 +29,7 @@ serve(async (req: Request) => {
     // Buscar clientes e contas Meta ativas
     const { data: accounts, error: accountsError } = await supabase
       .from('client_accounts')
-      .select('account_id, clients!inner(company_name)')
+      .select('account_id, account_name, clients!inner(company_name)')
       .eq('platform', 'meta')
       .eq('status', 'active')
       .eq('clients.status', 'active');
@@ -44,6 +44,7 @@ serve(async (req: Request) => {
     for (const acc of accounts as any[]) {
       const accountId = acc.account_id;
       const clientName = acc.clients?.company_name || 'Desconhecido';
+      const accountName = acc.account_name || 'Meta Ads';
 
       try {
         const response = await fetch(
@@ -76,6 +77,7 @@ serve(async (req: Request) => {
         const normalizedData = {
           id: accountData.account_id ?? accountId,
           name: accountData.name,
+          account_name: accountName,
           balance: accountData.balance,
           currency: accountData.currency,
           is_prepay_account: accountData.is_prepay_account,

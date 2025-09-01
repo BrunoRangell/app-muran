@@ -5,6 +5,7 @@ import { AlertCircle } from "lucide-react";
 
 interface AccountInfo {
   id: string | null;
+  account_name?: string;
   status?: { code: unknown; label: string; tone: "ok" | "warn" | "crit" | "info" };
   billing_model?: "pre" | "pos";
   saldo?: {
@@ -26,6 +27,7 @@ interface ClientData {
 function mapAccount(api: ApiAccount): AccountInfo {
   return {
     id: api.id,
+    account_name: api.account_name,
     status: {
       code: api.status_code,
       label: api.status_label,
@@ -81,7 +83,7 @@ const toneStyles: Record<string, string> = {
 
 function Card({ platform, obj }: CardProps) {
   const isMeta = platform === "meta";
-  const plabel = isMeta ? "Meta Ads" : "Google Ads";
+  const plabel = isMeta ? (obj.account_name || "Meta Ads") : "Google Ads";
   const logoClass = isMeta ? "bg-[#4267B2]" : "bg-[#34A853]";
 
   const tone = obj.status?.tone || "info";
@@ -112,19 +114,6 @@ function Card({ platform, obj }: CardProps) {
     batteryPercent = 0;
   }
 
-  let fonte = "—";
-  if (obj.saldo?.type === "numeric") {
-    const src = obj.saldo?.source || "—";
-    const map: Record<string, string> = {
-      display_string: "display_string",
-      spendcap_minus_spent: "spend_cap − amount_spent",
-      operational: "operacional (recargas − Insights)",
-      budget_remaining: "orçamento restante",
-    };
-    fonte = map[src] || src;
-  } else if (obj.saldo?.type === "credit_card") {
-    fonte = "pagamento automático";
-  }
 
   let lastHtml: JSX.Element = (
     <>
@@ -177,7 +166,6 @@ function Card({ platform, obj }: CardProps) {
             style={{ width: `${batteryPercent * 100}%` }}
           ></span>
         </div>
-        <div className="col-span-2 text-xs text-gray-500">Fonte: {fonte}</div>
       </div>
 
       <div className="flex items-center gap-2 text-xs text-gray-500">{lastHtml}</div>
@@ -186,8 +174,14 @@ function Card({ platform, obj }: CardProps) {
         {obj.billing_model === "pos" && obj.saldo?.type !== "numeric" && (
           <button className="px-3 py-1 rounded-md text-sm bg-[#ff7a00] text-white">Definir saldo atual</button>
         )}
-        <button className="px-3 py-1 rounded-md text-sm border border-gray-200">Histórico</button>
-        <button className="px-3 py-1 rounded-md text-sm border border-gray-200">
+        <button 
+          className="px-3 py-1 rounded-md text-sm border border-gray-200 hover:bg-gray-50"
+          onClick={() => {
+            if (isMeta && obj.id) {
+              window.open(`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${obj.id}`, '_blank');
+            }
+          }}
+        >
           Abrir no {isMeta ? "Gerenciador" : "Ads"}
         </button>
       </div>

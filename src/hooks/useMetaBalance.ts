@@ -14,6 +14,7 @@ interface FundingEvent {
 
 export interface ApiAccount {
   id: string | null;
+  account_name?: string;
   status_code?: unknown;
   status_label: string;
   status_tone: "ok" | "warn" | "crit" | "info";
@@ -53,6 +54,9 @@ export const useMetaBalance = (accountId?: string) => {
         return clients.map(client => {
           const meta = client.meta;
           if (meta) {
+          // Definir billing_model baseado em is_prepay_account
+          meta.billing_model = meta.is_prepay_account ? "pre" : "pos";
+          
           if (meta.is_prepay_account === false) {
             meta.balance_type = "credit_card";
             meta.balance_value = null;
