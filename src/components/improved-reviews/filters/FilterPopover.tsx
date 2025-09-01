@@ -9,13 +9,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Filter, X } from "lucide-react";
 
 interface FilterPopoverProps {
-  showOnlyAdjustments: boolean;
-  showWithoutAccount: boolean;
   showOnlyPrepaid: boolean;
   showCampaignProblems: boolean;
   sortByBalance: boolean;
-  onAdjustmentFilterChange: (value: boolean) => void;
-  onAccountFilterChange: (value: boolean) => void;
   onPrepaidFilterChange: (value: boolean) => void;
   onCampaignProblemsFilterChange: (value: boolean) => void;
   onSortByBalanceChange: (value: boolean) => void;
@@ -23,13 +19,9 @@ interface FilterPopoverProps {
 }
 
 export function FilterPopover({
-  showOnlyAdjustments,
-  showWithoutAccount,
   showOnlyPrepaid,
   showCampaignProblems,
   sortByBalance,
-  onAdjustmentFilterChange,
-  onAccountFilterChange,
   onPrepaidFilterChange,
   onCampaignProblemsFilterChange,
   onSortByBalanceChange,
@@ -37,10 +29,8 @@ export function FilterPopover({
 }: FilterPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Contar filtros ativos
+  // Contar filtros secundários ativos
   const activeFiltersCount = [
-    showOnlyAdjustments,
-    showWithoutAccount,
     showOnlyPrepaid,
     showCampaignProblems,
     sortByBalance
@@ -54,23 +44,23 @@ export function FilterPopover({
         <Button 
           variant="outline" 
           size="sm" 
-          className="relative flex items-center gap-2"
+          className="relative flex items-center gap-1 h-8 px-3 text-xs"
         >
-          <Filter className="h-4 w-4" />
-          Filtros
+          <Filter className="h-3 w-3" />
+          Mais filtros
           {hasActiveFilters && (
-            <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs">
+            <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">
               {activeFiltersCount}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
       
-      <PopoverContent className="w-80 p-4" align="end">
-        <div className="space-y-4">
+      <PopoverContent className="w-72 p-3" align="end">
+        <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-sm">Filtros Avançados</h4>
+            <h4 className="font-medium text-sm">Filtros Adicionais</h4>
             {hasActiveFilters && (
               <Button
                 variant="ghost"
@@ -79,39 +69,15 @@ export function FilterPopover({
                 className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3 w-3 mr-1" />
-                Limpar tudo
+                Limpar
               </Button>
             )}
           </div>
 
           <Separator />
 
-          {/* Estado das Contas */}
-          <div className="space-y-3">
-            <h5 className="text-sm font-medium text-muted-foreground">Estado das Contas</h5>
-            
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="adjustment-filter"
-                checked={showOnlyAdjustments}
-                onCheckedChange={onAdjustmentFilterChange}
-              />
-              <Label htmlFor="adjustment-filter" className="text-sm">
-                Necessitam ajustes de orçamento
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="account-filter"
-                checked={showWithoutAccount}
-                onCheckedChange={onAccountFilterChange}
-              />
-              <Label htmlFor="account-filter" className="text-sm">
-                Sem conta cadastrada
-              </Label>
-            </div>
-
+          {/* Filtros Secundários */}
+          <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Switch 
                 id="prepaid-filter"
@@ -122,14 +88,7 @@ export function FilterPopover({
                 Apenas contas pré-pagas
               </Label>
             </div>
-          </div>
 
-          <Separator />
-
-          {/* Problemas de Campanhas */}
-          <div className="space-y-3">
-            <h5 className="text-sm font-medium text-muted-foreground">Campanhas</h5>
-            
             <div className="flex items-center space-x-2">
               <Switch 
                 id="campaign-problems-filter"
@@ -137,17 +96,10 @@ export function FilterPopover({
                 onCheckedChange={onCampaignProblemsFilterChange}
               />
               <Label htmlFor="campaign-problems-filter" className="text-sm">
-                Com problemas de veiculação
+                Com problemas de campanhas
               </Label>
             </div>
-          </div>
 
-          <Separator />
-
-          {/* Ordenação */}
-          <div className="space-y-3">
-            <h5 className="text-sm font-medium text-muted-foreground">Ordenação</h5>
-            
             <div className="flex items-center space-x-2">
               <Switch 
                 id="balance-sort"
@@ -155,7 +107,7 @@ export function FilterPopover({
                 onCheckedChange={onSortByBalanceChange}
               />
               <Label htmlFor="balance-sort" className="text-sm">
-                Pré-pagas com menor saldo primeiro
+                Ordenar pré-pagas por saldo
               </Label>
             </div>
           </div>
