@@ -84,7 +84,7 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
           status: "none_running",
           activeCampaigns: activeCampaignsCount,
           campaignsWithoutDelivery: campaignsWithoutDelivery,
-          message: "Todas as campanhas desativadas",
+          message: "Todas as campanhas com erro",
           badgeColor: "bg-red-100 text-red-800 border-red-200",
           campaignsDetailed: campaignsDetailed
         };
