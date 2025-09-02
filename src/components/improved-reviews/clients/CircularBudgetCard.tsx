@@ -12,6 +12,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
+import { CampaignDetailsTooltip } from "@/components/campaign-health/CampaignDetailsTooltip";
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
@@ -409,25 +410,34 @@ export function CircularBudgetCard({
 
           {/* Seção de Status de Veiculação (apenas para Meta Ads) */}
           {platform === "meta" && veiculationInfo && veiculationInfo.status !== "no_data" && (
-            <div className="mb-4 p-3 rounded-lg bg-gray-50 border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+            <CampaignDetailsTooltip 
+              campaigns={veiculationInfo.campaignsDetailed || []}
+              title="Status das Campanhas"
+              platform="Meta Ads"
+            >
+              <div className="mb-4 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+                  {veiculationInfo.campaignsDetailed && veiculationInfo.campaignsDetailed.length > 0 && (
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <Badge 
+                    variant="outline" 
+                    className={`text-xs font-medium ${veiculationInfo.badgeColor}`}
+                  >
+                    {veiculationInfo.message}
+                  </Badge>
+                  {veiculationInfo.activeCampaigns > 0 && (
+                    <span className="text-xs text-gray-600">
+                      {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <Badge 
-                  variant="outline" 
-                  className={`text-xs font-medium ${veiculationInfo.badgeColor}`}
-                >
-                  {veiculationInfo.message}
-                </Badge>
-                {veiculationInfo.activeCampaigns > 0 && (
-                  <span className="text-xs text-gray-600">
-                    {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
-            </div>
+            </CampaignDetailsTooltip>
           )}
 
           {/* Layout principal com informações organizadas */}
