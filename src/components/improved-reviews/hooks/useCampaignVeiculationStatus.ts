@@ -26,7 +26,7 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
       // Buscar dados de saúde das campanhas para hoje
       const { data: campaignHealth, error } = await supabase
         .from("campaign_health")
-        .select("campaigns_detailed, active_campaigns_count")
+        .select("campaigns_detailed, active_campaigns_count, unserved_campaigns_count")
         .eq("client_id", clientId)
         .eq("account_id", accountId)
         .eq("platform", platform)
@@ -48,6 +48,7 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
         ? (campaignHealth.campaigns_detailed as unknown as CampaignDetail[]) 
         : [];
       const activeCampaignsCount = campaignHealth?.active_campaigns_count || 0;
+      const unservedCampaignsCount = campaignHealth?.unserved_campaigns_count || 0;
 
       // Se não há campanhas ativas
       if (activeCampaignsCount === 0) {
@@ -60,10 +61,8 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
         };
       }
 
-      // Contar campanhas sem veiculação (impressões = 0 e custo = 0)
-      const campaignsWithoutDelivery = campaignsDetailed.filter(campaign => 
-        campaign.impressions === 0 && campaign.cost === 0
-      ).length;
+      // Usar unserved_campaigns_count diretamente do banco
+      const campaignsWithoutDelivery = unservedCampaignsCount;
 
       // Determinar status
       if (campaignsWithoutDelivery === 0) {

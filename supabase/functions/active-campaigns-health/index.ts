@@ -15,6 +15,7 @@ interface CampaignHealthData {
   unserved_campaigns_count: number;
   cost_today: number;
   impressions_today: number;
+  campaigns_detailed: any[];
 }
 
 // Função para obter a data atual no timezone brasileiro
@@ -114,7 +115,7 @@ async function manageGoogleAdsTokens(supabase: any): Promise<string> {
 }
 
 // Buscar dados do Meta Ads
-async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
+async function fetchMetaActiveCampaigns(accessToken: string, accountId: string): Promise<{ cost: number; impressions: number; activeCampaigns: number; campaignsDetails: any[] }> {
   try {
     const today = getTodayInBrazil();
     console.log(`🔍 Meta: Buscando campanhas para conta ${accountId} na data ${today}`);
@@ -126,12 +127,12 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     
     if (!campaignsResponse.ok || campaignsData.error) {
       console.error(`❌ Meta: Erro ao buscar campanhas:`, campaignsData.error || campaignsResponse.status);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
     
     if (!campaignsData.data || !Array.isArray(campaignsData.data)) {
       console.log(`⚠️ Meta: Nenhuma campanha encontrada para conta ${accountId}`);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
     
     const activeCampaigns = campaignsData.data.filter((campaign: any) => 
@@ -141,7 +142,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     console.log(`✅ Meta: ${activeCampaigns.length} campanhas ativas encontradas`);
     
     if (activeCampaigns.length === 0) {
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
     
     const insightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
@@ -151,7 +152,7 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
     
     if (!insightsResponse.ok || insightsData.error) {
       console.error(`❌ Meta: Erro ao buscar insights:`, insightsData.error || insightsResponse.status);
-      return { cost: 0, impressions: 0, activeCampaigns: activeCampaigns.length };
+      return { cost: 0, impressions: 0, activeCampaigns: activeCampaigns.length, campaignsDetails: [] };
     }
     
     let totalCost = 0;
@@ -164,21 +165,57 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
       
       console.log(`💰 Meta: Custo: R$ ${totalCost}, Impressões: ${totalImpressions}`);
     }
+
+    // Buscar dados detalhados de cada campanha
+    const campaignsDetails = [];
+    for (const campaign of activeCampaigns) {
+      try {
+        const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
+        const campaignResponse = await fetch(campaignInsightsUrl);
+        const campaignInsights = await campaignResponse.json();
+        
+        let campaignCost = 0;
+        let campaignImpressions = 0;
+        
+        if (campaignInsights.data && campaignInsights.data.length > 0) {
+          campaignCost = parseFloat(campaignInsights.data[0].spend || '0');
+          campaignImpressions = parseInt(campaignInsights.data[0].impressions || '0');
+        }
+        
+        campaignsDetails.push({
+          id: campaign.id,
+          name: campaign.name,
+          cost: campaignCost,
+          impressions: campaignImpressions,
+          status: campaign.effective_status
+        });
+      } catch (error) {
+        console.error(`❌ Meta: Erro ao buscar insights da campanha ${campaign.id}:`, error);
+        campaignsDetails.push({
+          id: campaign.id,
+          name: campaign.name,
+          cost: 0,
+          impressions: 0,
+          status: campaign.effective_status
+        });
+      }
+    }
     
     return {
       cost: totalCost,
       impressions: totalImpressions,
-      activeCampaigns: activeCampaigns.length
+      activeCampaigns: activeCampaigns.length,
+      campaignsDetails: campaignsDetails
     };
     
   } catch (error) {
     console.error(`❌ Meta: Erro para conta ${accountId}:`, error);
-    return { cost: 0, impressions: 0, activeCampaigns: 0 };
+    return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
   }
 }
 
 // Buscar dados do Google Ads
-async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: any): Promise<{ cost: number; impressions: number; activeCampaigns: number }> {
+async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: any): Promise<{ cost: number; impressions: number; activeCampaigns: number; campaignsDetails: any[] }> {
   try {
     console.log(`🔍 Google: Buscando campanhas para conta ${clientCustomerId}`);
     
@@ -191,7 +228,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 
     if (tokensError) {
       console.error(`❌ Google: Erro ao buscar tokens:`, tokensError);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
 
     const tokens: { [key: string]: string } = {};
@@ -204,7 +241,7 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
 
     if (!developerToken) {
       console.log(`⚠️ Google: Developer token não encontrado`);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
 
     const today = getTodayForGoogleAds();
@@ -243,19 +280,20 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Google: Erro HTTP ${response.status}:`, errorText.substring(0, 500));
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
     
     const data = await response.json();
     
     if (!data.results || !Array.isArray(data.results)) {
       console.log(`⚠️ Google: Nenhum resultado encontrado para ${clientCustomerId}`);
-      return { cost: 0, impressions: 0, activeCampaigns: 0 };
+      return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
     }
     
     let totalCost = 0;
     let totalImpressions = 0;
     let activeCampaigns = 0;
+    const campaignsDetails = [];
     
     data.results.forEach((result: any) => {
       if (result.campaign?.status === 'ENABLED') {
@@ -265,6 +303,14 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
         
         totalCost += campaignCost;
         totalImpressions += parseInt(campaignImpressions);
+        
+        campaignsDetails.push({
+          id: result.campaign.id,
+          name: result.campaign.name,
+          cost: campaignCost,
+          impressions: parseInt(campaignImpressions),
+          status: result.campaign.status
+        });
       }
     });
     
@@ -273,12 +319,13 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
     return {
       cost: totalCost,
       impressions: totalImpressions,
-      activeCampaigns: activeCampaigns
+      activeCampaigns: activeCampaigns,
+      campaignsDetails: campaignsDetails
     };
     
   } catch (error) {
     console.error(`❌ Google: Erro para conta ${clientCustomerId}:`, error);
-    return { cost: 0, impressions: 0, activeCampaigns: 0 };
+    return { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
   }
 }
 
@@ -408,7 +455,7 @@ Deno.serve(async (req) => {
     for (const account of accounts || []) {
       console.log(`\n📊 Processando conta ${account.platform}: ${account.account_id} (${account.account_name})`);
       
-      let campaignData = { cost: 0, impressions: 0, activeCampaigns: 0 };
+      let campaignData = { cost: 0, impressions: 0, activeCampaigns: 0, campaignsDetails: [] };
       
       if (account.platform === 'meta') {
         campaignData = await fetchMetaActiveCampaigns(metaToken.value, account.account_id);
@@ -418,8 +465,10 @@ Deno.serve(async (req) => {
       
       console.log(`✅ ${account.platform.toUpperCase()}: Campanhas=${campaignData.activeCampaigns}, Custo=R$${campaignData.cost.toFixed(2)}, Impressões=${campaignData.impressions}`);
 
-      // Calcular campanhas sem veiculação
-      const unservedCampaigns = campaignData.activeCampaigns > 0 && campaignData.cost === 0 ? campaignData.activeCampaigns : 0;
+      // Calcular campanhas sem veiculação baseado nos dados detalhados
+      const unservedCampaigns = campaignData.campaignsDetails.filter(campaign => 
+        campaign.cost === 0 && campaign.impressions === 0
+      ).length;
 
       const healthSnapshot: CampaignHealthData = {
         client_id: account.client_id,
@@ -430,7 +479,8 @@ Deno.serve(async (req) => {
         active_campaigns_count: campaignData.activeCampaigns,
         unserved_campaigns_count: unservedCampaigns,
         cost_today: campaignData.cost,
-        impressions_today: campaignData.impressions
+        impressions_today: campaignData.impressions,
+        campaigns_detailed: campaignData.campaignsDetails
       };
 
       healthData.push(healthSnapshot);
