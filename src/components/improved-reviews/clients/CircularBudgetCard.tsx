@@ -12,7 +12,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
-import { CampaignDetailsTooltip } from "@/components/campaign-health/CampaignDetailsTooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Info } from "lucide-react";
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
@@ -410,34 +411,102 @@ export function CircularBudgetCard({
 
           {/* Seção de Status de Veiculação (apenas para Meta Ads) */}
           {platform === "meta" && veiculationInfo && veiculationInfo.status !== "no_data" && (
-            <CampaignDetailsTooltip 
-              campaigns={veiculationInfo.campaignsDetailed || []}
-              title="Status das Campanhas"
-              platform="Meta Ads"
-            >
-              <div className="mb-4 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
-                  {veiculationInfo.campaignsDetailed && veiculationInfo.campaignsDetailed.length > 0 && (
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <Badge 
-                    variant="outline" 
-                    className={`text-xs font-medium ${veiculationInfo.badgeColor}`}
-                  >
-                    {veiculationInfo.message}
-                  </Badge>
-                  {veiculationInfo.activeCampaigns > 0 && (
-                    <span className="text-xs text-gray-600">
-                      {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </CampaignDetailsTooltip>
+            <div className="mb-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+                      <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs font-medium ${veiculationInfo.badgeColor}`}
+                      >
+                        {veiculationInfo.message}
+                      </Badge>
+                      {veiculationInfo.activeCampaigns > 0 && (
+                        <span className="text-xs text-gray-600">
+                          {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm">Detalhes das Campanhas</h4>
+                    {veiculationInfo.campaignsDetailed && veiculationInfo.campaignsDetailed.length > 0 ? (
+                      <div className="space-y-2">
+                        {veiculationInfo.campaignsDetailed.map((campaign, index) => (
+                          <div key={index} className="p-2 bg-muted/30 rounded text-xs space-y-1">
+                            <div className="font-medium">{campaign.name}</div>
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>Custo: R$ {campaign.cost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</span>
+                              <span>{campaign.impressions?.toLocaleString('pt-BR') || '0'} impr.</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhuma campanha encontrada.</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          {/* Seção de Status de Veiculação (apenas para Google Ads) */}
+          {platform === "google" && veiculationInfo && veiculationInfo.status !== "no_data" && (
+            <div className="mb-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity className="h-4 w-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-800">Status das Campanhas</span>
+                      <Info className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs font-medium ${veiculationInfo.badgeColor}`}
+                      >
+                        {veiculationInfo.message}
+                      </Badge>
+                      {veiculationInfo.activeCampaigns > 0 && (
+                        <span className="text-xs text-gray-600">
+                          {veiculationInfo.activeCampaigns} ativa{veiculationInfo.activeCampaigns > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm">Detalhes das Campanhas</h4>
+                    {veiculationInfo.campaignsDetailed && veiculationInfo.campaignsDetailed.length > 0 ? (
+                      <div className="space-y-2">
+                        {veiculationInfo.campaignsDetailed.map((campaign, index) => (
+                          <div key={index} className="p-2 bg-muted/30 rounded text-xs space-y-1">
+                            <div className="font-medium">{campaign.name}</div>
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>Custo: R$ {campaign.cost?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</span>
+                              <span>{campaign.impressions?.toLocaleString('pt-BR') || '0'} impr.</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhuma campanha encontrada.</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           )}
 
           {/* Layout principal com informações organizadas */}
