@@ -123,7 +123,8 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
       let result;
       
       if (platform === "meta") {
-        // Chamar Edge Function do Meta Ads
+        // 1. Chamar Edge Function do Meta Ads
+        console.log(`📊 Executando daily-meta-review para cliente ${clientId}`);
         const { data, error } = await supabase.functions.invoke("daily-meta-review", {
           body: {
             clientId,
@@ -136,6 +137,25 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
         
         if (error) throw error;
         result = data;
+        
+        // 2. Atualizar saldos Meta
+        console.log(`💰 Executando meta-balance após revisão do cliente ${clientId}`);
+        try {
+          await supabase.functions.invoke("meta-balance");
+        } catch (balanceError) {
+          console.error(`⚠️ Erro ao atualizar saldos Meta para cliente ${clientId}:`, balanceError);
+          // Não interromper o fluxo se balance falhar
+        }
+        
+        // 3. Atualizar saúde das campanhas
+        console.log(`📈 Executando trigger-campaign-health-update após revisão do cliente ${clientId}`);
+        try {
+          await supabase.functions.invoke("trigger-campaign-health-update");
+        } catch (campaignError) {
+          console.error(`⚠️ Erro ao atualizar campaign health para cliente ${clientId}:`, campaignError);
+          // Não interromper o fluxo se campaign health falhar
+        }
+        
       } else {
         // Chamar Edge Function do Google Ads
         const { data, error } = await supabase.functions.invoke("daily-google-review", {
@@ -163,20 +183,8 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
         onIndividualComplete();
       }
       
-      // Mostrar toast de sucesso removido - conforme solicitação do usuário
-      // toast({
-      //   title: "Revisão concluída",
-      //   description: `Cliente analisado com sucesso`,
-      // });
-      
     } catch (error) {
       console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
-      // Toast de erro removido - conforme solicitação do usuário
-      // toast({
-      //   title: "Erro na análise",
-      //   description: `Erro ao analisar cliente: ${error.message}`,
-      //   variant: "destructive",
-      // });
     } finally {
       setProcessingIds(prev => prev.filter(id => id !== clientId));
     }
@@ -194,6 +202,7 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
     let errorCount = 0;
     
     try {
+      // Primeira fase: Executar revisões individuais
       for (let i = 0; i < clients.length; i++) {
         const client = clients[i];
         setCurrentClientName(client.company_name || `Cliente ${i + 1}`);
@@ -203,12 +212,57 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
           const accountId = platform === "meta" 
             ? client.meta_account_id 
             : client.google_account_id;
-            
-          await reviewClient(client.id, accountId);
+          
+          // Executar apenas a revisão principal (sem meta-balance e campaign-health aqui)
+          if (platform === "meta") {
+            const { data, error } = await supabase.functions.invoke("daily-meta-review", {
+              body: {
+                clientId: client.id,
+                metaAccountId: accountId,
+                reviewDate: new Date().toISOString().split('T')[0],
+                fetchRealData: true,
+                source: "ui_batch_review"
+              }
+            });
+            if (error) throw error;
+          } else {
+            const { data, error } = await supabase.functions.invoke("daily-google-review", {
+              body: {
+                clientId: client.id,
+                googleAccountId: accountId,
+                reviewDate: new Date().toISOString().split('T')[0],
+                fetchRealData: true,
+                source: "ui_batch_review"
+              }
+            });
+            if (error) throw error;
+          }
+          
           successCount++;
         } catch (error) {
           console.error(`❌ Erro no cliente ${client.company_name}:`, error);
           errorCount++;
+        }
+      }
+      
+      // Segunda fase: Para Meta Ads, executar atualizações globais após todas as revisões
+      if (platform === "meta") {
+        console.log(`💰 Executando meta-balance após revisão em massa completa`);
+        setCurrentClientName("Atualizando saldos das contas...");
+        try {
+          await supabase.functions.invoke("meta-balance");
+          console.log(`✅ Meta balance executado com sucesso`);
+        } catch (balanceError) {
+          console.error(`⚠️ Erro ao executar meta-balance após revisão em massa:`, balanceError);
+        }
+        
+        console.log(`📈 Executando trigger-campaign-health-update após revisão em massa completa`);
+        setCurrentClientName("Atualizando dados de campanhas...");
+        try {
+          await supabase.functions.invoke("trigger-campaign-health-update");
+          console.log(`✅ Campaign health update executado com sucesso`);
+        } catch (campaignError) {
+          console.error(`⚠️ Erro ao executar campaign health update após revisão em massa:`, campaignError);
         }
       }
       

@@ -15,6 +15,7 @@ export interface CampaignVeiculationInfo {
   campaignsWithoutDelivery: number;
   message: string;
   badgeColor: string;
+  campaignsDetailed: CampaignDetail[];
 }
 
 export function useCampaignVeiculationStatus(clientId: string, accountId: string, platform: "meta" | "google") {
@@ -26,7 +27,7 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
       // Buscar dados de saúde das campanhas para hoje
       const { data: campaignHealth, error } = await supabase
         .from("campaign_health")
-        .select("campaigns_detailed, active_campaigns_count")
+        .select("campaigns_detailed, active_campaigns_count, unserved_campaigns_count")
         .eq("client_id", clientId)
         .eq("account_id", accountId)
         .eq("platform", platform)
@@ -40,7 +41,8 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
           activeCampaigns: 0,
           campaignsWithoutDelivery: 0,
           message: "Dados não disponíveis",
-          badgeColor: "bg-gray-100 text-gray-600 border-gray-200"
+          badgeColor: "bg-gray-100 text-gray-600 border-gray-200",
+          campaignsDetailed: []
         };
       }
 
@@ -48,6 +50,7 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
         ? (campaignHealth.campaigns_detailed as unknown as CampaignDetail[]) 
         : [];
       const activeCampaignsCount = campaignHealth?.active_campaigns_count || 0;
+      const unservedCampaignsCount = campaignHealth?.unserved_campaigns_count || 0;
 
       // Se não há campanhas ativas
       if (activeCampaignsCount === 0) {
@@ -56,14 +59,13 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
           activeCampaigns: 0,
           campaignsWithoutDelivery: 0,
           message: "Nenhuma campanha ativa",
-          badgeColor: "bg-yellow-100 text-yellow-800 border-yellow-200"
+          badgeColor: "bg-yellow-100 text-yellow-800 border-yellow-200",
+          campaignsDetailed: []
         };
       }
 
-      // Contar campanhas sem veiculação (impressões = 0 e custo = 0)
-      const campaignsWithoutDelivery = campaignsDetailed.filter(campaign => 
-        campaign.impressions === 0 && campaign.cost === 0
-      ).length;
+      // Usar unserved_campaigns_count diretamente do banco
+      const campaignsWithoutDelivery = unservedCampaignsCount;
 
       // Determinar status
       if (campaignsWithoutDelivery === 0) {
@@ -73,7 +75,8 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
           activeCampaigns: activeCampaignsCount,
           campaignsWithoutDelivery: 0,
           message: "Todas as campanhas rodando",
-          badgeColor: "bg-green-100 text-green-800 border-green-200"
+          badgeColor: "bg-green-100 text-green-800 border-green-200",
+          campaignsDetailed: campaignsDetailed
         };
       } else if (campaignsWithoutDelivery === activeCampaignsCount) {
         // Todas as campanhas sem veiculação
@@ -81,8 +84,9 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
           status: "none_running",
           activeCampaigns: activeCampaignsCount,
           campaignsWithoutDelivery: campaignsWithoutDelivery,
-          message: "Todas as campanhas desativadas",
-          badgeColor: "bg-red-100 text-red-800 border-red-200"
+          message: "Todas as campanhas com erro",
+          badgeColor: "bg-red-100 text-red-800 border-red-200",
+          campaignsDetailed: campaignsDetailed
         };
       } else {
         // Algumas campanhas sem veiculação
@@ -91,7 +95,8 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
           activeCampaigns: activeCampaignsCount,
           campaignsWithoutDelivery: campaignsWithoutDelivery,
           message: `${campaignsWithoutDelivery} campanha${campaignsWithoutDelivery > 1 ? 's' : ''} sem veiculação`,
-          badgeColor: "bg-amber-100 text-amber-800 border-amber-200"
+          badgeColor: "bg-amber-100 text-amber-800 border-amber-200",
+          campaignsDetailed: campaignsDetailed
         };
       }
     },
