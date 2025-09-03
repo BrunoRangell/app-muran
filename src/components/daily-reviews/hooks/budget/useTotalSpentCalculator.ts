@@ -51,7 +51,7 @@ export const useTotalSpentCalculator = () => {
           throw new Error("A data de início do orçamento é no futuro");
         }
       } else {
-        // CORREÇÃO: Usar o primeiro dia do mês atual (igual ao Google Ads e ao daily-meta-review)
+        // CORREÇÃO: Usar o primeiro dia do mês atual (igual ao Google Ads e ao unified-meta-review)
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       }
       

@@ -111,7 +111,7 @@ export class CampaignHealthService {
       const today = getTodayInBrazil();
       console.log(`🔧 Gerando snapshots para hoje (timezone brasileiro): ${today}`);
       
-      const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
+      const { data, error } = await supabase.functions.invoke('unified-meta-review', {
         body: { 
           timestamp: new Date().toISOString(),
           action: 'generate_snapshots',
@@ -146,7 +146,7 @@ export class CampaignHealthService {
       const today = getTodayInBrazil();
       console.log(`🔄 Forçando refresh para hoje (timezone brasileiro): ${today}`);
       
-      const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
+      const { data, error } = await supabase.functions.invoke('unified-meta-review', {
         body: { 
           timestamp: new Date().toISOString(),
           forceRefresh: true,

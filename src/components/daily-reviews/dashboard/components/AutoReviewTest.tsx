@@ -48,7 +48,7 @@ export function AutoReviewTest() {
       const { data: execLogs, error: execError } = await supabase
         .from("cron_execution_logs")
         .select("*")
-        .eq("job_name", "daily-meta-review-test-job")
+        .eq("job_name", "unified-meta-review-test-job")
         .or("details->test.eq.true")
         .order("execution_time", { ascending: false })
         .limit(20);
@@ -60,7 +60,7 @@ export function AutoReviewTest() {
       const { data: realLogs, error: realError } = await supabase
         .from("cron_execution_logs")
         .select("*")
-        .eq("job_name", "daily-meta-review-job")
+        .eq("job_name", "unified-meta-review-job")
         .or("details->executeReview.eq.true,details->test.eq.false")
         .order("execution_time", { ascending: false })
         .limit(20);
@@ -109,7 +109,7 @@ export function AutoReviewTest() {
       const { data: logEntry, error: logError } = await supabase
         .from("cron_execution_logs")
         .insert({
-          job_name: "daily-meta-review-test-job",
+          job_name: "unified-meta-review-test-job",
           status: "started",
           details: {
             timestamp: new Date().toISOString(),
@@ -181,7 +181,7 @@ export function AutoReviewTest() {
       const { data: logEntry, error: logError } = await supabase
         .from("cron_execution_logs")
         .insert({
-          job_name: "daily-meta-review-job",
+          job_name: "unified-meta-review-job",
           status: "started",
           details: {
             timestamp: new Date().toISOString(),

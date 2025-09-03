@@ -36,8 +36,6 @@ verify_jwt = false
 [functions.asaas]
 verify_jwt = false
 
-[functions.meta-balance]
-verify_jwt = false
 
 [functions.manual-cleanup-campaign-health]
 verify_jwt = false

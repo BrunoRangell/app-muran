@@ -93,7 +93,7 @@ export function DebugTools() {
       const { data: logEntry, error: logError } = await supabase
         .from("cron_execution_logs")
         .insert({
-          job_name: "daily-meta-review-job",
+          job_name: "unified-meta-review-job",
           status: "started",
           details: { 
             timestamp: new Date().toISOString(),
@@ -165,7 +165,7 @@ export function DebugTools() {
     try {
       // Verificar configuração do cron job
       const { data, error } = await supabase.rpc('get_cron_expression', {
-        job_name: 'daily-meta-review-job'
+        job_name: 'unified-meta-review-job'
       });
       
       if (error) {

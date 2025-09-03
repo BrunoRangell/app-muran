@@ -25,7 +25,7 @@ export interface ApiClient {
 
 export function useMetaBalance() {
   return useQuery({
-    queryKey: ["meta-balance-consolidated"],
+    queryKey: ["unified-meta-balance-consolidated"],
     queryFn: async (): Promise<ApiClient[]> => {
       console.log("🔍 Buscando dados consolidados de saldo...");
       
