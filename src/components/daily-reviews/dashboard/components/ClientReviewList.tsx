@@ -36,12 +36,10 @@ export function ClientReviewList({ clients, isLoading, error, onViewDetails, onR
     try {
       setRefreshingClient(clientId);
       
-      const { data, error } = await supabase.functions.invoke("daily-meta-review", {
+      const { data, error } = await supabase.functions.invoke("unified-meta-review", {
         body: {
           clientId,
-          executeReview: true,
-          scheduled: false,
-          source: "ui_manual_single"
+          reviewDate: new Date().toISOString().split('T')[0]
         }
       });
       

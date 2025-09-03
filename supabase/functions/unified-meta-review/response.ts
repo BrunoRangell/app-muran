@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "./cors.ts";
 
 // Função para formatar a resposta da API
@@ -17,7 +16,7 @@ export function formatResponse(data: any) {
 
 // Função para formatar respostas de erro
 export function formatErrorResponse(message: string, status = 500) {
-  console.error(`Erro: ${message}`);
+  console.error(`❌ [UNIFIED-REVIEW] Erro: ${message}`);
   
   return new Response(
     JSON.stringify({ 

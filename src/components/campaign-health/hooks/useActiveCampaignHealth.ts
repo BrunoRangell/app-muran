@@ -183,7 +183,7 @@ export function useActiveCampaignHealth() {
           try {
             console.log(`🔄 Atualizando conta ${account.platform}: ${account.account_name}`);
             
-            const response = await supabase.functions.invoke('process-single-account-health', {
+            const response = await supabase.functions.invoke('unified-meta-review', {
               body: { accountId: account.id }
             });
             

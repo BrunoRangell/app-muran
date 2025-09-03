@@ -143,7 +143,7 @@ export const invokeEdgeFunction = async (
         setTimeout(() => reject(new Error("Timeout ao conectar à função Edge (30s)")), 30000);
       });
       
-      const functionPromise = supabase.functions.invoke("daily-meta-review", {
+      const functionPromise = supabase.functions.invoke("unified-meta-review", {
         body: requestPayload,
         headers: {
           "Content-Type": "application/json"

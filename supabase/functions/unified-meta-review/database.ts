@@ -1,39 +1,5 @@
-
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
-
-// Tipos para operações de banco de dados
-export interface ClientData {
-  id: string;
-  company_name: string;
-}
-
-export interface MetaAccount {
-  id: string;
-  account_id: string;
-  account_name: string;
-  budget_amount: number;
-}
-
-export interface CustomBudget {
-  id: string;
-  budget_amount: number;
-  start_date: string;
-  end_date: string;
-}
-
-export interface ReviewData {
-  daily_budget_current: number;
-  total_spent: number;
-  account_id: string;
-  using_custom_budget: boolean;
-  custom_budget_id: string | null;
-  custom_budget_amount: number | null;
-  custom_budget_start_date?: string | null;
-  custom_budget_end_date?: string | null;
-  saldo_restante?: number | null;
-  is_prepay_account?: boolean;
-}
+import { ClientData, MetaAccount, CustomBudget, ReviewData } from "./types.ts";
 
 // Criação do cliente Supabase
 export function createSupabaseClient() {
@@ -44,7 +10,7 @@ export function createSupabaseClient() {
 
 // Buscar token Meta da tabela api_tokens
 export async function fetchMetaAccessToken(supabase: any): Promise<string | null> {
-  console.log("🔍 Buscando token Meta da tabela api_tokens...");
+  console.log("🔍 [DATABASE] Buscando token Meta da tabela api_tokens...");
   
   try {
     const { data: tokenData, error: tokenError } = await supabase
@@ -54,26 +20,26 @@ export async function fetchMetaAccessToken(supabase: any): Promise<string | null
       .maybeSingle();
 
     if (tokenError) {
-      console.error(`❌ Erro ao buscar token Meta: ${tokenError.message}`);
+      console.error(`❌ [DATABASE] Erro ao buscar token Meta: ${tokenError.message}`);
       return null;
     }
 
     if (!tokenData || !tokenData.value) {
-      console.log("⚠️ Token Meta não encontrado na tabela api_tokens");
+      console.log("⚠️ [DATABASE] Token Meta não encontrado na tabela api_tokens");
       return null;
     }
 
-    console.log("✅ Token Meta encontrado na base de dados");
+    console.log("✅ [DATABASE] Token Meta encontrado na base de dados");
     return tokenData.value;
   } catch (error) {
-    console.error(`❌ Erro inesperado ao buscar token Meta: ${error.message}`);
+    console.error(`❌ [DATABASE] Erro inesperado ao buscar token Meta: ${error.message}`);
     return null;
   }
 }
 
 // Buscar dados do cliente
 export async function fetchClientData(supabase: any, clientId: string): Promise<ClientData> {
-  console.log(`Buscando dados para cliente ${clientId}`);
+  console.log(`🔍 [DATABASE] Buscando dados para cliente ${clientId}`);
   
   const { data: client, error: clientError } = await supabase
     .from("clients")
@@ -88,37 +54,12 @@ export async function fetchClientData(supabase: any, clientId: string): Promise<
   return client;
 }
 
-// Buscar detalhes da conta Meta específica usando a tabela client_accounts
-export async function fetchMetaAccountDetails(
-  supabase: any, 
-  clientId: string, 
-  accountId: string
-): Promise<MetaAccount | null> {
-  console.log(`Buscando detalhes de conta Meta específica: ${accountId} para cliente ${clientId}`);
-  
-  const { data: metaAccount, error: accountError } = await supabase
-    .from("client_accounts")
-    .select("*")
-    .eq("client_id", clientId)
-    .eq("account_id", accountId)
-    .eq("platform", "meta")
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (accountError) {
-    console.error(`Erro ao buscar conta Meta: ${accountError.message}`);
-    return null;
-  }
-
-  return metaAccount;
-}
-
 // Buscar conta Meta principal do cliente usando a tabela client_accounts
 export async function fetchPrimaryMetaAccount(
   supabase: any, 
   clientId: string
 ): Promise<MetaAccount | null> {
-  console.log(`Buscando conta Meta principal para cliente ${clientId}`);
+  console.log(`🔍 [DATABASE] Buscando conta Meta principal para cliente ${clientId}`);
   
   const { data: metaAccounts, error: accountError } = await supabase
     .from("client_accounts")
@@ -130,7 +71,7 @@ export async function fetchPrimaryMetaAccount(
     .order("created_at", { ascending: true });
 
   if (accountError) {
-    console.error(`Erro ao buscar conta Meta principal: ${accountError.message}`);
+    console.error(`❌ [DATABASE] Erro ao buscar conta Meta principal: ${accountError.message}`);
     return null;
   }
 
@@ -145,7 +86,7 @@ export async function fetchActiveCustomBudget(
   clientId: string,
   today: string
 ): Promise<CustomBudget | null> {
-  console.log(`Buscando orçamento personalizado ativo para cliente ${clientId}`);
+  console.log(`🔍 [DATABASE] Buscando orçamento personalizado ativo para cliente ${clientId}`);
   
   const { data: customBudget, error: customBudgetError } = await supabase
     .from("custom_budgets")
@@ -159,12 +100,12 @@ export async function fetchActiveCustomBudget(
     .maybeSingle();
 
   if (customBudgetError) {
-    console.error(`Erro ao buscar orçamento personalizado: ${customBudgetError.message}`);
+    console.error(`❌ [DATABASE] Erro ao buscar orçamento personalizado: ${customBudgetError.message}`);
     return null;
   }
 
   if (customBudget) {
-    console.log(`✅ Orçamento personalizado encontrado:`, {
+    console.log(`✅ [DATABASE] Orçamento personalizado encontrado:`, {
       id: customBudget.id,
       budget_amount: customBudget.budget_amount,
       start_date: customBudget.start_date,
@@ -182,7 +123,7 @@ export async function checkExistingReview(
   accountId: string, 
   reviewDate: string
 ) {
-  console.log(`Verificando revisão existente para cliente ${clientId}, conta ${accountId} na data ${reviewDate}`);
+  console.log(`🔍 [DATABASE] Verificando revisão existente para cliente ${clientId}, conta ${accountId} na data ${reviewDate}`);
   
   const { data: existingReview, error: existingReviewError } = await supabase
     .from("budget_reviews")
@@ -194,13 +135,13 @@ export async function checkExistingReview(
     .maybeSingle();
 
   if (existingReviewError && existingReviewError.code !== "PGRST116") {
-    console.error(`Erro ao verificar revisão existente: ${existingReviewError.message}`);
+    console.error(`❌ [DATABASE] Erro ao verificar revisão existente: ${existingReviewError.message}`);
   }
 
   if (existingReview) {
-    console.log(`✅ Revisão existente encontrada: ID ${existingReview.id}`);
+    console.log(`✅ [DATABASE] Revisão existente encontrada: ID ${existingReview.id}`);
   } else {
-    console.log(`ℹ️ Nenhuma revisão existente encontrada para estes parâmetros`);
+    console.log(`ℹ️ [DATABASE] Nenhuma revisão existente encontrada para estes parâmetros`);
   }
 
   return existingReview;
@@ -212,7 +153,7 @@ export async function updateExistingReview(
   reviewId: string, 
   reviewData: ReviewData
 ): Promise<void> {
-  console.log(`Atualizando revisão existente: ${reviewId}`);
+  console.log(`🔄 [DATABASE] Atualizando revisão existente: ${reviewId}`);
   
   // Atualizar budget_reviews
   const { error: updateError } = await supabase
@@ -235,7 +176,7 @@ export async function updateExistingReview(
   
   // Atualizar dados de saldo em client_accounts se fornecidos
   if (reviewData.saldo_restante !== undefined || reviewData.is_prepay_account !== undefined) {
-    console.log(`Atualizando saldo e modelo de cobrança em client_accounts para conta ${reviewData.account_id}`);
+    console.log(`🔄 [DATABASE] Atualizando saldo e modelo de cobrança em client_accounts para conta ${reviewData.account_id}`);
     
     const updateData: any = {};
     if (reviewData.saldo_restante !== undefined) {
@@ -251,13 +192,13 @@ export async function updateExistingReview(
       .eq("id", reviewData.account_id);
 
     if (accountUpdateError) {
-      console.error(`⚠️ Erro ao atualizar saldo em client_accounts: ${accountUpdateError.message}`);
+      console.error(`⚠️ [DATABASE] Erro ao atualizar saldo em client_accounts: ${accountUpdateError.message}`);
     } else {
-      console.log(`✅ Saldo e modelo de cobrança atualizados em client_accounts`);
+      console.log(`✅ [DATABASE] Saldo e modelo de cobrança atualizados em client_accounts`);
     }
   }
   
-  console.log(`✅ Revisão ${reviewId} atualizada com sucesso`);
+  console.log(`✅ [DATABASE] Revisão ${reviewId} atualizada com sucesso`);
 }
 
 // Criar nova revisão na tabela budget_reviews e atualizar dados de saldo em client_accounts
@@ -267,7 +208,7 @@ export async function createNewReview(
   reviewDate: string,
   reviewData: ReviewData
 ): Promise<string> {
-  console.log(`Criando nova revisão para cliente ${clientId}, conta ${reviewData.account_id}`);
+  console.log(`📝 [DATABASE] Criando nova revisão para cliente ${clientId}, conta ${reviewData.account_id}`);
   
   const { data: newReview, error: insertError } = await supabase
     .from("budget_reviews")
@@ -288,13 +229,13 @@ export async function createNewReview(
     .single();
 
   if (insertError) {
-    console.error(`Erro ao inserir nova revisão:`, insertError);
+    console.error(`❌ [DATABASE] Erro ao inserir nova revisão:`, insertError);
     throw new Error(`Erro ao inserir nova revisão: ${insertError.message}`);
   }
   
   // Atualizar dados de saldo em client_accounts se fornecidos
   if (reviewData.saldo_restante !== undefined || reviewData.is_prepay_account !== undefined) {
-    console.log(`Atualizando saldo e modelo de cobrança em client_accounts para conta ${reviewData.account_id}`);
+    console.log(`🔄 [DATABASE] Atualizando saldo e modelo de cobrança em client_accounts para conta ${reviewData.account_id}`);
     
     const updateData: any = {};
     if (reviewData.saldo_restante !== undefined) {
@@ -310,13 +251,12 @@ export async function createNewReview(
       .eq("id", reviewData.account_id);
 
     if (accountUpdateError) {
-      console.error(`⚠️ Erro ao atualizar saldo em client_accounts: ${accountUpdateError.message}`);
+      console.error(`⚠️ [DATABASE] Erro ao atualizar saldo em client_accounts: ${accountUpdateError.message}`);
     } else {
-      console.log(`✅ Saldo e modelo de cobrança atualizados em client_accounts`);
+      console.log(`✅ [DATABASE] Saldo e modelo de cobrança atualizados em client_accounts`);
     }
   }
   
-  console.log(`✅ Nova revisão criada: ID ${newReview.id}`);
+  console.log(`✅ [DATABASE] Nova revisão criada: ID ${newReview.id}`);
   return newReview.id;
 }
-

@@ -22,7 +22,6 @@ export function CronDiagnostics() {
       
       // Simular dados dos jobs otimizados (sistema já foi otimizado)
       const jobsData = [
-        { jobid: 1, jobname: 'google-ads-token-check-job', schedule: '0 */2 * * *', active: true },
         { jobid: 2, jobname: 'cron-health-check', schedule: '0 * * * *', active: true }
       ];
       const jobsError = null;
@@ -39,7 +38,7 @@ export function CronDiagnostics() {
       const { data: execData, error: execError } = await supabase
         .from('cron_execution_logs')
         .select('*')
-        .in('job_name', ['google-ads-token-check-job', 'cron-health-check'])
+        .in('job_name', ['cron-health-check'])
         .order('execution_time', { ascending: false })
         .limit(10);
       
@@ -147,9 +146,6 @@ export function CronDiagnostics() {
                       </div>
                       <div className="text-sm mt-1 text-gray-600">
                         <p>Schedule: <code className="bg-gray-100 px-1 rounded">{job.schedule}</code></p>
-                        {job.jobname === 'google-ads-token-check-job' && (
-                          <p className="text-green-600">✅ Job essencial mantido (verificação tokens Google)</p>
-                        )}
                         {job.jobname === 'cron-health-check' && (
                           <p className="text-blue-600">✅ Health check otimizado (1 hora + limpeza automática)</p>
                         )}

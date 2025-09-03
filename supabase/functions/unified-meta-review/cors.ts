@@ -1,4 +1,3 @@
-
 // Configuração de cabeçalhos CORS
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

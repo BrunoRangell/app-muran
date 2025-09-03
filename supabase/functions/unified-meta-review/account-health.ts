@@ -1,10 +1,4 @@
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { createSupabaseClient } from "./database.ts";
 
 // Função para obter a data atual no timezone brasileiro
 function getTodayInBrazil(): string {
@@ -23,7 +17,7 @@ function getTodayForGoogleAds(): string {
   return getTodayInBrazil().replace(/-/g, '');
 }
 
-// Renovação de tokens do Google Ads (reutilizada da função original)
+// Renovação de tokens do Google Ads
 async function manageGoogleAdsTokens(supabase: any): Promise<string> {
   const { data: tokensData, error: tokensError } = await supabase
     .from('api_tokens')
@@ -411,26 +405,14 @@ async function fetchGoogleActiveCampaigns(clientCustomerId: string, supabase: an
   }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
+export async function processAccountHealth(accountId: string) {
+  const processStartTime = Date.now();
+  console.log(`🏥 [ACCOUNT-HEALTH] INICIANDO processamento de health para conta ${accountId}`);
+  
+  const supabase = createSupabaseClient();
+  
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { accountId: requestAccountId } = await req.json();
-
-    if (!requestAccountId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Account ID is required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    console.log(`🔍 Processando conta individual: ${requestAccountId}`);
+    console.log(`🔍 Processando conta individual: ${accountId}`);
 
     // Buscar token do Meta Ads
     const { data: metaToken } = await supabase
@@ -459,13 +441,13 @@ Deno.serve(async (req) => {
           status
         )
       `)
-      .eq('id', requestAccountId)
+      .eq('id', accountId)
       .eq('status', 'active')
       .eq('clients.status', 'active')
       .maybeSingle();
 
     if (accountError || !account) {
-      throw new Error(`Conta não encontrada: ${requestAccountId}`);
+      throw new Error(`Conta não encontrada: ${accountId}`);
     }
 
     console.log(`📊 Processando ${account.platform}: ${account.account_name}`);
@@ -503,56 +485,56 @@ Deno.serve(async (req) => {
       campaigns_detailed: campaignData.campaignsDetailed
     };
 
-    console.log(`🔍 DEBUG: Objeto antes de salvar no banco:`, {
-      ...healthSnapshot,
-      campaigns_detailed_length: campaignData.campaignsDetailed.length,
-      campaigns_detailed_sample: campaignData.campaignsDetailed.slice(0, 2)
+    console.log(`💾 Salvando snapshot:`, {
+      client: account.clients.company_name,
+      platform: account.platform,
+      campaigns: campaignData.activeCampaigns,
+      unserved: unservedCampaigns,
+      cost: `R$ ${campaignData.cost.toFixed(2)}`,
+      impressions: campaignData.impressions.toLocaleString()
     });
 
-    // Salvar dados
     const { error: upsertError } = await supabase
       .from('campaign_health')
-      .upsert(healthSnapshot, { 
-        onConflict: 'account_id,snapshot_date',
-        ignoreDuplicates: false 
+      .upsert(healthSnapshot, {
+        onConflict: 'client_id,account_id,snapshot_date',
+        ignoreDuplicates: false
       });
 
     if (upsertError) {
-      console.error('❌ Erro ao salvar dados:', upsertError);
-      throw upsertError;
+      console.error(`❌ Erro ao salvar snapshot:`, upsertError);
+      throw new Error(`Erro ao salvar snapshot: ${upsertError.message}`);
     }
 
-    console.log(`✅ ${account.platform.toUpperCase()}: Campanhas=${campaignData.activeCampaigns}, Custo=R$${campaignData.cost.toFixed(2)}, Sem veiculação=${unservedCampaigns}`);
-    console.log(`📊 DEBUG: Campanhas salvas no banco: ${campaignData.campaignsDetailed.length}`);
+    const totalTime = Date.now() - processStartTime;
+    console.log(`🎉 [ACCOUNT-HEALTH] PROCESSAMENTO CONCLUÍDO (${totalTime}ms)`);
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data: healthSnapshot,
-        campaignsDetailed: campaignData.campaignsDetailed,
-        accountName: account.account_name,
-        clientName: account.clients.company_name,
-        platform: account.platform,
-        timestamp: new Date().toISOString()
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+    return {
+      success: true,
+      data: {
+        account: {
+          id: account.id,
+          name: account.account_name,
+          platform: account.platform
+        },
+        client: {
+          id: account.client_id,
+          name: account.clients.company_name
+        },
+        snapshot: {
+          date: today,
+          activeCampaigns: campaignData.activeCampaigns,
+          unservedCampaigns: unservedCampaigns,
+          cost: campaignData.cost,
+          impressions: campaignData.impressions
+        },
+        processing_time: totalTime
       }
-    );
+    };
 
   } catch (error) {
-    console.error('❌ Erro na edge function:', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
-      }
-    );
+    const totalTime = Date.now() - processStartTime;
+    console.error(`❌ [ACCOUNT-HEALTH] ERRO NO PROCESSAMENTO (${totalTime}ms):`, error);
+    return { success: false, error: error.message };
   }
-});
+}

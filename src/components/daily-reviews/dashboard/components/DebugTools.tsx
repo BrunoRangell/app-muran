@@ -28,16 +28,16 @@ export function DebugTools() {
       }
       
       // Chamada direta via fetch para testar
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-meta-review`, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-meta-review`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          test: true,
-          method: "ping",
-          timestamp: new Date().toISOString()
+          clientIds: ['test-client-id'],
+          reviewDate: new Date().toISOString().split('T')[0],
+          source: "debug_test"
         })
       });
       
@@ -93,7 +93,7 @@ export function DebugTools() {
       const { data: logEntry, error: logError } = await supabase
         .from("cron_execution_logs")
         .insert({
-          job_name: "daily-meta-review-job",
+          job_name: "unified-meta-review-job",
           status: "started",
           details: { 
             timestamp: new Date().toISOString(),
@@ -110,19 +110,16 @@ export function DebugTools() {
       }
       
       // Chamada direta via fetch para execução real
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-meta-review`, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-meta-review`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          scheduled: false,
-          executeReview: true,
-          test: false,
-          source: "manual_support_tool",
-          logId: logEntry.id,
-          timestamp: new Date().toISOString()
+          clientIds: 'all',
+          reviewDate: new Date().toISOString().split('T')[0],
+          source: "manual_support_tool"
         })
       });
       
@@ -168,7 +165,7 @@ export function DebugTools() {
     try {
       // Verificar configuração do cron job
       const { data, error } = await supabase.rpc('get_cron_expression', {
-        job_name: 'daily-meta-review-job'
+        job_name: 'unified-meta-review-job'
       });
       
       if (error) {

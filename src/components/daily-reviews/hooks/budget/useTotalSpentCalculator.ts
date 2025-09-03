@@ -51,7 +51,7 @@ export const useTotalSpentCalculator = () => {
           throw new Error("A data de início do orçamento é no futuro");
         }
       } else {
-        // CORREÇÃO: Usar o primeiro dia do mês atual (igual ao Google Ads e ao daily-meta-review)
+        // CORREÇÃO: Usar o primeiro dia do mês atual (igual ao Google Ads e ao unified-meta-review)
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       }
       
@@ -62,8 +62,8 @@ export const useTotalSpentCalculator = () => {
       
       console.log(`[useTotalSpentCalculator] CORREÇÃO: Calculando gasto do período completo: ${dateRange.start} a ${dateRange.end}`);
       
-      // Chamar função de borda para obter insights
-      const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
+      // Chamar função unificada para obter insights
+      const { data, error } = await supabase.functions.invoke("unified-meta-review", {
         body: {
           accountId: metaAccountId,
           accessToken,

@@ -48,7 +48,7 @@ export function AutoReviewTest() {
       const { data: execLogs, error: execError } = await supabase
         .from("cron_execution_logs")
         .select("*")
-        .eq("job_name", "daily-meta-review-test-job")
+        .eq("job_name", "unified-meta-review-test-job")
         .or("details->test.eq.true")
         .order("execution_time", { ascending: false })
         .limit(20);
@@ -60,7 +60,7 @@ export function AutoReviewTest() {
       const { data: realLogs, error: realError } = await supabase
         .from("cron_execution_logs")
         .select("*")
-        .eq("job_name", "daily-meta-review-job")
+        .eq("job_name", "unified-meta-review-job")
         .or("details->executeReview.eq.true,details->test.eq.false")
         .order("execution_time", { ascending: false })
         .limit(20);
@@ -109,7 +109,7 @@ export function AutoReviewTest() {
       const { data: logEntry, error: logError } = await supabase
         .from("cron_execution_logs")
         .insert({
-          job_name: "daily-meta-review-test-job",
+          job_name: "unified-meta-review-test-job",
           status: "started",
           details: {
             timestamp: new Date().toISOString(),
@@ -123,18 +123,17 @@ export function AutoReviewTest() {
       
       if (logError) throw logError;
       
-      // Chamar a função edge diretamente com parâmetro de teste
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-meta-review`, {
+      // Chamar a função edge unificada diretamente com parâmetro de teste
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-meta-review`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          test: true,
-          source: "manual_test",
-          logId: logEntry.id,
-          executeReview: false
+          clientIds: ['test-client-id'],
+          reviewDate: new Date().toISOString().split('T')[0],
+          source: "manual_test"
         })
       });
       
@@ -182,7 +181,7 @@ export function AutoReviewTest() {
       const { data: logEntry, error: logError } = await supabase
         .from("cron_execution_logs")
         .insert({
-          job_name: "daily-meta-review-job",
+          job_name: "unified-meta-review-job",
           status: "started",
           details: {
             timestamp: new Date().toISOString(),
@@ -197,19 +196,17 @@ export function AutoReviewTest() {
       
       if (logError) throw logError;
       
-      // Chamar a função edge diretamente para execução REAL
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-meta-review`, {
+      // Chamar a função edge unificada diretamente para execução REAL
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-meta-review`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          test: false,
-          executeReview: true,
-          source: "manual_real_execution",
-          logId: logEntry.id,
-          forceExecution: true
+          clientIds: 'all',
+          reviewDate: new Date().toISOString().split('T')[0],
+          source: "manual_real_execution"
         })
       });
       

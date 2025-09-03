@@ -54,7 +54,7 @@ export const reviewClient = async (clientId: string, metaAccountId?: string) => 
     }
 
     // Fazer chamada para a edge function
-    const url = `${window.location.origin}/api/daily-meta-review`;
+    const url = `${window.location.origin}/api/unified-meta-review`;
     const response = await axios.post(url, payload);
 
     console.log("Resposta da função Edge:", response.data);

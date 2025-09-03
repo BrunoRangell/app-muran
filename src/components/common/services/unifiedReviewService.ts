@@ -14,24 +14,36 @@ export const reviewClient = async ({ clientId, accountId, platform }: ReviewClie
   try {
     const reviewDate = new Date().toISOString().split('T')[0];
     
-    const payload = {
-      clientId,
-      reviewDate,
-      fetchRealData: true,
-      ...(platform === "meta" && { metaAccountId: accountId }),
-      ...(platform === "google" && { googleAccountId: accountId })
-    };
+    if (platform === "meta") {
+      const payload = {
+        clientId,
+        reviewDate,
+        ...(accountId && { metaAccountId: accountId })
+      };
 
-    const functionName = platform === "meta" ? "daily-meta-review" : "daily-google-review";
-    
-    const { data, error } = await supabase.functions.invoke(functionName, {
-      body: payload
-    });
-    
-    if (error) throw error;
-    
-    console.log(`[unifiedReviewService] Revisão ${platform} concluída para cliente ${clientId}:`, data);
-    return data;
+      const { data, error } = await supabase.functions.invoke("unified-meta-review", {
+        body: payload
+      });
+      
+      if (error) throw error;
+      console.log(`[unifiedReviewService] Revisão Meta unificada concluída para cliente ${clientId}:`, data);
+      return data;
+    } else {
+      const payload = {
+        clientId,
+        reviewDate,
+        fetchRealData: true,
+        googleAccountId: accountId
+      };
+
+      const { data, error } = await supabase.functions.invoke("daily-google-review", {
+        body: payload
+      });
+      
+      if (error) throw error;
+      console.log(`[unifiedReviewService] Revisão Google concluída para cliente ${clientId}:`, data);
+      return data;
+    }
     
   } catch (error: any) {
     console.error(`[unifiedReviewService] Erro ao revisar cliente ${clientId} (${platform}):`, error);
@@ -46,38 +58,56 @@ export const reviewAllClients = async (
 ) => {
   console.log(`[unifiedReviewService] Revisando ${clients.length} clientes (${platform})`);
   
-  const successfulReviews: string[] = [];
-  const failedReviews: string[] = [];
-  
-  for (const client of clients) {
+  if (platform === "meta") {
     try {
-      const accountId = platform === "meta" 
-        ? client.meta_account_id 
-        : client.google_account_id;
-        
-      await reviewClient({ 
-        clientId: client.id, 
-        accountId, 
-        platform 
+      const reviewDate = new Date().toISOString().split('T')[0];
+      const clientIds = clients.map(client => client.id);
+      
+      const { data, error } = await supabase.functions.invoke("unified-meta-review", {
+        body: { clientIds, reviewDate }
       });
       
-      successfulReviews.push(client.company_name);
+      if (error) throw error;
+      
+      console.log(`[unifiedReviewService] Batch Meta concluído:`, data);
+      
+      if (onSuccess) onSuccess();
+      
+      return {
+        successCount: data?.data?.summary?.success_count || 0,
+        errorCount: data?.data?.summary?.error_count || 0,
+        successful: data?.data?.results?.filter(r => r.status === 'success').map(r => r.data?.client?.name || r.clientId) || [],
+        failed: data?.data?.errors?.map(e => e.clientId) || []
+      };
     } catch (error) {
-      console.error(`[unifiedReviewService] Erro ao revisar cliente ${client.id}:`, error);
-      failedReviews.push(client.company_name);
+      console.error(`[unifiedReviewService] Erro no batch Meta:`, error);
+      throw error;
     }
+  } else {
+    const successfulReviews: string[] = [];
+    const failedReviews: string[] = [];
+    
+    for (const client of clients) {
+      try {
+        await reviewClient({ 
+          clientId: client.id, 
+          accountId: client.google_account_id, 
+          platform 
+        });
+        successfulReviews.push(client.company_name);
+      } catch (error) {
+        console.error(`[unifiedReviewService] Erro ao revisar cliente ${client.id}:`, error);
+        failedReviews.push(client.company_name);
+      }
+    }
+    
+    if (onSuccess) onSuccess();
+    
+    return {
+      successCount: successfulReviews.length,
+      errorCount: failedReviews.length,
+      successful: successfulReviews,
+      failed: failedReviews
+    };
   }
-  
-  console.log(`[unifiedReviewService] Revisões concluídas: ${successfulReviews.length} sucessos, ${failedReviews.length} falhas`);
-  
-  if (onSuccess) {
-    onSuccess();
-  }
-  
-  return {
-    successCount: successfulReviews.length,
-    errorCount: failedReviews.length,
-    successful: successfulReviews,
-    failed: failedReviews
-  };
 };

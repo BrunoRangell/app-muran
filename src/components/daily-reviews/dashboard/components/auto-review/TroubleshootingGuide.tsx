@@ -34,7 +34,7 @@ export function TroubleshootingGuide({ isOpen, onToggle }: TroubleshootingGuideP
               <h5 className="font-medium">Erro "Unexpected end of JSON input"</h5>
               <ul className="list-disc list-inside space-y-1 ml-2">
                 <li>Este erro ocorre quando a função Edge retorna uma resposta JSON inválida ou vazia</li>
-                <li>Verifique se a função "daily-meta-review" está publicada no Supabase</li>
+                <li>Verifique se a função "unified-meta-review" está publicada no Supabase</li>
                 <li>Tente republicar a função Edge no console do Supabase</li>
                 <li>Verifique os logs da função Edge para identificar o erro exato</li>
               </ul>
