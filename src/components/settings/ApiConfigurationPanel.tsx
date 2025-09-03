@@ -26,7 +26,7 @@ export const ApiConfigurationPanel = () => {
     setTestResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('google-ads-token-check');
+      // Função google-ads-token-check removida - tokens renovam automaticamente
 
       if (error) {
         console.error("Erro ao invocar função:", error);

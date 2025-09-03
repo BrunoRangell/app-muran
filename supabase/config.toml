@@ -27,5 +27,3 @@ verify_jwt = false
 [functions.meta-budget-calculator]
 verify_jwt = false
 
-[functions.google-ads-token-check]
-verify_jwt = false

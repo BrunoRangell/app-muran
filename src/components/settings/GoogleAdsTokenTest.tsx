@@ -165,7 +165,7 @@ export const GoogleAdsTokenTest = () => {
         throw new Error('Apenas administradores podem testar tokens');
       }
 
-      const { data, error } = await supabase.functions.invoke('google-ads-token-check');
+      // Função google-ads-token-check removida - tokens renovam automaticamente
       
       if (error) {
         console.error('Erro ao testar tokens:', error);

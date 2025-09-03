@@ -37,7 +37,7 @@ export function CronJobMonitor() {
       // Buscar apenas os 2 jobs otimizados usando função RPC
       const { data: jobsData, error: jobsError } = await supabase
         .rpc('get_cron_jobs', {
-          job_names: ['cron-health-check', 'google-ads-token-check-job']
+          job_names: ['cron-health-check']
         });
         
       if (jobsError) {
@@ -50,12 +50,6 @@ export function CronJobMonitor() {
             jobname: 'cron-health-check',
             schedule: '0 * * * * (a cada hora)',
             active: true
-          },
-          {
-            jobid: 2,
-            jobname: 'google-ads-token-check-job',
-            schedule: '0 */2 * * * (a cada 2 horas)',
-            active: true
           }
         ]);
       } else {
@@ -67,7 +61,7 @@ export function CronJobMonitor() {
       const { data: execData, error: execError } = await supabase
         .from('cron_execution_logs')
         .select('*')
-        .in('job_name', ['cron-health-check', 'google-ads-token-check-job'])
+        .in('job_name', ['cron-health-check'])
         .order('execution_time', { ascending: false })
         .limit(20);
       
@@ -161,7 +155,7 @@ export function CronJobMonitor() {
       setIsLoading(true);
       
       // Apenas permitir execução dos jobs otimizados
-      if (!['cron-health-check', 'google-ads-token-check-job'].includes(jobName)) {
+      if (!['cron-health-check'].includes(jobName)) {
         toast({
           title: "Job não suportado",
           description: "Apenas jobs otimizados podem ser executados manualmente.",
@@ -371,7 +365,7 @@ export function CronJobMonitor() {
                       <code className="text-xs bg-gray-100 p-1 rounded">{job.schedule}</code>
                       <div className="text-xs text-green-600 mt-1">
                         {job.jobname === 'cron-health-check' && '✅ Otimizado: 1 hora + limpeza automática'}
-                        {job.jobname === 'google-ads-token-check-job' && '✅ Essencial: Verificação tokens Google'}
+                        
                       </div>
                     </TableCell>
                     <TableCell>
