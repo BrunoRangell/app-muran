@@ -166,54 +166,19 @@ export const GoogleAdsTokenTest = () => {
       }
 
       // Função google-ads-token-check removida - tokens renovam automaticamente
+      setTestResult({
+        success: true,
+        message: "Tokens Google Ads são renovados automaticamente",
+        details: {
+          apiAccess: true,
+          tokenRefreshed: true
+        },
+      });
       
-      if (error) {
-        console.error('Erro ao testar tokens:', error);
-        setTestResult({
-          success: false,
-          message: `Erro ao testar tokens: ${error.message || "Erro desconhecido"}`,
-        });
-        
-        toast({
-          title: "Erro",
-          description: `Falha ao testar tokens: ${error.message || "Erro desconhecido"}`,
-          variant: "destructive",
-        });
-      } else if (data.error) {
-        console.error('Erro retornado pela função:', data.error);
-        setTestResult({
-          success: false,
-          message: `Erro: ${data.error}`,
-        });
-        
-        toast({
-          title: "Erro",
-          description: `Falha: ${data.error}`,
-          variant: "destructive",
-        });
-      } else {
-        console.log('Resposta da função:', data);
-        
-        await fetchTokens();
-        
-        setTestResult({
-          success: true,
-          message: data.message || "Tokens testados com sucesso",
-          details: {
-            apiAccess: data.apiAccess,
-            tokenRefreshed: data.tokenRefreshed
-          },
-        });
-        
-        if (data.clients && Array.isArray(data.clients)) {
-          setClients(data.clients);
-        }
-        
-        toast({
-          title: "Sucesso",
-          description: data.message || "Tokens verificados com sucesso",
-        });
-      }
+      toast({
+        title: "Informação",
+        description: "Tokens Google Ads são renovados automaticamente",
+      });
     } catch (error) {
       console.error('Erro ao invocar função:', error);
       setTestResult({

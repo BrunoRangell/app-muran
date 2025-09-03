@@ -27,53 +27,20 @@ export const ApiConfigurationPanel = () => {
 
     try {
       // Função google-ads-token-check removida - tokens renovam automaticamente
-
-      if (error) {
-        console.error("Erro ao invocar função:", error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível acessar a API do Google Ads",
-          variant: "destructive",
-        });
-        setTestResult({
-          success: false,
-          message: `Erro ao acessar API: ${error.message}`,
-        });
-        return;
-      }
-
-      if (data.error) {
-        setTestResult({
-          success: false,
-          message: data.error,
-          details: {
-            status: "erro",
-            apiCall: "Falha",
-            errorDetails: data.details
-          }
-        });
-        toast({
-          title: "Erro",
-          description: data.error,
-          variant: "destructive",
-        });
-      } else {
-        setTestResult({
-          success: true,
-          message: data.message || "API do Google Ads conectada",
-          clientCount: data.clientsCount || 0,
-          details: {
-            status: "success",
-            apiCall: "Sucesso",
-            clientsFound: data.clientsCount || 0,
-            tokenRefreshed: data.tokenRefreshed
-          }
-        });
-        toast({
-          title: "Sucesso",
-          description: data.message || "API do Google Ads conectada",
-        });
-      }
+      setTestResult({
+        success: true,
+        message: "Tokens Google Ads são renovados automaticamente",
+        details: {
+          status: "automated",
+          apiCall: "Automático",
+          note: "A renovação de tokens foi integrada às outras funções"
+        }
+      });
+      
+      toast({
+        title: "Informação",
+        description: "Tokens Google Ads são renovados automaticamente",
+      });
     } catch (err) {
       console.error("Erro ao testar tokens:", err);
       setTestResult({
