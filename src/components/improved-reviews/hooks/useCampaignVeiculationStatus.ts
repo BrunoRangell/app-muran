@@ -24,12 +24,19 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
     queryFn: async (): Promise<CampaignVeiculationInfo> => {
       const today = new Date().toISOString().split('T')[0];
       
-      // Buscar dados de saúde das campanhas para hoje
+      // Buscar dados de saúde das campanhas para hoje usando JOIN com client_accounts
+      console.log(`🔍 Buscando dados de campanhas: clientId=${clientId}, accountId=${accountId}, platform=${platform}`);
+      
       const { data: campaignHealth, error } = await supabase
         .from("campaign_health")
-        .select("campaigns_detailed, active_campaigns_count, unserved_campaigns_count")
+        .select(`
+          campaigns_detailed, 
+          active_campaigns_count, 
+          unserved_campaigns_count,
+          client_accounts!inner(account_id)
+        `)
         .eq("client_id", clientId)
-        .eq("account_id", accountId)
+        .eq("client_accounts.account_id", accountId)
         .eq("platform", platform)
         .eq("snapshot_date", today)
         .single();
