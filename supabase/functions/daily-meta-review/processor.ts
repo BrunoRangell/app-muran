@@ -548,13 +548,13 @@ export async function processReviewRequest(req: Request) {
       .delete()
       .eq('platform', 'meta')
       .eq('client_id', clientId)
-      .eq('account_id', metaAccount.account_id)
+      .eq('account_id', metaAccount.id)
       .eq('review_date', today);
 
     if (deleteTodayDuplicatesError) {
       console.error('❌ [CLEANUP] Erro ao limpar revisões duplicadas de hoje:', deleteTodayDuplicatesError);
     } else {
-      console.log(`✅ [CLEANUP] Revisões duplicadas de hoje removidas para conta ${metaAccount.account_id}`);
+      console.log(`✅ [CLEANUP] Revisões duplicadas de hoje removidas para conta ${metaAccount.id}`);
     }
 
     const cleanupTime = Date.now() - cleanupStartTime;
