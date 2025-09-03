@@ -25,39 +25,11 @@ export function useCampaignVeiculationStatus(clientId: string, accountId: string
       const today = new Date().toISOString().split('T')[0];
       
       // Buscar dados de saúde das campanhas para hoje
-      console.log(`🔍 Buscando dados de campanhas: clientId=${clientId}, accountId=${accountId}, platform=${platform}`);
-      
-      // Primeiro buscar o UUID interno da conta usando o accountId externo
-      const { data: clientAccount, error: accountError } = await supabase
-        .from("client_accounts")
-        .select("id")
-        .eq("client_id", clientId)
-        .eq("account_id", accountId)
-        .eq("platform", platform)
-        .single();
-
-      if (accountError || !clientAccount) {
-        console.log(`❌ Conta não encontrada: clientId=${clientId}, accountId=${accountId}, platform=${platform}`, accountError?.message);
-        return {
-          status: "no_data",
-          activeCampaigns: 0,
-          campaignsWithoutDelivery: 0,
-          message: "Conta não encontrada",
-          badgeColor: "bg-gray-100 text-gray-600 border-gray-200",
-          campaignsDetailed: []
-        };
-      }
-
-      // Agora buscar os dados de saúde das campanhas usando o UUID interno
       const { data: campaignHealth, error } = await supabase
         .from("campaign_health")
-        .select(`
-          campaigns_detailed, 
-          active_campaigns_count, 
-          unserved_campaigns_count
-        `)
+        .select("campaigns_detailed, active_campaigns_count, unserved_campaigns_count")
         .eq("client_id", clientId)
-        .eq("account_id", clientAccount.id)
+        .eq("account_id", accountId)
         .eq("platform", platform)
         .eq("snapshot_date", today)
         .single();

@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface ReviewClientParams {
   clientId: string;
@@ -8,40 +9,32 @@ interface ReviewClientParams {
 }
 
 export const reviewClient = async ({ clientId, accountId, platform }: ReviewClientParams) => {
-  console.log(`[unifiedReviewService] Iniciando revisão unificada para cliente ${clientId} (${platform})${accountId ? ` com conta ${accountId}` : ''}`);
-  
+  console.log(`[unifiedReviewService] Iniciando revisão para cliente ${clientId} (${platform})${accountId ? ` com conta ${accountId}` : ''}`);
+
   try {
+    const reviewDate = new Date().toISOString().split('T')[0];
+    
     const payload = {
-      platform,
-      mode: 'single' as const,
       clientId,
-      accountId,
-      options: {
-        updateCampaignHealth: true
-      }
+      reviewDate,
+      fetchRealData: true,
+      ...(platform === "meta" && { metaAccountId: accountId }),
+      ...(platform === "google" && { googleAccountId: accountId })
     };
 
-    console.log(`[unifiedReviewService] Chamando unified-daily-review:`, payload);
-
-    const { data, error } = await supabase.functions.invoke('unified-daily-review', {
+    const functionName = platform === "meta" ? "daily-meta-review" : "daily-google-review";
+    
+    const { data, error } = await supabase.functions.invoke(functionName, {
       body: payload
     });
-
-    if (error) {
-      console.error(`[unifiedReviewService] Erro na função unificada:`, error);
-      throw new Error(error.message || `Erro na revisão ${platform}`);
-    }
-
-    if (!data.success) {
-      console.error(`[unifiedReviewService] Falha na revisão:`, data.error);
-      throw new Error(data.error || `Falha na revisão ${platform}`);
-    }
-
-    console.log(`[unifiedReviewService] Revisão ${platform} concluída com sucesso para cliente ${clientId}`);
+    
+    if (error) throw error;
+    
+    console.log(`[unifiedReviewService] Revisão ${platform} concluída para cliente ${clientId}:`, data);
     return data;
-
-  } catch (error) {
-    console.error(`[unifiedReviewService] Erro geral na revisão ${platform}:`, error);
+    
+  } catch (error: any) {
+    console.error(`[unifiedReviewService] Erro ao revisar cliente ${clientId} (${platform}):`, error);
     throw error;
   }
 };
@@ -51,54 +44,40 @@ export const reviewAllClients = async (
   platform: "meta" | "google",
   onSuccess?: () => void
 ) => {
-  console.log(`[unifiedReviewService] Iniciando revisão unificada em lote para ${clients.length} clientes ${platform}`);
+  console.log(`[unifiedReviewService] Revisando ${clients.length} clientes (${platform})`);
   
-  try {
-    const payload = {
-      platform,
-      mode: 'batch' as const,
-      clients: clients.map(client => ({
-        id: client.id,
-        company_name: client.company_name,
-        meta_account_id: client.meta_account_id,
-        google_account_id: client.google_account_id
-      })),
-      options: {
-        updateCampaignHealth: true
-      }
-    };
-
-    console.log(`[unifiedReviewService] Chamando unified-daily-review em batch:`, {
-      platform,
-      clientsCount: clients.length
-    });
-
-    const { data, error } = await supabase.functions.invoke('unified-daily-review', {
-      body: payload
-    });
-
-    if (error) {
-      console.error(`[unifiedReviewService] Erro na função unificada batch:`, error);
-      throw new Error(error.message || `Erro na revisão em lote ${platform}`);
+  const successfulReviews: string[] = [];
+  const failedReviews: string[] = [];
+  
+  for (const client of clients) {
+    try {
+      const accountId = platform === "meta" 
+        ? client.meta_account_id 
+        : client.google_account_id;
+        
+      await reviewClient({ 
+        clientId: client.id, 
+        accountId, 
+        platform 
+      });
+      
+      successfulReviews.push(client.company_name);
+    } catch (error) {
+      console.error(`[unifiedReviewService] Erro ao revisar cliente ${client.id}:`, error);
+      failedReviews.push(client.company_name);
     }
-
-    if (!data.success) {
-      console.error(`[unifiedReviewService] Falha na revisão em lote:`, data.error);
-      throw new Error(data.error || `Falha na revisão em lote ${platform}`);
-    }
-
-    if (onSuccess) onSuccess();
-
-    console.log(`[unifiedReviewService] Revisão em lote concluída: ${data.successCount} sucessos, ${data.errorCount} falhas`);
-    
-    return { 
-      successCount: data.successCount, 
-      errorCount: data.errorCount,
-      results: data.results
-    };
-
-  } catch (error) {
-    console.error(`[unifiedReviewService] Erro na revisão em lote:`, error);
-    throw error;
   }
+  
+  console.log(`[unifiedReviewService] Revisões concluídas: ${successfulReviews.length} sucessos, ${failedReviews.length} falhas`);
+  
+  if (onSuccess) {
+    onSuccess();
+  }
+  
+  return {
+    successCount: successfulReviews.length,
+    errorCount: failedReviews.length,
+    successful: successfulReviews,
+    failed: failedReviews
+  };
 };

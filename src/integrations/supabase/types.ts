@@ -79,45 +79,6 @@ export type Database = {
           },
         ]
       }
-      batch_review_logs: {
-        Row: {
-          created_at: string
-          error_count: number
-          execution_time_ms: number
-          global_updates_performed: boolean | null
-          id: string
-          platform: string
-          review_date: string
-          success_count: number
-          total_clients: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          error_count: number
-          execution_time_ms: number
-          global_updates_performed?: boolean | null
-          id?: string
-          platform: string
-          review_date?: string
-          success_count: number
-          total_clients: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          error_count?: number
-          execution_time_ms?: number
-          global_updates_performed?: boolean | null
-          id?: string
-          platform?: string
-          review_date?: string
-          success_count?: number
-          total_clients?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       budget_reviews: {
         Row: {
           account_id: string

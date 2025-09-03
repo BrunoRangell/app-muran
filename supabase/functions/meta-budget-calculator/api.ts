@@ -1,162 +1,174 @@
+
 import { corsHeaders } from "./cors.ts";
 
-// Função para buscar campanhas com paginação
+// Função para buscar todas as campanhas
 export async function fetchCampaigns(accountId: string, accessToken: string) {
-  try {
-    console.log(`🔍 Buscando campanhas para conta: ${accountId}`);
-    let allCampaigns: any[] = [];
-    let nextPage: string | null = null;
-    
-    do {
-      let url = `https://graph.facebook.com/v18.0/act_${accountId}/campaigns?access_token=${accessToken}&fields=id,name,status,effective_status,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time&limit=100`;
-      
-      if (nextPage) {
-        url = nextPage;
-      }
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ Erro ao buscar campanhas: ${response.status} - ${errorText}`);
-        return {
-          success: false,
-          response: new Response(
-            JSON.stringify({ error: `Erro ao buscar campanhas: ${errorText}` }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: response.status }
-          )
-        };
-      }
-      
-      const data = await response.json();
-      allCampaigns = allCampaigns.concat(data.data || []);
-      nextPage = data.paging?.next || null;
-      
-      console.log(`📄 Página processada: ${data.data?.length || 0} campanhas. Próxima página: ${nextPage ? "Sim" : "Não"}`);
-    } while (nextPage);
-    
-    console.log(`✅ Total de campanhas encontradas: ${allCampaigns.length}`);
-    return { success: true, data: allCampaigns };
-    
-  } catch (error) {
-    console.error("❌ Erro ao buscar campanhas:", error);
+  console.log(`Calculando orçamento diário para a conta ${accountId}`);
+  
+  // Buscar todas as campanhas, sem filtrar por status inicialmente
+  const campaignsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=daily_budget,status,name,end_time,id,effective_status,budget_remaining,lifetime_budget,special_ad_categories&access_token=${accessToken}&limit=1000`;
+  const campaignsResponse = await fetch(campaignsUrl);
+  
+  if (!campaignsResponse.ok) {
+    const errorData = await campaignsResponse.json();
+    console.error("Erro ao buscar campanhas:", errorData);
     return {
       success: false,
       response: new Response(
-        JSON.stringify({ error: `Erro ao buscar campanhas: ${error.message}` }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        JSON.stringify({ error: `Erro na API do Meta: ${JSON.stringify(errorData)}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       )
     };
   }
+
+  // Processar a resposta da API
+  let campaigns = [];
+  let campaignsData = await campaignsResponse.json();
+  campaigns = [...campaignsData.data || []];
+  
+  // Implementar paginação para garantir que todas as campanhas sejam buscadas
+  let nextPageUrl = campaignsData.paging?.next;
+  while (nextPageUrl) {
+    console.log(`Buscando próxima página de campanhas: ${nextPageUrl}`);
+    const nextPageResponse = await fetch(nextPageUrl);
+    if (!nextPageResponse.ok) {
+      console.error("Erro ao buscar próxima página de campanhas:", await nextPageResponse.json());
+      break;
+    }
+    const nextPageData = await nextPageResponse.json();
+    campaigns = [...campaigns, ...(nextPageData.data || [])];
+    nextPageUrl = nextPageData.paging?.next;
+  }
+  
+  console.log(`Encontradas ${campaigns.length} campanhas totais na conta`);
+
+  return {
+    success: true,
+    data: campaigns
+  };
 }
 
-// Função para buscar insights de gastos das campanhas
+// Função para buscar insights de gastos
 export async function fetchCampaignInsights(
   accountId: string, 
   accessToken: string, 
   dateRange: { start: string; end: string },
   fetchSeparateInsights?: boolean
 ) {
-  try {
-    console.log(`📊 Buscando insights de gastos para período: ${dateRange.start} a ${dateRange.end}`);
-    
-    // Primeiro, tentar buscar insights da conta geral
-    const accountInsightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?access_token=${accessToken}&time_range=${encodeURIComponent(JSON.stringify({ since: dateRange.start, until: dateRange.end }))}&fields=spend&level=account`;
-    
-    const accountResponse = await fetch(accountInsightsUrl);
-    
-    if (!accountResponse.ok) {
-      const errorText = await accountResponse.text();
-      console.error(`❌ Erro ao buscar insights da conta: ${accountResponse.status} - ${errorText}`);
-      return {
-        success: false,
-        response: new Response(
-          JSON.stringify({ error: `Erro ao buscar insights da conta: ${errorText}` }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: accountResponse.status }
-        )
-      };
-    }
-    
-    const accountData = await accountResponse.json();
-    const accountSpend = accountData.data?.[0]?.spend || "0";
-    const totalSpent = parseFloat(accountSpend);
-    
-    console.log(`💰 Gasto total da conta no período: ${totalSpent}`);
-    
-    // Se o gasto da conta for 0 e fetchSeparateInsights for true, buscar insights por campanha
-    if (totalSpent === 0 && fetchSeparateInsights) {
-      console.log("🔍 Gasto da conta é 0, buscando insights separados por campanha...");
-      
-      const campaignInsightsUrl = `https://graph.facebook.com/v18.0/act_${accountId}/insights?access_token=${accessToken}&time_range=${encodeURIComponent(JSON.stringify({ since: dateRange.start, until: dateRange.end }))}&fields=spend,campaign_id,campaign_name&level=campaign`;
-      
-      const campaignResponse = await fetch(campaignInsightsUrl);
-      
-      if (!campaignResponse.ok) {
-        const errorText = await campaignResponse.text();
-        console.warn(`⚠️ Erro ao buscar insights por campanha: ${campaignResponse.status} - ${errorText}`);
-        // Continuar com o valor 0 da conta
-        return { success: true, totalSpent: 0 };
-      }
-      
-      const campaignData = await campaignResponse.json();
-      const campaignSpends = campaignData.data || [];
-      
-      const totalCampaignSpent = campaignSpends.reduce((sum: number, insight: any) => {
-        return sum + parseFloat(insight.spend || "0");
-      }, 0);
-      
-      console.log(`💰 Total gasto por campanhas: ${totalCampaignSpent} (${campaignSpends.length} campanhas com dados)`);
-      
-      return { success: true, totalSpent: totalCampaignSpent };
-    }
-    
-    return { success: true, totalSpent };
-    
-  } catch (error) {
-    console.error("❌ Erro ao buscar insights:", error);
+  console.log("Buscando insights de gastos para o período...");
+  
+  // Construir a URL para buscar insights
+  const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&access_token=${accessToken}`;
+  
+  console.log("URL de insights:", insightsUrl);
+  
+  const insightsResponse = await fetch(insightsUrl);
+  if (!insightsResponse.ok) {
+    const insightsError = await insightsResponse.json();
+    console.error("Erro ao buscar insights:", insightsError);
     return {
       success: false,
       response: new Response(
-        JSON.stringify({ error: `Erro ao buscar insights: ${error.message}` }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        JSON.stringify({ error: `Erro ao buscar insights: ${JSON.stringify(insightsError)}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       )
     };
   }
+  
+  const insightsData = await insightsResponse.json();
+  console.log("Resposta de insights:", JSON.stringify(insightsData));
+  
+  // Calcular o total gasto com base nos insights
+  let totalSpent = 0;
+  if (insightsData.data && insightsData.data.length > 0) {
+    for (const insight of insightsData.data) {
+      if (insight.spend) {
+        const spendValue = parseFloat(insight.spend);
+        if (!isNaN(spendValue)) {
+          totalSpent += spendValue;
+        }
+      }
+    }
+  }
+  
+  console.log(`Total gasto (baseado em insights): ${totalSpent}`);
+  
+  // Se não houver insights ou o totalSpent for 0, buscar insights por campanha
+  if (totalSpent === 0 && fetchSeparateInsights) {
+    console.log("Total gasto é zero, buscando insights por campanha...");
+    
+    // Buscar insights para cada campanha ativa
+    let allCampaignInsights = [];
+    
+    // Construir URL para buscar insights de campanhas
+    const campaignInsightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=campaign_id,campaign_name,spend&time_range={"since":"${dateRange.start}","until":"${dateRange.end}"}&level=campaign&access_token=${accessToken}&limit=500`;
+    
+    console.log("URL de insights de campanhas:", campaignInsightsUrl);
+    
+    const campaignInsightsResponse = await fetch(campaignInsightsUrl);
+    if (!campaignInsightsResponse.ok) {
+      console.error("Erro ao buscar insights de campanhas:", await campaignInsightsResponse.json());
+    } else {
+      const campaignInsightsData = await campaignInsightsResponse.json();
+      
+      if (campaignInsightsData.data && campaignInsightsData.data.length > 0) {
+        allCampaignInsights = [...campaignInsightsData.data];
+        
+        // Processar os insights por campanha
+        for (const insight of allCampaignInsights) {
+          if (insight.spend) {
+            const spendValue = parseFloat(insight.spend);
+            if (!isNaN(spendValue)) {
+              totalSpent += spendValue;
+              console.log(`Campanha ${insight.campaign_name}: Gasto ${spendValue}`);
+            }
+          }
+        }
+      }
+    }
+    
+    console.log(`Total gasto recalculado por campanhas: ${totalSpent}`);
+  }
+
+  return {
+    success: true,
+    totalSpent
+  };
 }
 
-// Função para buscar adsets de uma campanha específica
+// Função para buscar conjuntos de anúncios (adsets) de uma campanha
 export async function fetchAdSets(campaignId: string, accessToken: string) {
   try {
-    console.log(`📋 Buscando adsets para campanha: ${campaignId}`);
-    let allAdSets: any[] = [];
-    let nextPage: string | null = null;
+    // Buscar conjuntos de anúncios para a campanha, aumentando o limite para 1000
+    const adsetsUrl = `https://graph.facebook.com/v22.0/${campaignId}/adsets?fields=daily_budget,status,name,end_time,id,effective_status,lifetime_budget&access_token=${accessToken}&limit=1000`;
+    const adsetsResponse = await fetch(adsetsUrl);
     
-    do {
-      let url = `https://graph.facebook.com/v18.0/${campaignId}/adsets?access_token=${accessToken}&fields=id,name,status,effective_status,daily_budget,lifetime_budget,start_time,end_time&limit=100`;
-      
-      if (nextPage) {
-        url = nextPage;
+    if (!adsetsResponse.ok) {
+      console.error(`Erro ao buscar conjuntos de anúncios para campanha ${campaignId}:`, await adsetsResponse.json());
+      return { success: false, data: [] };
+    }
+
+    let adsets = [];
+    let adsetsData = await adsetsResponse.json();
+    adsets = [...adsetsData.data || []];
+    
+    // Implementar paginação para conjuntos de anúncios também
+    let nextAdsetPageUrl = adsetsData.paging?.next;
+    while (nextAdsetPageUrl) {
+      console.log(`Buscando próxima página de conjuntos de anúncios para campanha ${campaignId}`);
+      const nextAdsetPageResponse = await fetch(nextAdsetPageUrl);
+      if (!nextAdsetPageResponse.ok) {
+        console.error("Erro ao buscar próxima página de conjuntos de anúncios:", await nextAdsetPageResponse.json());
+        break;
       }
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ Erro ao buscar adsets: ${response.status} - ${errorText}`);
-        return { success: false, data: [] };
-      }
-      
-      const data = await response.json();
-      allAdSets = allAdSets.concat(data.data || []);
-      nextPage = data.paging?.next || null;
-      
-    } while (nextPage);
+      const nextAdsetPageData = await nextAdsetPageResponse.json();
+      adsets = [...adsets, ...(nextAdsetPageData.data || [])];
+      nextAdsetPageUrl = nextAdsetPageData.paging?.next;
+    }
     
-    console.log(`✅ Total de adsets encontrados: ${allAdSets.length}`);
-    return { success: true, data: allAdSets };
-    
+    return { success: true, data: adsets };
   } catch (error) {
-    console.error("❌ Erro ao buscar adsets:", error);
+    console.error(`Erro ao buscar adsets para campanha ${campaignId}:`, error);
     return { success: false, data: [] };
   }
 }

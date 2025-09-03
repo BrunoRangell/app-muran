@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { reviewClient as reviewClientUnified, reviewAllClients as reviewAllClientsUnified } from "@/components/common/services/unifiedReviewService";
 
 interface BatchReviewInfo {
   lastBatchReviewTime: string;
@@ -17,87 +16,39 @@ interface BatchReviewInfo {
 }
 
 export const usePlatformBatchReviews = () => {
-  // Buscar a última revisão do Meta Ads (nova tabela batch_review_logs)
+  // Buscar a última revisão do Meta Ads
   const { data: lastMetaReview, refetch: refetchMeta } = useQuery({
     queryKey: ['last-batch-review-meta'],
     queryFn: async (): Promise<BatchReviewInfo | null> => {
       console.log("🔍 Buscando última revisão em massa do Meta Ads...");
       
-      // Primeiro tenta buscar na nova tabela
-      const { data: newData } = await supabase
-        .from('batch_review_logs')
-        .select('created_at, platform, success_count, error_count, total_clients')
-        .eq('platform', 'meta')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (newData) {
-        console.log("📅 Última revisão Meta encontrada (nova tabela):", newData);
-        return {
-          lastBatchReviewTime: newData.created_at,
-          details: {
-            platform: newData.platform,
-            successCount: newData.success_count,
-            errorCount: newData.error_count,
-            totalClients: newData.total_clients,
-            completedAt: newData.created_at
-          }
-        };
-      }
-      
-      // Fallback para tabela antiga
-      const { data: oldData } = await supabase
+      const { data } = await supabase
         .from('system_logs')
         .select('created_at, message, details')
         .eq('event_type', 'batch_review_completed')
-        .or('details->>platform.eq.meta,details->platform.is.null')
+        .or('details->>platform.eq.meta,details->platform.is.null') // Meta ou legado sem platform
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       
-      console.log("📅 Última revisão Meta encontrada (tabela antiga):", oldData);
+      console.log("📅 Última revisão Meta encontrada:", data);
       
-      return oldData ? {
-        lastBatchReviewTime: oldData.created_at,
-        details: (oldData.details as any) || {}
+      return data ? {
+        lastBatchReviewTime: data.created_at,
+        details: (data.details as any) || {}
       } : null;
     },
     refetchOnWindowFocus: false,
     staleTime: 30 * 1000, // 30 segundos
   });
 
-  // Buscar a última revisão do Google Ads (nova tabela batch_review_logs)
+  // Buscar a última revisão do Google Ads
   const { data: lastGoogleReview, refetch: refetchGoogle } = useQuery({
     queryKey: ['last-batch-review-google'],
     queryFn: async (): Promise<BatchReviewInfo | null> => {
       console.log("🔍 Buscando última revisão em massa do Google Ads...");
       
-      // Primeiro tenta buscar na nova tabela
-      const { data: newData } = await supabase
-        .from('batch_review_logs')
-        .select('created_at, platform, success_count, error_count, total_clients')
-        .eq('platform', 'google')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (newData) {
-        console.log("📅 Última revisão Google encontrada (nova tabela):", newData);
-        return {
-          lastBatchReviewTime: newData.created_at,
-          details: {
-            platform: newData.platform,
-            successCount: newData.success_count,
-            errorCount: newData.error_count,
-            totalClients: newData.total_clients,
-            completedAt: newData.created_at
-          }
-        };
-      }
-      
-      // Fallback para tabela antiga
-      const { data: oldData } = await supabase
+      const { data } = await supabase
         .from('system_logs')
         .select('created_at, message, details')
         .eq('event_type', 'batch_review_completed')
@@ -106,11 +57,11 @@ export const usePlatformBatchReviews = () => {
         .limit(1)
         .maybeSingle();
       
-      console.log("📅 Última revisão Google encontrada (tabela antiga):", oldData);
+      console.log("📅 Última revisão Google encontrada:", data);
       
-      return oldData ? {
-        lastBatchReviewTime: oldData.created_at,
-        details: (oldData.details as any) || {}
+      return data ? {
+        lastBatchReviewTime: data.created_at,
+        details: (data.details as any) || {}
       } : null;
     },
     refetchOnWindowFocus: false,
@@ -165,35 +116,75 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
   const reviewClient = async (clientId: string, accountId?: string) => {
     if (processingIds.includes(clientId)) return;
     
-    console.log(`🔍 [UNIFIED] Iniciando revisão individual do cliente ${clientId} (plataforma: ${platform})`);
+    console.log(`🔍 Iniciando revisão individual do cliente ${clientId} (plataforma: ${platform})`);
     setProcessingIds(prev => [...prev, clientId]);
     
     try {
-      // MIGRAÇÃO: Usar função unificada para revisões individuais
-      const result = await reviewClientUnified({
-        clientId,
-        accountId,
-        platform
-      });
+      let result;
       
-      console.log(`✅ [UNIFIED] Cliente ${clientId} analisado com sucesso:`, result);
+      if (platform === "meta") {
+        // 1. Chamar Edge Function do Meta Ads
+        console.log(`📊 Executando daily-meta-review para cliente ${clientId}`);
+        const { data, error } = await supabase.functions.invoke("daily-meta-review", {
+          body: {
+            clientId,
+            metaAccountId: accountId,
+            reviewDate: new Date().toISOString().split('T')[0],
+            fetchRealData: true,
+            source: "ui_individual_review"
+          }
+        });
+        
+        if (error) throw error;
+        result = data;
+        
+        // 2. Atualizar saldos Meta
+        console.log(`💰 Executando meta-balance após revisão do cliente ${clientId}`);
+        try {
+          await supabase.functions.invoke("meta-balance");
+        } catch (balanceError) {
+          console.error(`⚠️ Erro ao atualizar saldos Meta para cliente ${clientId}:`, balanceError);
+          // Não interromper o fluxo se balance falhar
+        }
+        
+        // 3. Atualizar saúde das campanhas
+        console.log(`📈 Executando trigger-campaign-health-update após revisão do cliente ${clientId}`);
+        try {
+          await supabase.functions.invoke("trigger-campaign-health-update");
+        } catch (campaignError) {
+          console.error(`⚠️ Erro ao atualizar campaign health para cliente ${clientId}:`, campaignError);
+          // Não interromper o fluxo se campaign health falhar
+        }
+        
+      } else {
+        // Chamar Edge Function do Google Ads
+        const { data, error } = await supabase.functions.invoke("daily-google-review", {
+          body: {
+            clientId,
+            googleAccountId: accountId,
+            reviewDate: new Date().toISOString().split('T')[0],
+            fetchRealData: true,
+            source: "ui_individual_review"
+          }
+        });
+        
+        if (error) throw error;
+        result = data;
+      }
       
-      // Invalidar queries após revisão individual
+      console.log(`✅ Cliente ${clientId} analisado com sucesso:`, result);
+      
+      // CORREÇÃO PRINCIPAL: Invalidar queries após revisão individual
       await invalidateAllQueries();
       
-      // Chamar callback específico para revisões individuais
+      // NOVO: Chamar callback específico para revisões individuais
       if (onIndividualComplete) {
         console.log(`🔄 Executando callback de revisão individual para ${platform}`);
         onIndividualComplete();
       }
       
     } catch (error) {
-      console.error(`❌ [UNIFIED] Erro ao analisar cliente ${clientId}:`, error);
-      toast({
-        title: "Erro na revisão",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      console.error(`❌ Erro ao analisar cliente ${clientId}:`, error);
     } finally {
       setProcessingIds(prev => prev.filter(id => id !== clientId));
     }
@@ -202,34 +193,103 @@ export const useBatchOperations = ({ platform, onComplete, onIndividualComplete 
   const reviewAllClients = async (clients: any[]) => {
     if (isProcessing) return;
     
-    console.log(`🚀 [UNIFIED] Iniciando revisão em massa de ${clients.length} clientes (${platform})`);
+    console.log(`🚀 Iniciando revisão em massa de ${clients.length} clientes (${platform})`);
     setIsProcessing(true);
     setTotal(clients.length);
     setProgress(0);
     
+    let successCount = 0;
+    let errorCount = 0;
+    
     try {
-      // MIGRAÇÃO: Usar função unificada para revisões em massa
-      const result = await reviewAllClientsUnified(clients, platform, () => {
-        if (onComplete) onComplete();
-      });
+      // Primeira fase: Executar revisões individuais
+      for (let i = 0; i < clients.length; i++) {
+        const client = clients[i];
+        setCurrentClientName(client.company_name || `Cliente ${i + 1}`);
+        setProgress(i + 1);
+        
+        try {
+          const accountId = platform === "meta" 
+            ? client.meta_account_id 
+            : client.google_account_id;
+          
+          // Executar apenas a revisão principal (sem meta-balance e campaign-health aqui)
+          if (platform === "meta") {
+            const { data, error } = await supabase.functions.invoke("daily-meta-review", {
+              body: {
+                clientId: client.id,
+                metaAccountId: accountId,
+                reviewDate: new Date().toISOString().split('T')[0],
+                fetchRealData: true,
+                source: "ui_batch_review"
+              }
+            });
+            if (error) throw error;
+          } else {
+            const { data, error } = await supabase.functions.invoke("daily-google-review", {
+              body: {
+                clientId: client.id,
+                googleAccountId: accountId,
+                reviewDate: new Date().toISOString().split('T')[0],
+                fetchRealData: true,
+                source: "ui_batch_review"
+              }
+            });
+            if (error) throw error;
+          }
+          
+          successCount++;
+        } catch (error) {
+          console.error(`❌ Erro no cliente ${client.company_name}:`, error);
+          errorCount++;
+        }
+      }
       
-      console.log(`✅ [UNIFIED] Revisão em massa concluída:`, result);
+      // Segunda fase: Para Meta Ads, executar atualizações globais após todas as revisões
+      if (platform === "meta") {
+        console.log(`💰 Executando meta-balance após revisão em massa completa`);
+        setCurrentClientName("Atualizando saldos das contas...");
+        try {
+          await supabase.functions.invoke("meta-balance");
+          console.log(`✅ Meta balance executado com sucesso`);
+        } catch (balanceError) {
+          console.error(`⚠️ Erro ao executar meta-balance após revisão em massa:`, balanceError);
+        }
+        
+        console.log(`📈 Executando trigger-campaign-health-update após revisão em massa completa`);
+        setCurrentClientName("Atualizando dados de campanhas...");
+        try {
+          await supabase.functions.invoke("trigger-campaign-health-update");
+          console.log(`✅ Campaign health update executado com sucesso`);
+        } catch (campaignError) {
+          console.error(`⚠️ Erro ao executar campaign health update após revisão em massa:`, campaignError);
+        }
+      }
+      
+      // Registrar log da revisão em massa
+      await supabase.from('system_logs').insert({
+        event_type: 'batch_review_completed',
+        message: `Revisão em massa ${platform} concluída`,
+        details: {
+          platform,
+          successCount,
+          errorCount,
+          totalClients: clients.length,
+          completedAt: new Date().toISOString()
+        }
+      });
       
       // Invalidar queries após revisão em massa
       await invalidateAllQueries();
       
       toast({
         title: "Revisão em massa concluída",
-        description: `${result.successCount} clientes analisados com sucesso, ${result.errorCount} falhas.`,
+        description: `${successCount} clientes analisados com sucesso, ${errorCount} falhas.`,
       });
       
-    } catch (error) {
-      console.error(`❌ [UNIFIED] Erro na revisão em massa:`, error);
-      toast({
-        title: "Erro na revisão em massa",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
+      if (onComplete) {
+        onComplete();
+      }
     } finally {
       setIsProcessing(false);
       setCurrentClientName("");

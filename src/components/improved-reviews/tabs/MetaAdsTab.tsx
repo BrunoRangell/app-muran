@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { ClientsList } from "../clients/ClientsList";
 import { FilterBar } from "../filters/FilterBar";
 import { MetricsPanel } from "../dashboard/MetricsPanel";
@@ -11,7 +10,6 @@ import { BatchProgressBar } from "../dashboard/BatchProgressBar";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
 import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
-import { reviewClient } from "@/components/common/services/unifiedReviewService";
 import { AlertTriangle } from "lucide-react";
 
 interface MetaAdsTabProps {
@@ -71,30 +69,9 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
   };
 
   const handleBatchReview = () => {
-    console.log("🚀 Iniciando revisão em lote Meta Ads...");
+    console.log("🚀 Iniciando revisão em lote do Meta Ads...");
     if (data && data.length > 0) {
-      // Testar primeiro com um cliente só
-      const testClient = data[0];
-      console.log("🧪 Testando com cliente:", testClient);
-      reviewAllClients([testClient]);
-    }
-  };
-
-  const handleTestSingleReview = async () => {
-    if (data && data.length > 0) {
-      const testClient = data[0];
-      console.log("🧪 Testando revisão individual:", testClient);
-      
-      try {
-        const result = await reviewClient({
-          clientId: testClient.id,
-          accountId: testClient.meta_account_id || undefined,
-          platform: "meta"
-        });
-        console.log("✅ Resultado do teste:", result);
-      } catch (error) {
-        console.error("❌ Erro no teste:", error);
-      }
+      reviewAllClients(data);
     }
   };
 
@@ -136,19 +113,6 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
 
   return (
     <div className="space-y-6">
-      {/* Botão de teste temporário */}
-      <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-        <h3 className="font-medium text-yellow-800 mb-2">🧪 Teste da Unified Review</h3>
-        <div className="flex gap-2">
-          <Button onClick={handleTestSingleReview} variant="outline" size="sm">
-            Testar 1 Cliente
-          </Button>
-          <Button onClick={handleBatchReview} variant="outline" size="sm">
-            Testar Batch
-          </Button>
-        </div>
-      </div>
-
       <MetricsPanel 
         metrics={metrics} 
         onBatchReview={handleBatchReview}
