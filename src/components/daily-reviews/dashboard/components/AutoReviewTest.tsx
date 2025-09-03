@@ -123,18 +123,17 @@ export function AutoReviewTest() {
       
       if (logError) throw logError;
       
-      // Chamar a função edge diretamente com parâmetro de teste
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-meta-review`, {
+      // Chamar a função edge unificada diretamente com parâmetro de teste
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-meta-review`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          test: true,
-          source: "manual_test",
-          logId: logEntry.id,
-          executeReview: false
+          clientIds: ['test-client-id'],
+          reviewDate: new Date().toISOString().split('T')[0],
+          source: "manual_test"
         })
       });
       
@@ -197,19 +196,17 @@ export function AutoReviewTest() {
       
       if (logError) throw logError;
       
-      // Chamar a função edge diretamente para execução REAL
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/daily-meta-review`, {
+      // Chamar a função edge unificada diretamente para execução REAL
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/unified-meta-review`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
-          test: false,
-          executeReview: true,
-          source: "manual_real_execution",
-          logId: logEntry.id,
-          forceExecution: true
+          clientIds: 'all',
+          reviewDate: new Date().toISOString().split('T')[0],
+          source: "manual_real_execution"
         })
       });
       

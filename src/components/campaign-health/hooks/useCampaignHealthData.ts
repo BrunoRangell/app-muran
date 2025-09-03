@@ -176,12 +176,11 @@ async function triggerMassReview() {
   console.log("🔄 Iniciando revisão em massa...");
   
   try {
-    // Executar a edge function para atualizar dados
-    const { data, error } = await supabase.functions.invoke('active-campaigns-health', {
+    // Executar a edge function unificada para atualizar dados
+    const { data, error } = await supabase.functions.invoke('unified-meta-review', {
       body: { 
-        timestamp: new Date().toISOString(),
-        action: 'generate_snapshots',
-        force_today_only: true
+        clientIds: 'all', // Processar todos os clientes
+        reviewDate: new Date().toISOString().split('T')[0]
       }
     });
 

@@ -18,7 +18,7 @@ enabled = true
 port = 54323
 api_url = "https://socrnutfpqtcjmetskta.supabase.co"
 
-[functions.daily-meta-review]
+[functions.unified-meta-review]
 verify_jwt = false
 
 [functions.daily-google-review]
@@ -36,14 +36,11 @@ verify_jwt = false
 [functions.asaas]
 verify_jwt = false
 
-[functions.active-campaigns-health]
+[functions.meta-balance]
 verify_jwt = false
 
 [functions.manual-cleanup-campaign-health]
 verify_jwt = false
 
 [functions.campaign-health-status]
-verify_jwt = false
-
-[functions.trigger-campaign-health-update]
 verify_jwt = false
