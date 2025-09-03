@@ -24,6 +24,3 @@ verify_jwt = false
 [functions.daily-google-review]
 verify_jwt = false
 
-[functions.meta-budget-calculator]
-verify_jwt = false
-

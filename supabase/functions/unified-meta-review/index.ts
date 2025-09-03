@@ -4,6 +4,7 @@ import { formatResponse } from "./response-formatter.ts";
 import { processIndividualReview } from "./individual.ts";
 import { processBatchReview } from "./batch.ts";
 import { processAccountHealth } from "./account-health.ts";
+import { processBudgetCalculation } from "./budget-calculation.ts";
 import { IndividualReviewRequest, BatchReviewRequest } from "./types.ts";
 
 // Handler principal da função unificada
@@ -48,19 +49,25 @@ serve(async (req: Request) => {
     const isIndividualReview = !!payload.clientId && !payload.clientIds;
     const isBatchReview = !!payload.clientIds && Array.isArray(payload.clientIds);
     const isAccountHealth = !!payload.accountId && !payload.clientId && !payload.clientIds;
+    const isBudgetCalculation = !!payload.accountId && !!payload.accessToken && !payload.clientId && !payload.clientIds;
     
     console.log(`🔍 [UNIFIED-REVIEW] Dados recebidos:`, {
       hasClientId: !!payload.clientId,
       hasClientIds: !!payload.clientIds,
       hasAccountId: !!payload.accountId,
+      hasAccessToken: !!payload.accessToken,
       isBatch: isBatchReview,
       isHealth: isAccountHealth,
+      isBudget: isBudgetCalculation,
       reviewDate: payload.reviewDate || 'hoje',
       timestamp: new Date().toISOString()
     });
 
     let result;
-    if (isAccountHealth) {
+    if (isBudgetCalculation) {
+      console.log(`💰 [UNIFIED-REVIEW] Processando CÁLCULO DE ORÇAMENTO`);
+      result = await processBudgetCalculation(payload);
+    } else if (isAccountHealth) {
       console.log(`🏥 [UNIFIED-REVIEW] Processando HEALTH de conta individual`);
       result = await processAccountHealth(payload.accountId);
     } else if (isIndividualReview) {

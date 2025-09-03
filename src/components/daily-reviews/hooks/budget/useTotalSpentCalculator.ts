@@ -62,8 +62,8 @@ export const useTotalSpentCalculator = () => {
       
       console.log(`[useTotalSpentCalculator] CORREÇÃO: Calculando gasto do período completo: ${dateRange.start} a ${dateRange.end}`);
       
-      // Chamar função de borda para obter insights
-      const { data, error } = await supabase.functions.invoke("meta-budget-calculator", {
+      // Chamar função unificada para obter insights
+      const { data, error } = await supabase.functions.invoke("unified-meta-review", {
         body: {
           accountId: metaAccountId,
           accessToken,
