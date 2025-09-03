@@ -24,21 +24,8 @@ verify_jwt = false
 [functions.daily-google-review]
 verify_jwt = false
 
-[functions.daily-budget-reviews]
-verify_jwt = false
-
 [functions.meta-budget-calculator]
 verify_jwt = false
 
 [functions.google-ads-token-check]
-verify_jwt = false
-
-[functions.asaas]
-verify_jwt = false
-
-
-[functions.manual-cleanup-campaign-health]
-verify_jwt = false
-
-[functions.campaign-health-status]
 verify_jwt = false
