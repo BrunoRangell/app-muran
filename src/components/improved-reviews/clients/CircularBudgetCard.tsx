@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff, ExternalLink, Activity } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, Loader2, EyeOff, ExternalLink, Activity } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
@@ -14,6 +14,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info } from "lucide-react";
+import { useManualBalance } from "@/hooks/useManualBalance";
+import { ManualBalanceModal } from "../common/ManualBalanceModal";
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
@@ -32,6 +34,15 @@ export function CircularBudgetCard({
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
+  
+  // Hook para saldo manual
+  const { 
+    isModalOpen: isBalanceModalOpen, 
+    isLoading: isBalanceLoading, 
+    openModal: openBalanceModal, 
+    closeModal: closeBalanceModal, 
+    setBalance 
+  } = useManualBalance();
   const {
     reviewClient,
     processingIds
@@ -402,12 +413,35 @@ export function CircularBudgetCard({
                   <span className="text-sm">💳 Cartão de crédito</span>
                 </div>
               ) : (
-                <div className="text-gray-600">
-                  <span className="text-sm">Saldo indisponível</span>
-                </div>
-              )}
-            </div>
-          )}
+                 <div className="text-gray-600">
+                   <span className="text-sm">Saldo indisponível</span>
+                 </div>
+               )}
+               
+               {/* Botão para definir saldo manual */}
+               <div className="mt-3 pt-2 border-t border-blue-200">
+                 <Button
+                   size="sm"
+                   variant="outline"
+                   onClick={() => openBalanceModal(client.id, accountInfo.id)}
+                   disabled={isBalanceLoading}
+                   className="w-full text-xs bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800"
+                 >
+                   {isBalanceLoading ? (
+                     <>
+                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                       Salvando...
+                     </>
+                   ) : (
+                     <>
+                       <BadgeDollarSign className="h-3 w-3 mr-1" />
+                       Definir saldo atual
+                     </>
+                   )}
+                 </Button>
+               </div>
+             </div>
+           )}
 
           {/* Seção de Status de Veiculação (apenas para Meta Ads) */}
           {platform === "meta" && veiculationInfo && veiculationInfo.status !== "no_data" && (
@@ -622,5 +656,16 @@ export function CircularBudgetCard({
 
       {/* Diálogo de confirmação */}
       <IgnoreWarningDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onConfirm={handleWarningIgnored} clientName={companyName} />
+      
+      {/* Modal para definir saldo manual */}
+      <ManualBalanceModal
+        isOpen={isBalanceModalOpen}
+        isLoading={isBalanceLoading}
+        onClose={closeBalanceModal}
+        onConfirm={setBalance}
+        currentBalance={client.balance_info?.balance_value}
+        clientName={companyName}
+        accountName={accountInfo.name}
+      />
     </>;
 }

@@ -99,7 +99,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     const balanceStartTime = Date.now();
     console.log(`💰 [INDIVIDUAL] Buscando saldo da conta...`);
     
-    const balanceData = await fetchMetaBalance(metaAccount.account_id, metaToken);
+    const balanceData = await fetchMetaBalance(metaAccount.account_id, metaToken, supabase);
     const balanceTime = Date.now() - balanceStartTime;
     
     console.log(`✅ [INDIVIDUAL] Saldo obtido (${balanceTime}ms):`, {

@@ -89,15 +89,22 @@ export function filterActiveAdsets(adsets: any[], now: Date, campaignId: string 
   return activeAdsets;
 }
 
-// Função para buscar atividades da conta Meta (últimos 60 dias)
-async function fetchAccountActivities(accountId: string, accessToken: string) {
+// Função para buscar atividades da conta Meta (período personalizável)
+async function fetchAccountActivities(
+  accountId: string, 
+  accessToken: string, 
+  sinceDate?: Date, 
+  untilDate?: Date
+) {
   const startTime = Date.now();
-  const today = new Date();
-  const sixtyDaysAgo = new Date(today.getTime() - (60 * 24 * 60 * 60 * 1000));
   
-  // Formatar datas para a API Meta (YYYY-MM-DD)
-  const since = sixtyDaysAgo.toISOString().split('T')[0];
-  const until = today.toISOString().split('T')[0];
+  // Se não fornecido, usar últimos 60 dias
+  const since = sinceDate 
+    ? sinceDate.toISOString().split('T')[0]
+    : new Date(Date.now() - (60 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+  const until = untilDate 
+    ? untilDate.toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
   
   console.log(`🔍 [META-ACTIVITIES] Buscando activities para conta ${accountId} (${since} até ${until})`);
   
@@ -321,15 +328,128 @@ function calculateBalanceFromActivities(activities: any[]) {
   }
 }
 
-// Função para buscar saldo e modelo de cobrança da Meta API com Activities
-export async function fetchMetaBalance(accountId: string, accessToken: string) {
-  const startTime = Date.now();
-  console.log(`💰 [META-API] Iniciando busca de saldo AVANÇADA para conta ${accountId}`);
+// Função para recalcular saldo baseado no saldo manual definido pelo usuário
+async function recalculateBalanceFromManual(
+  accountId: string, 
+  accessToken: string, 
+  manualBalance: number, 
+  balanceSetAt: string
+): Promise<number> {
+  console.log(`🎯 [RECALCULO] Iniciando recálculo para conta ${accountId} desde ${balanceSetAt}`);
   
   try {
-    // 1. Buscar dados básicos da conta Meta com timeout
+    // Converter balanceSetAt para ISO format para a API
+    const sinceDate = new Date(balanceSetAt);
+    const untilDate = new Date();
+    
+    // Buscar activities desde o momento que o saldo foi definido
+    const activities = await fetchAccountActivities(accountId, accessToken, sinceDate, untilDate);
+    
+    if (!activities || activities.length === 0) {
+      console.log(`ℹ️ [RECALCULO] Nenhuma activity encontrada desde ${balanceSetAt}, mantendo saldo manual`);
+      return manualBalance;
+    }
+    
+    // Filtrar apenas charges (gastos) posteriores ao timestamp
+    const charges = activities.filter(activity => {
+      const isCharge = activity.event_type === "ad_account_billing_charge";
+      const activityDate = new Date(activity.event_time);
+      const isAfterManualSet = activityDate > sinceDate;
+      
+      return isCharge && isAfterManualSet;
+    });
+    
+    console.log(`💳 [RECALCULO] ${charges.length} charges encontradas desde ${balanceSetAt}`);
+    
+    // Calcular total de gastos
+    let totalCharges = 0;
+    for (const charge of charges) {
+      const extraData = parseExtraData(charge.extra_data);
+      if (extraData?.new_value) {
+        const chargeAmount = parseFloat(extraData.new_value) / 100; // Converter de centavos para reais
+        totalCharges += chargeAmount;
+        
+        console.log(`💸 [RECALCULO] Charge: R$ ${chargeAmount.toFixed(2)} em ${charge.event_time}`);
+      }
+    }
+    
+    // Calcular saldo atual: saldo_manual - total_de_gastos
+    const currentBalance = manualBalance - totalCharges;
+    
+    console.log(`✅ [RECALCULO] Saldo calculado:`, {
+      saldoManual: `R$ ${manualBalance.toFixed(2)}`,
+      totalGastos: `R$ ${totalCharges.toFixed(2)}`,
+      saldoAtual: `R$ ${currentBalance.toFixed(2)}`,
+      ehNegativo: currentBalance < 0
+    });
+    
+    return currentBalance;
+    
+  } catch (error) {
+    console.error(`❌ [RECALCULO] Erro no recálculo:`, error);
+    throw error;
+  }
+}
+
+// Função para buscar saldo e modelo de cobrança da Meta API com lógica manual
+export async function fetchMetaBalance(accountId: string, accessToken: string, supabase: any) {
+  const startTime = Date.now();
+  console.log(`💰 [META-API] Iniciando busca de saldo para conta ${accountId}`);
+  
+  try {
+    // 1. PRIMEIRO: Verificar se existe saldo manual definido
+    console.log(`🔍 [META-API] Verificando saldo manual no banco para conta ${accountId}`);
+    
+    const { data: accountData, error: accountError } = await supabase
+      .from("client_accounts")
+      .select("saldo_restante, balance_set_at, is_prepay_account")
+      .eq("account_id", accountId)
+      .eq("platform", "meta")
+      .single();
+
+    if (accountError) {
+      console.log(`⚠️ [META-API] Erro ao buscar dados da conta: ${accountError.message}`);
+    }
+
+    // 2. Se existe saldo manual e timestamp, usar lógica de recálculo
+    if (accountData?.balance_set_at && accountData.saldo_restante !== null) {
+      console.log(`🎯 [META-API] Saldo manual encontrado: R$ ${accountData.saldo_restante} definido em ${accountData.balance_set_at}`);
+      
+      try {
+        const recalculatedBalance = await recalculateBalanceFromManual(
+          accountId, 
+          accessToken, 
+          accountData.saldo_restante, 
+          accountData.balance_set_at
+        );
+        
+        const totalTime = Date.now() - startTime;
+        console.log(`✅ [META-API] SALDO MANUAL - Recálculo concluído (${totalTime}ms)`);
+        
+        return {
+          saldo_restante: recalculatedBalance,
+          is_prepay_account: true, // Assume pré-pago quando há saldo manual
+          funding_detected: true,
+          last_funding_date: accountData.balance_set_at,
+          charges_since_funding: accountData.saldo_restante - recalculatedBalance
+        };
+      } catch (error) {
+        console.error(`❌ [META-API] Erro no recálculo, usando saldo manual original: ${error.message}`);
+        
+        return {
+          saldo_restante: accountData.saldo_restante,
+          is_prepay_account: true,
+          funding_detected: true,
+          last_funding_date: accountData.balance_set_at,
+          charges_since_funding: 0
+        };
+      }
+    }
+
+    // 3. FALLBACK: Se não há saldo manual, usar lógica de API Meta básica
+    console.log(`🔄 [META-API] Sem saldo manual, usando API Meta para conta ${accountId}`);
+    
     const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,balance,currency,expired_funding_source_details,is_prepay_account,spend_cap,amount_spent&access_token=${accessToken}`;
-    console.log(`📞 [META-API] Chamando Meta API para dados básicos da conta ${accountId}`);
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
@@ -347,39 +467,32 @@ export async function fetchMetaBalance(accountId: string, accessToken: string) {
         responseTime: `${basicDataTime}ms`
       });
       
-      // FALLBACK PARA LÓGICA ANTIGA EM CASO DE ERRO
-      console.log(`🔄 [META-API] Usando fallback - retornando dados básicos`);
-      return { saldo_restante: null, is_prepay_account: null, funding_detected: false };
+      return { saldo_restante: null, is_prepay_account: false, funding_detected: false };
     }
 
     const data = await response.json();
-    console.log(`✅ [META-API] Dados básicos obtidos:`, {
-      accountId,
-      responseTime: `${basicDataTime}ms`,
+    console.log(`✅ [META-API] Dados básicos obtidos (${basicDataTime}ms):`, {
       accountName: data.name,
       isPrepayAccount: data.is_prepay_account,
       currency: data.currency
     });
     
-    // 2. Se já é pré-pago, usar lógica atual (SEM ACTIVITIES API)
+    // 4. Se é pré-pago, extrair saldo da API
     if (data.is_prepay_account) {
-      console.log(`🏦 [META-API] Conta já identificada como PRÉ-PAGA, usando lógica ORIGINAL`);
+      console.log(`🏦 [META-API] Conta PRÉ-PAGA - extraindo saldo da API`);
       
       let saldo_restante = null;
       
-      // Extrair saldo primeiro do expired_funding_source_details, depois do balance
+      // Extrair saldo do expired_funding_source_details ou balance
       if (data.expired_funding_source_details?.display_string) {
-        console.log(`💰 [META-API] Processando display_string: ${data.expired_funding_source_details.display_string}`);
-        
         const match = data.expired_funding_source_details.display_string.match(/R\$\s*([\d.,]+)/);
         if (match && match[1]) {
           saldo_restante = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
-          console.log(`💰 [META-API] Saldo extraído do display_string: R$ ${saldo_restante.toFixed(2)}`);
+          console.log(`💰 [META-API] Saldo extraído: R$ ${saldo_restante.toFixed(2)}`);
         }
       } else if (data.balance) {
-        // Fallback para balance direto (em centavos USD, convertendo para BRL)
-        saldo_restante = parseFloat(data.balance) / 100 * 5.5;
-        console.log(`💰 [META-API] Saldo extraído do balance field: ${data.balance} centavos USD = R$ ${saldo_restante.toFixed(2)}`);
+        saldo_restante = parseFloat(data.balance) / 100 * 5.5; // Conversão USD para BRL
+        console.log(`💰 [META-API] Saldo do balance: R$ ${saldo_restante.toFixed(2)}`);
       }
       
       return { 
@@ -391,62 +504,11 @@ export async function fetchMetaBalance(accountId: string, accessToken: string) {
       };
     }
     
-    // 3. Se não é pré-pago, tentar activities API com fallback robusto
-    console.log(`🔍 [META-API] Conta marcada como PÓS-PAGA, tentando Activities API...`);
-    
-    try {
-      const activitiesStartTime = Date.now();
-      const activities = await fetchAccountActivities(accountId, accessToken);
-      const activitiesTime = Date.now() - activitiesStartTime;
-      
-      console.log(`✅ [META-API] Activities API respondeu em ${activitiesTime}ms com ${activities.length} activities`);
-      
-      // Verificar se houve funding events
-      const fundingEvents = activities.filter(activity => 
-        activity.event_type === 'funding_event_successful'
-      );
-      
-      if (fundingEvents.length > 0) {
-        console.log(`🎯 [META-API] FUNDING DETECTADO! Conta É pré-paga (${fundingEvents.length} eventos de funding)`);
-        
-        // Calcular saldo baseado nas activities
-        const balanceCalculation = calculateBalanceFromActivities(activities);
-        
-        if (balanceCalculation) {
-          const totalTime = Date.now() - startTime;
-          console.log(`✅ [META-API] CORREÇÃO APLICADA - Conta reclassificada como PRÉ-PAGA:`, {
-            originalClassification: 'PÓS-PAGO',
-            newClassification: 'PRÉ-PAGO',
-            totalTime: `${totalTime}ms`,
-            ...balanceCalculation
-          });
-          
-          return {
-            saldo_restante: balanceCalculation.saldo_restante,
-            is_prepay_account: true, // CORREÇÃO baseada em evidências
-            funding_detected: true,
-            last_funding_date: balanceCalculation.last_funding_date,
-            charges_since_funding: balanceCalculation.charges_since_funding
-          };
-        } else {
-          console.log(`⚠️ [META-API] Falha no cálculo de saldo, usando fallback pós-pago`);
-        }
-      } else {
-        console.log(`🏦 [META-API] Nenhum funding detectado nas activities`);
-      }
-      
-    } catch (activitiesError) {
-      console.error(`❌ [META-API] ERRO na Activities API (usando fallback):`, {
-        error: activitiesError.message,
-        accountId
-      });
-    }
-    
-    // 4. Fallback final - manter como pós-pago
-    console.log(`🏦 [META-API] Fallback: mantendo como PÓS-PAGO`);
+    // 5. Conta pós-paga - sem saldo disponível
+    console.log(`🏦 [META-API] Conta PÓS-PAGA - saldo não disponível`);
     
     const totalTime = Date.now() - startTime;
-    console.log(`✅ [META-API] Classificação final: PÓS-PAGO (${totalTime}ms)`);
+    console.log(`✅ [META-API] Processamento concluído (${totalTime}ms)`);
     
     return { 
       saldo_restante: null, 
@@ -464,11 +526,9 @@ export async function fetchMetaBalance(accountId: string, accessToken: string) {
       responseTime: `${responseTime}ms`
     });
     
-    // FALLBACK FINAL EM CASO DE ERRO CRÍTICO
-    console.log(`🔄 [META-API] FALLBACK CRÍTICO - retornando null para forçar lógica antiga`);
     return { 
       saldo_restante: null, 
-      is_prepay_account: null,
+      is_prepay_account: false,
       funding_detected: false,
       last_funding_date: null,
       charges_since_funding: 0
