@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { handleCors } from "./cors.ts";
-import { formatResponse } from "./response-formatter.ts";
+import { formatResponse, formatErrorResponse } from "./response.ts";
 import { processIndividualReview } from "./individual.ts";
 import { processBatchReview } from "./batch.ts";
 import { processAccountHealth } from "./account-health.ts";
@@ -22,19 +22,19 @@ serve(async (req: Request) => {
   try {
     // Validar método HTTP
     if (req.method !== 'POST') {
-      return formatResponse(405, { success: false, error: "Método não permitido" });
+      return formatErrorResponse("Método não permitido", 405);
     }
 
     // Validar Content-Type
     const contentType = req.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-      return formatResponse(400, { success: false, error: "Content-Type deve ser application/json" });
+      return formatErrorResponse("Content-Type deve ser application/json", 400);
     }
 
     // Validar tamanho do body
     const body = await req.text();
     if (body.length > 50000) { // 50KB limit para suportar batch
-      return formatResponse(413, { success: false, error: "Payload muito grande" });
+      return formatErrorResponse("Payload muito grande", 413);
     }
 
     // Validar JSON
@@ -42,7 +42,7 @@ serve(async (req: Request) => {
     try {
       payload = JSON.parse(body);
     } catch (error) {
-      return formatResponse(400, { success: false, error: "JSON inválido" });
+      return formatErrorResponse("JSON inválido", 400);
     }
 
     // Detectar tipo de requisição
@@ -78,14 +78,14 @@ serve(async (req: Request) => {
       result = await processBatchReview(payload as BatchReviewRequest);
     } else {
       console.error(`❌ [UNIFIED-REVIEW] Tipo de requisição não identificado`);
-      return formatResponse(400, { success: false, error: "Parâmetros inválidos" });
+      return formatErrorResponse("Parâmetros inválidos", 400);
     }
     
     if (!result.success) {
-      return formatResponse(500, result);
+      return formatErrorResponse(result.error || "Erro no processamento", 500);
     }
 
-    return formatResponse(200, result);
+    return formatResponse(result);
   } catch (error) {
     console.error("❌ [UNIFIED-REVIEW] Erro na função:", error.message);
     
@@ -98,6 +98,6 @@ serve(async (req: Request) => {
       method: req.method
     });
     
-    return formatResponse(500, { success: false, error: "Erro interno do servidor" });
+    return formatErrorResponse("Erro interno do servidor", 500);
   }
 });
