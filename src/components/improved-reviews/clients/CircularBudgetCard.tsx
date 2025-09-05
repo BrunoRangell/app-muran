@@ -43,6 +43,25 @@ export function CircularBudgetCard({
     closeModal: closeBalanceModal, 
     setBalance 
   } = useManualBalance();
+
+  // Verificar se deve mostrar o botão de definir saldo manual
+  const shouldShowManualBalanceButton = () => {
+    // Só para Meta Ads
+    if (platform !== "meta") return false;
+    
+    // Só mostrar para contas não pré-pagas
+    if (client.balance_info?.billing_model === "pre") return false;
+    
+    // Verificar se tem funding detectado nos últimos 60 dias
+    const lastFundingDetectedAt = client.last_funding_detected_at;
+    if (!lastFundingDetectedAt) return false;
+    
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const fundingDate = new Date(lastFundingDetectedAt);
+    
+    return fundingDate >= sixtyDaysAgo;
+  };
   const {
     reviewClient,
     processingIds
@@ -418,28 +437,30 @@ export function CircularBudgetCard({
                  </div>
                )}
                
-               {/* Botão para definir saldo manual */}
-               <div className="mt-3 pt-2 border-t border-blue-200">
-                 <Button
-                   size="sm"
-                   variant="outline"
-                   onClick={() => openBalanceModal(client.id, accountInfo.id)}
-                   disabled={isBalanceLoading}
-                   className="w-full text-xs bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800"
-                 >
-                   {isBalanceLoading ? (
-                     <>
-                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                       Salvando...
-                     </>
-                   ) : (
-                     <>
-                       <BadgeDollarSign className="h-3 w-3 mr-1" />
-                       Definir saldo atual
-                     </>
-                   )}
-                 </Button>
-               </div>
+                {/* Botão para definir saldo manual - apenas para contas não pré-pagas com funding recente */}
+                {shouldShowManualBalanceButton() && (
+                  <div className="mt-3 pt-2 border-t border-blue-200">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openBalanceModal(client.id, accountInfo.id)}
+                      disabled={isBalanceLoading}
+                      className="w-full text-xs bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800"
+                    >
+                      {isBalanceLoading ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <BadgeDollarSign className="h-3 w-3 mr-1" />
+                          Definir saldo atual
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
              </div>
            )}
 

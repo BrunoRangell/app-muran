@@ -289,6 +289,7 @@ export type Database = {
           id: string
           is_prepay_account: boolean | null
           is_primary: boolean
+          last_funding_detected_at: string | null
           platform: string
           saldo_restante: number | null
           status: string
@@ -304,6 +305,7 @@ export type Database = {
           id?: string
           is_prepay_account?: boolean | null
           is_primary?: boolean
+          last_funding_detected_at?: string | null
           platform: string
           saldo_restante?: number | null
           status?: string
@@ -319,6 +321,7 @@ export type Database = {
           id?: string
           is_prepay_account?: boolean | null
           is_primary?: boolean
+          last_funding_detected_at?: string | null
           platform?: string
           saldo_restante?: number | null
           status?: string

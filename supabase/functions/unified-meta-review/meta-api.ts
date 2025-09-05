@@ -536,6 +536,99 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
   }
 }
 
+// Função para buscar informações básicas da conta (incluindo funding check)
+export async function fetchAccountBasicInfo(accountId: string, accessToken: string) {
+  const startTime = Date.now();
+  
+  try {
+    console.log(`🔍 [META-API] Buscando info da conta ${accountId}`);
+    
+    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,balance,currency,expired_funding_source_details,is_prepay_account,spend_cap,amount_spent&access_token=${accessToken}`;
+    
+    const response = await fetch(accountUrl);
+    const basicDataTime = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`❌ [META-API] ERRO na API para conta ${accountId}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData,
+        responseTime: `${basicDataTime}ms`
+      });
+      
+      return { accountName: null, isPrepayAccount: false, currency: "BRL", hasFundingRecent: false };
+    }
+
+    const data = await response.json();
+    
+    // Determinar se é pré-paga
+    const isPrepayAccount = data.is_prepay_account === true || 
+                          (data.balance && data.balance !== 'None') ||
+                          (data.spend_cap && data.amount_spent !== undefined);
+
+    console.log(`🏦 [META-API] Conta ${isPrepayAccount ? 'PRÉ-PAGA' : 'PÓS-PAGA'} - extraindo saldo da API`);
+
+    // Verificar funding events dos últimos 60 dias para contas não pré-pagas
+    let hasFundingRecent = false;
+    if (!isPrepayAccount) {
+      try {
+        console.log(`🔍 [META-API] Verificando funding events dos últimos 60 dias para conta ${accountId}`);
+        
+        const fundingResponse = await fetch(
+          `https://graph.facebook.com/v21.0/act_${accountId}/funding_source_details?fields=display_string,type,id&access_token=${accessToken}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+
+        if (fundingResponse.ok) {
+          const fundingData = await fundingResponse.json();
+          console.log(`📊 [META-API] Funding response obtida (${Date.now() - startTime}ms)`);
+          
+          // Verificar se há funding_event_successful recente
+          if (fundingData.data && fundingData.data.length > 0) {
+            for (const funding of fundingData.data) {
+              if (funding.display_string && funding.display_string.includes('funding_event_successful')) {
+                hasFundingRecent = true;
+                console.log(`✅ [META-API] Funding event successful detectado para conta ${accountId}`);
+                break;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.log(`⚠️ [META-API] Erro ao verificar funding events: ${error.message}`);
+      }
+    }
+
+    // Log o resultado final
+    console.log(`✅ [META-API] Dados básicos obtidos (${basicDataTime}ms):`, {
+      accountName: data.name,
+      isPrepayAccount: isPrepayAccount,
+      currency: data.currency,
+      hasFundingRecent: hasFundingRecent
+    });
+
+    return {
+      accountName: data.name,
+      isPrepayAccount: isPrepayAccount,
+      currency: data.currency,
+      hasFundingRecent: hasFundingRecent
+    };
+
+  } catch (error) {
+    const totalTime = Date.now() - startTime;
+    console.error(`❌ [META-API] ERRO na busca de dados básicos:`, {
+      error: error.message,
+      stack: error.stack,
+      totalTime: `${totalTime}ms`
+    });
+    return { accountName: null, isPrepayAccount: false, currency: "BRL", hasFundingRecent: false };
+  }
+}
+
 // Função para buscar dados reais da Meta Graph API
 export async function fetchMetaApiData(accountId: string, accessToken: string, customBudget: any) {
   const totalStartTime = Date.now();
