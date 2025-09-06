@@ -569,34 +569,22 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
 
     console.log(`🏦 [META-API] Conta ${isPrepayAccount ? 'PRÉ-PAGA' : 'PÓS-PAGA'} - extraindo saldo da API`);
 
-    // Verificar funding events dos últimos 60 dias para contas não pré-pagas
+    // Verificar funding events dos últimos 60 dias para contas não pré-pagas usando activities
     let hasFundingRecent = false;
     if (!isPrepayAccount) {
       try {
         console.log(`🔍 [META-API] Verificando funding events dos últimos 60 dias para conta ${accountId}`);
         
-        const fundingResponse = await fetch(
-          `https://graph.facebook.com/v21.0/act_${accountId}/funding_source_details?fields=display_string,type,id&access_token=${accessToken}`,
-          {
-            method: "GET",
-            headers: { "Content-Type": "application/json" }
-          }
-        );
-
-        if (fundingResponse.ok) {
-          const fundingData = await fundingResponse.json();
-          console.log(`📊 [META-API] Funding response obtida (${Date.now() - startTime}ms)`);
-          
-          // Verificar se há funding_event_successful recente
-          if (fundingData.data && fundingData.data.length > 0) {
-            for (const funding of fundingData.data) {
-              if (funding.display_string && funding.display_string.includes('funding_event_successful')) {
-                hasFundingRecent = true;
-                console.log(`✅ [META-API] Funding event successful detectado para conta ${accountId}`);
-                break;
-              }
-            }
-          }
+        // Usar fetchAccountActivities que já tem a lógica correta
+        const activities = await fetchAccountActivities(accountId, accessToken);
+        
+        // Verificar se há alguma activity com funding_event_successful
+        hasFundingRecent = activities.some(activity => activity.event_type === 'funding_event_successful');
+        
+        if (hasFundingRecent) {
+          console.log(`✅ [META-API] Funding event successful detectado nos últimos 60 dias para conta ${accountId}`);
+        } else {
+          console.log(`ℹ️ [META-API] Nenhum funding event successful nos últimos 60 dias para conta ${accountId}`);
         }
       } catch (error) {
         console.log(`⚠️ [META-API] Erro ao verificar funding events: ${error.message}`);
