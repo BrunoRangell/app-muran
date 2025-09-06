@@ -109,14 +109,15 @@ async function fetchAccountActivities(
   console.log(`🔍 [META-ACTIVITIES] Buscando activities para conta ${accountId} (${since} até ${until})`);
   
   try {
-    const activitiesUrl = `https://graph.facebook.com/v22.0/act_${accountId}/activities?since=${since}&until=${until}&fields=event_type,translated_event_type,event_time,extra_data&access_token=${accessToken}&limit=1000`;
+    // Incluir TODOS os campos conforme exemplo do usuário
+    const activitiesUrl = `https://graph.facebook.com/v22.0/act_${accountId}/activities?since=${since}&until=${until}&fields=event_type,translated_event_type,event_time,date_time_in_timezone,extra_data,object_type,object_name,actor_name&access_token=${accessToken}&limit=1000`;
     
-    // Timeout específico para activities API (5 segundos)
+    // Aumentar timeout para 10 segundos
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log(`⏰ [META-ACTIVITIES] Timeout na Activities API após 5s para conta ${accountId}`);
+      console.log(`⏰ [META-ACTIVITIES] Timeout na Activities API após 10s para conta ${accountId}`);
       controller.abort();
-    }, 5000);
+    }, 10000);
     
     const response = await fetch(activitiesUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -142,23 +143,31 @@ async function fetchAccountActivities(
       throw new Error('Invalid activities response structure');
     }
     
-    // Filtrar apenas eventos relevantes
-    const relevantActivities = activities.filter(activity => {
-      if (!activity || !activity.event_type) return false;
-      return activity.event_type === 'funding_event_successful' || 
-             activity.event_type === 'ad_account_billing_charge';
-    });
+    // Log detalhado para debug
+    console.log(`📊 [META-ACTIVITIES] Activities obtidas: ${activities.length} registros para conta ${accountId}`);
     
-    console.log(`✅ [META-ACTIVITIES] Activities obtidas:`, {
-      accountId,
-      responseTime: `${responseTime}ms`,
-      totalActivities: activities.length,
-      relevantActivities: relevantActivities.length,
-      fundingEvents: relevantActivities.filter(a => a.event_type === 'funding_event_successful').length,
-      billingEvents: relevantActivities.filter(a => a.event_type === 'ad_account_billing_charge').length
-    });
+    if (activities.length > 0) {
+      // Mostrar primeiras 3 activities para debug
+      console.log(`📋 [META-ACTIVITIES] Primeiras 3 activities:`, JSON.stringify(activities.slice(0, 3), null, 2));
+      
+      // Contar e mostrar funding_event_successful especificamente
+      const fundingEvents = activities.filter(activity => activity.event_type === 'funding_event_successful');
+      console.log(`💰 [META-ACTIVITIES] Funding events encontrados: ${fundingEvents.length}`);
+      
+      if (fundingEvents.length > 0) {
+        console.log(`💰 [META-ACTIVITIES] Primeiro funding event:`, JSON.stringify(fundingEvents[0], null, 2));
+      }
+      
+      // Mostrar tipos de eventos únicos
+      const uniqueEventTypes = [...new Set(activities.map(a => a.event_type))];
+      console.log(`📋 [META-ACTIVITIES] Tipos de eventos encontrados:`, uniqueEventTypes);
+    }
     
-    return relevantActivities;
+    // Retornar TODAS as activities - não filtrar aqui
+    // O filtro específico será feito na função que chama esta
+    console.log(`✅ [META-ACTIVITIES] Retornando ${activities.length} activities (sem filtro) em ${responseTime}ms`);
+    
+    return activities;
     
   } catch (error) {
     const responseTime = Date.now() - startTime;
@@ -573,22 +582,33 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
     let hasFundingRecent = false;
     if (!isPrepayAccount) {
       try {
-        console.log(`🔍 [META-API] Verificando funding events dos últimos 60 dias para conta ${accountId}`);
+        console.log(`🔍 [META-API] Verificando funding events dos últimos 60 dias para conta não pré-paga ${accountId}`);
         
-        // Usar fetchAccountActivities que já tem a lógica correta
+        // Usar fetchAccountActivities que agora retorna todas as activities
         const activities = await fetchAccountActivities(accountId, accessToken);
         
+        console.log(`📊 [META-API] Total de activities recebidas: ${activities.length} para conta ${accountId}`);
+        
         // Verificar se há alguma activity com funding_event_successful
-        hasFundingRecent = activities.some(activity => activity.event_type === 'funding_event_successful');
+        const fundingEvents = activities.filter(activity => activity.event_type === 'funding_event_successful');
+        hasFundingRecent = fundingEvents.length > 0;
         
         if (hasFundingRecent) {
-          console.log(`✅ [META-API] Funding event successful detectado nos últimos 60 dias para conta ${accountId}`);
+          console.log(`✅ [META-API] ${fundingEvents.length} funding event(s) successful detectado(s) nos últimos 60 dias para conta ${accountId}`);
+          console.log(`💰 [META-API] Primeiro funding event:`, JSON.stringify(fundingEvents[0], null, 2));
         } else {
           console.log(`ℹ️ [META-API] Nenhum funding event successful nos últimos 60 dias para conta ${accountId}`);
+          
+          // Mostrar tipos de eventos disponíveis para debug
+          const eventTypes = [...new Set(activities.map(a => a.event_type))];
+          console.log(`📋 [META-API] Tipos de eventos disponíveis:`, eventTypes);
         }
       } catch (error) {
         console.log(`⚠️ [META-API] Erro ao verificar funding events: ${error.message}`);
+        hasFundingRecent = false; // Garantir que seja false em caso de erro
       }
+    } else {
+      console.log(`🏦 [META-API] Conta pré-paga ${accountId} - pulando verificação de funding events`);
     }
 
     // Log o resultado final
