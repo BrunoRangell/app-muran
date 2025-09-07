@@ -11,6 +11,7 @@ import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useRealTimeDataService } from "../services/realTimeDataService";
 import { useTodayReviewsCheck } from "../hooks/useTodayReviewsCheck";
 import { AlertTriangle } from "lucide-react";
+import { TestFundingDetection } from "@/components/debug/TestFundingDetection";
 
 interface MetaAdsTabProps {
   onRefreshCompleted?: () => void;
@@ -123,6 +124,8 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         platform="meta"
         onCancelBatchProcessing={cancelBatchProcessing}
       />
+      
+      <TestFundingDetection />
       
       <FilterBar 
         searchQuery={searchQuery}

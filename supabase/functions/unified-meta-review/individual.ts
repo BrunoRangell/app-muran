@@ -163,7 +163,9 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     // Se detectou funding recente em conta não pré-paga, atualizar timestamp
     if (!balanceData.is_prepay_account && basicAccountInfo.hasFundingRecent) {
       updateData.last_funding_detected_at = new Date().toISOString();
-      console.log(`📊 [DATABASE] Atualizando last_funding_detected_at para conta ${metaAccount.id}`);
+      console.log(`✅ [DATABASE] FUNDING DETECTADO! Atualizando last_funding_detected_at para conta ${metaAccount.id}`);
+    } else {
+      console.log(`ℹ️ [DATABASE] Sem funding detectado - is_prepay_account: ${balanceData.is_prepay_account}, hasFundingRecent: ${basicAccountInfo.hasFundingRecent}`);
     }
 
     const { error: updateAccountError } = await supabase

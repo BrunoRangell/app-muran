@@ -589,20 +589,29 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
         
         console.log(`📊 [META-API] Total de activities recebidas: ${activities.length} para conta ${accountId}`);
         
-        // Verificar se há alguma activity com funding_event_successful
-        const fundingEvents = activities.filter(activity => activity.event_type === 'funding_event_successful');
-        hasFundingRecent = fundingEvents.length > 0;
-        
-        if (hasFundingRecent) {
-          console.log(`✅ [META-API] ${fundingEvents.length} funding event(s) successful detectado(s) nos últimos 60 dias para conta ${accountId}`);
-          console.log(`💰 [META-API] Primeiro funding event:`, JSON.stringify(fundingEvents[0], null, 2));
-        } else {
-          console.log(`ℹ️ [META-API] Nenhum funding event successful nos últimos 60 dias para conta ${accountId}`);
-          
-          // Mostrar tipos de eventos disponíveis para debug
-          const eventTypes = [...new Set(activities.map(a => a.event_type))];
-          console.log(`📋 [META-API] Tipos de eventos disponíveis:`, eventTypes);
-        }
+    // Debug detalhado das activities
+    console.log(`🔍 [META-API] Primeiras 3 activities para análise:`, JSON.stringify(activities.slice(0, 3), null, 2));
+    
+    // Verificar se há alguma activity com funding_event_successful
+    const fundingEvents = activities.filter(activity => activity.event_type === 'funding_event_successful');
+    hasFundingRecent = fundingEvents.length > 0;
+    
+    if (hasFundingRecent) {
+      console.log(`✅ [META-API] ${fundingEvents.length} funding event(s) successful detectado(s) nos últimos 60 dias para conta ${accountId}`);
+      console.log(`💰 [META-API] Primeiro funding event:`, JSON.stringify(fundingEvents[0], null, 2));
+    } else {
+      console.log(`ℹ️ [META-API] Nenhum funding event successful nos últimos 60 dias para conta ${accountId}`);
+      
+      // Mostrar tipos de eventos disponíveis para debug
+      const eventTypes = [...new Set(activities.map(a => a.event_type))];
+      console.log(`📋 [META-API] Tipos de eventos disponíveis:`, eventTypes);
+      
+      // Mostrar algumas activities para verificar formato
+      if (activities.length > 0) {
+        console.log(`📄 [META-API] Primeira activity completa:`, JSON.stringify(activities[0], null, 2));
+        console.log(`📄 [META-API] Event types encontrados: ${eventTypes.join(', ')}`);
+      }
+    }
       } catch (error) {
         console.log(`⚠️ [META-API] Erro ao verificar funding events: ${error.message}`);
         hasFundingRecent = false; // Garantir que seja false em caso de erro
