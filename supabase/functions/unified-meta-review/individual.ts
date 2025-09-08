@@ -172,6 +172,8 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       console.log(`ℹ️ [DATABASE] Sem funding detectado - is_prepay_account: ${balanceData.is_prepay_account}, lastFundingDate: ${basicAccountInfo.lastFundingDate}`);
     }
 
+    console.log('📦 [DATABASE] Dados preparados para atualização em client_accounts:', updateData);
+
     const { error: updateAccountError } = await supabase
       .from('client_accounts')
       .update(updateData)
