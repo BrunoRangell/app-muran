@@ -54,7 +54,7 @@ export function useUnifiedReviewsData() {
       // Buscar contas Meta da tabela unificada client_accounts
       const { data: metaAccounts, error: accountsError } = await supabase
         .from("client_accounts")
-        .select("*, last_funding_detected_at")
+        .select("*, last_funding_detected_at, last_funding_amount")
         .eq("status", "active")
         .eq("platform", "meta")
         .order("client_id")
@@ -333,7 +333,8 @@ export function useUnifiedReviewsData() {
                meta_daily_budget: review?.daily_budget_current || 0,
                balance_info: balanceInfo || null,
                veiculationStatus: veiculationStatus,
-               last_funding_detected_at: account.last_funding_detected_at
+               last_funding_detected_at: account.last_funding_detected_at,
+               last_funding_amount: account.last_funding_amount
              };
             
             console.log(`📝 Cliente processado: ${client.company_name} (${account.account_name})`, {

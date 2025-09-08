@@ -92,7 +92,8 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     console.log(`✅ [INDIVIDUAL] Informações básicas obtidas (${basicInfoTime}ms):`, {
       accountName: basicAccountInfo.accountName,
       isPrepayAccount: basicAccountInfo.isPrepayAccount,
-      hasFundingRecent: basicAccountInfo.hasFundingRecent
+      lastFundingDate: basicAccountInfo.lastFundingDate,
+      lastFundingAmount: basicAccountInfo.lastFundingAmount
     });
 
     // 6. Buscar dados da Meta API
@@ -160,12 +161,15 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       updated_at: new Date().toISOString()
     };
 
-    // Se detectou funding recente em conta não pré-paga, atualizar timestamp
-    if (!balanceData.is_prepay_account && basicAccountInfo.hasFundingRecent) {
-      updateData.last_funding_detected_at = new Date().toISOString();
-      console.log(`✅ [DATABASE] FUNDING DETECTADO! Atualizando last_funding_detected_at para conta ${metaAccount.id}`);
+    // Se detectou funding recente em conta não pré-paga, atualizar timestamp e valor
+    if (!balanceData.is_prepay_account && basicAccountInfo.lastFundingDate) {
+      updateData.last_funding_detected_at = basicAccountInfo.lastFundingDate;
+      if (basicAccountInfo.lastFundingAmount !== null) {
+        updateData.last_funding_amount = basicAccountInfo.lastFundingAmount;
+      }
+      console.log(`✅ [DATABASE] FUNDING DETECTADO! Atualizando dados de funding para conta ${metaAccount.id}`);
     } else {
-      console.log(`ℹ️ [DATABASE] Sem funding detectado - is_prepay_account: ${balanceData.is_prepay_account}, hasFundingRecent: ${basicAccountInfo.hasFundingRecent}`);
+      console.log(`ℹ️ [DATABASE] Sem funding detectado - is_prepay_account: ${balanceData.is_prepay_account}, lastFundingDate: ${basicAccountInfo.lastFundingDate}`);
     }
 
     const { error: updateAccountError } = await supabase
