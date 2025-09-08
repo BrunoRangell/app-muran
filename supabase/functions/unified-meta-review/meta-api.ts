@@ -442,16 +442,14 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
     // 1. PRIMEIRO: Verificar se existe saldo manual definido
     console.log(`🔍 [META-API] Verificando saldo manual no banco para conta ${accountId}`);
     
-    const { data: accountData, error: accountError } = await supabase
+    const { data: accountData, error: accountError, count: accountCount } = await supabase
       .from("client_accounts")
-      .select("saldo_restante, balance_set_at, is_prepay_account")
+      .select("saldo_restante, balance_set_at, is_prepay_account", { count: "exact" })
       .eq("account_id", accountId)
       .eq("platform", "meta")
       .single();
 
-    if (accountError) {
-      console.log(`⚠️ [META-API] Erro ao buscar dados da conta: ${accountError.message}`);
-    }
+    console.log(`📘 [META-API] Resultado da consulta client_accounts:`, { count: accountCount, error: accountError?.message });
 
     // 2. Se existe saldo manual e timestamp, usar lógica de recálculo
     if (accountData?.balance_set_at && accountData.saldo_restante !== null) {
@@ -584,10 +582,12 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
   
   try {
     console.log(`🔍 [META-API] Buscando info da conta ${accountId}`);
-    
+
     const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,balance,currency,expired_funding_source_details,is_prepay_account,spend_cap,amount_spent&access_token=${accessToken}`;
-    
+    console.log(`🌐 [META-API] URL final: ${accountUrl.replace(accessToken, '[TOKEN]')}`);
+
     const response = await fetch(accountUrl);
+    console.log(`📡 [META-API] Status da resposta: ${response.status}`);
     const basicDataTime = Date.now() - startTime;
     
     if (!response.ok) {
@@ -630,6 +630,8 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
         const fundingEvents = activities
           .filter(activity => activity.event_type === 'funding_event_successful')
           .sort((a, b) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime());
+
+        console.log(`💰 [META-API] Total de funding_event_successful: ${fundingEvents.length}`);
 
         if (fundingEvents.length > 0) {
           const latestFunding = fundingEvents[0];

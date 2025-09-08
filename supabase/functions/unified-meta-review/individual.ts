@@ -154,7 +154,11 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     
     // 10. Atualizar saldo e modelo de cobrança na tabela client_accounts
     console.log(`🔄 [DATABASE] Atualizando saldo e modelo de cobrança em client_accounts para conta ${metaAccount.id}`);
-    
+    console.log('🔎 [DATABASE] Dados de funding antes do update:', {
+      lastFundingDate: basicAccountInfo.lastFundingDate,
+      lastFundingAmount: basicAccountInfo.lastFundingAmount
+    });
+
     const updateData: any = {
       saldo_restante: balanceData.saldo_restante,
       is_prepay_account: balanceData.is_prepay_account,
@@ -174,15 +178,40 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
 
     console.log('📦 [DATABASE] Dados preparados para atualização em client_accounts:', updateData);
 
-    const { error: updateAccountError } = await supabase
+    const { error: updateAccountError, count: updateCount } = await supabase
       .from('client_accounts')
       .update(updateData)
-      .eq('id', metaAccount.id);
+      .eq('id', metaAccount.id)
+      .select('id', { count: 'exact' });
 
     if (updateAccountError) {
-      console.error('❌ [DATABASE] Erro ao atualizar client_accounts:', updateAccountError);
+      console.error('❌ [DATABASE] Erro ao atualizar client_accounts:', {
+        error: updateAccountError,
+        count: updateCount
+      });
     } else {
-      console.log('✅ [DATABASE] Saldo e modelo de cobrança atualizados em client_accounts');
+      console.log('✅ [DATABASE] Saldo e modelo de cobrança atualizados em client_accounts:', {
+        count: updateCount
+      });
+    }
+
+    const { data: verifyData, error: verifyError, count: verifyCount } = await supabase
+      .from('client_accounts')
+      .select('last_funding_detected_at,last_funding_amount', { count: 'exact' })
+      .eq('id', metaAccount.id)
+      .single();
+
+    if (verifyError) {
+      console.error('❌ [DATABASE] Erro ao verificar client_accounts após update:', {
+        error: verifyError,
+        count: verifyCount
+      });
+    } else {
+      console.log('📥 [DATABASE] Registro após update:', {
+        last_funding_detected_at: verifyData.last_funding_detected_at,
+        last_funding_amount: verifyData.last_funding_amount,
+        count: verifyCount
+      });
     }
 
     // 11. Atualizar campaign health (executa de forma assíncrona)
