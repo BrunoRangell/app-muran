@@ -125,14 +125,10 @@ export const invokeEdgeFunction = async (
       throw new Error("Cliente não possui ID de conta Meta Ads configurado. Configure o ID na página de clientes.");
     }
     
-    // Preparar payload completo com todos os dados necessários
+    // Preparar payload no formato esperado pela unified-meta-review
     const requestPayload = { 
-      method: "getMetaAdsData", 
       clientId,
-      reviewDate: formattedDate,
-      clientName: clientData.company_name,
-      metaAccountId: metaAccount.account_id,
-      fetchRealData: true
+      reviewDate: formattedDate
     };
     
     console.log("Enviando payload para função Edge:", JSON.stringify(requestPayload, null, 2));
