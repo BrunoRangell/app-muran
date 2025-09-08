@@ -9,9 +9,9 @@ export const TestFundingDetection = () => {
   const [selectedClient, setSelectedClient] = useState<string>("");
 
   const testClients = [
-    { id: "da408e44-2647-48b3-83b3-9d6b9c4db4ab", name: "Juliana Lenz", accountId: "act_258374395797980" },
-    { id: "61d79fd1-c6ff-4bb8-b62e-a35b1c46f9fe", name: "Megha Imóveis", accountId: "act_473892373733066" },
-    { id: "e87c2e15-3c09-4ba4-8b84-da8e9f9f8b3c", name: "Dresscode", accountId: "act_486542642469508" }
+    { id: "da408e44-2647-48b3-83b3-9d6b9c4db4ab", name: "Juliana Lenz", accountId: "119320193393335" },
+    { id: "61d79fd1-c6ff-4bb8-b62e-a35b1c46f9fe", name: "Megha Imóveis", accountId: "192612319156232" },
+    { id: "75dfa42f-762a-4413-ad2e-06b2ac4ef0c0", name: "Ana Cruz", accountId: "674442204274854" }
   ];
 
   const handleTestReview = async (clientId: string, clientName: string) => {
