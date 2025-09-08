@@ -8,7 +8,7 @@ import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/components/IgnoreWarningDialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
@@ -34,6 +34,13 @@ export function CircularBudgetCard({
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
+
+  useEffect(() => {
+    console.log('CircularBudgetCard mounted/updated:', {
+      last_funding_detected_at: client.last_funding_detected_at,
+      last_funding_amount: client.last_funding_amount,
+    });
+  }, [client.last_funding_detected_at, client.last_funding_amount]);
   
   // Hook para saldo manual
   const { 
@@ -169,9 +176,17 @@ export function CircularBudgetCard({
   };
   const handleReviewClick = async () => {
     console.log(`🔍 Iniciando revisão individual para cliente ${client.company_name} (${platform})`);
+    console.log('Antes de reviewClient:', {
+      last_funding_detected_at: client.last_funding_detected_at,
+      last_funding_amount: client.last_funding_amount,
+    });
     try {
       const accountId = platform === "meta" ? client.meta_account_id : client.google_account_id;
       await reviewClient(client.id, accountId);
+      console.log('Depois de reviewClient:', {
+        last_funding_detected_at: client.last_funding_detected_at,
+        last_funding_amount: client.last_funding_amount,
+      });
       console.log(`✅ Revisão do cliente ${client.company_name} concluída com sucesso`);
     } catch (error: any) {
       console.error(`❌ Erro na revisão do cliente ${client.company_name}:`, error);
