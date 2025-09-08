@@ -89,7 +89,7 @@ export function filterActiveAdsets(adsets: any[], now: Date, campaignId: string 
   return activeAdsets;
 }
 
-// Função para buscar atividades da conta Meta (período personalizável)
+// Função para buscar atividades da conta Meta (período personalizável) com paginação
 async function fetchAccountActivities(
   accountId: string, 
   accessToken: string, 
@@ -109,65 +109,98 @@ async function fetchAccountActivities(
   console.log(`🔍 [META-ACTIVITIES] Buscando activities para conta ${accountId} (${since} até ${until})`);
   
   try {
-    // Incluir TODOS os campos conforme exemplo do usuário
-    const activitiesUrl = `https://graph.facebook.com/v22.0/act_${accountId}/activities?since=${since}&until=${until}&fields=event_type,translated_event_type,event_time,date_time_in_timezone,extra_data,object_type,object_name,actor_name&access_token=${accessToken}&limit=1000`;
+    let allActivities = [];
+    let nextPageCursor = null;
+    let pageCount = 0;
     
-    // Aumentar timeout para 10 segundos
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log(`⏰ [META-ACTIVITIES] Timeout na Activities API após 10s para conta ${accountId}`);
-      controller.abort();
-    }, 10000);
+    do {
+      pageCount++;
+      
+      // Incluir TODOS os campos conforme exemplo do usuário com paginação
+      let activitiesUrl = `https://graph.facebook.com/v22.0/act_${accountId}/activities?since=${since}&until=${until}&fields=event_type,translated_event_type,event_time,date_time_in_timezone,extra_data,object_type,object_name,actor_name&access_token=${accessToken}&limit=100`;
+      
+      if (nextPageCursor) {
+        activitiesUrl += `&after=${nextPageCursor}`;
+      }
+      
+      console.log(`📄 [META-ACTIVITIES] Página ${pageCount} - buscando activities...`);
+      
+      // Aumentar timeout para 15 segundos por página
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log(`⏰ [META-ACTIVITIES] Timeout na Activities API após 15s para conta ${accountId}, página ${pageCount}`);
+        controller.abort();
+      }, 15000);
+      
+      const response = await fetch(activitiesUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Parse error' }));
+        console.error(`❌ [META-ACTIVITIES] ERRO na API para conta ${accountId}, página ${pageCount}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          url: activitiesUrl.replace(accessToken, '[TOKEN]')
+        });
+        throw new Error(`Activities API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const pageActivities = data.data || [];
+      
+      // Validar estrutura das activities
+      if (!Array.isArray(pageActivities)) {
+        console.error(`❌ [META-ACTIVITIES] Resposta inválida para conta ${accountId}, página ${pageCount}:`, data);
+        throw new Error('Invalid activities response structure');
+      }
+      
+      allActivities = allActivities.concat(pageActivities);
+      
+      console.log(`📊 [META-ACTIVITIES] Página ${pageCount}: ${pageActivities.length} activities obtidas (total acumulado: ${allActivities.length})`);
+      
+      // Verificar se há próxima página
+      nextPageCursor = data.paging?.cursors?.after || null;
+      
+      // Log de funding events em cada página
+      const fundingEventsInPage = pageActivities.filter(activity => activity.event_type === 'funding_event_successful');
+      if (fundingEventsInPage.length > 0) {
+        console.log(`💰 [META-ACTIVITIES] Página ${pageCount}: ${fundingEventsInPage.length} funding events encontrados`);
+      }
+      
+      // Limitar a 10 páginas para evitar loops infinitos
+      if (pageCount >= 10) {
+        console.log(`⚠️ [META-ACTIVITIES] Limite de 10 páginas atingido para conta ${accountId}`);
+        break;
+      }
+      
+    } while (nextPageCursor);
     
-    const response = await fetch(activitiesUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
     const responseTime = Date.now() - startTime;
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Parse error' }));
-      console.error(`❌ [META-ACTIVITIES] ERRO na API para conta ${accountId}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData,
-        responseTime: `${responseTime}ms`
-      });
-      throw new Error(`Activities API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const activities = data.data || [];
+    // Log final detalhado
+    console.log(`📊 [META-ACTIVITIES] Busca completa: ${allActivities.length} activities total em ${pageCount} páginas`);
     
-    // Validar estrutura das activities
-    if (!Array.isArray(activities)) {
-      console.error(`❌ [META-ACTIVITIES] Resposta inválida para conta ${accountId}:`, data);
-      throw new Error('Invalid activities response structure');
-    }
-    
-    // Log detalhado para debug
-    console.log(`📊 [META-ACTIVITIES] Activities obtidas: ${activities.length} registros para conta ${accountId}`);
-    
-    if (activities.length > 0) {
+    if (allActivities.length > 0) {
       // Mostrar primeiras 3 activities para debug
-      console.log(`📋 [META-ACTIVITIES] Primeiras 3 activities:`, JSON.stringify(activities.slice(0, 3), null, 2));
+      console.log(`📋 [META-ACTIVITIES] Primeiras 3 activities:`, JSON.stringify(allActivities.slice(0, 3), null, 2));
       
       // Contar e mostrar funding_event_successful especificamente
-      const fundingEvents = activities.filter(activity => activity.event_type === 'funding_event_successful');
-      console.log(`💰 [META-ACTIVITIES] Funding events encontrados: ${fundingEvents.length}`);
+      const fundingEvents = allActivities.filter(activity => activity.event_type === 'funding_event_successful');
+      console.log(`💰 [META-ACTIVITIES] Total de funding events encontrados: ${fundingEvents.length}`);
       
       if (fundingEvents.length > 0) {
         console.log(`💰 [META-ACTIVITIES] Primeiro funding event:`, JSON.stringify(fundingEvents[0], null, 2));
       }
       
       // Mostrar tipos de eventos únicos
-      const uniqueEventTypes = [...new Set(activities.map(a => a.event_type))];
+      const uniqueEventTypes = [...new Set(allActivities.map(a => a.event_type))];
       console.log(`📋 [META-ACTIVITIES] Tipos de eventos encontrados:`, uniqueEventTypes);
     }
     
-    // Retornar TODAS as activities - não filtrar aqui
-    // O filtro específico será feito na função que chama esta
-    console.log(`✅ [META-ACTIVITIES] Retornando ${activities.length} activities (sem filtro) em ${responseTime}ms`);
+    console.log(`✅ [META-ACTIVITIES] Retornando ${allActivities.length} activities (paginação completa) em ${responseTime}ms`);
     
-    return activities;
+    return allActivities;
     
   } catch (error) {
     const responseTime = Date.now() - startTime;
