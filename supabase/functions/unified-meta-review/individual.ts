@@ -269,25 +269,6 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     
     console.log(`🔍 [INDIVIDUAL] ===== FIM DEBUG DATABASE UPDATE =====`);
 
-    const { data: verifyData, error: verifyError, count: verifyCount } = await supabase
-      .from('client_accounts')
-      .select('last_funding_detected_at,last_funding_amount', { count: 'exact' })
-      .eq('id', metaAccount.id)
-      .single();
-
-    if (verifyError) {
-      console.error('❌ [DATABASE] Erro ao verificar client_accounts após update:', {
-        error: verifyError,
-        count: verifyCount
-      });
-    } else {
-      console.log('📥 [DATABASE] Registro após update:', {
-        last_funding_detected_at: verifyData.last_funding_detected_at,
-        last_funding_amount: verifyData.last_funding_amount,
-        count: verifyCount
-      });
-    }
-
     // 11. Atualizar campaign health (executa de forma assíncrona)
     console.log(`📊 [INDIVIDUAL] Atualizando campaign health...`);
     updateCampaignHealth(supabase, clientId, metaAccount.account_id, metaToken, today).catch(error => {
