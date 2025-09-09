@@ -54,7 +54,7 @@ export function useUnifiedReviewsData() {
       // Buscar contas Meta da tabela unificada client_accounts
       const { data: metaAccounts, error: accountsError } = await supabase
         .from("client_accounts")
-        .select("*")
+        .select("*, last_funding_detected_at, last_funding_amount")
         .eq("status", "active")
         .eq("platform", "meta")
         .order("client_id")
@@ -316,24 +316,26 @@ export function useUnifiedReviewsData() {
             const veiculationStatus = getVeiculationStatus(healthData);
             
             const clientData = {
-              ...client,
-              meta_account_id: account.account_id,
-              meta_account_name: account.account_name,
-              budget_amount: monthlyBudget,
-              original_budget_amount: account.budget_amount,
-              review: review || null,
-              budgetCalculation: {
-                ...budgetCalc,
-                warningIgnoredToday: warningIgnoredToday
-              },
-              needsAdjustment: needsAdjustment,
-              customBudget: customBudget,
-              isUsingCustomBudget: isUsingCustomBudget,
-              hasAccount: true,
-              meta_daily_budget: review?.daily_budget_current || 0,
-              balance_info: balanceInfo || null,
-              veiculationStatus: veiculationStatus
-            };
+               ...client,
+               meta_account_id: account.account_id,
+               meta_account_name: account.account_name,
+               budget_amount: monthlyBudget,
+               original_budget_amount: account.budget_amount,
+               review: review || null,
+               budgetCalculation: {
+                 ...budgetCalc,
+                 warningIgnoredToday: warningIgnoredToday
+               },
+               needsAdjustment: needsAdjustment,
+               customBudget: customBudget,
+               isUsingCustomBudget: isUsingCustomBudget,
+               hasAccount: true,
+               meta_daily_budget: review?.daily_budget_current || 0,
+               balance_info: balanceInfo || null,
+               veiculationStatus: veiculationStatus,
+               last_funding_detected_at: account.last_funding_detected_at,
+               last_funding_amount: account.last_funding_amount
+             };
             
             console.log(`📝 Cliente processado: ${client.company_name} (${account.account_name})`, {
               totalSpent: review?.total_spent || 0,

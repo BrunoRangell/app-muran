@@ -282,12 +282,15 @@ export type Database = {
         Row: {
           account_id: string
           account_name: string
+          balance_set_at: string | null
           budget_amount: number
           client_id: string
           created_at: string
           id: string
           is_prepay_account: boolean | null
           is_primary: boolean
+          last_funding_detected_at: string | null
+          last_funding_amount: number | null
           platform: string
           saldo_restante: number | null
           status: string
@@ -296,12 +299,15 @@ export type Database = {
         Insert: {
           account_id: string
           account_name: string
+          balance_set_at?: string | null
           budget_amount?: number
           client_id: string
           created_at?: string
           id?: string
           is_prepay_account?: boolean | null
           is_primary?: boolean
+          last_funding_detected_at?: string | null
+          last_funding_amount?: number | null
           platform: string
           saldo_restante?: number | null
           status?: string
@@ -310,12 +316,15 @@ export type Database = {
         Update: {
           account_id?: string
           account_name?: string
+          balance_set_at?: string | null
           budget_amount?: number
           client_id?: string
           created_at?: string
           id?: string
           is_prepay_account?: boolean | null
           is_primary?: boolean
+          last_funding_detected_at?: string | null
+          last_funding_amount?: number | null
           platform?: string
           saldo_restante?: number | null
           status?: string

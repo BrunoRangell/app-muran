@@ -1,5 +1,5 @@
 import { createSupabaseClient, fetchMetaAccessToken, fetchClientData, fetchPrimaryMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview } from "./database.ts";
-import { fetchMetaApiData, fetchMetaBalance } from "./meta-api.ts";
+import { fetchMetaApiData, fetchMetaBalance, fetchAccountBasicInfo } from "./meta-api.ts";
 import { updateCampaignHealth } from "./campaigns.ts";
 import { IndividualReviewRequest } from "./types.ts";
 
@@ -82,7 +82,21 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     
     console.log(`${customBudget ? '✅' : 'ℹ️'} [INDIVIDUAL] Orçamento personalizado: ${customBudget ? 'ENCONTRADO' : 'NÃO ENCONTRADO'} (${budgetTime}ms)`);
     
-    // 5. Buscar dados da Meta API
+    // 5. Buscar informações básicas da conta (incluindo funding check)
+    const basicInfoStartTime = Date.now();
+    console.log(`🔍 [INDIVIDUAL] Buscando informações básicas da conta...`);
+    
+    const basicAccountInfo = await fetchAccountBasicInfo(metaAccount.account_id, metaToken);
+    const basicInfoTime = Date.now() - basicInfoStartTime;
+    
+    console.log(`✅ [INDIVIDUAL] Informações básicas obtidas (${basicInfoTime}ms):`, {
+      accountName: basicAccountInfo.accountName,
+      isPrepayAccount: basicAccountInfo.isPrepayAccount,
+      lastFundingDate: basicAccountInfo.lastFundingDate,
+      lastFundingAmount: basicAccountInfo.lastFundingAmount
+    });
+
+    // 6. Buscar dados da Meta API
     const metaDataStartTime = Date.now();
     console.log(`🔍 [INDIVIDUAL] Buscando dados da Meta API...`);
     
@@ -95,11 +109,11 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       accountName: metaApiData.account_name
     });
     
-    // 6. Buscar saldo da conta Meta
+    // 7. Buscar saldo da conta Meta
     const balanceStartTime = Date.now();
     console.log(`💰 [INDIVIDUAL] Buscando saldo da conta...`);
     
-    const balanceData = await fetchMetaBalance(metaAccount.account_id, metaToken);
+    const balanceData = await fetchMetaBalance(metaAccount.account_id, metaToken, supabase);
     const balanceTime = Date.now() - balanceStartTime;
     
     console.log(`✅ [INDIVIDUAL] Saldo obtido (${balanceTime}ms):`, {
@@ -107,7 +121,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       isPrepayAccount: balanceData.is_prepay_account
     });
     
-    // 7. Preparar dados para salvar
+    // 8. Preparar dados para salvar
     const reviewData = {
       daily_budget_current: metaApiData.daily_budget,
       total_spent: metaApiData.total_spent,
@@ -121,7 +135,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       is_prepay_account: balanceData.is_prepay_account
     };
     
-    // 8. Verificar revisão existente e salvar/atualizar
+    // 9. Verificar revisão existente e salvar/atualizar
     const saveStartTime = Date.now();
     console.log(`💾 [INDIVIDUAL] Salvando revisão...`);
     
@@ -138,7 +152,69 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     const saveTime = Date.now() - saveStartTime;
     console.log(`✅ [INDIVIDUAL] Revisão salva: ID ${reviewId} (${saveTime}ms)`);
     
-    // 9. Atualizar campaign health (executa de forma assíncrona)
+    // 10. Atualizar saldo e modelo de cobrança na tabela client_accounts
+    console.log(`🔄 [DATABASE] Atualizando saldo e modelo de cobrança em client_accounts para conta ${metaAccount.id}`);
+    console.log('🔎 [DATABASE] Dados de funding antes do update:', {
+      lastFundingDate: basicAccountInfo.lastFundingDate,
+      lastFundingAmount: basicAccountInfo.lastFundingAmount
+    });
+
+    const updateData: any = {
+      saldo_restante: balanceData.saldo_restante,
+      is_prepay_account: balanceData.is_prepay_account,
+      updated_at: new Date().toISOString()
+    };
+
+    // Se detectou funding recente em conta não pré-paga, atualizar timestamp e valor
+    if (!balanceData.is_prepay_account && basicAccountInfo.lastFundingDate) {
+      updateData.last_funding_detected_at = basicAccountInfo.lastFundingDate;
+      if (basicAccountInfo.lastFundingAmount !== null) {
+        updateData.last_funding_amount = basicAccountInfo.lastFundingAmount;
+      }
+      console.log(`✅ [DATABASE] FUNDING DETECTADO! Atualizando dados de funding para conta ${metaAccount.id}`);
+    } else {
+      console.log(`ℹ️ [DATABASE] Sem funding detectado - is_prepay_account: ${balanceData.is_prepay_account}, lastFundingDate: ${basicAccountInfo.lastFundingDate}`);
+    }
+
+    console.log('📦 [DATABASE] Dados preparados para atualização em client_accounts:', updateData);
+
+    const { error: updateAccountError, count: updateCount } = await supabase
+      .from('client_accounts')
+      .update(updateData)
+      .eq('id', metaAccount.id)
+      .select('id', { count: 'exact' });
+
+    if (updateAccountError) {
+      console.error('❌ [DATABASE] Erro ao atualizar client_accounts:', {
+        error: updateAccountError,
+        count: updateCount
+      });
+    } else {
+      console.log('✅ [DATABASE] Saldo e modelo de cobrança atualizados em client_accounts:', {
+        count: updateCount
+      });
+    }
+
+    const { data: verifyData, error: verifyError, count: verifyCount } = await supabase
+      .from('client_accounts')
+      .select('last_funding_detected_at,last_funding_amount', { count: 'exact' })
+      .eq('id', metaAccount.id)
+      .single();
+
+    if (verifyError) {
+      console.error('❌ [DATABASE] Erro ao verificar client_accounts após update:', {
+        error: verifyError,
+        count: verifyCount
+      });
+    } else {
+      console.log('📥 [DATABASE] Registro após update:', {
+        last_funding_detected_at: verifyData.last_funding_detected_at,
+        last_funding_amount: verifyData.last_funding_amount,
+        count: verifyCount
+      });
+    }
+
+    // 11. Atualizar campaign health (executa de forma assíncrona)
     console.log(`📊 [INDIVIDUAL] Atualizando campaign health...`);
     updateCampaignHealth(supabase, clientId, metaAccount.account_id, metaToken, today).catch(error => {
       console.error(`⚠️ [INDIVIDUAL] Erro ao atualizar campaign health:`, error);

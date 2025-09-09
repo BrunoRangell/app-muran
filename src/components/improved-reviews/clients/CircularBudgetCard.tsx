@@ -1,19 +1,21 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, EyeOff, ExternalLink, Activity } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, Calendar, ChevronRight, Loader, Loader2, EyeOff, ExternalLink, Activity } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { formatDateBr } from "@/utils/dateFormatter";
 import { useBatchOperations } from "../hooks/useBatchOperations";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { IgnoreWarningDialog } from "@/components/daily-reviews/dashboard/components/IgnoreWarningDialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCampaignVeiculationStatus } from "../hooks/useCampaignVeiculationStatus";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info } from "lucide-react";
+import { useManualBalance } from "@/hooks/useManualBalance";
+import { ManualBalanceModal } from "../common/ManualBalanceModal";
 interface CircularBudgetCardProps {
   client: any;
   platform?: "meta" | "google";
@@ -32,6 +34,41 @@ export function CircularBudgetCard({
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localWarningIgnored, setLocalWarningIgnored] = useState(false);
+
+  useEffect(() => {
+    console.log('CircularBudgetCard mounted/updated:', {
+      last_funding_detected_at: client.last_funding_detected_at,
+      last_funding_amount: client.last_funding_amount,
+    });
+  }, [client.last_funding_detected_at, client.last_funding_amount]);
+  
+  // Hook para saldo manual
+  const { 
+    isModalOpen: isBalanceModalOpen, 
+    isLoading: isBalanceLoading, 
+    openModal: openBalanceModal, 
+    closeModal: closeBalanceModal, 
+    setBalance 
+  } = useManualBalance();
+
+  // Verificar se deve mostrar o botão de definir saldo manual
+  const shouldShowManualBalanceButton = () => {
+    // Só para Meta Ads
+    if (platform !== "meta") return false;
+    
+    // Só mostrar para contas não pré-pagas
+    if (client.balance_info?.billing_model === "pre") return false;
+    
+    // Verificar se tem funding detectado nos últimos 60 dias
+    const lastFundingDetectedAt = client.last_funding_detected_at;
+    if (!lastFundingDetectedAt) return false;
+    
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const fundingDate = new Date(lastFundingDetectedAt);
+    
+    return fundingDate >= sixtyDaysAgo;
+  };
   const {
     reviewClient,
     processingIds
@@ -139,9 +176,17 @@ export function CircularBudgetCard({
   };
   const handleReviewClick = async () => {
     console.log(`🔍 Iniciando revisão individual para cliente ${client.company_name} (${platform})`);
+    console.log('Antes de reviewClient:', {
+      last_funding_detected_at: client.last_funding_detected_at,
+      last_funding_amount: client.last_funding_amount,
+    });
     try {
       const accountId = platform === "meta" ? client.meta_account_id : client.google_account_id;
       await reviewClient(client.id, accountId);
+      console.log('Depois de reviewClient:', {
+        last_funding_detected_at: client.last_funding_detected_at,
+        last_funding_amount: client.last_funding_amount,
+      });
       console.log(`✅ Revisão do cliente ${client.company_name} concluída com sucesso`);
     } catch (error: any) {
       console.error(`❌ Erro na revisão do cliente ${client.company_name}:`, error);
@@ -402,12 +447,37 @@ export function CircularBudgetCard({
                   <span className="text-sm">💳 Cartão de crédito</span>
                 </div>
               ) : (
-                <div className="text-gray-600">
-                  <span className="text-sm">Saldo indisponível</span>
-                </div>
-              )}
-            </div>
-          )}
+                 <div className="text-gray-600">
+                   <span className="text-sm">Saldo indisponível</span>
+                 </div>
+               )}
+               
+                {/* Botão para definir saldo manual - apenas para contas não pré-pagas com funding recente */}
+                {shouldShowManualBalanceButton() && (
+                  <div className="mt-3 pt-2 border-t border-blue-200">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openBalanceModal(client.id, accountInfo.id)}
+                      disabled={isBalanceLoading}
+                      className="w-full text-xs bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800"
+                    >
+                      {isBalanceLoading ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <BadgeDollarSign className="h-3 w-3 mr-1" />
+                          Definir saldo atual
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+             </div>
+           )}
 
           {/* Seção de Status de Veiculação (apenas para Meta Ads) */}
           {platform === "meta" && veiculationInfo && veiculationInfo.status !== "no_data" && (
@@ -622,5 +692,16 @@ export function CircularBudgetCard({
 
       {/* Diálogo de confirmação */}
       <IgnoreWarningDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} onConfirm={handleWarningIgnored} clientName={companyName} />
+      
+      {/* Modal para definir saldo manual */}
+      <ManualBalanceModal
+        isOpen={isBalanceModalOpen}
+        isLoading={isBalanceLoading}
+        onClose={closeBalanceModal}
+        onConfirm={setBalance}
+        currentBalance={client.balance_info?.balance_value}
+        clientName={companyName}
+        accountName={accountInfo.name}
+      />
     </>;
 }

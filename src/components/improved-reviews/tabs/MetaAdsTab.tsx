@@ -113,8 +113,8 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
 
   return (
     <div className="space-y-6">
-      <MetricsPanel 
-        metrics={metrics} 
+      <MetricsPanel
+        metrics={metrics}
         onBatchReview={handleBatchReview}
         isProcessing={isProcessing}
         progress={progress}
@@ -123,8 +123,8 @@ export function MetaAdsTab({ onRefreshCompleted }: MetaAdsTabProps = {}) {
         platform="meta"
         onCancelBatchProcessing={cancelBatchProcessing}
       />
-      
-      <FilterBar 
+
+      <FilterBar
         searchQuery={searchQuery}
         activeFilter={activeFilter}
         showWithoutAccount={activeFilter === "without-account"}
