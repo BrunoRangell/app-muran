@@ -171,7 +171,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       lastFundingAmount: basicAccountInfo.lastFundingAmount,
       is_prepay_account: balanceData.is_prepay_account,
       accountId: metaAccount.id,
-      clientName: client.company_name
+      clientName: clientData.company_name
     });
 
     // Se detectou funding recente em conta não pré-paga, atualizar timestamp e valor
@@ -204,7 +204,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     console.log('📦 [INDIVIDUAL] Conta que será atualizada:', {
       account_id: metaAccount.id,
       account_name: metaAccount.account_name,
-      client_name: client.company_name
+      client_name: clientData.company_name
     });
 
     console.log('🔄 [DATABASE] Executando UPDATE...');
@@ -265,6 +265,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
         }
       } catch (verificationError) {
         console.error('❌ [DATABASE] Erro crítico na verificação:', verificationError);
+      }
     }
     
     console.log(`🔍 [INDIVIDUAL] ===== FIM DEBUG DATABASE UPDATE =====`);
