@@ -265,11 +265,9 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
         }
       } catch (verificationError) {
         console.error('❌ [DATABASE] Erro crítico na verificação:', verificationError);
-      }
     }
     
     console.log(`🔍 [INDIVIDUAL] ===== FIM DEBUG DATABASE UPDATE =====`);
-    }
 
     const { data: verifyData, error: verifyError, count: verifyCount } = await supabase
       .from('client_accounts')
