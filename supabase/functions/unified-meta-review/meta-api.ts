@@ -616,51 +616,127 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
     let lastFundingAmount: number | null = null;
     if (!isPrepayAccount) {
       try {
+        console.log(`🔍 [META-API] ===== INÍCIO DEBUG FUNDING DETECTION =====`);
         console.log(`🔍 [META-API] Verificando funding events dos últimos 60 dias para conta não pré-paga ${accountId}`);
+        console.log(`🔍 [META-API] URL da requisição: https://graph.facebook.com/v21.0/act_${accountId}/activities`);
 
         // Usar fetchAccountActivities que agora retorna todas as activities
         const activities = await fetchAccountActivities(accountId, accessToken);
 
+        console.log(`📊 [META-API] ===== ANÁLISE ACTIVITIES =====`);
         console.log(`📊 [META-API] Total de activities recebidas: ${activities.length} para conta ${accountId}`);
 
-        // Debug detalhado das activities
-        console.log(`🔍 [META-API] Primeiras 3 activities para análise:`, JSON.stringify(activities.slice(0, 3), null, 2));
+        if (activities.length === 0) {
+          console.log(`⚠️ [META-API] NENHUMA ACTIVITY RETORNADA! Verificar token ou conta.`);
+        } else {
+          // Debug detalhado das activities
+          console.log(`🔍 [META-API] Primeiras 5 activities para análise:`, JSON.stringify(activities.slice(0, 5), null, 2));
+          
+          // Todos os tipos de event_type encontrados
+          const eventTypes = [...new Set(activities.map(a => a.event_type))];
+          console.log(`📋 [META-API] TODOS os tipos de eventos encontrados (${eventTypes.length}):`, eventTypes);
+          
+          // Contar cada tipo
+          const eventTypeCount = activities.reduce((acc, activity) => {
+            acc[activity.event_type] = (acc[activity.event_type] || 0) + 1;
+            return acc;
+          }, {});
+          console.log(`📊 [META-API] Contagem por tipo de evento:`, eventTypeCount);
+        }
 
         // Encontrar evento de funding mais recente
         const fundingEvents = activities
           .filter(activity => activity.event_type === 'funding_event_successful')
           .sort((a, b) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime());
 
+        console.log(`💰 [META-API] ===== ANÁLISE FUNDING EVENTS =====`);
         console.log(`💰 [META-API] Total de funding_event_successful: ${fundingEvents.length}`);
 
         if (fundingEvents.length > 0) {
+          console.log(`💰 [META-API] TODOS os funding events encontrados:`, fundingEvents.map(f => ({
+            event_time: f.event_time,
+            extra_data_preview: f.extra_data ? f.extra_data.substring(0, 100) + '...' : 'NO EXTRA_DATA',
+            translated_event_type: f.translated_event_type,
+            object_name: f.object_name
+          })));
+
           const latestFunding = fundingEvents[0];
+          console.log(`💰 [META-API] ===== PROCESSANDO FUNDING MAIS RECENTE =====`);
+          console.log(`💰 [META-API] Evento selecionado:`, {
+            event_time: latestFunding.event_time,
+            extra_data_raw: latestFunding.extra_data,
+            translated_event_type: latestFunding.translated_event_type,
+            object_name: latestFunding.object_name,
+            actor_name: latestFunding.actor_name
+          });
+
           lastFundingDate = latestFunding.event_time;
 
-          const fundingData = parseExtraData(latestFunding.extra_data);
-          if (fundingData && typeof fundingData.amount === 'number') {
-            lastFundingAmount = fundingData.amount / 100; // converter centavos para reais
+          if (latestFunding.extra_data) {
+            console.log(`🔍 [META-API] Tentando fazer parse do extra_data...`);
+            console.log(`🔍 [META-API] Extra data raw:`, latestFunding.extra_data);
+            
+            try {
+              const fundingData = parseExtraData(latestFunding.extra_data);
+              console.log(`✅ [META-API] Extra data parseado com sucesso:`, fundingData);
+              
+              if (fundingData && typeof fundingData.amount === 'number') {
+                lastFundingAmount = fundingData.amount / 100; // converter centavos para reais
+                console.log(`💰 [META-API] Valor convertido: ${fundingData.amount} centavos = R$ ${lastFundingAmount}`);
+              } else {
+                console.log(`⚠️ [META-API] Funding data parseado mas amount inválido:`, {
+                  fundingData,
+                  hasAmount: !!fundingData?.amount,
+                  amountType: typeof fundingData?.amount,
+                  amountValue: fundingData?.amount
+                });
+              }
+            } catch (parseError) {
+              console.error(`❌ [META-API] ERRO no parse do extra_data:`, {
+                error: parseError.message,
+                stack: parseError.stack,
+                extraDataRaw: latestFunding.extra_data
+              });
+            }
+          } else {
+            console.log(`⚠️ [META-API] Funding event sem extra_data!`);
           }
 
+          console.log(`✅ [META-API] ===== RESULTADO FINAL FUNDING =====`);
           console.log(`✅ [META-API] Funding mais recente detectado para conta ${accountId}:`, {
             event_time: lastFundingDate,
-            amount: lastFundingAmount
+            amount: lastFundingAmount,
+            success: !!lastFundingDate && lastFundingAmount !== null
           });
         } else {
+          console.log(`ℹ️ [META-API] ===== NENHUM FUNDING EVENT ENCONTRADO =====`);
           console.log(`ℹ️ [META-API] Nenhum funding event successful nos últimos 60 dias para conta ${accountId}`);
 
-          // Mostrar tipos de eventos disponíveis para debug
-          const eventTypes = [...new Set(activities.map(a => a.event_type))];
-          console.log(`📋 [META-API] Tipos de eventos disponíveis:`, eventTypes);
-
-          // Mostrar algumas activities para verificar formato
-          if (activities.length > 0) {
-            console.log(`📄 [META-API] Primeira activity completa:`, JSON.stringify(activities[0], null, 2));
-            console.log(`📄 [META-API] Event types encontrados: ${eventTypes.join(', ')}`);
+          // Mostrar se existem eventos relacionados a funding com outros nomes
+          const fundingRelatedEvents = activities.filter(a => 
+            a.event_type?.toLowerCase().includes('fund') || 
+            a.translated_event_type?.toLowerCase().includes('fund') ||
+            a.translated_event_type?.toLowerCase().includes('saldo') ||
+            a.translated_event_type?.toLowerCase().includes('quantia')
+          );
+          
+          if (fundingRelatedEvents.length > 0) {
+            console.log(`🔍 [META-API] Eventos relacionados a funding encontrados:`, fundingRelatedEvents.map(e => ({
+              event_type: e.event_type,
+              translated_event_type: e.translated_event_type,
+              event_time: e.event_time,
+              object_name: e.object_name
+            })));
           }
         }
+        
+        console.log(`🔍 [META-API] ===== FIM DEBUG FUNDING DETECTION =====`);
       } catch (error) {
-        console.log(`⚠️ [META-API] Erro ao verificar funding events: ${error.message}`);
+        console.error(`❌ [META-API] ERRO CRÍTICO na verificação de funding events:`, {
+          error: error.message,
+          stack: error.stack,
+          accountId
+        });
         lastFundingDate = null;
         lastFundingAmount = null;
       }
