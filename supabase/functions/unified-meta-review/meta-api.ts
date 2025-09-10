@@ -97,6 +97,14 @@ async function fetchAccountActivities(
   untilDate?: Date
 ) {
   const startTime = Date.now();
+  console.log(`🚀 [META-ACTIVITIES] === INICIANDO BUSCA DE ATIVIDADES ===`);
+  console.log(`📋 [META-ACTIVITIES] Parâmetros de entrada: {
+  accountId: ${accountId},
+  accessTokenPresent: ${!!accessToken},
+  accessTokenLength: ${accessToken?.length || 0},
+  sinceDate: ${sinceDate?.toISOString() || 'não especificado'},
+  untilDate: ${untilDate?.toISOString() || 'não especificado'}
+}`);
   
   // Se não fornecido, usar últimos 60 dias
   const since = sinceDate 
@@ -106,7 +114,8 @@ async function fetchAccountActivities(
     ? untilDate.toISOString().split('T')[0]
     : new Date().toISOString().split('T')[0];
   
-  console.log(`🔍 [META-ACTIVITIES] Buscando activities para conta ${accountId} (${since} até ${until})`);
+  console.log(`🔍 [META-ACTIVITIES] Período calculado: ${since} até ${until}`);
+  console.log(`📡 [META-ACTIVITIES] Preparando requisição para Meta API...`);
   
   try {
     let allActivities = [];
@@ -123,27 +132,50 @@ async function fetchAccountActivities(
         activitiesUrl += `&after=${nextPageCursor}`;
       }
       
-      console.log(`📄 [META-ACTIVITIES] Página ${pageCount} - buscando activities...`);
+      console.log(`📄 [META-ACTIVITIES] === PÁGINA ${pageCount} ===`);
+      console.log(`🔗 [META-ACTIVITIES] URL: ${activitiesUrl.replace(accessToken, '***TOKEN***')}`);
       
       // Aumentar timeout para 15 segundos por página
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.log(`⏰ [META-ACTIVITIES] Timeout na Activities API após 15s para conta ${accountId}, página ${pageCount}`);
+        console.error(`⏰ [META-ACTIVITIES] TIMEOUT de 15s atingido na página ${pageCount} para conta ${accountId}`);
         controller.abort();
       }, 15000);
       
-      const response = await fetch(activitiesUrl, { signal: controller.signal });
+      console.log(`📡 [META-ACTIVITIES] Fazendo requisição HTTP...`);
+      const response = await fetch(activitiesUrl, { 
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Muran-System/1.0'
+        }
+      });
       clearTimeout(timeoutId);
       
+      console.log(`✅ [META-ACTIVITIES] Resposta HTTP recebida: ${response.status} ${response.statusText}`);
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Parse error' }));
-        console.error(`❌ [META-ACTIVITIES] ERRO na API para conta ${accountId}, página ${pageCount}:`, {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-          url: activitiesUrl.replace(accessToken, '[TOKEN]')
-        });
-        throw new Error(`Activities API error: ${response.status} ${response.statusText}`);
+        console.error(`❌ [META-ACTIVITIES] === ERRO HTTP ===`);
+        console.error(`❌ [META-ACTIVITIES] Status: ${response.status} ${response.statusText}`);
+        
+        const errorText = await response.text();
+        console.error(`❌ [META-ACTIVITIES] Resposta completa:`, errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          console.error(`❌ [META-ACTIVITIES] Erro Meta parseado:`, {
+            code: errorData.error?.code,
+            message: errorData.error?.message,
+            type: errorData.error?.type,
+            fbtrace_id: errorData.error?.fbtrace_id,
+            error_user_title: errorData.error?.error_user_title,
+            error_user_msg: errorData.error?.error_user_msg
+          });
+        } catch (parseError) {
+          console.error(`❌ [META-ACTIVITIES] Não foi possível parsear erro:`, parseError.message);
+        }
+        
+        throw new Error(`Meta Activities API error: ${response.status} ${response.statusText}. Response: ${errorText}`);
       }
 
       const data = await response.json();
@@ -204,12 +236,29 @@ async function fetchAccountActivities(
     
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    console.error(`❌ [META-ACTIVITIES] ERRO EXCEPTION conta ${accountId}:`, {
-      error: error.message,
-      stack: error.stack,
-      responseTime: `${responseTime}ms`,
-      isAbortError: error.name === 'AbortError'
+    console.error(`❌ [META-ACTIVITIES] === ERRO CRÍTICO (${responseTime}ms) ===`);
+    console.error(`❌ [META-ACTIVITIES] Detalhes do erro:`, {
+      errorName: error.name,
+      errorMessage: error.message,
+      errorStack: error.stack,
+      accountId,
+      accessTokenPresent: !!accessToken,
+      accessTokenLength: accessToken?.length || 0,
+      isAbortError: error.name === 'AbortError',
+      isNetworkError: error.message?.includes('fetch'),
+      responseTime: `${responseTime}ms`
     });
+    
+    // Log específico para diferentes tipos de erro
+    if (error.name === 'AbortError') {
+      console.error(`⏰ [META-ACTIVITIES] TIMEOUT detectado após ${responseTime}ms`);
+    } else if (error.message?.includes('fetch')) {
+      console.error(`🌐 [META-ACTIVITIES] ERRO DE REDE detectado`);
+    } else if (error.message?.includes('401') || error.message?.includes('403')) {
+      console.error(`🔐 [META-ACTIVITIES] ERRO DE PERMISSÃO/TOKEN detectado`);
+    } else {
+      console.error(`🔴 [META-ACTIVITIES] ERRO DESCONHECIDO detectado`);
+    }
     
     // Re-throw o erro para que seja capturado no fetchMetaBalance
     throw error;
@@ -615,19 +664,21 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
     let lastFundingDate: string | null = null;
     let lastFundingAmount: number | null = null;
     if (!isPrepayAccount) {
+      console.log(`🔍 [FUNDING-DEBUG] ===== INÍCIO BUSCA DE FUNDING =====`);
+      console.log(`🔍 [FUNDING-DEBUG] Conta não pré-paga detectada: ${accountId}`);
+      console.log(`🔍 [FUNDING-DEBUG] Iniciando chamada para fetchAccountActivities...`);
+      
       try {
-        console.log(`🔍 [META-API] ===== INÍCIO DEBUG FUNDING DETECTION =====`);
-        console.log(`🔍 [META-API] Verificando funding events dos últimos 60 dias para conta não pré-paga ${accountId}`);
-        console.log(`🔍 [META-API] URL da requisição: https://graph.facebook.com/v21.0/act_${accountId}/activities`);
-
-        // Usar fetchAccountActivities que agora retorna todas as activities
+        console.log(`📡 [FUNDING-DEBUG] ANTES da chamada fetchAccountActivities`);
         const activities = await fetchAccountActivities(accountId, accessToken);
+        console.log(`📡 [FUNDING-DEBUG] DEPOIS da chamada fetchAccountActivities - recebidas ${activities?.length || 0} activities`);
 
-        console.log(`📊 [META-API] ===== ANÁLISE ACTIVITIES =====`);
-        console.log(`📊 [META-API] Total de activities recebidas: ${activities.length} para conta ${accountId}`);
-
-        if (activities.length === 0) {
-          console.log(`⚠️ [META-API] NENHUMA ACTIVITY RETORNADA! Verificar token ou conta.`);
+        if (!activities) {
+          console.error(`❌ [FUNDING-DEBUG] fetchAccountActivities retornou null/undefined`);
+        } else if (!Array.isArray(activities)) {
+          console.error(`❌ [FUNDING-DEBUG] fetchAccountActivities não retornou array:`, typeof activities);
+        } else if (activities.length === 0) {
+          console.warn(`⚠️ [FUNDING-DEBUG] fetchAccountActivities retornou array vazio`);
         } else {
           // Debug detalhado das activities
           console.log(`🔍 [META-API] Primeiras 5 activities para análise:`, JSON.stringify(activities.slice(0, 5), null, 2));
