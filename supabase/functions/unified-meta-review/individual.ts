@@ -161,7 +161,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
 
     const updateData: any = {
       saldo_restante: balanceData.saldo_restante,
-      is_prepay_account: balanceData.is_prepay_account,
+      is_prepay_account: basicAccountInfo.is_prepay_account, // SEMPRE da API Graph
       updated_at: new Date().toISOString()
     };
 
@@ -174,14 +174,12 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       clientName: clientData.company_name
     });
 
-    // Se detectou funding recente em conta não pré-paga, atualizar timestamp e valor
-    if (!balanceData.is_prepay_account && basicAccountInfo.lastFundingDate) {
+    // Salvar funding SEMPRE que houver dados disponíveis
+    if (basicAccountInfo.lastFundingDate && basicAccountInfo.lastFundingAmount) {
       console.log(`✅ [INDIVIDUAL] ===== FUNDING DETECTADO! PREPARANDO UPDATE =====`);
       
       updateData.last_funding_detected_at = basicAccountInfo.lastFundingDate;
-      if (basicAccountInfo.lastFundingAmount !== null) {
-        updateData.last_funding_amount = basicAccountInfo.lastFundingAmount;
-      }
+      updateData.last_funding_amount = basicAccountInfo.lastFundingAmount;
       
       console.log(`💰 [INDIVIDUAL] Dados de funding que serão salvos:`, {
         last_funding_detected_at: updateData.last_funding_detected_at,
@@ -192,10 +190,10 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     } else {
       console.log(`ℹ️ [INDIVIDUAL] ===== SEM FUNDING PARA SALVAR =====`);
       console.log(`ℹ️ [INDIVIDUAL] Motivos:`, {
-        is_prepay_account: balanceData.is_prepay_account,
+        is_prepay_account: basicAccountInfo.is_prepay_account,
         lastFundingDate: basicAccountInfo.lastFundingDate,
         lastFundingAmount: basicAccountInfo.lastFundingAmount,
-        condition_met: !balanceData.is_prepay_account && basicAccountInfo.lastFundingDate
+        condition_met: !!(basicAccountInfo.lastFundingDate && basicAccountInfo.lastFundingAmount)
       });
     }
 

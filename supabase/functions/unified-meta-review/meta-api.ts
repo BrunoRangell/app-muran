@@ -515,9 +515,20 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
         const totalTime = Date.now() - startTime;
         console.log(`✅ [META-API] SALDO MANUAL - Recálculo concluído (${totalTime}ms)`);
         
+        // Buscar is_prepay_account da API Graph
+        const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=is_prepay_account&access_token=${accessToken}`;
+        const graphResponse = await fetch(accountUrl);
+        let isPrepayFromGraph = false;
+        
+        if (graphResponse.ok) {
+          const graphData = await graphResponse.json();
+          isPrepayFromGraph = Boolean(graphData.is_prepay_account);
+          console.log(`🔍 [META-API] is_prepay_account da API Graph: ${isPrepayFromGraph}`);
+        }
+        
         return {
           saldo_restante: recalculatedBalance,
-          is_prepay_account: true, // Assume pré-pago quando há saldo manual
+          is_prepay_account: isPrepayFromGraph, // Sempre da API Graph
           funding_detected: true,
           last_funding_date: accountData.balance_set_at,
           charges_since_funding: accountData.saldo_restante - recalculatedBalance
@@ -525,9 +536,20 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
       } catch (error) {
         console.error(`❌ [META-API] Erro no recálculo, usando saldo manual original: ${error.message}`);
         
+        // Buscar is_prepay_account da API Graph
+        const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=is_prepay_account&access_token=${accessToken}`;
+        const graphResponse = await fetch(accountUrl);
+        let isPrepayFromGraph = false;
+        
+        if (graphResponse.ok) {
+          const graphData = await graphResponse.json();
+          isPrepayFromGraph = Boolean(graphData.is_prepay_account);
+          console.log(`🔍 [META-API] is_prepay_account da API Graph (fallback): ${isPrepayFromGraph}`);
+        }
+        
         return {
           saldo_restante: accountData.saldo_restante,
-          is_prepay_account: true,
+          is_prepay_account: isPrepayFromGraph, // Sempre da API Graph
           funding_detected: true,
           last_funding_date: accountData.balance_set_at,
           charges_since_funding: 0
@@ -544,7 +566,7 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
     console.log(`✅ [META-API] Dados básicos obtidos via fetchAccountBasicInfo (${basicDataTime}ms):`, basicInfo);
     
     // 4. Se é pré-pago, extrair saldo da API
-    if (basicInfo.isPrepayAccount) {
+    if (basicInfo.is_prepay_account) {
       console.log(`🏦 [META-API] Conta PRÉ-PAGA - extraindo saldo da API`);
       
       // Buscar saldo detalhado da API Meta
@@ -582,7 +604,7 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
         
         return { 
           saldo_restante, 
-          is_prepay_account: true,
+          is_prepay_account: basicInfo.is_prepay_account, // Sempre da API Graph
           funding_detected: false,
           last_funding_date: null,
           charges_since_funding: 0
@@ -601,7 +623,7 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
         console.log(`💰 [META-API] Funding detectado via activities:`, balanceResult);
         return {
           saldo_restante: balanceResult.saldo_restante,
-          is_prepay_account: false,
+          is_prepay_account: basicInfo.is_prepay_account, // Sempre da API Graph
           funding_detected: true,
           last_funding_date: balanceResult.last_funding_date,
           charges_since_funding: balanceResult.charges_since_funding
@@ -616,7 +638,7 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
     
     return { 
       saldo_restante: null, 
-      is_prepay_account: false,
+      is_prepay_account: basicInfo.is_prepay_account, // Sempre da API Graph
       funding_detected: false,
       last_funding_date: null,
       charges_since_funding: 0
@@ -632,7 +654,7 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
     
     return { 
       saldo_restante: null, 
-      is_prepay_account: false,
+      is_prepay_account: false, // Em caso de erro, assumir pós-paga
       funding_detected: false,
       last_funding_date: null,
       charges_since_funding: 0
@@ -684,74 +706,45 @@ export async function fetchAccountBasicInfo(accountId: string, accessToken: stri
     const accountName = data.name || 'Nome não encontrado';
     const currency = data.currency || 'BRL';
     
-    // NOVA LÓGICA DE DETECÇÃO DE CONTA PRÉ/PÓS-PAGA
-    let isPrepayAccount = false;
-    let detectionMethod = 'unknown';
-    
-    // Primeiro: usar is_prepay_account se disponível e confiável
-    if (typeof data.is_prepay_account === 'boolean') {
-      isPrepayAccount = data.is_prepay_account;
-      detectionMethod = 'is_prepay_account_field';
-      console.log(`🏦 [META-API] Detectado via is_prepay_account: ${isPrepayAccount ? 'PRÉ-PAGA' : 'PÓS-PAGA'}`);
-      
-      // FALLBACK DEFENSIVO: Se is_prepay_account=true mas sem saldo e sem funding_details, pode ser erro
-      if (isPrepayAccount && 
-          (data.balance === null || data.balance === "None" || data.balance === undefined) &&
-          (!data.expired_funding_source_details || data.expired_funding_source_details.length === 0)) {
-        
-        console.log(`⚠️ [META-API] FALLBACK DEFENSIVO: is_prepay_account=true mas balance=null e sem funding_details. Tratando como PÓS-PAGA.`);
-        isPrepayAccount = false;
-        detectionMethod = 'defensive_fallback';
-      }
-    } else {
-      // Fallback: usar heurística baseada em spend_cap e amount_spent (lógica antiga)
-      const hasSpendCap = data.spend_cap && Number(data.spend_cap) > 0;
-      const hasAmountSpent = data.amount_spent !== undefined && data.amount_spent !== null;
-      
-      if (hasSpendCap && hasAmountSpent) {
-        isPrepayAccount = true;
-        detectionMethod = 'spend_cap_heuristic';
-        console.log(`🏦 [META-API] Detectado via heurística (spend_cap/amount_spent): PRÉ-PAGA`);
-      } else {
-        isPrepayAccount = false;
-        detectionMethod = 'spend_cap_heuristic';
-        console.log(`🏦 [META-API] Detectado via heurística: PÓS-PAGA`);
-      }
-    }
+    // SEMPRE usar is_prepay_account da API Graph
+    const isPrepayAccount = Boolean(data.is_prepay_account);
+    const detectionMethod = 'api_graph_only';
+    console.log(`🏦 [META-API] Tipo de conta da API Graph: ${isPrepayAccount ? 'PRÉ-PAGA' : 'PÓS-PAGA'}`)
 
     console.log(`🎯 [META-API] DECISÃO FINAL: ${isPrepayAccount ? 'PRÉ-PAGA' : 'PÓS-PAGA'} (método: ${detectionMethod})`);
 
-    // Extrair detalhes de funding para contas pós-pagas
+    // Buscar funding via activities para qualquer tipo de conta (para completude de dados)
     let lastFundingDate: string | null = null;
     let lastFundingAmount: number | null = null;
-
-    if (!isPrepayAccount) {
-      console.log(`🏦 [META-API] Conta PÓS-PAGA - analisando funding details...`);
+    
+    console.log(`🔍 [META-API] Buscando funding via activities para conta ${accountId}...`);
+    
+    try {
+      const activitiesResult = await fetchAccountActivities(accountId, accessToken);
       
-      if (data.expired_funding_source_details && Array.isArray(data.expired_funding_source_details) && data.expired_funding_source_details.length > 0) {
-        const latestFunding = data.expired_funding_source_details[0];
-        lastFundingDate = latestFunding.expiration_time || null;
-        lastFundingAmount = latestFunding.amount || null;
-        
-        console.log(`💰 [META-API] Último funding encontrado: ${lastFundingAmount} em ${lastFundingDate}`);
+      if (activitiesResult && activitiesResult.last_funding_date) {
+        lastFundingDate = activitiesResult.last_funding_date;
+        lastFundingAmount = activitiesResult.funding_amount;
+        console.log(`✅ [META-API] Funding encontrado: data=${lastFundingDate}, valor=R$${lastFundingAmount}`);
       } else {
-        console.log(`ℹ️ [META-API] Nenhum funding detail encontrado para conta pós-paga`);
+        console.log(`ℹ️ [META-API] Nenhum funding encontrado via activities`);
       }
-      
-      console.log(`✅ [META-API] Conta pós-paga - fetchAccountActivities será executado`);
-    } else {
-      console.log(`🏦 [META-API] Conta pré-paga ${accountId} - pulando verificação de funding events`);
+    } catch (activitiesError) {
+      console.error(`⚠️ [META-API] Erro ao buscar activities:`, activitiesError);
     }
 
     const result = {
       accountName,
       currency,
-      isPrepayAccount,
+      is_prepay_account: isPrepayAccount,
       lastFundingDate,
-      lastFundingAmount
+      lastFundingAmount,
+      accountId,
+      clientName: accountName
     };
 
-    console.log(`✅ [META-API] Dados básicos obtidos (${basicDataTime}ms):`, result);
+    const finalTime = Date.now() - startTime;
+    console.log(`✅ [META-API] fetchAccountBasicInfo concluído (${finalTime}ms):`, result);
     
     return result;
 
