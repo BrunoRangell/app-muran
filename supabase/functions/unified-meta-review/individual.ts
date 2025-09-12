@@ -154,9 +154,13 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     
     // 10. Atualizar saldo e modelo de cobrança na tabela client_accounts
     console.log(`🔄 [DATABASE] Atualizando saldo e modelo de cobrança em client_accounts para conta ${metaAccount.id}`);
-    console.log('🔎 [DATABASE] Dados de funding antes do update:', {
+    console.log('🔎 [DATABASE] Dados de funding do basicInfo:', {
       lastFundingDate: basicAccountInfo.lastFundingDate,
       lastFundingAmount: basicAccountInfo.lastFundingAmount
+    });
+    console.log('🔎 [DATABASE] Dados de funding do balanceData:', {
+      funding_amount: balanceData.funding_amount,
+      last_funding_date: balanceData.last_funding_date
     });
 
     const updateData: any = {
@@ -166,20 +170,26 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     };
 
     console.log(`🔍 [INDIVIDUAL] ===== INÍCIO DEBUG DATABASE UPDATE =====`);
-    console.log(`🔍 [INDIVIDUAL] Dados recebidos do fetchAccountBasicInfo:`, {
-      lastFundingDate: basicAccountInfo.lastFundingDate,
-      lastFundingAmount: basicAccountInfo.lastFundingAmount,
-      is_prepay_account: balanceData.is_prepay_account,
+    console.log(`🔍 [INDIVIDUAL] Dados recebidos:`, {
+      basicInfo_lastFundingDate: basicAccountInfo.lastFundingDate,
+      basicInfo_lastFundingAmount: basicAccountInfo.lastFundingAmount,
+      balanceData_funding_amount: balanceData.funding_amount,
+      balanceData_last_funding_date: balanceData.last_funding_date,
+      is_prepay_account: basicAccountInfo.is_prepay_account,
       accountId: metaAccount.id,
       clientName: clientData.company_name
     });
 
-    // Salvar funding SEMPRE que houver dados disponíveis
-    if (basicAccountInfo.lastFundingDate && basicAccountInfo.lastFundingAmount) {
+    // Salvar funding SEMPRE que houver dados disponíveis (priorizar balanceData)
+    const fundingDate = balanceData.last_funding_date || basicAccountInfo.lastFundingDate;
+    const fundingAmount = balanceData.funding_amount || basicAccountInfo.lastFundingAmount;
+
+    if (fundingDate && fundingAmount) {
       console.log(`✅ [INDIVIDUAL] ===== FUNDING DETECTADO! PREPARANDO UPDATE =====`);
+      console.log(`💰 [INDIVIDUAL] Fonte: ${balanceData.last_funding_date ? 'balanceData' : 'basicAccountInfo'}`);
       
-      updateData.last_funding_detected_at = basicAccountInfo.lastFundingDate;
-      updateData.last_funding_amount = basicAccountInfo.lastFundingAmount;
+      updateData.last_funding_detected_at = fundingDate;
+      updateData.last_funding_amount = fundingAmount;
       
       console.log(`💰 [INDIVIDUAL] Dados de funding que serão salvos:`, {
         last_funding_detected_at: updateData.last_funding_detected_at,
@@ -191,9 +201,13 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       console.log(`ℹ️ [INDIVIDUAL] ===== SEM FUNDING PARA SALVAR =====`);
       console.log(`ℹ️ [INDIVIDUAL] Motivos:`, {
         is_prepay_account: basicAccountInfo.is_prepay_account,
-        lastFundingDate: basicAccountInfo.lastFundingDate,
-        lastFundingAmount: basicAccountInfo.lastFundingAmount,
-        condition_met: !!(basicAccountInfo.lastFundingDate && basicAccountInfo.lastFundingAmount)
+        basicInfo_lastFundingDate: basicAccountInfo.lastFundingDate,
+        basicInfo_lastFundingAmount: basicAccountInfo.lastFundingAmount,
+        balanceData_last_funding_date: balanceData.last_funding_date,
+        balanceData_funding_amount: balanceData.funding_amount,
+        final_fundingDate: fundingDate,
+        final_fundingAmount: fundingAmount,
+        condition_met: !!(fundingDate && fundingAmount)
       });
     }
 
