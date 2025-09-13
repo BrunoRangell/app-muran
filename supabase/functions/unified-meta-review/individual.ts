@@ -171,22 +171,21 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
 
     console.log(`🔍 [INDIVIDUAL] ===== INÍCIO DEBUG DATABASE UPDATE =====`);
     console.log(`🔍 [INDIVIDUAL] Dados recebidos:`, {
-      basicInfo_lastFundingDate: basicAccountInfo.lastFundingDate,
-      basicInfo_lastFundingAmount: basicAccountInfo.lastFundingAmount,
+      basicInfo_is_prepay_account: basicAccountInfo.is_prepay_account,
       balanceData_funding_amount: balanceData.funding_amount,
       balanceData_last_funding_date: balanceData.last_funding_date,
-      is_prepay_account: basicAccountInfo.is_prepay_account,
+      balanceData_source: balanceData.source,
       accountId: metaAccount.id,
       clientName: clientData.company_name
     });
 
-    // Salvar funding SEMPRE que houver dados disponíveis (priorizar balanceData)
-    const fundingDate = balanceData.last_funding_date || basicAccountInfo.lastFundingDate;
-    const fundingAmount = balanceData.funding_amount || basicAccountInfo.lastFundingAmount;
+    // REGRA SIMPLIFICADA: Salvar funding SOMENTE se houver dados no balanceData
+    const fundingDate = balanceData.last_funding_date;
+    const fundingAmount = balanceData.funding_amount;
 
     if (fundingDate && fundingAmount) {
       console.log(`✅ [INDIVIDUAL] ===== FUNDING DETECTADO! PREPARANDO UPDATE =====`);
-      console.log(`💰 [INDIVIDUAL] Fonte: ${balanceData.last_funding_date ? 'balanceData' : 'basicAccountInfo'}`);
+      console.log(`💰 [INDIVIDUAL] Fonte: balanceData`);
       
       updateData.last_funding_detected_at = fundingDate;
       updateData.last_funding_amount = fundingAmount;
@@ -201,13 +200,11 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       console.log(`ℹ️ [INDIVIDUAL] ===== SEM FUNDING PARA SALVAR =====`);
       console.log(`ℹ️ [INDIVIDUAL] Motivos:`, {
         is_prepay_account: basicAccountInfo.is_prepay_account,
-        basicInfo_lastFundingDate: basicAccountInfo.lastFundingDate,
-        basicInfo_lastFundingAmount: basicAccountInfo.lastFundingAmount,
+        balanceData_source: balanceData.source,
         balanceData_last_funding_date: balanceData.last_funding_date,
         balanceData_funding_amount: balanceData.funding_amount,
         final_fundingDate: fundingDate,
-        final_fundingAmount: fundingAmount,
-        condition_met: !!(fundingDate && fundingAmount)
+        final_fundingAmount: fundingAmount
       });
     }
 
