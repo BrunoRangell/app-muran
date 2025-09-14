@@ -43,9 +43,16 @@ export function useManualBalance() {
       return data;
     },
     onSuccess: () => {
-      // Invalidar caches para atualização imediata
+      // Invalidar múltiplos caches para atualização imediata e completa
       queryClient.invalidateQueries({ queryKey: ["improved-meta-reviews"] });
       queryClient.invalidateQueries({ queryKey: ["unified-meta-balance-consolidated"] });
+      queryClient.invalidateQueries({ queryKey: ["unified-reviews-data"] });
+      queryClient.invalidateQueries({ queryKey: ["meta-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["client-accounts"] });
+      
+      // Forçar refresh dos componentes relacionados a saldos
+      queryClient.refetchQueries({ queryKey: ["improved-meta-reviews"] });
+      queryClient.refetchQueries({ queryKey: ["unified-reviews-data"] });
       
       toast({
         title: "Saldo definido",

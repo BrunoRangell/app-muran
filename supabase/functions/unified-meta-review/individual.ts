@@ -154,30 +154,69 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     
     // 10. Atualizar saldo e modelo de cobrança na tabela client_accounts
     console.log(`🔄 [DATABASE] Atualizando saldo e modelo de cobrança em client_accounts para conta ${metaAccount.id}`);
-    console.log('🔎 [DATABASE] Dados de funding antes do update:', {
+    console.log('🔎 [DATABASE] Dados de funding do basicInfo:', {
       lastFundingDate: basicAccountInfo.lastFundingDate,
       lastFundingAmount: basicAccountInfo.lastFundingAmount
+    });
+    console.log('🔎 [DATABASE] Dados de funding do balanceData:', {
+      funding_amount: balanceData.funding_amount,
+      last_funding_date: balanceData.last_funding_date
     });
 
     const updateData: any = {
       saldo_restante: balanceData.saldo_restante,
-      is_prepay_account: balanceData.is_prepay_account,
+      is_prepay_account: basicAccountInfo.is_prepay_account, // SEMPRE da API Graph
       updated_at: new Date().toISOString()
     };
 
-    // Se detectou funding recente em conta não pré-paga, atualizar timestamp e valor
-    if (!balanceData.is_prepay_account && basicAccountInfo.lastFundingDate) {
-      updateData.last_funding_detected_at = basicAccountInfo.lastFundingDate;
-      if (basicAccountInfo.lastFundingAmount !== null) {
-        updateData.last_funding_amount = basicAccountInfo.lastFundingAmount;
-      }
-      console.log(`✅ [DATABASE] FUNDING DETECTADO! Atualizando dados de funding para conta ${metaAccount.id}`);
+    console.log(`🔍 [INDIVIDUAL] ===== INÍCIO DEBUG DATABASE UPDATE =====`);
+    console.log(`🔍 [INDIVIDUAL] Dados recebidos:`, {
+      basicInfo_is_prepay_account: basicAccountInfo.is_prepay_account,
+      balanceData_funding_amount: balanceData.funding_amount,
+      balanceData_last_funding_date: balanceData.last_funding_date,
+      balanceData_source: balanceData.source,
+      accountId: metaAccount.id,
+      clientName: clientData.company_name
+    });
+
+    // REGRA SIMPLIFICADA: Salvar funding SOMENTE se houver dados no balanceData
+    const fundingDate = balanceData.last_funding_date;
+    const fundingAmount = balanceData.funding_amount;
+
+    if (fundingDate && fundingAmount) {
+      console.log(`✅ [INDIVIDUAL] ===== FUNDING DETECTADO! PREPARANDO UPDATE =====`);
+      console.log(`💰 [INDIVIDUAL] Fonte: balanceData`);
+      
+      updateData.last_funding_detected_at = fundingDate;
+      updateData.last_funding_amount = fundingAmount;
+      
+      console.log(`💰 [INDIVIDUAL] Dados de funding que serão salvos:`, {
+        last_funding_detected_at: updateData.last_funding_detected_at,
+        last_funding_amount: updateData.last_funding_amount,
+        account_id: metaAccount.id,
+        account_name: metaAccount.account_name
+      });
     } else {
-      console.log(`ℹ️ [DATABASE] Sem funding detectado - is_prepay_account: ${balanceData.is_prepay_account}, lastFundingDate: ${basicAccountInfo.lastFundingDate}`);
+      console.log(`ℹ️ [INDIVIDUAL] ===== SEM FUNDING PARA SALVAR =====`);
+      console.log(`ℹ️ [INDIVIDUAL] Motivos:`, {
+        is_prepay_account: basicAccountInfo.is_prepay_account,
+        balanceData_source: balanceData.source,
+        balanceData_last_funding_date: balanceData.last_funding_date,
+        balanceData_funding_amount: balanceData.funding_amount,
+        final_fundingDate: fundingDate,
+        final_fundingAmount: fundingAmount
+      });
     }
 
-    console.log('📦 [DATABASE] Dados preparados para atualização em client_accounts:', updateData);
+    console.log('📦 [INDIVIDUAL] ===== DADOS FINAIS PARA UPDATE =====');
+    console.log('📦 [INDIVIDUAL] updateData completo:', JSON.stringify(updateData, null, 2));
+    console.log('📦 [INDIVIDUAL] Conta que será atualizada:', {
+      account_id: metaAccount.id,
+      account_name: metaAccount.account_name,
+      client_name: clientData.company_name
+    });
 
+    console.log('🔄 [DATABASE] Executando UPDATE...');
     const { error: updateAccountError, count: updateCount } = await supabase
       .from('client_accounts')
       .update(updateData)
@@ -185,34 +224,60 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       .select('id', { count: 'exact' });
 
     if (updateAccountError) {
-      console.error('❌ [DATABASE] Erro ao atualizar client_accounts:', {
+      console.error('❌ [DATABASE] ===== ERRO NO UPDATE =====');
+      console.error('❌ [DATABASE] Detalhes do erro:', {
         error: updateAccountError,
-        count: updateCount
+        message: updateAccountError.message,
+        details: updateAccountError.details,
+        hint: updateAccountError.hint,
+        code: updateAccountError.code,
+        count: updateCount,
+        updateData: updateData,
+        accountId: metaAccount.id
       });
     } else {
-      console.log('✅ [DATABASE] Saldo e modelo de cobrança atualizados em client_accounts:', {
-        count: updateCount
+      console.log('✅ [DATABASE] ===== UPDATE EXECUTADO COM SUCESSO =====');
+      console.log('✅ [DATABASE] Resultado do update:', {
+        count: updateCount,
+        accountId: metaAccount.id,
+        updatedFields: Object.keys(updateData)
       });
+      
+      // VERIFICAÇÃO CRÍTICA: Consultar o banco para confirmar se os dados foram salvos
+      console.log('🔍 [DATABASE] ===== VERIFICANDO SE DADOS FORAM PERSISTIDOS =====');
+      try {
+        const { data: verificationData, error: verificationError } = await supabase
+          .from('client_accounts')
+          .select('id, account_name, last_funding_detected_at, last_funding_amount, is_prepay_account, updated_at')
+          .eq('id', metaAccount.id)
+          .single();
+          
+        if (verificationError) {
+          console.error('❌ [DATABASE] Erro na verificação pós-update:', verificationError);
+        } else {
+          console.log('✅ [DATABASE] DADOS VERIFICADOS PÓS-UPDATE:', {
+            account_id: verificationData.id,
+            account_name: verificationData.account_name,
+            last_funding_detected_at: verificationData.last_funding_detected_at,
+            last_funding_amount: verificationData.last_funding_amount,
+            is_prepay_account: verificationData.is_prepay_account,
+            updated_at: verificationData.updated_at,
+            funding_data_saved: !!(verificationData.last_funding_detected_at || verificationData.last_funding_amount)
+          });
+          
+          // Comparar com os dados que tentamos salvar
+          const dataMatch = {
+            funding_date_match: verificationData.last_funding_detected_at === updateData.last_funding_detected_at,
+            funding_amount_match: verificationData.last_funding_amount === updateData.last_funding_amount
+          };
+          console.log('🔍 [DATABASE] COMPARAÇÃO DOS DADOS:', dataMatch);
+        }
+      } catch (verificationError) {
+        console.error('❌ [DATABASE] Erro crítico na verificação:', verificationError);
+      }
     }
-
-    const { data: verifyData, error: verifyError, count: verifyCount } = await supabase
-      .from('client_accounts')
-      .select('last_funding_detected_at,last_funding_amount', { count: 'exact' })
-      .eq('id', metaAccount.id)
-      .single();
-
-    if (verifyError) {
-      console.error('❌ [DATABASE] Erro ao verificar client_accounts após update:', {
-        error: verifyError,
-        count: verifyCount
-      });
-    } else {
-      console.log('📥 [DATABASE] Registro após update:', {
-        last_funding_detected_at: verifyData.last_funding_detected_at,
-        last_funding_amount: verifyData.last_funding_amount,
-        count: verifyCount
-      });
-    }
+    
+    console.log(`🔍 [INDIVIDUAL] ===== FIM DEBUG DATABASE UPDATE =====`);
 
     // 11. Atualizar campaign health (executa de forma assíncrona)
     console.log(`📊 [INDIVIDUAL] Atualizando campaign health...`);

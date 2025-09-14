@@ -1,5 +1,38 @@
 // Funções para interagir com a Meta Graph API
 
+/**
+ * Extrai o saldo numérico a partir de uma string exibida pela API Meta Ads.
+ * Exemplo de entrada: "Saldo disponível (R$310,29 BRL)".
+ * Se não for possível extrair o valor e houver spendCap, retorna spendCap - amountSpent.
+ * Os valores de spendCap e amountSpent devem estar em reais.
+ * Caso contrário, retorna null indicando saldo indisponível.
+ */
+function parseMetaBalance(
+  displayString?: string | null,
+  spendCap?: number | string | null,
+  amountSpent?: number | string | null
+): number | null {
+  if (displayString) {
+    const match = displayString.match(/R\$\s*([\d.,]+)/);
+    if (match && match[1]) {
+      const numeric = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+      if (!isNaN(numeric)) {
+        return numeric;
+      }
+    }
+  }
+
+  if (spendCap && Number(spendCap) > 0) {
+    const spent =
+      amountSpent !== undefined && amountSpent !== null
+        ? Number(amountSpent)
+        : 0;
+    return Number(spendCap) - spent;
+  }
+
+  return null;
+}
+
 // Função para buscar conjuntos de anúncios de uma campanha
 export async function fetchAdSets(campaignId: string, accessToken: string, campaignName: string = "") {
   const startTime = Date.now();
@@ -97,7 +130,15 @@ async function fetchAccountActivities(
   untilDate?: Date
 ) {
   const startTime = Date.now();
-  
+  console.log(`🚀 [META-ACTIVITIES] === INICIANDO BUSCA DE ATIVIDADES ===`);
+  console.log(`📋 [META-ACTIVITIES] Parâmetros de entrada: {
+  accountId: ${accountId},
+  accessTokenPresent: ${!!accessToken},
+  accessTokenLength: ${accessToken?.length || 0},
+  sinceDate: ${sinceDate?.toISOString() || 'não especificado'},
+  untilDate: ${untilDate?.toISOString() || 'não especificado'}
+}`);
+
   // Se não fornecido, usar últimos 60 dias
   const since = sinceDate 
     ? sinceDate.toISOString().split('T')[0]
@@ -106,7 +147,8 @@ async function fetchAccountActivities(
     ? untilDate.toISOString().split('T')[0]
     : new Date().toISOString().split('T')[0];
   
-  console.log(`🔍 [META-ACTIVITIES] Buscando activities para conta ${accountId} (${since} até ${until})`);
+  console.log(`🔍 [META-ACTIVITIES] Período calculado: ${since} até ${until}`);
+  console.log(`📡 [META-ACTIVITIES] Preparando requisição para Meta API...`);
   
   try {
     let allActivities = [];
@@ -123,27 +165,50 @@ async function fetchAccountActivities(
         activitiesUrl += `&after=${nextPageCursor}`;
       }
       
-      console.log(`📄 [META-ACTIVITIES] Página ${pageCount} - buscando activities...`);
+      console.log(`📄 [META-ACTIVITIES] === PÁGINA ${pageCount} ===`);
+      console.log(`🔗 [META-ACTIVITIES] URL: ${activitiesUrl.replace(accessToken, '***TOKEN***')}`);
       
       // Aumentar timeout para 15 segundos por página
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.log(`⏰ [META-ACTIVITIES] Timeout na Activities API após 15s para conta ${accountId}, página ${pageCount}`);
+        console.error(`⏰ [META-ACTIVITIES] TIMEOUT de 15s atingido na página ${pageCount} para conta ${accountId}`);
         controller.abort();
       }, 15000);
       
-      const response = await fetch(activitiesUrl, { signal: controller.signal });
+      console.log(`📡 [META-ACTIVITIES] Fazendo requisição HTTP...`);
+      const response = await fetch(activitiesUrl, { 
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Muran-System/1.0'
+        }
+      });
       clearTimeout(timeoutId);
       
+      console.log(`✅ [META-ACTIVITIES] Resposta HTTP recebida: ${response.status} ${response.statusText}`);
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Parse error' }));
-        console.error(`❌ [META-ACTIVITIES] ERRO na API para conta ${accountId}, página ${pageCount}:`, {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-          url: activitiesUrl.replace(accessToken, '[TOKEN]')
-        });
-        throw new Error(`Activities API error: ${response.status} ${response.statusText}`);
+        console.error(`❌ [META-ACTIVITIES] === ERRO HTTP ===`);
+        console.error(`❌ [META-ACTIVITIES] Status: ${response.status} ${response.statusText}`);
+        
+        const errorText = await response.text();
+        console.error(`❌ [META-ACTIVITIES] Resposta completa:`, errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          console.error(`❌ [META-ACTIVITIES] Erro Meta parseado:`, {
+            code: errorData.error?.code,
+            message: errorData.error?.message,
+            type: errorData.error?.type,
+            fbtrace_id: errorData.error?.fbtrace_id,
+            error_user_title: errorData.error?.error_user_title,
+            error_user_msg: errorData.error?.error_user_msg
+          });
+        } catch (parseError) {
+          console.error(`❌ [META-ACTIVITIES] Não foi possível parsear erro:`, parseError.message);
+        }
+        
+        throw new Error(`Meta Activities API error: ${response.status} ${response.statusText}. Response: ${errorText}`);
       }
 
       const data = await response.json();
@@ -204,12 +269,29 @@ async function fetchAccountActivities(
     
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    console.error(`❌ [META-ACTIVITIES] ERRO EXCEPTION conta ${accountId}:`, {
-      error: error.message,
-      stack: error.stack,
-      responseTime: `${responseTime}ms`,
-      isAbortError: error.name === 'AbortError'
+    console.error(`❌ [META-ACTIVITIES] === ERRO CRÍTICO (${responseTime}ms) ===`);
+    console.error(`❌ [META-ACTIVITIES] Detalhes do erro:`, {
+      errorName: error.name,
+      errorMessage: error.message,
+      errorStack: error.stack,
+      accountId,
+      accessTokenPresent: !!accessToken,
+      accessTokenLength: accessToken?.length || 0,
+      isAbortError: error.name === 'AbortError',
+      isNetworkError: error.message?.includes('fetch'),
+      responseTime: `${responseTime}ms`
     });
+    
+    // Log específico para diferentes tipos de erro
+    if (error.name === 'AbortError') {
+      console.error(`⏰ [META-ACTIVITIES] TIMEOUT detectado após ${responseTime}ms`);
+    } else if (error.message?.includes('fetch')) {
+      console.error(`🌐 [META-ACTIVITIES] ERRO DE REDE detectado`);
+    } else if (error.message?.includes('401') || error.message?.includes('403')) {
+      console.error(`🔐 [META-ACTIVITIES] ERRO DE PERMISSÃO/TOKEN detectado`);
+    } else {
+      console.error(`🔴 [META-ACTIVITIES] ERRO DESCONHECIDO detectado`);
+    }
     
     // Re-throw o erro para que seja capturado no fetchMetaBalance
     throw error;
@@ -408,527 +490,418 @@ async function recalculateBalanceFromManual(
     for (const charge of charges) {
       const extraData = parseExtraData(charge.extra_data);
       if (extraData?.new_value) {
-        const chargeAmount = parseFloat(extraData.new_value) / 100; // Converter de centavos para reais
+        const chargeAmount = extraData.new_value / 100; // Converter de centavos
         totalCharges += chargeAmount;
-        
-        console.log(`💸 [RECALCULO] Charge: R$ ${chargeAmount.toFixed(2)} em ${charge.event_time}`);
       }
     }
     
-    // Calcular saldo atual: saldo_manual - total_de_gastos
-    const currentBalance = manualBalance - totalCharges;
+    const updatedBalance = manualBalance - totalCharges;
     
-    console.log(`✅ [RECALCULO] Saldo calculado:`, {
-      saldoManual: `R$ ${manualBalance.toFixed(2)}`,
-      totalGastos: `R$ ${totalCharges.toFixed(2)}`,
-      saldoAtual: `R$ ${currentBalance.toFixed(2)}`,
-      ehNegativo: currentBalance < 0
+    console.log(`✅ [RECALCULO] Saldo recalculado:`, {
+      manualBalance: `R$ ${manualBalance.toFixed(2)}`,
+      totalCharges: `R$ ${totalCharges.toFixed(2)}`,
+      updatedBalance: `R$ ${updatedBalance.toFixed(2)}`
     });
     
-    return currentBalance;
+    return updatedBalance;
     
   } catch (error) {
-    console.error(`❌ [RECALCULO] Erro no recálculo:`, error);
+    console.error(`❌ [RECALCULO] Erro:`, error);
     throw error;
   }
 }
 
-// Função para buscar saldo e modelo de cobrança da Meta API com lógica manual
+// Verificar se existe funding nos últimos 60 dias
+function hasFundingInLast60Days(activities: any[]): boolean {
+  if (!activities || activities.length === 0) return false;
+  
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  
+  const recentFunding = activities.find(activity => {
+    if (activity.event_type !== 'funding_event_successful') return false;
+    
+    const activityDate = new Date(activity.event_time);
+    return activityDate >= sixtyDaysAgo;
+  });
+  
+  console.log(`🔍 [META-API] Funding nos últimos 60 dias:`, !!recentFunding);
+  return !!recentFunding;
+}
+
+// Função principal para buscar saldo da conta Meta
 export async function fetchMetaBalance(accountId: string, accessToken: string, supabase: any) {
   const startTime = Date.now();
   console.log(`💰 [META-API] Iniciando busca de saldo para conta ${accountId}`);
-  
+
   try {
-    // 1. PRIMEIRO: Verificar se existe saldo manual definido
-    console.log(`🔍 [META-API] Verificando saldo manual no banco para conta ${accountId}`);
+    // 1. Buscar informações básicas da conta PRIMEIRO (sempre da API Graph)
+    console.log(`🔍 [META-API] Buscando informações básicas...`);
+    const basicInfo = await fetchAccountBasicInfo(accountId, accessToken);
     
-    const { data: accountData, error: accountError, count: accountCount } = await supabase
-      .from("client_accounts")
-      .select("saldo_restante, balance_set_at, is_prepay_account", { count: "exact" })
-      .eq("account_id", accountId)
-      .eq("platform", "meta")
-      .single();
-
-    console.log(`📘 [META-API] Resultado da consulta client_accounts:`, { count: accountCount, error: accountError?.message });
-
-    // 2. Se existe saldo manual e timestamp, usar lógica de recálculo
-    if (accountData?.balance_set_at && accountData.saldo_restante !== null) {
-      console.log(`🎯 [META-API] Saldo manual encontrado: R$ ${accountData.saldo_restante} definido em ${accountData.balance_set_at}`);
+    // 2. CONTA PRÉ-PAGA: buscar saldo diretamente da API Graph usando display_string
+    if (basicInfo.is_prepay_account) {
+      console.log(`💳 [META-API] Conta pré-paga detectada, buscando saldo da API...`);
       
-      try {
-        const recalculatedBalance = await recalculateBalanceFromManual(
-          accountId, 
-          accessToken, 
-          accountData.saldo_restante, 
-          accountData.balance_set_at
-        );
-        
-        const totalTime = Date.now() - startTime;
-        console.log(`✅ [META-API] SALDO MANUAL - Recálculo concluído (${totalTime}ms)`);
-        
-        return {
-          saldo_restante: recalculatedBalance,
-          is_prepay_account: true, // Assume pré-pago quando há saldo manual
-          funding_detected: true,
-          last_funding_date: accountData.balance_set_at,
-          charges_since_funding: accountData.saldo_restante - recalculatedBalance
+      const balanceUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=account_status,balance,expired_funding_source_details&access_token=${accessToken}`;
+      const balanceResponse = await fetch(balanceUrl);
+      
+      if (!balanceResponse.ok) {
+        console.error(`❌ [META-API] Erro na API de saldo:`, balanceResponse.status);
+        return { 
+          saldo_restante: null, 
+          source: 'api_error',
+          is_prepay_account: true
         };
-      } catch (error) {
-        console.error(`❌ [META-API] Erro no recálculo, usando saldo manual original: ${error.message}`);
+      }
+      
+      const balanceData = await balanceResponse.json();
+      console.log(`🔍 [META-API] Resposta da API de saldo:`, balanceData);
+      
+      // Log da estrutura de expired_funding_source_details para debug
+      if (balanceData.expired_funding_source_details) {
+        console.log(`📋 [META-API] expired_funding_source_details encontrado:`, balanceData.expired_funding_source_details);
+      }
+      
+      let balanceValue = null;
+      let displayString = null;
+      
+      // PRIORIDADE 1: Usar display_string real da API
+      if (balanceData.expired_funding_source_details?.display_string) {
+        displayString = balanceData.expired_funding_source_details.display_string;
+        console.log(`✅ [META-API] Display string REAL da API:`, displayString);
         
-        return {
-          saldo_restante: accountData.saldo_restante,
-          is_prepay_account: true,
-          funding_detected: true,
-          last_funding_date: accountData.balance_set_at,
-          charges_since_funding: 0
+        balanceValue = parseMetaBalance(displayString);
+        console.log(`💰 [META-API] Valor extraído do display_string:`, balanceValue);
+      }
+      
+      // PRIORIDADE 2: Fallback para valor numérico se display_string não estiver disponível
+      if (balanceValue === null && balanceData.balance) {
+        const rawBalance = parseFloat(balanceData.balance) / 100;
+        balanceValue = rawBalance;
+        console.log(`⚠️ [META-API] Usando fallback - valor numérico direto:`, balanceValue);
+      }
+      
+      if (balanceValue !== null) {
+        const responseTime = Date.now() - startTime;
+        console.log(`✅ [META-API] Saldo pré-pago obtido (${responseTime}ms):`, balanceValue);
+        
+        return { 
+          saldo_restante: balanceValue,
+          source: 'graph_api',
+          is_prepay_account: true
         };
       }
     }
+    
+    // 3. CONTA PÓS-PAGA: verificar funding nos últimos 60 dias
+    console.log(`🏦 [META-API] Conta pós-paga detectada, verificando funding...`);
+    
+    try {
+      const activities = await fetchAccountActivities(accountId, accessToken);
+      
+      if (!activities || activities.length === 0) {
+        console.log(`ℹ️ [META-API] Nenhuma activity encontrada`);
+        return { 
+          saldo_restante: null, 
+          source: 'no_activities',
+          is_prepay_account: false
+        };
+      }
+      
+      // 3.1. Verificar se há funding nos últimos 60 dias
+      const hasFunding60Days = hasFundingInLast60Days(activities);
+      
+      if (!hasFunding60Days) {
+        console.log(`ℹ️ [META-API] SEM funding nos últimos 60 dias - pagamentos automáticos`);
+        return { 
+          saldo_restante: null, 
+          source: 'automatic_payments',
+          is_prepay_account: false,
+          funding_detected: false
+        };
+      }
+      
+      // 3.2. TEM funding nos últimos 60 dias - verificar saldo manual
+      console.log(`💰 [META-API] FUNDING encontrado nos últimos 60 dias!`);
+      
+      const { data: clientAccount, error: clientAccountError } = await supabase
+        .from('client_accounts')
+        .select('balance_set_at, saldo_restante')
+        .eq('account_id', accountId)
+        .eq('platform', 'meta')
+        .single();
 
-    // 3. FALLBACK: Se não há saldo manual, usar lógica de API Meta básica
-    console.log(`🔄 [META-API] Sem saldo manual, usando API Meta para conta ${accountId}`);
-    
-    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,balance,currency,expired_funding_source_details,is_prepay_account,spend_cap,amount_spent&access_token=${accessToken}`;
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-    
-    const response = await fetch(accountUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    const basicDataTime = Date.now() - startTime;
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error(`❌ [META-API] ERRO na API para conta ${accountId}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData,
-        responseTime: `${basicDataTime}ms`
-      });
-      
-      return { saldo_restante: null, is_prepay_account: false, funding_detected: false };
-    }
+      if (clientAccountError && clientAccountError.code !== 'PGRST116') {
+        console.error(`❌ [META-API] Erro ao buscar dados da conta:`, clientAccountError);
+      }
 
-    const data = await response.json();
-    console.log(`✅ [META-API] Dados básicos obtidos (${basicDataTime}ms):`, {
-      accountName: data.name,
-      isPrepayAccount: data.is_prepay_account,
-      currency: data.currency
-    });
-    
-    // 4. Se é pré-pago, extrair saldo da API
-    if (data.is_prepay_account) {
-      console.log(`🏦 [META-API] Conta PRÉ-PAGA - extraindo saldo da API`);
-      
-      let saldo_restante = null;
-      
-      // Extrair saldo do expired_funding_source_details ou balance
-      if (data.expired_funding_source_details?.display_string) {
-        const match = data.expired_funding_source_details.display_string.match(/R\$\s*([\d.,]+)/);
-        if (match && match[1]) {
-          saldo_restante = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
-          console.log(`💰 [META-API] Saldo extraído: R$ ${saldo_restante.toFixed(2)}`);
+      // 3.3. Se há saldo manual definido, usar recálculo
+      if (clientAccount?.balance_set_at && clientAccount?.saldo_restante !== null) {
+        console.log(`🎯 [META-API] Saldo manual encontrado! Recalculando...`);
+        
+        try {
+          const recalculatedBalance = await recalculateBalanceFromManual(
+            accountId, 
+            accessToken, 
+            clientAccount.saldo_restante, 
+            clientAccount.balance_set_at
+          );
+          
+          const responseTime = Date.now() - startTime;
+          console.log(`✅ [META-API] Saldo recalculado (${responseTime}ms):`, {
+            originalManual: clientAccount.saldo_restante,
+            recalculated: recalculatedBalance,
+            setAt: clientAccount.balance_set_at
+          });
+          
+          return { 
+            saldo_restante: recalculatedBalance,
+            source: 'manual_recalculated',
+            is_prepay_account: false,
+            funding_detected: true
+          };
+        } catch (recalcError) {
+          console.error(`❌ [META-API] Erro no recálculo:`, recalcError);
         }
-      } else if (data.balance) {
-        saldo_restante = parseFloat(data.balance) / 100 * 5.5; // Conversão USD para BRL
-        console.log(`💰 [META-API] Saldo do balance: R$ ${saldo_restante.toFixed(2)}`);
       }
       
-      return { 
-        saldo_restante, 
-        is_prepay_account: true,
-        funding_detected: false,
-        last_funding_date: null,
-        charges_since_funding: 0
-      };
+      // 3.4. Calcular saldo baseado nas activities (para salvar funding info)
+      const balanceCalc = calculateBalanceFromActivities(activities);
+      
+      if (balanceCalc && balanceCalc.funding_detected) {
+        const responseTime = Date.now() - startTime;
+        console.log(`💰 [META-API] Funding detectado via activities:`, {
+          saldo_restante: balanceCalc.saldo_restante,
+          funding_detected: balanceCalc.funding_detected,
+          last_funding_date: balanceCalc.last_funding_date,
+          charges_since_funding: balanceCalc.charges_since_funding,
+          funding_amount: balanceCalc.funding_amount,
+          total_charges: balanceCalc.total_charges
+        });
+        
+        return { 
+          saldo_restante: null, // Não usar saldo calculado, apenas salvar funding info
+          source: 'funding_available_for_manual',
+          is_prepay_account: false,
+          funding_detected: true,
+          last_funding_date: balanceCalc.last_funding_date,
+          funding_amount: balanceCalc.funding_amount,
+          total_charges: balanceCalc.total_charges
+        };
+      }
+      
+    } catch (activityError) {
+      console.error(`❌ [META-API] Erro ao processar activities:`, activityError);
     }
     
-    // 5. Conta pós-paga - sem saldo disponível
-    console.log(`🏦 [META-API] Conta PÓS-PAGA - saldo não disponível`);
-    
-    const totalTime = Date.now() - startTime;
-    console.log(`✅ [META-API] Processamento concluído (${totalTime}ms)`);
+    // 4. Fallback: sem saldo disponível
+    const responseTime = Date.now() - startTime;
+    console.log(`⚠️ [META-API] Saldo não disponível (${responseTime}ms)`);
     
     return { 
-      saldo_restante: null, 
-      is_prepay_account: false,
-      funding_detected: false,
-      last_funding_date: null,
-      charges_since_funding: 0
+      saldo_restante: null,
+      source: 'unavailable',
+      is_prepay_account: basicInfo.is_prepay_account
     };
     
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    console.error(`❌ [META-API] ERRO CRÍTICO conta ${accountId}:`, {
-      error: error.message,
-      stack: error.stack,
-      responseTime: `${responseTime}ms`
-    });
+    console.error(`❌ [META-API] ERRO CRÍTICO ao buscar saldo (${responseTime}ms):`, error);
     
     return { 
-      saldo_restante: null, 
-      is_prepay_account: false,
-      funding_detected: false,
-      last_funding_date: null,
-      charges_since_funding: 0
+      saldo_restante: null,
+      source: 'error',
+      is_prepay_account: null,
+      error: error.message
     };
   }
 }
 
-// Função para buscar informações básicas da conta (incluindo funding check)
+// Função para buscar informações básicas da conta Meta
 export async function fetchAccountBasicInfo(accountId: string, accessToken: string) {
-  const startTime = Date.now();
+  console.log(`🔍 [META-API] Buscando informações básicas da conta ${accountId}`);
   
   try {
-    console.log(`🔍 [META-API] Buscando info da conta ${accountId}`);
-
-    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,balance,currency,expired_funding_source_details,is_prepay_account,spend_cap,amount_spent&access_token=${accessToken}`;
-    console.log(`🌐 [META-API] URL final: ${accountUrl.replace(accessToken, '[TOKEN]')}`);
-
-    const response = await fetch(accountUrl);
-    console.log(`📡 [META-API] Status da resposta: ${response.status}`);
-    const basicDataTime = Date.now() - startTime;
+    const basicInfoUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,currency,account_status,is_prepay_account&access_token=${accessToken}`;
     
+    const response = await fetch(basicInfoUrl);
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error(`❌ [META-API] ERRO na API para conta ${accountId}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData,
-        responseTime: `${basicDataTime}ms`
-      });
-      
-      return { accountName: null, isPrepayAccount: false, currency: "BRL", lastFundingDate: null, lastFundingAmount: null };
+      throw new Error(`Meta API error: ${response.status} - ${response.statusText}`);
     }
-
+    
     const data = await response.json();
     
-    // Determinar se é pré-paga
-    const isPrepayAccount = data.is_prepay_account === true || 
-                          (data.balance && data.balance !== 'None') ||
-                          (data.spend_cap && data.amount_spent !== undefined);
-
-    console.log(`🏦 [META-API] Conta ${isPrepayAccount ? 'PRÉ-PAGA' : 'PÓS-PAGA'} - extraindo saldo da API`);
-
-    // Verificar funding events dos últimos 60 dias para contas não pré-pagas usando activities
-    let lastFundingDate: string | null = null;
-    let lastFundingAmount: number | null = null;
-    if (!isPrepayAccount) {
-      try {
-        console.log(`🔍 [META-API] Verificando funding events dos últimos 60 dias para conta não pré-paga ${accountId}`);
-
-        // Usar fetchAccountActivities que agora retorna todas as activities
-        const activities = await fetchAccountActivities(accountId, accessToken);
-
-        console.log(`📊 [META-API] Total de activities recebidas: ${activities.length} para conta ${accountId}`);
-
-        // Debug detalhado das activities
-        console.log(`🔍 [META-API] Primeiras 3 activities para análise:`, JSON.stringify(activities.slice(0, 3), null, 2));
-
-        // Encontrar evento de funding mais recente
-        const fundingEvents = activities
-          .filter(activity => activity.event_type === 'funding_event_successful')
-          .sort((a, b) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime());
-
-        console.log(`💰 [META-API] Total de funding_event_successful: ${fundingEvents.length}`);
-
-        if (fundingEvents.length > 0) {
-          const latestFunding = fundingEvents[0];
-          lastFundingDate = latestFunding.event_time;
-
-          const fundingData = parseExtraData(latestFunding.extra_data);
-          if (fundingData && typeof fundingData.amount === 'number') {
-            lastFundingAmount = fundingData.amount / 100; // converter centavos para reais
-          }
-
-          console.log(`✅ [META-API] Funding mais recente detectado para conta ${accountId}:`, {
-            event_time: lastFundingDate,
-            amount: lastFundingAmount
-          });
-        } else {
-          console.log(`ℹ️ [META-API] Nenhum funding event successful nos últimos 60 dias para conta ${accountId}`);
-
-          // Mostrar tipos de eventos disponíveis para debug
-          const eventTypes = [...new Set(activities.map(a => a.event_type))];
-          console.log(`📋 [META-API] Tipos de eventos disponíveis:`, eventTypes);
-
-          // Mostrar algumas activities para verificar formato
-          if (activities.length > 0) {
-            console.log(`📄 [META-API] Primeira activity completa:`, JSON.stringify(activities[0], null, 2));
-            console.log(`📄 [META-API] Event types encontrados: ${eventTypes.join(', ')}`);
-          }
-        }
-      } catch (error) {
-        console.log(`⚠️ [META-API] Erro ao verificar funding events: ${error.message}`);
-        lastFundingDate = null;
-        lastFundingAmount = null;
-      }
-    } else {
-      console.log(`🏦 [META-API] Conta pré-paga ${accountId} - pulando verificação de funding events`);
-    }
-
-    // Log o resultado final
-    console.log(`✅ [META-API] Dados básicos obtidos (${basicDataTime}ms):`, {
-      accountName: data.name,
-      isPrepayAccount: isPrepayAccount,
+    console.log(`✅ [META-API] Informações básicas obtidas:`, {
+      name: data.name,
       currency: data.currency,
-      lastFundingDate,
-      lastFundingAmount
+      isPrepayAccount: data.is_prepay_account,
+      accountStatus: data.account_status
     });
-
+    
     return {
       accountName: data.name,
-      isPrepayAccount: isPrepayAccount,
       currency: data.currency,
-      lastFundingDate,
-      lastFundingAmount
+      is_prepay_account: data.is_prepay_account,
+      accountStatus: data.account_status,
+      lastFundingDate: null,
+      lastFundingAmount: null
     };
-
+    
   } catch (error) {
-    const totalTime = Date.now() - startTime;
-    console.error(`❌ [META-API] ERRO na busca de dados básicos:`, {
-      error: error.message,
-      stack: error.stack,
-      totalTime: `${totalTime}ms`
-    });
-    return { accountName: null, isPrepayAccount: false, currency: "BRL", lastFundingDate: null, lastFundingAmount: null };
+    console.error(`❌ [META-API] Erro ao buscar informações básicas:`, error);
+    throw error;
   }
 }
 
-// Função para buscar dados reais da Meta Graph API
-export async function fetchMetaApiData(accountId: string, accessToken: string, customBudget: any) {
-  const totalStartTime = Date.now();
-  console.log(`🚀 [META-API] INICIANDO busca para conta ${accountId}`);
-  console.log(`🚀 [META-API] Custom budget ativo:`, !!customBudget);
-  
+// Função para buscar dados da API Meta (campanhas, gastos, etc)
+export async function fetchMetaApiData(accountId: string, accessToken: string, customBudget: any = null) {
+  const startTime = Date.now();
+  console.log(`🚀 [META-API] === INICIANDO BUSCA DE DADOS API ===`);
+  console.log(`📋 [META-API] Parâmetros: {
+  accountId: ${accountId},
+  accessTokenPresent: ${!!accessToken},
+  customBudget: ${customBudget ? 'SIM' : 'NÃO'}
+}`);
+
   try {
-    // 1. Buscar campanhas ativas para calcular orçamento diário total
-    const campaignsStartTime = Date.now();
-    const campaignsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=daily_budget,lifetime_budget,status,effective_status,end_time,name&access_token=${accessToken}&limit=1000`;
-    console.log(`📞 [META-API] Buscando campanhas da conta ${accountId}`);
+    // 1. Buscar todas as campanhas da conta
+    const campaignsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/campaigns?fields=id,name,status,effective_status,daily_budget&access_token=${accessToken}&limit=100`;
+    console.log(`📞 [META-API] Buscando campanhas...`);
     
     const campaignsResponse = await fetch(campaignsUrl);
-    const campaignsResponseTime = Date.now() - campaignsStartTime;
-    
     if (!campaignsResponse.ok) {
-      const errorData = await campaignsResponse.json();
-      console.error(`❌ [META-API] ERRO API conta ${accountId}:`, {
-        status: campaignsResponse.status,
-        statusText: campaignsResponse.statusText,
-        error: errorData,
-        responseTime: `${campaignsResponseTime}ms`
-      });
-      return { daily_budget: 0, total_spent: 0, account_name: null };
+      throw new Error(`Campaigns API error: ${campaignsResponse.status} - ${campaignsResponse.statusText}`);
     }
-
+    
     const campaignsData = await campaignsResponse.json();
     const campaigns = campaignsData.data || [];
     
-    console.log(`✅ [META-API] Campanhas obtidas conta ${accountId}:`, {
-      totalCampaigns: campaigns.length,
-      responseTime: `${campaignsResponseTime}ms`,
-      campaignNames: campaigns.slice(0, 5).map(c => c.name)
-    });
-
-    // Calcular orçamento diário total das campanhas ativas
-    let totalDailyBudget = 0;
-    const now = new Date();
-    let processedCampaigns = 0;
-    let campaignsWithBudget = 0;
-    let campaignsNeedingAdsets = 0;
+    console.log(`✅ [META-API] ${campaigns.length} campanhas encontradas`);
     
-    // Processar cada campanha
-    for (const campaign of campaigns) {
-      const campaignStartTime = Date.now();
-      processedCampaigns++;
+    // 2. Processar campanhas e calcular orçamento total
+    let totalDailyBudget = 0;
+    let activeCampaignsCount = 0;
+    const now = new Date();
+    
+    console.log(`🔄 [META-API] Processando campanhas...`);
+    
+    for (let i = 0; i < campaigns.length; i++) {
+      const campaign = campaigns[i];
       
-      console.log(`\n🔍 [META-API] Processando campanha ${processedCampaigns}:`, {
-        id: campaign.id,
-        name: campaign.name,
-        status: campaign.status,
-        effectiveStatus: campaign.effective_status,
-        dailyBudget: campaign.daily_budget
-      });
+      console.log(`
+🔍 [META-API] Processando campanha ${i + 1}: {
+  id: "${campaign.id}",
+  name: "${campaign.name}",
+  status: "${campaign.status}",
+  effectiveStatus: "${campaign.effective_status}",
+  dailyBudget: "${campaign.daily_budget}"
+}`);
       
       // Verificar se a campanha está ativa
       if (campaign.status !== "ACTIVE") {
         console.log(`[META-API] SKIP - Status não ativo: ${campaign.status}`);
         continue;
       }
-
-      // Verificar effective_status também
+      
       if (campaign.effective_status !== "ACTIVE") {
-        console.log(`[META-API] SKIP - Effective status: ${campaign.effective_status}`);
+        console.log(`[META-API] SKIP - Effective status não ativo: ${campaign.effective_status}`);
         continue;
       }
-
-      // Verificar data de término
-      if (campaign.end_time) {
-        const endTime = new Date(campaign.end_time);
-        const isFuture = endTime > now;
-        if (!isFuture) {
-          console.log(`[META-API] SKIP - Expirada em ${endTime.toLocaleDateString('pt-BR')}`);
-          continue;
-        }
+      
+      activeCampaignsCount++;
+      
+      // Se a campanha tem orçamento direto, usar ele
+      if (campaign.daily_budget) {
+        const budgetValue = parseFloat(campaign.daily_budget) / 100; // Converter de centavos
+        totalDailyBudget += budgetValue;
+        console.log(`💰 [META-API] Orçamento direto: R$ ${budgetValue.toFixed(2)} (${Date.now() - startTime}ms)`);
+        continue;
       }
-
-      // Se a campanha tem orçamento diário, usar ele
-      if (campaign.daily_budget && parseInt(campaign.daily_budget) > 0) {
-        const campaignBudget = parseInt(campaign.daily_budget) / 100; // Converte de centavos para reais
-        totalDailyBudget += campaignBudget;
-        campaignsWithBudget++;
-        
-        const campaignTime = Date.now() - campaignStartTime;
-        console.log(`💰 [META-API] Orçamento direto: R$ ${campaignBudget.toFixed(2)} (${campaignTime}ms)`);
-      } 
-      // Se não tem orçamento diário ou é zero, buscar adsets
-      else {
-        campaignsNeedingAdsets++;
-        console.log(`🔍 [META-API] Buscando adsets - sem orçamento direto`);
-        
-        // Buscar adsets da campanha
-        const adsetsStartTime = Date.now();
+      
+      // Se não tem orçamento direto, buscar dos adsets
+      try {
         const adsets = await fetchAdSets(campaign.id, accessToken, campaign.name);
-        const adsetsTime = Date.now() - adsetsStartTime;
-        
-        console.log(`📊 [META-API] Adsets obtidos: ${adsets.length} (${adsetsTime}ms)`);
-        
         const activeAdsets = filterActiveAdsets(adsets, now, campaign.id);
         
-        // Somar orçamentos dos adsets ativos
-        let adsetBudgetSum = 0;
-        let adsetsWithBudget = 0;
-        
         for (const adset of activeAdsets) {
-          if (adset.daily_budget && parseInt(adset.daily_budget) > 0) {
-            const adsetBudget = parseInt(adset.daily_budget) / 100; // Converte de centavos para reais
-            adsetBudgetSum += adsetBudget;
-            adsetsWithBudget++;
+          if (adset.daily_budget) {
+            const budgetValue = parseFloat(adset.daily_budget) / 100; // Converter de centavos
+            totalDailyBudget += budgetValue;
+            console.log(`💰 [META-API] Orçamento do adset ${adset.name}: R$ ${budgetValue.toFixed(2)}`);
           }
         }
-        
-        if (adsetBudgetSum > 0) {
-          totalDailyBudget += adsetBudgetSum;
-        }
-        
-        const campaignTime = Date.now() - campaignStartTime;
-        console.log(`💰 [META-API] Orçamento via adsets: R$ ${adsetBudgetSum.toFixed(2)}`, {
-          totalAdsets: adsets.length,
-          activeAdsets: activeAdsets.length,
-          adsetsWithBudget,
-          campaignTime: `${campaignTime}ms`
-        });
+      } catch (adsetError) {
+        console.error(`❌ [META-API] Erro ao buscar adsets da campanha ${campaign.id}:`, adsetError);
       }
     }
-
-    const budgetCalculationTime = Date.now() - campaignsStartTime;
-    console.log(`💰 [META-API] Cálculo concluído:`, {
-      totalDailyBudget: `R$ ${totalDailyBudget.toFixed(2)}`,
-      processedCampaigns,
-      campaignsWithBudget,
-      campaignsNeedingAdsets,
-      calculationTime: `${budgetCalculationTime}ms`
+    
+    console.log(`📊 [META-API] Resultado do processamento:`, {
+      totalCampaigns: campaigns.length,
+      activeCampaigns: activeCampaignsCount,
+      totalDailyBudget: `R$ ${totalDailyBudget.toFixed(2)}`
     });
-
-    // 2. Buscar insights de gasto para o período atual
-    const insightsStartTime = Date.now();
+    
+    // 3. Buscar gastos do mês atual
     const today = new Date();
-    const startDate = customBudget 
-      ? customBudget.start_date 
-      : `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`; // Início do mês atual
-    const endDate = customBudget 
-      ? customBudget.end_date 
-      : today.toISOString().split('T')[0]; // Hoje
-
-    console.log(`📅 [META-API] Buscando gastos período: ${startDate} até ${endDate}`);
-
-    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend&time_range={"since":"${startDate}","until":"${endDate}"}&access_token=${accessToken}`;
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    const sinceParam = firstDayOfMonth.toISOString().split('T')[0];
+    const untilParam = lastDayOfMonth.toISOString().split('T')[0];
+    
+    console.log(`💸 [META-API] Buscando gastos de ${sinceParam} até ${untilParam}...`);
+    
+    const insightsUrl = `https://graph.facebook.com/v22.0/act_${accountId}/insights?fields=spend&time_range={'since':'${sinceParam}','until':'${untilParam}'}&access_token=${accessToken}`;
     
     const insightsResponse = await fetch(insightsUrl);
-    const insightsResponseTime = Date.now() - insightsStartTime;
-    
     if (!insightsResponse.ok) {
-      const insightsError = await insightsResponse.json();
-      console.error(`❌ [META-API] ERRO API conta ${accountId}:`, {
-        status: insightsResponse.status,
-        statusText: insightsResponse.statusText,
-        error: insightsError,
-        responseTime: `${insightsResponseTime}ms`
-      });
-      return { daily_budget: totalDailyBudget, total_spent: 0, account_name: null };
+      console.error(`❌ [META-API] Erro na API de insights:`, insightsResponse.status);
+      throw new Error(`Insights API error: ${insightsResponse.status} - ${insightsResponse.statusText}`);
     }
-
+    
     const insightsData = await insightsResponse.json();
+    const insights = insightsData.data || [];
     
-    console.log(`✅ [META-API] Dados obtidos:`, {
-      responseTime: `${insightsResponseTime}ms`,
-      dataLength: insightsData.data?.length || 0,
-      rawData: insightsData
-    });
-
-    // Calcular gasto total
     let totalSpent = 0;
-    if (insightsData.data && insightsData.data.length > 0) {
-      insightsData.data.forEach(insight => {
-        if (insight.spend) {
-          const spendValue = parseFloat(insight.spend);
-          if (!isNaN(spendValue)) {
-            totalSpent += spendValue;
-          }
-        }
-      });
+    if (insights.length > 0 && insights[0].spend) {
+      totalSpent = parseFloat(insights[0].spend);
     }
-
-    console.log(`💸 [META-API] Gasto calculado: R$ ${totalSpent.toFixed(2)}`);
-
-    // 3. Buscar informações detalhadas da conta Meta (nome da conta)
-    const accountInfoStartTime = Date.now();
-    console.log(`🔍 [META-API] Buscando info da conta ${accountId}`);
     
-    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name,account_id&access_token=${accessToken}`;
+    const responseTime = Date.now() - startTime;
+    console.log(`✅ [META-API] Gastos obtidos (${responseTime}ms): R$ ${totalSpent.toFixed(2)}`);
     
-    let accountName = null;
-    try {
-      const accountResponse = await fetch(accountUrl);
-      const accountInfoTime = Date.now() - accountInfoStartTime;
-      
-      if (accountResponse.ok) {
-        const accountData = await accountResponse.json();
-        accountName = accountData.name;
-        console.log(`✅ [META-API] Nome obtido: ${accountName} (${accountInfoTime}ms)`);
-      } else {
-        console.log(`⚠️ [META-API] Erro ao obter nome (${accountInfoTime}ms):`, {
-          status: accountResponse.status,
-          statusText: accountResponse.statusText
-        });
-      }
-    } catch (error) {
-      const accountInfoTime = Date.now() - accountInfoStartTime;
-      console.log(`⚠️ [META-API] Exception (${accountInfoTime}ms):`, error.message);
+    // 4. Buscar nome da conta
+    console.log(`🏷️ [META-API] Buscando nome da conta...`);
+    const accountUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=name&access_token=${accessToken}`;
+    
+    const accountResponse = await fetch(accountUrl);
+    let accountName = `Conta ${accountId}`;
+    
+    if (accountResponse.ok) {
+      const accountData = await accountResponse.json();
+      accountName = accountData.name || accountName;
     }
-
-    const totalTime = Date.now() - totalStartTime;
-    console.log(`🎉 [META-API] CONCLUÍDO conta ${accountId}:`, {
-      totalTime: `${totalTime}ms`,
-      dailyBudget: `R$ ${totalDailyBudget.toFixed(2)}`,
-      totalSpent: `R$ ${totalSpent.toFixed(2)}`,
-      accountName: accountName || 'N/A'
-    });
-
-    return {
+    
+    const finalResponseTime = Date.now() - startTime;
+    console.log(`🎉 [META-API] === BUSCA CONCLUÍDA (${finalResponseTime}ms) ===`);
+    console.log(`📋 [META-API] Resultado final:`, {
+      account_name: accountName,
       daily_budget: totalDailyBudget,
       total_spent: totalSpent,
-      account_name: accountName
-    };
-
-  } catch (error) {
-    const totalTime = Date.now() - totalStartTime;
-    console.error(`❌ [META-API] ERRO GERAL conta ${accountId}:`, {
-      error: error.message,
-      stack: error.stack,
-      totalTime: `${totalTime}ms`
+      active_campaigns: activeCampaignsCount
     });
-    return { daily_budget: 0, total_spent: 0, account_name: null };
+    
+    return {
+      account_name: accountName,
+      daily_budget: totalDailyBudget,
+      total_spent: totalSpent,
+      active_campaigns: activeCampaignsCount
+    };
+    
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    console.error(`❌ [META-API] ERRO CRÍTICO (${responseTime}ms):`, error);
+    throw error;
   }
 }

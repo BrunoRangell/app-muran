@@ -56,7 +56,7 @@ export function CircularBudgetCard({
     // Só para Meta Ads
     if (platform !== "meta") return false;
     
-    // Só mostrar para contas não pré-pagas
+    // Só mostrar para contas pós-pagas
     if (client.balance_info?.billing_model === "pre") return false;
     
     // Verificar se tem funding detectado nos últimos 60 dias
@@ -379,7 +379,8 @@ export function CircularBudgetCard({
                 </Badge>
               </div>
               
-              {client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
+              {/* Conta PRÉ-PAGA */}
+              {client.balance_info.billing_model === "pre" && client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
                    <div className="space-y-2">
                    <div className="flex items-center justify-between">
                      <span className="text-lg font-bold text-blue-900">
