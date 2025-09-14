@@ -543,7 +543,7 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
     if (basicInfo.is_prepay_account) {
       console.log(`💳 [META-API] Conta pré-paga detectada, buscando saldo da API...`);
       
-      const balanceUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=account_status,balance&access_token=${accessToken}`;
+      const balanceUrl = `https://graph.facebook.com/v22.0/act_${accountId}?fields=account_status,balance,expired_funding_source_details&access_token=${accessToken}`;
       const balanceResponse = await fetch(balanceUrl);
       
       if (!balanceResponse.ok) {
@@ -558,24 +558,28 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
       const balanceData = await balanceResponse.json();
       console.log(`🔍 [META-API] Resposta da API de saldo:`, balanceData);
       
-      // Tentar extrair saldo do display_string primeiro
-      let balanceValue = null;
+      // Log da estrutura de expired_funding_source_details para debug
+      if (balanceData.expired_funding_source_details) {
+        console.log(`📋 [META-API] expired_funding_source_details encontrado:`, balanceData.expired_funding_source_details);
+      }
       
-      if (balanceData.balance) {
-        // O balance retorna um número em centavos, converter para reais
-        const rawBalance = parseFloat(balanceData.balance) / 100;
-        
-        // Criar display_string simulado para usar parseMetaBalance
-        const displayString = `Saldo disponível (R$${rawBalance.toFixed(2).replace('.', ',')} BRL)`;
-        console.log(`📋 [META-API] Display string gerado:`, displayString);
+      let balanceValue = null;
+      let displayString = null;
+      
+      // PRIORIDADE 1: Usar display_string real da API
+      if (balanceData.expired_funding_source_details?.display_string) {
+        displayString = balanceData.expired_funding_source_details.display_string;
+        console.log(`✅ [META-API] Display string REAL da API:`, displayString);
         
         balanceValue = parseMetaBalance(displayString);
-        
-        if (balanceValue === null && rawBalance > 0) {
-          // Fallback para o valor direto se parseMetaBalance falhar
-          balanceValue = rawBalance;
-          console.log(`⚠️ [META-API] Usando fallback para valor direto:`, balanceValue);
-        }
+        console.log(`💰 [META-API] Valor extraído do display_string:`, balanceValue);
+      }
+      
+      // PRIORIDADE 2: Fallback para valor numérico se display_string não estiver disponível
+      if (balanceValue === null && balanceData.balance) {
+        const rawBalance = parseFloat(balanceData.balance) / 100;
+        balanceValue = rawBalance;
+        console.log(`⚠️ [META-API] Usando fallback - valor numérico direto:`, balanceValue);
       }
       
       if (balanceValue !== null) {
