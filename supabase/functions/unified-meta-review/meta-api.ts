@@ -1,5 +1,38 @@
 // Funções para interagir com a Meta Graph API
 
+/**
+ * Extrai o saldo numérico a partir de uma string exibida pela API Meta Ads.
+ * Exemplo de entrada: "Saldo disponível (R$310,29 BRL)".
+ * Se não for possível extrair o valor e houver spendCap, retorna spendCap - amountSpent.
+ * Os valores de spendCap e amountSpent devem estar em reais.
+ * Caso contrário, retorna null indicando saldo indisponível.
+ */
+function parseMetaBalance(
+  displayString?: string | null,
+  spendCap?: number | string | null,
+  amountSpent?: number | string | null
+): number | null {
+  if (displayString) {
+    const match = displayString.match(/R\$\s*([\d.,]+)/);
+    if (match && match[1]) {
+      const numeric = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+      if (!isNaN(numeric)) {
+        return numeric;
+      }
+    }
+  }
+
+  if (spendCap && Number(spendCap) > 0) {
+    const spent =
+      amountSpent !== undefined && amountSpent !== null
+        ? Number(amountSpent)
+        : 0;
+    return Number(spendCap) - spent;
+  }
+
+  return null;
+}
+
 // Função para buscar conjuntos de anúncios de uma campanha
 export async function fetchAdSets(campaignId: string, accessToken: string, campaignName: string = "") {
   const startTime = Date.now();
@@ -506,7 +539,7 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
     console.log(`🔍 [META-API] Buscando informações básicas...`);
     const basicInfo = await fetchAccountBasicInfo(accountId, accessToken);
     
-    // 2. CONTA PRÉ-PAGA: buscar saldo diretamente da API Graph
+    // 2. CONTA PRÉ-PAGA: buscar saldo diretamente da API Graph usando display_string
     if (basicInfo.is_prepay_account) {
       console.log(`💳 [META-API] Conta pré-paga detectada, buscando saldo da API...`);
       
@@ -523,10 +556,29 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
       }
       
       const balanceData = await balanceResponse.json();
+      console.log(`🔍 [META-API] Resposta da API de saldo:`, balanceData);
+      
+      // Tentar extrair saldo do display_string primeiro
+      let balanceValue = null;
       
       if (balanceData.balance) {
-        const balanceValue = parseFloat(balanceData.balance) / 100; // Converter de centavos
+        // O balance retorna um número em centavos, converter para reais
+        const rawBalance = parseFloat(balanceData.balance) / 100;
         
+        // Criar display_string simulado para usar parseMetaBalance
+        const displayString = `Saldo disponível (R$${rawBalance.toFixed(2).replace('.', ',')} BRL)`;
+        console.log(`📋 [META-API] Display string gerado:`, displayString);
+        
+        balanceValue = parseMetaBalance(displayString);
+        
+        if (balanceValue === null && rawBalance > 0) {
+          // Fallback para o valor direto se parseMetaBalance falhar
+          balanceValue = rawBalance;
+          console.log(`⚠️ [META-API] Usando fallback para valor direto:`, balanceValue);
+        }
+      }
+      
+      if (balanceValue !== null) {
         const responseTime = Date.now() - startTime;
         console.log(`✅ [META-API] Saldo pré-pago obtido (${responseTime}ms):`, balanceValue);
         
