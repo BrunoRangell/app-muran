@@ -379,8 +379,8 @@ export function CircularBudgetCard({
                 </Badge>
               </div>
               
-              {/* Conta PRÉ-PAGA */}
-              {client.balance_info.billing_model === "pre" && client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
+              {/* Conta com SALDO NUMÉRICO (pré-paga ou pós-paga com saldo manual) */}
+              {client.balance_info.balance_type === "numeric" && client.balance_info.balance_value !== null ? (
                    <div className="space-y-2">
                    <div className="flex items-center justify-between">
                      <span className="text-lg font-bold text-blue-900">
