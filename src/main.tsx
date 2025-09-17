@@ -9,19 +9,22 @@ import "./index.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutos
-      gcTime: 1000 * 60 * 30, // 30 minutos (anteriormente cacheTime)
+      staleTime: 1000 * 60 * 2, // 2 minutos - reduzido para melhor reatividade
+      gcTime: 1000 * 60 * 15, // 15 minutos - reduzido para economia de memória
       refetchOnWindowFocus: true,
-      refetchOnMount: true,
+      refetchOnMount: 'always', // Sempre refetch ao montar
       refetchOnReconnect: true,
-      retry: (failureCount, error) => {
+      networkMode: 'offlineFirst', // Melhor comportamento offline
+      retry: (failureCount, error: any) => {
         // Não tentar novamente para erros de autenticação
-        if (error?.message?.includes('auth') || error?.message?.includes('401')) {
+        if (error?.message?.includes('auth') || 
+            error?.message?.includes('401') ||
+            error?.message?.includes('403')) {
           return false;
         }
-        return failureCount < 3;
+        return failureCount < 2; // Reduzido para 2 tentativas
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      retryDelay: (attemptIndex) => Math.min(500 * 2 ** attemptIndex, 5000), // Delays menores
     },
   },
 });

@@ -13,15 +13,19 @@ export const usePageVisibility = () => {
       console.log(`🔄 Visibilidade da página mudou: ${visible ? 'visível' : 'oculta'}`);
       
       if (visible) {
-        // Quando a página volta ao foco, revalidar queries importantes
-        console.log('🔄 Página voltou ao foco, revalidando dados...');
-        queryClient.invalidateQueries({ 
-          predicate: (query) => {
-            // Revalidar apenas queries relacionadas a autenticação e dados críticos
-            const queryKey = query.queryKey[0] as string;
-            return ['user-data', 'team-member', 'auth-session'].includes(queryKey);
-          }
-        });
+        // Quando a página volta ao foco, revalidar apenas queries essenciais de autenticação
+        console.log('🔄 Página voltou ao foco, revalidando queries de autenticação...');
+        
+        // Invalidar apenas queries críticas que realmente existem
+        setTimeout(() => {
+          queryClient.invalidateQueries({ 
+            predicate: (query) => {
+              const queryKey = query.queryKey[0] as string;
+              // Apenas queries de autenticação essenciais
+              return ['auth-session', 'team-members'].includes(queryKey);
+            }
+          });
+        }, 100); // Pequeno delay para evitar conflitos
       }
     };
 
