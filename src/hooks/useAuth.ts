@@ -1,61 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { usePageVisibility } from './usePageVisibility';
 
 export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
-  const [lastCheck, setLastCheck] = useState<number>(0);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isVisible } = usePageVisibility();
 
-  // Função de verificação de sessão com debounce otimizado
-  const checkSession = useCallback(async (force = false) => {
-    const now = Date.now();
-    // Debounce reduzido para melhor responsividade
-    if (!force && now - lastCheck < 300) {
-      console.log('🔄 Verificação de sessão em debounce, aguardando...');
-      return;
-    }
-    
-    setLastCheck(now);
-    
-    try {
-      console.log('🔍 Verificando sessão...');
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
+  useEffect(() => {
+    // Verificar sessão inicial
+    const checkSession = async () => {
+      try {
+        console.log('🔍 Verificando sessão inicial...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('❌ Erro ao verificar sessão:', error);
+          setIsAuthenticated(false);
+          setUser(null);
+          setSession(null);
+        } else {
+          console.log('✅ Sessão encontrada:', { 
+            hasSession: !!session, 
+            userId: session?.user?.id,
+            email: session?.user?.email 
+          });
+          setIsAuthenticated(!!session);
+          setUser(session?.user || null);
+          setSession(session);
+        }
+      } catch (error) {
         console.error('❌ Erro ao verificar sessão:', error);
         setIsAuthenticated(false);
         setUser(null);
         setSession(null);
-      } else {
-        console.log('✅ Sessão encontrada:', { 
-          hasSession: !!session, 
-          userId: session?.user?.id,
-          email: session?.user?.email 
-        });
-        setIsAuthenticated(!!session);
-        setUser(session?.user || null);
-        setSession(session);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('❌ Erro ao verificar sessão:', error);
-      setIsAuthenticated(false);
-      setUser(null);
-      setSession(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [lastCheck]);
+    };
 
-  useEffect(() => {
-
-    // Verificação inicial
     checkSession();
 
     // Monitorar mudanças na autenticação
@@ -71,20 +57,11 @@ export const useAuth = () => {
         setUser(session?.user || null);
         setSession(session);
         setIsLoading(false);
-        setLastCheck(Date.now()); // Atualizar timestamp da última verificação
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [checkSession]);
-
-  // Revalidar sessão quando a página volta ao foco
-  useEffect(() => {
-    if (isVisible && !isLoading) {
-      console.log('🔄 Página voltou ao foco, verificação imediata de sessão...');
-      checkSession(true); // Força verificação imediata
-    }
-  }, [isVisible, checkSession, isLoading]);
+  }, []);
 
   const logout = async () => {
     try {
