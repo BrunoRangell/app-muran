@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -10,56 +10,39 @@ export const useAuth = () => {
   const [session, setSession] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const checkingRef = useRef(false);
-  const lastCheckRef = useRef(0);
 
-  // Otimizado checkSession com debounce reduzido
-  const checkSession = useCallback(async (immediate = false) => {
-    const now = Date.now();
-    
-    // Verificação imediata ao focar página
-    if (!immediate && now - lastCheckRef.current < 300) {
-      return;
-    }
-
-    if (checkingRef.current) return;
-
-    try {
-      checkingRef.current = true;
-      lastCheckRef.current = now;
-      
-      console.log('🔍 Verificando sessão otimizada...');
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
+  useEffect(() => {
+    // Verificar sessão inicial
+    const checkSession = async () => {
+      try {
+        console.log('🔍 Verificando sessão inicial...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('❌ Erro ao verificar sessão:', error);
+          setIsAuthenticated(false);
+          setUser(null);
+          setSession(null);
+        } else {
+          console.log('✅ Sessão encontrada:', { 
+            hasSession: !!session, 
+            userId: session?.user?.id,
+            email: session?.user?.email 
+          });
+          setIsAuthenticated(!!session);
+          setUser(session?.user || null);
+          setSession(session);
+        }
+      } catch (error) {
         console.error('❌ Erro ao verificar sessão:', error);
         setIsAuthenticated(false);
         setUser(null);
         setSession(null);
-      } else {
-        console.log('✅ Sessão encontrada:', { 
-          hasSession: !!session, 
-          userId: session?.user?.id,
-          email: session?.user?.email 
-        });
-        setIsAuthenticated(!!session);
-        setUser(session?.user || null);
-        setSession(session);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('❌ Erro ao verificar sessão:', error);
-      setIsAuthenticated(false);
-      setUser(null);
-      setSession(null);
-    } finally {
-      checkingRef.current = false;
-      setIsLoading(false);
-    }
-  }, []);
+    };
 
-  useEffect(() => {
-    // Verificação inicial
-    checkSession(true);
+    checkSession();
 
     // Monitorar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -77,19 +60,8 @@ export const useAuth = () => {
       }
     );
 
-    // Listener para foco - verificação imediata
-    const handleFocus = () => {
-      console.log('👁️ Foco detectado, verificando sessão');
-      checkSession(true);
-    };
-
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      subscription.unsubscribe();
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [checkSession]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   const logout = async () => {
     try {

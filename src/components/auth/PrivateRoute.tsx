@@ -4,7 +4,6 @@ import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
-import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -12,11 +11,10 @@ interface PrivateRouteProps {
 }
 
 export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRouteProps) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const location = useLocation();
   const { toast } = useToast();
-  const { isAuthenticated, isLoading, user } = useUnifiedAuth();
 
   // Função para verificar status de admin
   const checkAdminStatus = async (email: string | undefined) => {
@@ -64,39 +62,63 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   };
 
   useEffect(() => {
-    if (requireAdmin && user?.email) {
-      checkAdminStatus(user.email);
-    }
-  }, [requireAdmin, user?.email, toast]);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          return;
+        }
 
-  // Timeout de segurança para loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isLoading) {
-        console.log('⏰ Timeout de loading no PrivateRoute');
-        setLoadingTimeout(true);
+        setIsAuthenticated(true);
+        
+        if (requireAdmin) {
+          await checkAdminStatus(session.user.email);
+        }
+      } catch (error) {
+        console.error("Erro na inicialização da autenticação:", error);
+        setIsAuthenticated(false);
+        setIsAdmin(false);
       }
-    }, 8000); // 8 segundos
+    };
 
-    return () => clearTimeout(timer);
-  }, [isLoading]);
+    initializeAuth();
 
-  // Estado de carregamento com timeout
-  if ((isLoading && !loadingTimeout) || (requireAdmin && isAdmin === null && isAuthenticated)) {
+    // Configurar listener para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Mudança no estado de autenticação:", event);
+      
+      if (!session) {
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        return;
+      }
+
+      setIsAuthenticated(true);
+      
+      if (requireAdmin) {
+        await checkAdminStatus(session.user.email);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [requireAdmin, toast]);
+
+  // Estado de carregamento
+  if (isAuthenticated === null || (requireAdmin && isAdmin === null)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muran-secondary">
-        <div className="space-y-4 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-muran-primary mx-auto"></div>
-          <p className="text-sm text-gray-600">
-            {loadingTimeout ? "Verificando autenticação..." : "Carregando..."}
-          </p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-muran-primary"></div>
       </div>
     );
   }
 
   // Redireciona se não estiver autenticado
-  if (!isAuthenticated || loadingTimeout) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
