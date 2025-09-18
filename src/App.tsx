@@ -5,6 +5,7 @@ import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import { lazy, Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import Login from "@/pages/Login";
 
 // Pré-carregamento das rotas principais
@@ -58,6 +59,9 @@ const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDaily
 
 
 function App() {
+  // Hook para monitorar visibilidade da página e revalidar queries
+  usePageVisibility();
+
   return (
     <TooltipProvider>
       <Routes>

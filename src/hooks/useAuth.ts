@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+
+// Debounce para evitar verificações excessivas
+let checkSessionTimeout: NodeJS.Timeout | null = null;
 
 export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -11,11 +14,15 @@ export const useAuth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Verificar sessão inicial
-    const checkSession = async () => {
+  // Função para verificação da sessão com debounce otimizado
+  const checkSession = useCallback(async (immediate = false) => {
+    if (checkSessionTimeout && !immediate) {
+      clearTimeout(checkSessionTimeout);
+    }
+
+    const performCheck = async () => {
       try {
-        console.log('🔍 Verificando sessão inicial...');
+        console.log('🔍 Verificando sessão...');
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('❌ Erro ao verificar sessão:', error);
@@ -42,7 +49,16 @@ export const useAuth = () => {
       }
     };
 
-    checkSession();
+    if (immediate) {
+      performCheck();
+    } else {
+      checkSessionTimeout = setTimeout(performCheck, 300); // Reduzido para 300ms
+    }
+  }, []);
+
+  useEffect(() => {
+    // Verificação inicial imediata
+    checkSession(true);
 
     // Monitorar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -60,8 +76,22 @@ export const useAuth = () => {
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // Listener para mudanças de foco da página
+    const handleFocus = () => {
+      console.log('🔄 Página ficou em foco, re-verificando sessão');
+      checkSession(true); // Verificação imediata no foco
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('focus', handleFocus);
+      if (checkSessionTimeout) {
+        clearTimeout(checkSessionTimeout);
+      }
+    };
+  }, [checkSession]);
 
   const logout = async () => {
     try {
