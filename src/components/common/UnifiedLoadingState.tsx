@@ -30,9 +30,9 @@ export const UnifiedLoadingState = ({
     return (
       <div className={`space-y-4 ${containerClasses[size]} ${className}`}>
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          <div className="h-4 bg-muran-secondary rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-muran-secondary rounded w-1/2 mb-2"></div>
+          <div className="h-4 bg-muran-secondary rounded w-2/3"></div>
         </div>
       </div>
     );
@@ -48,9 +48,9 @@ export const UnifiedLoadingState = ({
 
   return (
     <div className={`flex flex-col items-center justify-center ${containerClasses[size]} ${className}`}>
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-[#ff6e00] mb-2`} />
+      <Loader2 className={`${sizeClasses[size]} animate-spin text-muran-primary mb-2`} />
       {message && (
-        <p className="text-sm text-gray-600 text-center">{message}</p>
+        <p className="text-sm text-muran-text-secondary text-center">{message}</p>
       )}
     </div>
   );

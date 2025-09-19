@@ -4,6 +4,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
+import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -11,8 +12,9 @@ interface PrivateRouteProps {
 }
 
 export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRouteProps) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const { isAuthenticated, isLoading, user } = useUnifiedAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [adminLoading, setAdminLoading] = useState(requireAdmin);
   const location = useLocation();
   const { toast } = useToast();
 
@@ -62,54 +64,43 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   };
 
   useEffect(() => {
+    let mounted = true;
+    
+    // Loading state timeout - máximo 10 segundos
+    const loadingTimeout = setTimeout(() => {
+      console.log('⏰ PrivateRoute loading timeout atingido');
+      if (mounted) {
+        setAdminLoading(false);
+      }
+    }, 10000);
+
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          setIsAuthenticated(false);
-          setIsAdmin(false);
-          return;
-        }
-
-        setIsAuthenticated(true);
-        
-        if (requireAdmin) {
-          await checkAdminStatus(session.user.email);
+        if (requireAdmin && user?.email && mounted) {
+          await checkAdminStatus(user.email);
+        } else if (!requireAdmin && mounted) {
+          setAdminLoading(false);
         }
       } catch (error) {
-        console.error("Erro na inicialização da autenticação:", error);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
+        console.error('❌ Erro no PrivateRoute initializeAuth:', error);
+        if (mounted) {
+          setAdminLoading(false);
+        }
       }
     };
 
-    initializeAuth();
-
-    // Configurar listener para mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Mudança no estado de autenticação:", event);
-      
-      if (!session) {
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        return;
-      }
-
-      setIsAuthenticated(true);
-      
-      if (requireAdmin) {
-        await checkAdminStatus(session.user.email);
-      }
-    });
+    if (!isLoading) {
+      initializeAuth();
+    }
 
     return () => {
-      subscription.unsubscribe();
+      mounted = false;
+      clearTimeout(loadingTimeout);
     };
-  }, [requireAdmin, toast]);
+  }, [requireAdmin, user?.email, isLoading]);
 
   // Estado de carregamento
-  if (isAuthenticated === null || (requireAdmin && isAdmin === null)) {
+  if (isLoading || (requireAdmin && adminLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muran-secondary">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-muran-primary"></div>
