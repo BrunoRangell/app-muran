@@ -71,56 +71,54 @@ serve(async (req) => {
       drive: null as any
     };
 
-    // Executar integrações em paralelo
-    const promises = [];
+    let driveLink = null;
 
-    if (integrations.clickup) {
-      console.log(`📋 [ORCHESTRATOR] Iniciando ClickUp...`);
-      promises.push(
-        supabase.functions.invoke('create-clickup-project', {
-          body: { clientName, clientId }
-        }).then(res => {
-          results.clickup = res.data;
-          console.log(`✅ [ORCHESTRATOR] ClickUp concluído`);
-        }).catch(err => {
-          results.clickup = { success: false, error: err.message };
-          console.error(`❌ [ORCHESTRATOR] ClickUp falhou:`, err);
-        })
-      );
-    }
-
-    if (integrations.discord) {
-      console.log(`💬 [ORCHESTRATOR] Iniciando Discord...`);
-      promises.push(
-        supabase.functions.invoke('create-discord-channel', {
-          body: { clientName, clientId }
-        }).then(res => {
-          results.discord = res.data;
-          console.log(`✅ [ORCHESTRATOR] Discord concluído`);
-        }).catch(err => {
-          results.discord = { success: false, error: err.message };
-          console.error(`❌ [ORCHESTRATOR] Discord falhou:`, err);
-        })
-      );
-    }
-
+    // Executar integrações sequencialmente
+    // 1. Criar Drive primeiro (se habilitado)
     if (integrations.drive) {
       console.log(`📁 [ORCHESTRATOR] Iniciando Google Drive...`);
-      promises.push(
-        supabase.functions.invoke('create-drive-folder', {
+      try {
+        const driveResult = await supabase.functions.invoke('create-drive-folder', {
           body: { clientName, clientId }
-        }).then(res => {
-          results.drive = res.data;
-          console.log(`✅ [ORCHESTRATOR] Drive concluído`);
-        }).catch(err => {
-          results.drive = { success: false, error: err.message };
-          console.error(`❌ [ORCHESTRATOR] Drive falhou:`, err);
-        })
-      );
+        });
+        results.drive = driveResult.data;
+        driveLink = driveResult.data?.folderLink;
+        console.log(`✅ [ORCHESTRATOR] Drive concluído`);
+      } catch (err: any) {
+        results.drive = { success: false, error: err.message };
+        console.error(`❌ [ORCHESTRATOR] Drive falhou:`, err);
+      }
     }
 
-    // Aguardar todas as integrações
-    await Promise.all(promises);
+    // 2. Criar Discord e enviar link do Drive (se habilitado)
+    if (integrations.discord) {
+      console.log(`💬 [ORCHESTRATOR] Iniciando Discord...`);
+      try {
+        const discordResult = await supabase.functions.invoke('create-discord-channel', {
+          body: { clientName, clientId, driveLink }
+        });
+        results.discord = discordResult.data;
+        console.log(`✅ [ORCHESTRATOR] Discord concluído`);
+      } catch (err: any) {
+        results.discord = { success: false, error: err.message };
+        console.error(`❌ [ORCHESTRATOR] Discord falhou:`, err);
+      }
+    }
+
+    // 3. Criar ClickUp por último (se habilitado)
+    if (integrations.clickup) {
+      console.log(`📋 [ORCHESTRATOR] Iniciando ClickUp...`);
+      try {
+        const clickupResult = await supabase.functions.invoke('create-clickup-project', {
+          body: { clientName, clientId }
+        });
+        results.clickup = clickupResult.data;
+        console.log(`✅ [ORCHESTRATOR] ClickUp concluído`);
+      } catch (err: any) {
+        results.clickup = { success: false, error: err.message };
+        console.error(`❌ [ORCHESTRATOR] ClickUp falhou:`, err);
+      }
+    }
 
     // Calcular status final
     const enabledIntegrations = Object.values(integrations).filter(Boolean).length;

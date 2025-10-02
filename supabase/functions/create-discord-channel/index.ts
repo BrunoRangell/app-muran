@@ -9,6 +9,7 @@ const corsHeaders = {
 interface CreateDiscordRequest {
   clientName: string;
   clientId: string;
+  driveLink?: string;
 }
 
 serve(async (req) => {
@@ -17,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { clientName, clientId }: CreateDiscordRequest = await req.json();
+    const { clientName, clientId, driveLink }: CreateDiscordRequest = await req.json();
 
     console.log(`🚀 [DISCORD] Iniciando criação de canal para ${clientName}`);
 
@@ -67,11 +68,18 @@ serve(async (req) => {
 
     // 2. Enviar mensagem inicial
     console.log(`📨 [DISCORD] Enviando mensagem inicial...`);
+    
+    let messageContent = `🎉 Canal do cliente **${clientName}** criado com sucesso!\n\nBem-vindo ao seu espaço dedicado para acompanhamento e comunicação.`;
+    
+    if (driveLink) {
+      messageContent += `\n\n📁 Pasta "${clientName}" criada com sucesso no Google Drive.\nLink da pasta: ${driveLink}`;
+    }
+    
     await fetch(`https://discord.com/api/v10/channels/${channel.id}/messages`, {
       method: 'POST',
       headers: discordApi.headers,
       body: JSON.stringify({
-        content: `🎉 Canal do cliente **${clientName}** criado com sucesso!\n\nBem-vindo ao seu espaço dedicado para acompanhamento e comunicação.`
+        content: messageContent
       })
     });
 
