@@ -10,7 +10,7 @@ import { BirthdayCard } from "@/components/team/BirthdayCard";
 import { GoalCard } from "@/components/index/GoalCard";
 import { Quote } from "lucide-react";
 import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
-import { useAuthSession } from "@/hooks/useAuthSession";
+import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
 import { AuthDebugger } from "@/components/auth/AuthDebugger";
 
 const Index = () => {
@@ -21,8 +21,8 @@ const Index = () => {
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [isUserLoading, setIsUserLoading] = useState(true);
   
-  // Usar hook de sessão dedicado
-  const { session, user, isAuthenticated, isLoading: isAuthLoading, isRevalidating, refreshSession } = useAuthSession();
+  // Usar hook unificado de autenticação
+  const { session, user, isAuthenticated, isLoading: isAuthLoading, isRevalidating } = useUnifiedAuth();
 
   const { data: teamMembers, isLoading: isTeamLoading } = useQuery({
     queryKey: ["team_members"],
