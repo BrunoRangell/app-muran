@@ -177,13 +177,21 @@ const Login = () => {
           <div className="text-center space-y-6">
             <div className="relative inline-block animate-logoDance">
               <div className="absolute inset-0 bg-[#ff6e00] blur-2xl opacity-10 rounded-full" />
-              <img
-                src={optimizeImageUrl("/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png", 200, 85)}
-                alt="Muran Logo"
-                className="mx-auto h-16 md:h-24 w-auto drop-shadow-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
-                fetchPriority="high"
-                loading="eager"
-              />
+              <picture>
+                <source 
+                  type="image/webp" 
+                  srcSet={optimizeImageUrl("/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png", 200, 85)}
+                />
+                <img
+                  src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
+                  alt="Muran Logo"
+                  className="mx-auto h-16 md:h-24 w-auto drop-shadow-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
+                  fetchPriority="high"
+                  loading="eager"
+                  width="200"
+                  height="200"
+                />
+              </picture>
             </div>
             <div className="space-y-2">
               <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#ff6e00] to-[#ff914d] tracking-tight">
