@@ -11,7 +11,8 @@ import {
   Menu,
   ChevronLeft,
   Wallet,
-  UserPlus
+  UserPlus,
+  Settings2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -43,6 +44,7 @@ const adminMenuItems: MenuItem[] = [
     path: "/clientes",
     submenu: financialSubMenu
   },
+  { icon: Settings2, label: "Onboarding", path: "/onboarding" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
 ];
