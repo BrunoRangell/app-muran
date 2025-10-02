@@ -10,16 +10,22 @@ export const useUnifiedAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRevalidating, setIsRevalidating] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
   // Otimized session check with debounce
-  const checkSession = useCallback(async () => {
+  const checkSession = useCallback(async (isBackgroundCheck = false) => {
     if (sessionCheckDebounce) clearTimeout(sessionCheckDebounce);
     
     sessionCheckDebounce = setTimeout(async () => {
       try {
-        console.log('🔍 Verificando sessão...');
+        // Se for verificação em segundo plano, usar isRevalidating
+        if (isBackgroundCheck && !isLoading) {
+          setIsRevalidating(true);
+        }
+        
+        console.log('🔍 Verificando sessão...', isBackgroundCheck ? '(background)' : '(initial)');
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -40,9 +46,10 @@ export const useUnifiedAuth = () => {
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
+        setIsRevalidating(false);
       }
     }, 100);
-  }, []);
+  }, [isLoading]);
 
   // Session refresh mechanism
   const refreshSession = useCallback(async (): Promise<boolean> => {
@@ -129,7 +136,7 @@ export const useUnifiedAuth = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('👀 Página em foco - verificando sessão');
-      checkSession();
+      checkSession(true); // true = background check
     };
 
     window.addEventListener('focus', handleFocus);
@@ -140,6 +147,7 @@ export const useUnifiedAuth = () => {
     user,
     session,
     isLoading,
+    isRevalidating,
     isAuthenticated,
     logout,
     refreshSession,

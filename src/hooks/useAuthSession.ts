@@ -6,6 +6,7 @@ export const useAuthSession = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRevalidating, setIsRevalidating] = useState(false);
 
   useEffect(() => {
     // Função para inicializar a sessão
@@ -114,6 +115,7 @@ export const useAuthSession = () => {
     session,
     user,
     isLoading,
+    isRevalidating,
     isAuthenticated: !!session,
     refreshSession
   };

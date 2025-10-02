@@ -22,7 +22,7 @@ const Index = () => {
   const [isUserLoading, setIsUserLoading] = useState(true);
   
   // Usar hook de sessão dedicado
-  const { session, user, isAuthenticated, isLoading: isAuthLoading, refreshSession } = useAuthSession();
+  const { session, user, isAuthenticated, isLoading: isAuthLoading, isRevalidating, refreshSession } = useAuthSession();
 
   const { data: teamMembers, isLoading: isTeamLoading } = useQuery({
     queryKey: ["team_members"],
@@ -160,7 +160,14 @@ const Index = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
+    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6 relative">
+      {isRevalidating && (
+        <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm border border-muran-primary/20 rounded-lg px-4 py-2 shadow-lg flex items-center gap-2">
+          <div className="h-4 w-4 border-2 border-muran-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-muran-complementary">Atualizando...</span>
+        </div>
+      )}
+      
       <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
