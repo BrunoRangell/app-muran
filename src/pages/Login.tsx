@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mail, Key, Info, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { optimizeImageUrl } from "@/lib/utils";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -177,7 +178,7 @@ const Login = () => {
             <div className="relative inline-block animate-logoDance">
               <div className="absolute inset-0 bg-[#ff6e00] blur-2xl opacity-10 rounded-full" />
               <img
-                src="/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png"
+                src={optimizeImageUrl("/lovable-uploads/2638a3ab-9001-4f4e-b0df-a1a3bb8786da.png", 200, 85)}
                 alt="Muran Logo"
                 className="mx-auto h-16 md:h-24 w-auto drop-shadow-lg transition-transform duration-300 hover:scale-105 cursor-pointer"
                 fetchPriority="high"
