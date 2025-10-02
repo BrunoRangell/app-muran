@@ -79,8 +79,7 @@ serve(async (req) => {
         headers: clickupApi.headers,
         body: JSON.stringify({
           name: templateList.name,
-          content: templateList.content || '',
-          status: 'green'
+          content: templateList.content || ''
         })
       });
 
