@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Settings2, Play, Sparkles, FolderKanban, MessageSquare, HardDrive, ArrowDown, Zap } from "lucide-react";
+import { Settings2, Play, Sparkles, FolderKanban, MessageSquare, HardDrive, ArrowRight, Zap } from "lucide-react";
 
 export default function Onboarding() {
   const [companyName, setCompanyName] = useState<string>("");
@@ -148,7 +148,7 @@ export default function Onboarding() {
             />
           </div>
 
-          {/* Timeline Vertical de Automação */}
+          {/* Layout Horizontal de Automação */}
           <div>
             <div className="text-center mb-6">
               <div className="flex items-center justify-center gap-2 mb-2">
@@ -160,73 +160,75 @@ export default function Onboarding() {
               </p>
             </div>
 
-            <div className="max-w-xl mx-auto space-y-2">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4">
               {/* Step 1: Google Drive */}
-              <div className="relative">
-                <div className="flex gap-4 p-5 rounded-lg border bg-card shadow-sm">
-                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary">
+              <div className="w-full md:w-64 flex-shrink-0">
+                <div className="flex flex-col gap-3 p-5 rounded-lg border bg-card shadow-sm">
+                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary self-start">
                     1
                   </Badge>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                        <HardDrive className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <h4 className="font-semibold text-muran-dark">Google Drive</h4>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                      <HardDrive className="w-5 h-5 text-blue-600" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Pasta organizada para documentos do cliente
-                    </p>
+                    <div>
+                      <h4 className="font-semibold text-muran-dark">Google Drive</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Pasta organizada
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Arrow connector */}
-              <div className="flex justify-center py-1">
-                <ArrowDown className="w-5 h-5 text-muran-primary animate-pulse" />
+              <div className="flex items-center justify-center">
+                <ArrowRight className="w-6 h-6 text-muran-primary animate-pulse hidden md:block" />
+                <ArrowRight className="w-6 h-6 text-muran-primary animate-pulse md:hidden rotate-90" />
               </div>
 
               {/* Step 2: Discord */}
-              <div className="relative">
-                <div className="flex gap-4 p-5 rounded-lg border bg-card shadow-sm">
-                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary">
+              <div className="w-full md:w-64 flex-shrink-0">
+                <div className="flex flex-col gap-3 p-5 rounded-lg border bg-card shadow-sm">
+                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary self-start">
                     2
                   </Badge>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                        <MessageSquare className="w-5 h-5 text-indigo-600" />
-                      </div>
-                      <h4 className="font-semibold text-muran-dark">Discord</h4>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-5 h-5 text-indigo-600" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Canal privado para comunicação
-                    </p>
+                    <div>
+                      <h4 className="font-semibold text-muran-dark">Discord</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Canal privado
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Arrow connector */}
-              <div className="flex justify-center py-1">
-                <ArrowDown className="w-5 h-5 text-muran-primary animate-pulse" />
+              <div className="flex items-center justify-center">
+                <ArrowRight className="w-6 h-6 text-muran-primary animate-pulse hidden md:block" />
+                <ArrowRight className="w-6 h-6 text-muran-primary animate-pulse md:hidden rotate-90" />
               </div>
 
               {/* Step 3: ClickUp */}
-              <div className="relative">
-                <div className="flex gap-4 p-5 rounded-lg border bg-card shadow-sm">
-                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary">
+              <div className="w-full md:w-64 flex-shrink-0">
+                <div className="flex flex-col gap-3 p-5 rounded-lg border bg-card shadow-sm">
+                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary self-start">
                     3
                   </Badge>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                        <FolderKanban className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <h4 className="font-semibold text-muran-dark">ClickUp</h4>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                      <FolderKanban className="w-5 h-5 text-purple-600" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Projeto completo para gestão
-                    </p>
+                    <div>
+                      <h4 className="font-semibold text-muran-dark">ClickUp</h4>
+                      <p className="text-xs text-muted-foreground">
+                        Projeto completo
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
