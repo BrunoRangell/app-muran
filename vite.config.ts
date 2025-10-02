@@ -39,10 +39,17 @@ export default defineConfig(({ mode }) => ({
     cssCodeSplit: true,
     // Usar esbuild (padrão) para minificação - mais rápido que terser
     minify: 'esbuild',
+    cssMinify: true,
   },
   // Copiar Service Worker para o build
   publicDir: 'public',
   css: {
     devSourcemap: false,
+    // Otimizações adicionais de CSS
+    postcss: {
+      plugins: [
+        // PostCSS plugins são aplicados automaticamente pelo Tailwind
+      ],
+    },
   },
 }));

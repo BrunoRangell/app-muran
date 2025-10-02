@@ -3,12 +3,22 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
-  content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-  ],
+  content: {
+    files: [
+      "./pages/**/*.{ts,tsx}",
+      "./components/**/*.{ts,tsx}",
+      "./app/**/*.{ts,tsx}",
+      "./src/**/*.{ts,tsx}",
+    ],
+    options: {
+      // Safelist para classes dinâmicas que podem não ser detectadas
+      safelist: [
+        'animate-spin',
+        'border-muran-primary',
+        'bg-muran-secondary',
+      ],
+    },
+  },
   prefix: "",
   theme: {
     container: {
