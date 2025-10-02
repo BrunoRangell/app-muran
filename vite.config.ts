@@ -40,6 +40,8 @@ export default defineConfig(({ mode }) => ({
     // Usar esbuild (padrão) para minificação - mais rápido que terser
     minify: 'esbuild',
   },
+  // Copiar Service Worker para o build
+  publicDir: 'public',
   css: {
     devSourcemap: false,
   },
