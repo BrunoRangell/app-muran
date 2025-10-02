@@ -15,6 +15,7 @@ export const SidebarLogo = ({ isCollapsed }: SidebarLogoProps) => {
           "w-auto transition-all duration-300",
           isCollapsed ? "h-8" : "h-12"
         )}
+        loading="eager"
       />
     </div>
   );
