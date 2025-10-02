@@ -20,11 +20,13 @@
     
     <!-- Inline critical CSS for above-the-fold content to reduce render blocking -->
     <style>
-      /* Critical CSS for initial render - prevents FOUC */
-      *,::before,::after{box-sizing:border-box;border:0 solid #e5e7eb}
-      html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:ui-sans-serif,system-ui,sans-serif}
-      body{margin:0;line-height:inherit}
-      #root{min-height:100vh}
+      /* Critical CSS Reset & Base */
+      *,::before,::after{box-sizing:border-box;border:0 solid #e5e7eb;margin:0;padding:0}
+      html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:ui-sans-serif,system-ui,sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+      body{margin:0;line-height:inherit;min-height:100vh}
+      #root{min-height:100vh;display:flex}
+      
+      /* Loading State */
       .min-h-screen{min-height:100vh}
       .flex{display:flex}
       .items-center{align-items:center}
@@ -38,6 +40,60 @@
       .border-t-2{border-top-width:2px}
       .border-b-2{border-bottom-width:2px}
       .border-muran-primary{border-color:hsl(24 100% 50%)}
+      
+      /* Login Page Critical Styles */
+      .relative{position:relative}
+      .absolute{position:absolute}
+      .inset-0{top:0;right:0;bottom:0;left:0}
+      .overflow-hidden{overflow:hidden}
+      .w-full{width:100%}
+      .max-w-md{max-width:28rem}
+      .mx-auto{margin-left:auto;margin-right:auto}
+      .p-4{padding:1rem}
+      .p-6{padding:1.5rem}
+      .space-y-6>:not([hidden])~:not([hidden]){margin-top:1.5rem}
+      .space-y-4>:not([hidden])~:not([hidden]){margin-top:1rem}
+      .text-center{text-align:center}
+      .inline-block{display:inline-block}
+      .h-16{height:4rem}
+      .h-auto{height:auto}
+      .w-auto{width:auto}
+      .text-2xl{font-size:1.5rem;line-height:2rem}
+      .font-bold{font-weight:700}
+      .text-sm{font-size:.875rem;line-height:1.25rem}
+      .shadow-2xl{box-shadow:0 25px 50px -12px rgba(0,0,0,.25)}
+      .rounded-2xl{border-radius:1rem}
+      .backdrop-blur-xl{backdrop-filter:blur(24px)}
+      .bg-gradient-to-br{background-image:linear-gradient(to bottom right,var(--tw-gradient-stops))}
+      .from-muran-primary{--tw-gradient-from:hsl(24 100% 50%);--tw-gradient-to:hsl(24 100% 50% / 0);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}
+      .to-muran-complementary{--tw-gradient-to:hsl(285 29% 16%)}
+      .z-10{z-index:10}
+      
+      /* Animations */
+      @keyframes logoDance{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+      .animate-logoDance{animation:logoDance 3s ease-in-out infinite}
+      
+      /* Gradient Background */
+      .bg-gradient-to-br{background-image:linear-gradient(to bottom right,var(--tw-gradient-stops))}
+      
+      /* Typography */
+      .tracking-tight{letter-spacing:-.025em}
+      .bg-clip-text{-webkit-background-clip:text;background-clip:text}
+      .text-transparent{color:transparent}
+      
+      /* Utility Classes */
+      .drop-shadow-lg{filter:drop-shadow(0 10px 8px rgba(0,0,0,.04)) drop-shadow(0 4px 3px rgba(0,0,0,.1))}
+      .transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}
+      .duration-300{transition-duration:.3s}
+      .cursor-pointer{cursor:pointer}
+      .blur-2xl{filter:blur(40px)}
+      .opacity-10{opacity:.1}
+      
+      @media (min-width:768px){
+        .md\\:h-24{height:6rem}
+        .md\\:text-3xl{font-size:1.875rem;line-height:2.25rem}
+        .md\\:p-8{padding:2rem}
+      }
     </style>
   </head>
 
