@@ -35,5 +35,17 @@ export default defineConfig(({ mode }) => ({
     },
     // Aumentar limite de warning de chunk size
     chunkSizeWarningLimit: 600,
+    // Otimizar CSS para reduzir bloqueio de renderização
+    cssCodeSplit: true,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+  },
+  css: {
+    devSourcemap: false,
   },
 }));

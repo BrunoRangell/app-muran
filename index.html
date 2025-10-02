@@ -17,6 +17,28 @@
     <!-- DNS Prefetch and Preconnect for external resources -->
     <link rel="dns-prefetch" href="https://cdn.gpteng.co" />
     <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
+    
+    <!-- Inline critical CSS for above-the-fold content to reduce render blocking -->
+    <style>
+      /* Critical CSS for initial render - prevents FOUC */
+      *,::before,::after{box-sizing:border-box;border:0 solid #e5e7eb}
+      html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:ui-sans-serif,system-ui,sans-serif}
+      body{margin:0;line-height:inherit}
+      #root{min-height:100vh}
+      .min-h-screen{min-height:100vh}
+      .flex{display:flex}
+      .items-center{align-items:center}
+      .justify-center{justify-content:center}
+      .bg-muran-secondary{background-color:hsl(240 4.8% 95.9%)}
+      .animate-spin{animation:spin 1s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+      .rounded-full{border-radius:9999px}
+      .h-12{height:3rem}
+      .w-12{width:3rem}
+      .border-t-2{border-top-width:2px}
+      .border-b-2{border-bottom-width:2px}
+      .border-muran-primary{border-color:hsl(24 100% 50%)}
+    </style>
   </head>
 
   <body>
