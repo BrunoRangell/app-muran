@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClientSelector } from "@/components/onboarding/ClientSelector";
 import { IntegrationSelector } from "@/components/onboarding/IntegrationSelector";
 import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
 import { OnboardingResult } from "@/components/onboarding/OnboardingResult";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Onboarding() {
-  const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [companyName, setCompanyName] = useState<string>("");
   const [integrations, setIntegrations] = useState({
     clickup: false,
     discord: false,
@@ -23,10 +24,10 @@ export default function Onboarding() {
   const navigate = useNavigate();
 
   const handleExecuteOnboarding = async () => {
-    if (!selectedClientId) {
+    if (!companyName.trim()) {
       toast({
-        title: "Cliente não selecionado",
-        description: "Por favor, selecione um cliente antes de executar o onboarding.",
+        title: "Nome do cliente obrigatório",
+        description: "Por favor, digite o nome do cliente antes de continuar.",
         variant: "destructive",
       });
       return;
@@ -45,9 +46,27 @@ export default function Onboarding() {
     try {
       setIsOnboarding(true);
 
+      // 1. Criar o cliente primeiro
+      const { data: newClient, error: clientError } = await supabase
+        .from("clients")
+        .insert({
+          company_name: companyName.trim(),
+          status: "active",
+          contract_value: 0,
+          first_payment_date: new Date().toISOString(),
+          payment_type: "pre",
+          contact_name: "",
+          contact_phone: "",
+        })
+        .select()
+        .single();
+
+      if (clientError) throw clientError;
+
+      // 2. Executar as automações de onboarding
       const { data, error } = await supabase.functions.invoke("orchestrate-client-onboarding", {
         body: {
-          clientId: selectedClientId,
+          clientId: newClient.id,
           integrations,
         },
       });
@@ -57,8 +76,8 @@ export default function Onboarding() {
       setOnboardingResult(data);
       
       toast({
-        title: "Onboarding concluído",
-        description: "As integrações foram executadas com sucesso.",
+        title: "Cliente criado e onboarding concluído",
+        description: "O cliente foi criado e as integrações foram executadas com sucesso.",
       });
     } catch (error: any) {
       console.error("Erro ao executar onboarding:", error);
@@ -78,7 +97,7 @@ export default function Onboarding() {
 
   const handleReset = () => {
     setOnboardingResult(null);
-    setSelectedClientId("");
+    setCompanyName("");
     setIntegrations({
       clickup: false,
       discord: false,
@@ -111,45 +130,47 @@ export default function Onboarding() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <CardTitle className="text-3xl">🔧 Onboarding - Automações de Integração</CardTitle>
+              <CardTitle className="text-3xl">🎯 Novo Cliente - Onboarding Completo</CardTitle>
               <CardDescription>
-                Execute automações de integração (ClickUp, Discord, Google Drive) para clientes existentes
+                Crie um novo cliente e execute automaticamente as integrações com ClickUp, Discord e Google Drive
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <ClientSelector
-            selectedClientId={selectedClientId}
-            onClientSelect={setSelectedClientId}
+          <div className="space-y-2">
+            <Label htmlFor="companyName">Nome do Cliente</Label>
+            <Input
+              id="companyName"
+              placeholder="Digite o nome da empresa do cliente"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              disabled={isOnboarding}
+            />
+          </div>
+
+          <IntegrationSelector
+            integrations={integrations}
+            onIntegrationsChange={setIntegrations}
           />
 
-          {selectedClientId && (
-            <>
-              <IntegrationSelector
-                integrations={integrations}
-                onIntegrationsChange={setIntegrations}
-                clientId={selectedClientId}
-              />
-
-              <div className="flex gap-3 justify-end pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(-1)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleExecuteOnboarding}
-                  disabled={isOnboarding}
-                  className="gap-2"
-                >
-                  <Play className="h-4 w-4" />
-                  Executar Onboarding
-                </Button>
-              </div>
-            </>
-          )}
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => navigate(-1)}
+              disabled={isOnboarding}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleExecuteOnboarding}
+              disabled={isOnboarding || !companyName.trim()}
+              className="gap-2"
+            >
+              <Play className="h-4 w-4" />
+              Criar Cliente e Executar Onboarding
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
