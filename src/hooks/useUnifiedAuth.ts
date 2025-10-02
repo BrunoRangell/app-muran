@@ -29,16 +29,6 @@ export const useUnifiedAuth = () => {
         
         if (error) {
           console.error('❌ Erro ao verificar sessão:', error);
-          
-          // Se erro for refresh_token_not_found, limpar storage corrompido
-          if (error.message?.includes('refresh_token_not_found') || 
-              error.message?.includes('Invalid Refresh Token')) {
-            console.log('🧹 Limpando tokens inválidos do storage...');
-            localStorage.removeItem('muran-auth-token');
-            localStorage.removeItem('muran-auth-token-code-verifier');
-            sessionStorage.clear();
-          }
-          
           setSession(null);
           setUser(null);
           setIsAuthenticated(false);

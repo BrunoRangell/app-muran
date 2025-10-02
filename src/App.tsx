@@ -5,7 +5,6 @@ import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import { lazy, Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
-// Login importado diretamente (não lazy) - é crítico e deve estar sempre disponível
 import Login from "@/pages/Login";
 
 // Pré-carregamento das rotas principais
@@ -71,11 +70,7 @@ function App() {
             </PrivateRoute>
           }
         >
-          <Route path="/" element={
-            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-muran-secondary"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-muran-primary"></div></div>}>
-              <Index />
-            </Suspense>
-          } />
+          <Route path="/" element={<Index />} />
           <Route path="/equipe" element={<Managers />} />
           <Route path="/configuracoes" element={<Settings />} />
           <Route

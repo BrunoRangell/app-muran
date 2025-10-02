@@ -20,36 +20,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // Separar React e React Router em chunks próprios
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          // Separar bibliotecas de UI em chunks próprios
-          'ui-vendor': ['@radix-ui/react-avatar', '@radix-ui/react-slot', '@radix-ui/react-toast'],
-          // Separar Supabase em chunk próprio
-          'supabase-vendor': ['@supabase/supabase-js'],
-        },
-      },
-    },
-    // Aumentar limite de warning de chunk size
-    chunkSizeWarningLimit: 600,
-    // Otimizar CSS para reduzir bloqueio de renderização
-    cssCodeSplit: true,
-    // Usar esbuild (padrão) para minificação - mais rápido que terser
-    minify: 'esbuild',
-    cssMinify: true,
-  },
-  // Copiar Service Worker para o build
-  publicDir: 'public',
-  css: {
-    devSourcemap: false,
-    // Otimizações adicionais de CSS
-    postcss: {
-      plugins: [
-        // PostCSS plugins são aplicados automaticamente pelo Tailwind
-      ],
-    },
-  },
 }));
