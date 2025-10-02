@@ -31,7 +31,6 @@ interface SidebarProps {
 const financialSubMenu: MenuItem[] = [
   { icon: DollarSign, label: "Relatório Financeiro", path: "/clientes/relatorio" },
   { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: UserPlus, label: "Novo Cliente", path: "/clientes/novo-cliente" },
   { icon: Receipt, label: "Recebimentos", path: "/recebimentos-nova" },
   { icon: CreditCard, label: "Registro de Custos", path: "/clientes/custos" }
 ];

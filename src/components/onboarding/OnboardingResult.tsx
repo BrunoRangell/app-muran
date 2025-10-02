@@ -6,10 +6,9 @@ import { useNavigate } from "react-router-dom";
 interface OnboardingResultProps {
   result: any;
   onClose: () => void;
-  onNewClient: () => void;
 }
 
-export const OnboardingResult = ({ result, onClose, onNewClient }: OnboardingResultProps) => {
+export const OnboardingResult = ({ result, onClose }: OnboardingResultProps) => {
   const navigate = useNavigate();
 
   if (!result.success) {
@@ -24,14 +23,9 @@ export const OnboardingResult = ({ result, onClose, onNewClient }: OnboardingRes
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">{result.error}</p>
-          <div className="flex gap-3">
-            <Button onClick={onClose} variant="outline">
-              Tentar Novamente
-            </Button>
-            <Button onClick={() => navigate('/clientes')}>
-              Ir para Dashboard
-            </Button>
-          </div>
+          <Button onClick={onClose} variant="outline" className="w-full">
+            Tentar Novamente
+          </Button>
         </CardContent>
       </Card>
     );
@@ -157,12 +151,9 @@ export const OnboardingResult = ({ result, onClose, onNewClient }: OnboardingRes
         </div>
 
         {/* Ações */}
-        <div className="flex gap-3 pt-4">
-          <Button onClick={() => navigate('/clientes')} variant="outline">
-            Ir para Dashboard
-          </Button>
-          <Button onClick={onNewClient}>
-            Criar Outro Cliente
+        <div className="pt-4">
+          <Button onClick={onClose} className="w-full">
+            Fechar
           </Button>
         </div>
       </CardContent>
