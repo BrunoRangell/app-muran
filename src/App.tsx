@@ -2,7 +2,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 import { lazy, Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -60,8 +59,6 @@ const Onboarding = lazyWithTimeout(() => import("@/pages/Onboarding"));
 
 
 function App() {
-  usePageVisibility();
-  
   return (
     <TooltipProvider>
       <Routes>
