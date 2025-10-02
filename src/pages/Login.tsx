@@ -107,7 +107,10 @@ const Login = () => {
           description: "Login realizado com sucesso",
         });
         
-        navigate(returnTo);
+        // Pequeno delay para garantir que o estado de autenticação seja propagado
+        setTimeout(() => {
+          navigate(returnTo);
+        }, 100);
       }
     } catch (error) {
       console.error('Erro inesperado:', error);

@@ -16,9 +16,8 @@ export const useUnifiedAuth = () => {
 
   // Otimized session check with debounce
   const checkSession = useCallback(async (isBackgroundCheck = false) => {
-    if (sessionCheckDebounce) clearTimeout(sessionCheckDebounce);
-    
-    sessionCheckDebounce = setTimeout(async () => {
+    // Função interna para realizar a verificação
+    const performCheck = async () => {
       try {
         // Se for verificação em segundo plano, usar isRevalidating
         if (isBackgroundCheck && !isLoading) {
@@ -48,6 +47,19 @@ export const useUnifiedAuth = () => {
         setIsLoading(false);
         setIsRevalidating(false);
       }
+    };
+
+    // Se for verificação inicial, executar imediatamente sem debounce
+    if (!isBackgroundCheck) {
+      await performCheck();
+      return;
+    }
+
+    // Se for verificação em segundo plano, usar debounce
+    if (sessionCheckDebounce) clearTimeout(sessionCheckDebounce);
+    
+    sessionCheckDebounce = setTimeout(async () => {
+      await performCheck();
     }, 100);
   }, [isLoading]);
 
