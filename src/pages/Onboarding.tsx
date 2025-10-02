@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { IntegrationSelector } from "@/components/onboarding/IntegrationSelector";
 import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
 import { OnboardingResult } from "@/components/onboarding/OnboardingResult";
 import { Button } from "@/components/ui/button";
@@ -13,31 +12,23 @@ import { useNavigate } from "react-router-dom";
 
 export default function Onboarding() {
   const [companyName, setCompanyName] = useState<string>("");
-  const [integrations, setIntegrations] = useState({
-    clickup: false,
-    discord: false,
-    drive: false,
-  });
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [onboardingResult, setOnboardingResult] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Todas as integrações são obrigatórias
+  const integrations = {
+    clickup: true,
+    discord: true,
+    drive: true,
+  };
 
   const handleExecuteOnboarding = async () => {
     if (!companyName.trim()) {
       toast({
         title: "Nome do cliente obrigatório",
         description: "Por favor, digite o nome do cliente antes de continuar.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const hasIntegrations = Object.values(integrations).some(v => v);
-    if (!hasIntegrations) {
-      toast({
-        title: "Nenhuma integração selecionada",
-        description: "Selecione pelo menos uma integração para executar.",
         variant: "destructive",
       });
       return;
@@ -98,11 +89,6 @@ export default function Onboarding() {
   const handleReset = () => {
     setOnboardingResult(null);
     setCompanyName("");
-    setIntegrations({
-      clickup: false,
-      discord: false,
-      drive: false,
-    });
   };
 
   if (onboardingResult) {
@@ -149,10 +135,14 @@ export default function Onboarding() {
             />
           </div>
 
-          <IntegrationSelector
-            integrations={integrations}
-            onIntegrationsChange={setIntegrations}
-          />
+          <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+            <p className="text-sm font-medium">📋 Este processo irá automaticamente:</p>
+            <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+              <li>✅ Criar pasta organizada no Google Drive</li>
+              <li>✅ Criar canal privado no Discord</li>
+              <li>✅ Criar projeto no ClickUp</li>
+            </ul>
+          </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t">
             <Button
