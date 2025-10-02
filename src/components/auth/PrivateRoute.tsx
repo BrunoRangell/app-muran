@@ -66,13 +66,13 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   useEffect(() => {
     let mounted = true;
     
-    // Loading state timeout - máximo 10 segundos
+    // Loading state timeout - máximo 3 segundos (reduzido para melhor UX)
     const loadingTimeout = setTimeout(() => {
       console.log('⏰ PrivateRoute loading timeout atingido');
       if (mounted) {
         setAdminLoading(false);
       }
-    }, 10000);
+    }, 3000);
 
     const initializeAuth = async () => {
       try {
