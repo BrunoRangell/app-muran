@@ -20,4 +20,20 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separar React e React Router em chunks próprios
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // Separar bibliotecas de UI em chunks próprios
+          'ui-vendor': ['@radix-ui/react-avatar', '@radix-ui/react-slot', '@radix-ui/react-toast'],
+          // Separar Supabase em chunk próprio
+          'supabase-vendor': ['@supabase/supabase-js'],
+        },
+      },
+    },
+    // Aumentar limite de warning de chunk size
+    chunkSizeWarningLimit: 600,
+  },
 }));
