@@ -84,17 +84,31 @@ serve(async (req) => {
         })
       });
 
+      if (!newListResponse.ok) {
+        const error = await newListResponse.text();
+        console.error(`❌ [CLICKUP] Erro ao criar lista ${templateList.name}:`, error);
+        throw new Error(`Failed to create list: ${error}`);
+      }
+
       const newList = await newListResponse.json();
+      console.log(`✅ [CLICKUP] Lista criada: ${newList.name} (ID: ${newList.id})`);
 
       // Obter tarefas do template
       const tasksResponse = await fetch(`https://api.clickup.com/api/v2/list/${templateList.id}/task`, {
         headers: clickupApi.headers
       });
 
+      if (!tasksResponse.ok) {
+        const error = await tasksResponse.text();
+        console.error(`❌ [CLICKUP] Erro ao buscar tarefas do template:`, error);
+        throw new Error(`Failed to get template tasks: ${error}`);
+      }
+
       const { tasks } = await tasksResponse.json();
-      console.log(`✅ [CLICKUP] ${tasks.length} tarefas para copiar`);
+      console.log(`📋 [CLICKUP] ${tasks.length} tarefas encontradas na lista ${templateList.name}`);
 
       // Criar tarefas na nova lista
+      let createdTasksCount = 0;
       for (const task of tasks) {
         const updatedTaskName = task.name.replace('Cliente', clientName);
         
@@ -104,21 +118,40 @@ serve(async (req) => {
           dueDate = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0);
         }
 
-        await fetch(`https://api.clickup.com/api/v2/list/${newList.id}/task`, {
+        const taskPayload = {
+          name: updatedTaskName,
+          description: task.description || '',
+          assignees: task.assignees?.map((a: any) => a.id) || [],
+          tags: task.tags || [],
+          status: task.status?.status || 'to do',
+          due_date: dueDate,
+          due_date_time: task.due_date_time || false
+        };
+
+        console.log(`📌 [CLICKUP] Criando tarefa: ${updatedTaskName}`);
+
+        const createTaskResponse = await fetch(`https://api.clickup.com/api/v2/list/${newList.id}/task`, {
           method: 'POST',
           headers: clickupApi.headers,
-          body: JSON.stringify({
-            name: updatedTaskName,
-            description: task.description || '',
-            assignees: task.assignees?.map((a: any) => a.id) || [],
-            tags: task.tags || [],
-            status: task.status?.status || 'to do',
-            due_date: dueDate,
-            due_date_time: task.due_date_time || false,
-            custom_fields: task.custom_fields || []
-          })
+          body: JSON.stringify(taskPayload)
         });
+
+        if (!createTaskResponse.ok) {
+          const error = await createTaskResponse.text();
+          console.error(`❌ [CLICKUP] Erro ao criar tarefa "${updatedTaskName}":`, error);
+          // Continuar mesmo com erro para tentar criar outras tarefas
+          continue;
+        }
+
+        const createdTask = await createTaskResponse.json();
+        createdTasksCount++;
+        console.log(`✅ [CLICKUP] Tarefa criada: ${createdTask.name} (ID: ${createdTask.id})`);
+
+        // Pequeno delay para evitar rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      console.log(`🎯 [CLICKUP] ${createdTasksCount}/${tasks.length} tarefas criadas na lista ${newList.name}`);
 
       // Configurar visualizações customizadas
       if (newList.name === 'Onboarding') {
