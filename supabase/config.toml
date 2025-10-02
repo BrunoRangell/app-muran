@@ -19,20 +19,20 @@ port = 54323
 api_url = "https://socrnutfpqtcjmetskta.supabase.co"
 
 [functions.unified-meta-review]
-verify_jwt = false
+verify_jwt = true
 
 [functions.daily-google-review]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-clickup-project]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-discord-channel]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-drive-folder]
-verify_jwt = false
+verify_jwt = true
 
 [functions.orchestrate-client-onboarding]
-verify_jwt = false
+verify_jwt = true
 
