@@ -289,8 +289,8 @@ export type Database = {
           id: string
           is_prepay_account: boolean | null
           is_primary: boolean
-          last_funding_detected_at: string | null
           last_funding_amount: number | null
+          last_funding_detected_at: string | null
           platform: string
           saldo_restante: number | null
           status: string
@@ -306,8 +306,8 @@ export type Database = {
           id?: string
           is_prepay_account?: boolean | null
           is_primary?: boolean
-          last_funding_detected_at?: string | null
           last_funding_amount?: number | null
+          last_funding_detected_at?: string | null
           platform: string
           saldo_restante?: number | null
           status?: string
@@ -323,8 +323,8 @@ export type Database = {
           id?: string
           is_prepay_account?: boolean | null
           is_primary?: boolean
-          last_funding_detected_at?: string | null
           last_funding_amount?: number | null
+          last_funding_detected_at?: string | null
           platform?: string
           saldo_restante?: number | null
           status?: string
@@ -631,6 +631,86 @@ export type Database = {
             columns: ["cost_id"]
             isOneToOne: false
             referencedRelation: "costs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding: {
+        Row: {
+          clickup_completed_at: string | null
+          clickup_error: Json | null
+          clickup_folder_id: string | null
+          clickup_status: string | null
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          discord_channel_id: string | null
+          discord_channel_link: string | null
+          discord_completed_at: string | null
+          discord_error: Json | null
+          discord_status: string | null
+          drive_completed_at: string | null
+          drive_error: Json | null
+          drive_folder_id: string | null
+          drive_folder_link: string | null
+          drive_status: string | null
+          drive_subfolders: Json | null
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          clickup_completed_at?: string | null
+          clickup_error?: Json | null
+          clickup_folder_id?: string | null
+          clickup_status?: string | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          discord_channel_id?: string | null
+          discord_channel_link?: string | null
+          discord_completed_at?: string | null
+          discord_error?: Json | null
+          discord_status?: string | null
+          drive_completed_at?: string | null
+          drive_error?: Json | null
+          drive_folder_id?: string | null
+          drive_folder_link?: string | null
+          drive_status?: string | null
+          drive_subfolders?: Json | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          clickup_completed_at?: string | null
+          clickup_error?: Json | null
+          clickup_folder_id?: string | null
+          clickup_status?: string | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          discord_channel_id?: string | null
+          discord_channel_link?: string | null
+          discord_completed_at?: string | null
+          discord_error?: Json | null
+          discord_status?: string | null
+          drive_completed_at?: string | null
+          drive_error?: Json | null
+          drive_folder_id?: string | null
+          drive_folder_link?: string | null
+          drive_status?: string | null
+          drive_subfolders?: Json | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
