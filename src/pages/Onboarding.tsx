@@ -104,33 +104,27 @@ export default function Onboarding() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-3 bg-muran-primary/10 rounded-xl">
-          <Settings2 className="h-7 w-7 text-muran-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-muran-dark flex items-center gap-2">
-            Onboarding de Cliente
-            <Sparkles className="h-6 w-6 text-muran-primary animate-pulse" />
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Configure automaticamente todas as integrações para o novo cliente
-          </p>
-        </div>
+      <div className="space-y-2">
+        <h1 className="text-2xl md:text-3xl font-bold">
+          Onboarding de Cliente
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Configure automaticamente todas as integrações para o novo cliente
+        </p>
       </div>
 
       {/* Main Card */}
-      <Card className="border-none shadow-lg">
-        <CardHeader className="border-b bg-gradient-to-r from-muran-primary/5 to-transparent">
-          <CardTitle className="text-xl">Criar Novo Cliente</CardTitle>
-          <CardDescription>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-5">
+          <CardTitle className="text-lg font-semibold">Criar Novo Cliente</CardTitle>
+          <CardDescription className="text-sm">
             Preencha as informações e inicie o processo automatizado
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6 space-y-6">
+        <CardContent className="space-y-6">
           {/* Input do Nome */}
           <div className="space-y-2">
-            <Label htmlFor="companyName" className="text-base font-medium">
+            <Label htmlFor="companyName" className="text-sm font-medium">
               Nome do Cliente
             </Label>
             <Input
@@ -139,7 +133,7 @@ export default function Onboarding() {
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               disabled={isOnboarding}
-              className="h-12 text-base"
+              className="h-10 text-sm"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && companyName.trim()) {
                   handleExecuteOnboarding();
@@ -150,29 +144,24 @@ export default function Onboarding() {
 
           {/* Layout Horizontal de Automação */}
           <div>
-            <div className="text-center mb-6">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Zap className="h-5 w-5 text-muran-primary" />
-                <h3 className="text-base font-semibold text-muran-dark">Fluxo de Automação</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Este processo será executado automaticamente na seguinte ordem:
-              </p>
+            <div className="flex items-center gap-2 mb-5">
+              <Zap className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-muted-foreground">Fluxo de Automação</h3>
             </div>
 
-            <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-0">
               {/* Step 1: Google Drive */}
-              <div className="w-full md:w-64 flex-shrink-0">
-                <div className="flex flex-col gap-3 p-5 rounded-lg border bg-card shadow-sm">
-                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary self-start">
+              <div className="w-full md:w-56 flex-shrink-0">
+                <div className="relative flex flex-col gap-2.5 p-4 rounded-lg border bg-background shadow-sm hover:shadow-md transition-shadow">
+                  <div className="absolute -top-2 -left-2 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-semibold shadow">
                     1
-                  </Badge>
+                  </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                      <HardDrive className="w-5 h-5 text-blue-600" />
+                    <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+                      <HardDrive className="w-5 h-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-muran-dark">Google Drive</h4>
+                      <h4 className="font-medium text-sm">Google Drive</h4>
                       <p className="text-xs text-muted-foreground">
                         Pasta organizada
                       </p>
@@ -181,24 +170,23 @@ export default function Onboarding() {
                 </div>
               </div>
 
-              {/* Arrow connector */}
-              <div className="flex items-center justify-center">
-                <ArrowRight className="w-6 h-6 text-muran-primary animate-pulse hidden md:block" />
-                <ArrowRight className="w-6 h-6 text-muran-primary animate-pulse md:hidden rotate-90" />
+              {/* Connector */}
+              <div className="flex items-center justify-center my-1 md:my-0 md:mx-2 rotate-90 md:rotate-0">
+                <div className="w-12 md:w-16 h-px border-t-2 border-dashed border-border"></div>
               </div>
 
               {/* Step 2: Discord */}
-              <div className="w-full md:w-64 flex-shrink-0">
-                <div className="flex flex-col gap-3 p-5 rounded-lg border bg-card shadow-sm">
-                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary self-start">
+              <div className="w-full md:w-56 flex-shrink-0">
+                <div className="relative flex flex-col gap-2.5 p-4 rounded-lg border bg-background shadow-sm hover:shadow-md transition-shadow">
+                  <div className="absolute -top-2 -left-2 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-semibold shadow">
                     2
-                  </Badge>
+                  </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                      <MessageSquare className="w-5 h-5 text-indigo-600" />
+                    <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-5 h-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-muran-dark">Discord</h4>
+                      <h4 className="font-medium text-sm">Discord</h4>
                       <p className="text-xs text-muted-foreground">
                         Canal privado
                       </p>
@@ -207,24 +195,23 @@ export default function Onboarding() {
                 </div>
               </div>
 
-              {/* Arrow connector */}
-              <div className="flex items-center justify-center">
-                <ArrowRight className="w-6 h-6 text-muran-primary animate-pulse hidden md:block" />
-                <ArrowRight className="w-6 h-6 text-muran-primary animate-pulse md:hidden rotate-90" />
+              {/* Connector */}
+              <div className="flex items-center justify-center my-1 md:my-0 md:mx-2 rotate-90 md:rotate-0">
+                <div className="w-12 md:w-16 h-px border-t-2 border-dashed border-border"></div>
               </div>
 
               {/* Step 3: ClickUp */}
-              <div className="w-full md:w-64 flex-shrink-0">
-                <div className="flex flex-col gap-3 p-5 rounded-lg border bg-card shadow-sm">
-                  <Badge variant="default" className="h-8 w-8 rounded-full flex items-center justify-center p-0 shrink-0 bg-muran-primary hover:bg-muran-primary self-start">
+              <div className="w-full md:w-56 flex-shrink-0">
+                <div className="relative flex flex-col gap-2.5 p-4 rounded-lg border bg-background shadow-sm hover:shadow-md transition-shadow">
+                  <div className="absolute -top-2 -left-2 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-semibold shadow">
                     3
-                  </Badge>
+                  </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                      <FolderKanban className="w-5 h-5 text-purple-600" />
+                    <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center shrink-0">
+                      <FolderKanban className="w-5 h-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-muran-dark">ClickUp</h4>
+                      <h4 className="font-medium text-sm">ClickUp</h4>
                       <p className="text-xs text-muted-foreground">
                         Projeto completo
                       </p>
@@ -233,16 +220,20 @@ export default function Onboarding() {
                 </div>
               </div>
             </div>
+
+            <p className="text-xs text-muted-foreground/80 text-center mt-4">
+              Todas as integrações serão criadas automaticamente
+            </p>
           </div>
 
           {/* Botão de Ação */}
-          <div className="pt-4 border-t">
+          <div className="pt-2">
             <Button
               onClick={handleExecuteOnboarding}
               disabled={isOnboarding || !companyName.trim()}
-              className="w-full h-12 text-base gap-2 bg-gradient-to-r from-muran-primary to-muran-primary/80 hover:from-muran-primary/90 hover:to-muran-primary/70 shadow-lg hover:shadow-xl transition-all"
+              className="w-full h-11 text-sm gap-2 shadow-sm hover:shadow transition-shadow"
             >
-              <Play className="h-5 w-5" />
+              <Play className="h-4 w-4" />
               {isOnboarding ? "Processando..." : "Criar Cliente e Executar Onboarding"}
             </Button>
           </div>
