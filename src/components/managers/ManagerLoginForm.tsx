@@ -34,10 +34,6 @@ export const ManagerLoginForm = ({ managerId, managerName, onClose }: ManagerLog
       }
 
       console.log("Login bem sucedido para o usuário:", managerName);
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo de volta.",
-      });
 
       onClose();
       navigate("/financeiro");

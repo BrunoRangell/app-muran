@@ -102,10 +102,6 @@ const Login = () => {
 
       if (data.session) {
         console.log('Login bem-sucedido:', data.session);
-        toast({
-          title: "Bem-vindo!",
-          description: "Login realizado com sucesso",
-        });
         
         // Pequeno delay para garantir que o estado de autenticação seja propagado
         setTimeout(() => {
