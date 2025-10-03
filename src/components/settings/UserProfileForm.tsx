@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
+import { useUserRole } from "@/hooks/useUserRole";
 import { socialMediaSchema, SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -60,14 +61,15 @@ export const UserProfileForm = () => {
         instagram: currentUser.instagram || '',
         linkedin: currentUser.linkedin || '',
         tiktok: currentUser.tiktok || '',
-        permission: currentUser.permission || '',
         start_date: currentUser.start_date || ''
       });
     }
   }, [currentUser, form]);
 
-  const isAdmin = currentUser?.permission === 'admin';
-  const isMember = currentUser?.permission === 'member' || !isAdmin;
+  // Usar hook seguro para verificar roles
+  const { data: userRole } = useUserRole();
+  const isAdmin = userRole?.isAdmin || false;
+  const isMember = !isAdmin;
 
   const handleSubmit = async (data: SocialMediaSchemaType) => {
     if (!currentUser) return;

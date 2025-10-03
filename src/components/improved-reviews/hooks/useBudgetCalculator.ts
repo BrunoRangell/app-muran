@@ -1,6 +1,7 @@
 
 import { useMemo } from "react";
 import { calculateIdealDailyBudget, calculateRemainingDays } from "@/utils/budgetCalculations";
+import { logger } from "@/lib/logger";
 
 type BudgetInput = {
   monthlyBudget: number;
@@ -42,7 +43,7 @@ export function useBudgetCalculator() {
         ? calculateRemainingDays(input.customBudgetEndDate, input.customBudgetStartDate)
         : calculateRemainingDays();
       
-      console.log(`🔍 DEBUG - Cálculo de dias restantes:`, {
+      logger.debug(`Cálculo de dias restantes:`, {
         usingCustomBudget: input.usingCustomBudget,
         customBudgetStartDate: input.customBudgetStartDate,
         customBudgetEndDate: input.customBudgetEndDate,
@@ -74,7 +75,7 @@ export function useBudgetCalculator() {
         const absoluteDifference = Math.abs(primaryBudgetDifference);
         primaryNeedsAdjustment = !input.warningIgnoredToday && absoluteDifference >= 5;
         
-        console.log(`🔍 DEBUG - Usando média ponderada como base principal:`, {
+        logger.debug(`Usando média ponderada como base principal:`, {
           idealDailyBudget,
           weightedAverage: input.weightedAverage,
           budgetDifference: primaryBudgetDifference,
@@ -89,7 +90,7 @@ export function useBudgetCalculator() {
         const absoluteDifference = Math.abs(primaryBudgetDifference);
         primaryNeedsAdjustment = !input.warningIgnoredToday && input.currentDailyBudget > 0 && absoluteDifference >= 5;
         
-        console.log(`🔍 DEBUG - Usando método tradicional:`, {
+        logger.debug(`Usando método tradicional:`, {
           idealDailyBudget,
           currentDailyBudget: input.currentDailyBudget,
           budgetDifference: primaryBudgetDifference,
@@ -119,7 +120,7 @@ export function useBudgetCalculator() {
         : undefined;
       
       // LOG DETALHADO para debugging
-      console.log(`🔍 DEBUG FINAL - Resultado do cálculo:`, {
+      logger.debug(`Resultado do cálculo:`, {
         idealDailyBudget,
         primaryBudgetDifference,
         primaryNeedsAdjustment,

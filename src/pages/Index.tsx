@@ -10,7 +10,7 @@ import { BirthdayCard } from "@/components/team/BirthdayCard";
 import { GoalCard } from "@/components/index/GoalCard";
 import { Quote } from "lucide-react";
 import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
-import { useAuthSession } from "@/hooks/useAuthSession";
+import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
 import { AuthDebugger } from "@/components/auth/AuthDebugger";
 
 const Index = () => {
@@ -21,8 +21,8 @@ const Index = () => {
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [isUserLoading, setIsUserLoading] = useState(true);
   
-  // Usar hook de sessão dedicado
-  const { session, user, isAuthenticated, isLoading: isAuthLoading, refreshSession } = useAuthSession();
+  // Usar hook unificado de autenticação
+  const { session, user, isAuthenticated, isLoading: isAuthLoading, isRevalidating } = useUnifiedAuth();
 
   const { data: teamMembers, isLoading: isTeamLoading } = useQuery({
     queryKey: ["team_members"],
@@ -90,7 +90,7 @@ const Index = () => {
         
         const { data: teamMember, error: memberError } = await supabase
           .from("team_members")
-          .select("name, permission, role, photo_url")
+          .select("name, role, photo_url")
           .eq("email", user.email)
           .single();
 
@@ -105,11 +105,20 @@ const Index = () => {
           setUserName(firstName);
           setUserRole(teamMember.role || "");
           setAvatarUrl(teamMember.photo_url || "");
-          setIsAdmin(teamMember.permission === "admin");
+          
+          // Verificar roles usando user_roles table
+          const { data: roles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id);
+          
+          const userIsAdmin = roles?.some(r => r.role === 'admin') || false;
+          setIsAdmin(userIsAdmin);
+          
           console.log("✅ Dados do usuário carregados:", { 
             firstName, 
             role: teamMember.role, 
-            isAdmin: teamMember.permission === "admin",
+            isAdmin: userIsAdmin,
             email: user.email 
           });
         } else {
@@ -160,7 +169,14 @@ const Index = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6">
+    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6 relative">
+      {isRevalidating && (
+        <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm border border-muran-primary/20 rounded-lg px-4 py-2 shadow-lg flex items-center gap-2">
+          <div className="h-4 w-4 border-2 border-muran-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-muran-complementary">Atualizando...</span>
+        </div>
+      )}
+      
       <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">

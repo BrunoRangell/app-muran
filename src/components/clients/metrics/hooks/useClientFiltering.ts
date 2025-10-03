@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Client } from "../../types";
 import { isClientActiveInMonth, isClientNewInMonth, isClientChurnedInMonth } from "../utils/dateFilters";
+import { logger } from "@/lib/logger";
 
 interface FilterParams {
   monthStr: string;
@@ -33,7 +34,7 @@ export const useClientFiltering = () => {
     }
 
     if (monthIndex === undefined) {
-      console.error('Mês não reconhecido:', monthStr);
+      logger.error('Mês não reconhecido:', monthStr);
       return -1;
     }
 
@@ -41,10 +42,10 @@ export const useClientFiltering = () => {
   };
 
   const getClientsForPeriod = ({ monthStr, yearStr, metric, clients }: FilterParams) => {
-    console.log('Filtrando clientes para:', { monthStr, yearStr, metric, clientsCount: clients?.length });
+    logger.debug('Filtrando clientes para:', { monthStr, yearStr, metric, clientsCount: clients?.length });
     
     if (!clients) {
-      console.log('Nenhum cliente fornecido');
+      logger.debug('Nenhum cliente fornecido');
       return [];
     }
 
@@ -53,7 +54,7 @@ export const useClientFiltering = () => {
     const year = parseInt(yearStr);
     
     if (isNaN(month) || isNaN(year)) {
-      console.error('Mês ou ano inválido:', { monthStr, yearStr });
+      logger.error('Mês ou ano inválido:', { monthStr, yearStr });
       return [];
     }
 
@@ -61,7 +62,7 @@ export const useClientFiltering = () => {
     const startDate = new Date(fullYear, month - 1, 1);
     const endDate = new Date(fullYear, month, 0);
 
-    console.log('Período calculado:', {
+    logger.debug('Período calculado:', {
       month, year: fullYear,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
@@ -75,18 +76,7 @@ export const useClientFiltering = () => {
         filteredClients = clients.filter(client => {
           const isNew = isClientNewInMonth(client, startDate, endDate);
           if (isNew) {
-            console.log('Cliente adquirido encontrado:', client.company_name, client.first_payment_date);
-          }
-          // Debug específico para Orientista
-          if (client.company_name?.toLowerCase().includes('orientista')) {
-            console.log('🔍 DEBUG ORIENTISTA - Novo Cliente:', {
-              company: client.company_name,
-              first_payment: client.first_payment_date,
-              startDate: startDate.toISOString(),
-              endDate: endDate.toISOString(),
-              isNew,
-              calculatedDate: client.first_payment_date ? new Date(client.first_payment_date).toISOString() : 'null'
-            });
+            logger.debug('Cliente adquirido encontrado:', client.company_name, client.first_payment_date);
           }
           return isNew;
         });
@@ -96,7 +86,7 @@ export const useClientFiltering = () => {
         filteredClients = clients.filter(client => {
           const isChurned = isClientChurnedInMonth(client, startDate, endDate) && client.status === 'inactive';
           if (isChurned) {
-            console.log('Cliente cancelado encontrado:', client.company_name, client.last_payment_date);
+            logger.debug('Cliente cancelado encontrado:', client.company_name, client.last_payment_date);
           }
           return isChurned;
         });
@@ -108,27 +98,10 @@ export const useClientFiltering = () => {
         filteredClients = clients.filter(client => {
           const isActive = isClientActiveInMonth(client, startDate, endDate);
           if (isActive && metric === 'Total de Clientes') {
-            console.log('Cliente ativo encontrado:', client.company_name, {
+            logger.debug('Cliente ativo encontrado:', client.company_name, {
               first_payment: client.first_payment_date,
               last_payment: client.last_payment_date,
               status: client.status
-            });
-          }
-          // Debug específico para Orientista
-          if (client.company_name?.toLowerCase().includes('orientista')) {
-            console.log('🔍 DEBUG ORIENTISTA - Cliente Ativo:', {
-              company: client.company_name,
-              first_payment: client.first_payment_date,
-              last_payment: client.last_payment_date,
-              status: client.status,
-              startDate: startDate.toISOString(),
-              endDate: endDate.toISOString(),
-              isActive,
-              calculatedStartDate: client.first_payment_date ? (() => {
-                const date = new Date(client.first_payment_date);
-                date.setDate(date.getDate() + 1);
-                return date.toISOString();
-              })() : 'null'
             });
           }
           return isActive;
@@ -136,7 +109,7 @@ export const useClientFiltering = () => {
         break;
     }
 
-    console.log(`Clientes filtrados para ${metric}:`, filteredClients.length);
+    logger.debug(`Clientes filtrados para ${metric}:`, filteredClients.length);
     return filteredClients;
   };
 

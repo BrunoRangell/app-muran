@@ -4,6 +4,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { errorMessages } from "@/lib/errors";
 import { useToast } from "@/hooks/use-toast";
+import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -11,40 +12,29 @@ interface PrivateRouteProps {
 }
 
 export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRouteProps) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const { isAuthenticated, isLoading, user } = useUnifiedAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [adminLoading, setAdminLoading] = useState(requireAdmin);
   const location = useLocation();
   const { toast } = useToast();
 
   // Função para verificar status de admin
-  const checkAdminStatus = async (email: string | undefined) => {
-    if (!email) {
+  const checkAdminStatus = async (userId: string) => {
+    if (!userId) {
       setIsAdmin(false);
       return;
     }
     
     try {
       console.log("Verificando permissões do usuário...");
-      const { data: teamMember, error: teamError } = await supabase
-        .from('team_members')
-        .select('role, permission')
-        .eq('email', email)
-        .single();
-
-      if (teamError) {
-        console.error("Erro ao verificar permissões:", teamError);
-        setIsAdmin(false);
-        if (requireAdmin) {
-          toast({
-            title: "Erro de permissão",
-            description: errorMessages.PERMISSION_DENIED,
-            variant: "destructive",
-          });
-        }
-        return;
-      }
-
-      const userIsAdmin = teamMember?.permission === 'admin';
+      
+      // Verificar role usando user_roles table
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      
+      const userIsAdmin = roles?.some(r => r.role === 'admin') || false;
       console.log("Usuário é admin?", userIsAdmin);
       setIsAdmin(userIsAdmin);
 
@@ -62,54 +52,43 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   };
 
   useEffect(() => {
+    let mounted = true;
+    
+    // Loading state timeout - máximo 10 segundos
+    const loadingTimeout = setTimeout(() => {
+      console.log('⏰ PrivateRoute loading timeout atingido');
+      if (mounted) {
+        setAdminLoading(false);
+      }
+    }, 10000);
+
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          setIsAuthenticated(false);
-          setIsAdmin(false);
-          return;
-        }
-
-        setIsAuthenticated(true);
-        
-        if (requireAdmin) {
-          await checkAdminStatus(session.user.email);
+        if (requireAdmin && user?.id && mounted) {
+          await checkAdminStatus(user.id);
+        } else if (!requireAdmin && mounted) {
+          setAdminLoading(false);
         }
       } catch (error) {
-        console.error("Erro na inicialização da autenticação:", error);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
+        console.error('❌ Erro no PrivateRoute initializeAuth:', error);
+        if (mounted) {
+          setAdminLoading(false);
+        }
       }
     };
 
-    initializeAuth();
+    if (!isLoading) {
+      initializeAuth();
+    }
 
-    // Configurar listener para mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Mudança no estado de autenticação:", event);
-      
-      if (!session) {
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        return;
-      }
-
-      setIsAuthenticated(true);
-      
-      if (requireAdmin) {
-        await checkAdminStatus(session.user.email);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
+      return () => {
+      mounted = false;
+      clearTimeout(loadingTimeout);
     };
-  }, [requireAdmin, toast]);
+  }, [requireAdmin, user?.id, isLoading]);
 
   // Estado de carregamento
-  if (isAuthenticated === null || (requireAdmin && isAdmin === null)) {
+  if (isLoading || (requireAdmin && adminLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muran-secondary">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-muran-primary"></div>

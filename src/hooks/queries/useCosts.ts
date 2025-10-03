@@ -27,14 +27,13 @@ export const useCosts = (filters?: CostFilters) => {
         query = query.lte("date", filters.endDate);
       }
 
-      // Note: category filtering would need to be done through costs_categories join
-      // For now, we'll skip this filter to avoid the type issue
-
       if (filters?.search) {
         query = query.ilike("name", `%${filters.search}%`);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query
+        .order("date", { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as Cost[];
@@ -59,8 +58,7 @@ export const useCosts = (filters?: CostFilters) => {
         description: "Custo cadastrado com sucesso!",
       });
     },
-    onError: (error) => {
-      console.error("Erro ao criar custo:", error);
+    onError: () => {
       toast({
         title: "Erro",
         description: "Não foi possível cadastrar o custo",
@@ -89,8 +87,7 @@ export const useCosts = (filters?: CostFilters) => {
         description: "Custo atualizado com sucesso!",
       });
     },
-    onError: (error) => {
-      console.error("Erro ao atualizar custo:", error);
+    onError: () => {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o custo",
@@ -115,8 +112,7 @@ export const useCosts = (filters?: CostFilters) => {
         description: "Custo excluído com sucesso!",
       });
     },
-    onError: (error) => {
-      console.error("Erro ao excluir custo:", error);
+    onError: () => {
       toast({
         title: "Erro",
         description: "Não foi possível excluir o custo",

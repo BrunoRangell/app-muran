@@ -289,8 +289,8 @@ export type Database = {
           id: string
           is_prepay_account: boolean | null
           is_primary: boolean
-          last_funding_detected_at: string | null
           last_funding_amount: number | null
+          last_funding_detected_at: string | null
           platform: string
           saldo_restante: number | null
           status: string
@@ -306,8 +306,8 @@ export type Database = {
           id?: string
           is_prepay_account?: boolean | null
           is_primary?: boolean
-          last_funding_detected_at?: string | null
           last_funding_amount?: number | null
+          last_funding_detected_at?: string | null
           platform: string
           saldo_restante?: number | null
           status?: string
@@ -323,8 +323,8 @@ export type Database = {
           id?: string
           is_prepay_account?: boolean | null
           is_primary?: boolean
-          last_funding_detected_at?: string | null
           last_funding_amount?: number | null
+          last_funding_detected_at?: string | null
           platform?: string
           saldo_restante?: number | null
           status?: string
@@ -635,6 +635,86 @@ export type Database = {
           },
         ]
       }
+      onboarding: {
+        Row: {
+          clickup_completed_at: string | null
+          clickup_error: Json | null
+          clickup_folder_id: string | null
+          clickup_status: string | null
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          discord_channel_id: string | null
+          discord_channel_link: string | null
+          discord_completed_at: string | null
+          discord_error: Json | null
+          discord_status: string | null
+          drive_completed_at: string | null
+          drive_error: Json | null
+          drive_folder_id: string | null
+          drive_folder_link: string | null
+          drive_status: string | null
+          drive_subfolders: Json | null
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          clickup_completed_at?: string | null
+          clickup_error?: Json | null
+          clickup_folder_id?: string | null
+          clickup_status?: string | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          discord_channel_id?: string | null
+          discord_channel_link?: string | null
+          discord_completed_at?: string | null
+          discord_error?: Json | null
+          discord_status?: string | null
+          drive_completed_at?: string | null
+          drive_error?: Json | null
+          drive_folder_id?: string | null
+          drive_folder_link?: string | null
+          drive_status?: string | null
+          drive_subfolders?: Json | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          clickup_completed_at?: string | null
+          clickup_error?: Json | null
+          clickup_folder_id?: string | null
+          clickup_status?: string | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          discord_channel_id?: string | null
+          discord_channel_link?: string | null
+          discord_completed_at?: string | null
+          discord_error?: Json | null
+          discord_status?: string | null
+          drive_completed_at?: string | null
+          drive_error?: Json | null
+          drive_folder_id?: string | null
+          drive_folder_link?: string | null
+          drive_status?: string | null
+          drive_subfolders?: Json | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -672,6 +752,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      role_audit_log: {
+        Row: {
+          action: string
+          details: Json | null
+          id: string
+          performed_at: string
+          performed_by: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          action: string
+          details?: Json | null
+          id?: string
+          performed_at?: string
+          performed_by?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          action?: string
+          details?: Json | null
+          id?: string
+          performed_at?: string
+          performed_by?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
       }
       system_configs: {
         Row: {
@@ -732,7 +842,6 @@ export type Database = {
           linkedin: string | null
           manager_id: string
           name: string
-          permission: string | null
           photo_url: string | null
           role: string
           start_date: string | null
@@ -749,7 +858,6 @@ export type Database = {
           linkedin?: string | null
           manager_id: string
           name: string
-          permission?: string | null
           photo_url?: string | null
           role: string
           start_date?: string | null
@@ -766,12 +874,38 @@ export type Database = {
           linkedin?: string | null
           manager_id?: string
           name?: string
-          permission?: string | null
           photo_url?: string | null
           role?: string
           start_date?: string | null
           tiktok?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -815,6 +949,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       insert_daily_budget_review: {
         Args: {
           p_client_id: string
@@ -856,6 +997,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "admin" | "member"
       cost_category:
         | "marketing"
         | "salarios"
@@ -1045,6 +1187,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "member"],
       cost_category: [
         "marketing",
         "salarios",

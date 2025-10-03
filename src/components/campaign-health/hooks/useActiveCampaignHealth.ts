@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ClientHealthData, HealthStats } from "../types";
 import { getTodayInBrazil } from "@/utils/brazilTimezone";
+import { logger } from "@/lib/logger";
 
 const LAST_REFRESH_KEY = 'campaign-health-last-refresh';
 
@@ -36,7 +37,7 @@ export function useActiveCampaignHealth() {
   } = useQuery({
     queryKey: ["active-campaign-health", todayDate],
     queryFn: async (): Promise<ClientHealthData[]> => {
-      console.log("🔍 Buscando dados de saúde das campanhas para:", todayDate);
+      logger.debug("🔍 Buscando dados de saúde das campanhas para:", todayDate);
       
       const { data: healthData, error: healthError } = await supabase
         .from("campaign_health")
@@ -60,14 +61,14 @@ export function useActiveCampaignHealth() {
         .eq("client_accounts.clients.status", "active");
 
       if (healthError) {
-        console.error("❌ Erro ao buscar dados de saúde:", healthError);
+        logger.error("❌ Erro ao buscar dados de saúde:", healthError);
         throw new Error(`Erro ao buscar dados: ${healthError.message}`);
       }
 
-      console.log("📊 Dados brutos encontrados:", healthData?.length || 0);
+      logger.debug("📊 Dados brutos encontrados:", healthData?.length || 0);
 
       if (!healthData || healthData.length === 0) {
-        console.log("⚠️ Nenhum dado encontrado para hoje");
+        logger.warn("⚠️ Nenhum dado encontrado para hoje");
         return [];
       }
 
@@ -113,7 +114,7 @@ export function useActiveCampaignHealth() {
       });
 
       const result = Array.from(clientsMap.values());
-      console.log("✅ Dados processados:", result.length, "clientes");
+      logger.debug("✅ Dados processados:", result.length, "clientes");
       
       return result;
     },
@@ -132,16 +133,16 @@ export function useActiveCampaignHealth() {
     setRefreshProgress(0);
     
     try {
-      console.log("🔄 Iniciando atualização manual...");
+      logger.info("🔄 Iniciando atualização manual...");
       
       // 1. Primeiro fazer limpeza dos dados antigos
-      console.log("🧹 Executando limpeza automática...");
+      logger.debug("🧹 Executando limpeza automática...");
       const { data: cleanupResult, error: cleanupError } = await supabase.rpc('manual_cleanup_campaign_health');
       
       if (cleanupError) {
-        console.warn("⚠️ Aviso na limpeza automática:", cleanupError);
+        logger.warn("⚠️ Aviso na limpeza automática:", cleanupError);
       } else {
-        console.log("✅ Limpeza automática concluída:", cleanupResult);
+        logger.debug("✅ Limpeza automática concluída:", cleanupResult);
       }
       
       // 2. Buscar todas as contas ativas
@@ -166,11 +167,11 @@ export function useActiveCampaignHealth() {
       }
 
       if (!accounts || accounts.length === 0) {
-        console.log("⚠️ Nenhuma conta encontrada para atualizar");
+        logger.warn("⚠️ Nenhuma conta encontrada para atualizar");
         return;
       }
 
-      console.log(`📊 Encontradas ${accounts.length} contas para atualizar`);
+      logger.info(`📊 Encontradas ${accounts.length} contas para atualizar`);
 
       // Processar contas em lotes
       const batchSize = 3;
@@ -181,21 +182,21 @@ export function useActiveCampaignHealth() {
         
         const batchPromises = batch.map(async (account) => {
           try {
-            console.log(`🔄 Atualizando conta ${account.platform}: ${account.account_name}`);
+            logger.debug(`🔄 Atualizando conta ${account.platform}: ${account.account_name}`);
             
             const response = await supabase.functions.invoke('unified-meta-review', {
               body: { accountId: account.id }
             });
             
             if (response.error) {
-              console.error(`❌ Erro ao atualizar conta ${account.id}:`, response.error);
+              logger.error(`❌ Erro ao atualizar conta ${account.id}:`, response.error);
               return { success: false, accountId: account.id, error: response.error };
             }
             
-            console.log(`✅ Conta ${account.platform} atualizada: ${account.account_name}`);
+            logger.debug(`✅ Conta ${account.platform} atualizada: ${account.account_name}`);
             return { success: true, accountId: account.id };
           } catch (error) {
-            console.error(`❌ Erro ao processar conta ${account.id}:`, error);
+            logger.error(`❌ Erro ao processar conta ${account.id}:`, error);
             return { success: false, accountId: account.id, error: error.message };
           }
         });
@@ -206,7 +207,7 @@ export function useActiveCampaignHealth() {
         const progress = Math.round((processedCount / accounts.length) * 100);
         setRefreshProgress(progress);
         
-        console.log(`📊 Progresso: ${processedCount}/${accounts.length} contas (${progress}%)`);
+        logger.debug(`📊 Progresso: ${processedCount}/${accounts.length} contas (${progress}%)`);
         
         // Pequeno delay entre lotes
         if (i + batchSize < accounts.length) {
@@ -214,14 +215,14 @@ export function useActiveCampaignHealth() {
         }
       }
 
-      console.log("✅ Atualização manual concluída!");
+      logger.info("✅ Atualização manual concluída!");
       updateLastRefreshTimestamp(Date.now());
       
       // Refetch dos dados
       await refetch();
       
     } catch (error) {
-      console.error("❌ Erro durante atualização manual:", error);
+      logger.error("❌ Erro durante atualização manual:", error);
       throw error;
     } finally {
       setIsManualRefreshing(false);

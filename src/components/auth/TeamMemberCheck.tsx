@@ -39,8 +39,17 @@ export const TeamMemberCheck = ({ children, requireAdmin = false }: TeamMemberCh
           setIsTeamMember(false);
           setIsAdmin(false);
         } else {
-          setIsTeamMember(true);
-          setIsAdmin(teamMember.permission === 'admin');
+          // Verificar roles usando user_roles table
+          const { data: roles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id);
+          
+          const isUserAdmin = roles?.some(r => r.role === 'admin') || false;
+          const isUserMember = roles?.some(r => r.role === 'admin' || r.role === 'member') || false;
+          
+          setIsTeamMember(isUserMember);
+          setIsAdmin(isUserAdmin);
         }
       } catch (error) {
         console.error("Erro ao verificar membro da equipe:", error);

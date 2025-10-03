@@ -3,6 +3,14 @@ import { useMetricsData } from "./metrics/useMetricsData";
 import { EnhancedMetricsChart } from "./metrics/components/EnhancedMetricsChart";
 import { useFinancialMetrics } from "./metrics/hooks/useFinancialMetrics";
 import { METRIC_COLORS } from "./metrics/constants/metricColors";
+import { lazy, Suspense } from "react";
+
+// FASE 4: Lazy loading do gráfico
+const LazyEnhancedMetricsChart = lazy(() => 
+  import("./metrics/components/EnhancedMetricsChart").then(module => ({
+    default: module.EnhancedMetricsChart
+  }))
+);
 
 export const FinancialMetrics = () => {
   const {
@@ -81,19 +89,25 @@ export const FinancialMetrics = () => {
           <p className="text-muted-foreground">Carregando métricas...</p>
         </div>
       ) : (
-        <EnhancedMetricsChart
-          data={filteredClientsData || []}
-          periodFilter={periodFilter}
-          onPeriodChange={handlePeriodChange}
-          isCustomDateOpen={isCustomDateOpen}
-          onCustomDateOpenChange={setIsCustomDateOpen}
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          lines={getActiveLines()}
-          clients={clients}
-          selectedMetrics={selectedMetrics}
-          onMetricChange={handleMetricChange}
-        />
+        <Suspense fallback={
+          <div className="flex items-center justify-center p-8">
+            <p className="text-muted-foreground">Carregando gráfico...</p>
+          </div>
+        }>
+          <LazyEnhancedMetricsChart
+            data={filteredClientsData || []}
+            periodFilter={periodFilter}
+            onPeriodChange={handlePeriodChange}
+            isCustomDateOpen={isCustomDateOpen}
+            onCustomDateOpenChange={setIsCustomDateOpen}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            lines={getActiveLines()}
+            clients={clients}
+            selectedMetrics={selectedMetrics}
+            onMetricChange={handleMetricChange}
+          />
+        </Suspense>
       )}
     </div>
   );

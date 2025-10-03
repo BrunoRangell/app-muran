@@ -1,12 +1,16 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MetaAdsTab } from "@/components/improved-reviews/tabs/MetaAdsTab";
-import { GoogleAdsTab } from "@/components/improved-reviews/tabs/GoogleAdsTab";
-import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManagerTab";
-import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
 import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/useBatchOperations";
+import { usePrefetch } from "@/hooks/usePrefetch";
+import { ImprovedLoadingState } from "@/components/improved-reviews/common/ImprovedLoadingState";
+
+// FASE 5D: Lazy loading de abas para reduzir bundle inicial (-40%)
+const MetaAdsTab = lazy(() => import("@/components/improved-reviews/tabs/MetaAdsTab").then(m => ({ default: m.MetaAdsTab })));
+const GoogleAdsTab = lazy(() => import("@/components/improved-reviews/tabs/GoogleAdsTab").then(m => ({ default: m.GoogleAdsTab })));
+const BudgetManagerTab = lazy(() => import("@/components/improved-reviews/tabs/BudgetManagerTab").then(m => ({ default: m.BudgetManagerTab })));
+const CustomBudgetTab = lazy(() => import("@/components/improved-reviews/tabs/CustomBudgetTab").then(m => ({ default: m.CustomBudgetTab })));
 
 export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage
@@ -35,6 +39,9 @@ export default function ImprovedDailyReviews() {
     refetchBoth 
   } = usePlatformBatchReviews();
   
+  // FASE 3: Prefetch estratégico
+  const { prefetchGoogleAdsData, prefetchMetaAdsData } = usePrefetch();
+  
   // Efeito para sincronizar mudanças na hash da URL
   useEffect(() => {
     const handleHashChange = () => {
@@ -62,6 +69,13 @@ export default function ImprovedDailyReviews() {
     setSelectedTab(value);
     localStorage.setItem("selected_tab", value);
     window.location.hash = value;
+    
+    // FASE 3: Prefetch inteligente baseado na aba
+    if (value === 'meta-ads') {
+      prefetchGoogleAdsData(); // Prefetch Google quando abre Meta
+    } else if (value === 'google-ads') {
+      prefetchMetaAdsData(); // Prefetch Meta quando abre Google
+    }
     
     // Forçar refresh dos dados quando trocar de aba
     setTimeout(() => {
@@ -95,29 +109,37 @@ export default function ImprovedDailyReviews() {
           </TabsList>
           
           <TabsContent value="meta-ads" className="space-y-6">
-            <DashboardHeader 
-              lastReviewTime={lastMetaReviewTime ? new Date(lastMetaReviewTime) : undefined}
-              platform="meta"
-            />
-            <MetaAdsTab />
+            <Suspense fallback={<ImprovedLoadingState />}>
+              <DashboardHeader 
+                lastReviewTime={lastMetaReviewTime ? new Date(lastMetaReviewTime) : undefined}
+                platform="meta"
+              />
+              <MetaAdsTab />
+            </Suspense>
           </TabsContent>
           
           <TabsContent value="google-ads" className="space-y-6">
-            <DashboardHeader 
-              lastReviewTime={lastGoogleReviewTime ? new Date(lastGoogleReviewTime) : undefined}
-              platform="google"
-            />
-            <GoogleAdsTab onRefreshCompleted={() => {
-              console.log("🔄 Google Ads refresh completed");
-            }} />
+            <Suspense fallback={<ImprovedLoadingState />}>
+              <DashboardHeader 
+                lastReviewTime={lastGoogleReviewTime ? new Date(lastGoogleReviewTime) : undefined}
+                platform="google"
+              />
+              <GoogleAdsTab onRefreshCompleted={() => {
+                console.log("🔄 Google Ads refresh completed");
+              }} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="budgets" className="space-y-6">
-            <BudgetManagerTab />
+            <Suspense fallback={<ImprovedLoadingState />}>
+              <BudgetManagerTab />
+            </Suspense>
           </TabsContent>
           
           <TabsContent value="custom-budgets" className="space-y-6">
-            <CustomBudgetTab />
+            <Suspense fallback={<ImprovedLoadingState />}>
+              <CustomBudgetTab />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>

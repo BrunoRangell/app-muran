@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { errorMessages, AppError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
 
 const SUPABASE_URL = "https://socrnutfpqtcjmetskta.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvY3JudXRmcHF0Y2ptZXRza3RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNDg1OTMsImV4cCI6MjA1MzkyNDU5M30.yFkP90puucdc1qxlIOs3Hp4V18_LKea2mf6blmJ9Rpw";
@@ -19,27 +20,27 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       getItem: (key) => {
         try {
           const value = localStorage.getItem(key);
-          console.log('Recuperando dado da storage:', { key });
+          logger.debug('Recuperando dado da storage:', { key });
           return value;
         } catch (error) {
-          console.error('Erro ao recuperar dado da storage:', error);
+          logger.error('Erro ao recuperar dado da storage:', error);
           return null;
         }
       },
       setItem: (key, value) => {
         try {
-          console.log('Salvando dado na storage:', { key });
+          logger.debug('Salvando dado na storage:', { key });
           localStorage.setItem(key, value);
         } catch (error) {
-          console.error('Erro ao salvar dado da storage:', error);
+          logger.error('Erro ao salvar dado da storage:', error);
         }
       },
       removeItem: (key) => {
         try {
-          console.log('Removendo dado da storage:', key);
+          logger.debug('Removendo dado da storage:', key);
           localStorage.removeItem(key);
         } catch (error) {
-          console.error('Erro ao remover dado da storage:', error);
+          logger.error('Erro ao remover dado da storage:', error);
         }
       },
     },
@@ -49,16 +50,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Função centralizada para verificar o estado da sessão
 export const checkSession = async () => {
   try {
-    console.log('Verificando sessão...');
+    logger.debug('Verificando sessão...');
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error) {
-      console.error('Erro ao verificar sessão:', error);
+      logger.error('Erro ao verificar sessão:', error);
       throw new AppError(errorMessages.AUTH_EXPIRED, 'AUTH_EXPIRED');
     }
 
     if (!session) {
-      console.warn('Sessão não encontrada');
+      logger.warn('Sessão não encontrada');
       return false;
     }
 
@@ -67,18 +68,18 @@ export const checkSession = async () => {
     const sixtyMinutes = 60 * 60 * 1000;
     
     if (expiresAt.getTime() - Date.now() < sixtyMinutes) {
-      console.log('Sessão próxima de expirar, renovando preventivamente...');
+      logger.debug('Sessão próxima de expirar, renovando preventivamente...');
       try {
         await supabase.auth.refreshSession();
-        console.log('Sessão renovada preventivamente com sucesso!');
+        logger.debug('Sessão renovada preventivamente com sucesso!');
       } catch (refreshError) {
-        console.error('Erro ao renovar sessão preventivamente:', refreshError);
+        logger.error('Erro ao renovar sessão preventivamente:', refreshError);
       }
     }
 
     return true;
   } catch (error) {
-    console.error('Erro inesperado ao verificar sessão:', error);
+    logger.error('Erro inesperado ao verificar sessão:', error);
     return false;
   }
 };

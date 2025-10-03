@@ -1,7 +1,6 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useCostsPaginated } from "@/hooks/queries/useCostsPaginated";
 import { CostFilters, Cost } from "@/types/cost";
 import { NewCostDialog } from "@/components/costs/NewCostDialog";
 import { EditCostDialog } from "@/components/costs/EditCostDialog";
@@ -11,52 +10,22 @@ import { CostsMetricsGrid } from "@/components/costs/enhanced/CostsMetricsGrid";
 import { SmartFiltersBar } from "@/components/costs/enhanced/SmartFiltersBar";
 import { EnhancedCostsTable } from "@/components/costs/enhanced/EnhancedCostsTable";
 import { CostsVisualization } from "@/components/costs/enhanced/CostsVisualization";
-import { DateFilter } from "@/components/costs/filters/DateFilter";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 export default function Costs() {
   const [isNewCostOpen, setIsNewCostOpen] = useState(false);
   const [selectedCost, setSelectedCost] = useState<Cost | null>(null);
   const [filters, setFilters] = useState<CostFilters>({});
 
-  const { data: costs, isLoading } = useQuery({
-    queryKey: ["costs", filters],
-    queryFn: async () => {
-      console.log('Buscando custos com filtros:', filters);
-      
-      let query = supabase
-        .from("costs")
-        .select("*, costs_categories(category_id)")
-        .order("date", { ascending: false });
-
-      if (filters.startDate) {
-        query = query.gte("date", filters.startDate);
-      }
-      if (filters.endDate) {
-        query = query.lte("date", filters.endDate);
-      }
-      if (filters.categories && filters.categories.length > 0) {
-        query = query.in("costs_categories.category_id", filters.categories);
-      }
-      if (filters.search) {
-        query = query.ilike("name", `%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Erro ao buscar custos:", error);
-        throw error;
-      }
-
-      const processedData = data.map(cost => ({
-        ...cost,
-        categories: cost.costs_categories.map((cc: any) => cc.category_id)
-      }));
-
-      console.log('Custos retornados:', processedData);
-      return processedData;
-    },
-  });
+  const { 
+    costs, 
+    totalCount,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage 
+  } = useCostsPaginated(filters);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -82,12 +51,36 @@ export default function Costs() {
         </div>
 
         {/* Tabela aprimorada */}
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
+          <div className="text-sm text-muted-foreground px-2">
+            Exibindo {costs.length} de {totalCount} custos
+          </div>
+          
           <EnhancedCostsTable 
             costs={costs || []} 
             isLoading={isLoading} 
             onEditClick={setSelectedCost}
           />
+
+          {hasNextPage && (
+            <div className="flex justify-center py-4">
+              <Button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                variant="outline"
+                className="min-w-[200px]"
+              >
+                {isFetchingNextPage ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Carregando...
+                  </>
+                ) : (
+                  `Carregar mais custos`
+                )}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Diálogos */}

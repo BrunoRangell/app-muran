@@ -10,7 +10,9 @@ import {
   BarChart3,
   Menu,
   ChevronLeft,
-  Wallet
+  Wallet,
+  UserPlus,
+  Settings2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -41,6 +43,7 @@ const adminMenuItems: MenuItem[] = [
     path: "/clientes",
     submenu: financialSubMenu
   },
+  { icon: Settings2, label: "Onboarding", path: "/onboarding" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
 ];
@@ -62,13 +65,13 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          const { data: teamMember } = await supabase
-            .from('team_members')
-            .select('permission')
-            .eq('email', session.user.email)
-            .single();
+          // Verificar roles usando user_roles table
+          const { data: roles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id);
 
-          setIsAdmin(teamMember?.permission === 'admin');
+          setIsAdmin(roles?.some(r => r.role === 'admin') || false);
         }
       } catch (error) {
         console.error("Erro ao verificar status de admin:", error);

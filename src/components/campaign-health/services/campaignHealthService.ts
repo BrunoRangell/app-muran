@@ -1,6 +1,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getTodayInBrazil } from "@/utils/brazilTimezone";
+import type { Session } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
+
 
 export interface CampaignHealthSnapshot {
   id: string;
@@ -21,9 +24,18 @@ export interface CampaignHealthSnapshot {
   };
 }
 
+interface AuthCheckResult {
+  session: Session;
+  teamMember: {
+    id: string;
+    role: string;
+  };
+  isAdmin: boolean;
+}
+
 export class CampaignHealthService {
   // Verificar se o usuário está autenticado antes de fazer qualquer operação
-  private static async checkAuthAndTeamMembership() {
+  private static async checkAuthAndTeamMembership(): Promise<AuthCheckResult> {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
@@ -33,7 +45,7 @@ export class CampaignHealthService {
     // Verificar se o usuário é membro da equipe
     const { data: teamMember, error: teamError } = await supabase
       .from('team_members')
-      .select('id, permission, role')
+      .select('id, role')
       .eq('manager_id', session.user.id)
       .single();
 
@@ -41,7 +53,15 @@ export class CampaignHealthService {
       throw new Error('Acesso negado. Usuário não é membro da equipe.');
     }
 
-    return { session, teamMember };
+    // Verificar roles usando user_roles table
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.user.id);
+    
+    const isAdmin = roles?.some(r => r.role === 'admin') || false;
+
+    return { session, teamMember, isAdmin };
   }
 
   static async fetchTodaySnapshots(): Promise<CampaignHealthSnapshot[]> {
@@ -51,7 +71,7 @@ export class CampaignHealthService {
 
       const today = getTodayInBrazil();
       
-      console.log(`📅 Buscando snapshots de hoje da estrutura unificada (timezone brasileiro): ${today}`);
+      logger.debug(`📅 Buscando snapshots de hoje da estrutura unificada (timezone brasileiro): ${today}`);
       
       const { data, error } = await supabase
         .from('campaign_health')
@@ -66,7 +86,7 @@ export class CampaignHealthService {
         .eq('snapshot_date', today);
 
       if (error) {
-        console.error("❌ Erro ao buscar snapshots:", error);
+        logger.error("❌ Erro ao buscar snapshots:", error);
         throw new Error(`Erro ao buscar snapshots: ${error.message}`);
       }
 
@@ -90,10 +110,10 @@ export class CampaignHealthService {
         }
       })).sort((a: any, b: any) => a.clients.company_name.localeCompare(b.clients.company_name)) || [];
 
-      console.log(`✅ Encontrados ${snapshots.length} snapshots para hoje (timezone brasileiro)`);
+      logger.debug(`✅ Encontrados ${snapshots.length} snapshots para hoje (timezone brasileiro)`);
       return snapshots;
     } catch (error) {
-      console.error("❌ Erro na busca de snapshots:", error);
+      logger.error("❌ Erro na busca de snapshots:", error);
       throw error;
     }
   }
@@ -101,15 +121,15 @@ export class CampaignHealthService {
   static async generateTodaySnapshots(): Promise<boolean> {
     try {
       // Verificar autenticação primeiro
-      const { teamMember } = await this.checkAuthAndTeamMembership();
+      const { isAdmin } = await this.checkAuthAndTeamMembership();
 
       // Apenas admins podem gerar snapshots manualmente
-      if (teamMember.permission !== 'admin') {
+      if (!isAdmin) {
         throw new Error('Apenas administradores podem gerar snapshots manualmente.');
       }
 
       const today = getTodayInBrazil();
-      console.log(`🔧 Gerando snapshots para hoje (timezone brasileiro): ${today}`);
+      logger.debug(`🔧 Gerando snapshots para hoje (timezone brasileiro): ${today}`);
       
       const { data, error } = await supabase.functions.invoke('unified-meta-review', {
         body: { 
@@ -121,14 +141,14 @@ export class CampaignHealthService {
       });
 
       if (error) {
-        console.error("❌ Erro na edge function:", error);
+        logger.error("❌ Erro na edge function:", error);
         return false;
       }
 
-      console.log("✅ Edge function executada:", data);
+      logger.debug("✅ Edge function executada:", data);
       return data?.success || false;
     } catch (error) {
-      console.error("❌ Erro ao gerar snapshots:", error);
+      logger.error("❌ Erro ao gerar snapshots:", error);
       throw error;
     }
   }
@@ -136,15 +156,15 @@ export class CampaignHealthService {
   static async forceRefreshTodaySnapshots(): Promise<boolean> {
     try {
       // Verificar autenticação primeiro
-      const { teamMember } = await this.checkAuthAndTeamMembership();
+      const { isAdmin } = await this.checkAuthAndTeamMembership();
 
       // Apenas admins podem forçar refresh
-      if (teamMember.permission !== 'admin') {
+      if (!isAdmin) {
         throw new Error('Apenas administradores podem forçar refresh dos snapshots.');
       }
 
       const today = getTodayInBrazil();
-      console.log(`🔄 Forçando refresh para hoje (timezone brasileiro): ${today}`);
+      logger.debug(`🔄 Forçando refresh para hoje (timezone brasileiro): ${today}`);
       
       const { data, error } = await supabase.functions.invoke('unified-meta-review', {
         body: { 
@@ -157,14 +177,14 @@ export class CampaignHealthService {
       });
 
       if (error) {
-        console.error("❌ Erro ao forçar refresh:", error);
+        logger.error("❌ Erro ao forçar refresh:", error);
         return false;
       }
 
-      console.log("✅ Refresh executado:", data);
+      logger.debug("✅ Refresh executado:", data);
       return data?.success || false;
     } catch (error) {
-      console.error("❌ Erro ao forçar refresh:", error);
+      logger.error("❌ Erro ao forçar refresh:", error);
       throw error;
     }
   }
@@ -173,7 +193,7 @@ export class CampaignHealthService {
     const today = getTodayInBrazil();
     
     if (!snapshots || snapshots.length === 0) {
-      console.log("⚠️ Nenhum snapshot encontrado");
+      logger.warn("⚠️ Nenhum snapshot encontrado");
       return false;
     }
 
@@ -182,11 +202,11 @@ export class CampaignHealthService {
     );
 
     if (!allFromToday) {
-      console.warn("❌ Alguns snapshots não são de hoje (timezone brasileiro)!");
+      logger.warn("❌ Alguns snapshots não são de hoje (timezone brasileiro)!");
       return false;
     }
 
-    console.log(`✅ Todos os ${snapshots.length} snapshots são de hoje (timezone brasileiro)`);
+    logger.debug(`✅ Todos os ${snapshots.length} snapshots são de hoje (timezone brasileiro)`);
     return true;
   }
 }

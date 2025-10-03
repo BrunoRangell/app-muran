@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetricsData } from "@/components/clients/metrics/useMetricsData";
-import { useCosts } from "@/hooks/queries/useCosts";
-import { useClients } from "@/hooks/queries/useClients";
+import { useCostsPaginated } from "@/hooks/queries/useCostsPaginated";
+import { useClientsPaginated } from "@/hooks/queries/useClientsPaginated";
 import { formatBrazilianCurrency } from "@/utils/currencyUtils";
 import { BarChart3 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
@@ -12,9 +12,8 @@ import { useClientFiltering } from "@/components/clients/metrics/hooks/useClient
 import { Cost } from "@/types/cost";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { parseMonthString } from "@/utils/monthParser";
-import { Client } from "@/components/clients/types";
-import { calculateLTVForChart } from "@/utils/unifiedLTVCalculations";
+import { useLTVBatch } from "@/hooks/useLTVBatch";
+import { logger } from "@/lib/logger";
 
 export type PeriodFilter = 
   | 'last-3-months' 
@@ -105,26 +104,6 @@ const aggregateCostsByMonth = (costs: Cost[]) => {
   return costsByMonth;
 };
 
-// Função para calcular LTV usando o cálculo unificado (12 meses)
-const calculateLTVForMonth = async (monthStr: string, clients: Client[]): Promise<number> => {
-  try {
-    // Parse da string do mês (ex: "Jan/25") para obter a data de referência
-    const { monthEnd } = parseMonthString(monthStr);
-    
-    console.log(`[MetricsBarExplorer] Calculando LTV para ${monthStr} usando método unificado`);
-    
-    // Usar a função unificada que calcula LTV dos últimos 12 meses
-    const ltv = await calculateLTVForChart(clients, monthEnd);
-    
-    console.log(`[MetricsBarExplorer] LTV calculado para ${monthStr}: R$ ${ltv.toFixed(2)}`);
-    
-    return ltv;
-    
-  } catch (error) {
-    console.error(`❌ Erro ao calcular LTV para ${monthStr}:`, error);
-    return 0;
-  }
-};
 
 export const MetricsBarExplorer = () => {
   const [period, setPeriod] = useState<PeriodFilter>("last-12-months");
@@ -134,8 +113,6 @@ export const MetricsBarExplorer = () => {
     metric: string;
     value: number;
   } | null>(null);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [isCalculatingLTV, setIsCalculatingLTV] = useState(false);
 
   const dateRange = useMemo(() => getPeriodRange(period), [period]);
   
@@ -144,31 +121,48 @@ export const MetricsBarExplorer = () => {
     end: dateRange.end,
   });
   
-  const { costs: costsData = [], isLoading: loadingCosts } = useCosts({
+  const { costs: costsData = [], isLoading: loadingCosts } = useCostsPaginated({
     startDate: format(dateRange.start, "yyyy-MM-dd"),
     endDate: format(dateRange.end, "yyyy-MM-dd"),
   });
   
-  const { clients, isLoading: loadingClients } = useClients();
+  const { clients = [], isLoading: loadingClients } = useClientsPaginated();
 
   const { getClientsForPeriod } = useClientFiltering();
 
   // Agregar custos por mês
   const costsByMonth = useMemo(() => aggregateCostsByMonth(costsData || []), [costsData]);
 
-  // Processar dados básicos do gráfico
-  useEffect(() => {
-    if (!monthlyMetrics || monthlyMetrics.length === 0) {
-      setChartData([]);
-      return;
-    }
-
-    console.log('📊 Processando dados básicos para gráfico:', { monthlyMetrics, costsByMonth });
+  // Preparar meses para cálculo de LTV em batch
+  const targetMonths = useMemo(() => {
+    if (!monthlyMetrics || monthlyMetrics.length === 0) return [];
     
-    // Criar dados básicos primeiro (sem LTV)
-    const basicData = monthlyMetrics.map(item => {
+    return monthlyMetrics.map(item => {
+      try {
+        return parse(item.month, "MMM/yy", new Date(), { locale: ptBR });
+      } catch {
+        return new Date();
+      }
+    });
+  }, [monthlyMetrics]);
+
+  // Buscar LTV em batch usando Edge Function
+  const { data: ltvValues = {}, isLoading: isLoadingLTV } = useLTVBatch(targetMonths);
+
+  // Processar dados do gráfico
+  const chartData = useMemo(() => {
+    if (!monthlyMetrics || monthlyMetrics.length === 0) return [];
+
+    logger.debug('📊 Processando dados para gráfico:', { monthlyMetrics, costsByMonth, ltvValues });
+    
+    return monthlyMetrics.map(item => {
       const monthCosts = costsByMonth[item.month] || 0;
       const profit = item.mrr - monthCosts;
+      
+      // Obter LTV do batch calculado
+      const monthDate = parse(item.month, "MMM/yy", new Date(), { locale: ptBR });
+      const monthKey = format(monthDate, 'yyyy-MM');
+      const ltv = ltvValues[monthKey] || 0;
       
       return {
         month: item.month,
@@ -178,7 +172,7 @@ export const MetricsBarExplorer = () => {
         newClients: item.newClients,
         churn: item.churn,
         cac: item.newClients > 0 ? monthCosts / item.newClients : 0,
-        ltv: 0, // Será calculado assincronamente
+        ltv: ltv,
       };
     }).sort((a, b) => {
       try {
@@ -189,40 +183,7 @@ export const MetricsBarExplorer = () => {
         return 0;
       }
     });
-
-    setChartData(basicData);
-
-    // Calcular LTV assincronamente
-    const calculateLTVForAllMonths = async () => {
-      if (!clients || clients.length === 0) return;
-      
-      setIsCalculatingLTV(true);
-      console.log('🔄 Iniciando cálculo de LTV para todos os meses...');
-      
-      try {
-        const updatedData = await Promise.all(
-          basicData.map(async (item) => {
-            const ltv = await calculateLTVForMonth(item.month, clients);
-            console.log(`💰 LTV unificado calculado para ${item.month}: R$ ${ltv.toFixed(2)}`);
-            
-            return {
-              ...item,
-              ltv: ltv,
-            };
-          })
-        );
-
-        console.log('✅ Cálculo de LTV concluído para todos os meses');
-        setChartData(updatedData);
-      } catch (error) {
-        console.error('❌ Erro ao calcular LTV:', error);
-      } finally {
-        setIsCalculatingLTV(false);
-      }
-    };
-
-    calculateLTVForAllMonths();
-  }, [monthlyMetrics, costsByMonth, clients]);
+  }, [monthlyMetrics, costsByMonth, ltvValues]);
 
   const selected = METRICS.find((m) => m.id === metric)!;
   const primaryColor = "#ff6e00";
@@ -247,7 +208,7 @@ export const MetricsBarExplorer = () => {
       })
     : [];
 
-  const isLoading = loadingMetrics || loadingCosts || loadingClients;
+  const isLoading = loadingMetrics || loadingCosts || loadingClients || isLoadingLTV;
 
   if (isLoading) {
     return (
@@ -377,9 +338,6 @@ export const MetricsBarExplorer = () => {
         )}
         {metric === "ltv" && (
           <p>ℹ️ LTV = Payments dos últimos 12 meses ÷ Clientes ativos no período</p>
-        )}
-        {isCalculatingLTV && metric === "ltv" && (
-          <p className="text-primary">🔄 Calculando LTV baseado em payments reais...</p>
         )}
       </div>
 

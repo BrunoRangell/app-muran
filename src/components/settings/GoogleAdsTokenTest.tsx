@@ -69,13 +69,13 @@ export const GoogleAdsTokenTest = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      const { data: teamMember } = await supabase
-        .from('team_members')
-        .select('permission')
-        .eq('manager_id', session.user.id)
-        .single();
+      // Verificar role usando user_roles table
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id);
 
-      if (!teamMember || teamMember.permission !== 'admin') {
+      if (!roles || !roles.some(r => r.role === 'admin')) {
         throw new Error('Apenas administradores podem acessar tokens');
       }
 
@@ -155,13 +155,13 @@ export const GoogleAdsTokenTest = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      const { data: teamMember } = await supabase
-        .from('team_members')
-        .select('permission')
-        .eq('manager_id', session.user.id)
-        .single();
+      // Verificar role usando user_roles table
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id);
 
-      if (!teamMember || teamMember.permission !== 'admin') {
+      if (!roles || !roles.some(r => r.role === 'admin')) {
         throw new Error('Apenas administradores podem testar tokens');
       }
 

@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
+import { useUserRole } from "@/hooks/useUserRole";
 import { socialMediaSchema, SocialMediaSchemaType } from "@/components/team/schemas/memberSchema";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -65,7 +66,6 @@ export default function Settings() {
         instagram: currentUser.instagram || '',
         linkedin: currentUser.linkedin || '',
         tiktok: currentUser.tiktok || '',
-        permission: currentUser.permission || '',
         start_date: currentUser.start_date || ''
       });
     }
@@ -79,8 +79,10 @@ export default function Settings() {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  const isAdmin = currentUser?.permission === 'admin';
-  const isMember = currentUser?.permission === 'member' || !isAdmin;
+  // Usar hook seguro para verificar roles
+  const { data: userRole } = useUserRole();
+  const isAdmin = userRole?.isAdmin || false;
+  const isMember = !isAdmin;
 
   const handleSubmit = async (data: SocialMediaSchemaType) => {
     if (!currentUser) return;

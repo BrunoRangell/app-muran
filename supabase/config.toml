@@ -24,3 +24,15 @@ verify_jwt = false
 [functions.daily-google-review]
 verify_jwt = false
 
+[functions.create-clickup-project]
+verify_jwt = false
+
+[functions.create-discord-channel]
+verify_jwt = false
+
+[functions.create-drive-folder]
+verify_jwt = false
+
+[functions.orchestrate-client-onboarding]
+verify_jwt = false
+
