@@ -402,7 +402,8 @@ export function useUnifiedReviewsData() {
       });
 
       return flattenedClients;
-    }
+    },
+    staleTime: 30 * 60 * 1000, // FASE 4A: 30 minutos
   });
 
   return {
