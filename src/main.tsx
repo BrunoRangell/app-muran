@@ -9,9 +9,9 @@ import "./index.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutos
-      gcTime: 10 * 60 * 1000, // 10 minutos
-      refetchOnWindowFocus: false, // Evita refetch automático ao trocar aba
+      staleTime: 15 * 60 * 1000, // 15 minutos - otimizado
+      gcTime: 30 * 60 * 1000, // 30 minutos - otimizado
+      refetchOnWindowFocus: false,
       retry: (failureCount, error) => {
         if (failureCount < 2) return true;
         return false;

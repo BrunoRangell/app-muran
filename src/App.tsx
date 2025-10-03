@@ -15,15 +15,15 @@ const Index = lazy(() => {
     Promise.all([
       import("@/pages/Clients"),
       import("@/pages/Managers")
-    ]).catch(error => {
-      console.error("Erro no pré-carregamento:", error);
+    ]).catch(() => {
+      // Silencioso em produção
     });
   });
   return page;
 });
 
-// Lazy load das demais páginas com timeout maior e retry
-const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 10000) => {
+// Lazy load otimizado com timeout reduzido
+const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 5000) => {
   return lazy(() => {
     const loadWithRetry = (retriesLeft = retries): Promise<any> => {
       return Promise.race([
@@ -32,12 +32,12 @@ const lazyWithTimeout = (importFn: () => Promise<any>, retries = 3, timeout = 10
           setTimeout(() => reject(new Error('Tempo limite excedido')), timeout)
         )
       ]).catch(error => {
-        console.error(`Erro ao carregar módulo: ${error.message}, tentativas restantes: ${retriesLeft}`);
+        if (import.meta.env.DEV) {
+          console.error(`Erro ao carregar módulo: ${error.message}, tentativas restantes: ${retriesLeft}`);
+        }
         if (retriesLeft > 0) {
-          console.log(`Tentando novamente... ${retriesLeft} tentativas restantes`);
           return loadWithRetry(retriesLeft - 1);
         }
-        console.error("Falha em todas as tentativas de carregamento");
         throw error;
       });
     };

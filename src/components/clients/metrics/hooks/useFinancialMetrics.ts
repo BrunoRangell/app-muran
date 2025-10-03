@@ -25,7 +25,6 @@ export const useFinancialMetrics = () => {
   });
 
   const handlePeriodChange = (value: PeriodFilter) => {
-    console.log('Changing period to:', value);
     setPeriodFilter(value);
     const now = new Date();
     
@@ -81,21 +80,18 @@ export const useFinancialMetrics = () => {
         };
     }
     
-    console.log('New date range:', newDateRange);
     setDateRange(newDateRange);
   };
 
   const { data: allClientsMetrics, isLoading: isLoadingAllClients } = useQuery({
     queryKey: ["allClientsMetrics"],
+    staleTime: 60 * 60 * 1000, // 60 minutos - dados históricos
     queryFn: async () => {
       const { data: clients, error } = await supabase
         .from("clients")
         .select("*");
 
-      if (error) {
-        console.error("Error fetching all clients metrics:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       return calculateFinancialMetrics(clients);
     },
@@ -103,15 +99,13 @@ export const useFinancialMetrics = () => {
 
   const { data: clients } = useQuery({
     queryKey: ["clients"],
+    staleTime: 30 * 60 * 1000, // 30 minutos
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
         .select("*");
 
-      if (error) {
-        console.error("Error fetching clients:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       return data;
     },

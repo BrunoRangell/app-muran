@@ -39,15 +39,12 @@ interface MonthlyMetrics {
 
 export const calculateMonthlyMetrics = async (
   clients: Client[], 
-  currentDate: Date
+  currentDate: Date,
+  cachedLTV?: number
 ): Promise<MonthlyMetrics> => {
   try {
-    console.log(`Calculating metrics for ${format(currentDate, 'yyyy-MM-dd')}`);
-    
     const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-
-    console.log(`Month range: ${format(monthStart, 'yyyy-MM-dd')} to ${format(monthEnd, 'yyyy-MM-dd')}`);
 
     const activeClientsInMonth = clients.filter(client => 
       isClientActiveInMonth(client, monthStart, monthEnd)
@@ -69,8 +66,8 @@ export const calculateMonthlyMetrics = async (
     // Usar apenas receita real de pagamentos, sem fallback
     let mrrValue = paymentMetrics.monthlyRevenue;
 
-    // Calcular LTV móvel de 12 meses para este mês
-    const ltvValue = await calculateMovingLTV12Months(clients, currentDate);
+    // Usar LTV do cache ou calcular se necessário
+    const ltvValue = cachedLTV ?? await calculateMovingLTV12Months(clients, currentDate);
 
     // Buscar detalhes dos pagamentos para o tooltip
     const { data: payments } = await supabase
@@ -122,10 +119,11 @@ export const calculateMonthlyMetrics = async (
       newClientNames: newClientList.map(c => c.company_name)
     };
 
-    console.log(`Results for ${monthStr}:`, result);
     return result;
   } catch (error) {
-    console.error("Error in calculateMonthlyMetrics:", error, currentDate);
+    if (import.meta.env.DEV) {
+      console.error("Error in calculateMonthlyMetrics:", error, currentDate);
+    }
     
     // Retornar dados padrão em caso de erro
     const fallbackMonth = format(currentDate, 'MMM/yy', { locale: ptBR });
