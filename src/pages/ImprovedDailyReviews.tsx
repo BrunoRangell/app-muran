@@ -7,6 +7,7 @@ import { BudgetManagerTab } from "@/components/improved-reviews/tabs/BudgetManag
 import { CustomBudgetTab } from "@/components/improved-reviews/tabs/CustomBudgetTab";
 import { DashboardHeader } from "@/components/improved-reviews/dashboard/DashboardHeader";
 import { usePlatformBatchReviews } from "@/components/improved-reviews/hooks/useBatchOperations";
+import { usePrefetch } from "@/hooks/usePrefetch";
 
 export default function ImprovedDailyReviews() {
   // Função para obter a aba da URL hash ou do localStorage
@@ -35,6 +36,9 @@ export default function ImprovedDailyReviews() {
     refetchBoth 
   } = usePlatformBatchReviews();
   
+  // FASE 3: Prefetch estratégico
+  const { prefetchGoogleAdsData, prefetchMetaAdsData } = usePrefetch();
+  
   // Efeito para sincronizar mudanças na hash da URL
   useEffect(() => {
     const handleHashChange = () => {
@@ -62,6 +66,13 @@ export default function ImprovedDailyReviews() {
     setSelectedTab(value);
     localStorage.setItem("selected_tab", value);
     window.location.hash = value;
+    
+    // FASE 3: Prefetch inteligente baseado na aba
+    if (value === 'meta-ads') {
+      prefetchGoogleAdsData(); // Prefetch Google quando abre Meta
+    } else if (value === 'google-ads') {
+      prefetchMetaAdsData(); // Prefetch Meta quando abre Google
+    }
     
     // Forçar refresh dos dados quando trocar de aba
     setTimeout(() => {

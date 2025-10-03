@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateFinancialMetrics } from "@/utils/financialCalculations";
 import { DateRangeFilter, PeriodFilter } from "../../types";
 import { addMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subYears } from "date-fns";
+import { useFinancialWorker } from "@/hooks/useFinancialWorker";
+import { Client } from "@/components/clients/types";
+import { logger } from "@/lib/logger";
 
 export const useFinancialMetrics = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('last-12-months');
@@ -83,33 +86,57 @@ export const useFinancialMetrics = () => {
     setDateRange(newDateRange);
   };
 
-  const { data: allClientsMetrics, isLoading: isLoadingAllClients } = useQuery({
-    queryKey: ["allClientsMetrics"],
-    staleTime: 60 * 60 * 1000, // 60 minutos - dados históricos
-    queryFn: async () => {
-      const { data: clients, error } = await supabase
-        .from("clients")
-        .select("*");
+  // FASE 2: Web Worker para cálculos pesados
+  const { isWorkerReady, calculateMetrics } = useFinancialWorker();
+  const [workerMetrics, setWorkerMetrics] = useState<any>(null);
 
-      if (error) throw error;
-
-      return calculateFinancialMetrics(clients);
-    },
-  });
-
-  const { data: clients } = useQuery({
-    queryKey: ["clients"],
-    staleTime: 30 * 60 * 1000, // 30 minutos
+  // FASE 1: Buscar clientes com query otimizada
+  const { data: clients, isLoading: isLoadingClients } = useQuery({
+    queryKey: ["unified-clients"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
-        .select("*");
-
+        .select("id, company_name, status, payment_type, contact_phone, contact_name, contract_value, first_payment_date, last_payment_date, company_birthday, acquisition_channel");
+      
       if (error) throw error;
-
-      return data;
+      return data || [];
     },
+    staleTime: 30 * 60 * 1000, // FASE 3: 30 minutos
   });
+
+  // FASE 2: Calcular métricas com Web Worker quando clientes carregarem
+  useEffect(() => {
+    if (!clients || clients.length === 0 || !isWorkerReady) return;
+
+    const calculate = async () => {
+      try {
+        logger.debug("🔧 [WORKER] Calculando métricas financeiras...");
+        
+        const [paymentsResult, costsResult] = await Promise.all([
+          supabase.from("payments").select("*"),
+          supabase.from("costs").select("*")
+        ]);
+        
+        const result = await calculateMetrics(
+          clients,
+          paymentsResult.data || [],
+          costsResult.data || []
+        );
+        
+        setWorkerMetrics(result);
+        logger.info("✅ [WORKER] Métricas calculadas");
+      } catch (error) {
+        logger.error("❌ [WORKER] Erro, usando fallback:", error);
+        const fallback = await calculateFinancialMetrics(clients as Client[]);
+        setWorkerMetrics(fallback);
+      }
+    };
+
+    calculate();
+  }, [clients, isWorkerReady, calculateMetrics]);
+
+  const allClientsMetrics = workerMetrics;
+  const isLoadingAllClients = isLoadingClients || !workerMetrics;
 
   return {
     periodFilter,

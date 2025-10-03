@@ -17,6 +17,7 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
         endObj: dateRange.end
       });
       
+      // FASE 1: Query otimizada com todas as colunas necessárias
       const { data: clients, error } = await supabase
         .from("clients")
         .select("*");
@@ -60,7 +61,7 @@ export const useMetricsData = (dateRange: { start: Date; end: Date }) => {
       
       return months;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    retry: 3,
+    staleTime: 30 * 60 * 1000, // FASE 3: 30 minutos - dados históricos
+    retry: 2,
   });
 };

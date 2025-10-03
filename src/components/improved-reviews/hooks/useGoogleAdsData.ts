@@ -41,86 +41,89 @@ export interface GoogleAdsMetrics {
 }
 
 const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" = "weighted"): Promise<GoogleAdsClientData[]> => {
-  console.log("🔍 Iniciando busca de dados do Google Ads...");
+  console.log("🔍 [GOOGLE-ADS] Iniciando busca otimizada com batch queries...");
   
   try {
-    // Buscar TODOS os clientes ativos
+    // FASE 1: Buscar clientes ativos
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
       .select('id, company_name')
       .eq('status', 'active');
 
-    if (clientsError) {
-      console.error("❌ Erro ao buscar clientes:", clientsError);
-      throw clientsError;
-    }
+    if (clientsError) throw clientsError;
+    if (!clients || clients.length === 0) return [];
 
-    console.log(`✅ Encontrados ${clients?.length || 0} clientes ativos`);
+    const clientIds = clients.map(c => c.id);
+    console.log(`✅ [GOOGLE-ADS] ${clients.length} clientes encontrados`);
 
-    if (!clients || clients.length === 0) {
-      console.warn("⚠️ Nenhum cliente ativo encontrado");
-      return [];
-    }
-
-    const result: GoogleAdsClientData[] = [];
-    const today = new Date().toISOString().split('T')[0];
-
-    // Processar cada cliente individualmente para evitar JOINs complexos
-    for (const client of clients) {
-      console.log(`🔄 Processando cliente: ${client.company_name}`);
-
-      // Buscar contas Google Ads do cliente
-      const { data: googleAccounts, error: accountsError } = await supabase
+    // FASE 1.2: BATCH QUERIES - buscar tudo em paralelo
+    const [accountsResult, reviewsResult] = await Promise.all([
+      supabase
         .from('client_accounts')
-        .select('*')
-        .eq('client_id', client.id)
+        .select('id, client_id, account_id, account_name, budget_amount, status')
+        .in('client_id', clientIds)
         .eq('platform', 'google')
-        .eq('status', 'active');
+        .eq('status', 'active'),
+      supabase
+        .from('budget_reviews')
+        .select('client_id, account_id, total_spent, daily_budget_current, last_five_days_spent, custom_budget_amount, using_custom_budget, warning_ignored_today, review_date')
+        .in('client_id', clientIds)
+        .eq('platform', 'google')
+        .order('review_date', { ascending: false })
+    ]);
 
-      if (accountsError) {
-        console.error(`❌ Erro ao buscar contas Google do cliente ${client.company_name}:`, accountsError);
-        continue;
+    if (accountsResult.error) throw accountsResult.error;
+    if (reviewsResult.error) throw reviewsResult.error;
+
+    const accounts = accountsResult.data || [];
+    const allReviews = reviewsResult.data || [];
+
+    console.log(`✅ [GOOGLE-ADS] Batch loaded: ${accounts.length} accounts, ${allReviews.length} reviews`);
+
+    // Indexar dados para acesso rápido
+    const accountsByClient = new Map<string, any[]>();
+    accounts.forEach(acc => {
+      if (!accountsByClient.has(acc.client_id)) {
+        accountsByClient.set(acc.client_id, []);
       }
+      accountsByClient.get(acc.client_id)!.push(acc);
+    });
 
-      if (googleAccounts && googleAccounts.length > 0) {
-        // Cliente COM conta Google Ads
-        for (const account of googleAccounts) {
-          console.log(`📊 Processando conta Google: ${account.account_name}`);
+    const reviewsByAccount = new Map<string, any>();
+    allReviews.forEach(review => {
+      const key = `${review.client_id}-${review.account_id}`;
+      if (!reviewsByAccount.has(key)) {
+        reviewsByAccount.set(key, review);
+      }
+    });
 
-          // Buscar revisões para esta conta
-          const { data: reviews, error: reviewsError } = await supabase
-            .from('budget_reviews')
-            .select('*')
-            .eq('client_id', client.id)
-            .eq('account_id', account.id)
-            .eq('platform', 'google')
-            .order('review_date', { ascending: false })
-            .limit(1);
+    // Processar clientes
+    const result: GoogleAdsClientData[] = [];
+    const currentDate = new Date();
+    const daysInMonth = getDaysInMonth(currentDate);
+    const currentDay = currentDate.getDate();
+    const remainingDays = daysInMonth - currentDay + 1;
 
-          if (reviewsError) {
-            console.error(`❌ Erro ao buscar revisões:`, reviewsError);
-          }
+    for (const client of clients) {
+      const clientAccounts = accountsByClient.get(client.id) || [];
 
-          const latestReview = reviews && reviews.length > 0 ? reviews[0] : null;
+      if (clientAccounts.length > 0) {
+        for (const account of clientAccounts) {
+          const reviewKey = `${client.id}-${account.id}`;
+          const latestReview = reviewsByAccount.get(reviewKey);
+
           const totalSpent = latestReview?.total_spent || 0;
           const budgetAmount = latestReview?.custom_budget_amount || account.budget_amount || 0;
-          
-          // Cálculos básicos
-          const currentDate = new Date();
-          const daysInMonth = getDaysInMonth(currentDate);
-          const currentDay = currentDate.getDate();
-          const remainingDays = daysInMonth - currentDay + 1;
           const remainingBudget = Math.max(budgetAmount - totalSpent, 0);
           const idealDailyBudget = remainingDays > 0 ? remainingBudget / remainingDays : 0;
           const weightedAverage = latestReview?.last_five_days_spent || 0;
           const currentDailyBudget = latestReview?.daily_budget_current || 0;
           
-          // Escolher base de cálculo conforme o modo selecionado
           const comparisonValue = budgetCalculationMode === "weighted" ? weightedAverage : currentDailyBudget;
           const budgetDifference = idealDailyBudget - comparisonValue;
           const needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
 
-          const clientData: GoogleAdsClientData = {
+          result.push({
             id: client.id,
             company_name: client.company_name,
             google_account_id: account.account_id,
@@ -128,12 +131,12 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
             hasAccount: true,
             review: {
               total_spent: totalSpent,
-              daily_budget_current: latestReview?.daily_budget_current || 0
+              daily_budget_current: currentDailyBudget
             },
             budget_amount: budgetAmount,
             original_budget_amount: account.budget_amount || 0,
             needsAdjustment: needsBudgetAdjustment,
-            weightedAverage: weightedAverage,
+            weightedAverage,
             isUsingCustomBudget: latestReview?.using_custom_budget || false,
             budgetCalculation: {
               budgetDifference,
@@ -143,21 +146,14 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
               needsAdjustmentBasedOnAverage: needsBudgetAdjustment,
               warningIgnoredToday: latestReview?.warning_ignored_today || false
             }
-          };
-
-          result.push(clientData);
-          console.log(`✅ Cliente adicionado: ${client.company_name} (COM conta Google)`);
+          });
         }
       } else {
-        // Cliente SEM conta Google Ads
-        const clientData: GoogleAdsClientData = {
+        result.push({
           id: client.id,
           company_name: client.company_name,
           hasAccount: false,
-          review: {
-            total_spent: 0,
-            daily_budget_current: 0
-          },
+          review: { total_spent: 0, daily_budget_current: 0 },
           budget_amount: 0,
           original_budget_amount: 0,
           needsAdjustment: false,
@@ -171,25 +167,15 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
             needsAdjustmentBasedOnAverage: false,
             warningIgnoredToday: false
           }
-        };
-
-        result.push(clientData);
-        console.log(`✅ Cliente adicionado: ${client.company_name} (SEM conta Google)`);
+        });
       }
     }
 
-    console.log(`🎉 Processamento concluído. Total de clientes: ${result.length}`);
-    console.log(`📊 Resumo:`, {
-      total: result.length,
-      comConta: result.filter(c => c.hasAccount).length,
-      semConta: result.filter(c => !c.hasAccount).length,
-      precisamAjuste: result.filter(c => c.needsAdjustment).length
-    });
-
+    console.log(`✅ [GOOGLE-ADS] Processamento otimizado concluído: ${result.length} total`);
     return result;
 
   } catch (error) {
-    console.error("❌ Erro fatal na busca de dados do Google Ads:", error);
+    console.error("❌ [GOOGLE-ADS] Erro:", error);
     throw error;
   }
 };
@@ -199,12 +185,11 @@ export const useGoogleAdsData = (budgetCalculationMode: "weighted" | "current" =
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['google-ads-clients-data', budgetCalculationMode], // Include mode in query key
+    queryKey: ['google-ads-clients-data', budgetCalculationMode],
     queryFn: () => fetchGoogleAdsData(budgetCalculationMode),
-    staleTime: 2 * 60 * 1000, // 2 minutos
-    gcTime: 5 * 60 * 1000, // 5 minutos
-    retry: 3,
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    staleTime: 10 * 60 * 1000, // FASE 3: 10 minutos - dados mudam pouco
+    gcTime: 30 * 60 * 1000, // 30 minutos
+    retry: 2,
   });
 
   const metrics = useMemo<GoogleAdsMetrics>(() => {
