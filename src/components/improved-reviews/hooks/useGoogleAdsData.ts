@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getDaysInMonth } from "date-fns";
+import { logger } from "@/lib/logger";
 
 export interface GoogleAdsClientData {
   id: string;
@@ -41,7 +42,7 @@ export interface GoogleAdsMetrics {
 }
 
 const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" = "weighted"): Promise<GoogleAdsClientData[]> => {
-  console.log("🔍 [GOOGLE-ADS] Iniciando busca otimizada com batch queries...");
+  logger.debug("🔍 FASE 5C: Iniciando busca otimizada com batch queries...");
   
   try {
     // FASE 1: Buscar clientes ativos
@@ -54,7 +55,7 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
     if (!clients || clients.length === 0) return [];
 
     const clientIds = clients.map(c => c.id);
-    console.log(`✅ [GOOGLE-ADS] ${clients.length} clientes encontrados`);
+    logger.debug(`✅ ${clients.length} clientes encontrados`);
 
     // FASE 1.2: BATCH QUERIES - buscar tudo em paralelo
     const [accountsResult, reviewsResult] = await Promise.all([
@@ -78,7 +79,7 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
     const accounts = accountsResult.data || [];
     const allReviews = reviewsResult.data || [];
 
-    console.log(`✅ [GOOGLE-ADS] Batch loaded: ${accounts.length} accounts, ${allReviews.length} reviews`);
+    logger.debug(`✅ Batch loaded: ${accounts.length} accounts, ${allReviews.length} reviews`);
 
     // Indexar dados para acesso rápido
     const accountsByClient = new Map<string, any[]>();
@@ -171,11 +172,11 @@ const fetchGoogleAdsData = async (budgetCalculationMode: "weighted" | "current" 
       }
     }
 
-    console.log(`✅ [GOOGLE-ADS] Processamento otimizado concluído: ${result.length} total`);
+    logger.debug(`✅ Processamento otimizado concluído: ${result.length} total`);
     return result;
 
   } catch (error) {
-    console.error("❌ [GOOGLE-ADS] Erro:", error);
+    logger.error("❌ Erro ao buscar dados Google Ads:", error);
     throw error;
   }
 };
@@ -194,7 +195,7 @@ export const useGoogleAdsData = (budgetCalculationMode: "weighted" | "current" =
 
   const metrics = useMemo<GoogleAdsMetrics>(() => {
     if (!data || data.length === 0) {
-      console.log("📊 Calculando métricas - dados vazios");
+      logger.debug("📊 Calculando métricas - dados vazios");
       return {
         totalClients: 0,
         clientsWithAdjustments: 0,
@@ -221,30 +222,22 @@ export const useGoogleAdsData = (budgetCalculationMode: "weighted" | "current" =
       spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
     };
 
-    console.log("📊 Métricas calculadas:", calculatedMetrics);
+    logger.debug("📊 Métricas calculadas:", calculatedMetrics);
     return calculatedMetrics;
   }, [data]);
 
   const refreshData = async () => {
-    console.log("🔄 Forçando atualização dos dados...");
+    logger.debug("🔄 Forçando atualização dos dados...");
     setIsRefreshing(true);
     try {
       await refetch();
-      console.log("✅ Dados atualizados com sucesso");
+      logger.debug("✅ Dados atualizados com sucesso");
     } catch (error) {
-      console.error("❌ Erro ao atualizar dados:", error);
+      logger.error("❌ Erro ao atualizar dados:", error);
     } finally {
       setIsRefreshing(false);
     }
   };
-
-  // Log para debug do estado atual
-  console.log("🔍 Estado atual do hook:", {
-    dataLength: data?.length || 0,
-    isLoading,
-    error: error?.message,
-    hasData: !!data
-  });
 
   return {
     data: data || [],

@@ -1,6 +1,6 @@
 /**
- * FASE 4A: Web Worker para processar dados Meta Ads
- * Processa combinação de clientes, contas, revisões e budgets em background
+ * FASE 5A: Web Worker para processar dados Meta Ads
+ * Processa combinação de clientes, contas, reviews e budgets em background thread
  */
 
 export type WorkerMessage = {
@@ -17,6 +17,61 @@ export type WorkerMessage = {
 export type WorkerResponse = {
   type: 'PROCESSED_DATA' | 'ERROR';
   payload: any;
+};
+
+// FASE 5A: Incluir lógica de cálculo de budget no worker
+const calculateBudget = (input: {
+  monthlyBudget: number;
+  totalSpent: number;
+  currentDailyBudget: number;
+  customBudgetEndDate?: string;
+  customBudgetStartDate?: string;
+  warningIgnoredToday?: boolean;
+}) => {
+  const now = new Date();
+  const currentDay = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  
+  let budgetStartDay = 1;
+  let budgetEndDay = daysInMonth;
+  
+  if (input.customBudgetStartDate && input.customBudgetEndDate) {
+    const startDate = new Date(input.customBudgetStartDate);
+    const endDate = new Date(input.customBudgetEndDate);
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    if (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) {
+      budgetStartDay = startDate.getDate();
+      budgetEndDay = endDate.getDate();
+    }
+  }
+  
+  const remainingDays = Math.max(budgetEndDay - currentDay, 1);
+  const remainingBudget = Math.max(input.monthlyBudget - input.totalSpent, 0);
+  const idealDailyBudget = remainingBudget / remainingDays;
+  const budgetDifference = input.currentDailyBudget - idealDailyBudget;
+  const budgetDifferencePercent = idealDailyBudget > 0 ? (budgetDifference / idealDailyBudget) * 100 : 0;
+  
+  const INCREASE_THRESHOLD = -10;
+  const DECREASE_THRESHOLD = 10;
+  
+  let needsBudgetAdjustment = false;
+  
+  if (!input.warningIgnoredToday) {
+    if (budgetDifferencePercent <= INCREASE_THRESHOLD || budgetDifferencePercent >= DECREASE_THRESHOLD) {
+      needsBudgetAdjustment = true;
+    }
+  }
+  
+  return {
+    idealDailyBudget,
+    budgetDifference,
+    budgetDifferencePercent,
+    remainingDays,
+    remainingBudget,
+    needsBudgetAdjustment,
+  };
 };
 
 // Verificar se warning foi ignorado hoje
@@ -92,20 +147,17 @@ const processMetaData = (
   activeCustomBudgets: any[],
   campaignHealthData: any[]
 ) => {
-  // Mapear dados de campaign_health por client_id e account_id
   const campaignHealthByClientAccount = new Map();
   campaignHealthData.forEach(health => {
     const key = `${health.client_id}_${health.account_id}`;
     campaignHealthByClientAccount.set(key, health);
   });
   
-  // Mapear orçamentos personalizados por client_id
   const customBudgetsByClientId = new Map();
   activeCustomBudgets.forEach(budget => {
     customBudgetsByClientId.set(budget.client_id, budget);
   });
 
-  // Criar Set de clientes com contas Meta
   const clientsWithAccounts = new Set();
   metaAccounts.forEach(account => {
     clientsWithAccounts.add(account.client_id);
@@ -115,22 +167,17 @@ const processMetaData = (
     !clientsWithAccounts.has(client.id)
   ).length || 0;
 
-  // Combinar os dados
   const clientsWithData = clients.map(client => {
-    // Validar company_name
     if (!client.company_name) {
       client.company_name = `Cliente ${client.id.slice(0, 8)}`;
     }
     
-    // Buscar contas Meta para este cliente
     const clientMetaAccounts = metaAccounts.filter(account => 
       account.client_id === client.id
     ) || [];
     
-    // Se o cliente tem contas Meta configuradas
     if (clientMetaAccounts.length > 0) {
       return clientMetaAccounts.map(account => {
-        // Buscar a revisão mais recente para esta conta
         const clientReviews = reviews.filter(r => 
           r.client_id === client.id && 
           r.account_id === account.id
@@ -145,7 +192,6 @@ const processMetaData = (
         let customBudgetEndDate = null;
         let customBudgetStartDate = null;
         
-        // Verificar orçamento personalizado na revisão
         if (review?.using_custom_budget && review?.custom_budget_amount) {
           isUsingCustomBudget = true;
           monthlyBudget = review.custom_budget_amount;
@@ -160,9 +206,7 @@ const processMetaData = (
               end_date: review.custom_budget_end_date
             };
           }
-        } 
-        // Verificar orçamento personalizado ativo
-        else if (customBudgetsByClientId.has(client.id)) {
+        } else if (customBudgetsByClientId.has(client.id)) {
           const budget = customBudgetsByClientId.get(client.id);
           customBudget = budget;
           monthlyBudget = budget.budget_amount;
@@ -171,7 +215,6 @@ const processMetaData = (
           customBudgetStartDate = budget.start_date;
         }
         
-        // Buscar dados de saldo
         const balanceInfo = account.saldo_restante !== null || account.is_prepay_account !== null ? {
           balance: account.saldo_restante || 0,
           balance_type: account.saldo_restante !== null ? "numeric" : (account.is_prepay_account === false ? "credit_card" : "unavailable"),
@@ -179,10 +222,19 @@ const processMetaData = (
           billing_model: account.is_prepay_account ? "pre" : "pos"
         } : null;
         
-        // Buscar dados de veiculação
         const healthKey = `${client.id}_${account.id}`;
         const healthData = campaignHealthByClientAccount.get(healthKey);
         const veiculationStatus = getVeiculationStatus(healthData);
+        
+        // FASE 5A: Calcular budget no worker
+        const budgetCalc = calculateBudget({
+          monthlyBudget,
+          totalSpent: review?.total_spent || 0,
+          currentDailyBudget: review?.daily_budget_current || 0,
+          customBudgetEndDate,
+          customBudgetStartDate,
+          warningIgnoredToday,
+        });
         
         return {
           ...client,
@@ -191,22 +243,22 @@ const processMetaData = (
           budget_amount: monthlyBudget,
           original_budget_amount: account.budget_amount,
           review: review || null,
-          warningIgnoredToday: warningIgnoredToday,
-          customBudget: customBudget,
-          isUsingCustomBudget: isUsingCustomBudget,
-          customBudgetStartDate: customBudgetStartDate,
-          customBudgetEndDate: customBudgetEndDate,
+          budgetCalculation: {
+            ...budgetCalc,
+            warningIgnoredToday,
+          },
+          needsAdjustment: budgetCalc.needsBudgetAdjustment,
+          customBudget,
+          isUsingCustomBudget,
           hasAccount: true,
           meta_daily_budget: review?.daily_budget_current || 0,
           balance_info: balanceInfo || null,
-          veiculationStatus: veiculationStatus,
+          veiculationStatus,
           last_funding_detected_at: account.last_funding_detected_at,
           last_funding_amount: account.last_funding_amount
         };
       });
-    } 
-    // Cliente sem conta cadastrada
-    else {
+    } else {
       return {
         ...client,
         meta_account_id: null,
@@ -214,7 +266,15 @@ const processMetaData = (
         budget_amount: 0,
         original_budget_amount: 0,
         review: null,
-        warningIgnoredToday: false,
+        budgetCalculation: {
+          idealDailyBudget: 0,
+          budgetDifference: 0,
+          remainingDays: 0,
+          remainingBudget: 0,
+          needsBudgetAdjustment: false,
+          warningIgnoredToday: false
+        },
+        needsAdjustment: false,
         customBudget: null,
         isUsingCustomBudget: false,
         hasAccount: false,
@@ -229,10 +289,8 @@ const processMetaData = (
     }
   }) || [];
 
-  // Achatar o array
   const flattenedClients = clientsWithData.flat();
   
-  // Calcular métricas
   const totalBudget = flattenedClients.reduce((sum, client) => sum + (client.budget_amount || 0), 0);
   const totalSpent = flattenedClients.reduce((sum, client) => sum + (client.review?.total_spent || 0), 0);
   
@@ -240,9 +298,9 @@ const processMetaData = (
     clients: flattenedClients,
     metrics: {
       totalClients: clientsWithAccounts.size,
-      clientsWithoutAccount: clientsWithoutAccount,
-      totalBudget: totalBudget,
-      totalSpent: totalSpent,
+      clientsWithoutAccount,
+      totalBudget,
+      totalSpent,
       spentPercentage: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0
     }
   };
