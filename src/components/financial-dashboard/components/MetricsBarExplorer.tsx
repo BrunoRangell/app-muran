@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetricsData } from "@/components/clients/metrics/useMetricsData";
-import { useCosts } from "@/hooks/queries/useCosts";
-import { useClients } from "@/hooks/queries/useClients";
+import { useCostsPaginated } from "@/hooks/queries/useCostsPaginated";
+import { useClientsPaginated } from "@/hooks/queries/useClientsPaginated";
 import { formatBrazilianCurrency } from "@/utils/currencyUtils";
 import { BarChart3 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
@@ -121,12 +121,12 @@ export const MetricsBarExplorer = () => {
     end: dateRange.end,
   });
   
-  const { costs: costsData = [], isLoading: loadingCosts } = useCosts({
+  const { costs: costsData = [], isLoading: loadingCosts } = useCostsPaginated({
     startDate: format(dateRange.start, "yyyy-MM-dd"),
     endDate: format(dateRange.end, "yyyy-MM-dd"),
   });
   
-  const { clients, isLoading: loadingClients } = useClients();
+  const { clients = [], isLoading: loadingClients } = useClientsPaginated();
 
   const { getClientsForPeriod } = useClientFiltering();
 

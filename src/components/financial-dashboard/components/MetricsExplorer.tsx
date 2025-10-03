@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetricsData } from "@/components/clients/metrics/useMetricsData";
-import { useCosts } from "@/hooks/queries/useCosts";
+import { useCostsPaginated } from "@/hooks/queries/useCostsPaginated";
 import { formatBrazilianCurrency } from "@/utils/currencyUtils";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { format } from "date-fns";
@@ -128,7 +128,7 @@ export const MetricsExplorer = () => {
     end: dateRange.end,
   });
 
-  const { costs: costsData = [], isLoading: loadingCosts } = useCosts({
+  const { costs: costsData = [], isLoading: loadingCosts } = useCostsPaginated({
     startDate: format(dateRange.start, "yyyy-MM-dd"),
     endDate: format(dateRange.end, "yyyy-MM-dd"),
   });

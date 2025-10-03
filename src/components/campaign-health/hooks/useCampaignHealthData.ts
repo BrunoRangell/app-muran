@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 
 // Estrutura reformulada para separar Meta e Google Ads
 export type CampaignStatus = "ok" | "warning" | "error" | "nodata";
@@ -48,7 +49,7 @@ function determineStatus(
 
 // Busca dados reais de saúde das campanhas usando a nova estrutura unificada
 async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
-  console.log("🔍 Buscando dados de saúde das campanhas da nova estrutura unificada...");
+  logger.debug("🔍 Buscando dados de saúde das campanhas da nova estrutura unificada...");
   
   try {
     const today = new Date().toISOString().split('T')[0];
@@ -82,16 +83,16 @@ async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
       .eq('campaign_health.snapshot_date', today);
 
     if (error) {
-      console.error("❌ Erro ao buscar dados da estrutura unificada:", error);
+      logger.error("❌ Erro ao buscar dados da estrutura unificada:", error);
       throw error;
     }
 
     if (!accountsData || accountsData.length === 0) {
-      console.log("⚠️ Nenhum dado encontrado para hoje na estrutura unificada");
+      logger.warn("⚠️ Nenhum dado encontrado para hoje na estrutura unificada");
       return [];
     }
 
-    console.log(`✅ Estrutura unificada: ${accountsData.length} contas encontradas`);
+    logger.debug(`✅ Estrutura unificada: ${accountsData.length} contas encontradas`);
 
     // Agrupar dados por cliente
     const clientsMap = new Map<string, CampaignHealth>();
@@ -138,11 +139,11 @@ async function fetchCampaignHealthData(): Promise<CampaignHealth[]> {
       })
     );
     
-    console.log(`✅ Estrutura unificada: Processados ${result.length} clientes (ordenados localmente)`);
+    logger.debug(`✅ Estrutura unificada: Processados ${result.length} clientes (ordenados localmente)`);
     return result;
 
   } catch (error) {
-    console.error("❌ Erro ao processar dados de saúde:", error);
+    logger.error("❌ Erro ao processar dados de saúde:", error);
     throw error;
   }
 }
@@ -173,7 +174,7 @@ const generateErrors = (healthData: any): string[] => {
 
 // Hook para buscar dados com refresh em massa usando a nova estrutura
 async function triggerMassReview() {
-  console.log("🔄 Iniciando revisão em massa...");
+  logger.info("🔄 Iniciando revisão em massa...");
   
   try {
     // Executar a edge function unificada para atualizar dados
@@ -185,15 +186,15 @@ async function triggerMassReview() {
     });
 
     if (error) {
-      console.error("❌ Erro na edge function:", error);
+      logger.error("❌ Erro na edge function:", error);
       throw error;
     }
 
-    console.log("✅ Edge function executada com sucesso:", data);
+    logger.info("✅ Edge function executada com sucesso:", data);
     return { success: 1, failed: 0, total: 1 };
 
   } catch (error) {
-    console.error("❌ Erro na revisão em massa:", error);
+    logger.error("❌ Erro na revisão em massa:", error);
     throw error;
   }
 }
@@ -236,10 +237,10 @@ export function useCampaignHealthData() {
       // Refetch dos dados após a revisão
       await refetch();
       
-      console.log(`🎉 Revisão concluída: ${results.success}/${results.total} contas processadas`);
+      logger.info(`🎉 Revisão concluída: ${results.success}/${results.total} contas processadas`);
       
     } catch (error) {
-      console.error("❌ Erro na revisão em massa:", error);
+      logger.error("❌ Erro na revisão em massa:", error);
     } finally {
       setIsRefreshing(false);
     }
