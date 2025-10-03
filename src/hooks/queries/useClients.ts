@@ -14,7 +14,6 @@ export const useClients = (filters?: {
   const { data: clients, isLoading, error } = useQuery({
     queryKey: ["clients", filters],
     queryFn: async () => {
-      console.log("Buscando clientes com filtros:", filters);
       let query = supabase
         .from("clients")
         .select("*");
@@ -29,18 +28,16 @@ export const useClients = (filters?: {
         query = query.eq('payment_type', filters.payment_type);
       }
 
-      const { data, error } = await query.order("company_name");
+      const { data, error } = await query
+        .order("company_name")
+        .limit(100);
 
-      if (error) {
-        console.error("Erro ao buscar clientes:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       return data as Client[];
     },
     meta: {
-      onError: (error: Error) => {
-        console.error("Erro na query de clientes:", error);
+      onError: () => {
         toast({
           title: "Erro ao carregar clientes",
           description: "Você não tem permissão para visualizar os clientes ou ocorreu um erro de conexão.",
@@ -69,7 +66,7 @@ export const useClients = (filters?: {
           description: "Cliente cadastrado com sucesso!",
         });
       },
-      onError: (error: Error) => {
+      onError: () => {
         toast({
           title: "Erro ao criar cliente",
           description: "Você não tem permissão para criar clientes ou ocorreu um erro.",
@@ -99,7 +96,7 @@ export const useClients = (filters?: {
           description: "Cliente atualizado com sucesso!",
         });
       },
-      onError: (error: Error) => {
+      onError: () => {
         toast({
           title: "Erro ao atualizar cliente",
           description: "Você não tem permissão para atualizar clientes ou ocorreu um erro.",
@@ -126,7 +123,7 @@ export const useClients = (filters?: {
           description: "Cliente excluído com sucesso!",
         });
       },
-      onError: (error: Error) => {
+      onError: () => {
         toast({
           title: "Erro ao excluir cliente",
           description: "Você não tem permissão para excluir clientes ou ocorreu um erro.",
@@ -136,36 +133,6 @@ export const useClients = (filters?: {
     }
   });
 
-  // Função adicional para buscar apenas clientes ativos
-  const useActiveClients = () => {
-    return useQuery({
-      queryKey: ["clients-active"],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from("clients")
-          .select("*")
-          .eq('status', 'active')
-          .order("company_name");
-
-        if (error) {
-          console.error("Erro ao buscar clientes ativos:", error);
-          throw error;
-        }
-
-        return data as Client[];
-      },
-      meta: {
-        onError: (error: Error) => {
-          console.error("Erro na query de clientes ativos:", error);
-          toast({
-            title: "Erro ao carregar clientes",
-            description: "Ocorreu um erro ao carregar a lista de clientes ativos.",
-            variant: "destructive",
-          });
-        }
-      }
-    });
-  };
 
   return {
     clients,
@@ -173,7 +140,6 @@ export const useClients = (filters?: {
     error,
     createClient,
     updateClient,
-    deleteClient,
-    useActiveClients
+    deleteClient
   };
 };
