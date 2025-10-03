@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { EditMemberDialog } from "@/components/team/EditMemberDialog";
 import { useTeamMembers, useCurrentUser } from "@/hooks/useTeamMembers";
+import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { EditFormData, TeamMember } from "@/types/team";
 import { ErrorState } from "@/components/clients/components/ErrorState";
@@ -24,13 +25,14 @@ const Managers = () => {
 
   const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
   const { data: teamMembers, isLoading: isLoadingTeam, error } = useTeamMembers();
+  const { data: userRole } = useUserRole();
 
   /**
    * Manipula a edição de um membro da equipe
    * Verifica permissões antes de permitir a edição
    */
   const handleEdit = (member: TeamMember) => {
-    if (currentUser?.permission !== "admin" && currentUser?.id !== member.id) {
+    if (!userRole?.isAdmin && currentUser?.id !== member.id) {
       toast({
         title: "Acesso negado",
         description: "Você só pode editar suas próprias informações.",
@@ -47,7 +49,7 @@ const Managers = () => {
    * Verifica se o usuário tem permissão de administrador
    */
   const handleAddMember = () => {
-    if (currentUser?.permission !== "admin") {
+    if (!userRole?.isAdmin) {
       toast({
         title: "Acesso negado",
         description: "Apenas administradores podem adicionar novos membros.",
@@ -112,7 +114,7 @@ const Managers = () => {
     <div className="space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
       <TeamHeader 
         onAddMember={handleAddMember}
-        isAdmin={currentUser?.permission === "admin"}
+        isAdmin={userRole?.isAdmin || false}
         teamMembers={teamMembers || []}
       />
 

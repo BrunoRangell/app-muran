@@ -105,11 +105,20 @@ const Index = () => {
           setUserName(firstName);
           setUserRole(teamMember.role || "");
           setAvatarUrl(teamMember.photo_url || "");
-          setIsAdmin(teamMember.permission === "admin");
+          
+          // Verificar roles usando user_roles table
+          const { data: roles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id);
+          
+          const userIsAdmin = roles?.some(r => r.role === 'admin') || false;
+          setIsAdmin(userIsAdmin);
+          
           console.log("✅ Dados do usuário carregados:", { 
             firstName, 
             role: teamMember.role, 
-            isAdmin: teamMember.permission === "admin",
+            isAdmin: userIsAdmin,
             email: user.email 
           });
         } else {

@@ -19,34 +19,22 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
   const { toast } = useToast();
 
   // Função para verificar status de admin
-  const checkAdminStatus = async (email: string | undefined) => {
-    if (!email) {
+  const checkAdminStatus = async (userId: string) => {
+    if (!userId) {
       setIsAdmin(false);
       return;
     }
     
     try {
       console.log("Verificando permissões do usuário...");
-      const { data: teamMember, error: teamError } = await supabase
-        .from('team_members')
-        .select('role, permission')
-        .eq('email', email)
-        .single();
-
-      if (teamError) {
-        console.error("Erro ao verificar permissões:", teamError);
-        setIsAdmin(false);
-        if (requireAdmin) {
-          toast({
-            title: "Erro de permissão",
-            description: errorMessages.PERMISSION_DENIED,
-            variant: "destructive",
-          });
-        }
-        return;
-      }
-
-      const userIsAdmin = teamMember?.permission === 'admin';
+      
+      // Verificar role usando user_roles table
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      
+      const userIsAdmin = roles?.some(r => r.role === 'admin') || false;
       console.log("Usuário é admin?", userIsAdmin);
       setIsAdmin(userIsAdmin);
 
@@ -76,8 +64,8 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
 
     const initializeAuth = async () => {
       try {
-        if (requireAdmin && user?.email && mounted) {
-          await checkAdminStatus(user.email);
+        if (requireAdmin && user?.id && mounted) {
+          await checkAdminStatus(user.id);
         } else if (!requireAdmin && mounted) {
           setAdminLoading(false);
         }
@@ -93,11 +81,11 @@ export const PrivateRoute = ({ children, requireAdmin = false }: PrivateRoutePro
       initializeAuth();
     }
 
-    return () => {
+      return () => {
       mounted = false;
       clearTimeout(loadingTimeout);
     };
-  }, [requireAdmin, user?.email, isLoading]);
+  }, [requireAdmin, user?.id, isLoading]);
 
   // Estado de carregamento
   if (isLoading || (requireAdmin && adminLoading)) {

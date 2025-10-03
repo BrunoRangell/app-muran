@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { EditFormData, TeamMember } from "@/types/team";
 import { useCurrentUser } from "@/hooks/useTeamMembers";
+import { useUserRole } from "@/hooks/useUserRole";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "@/components/ui/use-toast";
 import { useEffect } from "react";
@@ -67,8 +68,9 @@ export const EditMemberDialog = ({
     }
   }, [selectedMember, form]);
 
-  const { data: currentUser } = useCurrentUser();
-  const isAdmin = currentUser?.permission === 'admin';
+  // Usar hook seguro para verificar roles
+  const { data: userRole } = useUserRole();
+  const isAdmin = userRole?.isAdmin || false;
 
   if (!selectedMember) return null;
 

@@ -101,10 +101,10 @@ export class CampaignHealthService {
   static async generateTodaySnapshots(): Promise<boolean> {
     try {
       // Verificar autenticação primeiro
-      const { teamMember } = await this.checkAuthAndTeamMembership();
+      const { isAdmin } = await this.checkAuthAndTeamMembership();
 
       // Apenas admins podem gerar snapshots manualmente
-      if (teamMember.permission !== 'admin') {
+      if (!isAdmin) {
         throw new Error('Apenas administradores podem gerar snapshots manualmente.');
       }
 
@@ -136,10 +136,10 @@ export class CampaignHealthService {
   static async forceRefreshTodaySnapshots(): Promise<boolean> {
     try {
       // Verificar autenticação primeiro
-      const { teamMember } = await this.checkAuthAndTeamMembership();
+      const { isAdmin } = await this.checkAuthAndTeamMembership();
 
       // Apenas admins podem forçar refresh
-      if (teamMember.permission !== 'admin') {
+      if (!isAdmin) {
         throw new Error('Apenas administradores podem forçar refresh dos snapshots.');
       }
 

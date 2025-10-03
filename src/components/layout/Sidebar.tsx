@@ -65,13 +65,13 @@ export const Sidebar = ({ onMobileItemClick }: SidebarProps) => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          const { data: teamMember } = await supabase
-            .from('team_members')
-            .select('permission')
-            .eq('email', session.user.email)
-            .single();
+          // Verificar roles usando user_roles table
+          const { data: roles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id);
 
-          setIsAdmin(teamMember?.permission === 'admin');
+          setIsAdmin(roles?.some(r => r.role === 'admin') || false);
         }
       } catch (error) {
         console.error("Erro ao verificar status de admin:", error);
