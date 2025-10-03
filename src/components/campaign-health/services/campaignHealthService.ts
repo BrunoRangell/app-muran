@@ -1,6 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getTodayInBrazil } from "@/utils/brazilTimezone";
+import type { Session } from "@supabase/supabase-js";
+
 
 export interface CampaignHealthSnapshot {
   id: string;
@@ -21,9 +23,18 @@ export interface CampaignHealthSnapshot {
   };
 }
 
+interface AuthCheckResult {
+  session: Session;
+  teamMember: {
+    id: string;
+    role: string;
+  };
+  isAdmin: boolean;
+}
+
 export class CampaignHealthService {
   // Verificar se o usuário está autenticado antes de fazer qualquer operação
-  private static async checkAuthAndTeamMembership() {
+  private static async checkAuthAndTeamMembership(): Promise<AuthCheckResult> {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !session) {
