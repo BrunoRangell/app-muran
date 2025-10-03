@@ -62,7 +62,6 @@ export const EditMemberDialog = ({
         instagram: selectedMember.instagram || '',
         linkedin: selectedMember.linkedin || '',
         tiktok: selectedMember.tiktok || '',
-        permission: selectedMember.permission || '',
         start_date: selectedMember.start_date || ''
       });
     }

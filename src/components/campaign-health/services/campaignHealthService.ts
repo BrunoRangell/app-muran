@@ -33,7 +33,7 @@ export class CampaignHealthService {
     // Verificar se o usuário é membro da equipe
     const { data: teamMember, error: teamError } = await supabase
       .from('team_members')
-      .select('id, permission, role')
+      .select('id, role')
       .eq('manager_id', session.user.id)
       .single();
 
@@ -41,7 +41,15 @@ export class CampaignHealthService {
       throw new Error('Acesso negado. Usuário não é membro da equipe.');
     }
 
-    return { session, teamMember };
+    // Verificar roles usando user_roles table
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', session.user.id);
+    
+    const isAdmin = roles?.some(r => r.role === 'admin') || false;
+
+    return { session, teamMember, isAdmin };
   }
 
   static async fetchTodaySnapshots(): Promise<CampaignHealthSnapshot[]> {

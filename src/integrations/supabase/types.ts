@@ -842,7 +842,6 @@ export type Database = {
           linkedin: string | null
           manager_id: string
           name: string
-          permission: string | null
           photo_url: string | null
           role: string
           start_date: string | null
@@ -859,7 +858,6 @@ export type Database = {
           linkedin?: string | null
           manager_id: string
           name: string
-          permission?: string | null
           photo_url?: string | null
           role: string
           start_date?: string | null
@@ -876,7 +874,6 @@ export type Database = {
           linkedin?: string | null
           manager_id?: string
           name?: string
-          permission?: string | null
           photo_url?: string | null
           role?: string
           start_date?: string | null

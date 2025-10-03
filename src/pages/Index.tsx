@@ -90,7 +90,7 @@ const Index = () => {
         
         const { data: teamMember, error: memberError } = await supabase
           .from("team_members")
-          .select("name, permission, role, photo_url")
+          .select("name, role, photo_url")
           .eq("email", user.email)
           .single();
 

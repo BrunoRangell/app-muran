@@ -76,7 +76,6 @@ const Managers = () => {
         linkedin: data.linkedin,
         instagram: data.instagram,
         tiktok: data.tiktok,
-        permission: data.permission,
         start_date: data.start_date
       };
 
@@ -125,7 +124,7 @@ const Managers = () => {
           ) : (
             <TeamGrid
               teamMembers={teamMembers || []}
-              currentUserPermission={currentUser?.permission}
+              currentUserPermission={userRole?.isAdmin ? "admin" : "member"}
               currentUserId={currentUser?.id}
               onEdit={handleEdit}
             />

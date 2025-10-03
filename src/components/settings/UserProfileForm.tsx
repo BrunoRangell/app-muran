@@ -61,7 +61,6 @@ export const UserProfileForm = () => {
         instagram: currentUser.instagram || '',
         linkedin: currentUser.linkedin || '',
         tiktok: currentUser.tiktok || '',
-        permission: currentUser.permission || '',
         start_date: currentUser.start_date || ''
       });
     }
