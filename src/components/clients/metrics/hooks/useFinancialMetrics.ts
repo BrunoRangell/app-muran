@@ -112,9 +112,10 @@ export const useFinancialMetrics = () => {
       try {
         logger.debug("🔧 [WORKER] Calculando métricas financeiras...");
         
+        // FASE 4C: Select otimizado - apenas colunas necessárias
         const [paymentsResult, costsResult] = await Promise.all([
-          supabase.from("payments").select("*"),
-          supabase.from("costs").select("*")
+          supabase.from("payments").select("id, client_id, amount, reference_month, created_at"),
+          supabase.from("costs").select("id, amount, date, name")
         ]);
         
         const result = await calculateMetrics(

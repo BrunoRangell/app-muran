@@ -32,94 +32,81 @@ export function useUnifiedReviewsData() {
   } = useQuery({
     queryKey: ["improved-meta-reviews"],
     queryFn: async () => {
-      console.log("🔍 Buscando dados dos clientes Meta Ads consolidados...");
+      console.log("🔍 [FASE 4A] Buscando dados Meta Ads com queries em batch...");
       
-      // Buscar clientes ativos
-      const { data: clients, error: clientsError } = await supabase
-        .from("clients")
-        .select(`
-          id,
-          company_name,
-          status
-        `)
-        .eq("status", "active");
-
-      if (clientsError) {
-        console.error("❌ Erro ao buscar clientes:", clientsError);
-        throw clientsError;
-      }
-
-      console.log("✅ Clientes encontrados:", clients?.length || 0);
-
-      // Buscar contas Meta da tabela unificada client_accounts
-      const { data: metaAccounts, error: accountsError } = await supabase
-        .from("client_accounts")
-        .select("*, last_funding_detected_at, last_funding_amount")
-        .eq("status", "active")
-        .eq("platform", "meta")
-        .order("client_id")
-        .order("is_primary", { ascending: false });
-
-      if (accountsError) {
-        console.error("❌ Erro ao buscar contas Meta:", accountsError);
-        throw accountsError;
-      }
-
-      console.log("✅ Contas Meta encontradas:", metaAccounts?.length || 0);
-
-      // Buscar revisões desde o início do mês
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const firstDayStr = firstDay.toISOString().split("T")[0];
-      
-      console.log(`🔍 Buscando revisões Meta desde ${firstDayStr} (início do mês)`);
-      
-      const { data: reviews, error: reviewsError } = await supabase
-        .from("budget_reviews")
-        .select(`
-          *
-        `)
-        .eq("platform", "meta")
-        .gte("review_date", firstDayStr)
-        .order("review_date", { ascending: false });
-
-      if (reviewsError) {
-        console.error("❌ Erro ao buscar revisões:", reviewsError);
-        throw reviewsError;
-      }
-      
-      console.log("✅ Revisões encontradas desde início do mês:", reviews?.length || 0);
-      
-      // Buscar orçamentos personalizados ativos
       const todayStr = today.toISOString().split("T")[0];
-      const { data: activeCustomBudgets, error: budgetsError } = await supabase
-        .from("custom_budgets")
-        .select("*")
-        .eq("platform", "meta")
-        .eq("is_active", true)
-        .lte("start_date", todayStr)
-        .gte("end_date", todayStr);
       
-      if (budgetsError) {
-        console.error("❌ Erro ao buscar orçamentos personalizados:", budgetsError);
-        throw budgetsError;
-      }
-      
-      console.log("✅ Orçamentos personalizados ativos:", activeCustomBudgets?.length || 0);
+      // FASE 4A: Consolidar 6 queries em 1 batch com Promise.all
+      const [
+        clientsResult,
+        metaAccountsResult,
+        reviewsResult,
+        budgetsResult,
+        campaignHealthResult
+      ] = await Promise.all([
+        // 1. Clientes ativos - select otimizado
+        supabase
+          .from("clients")
+          .select("id, company_name, status")
+          .eq("status", "active"),
+        
+        // 2. Contas Meta - select otimizado
+        supabase
+          .from("client_accounts")
+          .select("id, client_id, account_id, account_name, platform, status, budget_amount, is_primary, saldo_restante, is_prepay_account, last_funding_detected_at, last_funding_amount")
+          .eq("status", "active")
+          .eq("platform", "meta")
+          .order("client_id")
+          .order("is_primary", { ascending: false }),
+        
+        // 3. Revisões do mês - select otimizado
+        supabase
+          .from("budget_reviews")
+          .select("id, client_id, account_id, platform, review_date, daily_budget_current, total_spent, using_custom_budget, custom_budget_id, custom_budget_amount, custom_budget_start_date, custom_budget_end_date, warning_ignored_today, warning_ignored_date, day_1_spent, day_2_spent, day_3_spent, day_4_spent, day_5_spent, last_five_days_spent")
+          .eq("platform", "meta")
+          .gte("review_date", firstDayStr)
+          .order("review_date", { ascending: false }),
+        
+        // 4. Orçamentos personalizados ativos
+        supabase
+          .from("custom_budgets")
+          .select("id, client_id, budget_amount, start_date, end_date, platform, is_active")
+          .eq("platform", "meta")
+          .eq("is_active", true)
+          .lte("start_date", todayStr)
+          .gte("end_date", todayStr),
+        
+        // 5. Campaign health de hoje - select otimizado
+        supabase
+          .from("campaign_health")
+          .select("id, client_id, account_id, platform, snapshot_date, active_campaigns_count, unserved_campaigns_count, has_account")
+          .eq("snapshot_date", todayStr)
+          .eq("platform", "meta")
+      ]);
 
-      // Buscar dados de campaign_health para hoje
-      const { data: campaignHealthData, error: campaignHealthError } = await supabase
-        .from("campaign_health")
-        .select("*")
-        .eq("snapshot_date", todayStr)
-        .eq("platform", "meta");
+      // Validar erros
+      if (clientsResult.error) throw clientsResult.error;
+      if (metaAccountsResult.error) throw metaAccountsResult.error;
+      if (reviewsResult.error) throw reviewsResult.error;
+      if (budgetsResult.error) throw budgetsResult.error;
+      if (campaignHealthResult.error) throw campaignHealthResult.error;
 
-      if (campaignHealthError) {
-        console.error("❌ Erro ao buscar campaign_health:", campaignHealthError);
-        throw campaignHealthError;
-      }
+      const clients = clientsResult.data || [];
+      const metaAccounts = metaAccountsResult.data || [];
+      const reviews = reviewsResult.data || [];
+      const activeCustomBudgets = budgetsResult.data || [];
+      const campaignHealthData = campaignHealthResult.data || [];
 
-      console.log("✅ Dados de campaign_health encontrados:", campaignHealthData?.length || 0);
+      console.log("✅ [FASE 4A] Batch query concluído:", {
+        clients: clients.length,
+        metaAccounts: metaAccounts.length,
+        reviews: reviews.length,
+        activeCustomBudgets: activeCustomBudgets.length,
+        campaignHealth: campaignHealthData.length
+      });
 
       // Mapear dados de campaign_health por client_id e account_id
       const campaignHealthByClientAccount = new Map();

@@ -1,5 +1,5 @@
 /**
- * FASE 3: Query Client Otimizado
+ * FASE 4B: Query Client Unificado
  * Cache inteligente e configuração otimizada
  */
 
