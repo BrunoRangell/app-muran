@@ -56,6 +56,7 @@ const Costs = lazyWithTimeout(() => import("@/pages/Costs"));
 const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
 const Onboarding = lazyWithTimeout(() => import("@/pages/Onboarding"));
+const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
 
 
 function App() {
@@ -86,6 +87,14 @@ function App() {
             element={
               <PrivateRoute requireAdmin>
                 <Onboarding />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/audience-creator"
+            element={
+              <PrivateRoute requireAdmin>
+                <AudienceCreator />
               </PrivateRoute>
             }
           />
