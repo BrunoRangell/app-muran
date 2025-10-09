@@ -1,12 +1,12 @@
-import { useEffect } from "react";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { useMetaAdAccounts } from "@/hooks/useMetaAdAccounts";
 import { useMetaPixels } from "@/hooks/useMetaPixels";
 import { SiteAudienceData } from "@/pages/AudienceCreator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 const EVENT_TYPES = [
   { value: 'PageView', label: 'PageView - Visualização de página' },
@@ -16,13 +16,14 @@ const EVENT_TYPES = [
   { value: 'Purchase', label: 'Purchase - Compra' },
 ];
 
+const RETENTION_PERIODS = 6; // 7D, 14D, 30D, 60D, 90D, 180D
+
 interface SiteAudienceFormProps {
   data: SiteAudienceData;
   onChange: (data: SiteAudienceData) => void;
 }
 
 const SiteAudienceForm = ({ data, onChange }: SiteAudienceFormProps) => {
-  const { data: accounts, isLoading: loadingAccounts } = useMetaAdAccounts();
   const { data: pixels, isLoading: loadingPixels } = useMetaPixels(data.accountId);
 
   const handleEventToggle = (eventValue: string, checked: boolean) => {
@@ -33,43 +34,27 @@ const SiteAudienceForm = ({ data, onChange }: SiteAudienceFormProps) => {
     }
   };
 
-  const handleSelectAll = () => {
-    if (data.eventTypes.length === EVENT_TYPES.length) {
-      onChange({ ...data, eventTypes: [] });
-    } else {
-      onChange({ ...data, eventTypes: EVENT_TYPES.map(e => e.value) });
-    }
-  };
+  const totalAudiences = data.eventTypes.length * RETENTION_PERIODS;
 
   return (
-    <div className="space-y-6 mt-6">
-      <Separator />
-      
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="account">Conta de Anúncios *</Label>
-          {loadingAccounts ? (
-            <Skeleton className="h-10 w-full mt-2" />
-          ) : (
-            <Select
-              value={data.accountId}
-              onValueChange={(value) => onChange({ ...data, accountId: value, pixelId: '', eventTypes: [] })}
-            >
-              <SelectTrigger id="account" className="mt-2">
-                <SelectValue placeholder="Selecione uma conta" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts?.map((account: any) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name} ({account.id})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="site-account">ID da Conta de Anúncios *</Label>
+        <Input
+          id="site-account"
+          placeholder="Digite o ID da conta (ex: 123456789)"
+          value={data.accountId}
+          onChange={(e) => onChange({ ...data, accountId: e.target.value, pixelId: '', eventTypes: [] })}
+          className="mt-2"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Insira apenas os números, sem o prefixo "act_"
+        </p>
+      </div>
 
-        {data.accountId && (
+      {data.accountId && data.accountId.length >= 10 && (
+        <>
+          <Separator />
           <div>
             <Label htmlFor="pixel">Pixel *</Label>
             {loadingPixels ? (
@@ -92,30 +77,24 @@ const SiteAudienceForm = ({ data, onChange }: SiteAudienceFormProps) => {
               </Select>
             )}
           </div>
-        )}
+        </>
+      )}
 
-        {data.pixelId && (
+      {data.pixelId && (
+        <>
+          <Separator />
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <Label>Eventos *</Label>
-              <button
-                type="button"
-                onClick={handleSelectAll}
-                className="text-sm text-primary hover:underline"
-              >
-                {data.eventTypes.length === EVENT_TYPES.length ? 'Desmarcar todos' : 'Selecionar todos'}
-              </button>
-            </div>
+            <Label className="mb-3 block">Eventos *</Label>
             <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
               {EVENT_TYPES.map((event) => (
                 <div key={event.value} className="flex items-center space-x-2">
                   <Checkbox
-                    id={event.value}
+                    id={`site-${event.value}`}
                     checked={data.eventTypes.includes(event.value)}
                     onCheckedChange={(checked) => handleEventToggle(event.value, checked as boolean)}
                   />
                   <label
-                    htmlFor={event.value}
+                    htmlFor={`site-${event.value}`}
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
                     {event.label}
@@ -124,13 +103,18 @@ const SiteAudienceForm = ({ data, onChange }: SiteAudienceFormProps) => {
               ))}
             </div>
             {data.eventTypes.length > 0 && (
-              <p className="text-sm text-muted-foreground mt-2">
-                {data.eventTypes.length} público(s) será(ão) criado(s)
-              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <Badge variant="secondary" className="text-sm">
+                  📊 Serão criados: {totalAudiences} públicos
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  ({data.eventTypes.length} eventos × {RETENTION_PERIODS} períodos)
+                </span>
+              </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 };

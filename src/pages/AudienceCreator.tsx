@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Users, Globe, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import AudienceTypeSelector from "@/components/audience-creator/AudienceTypeSelector";
 import SiteAudienceForm from "@/components/audience-creator/SiteAudienceForm";
 import EngagementAudienceForm from "@/components/audience-creator/EngagementAudienceForm";
 import AudienceProgress from "@/components/audience-creator/AudienceProgress";
@@ -28,7 +27,6 @@ export interface EngagementAudienceData {
 
 const AudienceCreator = () => {
   const navigate = useNavigate();
-  const [audienceType, setAudienceType] = useState<AudienceType>(null);
   const [siteData, setSiteData] = useState<SiteAudienceData>({
     accountId: '',
     pixelId: '',
@@ -44,41 +42,51 @@ const AudienceCreator = () => {
 
   const { mutate: createAudiences, isPending } = useCreateAudiences();
 
-  const handleCreate = () => {
-    if (!audienceType) {
-      toast.error("Selecione o tipo de público");
+  const handleCreateSite = () => {
+    if (!siteData.accountId || !siteData.pixelId || siteData.eventTypes.length === 0) {
+      toast.error("Preencha todos os campos obrigatórios");
       return;
-    }
-
-    const payload: any = {
-      audienceType
-    };
-
-    if (audienceType === 'site') {
-      if (!siteData.accountId || !siteData.pixelId || siteData.eventTypes.length === 0) {
-        toast.error("Preencha todos os campos obrigatórios");
-        return;
-      }
-      Object.assign(payload, siteData);
-    } else {
-      if (!engagementData.accountId || engagementData.engagementTypes.length === 0) {
-        toast.error("Preencha todos os campos obrigatórios");
-        return;
-      }
-      if (engagementData.engagementTypes.includes('instagram') && !engagementData.instagramAccountId) {
-        toast.error("Selecione um perfil do Instagram");
-        return;
-      }
-      if (engagementData.engagementTypes.includes('facebook') && !engagementData.facebookPageId) {
-        toast.error("Selecione uma página do Facebook");
-        return;
-      }
-      Object.assign(payload, engagementData);
     }
 
     setShowProgress(true);
 
-    createAudiences(payload, {
+    createAudiences({ audienceType: 'site', ...siteData }, {
+      onSuccess: (data) => {
+        setShowProgress(false);
+        setResult(data);
+        setShowResult(true);
+        
+        if (data.created > 0) {
+          toast.success(`${data.created} público(s) criado(s) com sucesso!`);
+        }
+        if (data.failed > 0) {
+          toast.error(`${data.failed} público(s) falharam`);
+        }
+      },
+      onError: (error: any) => {
+        setShowProgress(false);
+        toast.error(error.message || "Erro ao criar públicos");
+      }
+    });
+  };
+
+  const handleCreateEngagement = () => {
+    if (!engagementData.accountId || engagementData.engagementTypes.length === 0) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    if (engagementData.engagementTypes.includes('instagram') && !engagementData.instagramAccountId) {
+      toast.error("Selecione um perfil do Instagram");
+      return;
+    }
+    if (engagementData.engagementTypes.includes('facebook') && !engagementData.facebookPageId) {
+      toast.error("Selecione uma página do Facebook");
+      return;
+    }
+
+    setShowProgress(true);
+
+    createAudiences({ audienceType: 'engagement', ...engagementData }, {
       onSuccess: (data) => {
         setShowProgress(false);
         setResult(data);
@@ -101,7 +109,6 @@ const AudienceCreator = () => {
   const handleCreateNew = () => {
     setShowResult(false);
     setResult(null);
-    setAudienceType(null);
     setSiteData({ accountId: '', pixelId: '', eventTypes: [] });
     setEngagementData({ accountId: '', engagementTypes: [] });
   };
@@ -112,7 +119,7 @@ const AudienceCreator = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container max-w-4xl mx-auto px-4 py-8">
+      <div className="container max-w-7xl mx-auto px-4 py-8">
         <Button
           variant="ghost"
           onClick={() => navigate(-1)}
@@ -132,39 +139,65 @@ const AudienceCreator = () => {
           </p>
         </div>
 
-        <Card className="p-6">
-          <AudienceTypeSelector
-            selectedType={audienceType}
-            onSelectType={setAudienceType}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Painel de Públicos de Site */}
+          <Card className="p-6 border-2 hover:border-primary/50 transition-colors">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 rounded-lg bg-blue-500/10">
+                <Globe className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Públicos de Site</h2>
+                <p className="text-sm text-muted-foreground">
+                  Baseado em eventos do pixel
+                </p>
+              </div>
+            </div>
 
-          {audienceType === 'site' && (
             <SiteAudienceForm
               data={siteData}
               onChange={setSiteData}
             />
-          )}
 
-          {audienceType === 'engagement' && (
+            <Button
+              onClick={handleCreateSite}
+              disabled={isPending || !siteData.accountId || !siteData.pixelId || siteData.eventTypes.length === 0}
+              size="lg"
+              className="w-full mt-6"
+            >
+              {isPending ? "Criando..." : "Criar Públicos de Site"}
+            </Button>
+          </Card>
+
+          {/* Painel de Públicos de Engajamento */}
+          <Card className="p-6 border-2 hover:border-primary/50 transition-colors">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 rounded-lg bg-purple-500/10">
+                <MessageSquare className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Públicos de Engajamento</h2>
+                <p className="text-sm text-muted-foreground">
+                  Baseado em interações sociais
+                </p>
+              </div>
+            </div>
+
             <EngagementAudienceForm
               data={engagementData}
               onChange={setEngagementData}
             />
-          )}
 
-          {audienceType && (
-            <div className="mt-6 flex justify-end">
-              <Button
-                onClick={handleCreate}
-                disabled={isPending}
-                size="lg"
-                className="min-w-[200px]"
-              >
-                {isPending ? "Criando..." : "Criar Públicos"}
-              </Button>
-            </div>
-          )}
-        </Card>
+            <Button
+              onClick={handleCreateEngagement}
+              disabled={isPending || !engagementData.accountId || engagementData.engagementTypes.length === 0}
+              size="lg"
+              className="w-full mt-6"
+            >
+              {isPending ? "Criando..." : "Criar Públicos de Engajamento"}
+            </Button>
+          </Card>
+        </div>
       </div>
 
       <AudienceProgress isOpen={showProgress} />

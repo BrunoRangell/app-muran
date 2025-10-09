@@ -30,20 +30,6 @@ async function getMetaAccessToken(supabase: any): Promise<string> {
   return data.value;
 }
 
-// Buscar contas de anúncios
-async function fetchAdAccounts(accessToken: string) {
-  const url = `${GRAPH_API_BASE}/me/adaccounts?fields=id,name,account_status&access_token=${accessToken}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Erro ao buscar contas: ${error}`);
-  }
-
-  const data = await response.json();
-  return data.data || [];
-}
-
 // Buscar pixels de uma conta
 async function fetchPixels(accountId: string, accessToken: string) {
   const url = `${GRAPH_API_BASE}/${accountId}/adspixels?fields=id,name&access_token=${accessToken}`;
@@ -91,10 +77,10 @@ async function createSiteAudience(
   accountId: string,
   pixelId: string,
   eventType: string,
+  retentionDays: number,
   accessToken: string
 ) {
-  const retentionDays = 180;
-  const audienceName = `${eventType} - Últimos ${retentionDays} dias`;
+  const audienceName = `[SITE] ${eventType} - ${retentionDays}D`;
   
   const rule = {
     inclusions: {
@@ -141,12 +127,12 @@ async function createEngagementAudience(
   accountId: string,
   sourceId: string,
   sourceType: 'instagram' | 'facebook',
+  retentionDays: number,
   accessToken: string
 ) {
-  const retentionDays = 365;
   const audienceName = sourceType === 'instagram' 
-    ? `Instagram - Envolvimento ${retentionDays} dias`
-    : `Facebook - Envolvimento ${retentionDays} dias`;
+    ? `[IG] Envolvidos - ${retentionDays}D`
+    : `[FB] Envolvidos - ${retentionDays}D`;
   
   const rule = {
     inclusions: {
@@ -211,14 +197,6 @@ Deno.serve(async (req) => {
     // Buscar token do banco de dados
     const accessToken = await getMetaAccessToken(supabase);
 
-    if (action === 'fetch_accounts') {
-      const accounts = await fetchAdAccounts(accessToken);
-      return new Response(
-        JSON.stringify({ success: true, accounts }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     if (action === 'fetch_pixels') {
       const { accountId } = requestData;
       if (!accountId) throw new Error('accountId é obrigatório');
@@ -276,22 +254,26 @@ Deno.serve(async (req) => {
           throw new Error('pixelId e eventTypes são obrigatórios para públicos de site');
         }
 
+        const siteRetentionDays = [7, 14, 30, 60, 90, 180];
+
         for (const eventType of eventTypes) {
-          try {
-            const result = await createSiteAudience(accountId, pixelId, eventType, accessToken);
-            results.push({
-              name: `${eventType} - Últimos 180 dias`,
-              status: 'success',
-              audienceId: result.id
-            });
-            created++;
-          } catch (error: any) {
-            results.push({
-              name: `${eventType} - Últimos 180 dias`,
-              status: 'failed',
-              error: error.message
-            });
-            failed++;
+          for (const days of siteRetentionDays) {
+            try {
+              const result = await createSiteAudience(accountId, pixelId, eventType, days, accessToken);
+              results.push({
+                name: `[SITE] ${eventType} - ${days}D`,
+                status: 'success',
+                audienceId: result.id
+              });
+              created++;
+            } catch (error: any) {
+              results.push({
+                name: `[SITE] ${eventType} - ${days}D`,
+                status: 'failed',
+                error: error.message
+              });
+              failed++;
+            }
           }
         }
       } else if (audienceType === 'engagement') {
@@ -299,45 +281,51 @@ Deno.serve(async (req) => {
           throw new Error('engagementTypes é obrigatório para públicos de engajamento');
         }
 
+        const engagementRetentionDays = [7, 14, 30, 60, 90, 180, 365, 730];
+
         for (const type of engagementTypes) {
-          try {
-            if (type === 'instagram' && instagramAccountId) {
-              const result = await createEngagementAudience(
-                accountId,
-                instagramAccountId,
-                'instagram',
-                accessToken
-              );
+          for (const days of engagementRetentionDays) {
+            try {
+              if (type === 'instagram' && instagramAccountId) {
+                const result = await createEngagementAudience(
+                  accountId,
+                  instagramAccountId,
+                  'instagram',
+                  days,
+                  accessToken
+                );
+                results.push({
+                  name: `[IG] Envolvidos - ${days}D`,
+                  status: 'success',
+                  audienceId: result.id
+                });
+                created++;
+              } else if (type === 'facebook' && facebookPageId) {
+                const result = await createEngagementAudience(
+                  accountId,
+                  facebookPageId,
+                  'facebook',
+                  days,
+                  accessToken
+                );
+                results.push({
+                  name: `[FB] Envolvidos - ${days}D`,
+                  status: 'success',
+                  audienceId: result.id
+                });
+                created++;
+              }
+            } catch (error: any) {
+              const name = type === 'instagram' 
+                ? `[IG] Envolvidos - ${days}D`
+                : `[FB] Envolvidos - ${days}D`;
               results.push({
-                name: 'Instagram - Envolvimento 365 dias',
-                status: 'success',
-                audienceId: result.id
+                name,
+                status: 'failed',
+                error: error.message
               });
-              created++;
-            } else if (type === 'facebook' && facebookPageId) {
-              const result = await createEngagementAudience(
-                accountId,
-                facebookPageId,
-                'facebook',
-                accessToken
-              );
-              results.push({
-                name: 'Facebook - Envolvimento 365 dias',
-                status: 'success',
-                audienceId: result.id
-              });
-              created++;
+              failed++;
             }
-          } catch (error: any) {
-            const name = type === 'instagram' 
-              ? 'Instagram - Envolvimento 365 dias'
-              : 'Facebook - Envolvimento 365 dias';
-            results.push({
-              name,
-              status: 'failed',
-              error: error.message
-            });
-            failed++;
           }
         }
       }
