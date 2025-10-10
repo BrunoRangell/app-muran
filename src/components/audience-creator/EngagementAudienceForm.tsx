@@ -1,168 +1,150 @@
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import { useMetaInstagramAccounts } from "@/hooks/useMetaInstagramAccounts";
 import { useMetaFacebookPages } from "@/hooks/useMetaFacebookPages";
-import { EngagementAudienceData } from "@/pages/AudienceCreator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-
-const RETENTION_PERIODS = 8; // 7D, 14D, 30D, 60D, 90D, 180D, 365D, 730D
 
 interface EngagementAudienceFormProps {
-  data: EngagementAudienceData;
-  onChange: (data: EngagementAudienceData) => void;
+  accountId: string;
+  selectedTypes: string[];
+  instagramAccountId?: string;
+  facebookPageId?: string;
+  onChange: (data: { 
+    engagementTypes: string[];
+    instagramAccountId?: string;
+    facebookPageId?: string;
+  }) => void;
+  disabled?: boolean;
 }
 
-const EngagementAudienceForm = ({ data, onChange }: EngagementAudienceFormProps) => {
-  const { data: instagramAccounts, isLoading: loadingInstagram } = useMetaInstagramAccounts(data.accountId);
-  const { data: facebookPages, isLoading: loadingFacebook } = useMetaFacebookPages(data.accountId);
+const EngagementAudienceForm = ({ 
+  accountId, 
+  selectedTypes, 
+  instagramAccountId, 
+  facebookPageId, 
+  onChange,
+  disabled = false 
+}: EngagementAudienceFormProps) => {
+  const { data: instagramAccounts, isLoading: isLoadingInstagram } = useMetaInstagramAccounts(accountId);
+  const { data: facebookPages, isLoading: isLoadingPages } = useMetaFacebookPages(accountId);
 
-  const handleTypeToggle = (type: string, checked: boolean) => {
-    if (checked) {
-      onChange({ ...data, engagementTypes: [...data.engagementTypes, type] });
-    } else {
-      const newTypes = data.engagementTypes.filter(t => t !== type);
-      const updates: any = { engagementTypes: newTypes };
-      
+  const handleTypeToggle = (type: string) => {
+    let newTypes: string[];
+    if (selectedTypes.includes(type)) {
+      newTypes = selectedTypes.filter(t => t !== type);
+      // Limpar o ID associado quando desmarcar
       if (type === 'instagram') {
-        updates.instagramAccountId = undefined;
+        onChange({ engagementTypes: newTypes, instagramAccountId: undefined, facebookPageId });
+      } else {
+        onChange({ engagementTypes: newTypes, instagramAccountId, facebookPageId: undefined });
       }
-      if (type === 'facebook') {
-        updates.facebookPageId = undefined;
-      }
-      
-      onChange({ ...data, ...updates });
+    } else {
+      newTypes = [...selectedTypes, type];
+      onChange({ engagementTypes: newTypes, instagramAccountId, facebookPageId });
     }
   };
 
-  const totalAudiences = data.engagementTypes.length * RETENTION_PERIODS;
-
   return (
     <div className="space-y-4">
-      <div>
-        <Label htmlFor="engagement-account">ID da Conta de Anúncios *</Label>
-        <Input
-          id="engagement-account"
-          placeholder="Digite o ID da conta (ex: 123456789)"
-          value={data.accountId}
-          onChange={(e) => onChange({ 
-            accountId: e.target.value, 
-            engagementTypes: [],
-            instagramAccountId: undefined,
-            facebookPageId: undefined
-          })}
-          className="mt-2"
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Insira apenas os números, sem o prefixo "act_"
-        </p>
-      </div>
-
-      {data.accountId && data.accountId.length >= 10 && (
-        <>
-          <Separator />
-          <div>
-            <Label className="mb-3 block">Tipos de Engajamento *</Label>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="type-instagram"
-                    checked={data.engagementTypes.includes('instagram')}
-                    onCheckedChange={(checked) => handleTypeToggle('instagram', checked as boolean)}
-                  />
-                  <label
-                    htmlFor="type-instagram"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+      <Label>Selecione os tipos de engajamento</Label>
+      
+      <div className="space-y-4">
+        {/* Instagram */}
+        <div className="p-4 rounded-lg border hover:bg-accent/50 transition-colors">
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="engagement-instagram"
+              checked={selectedTypes.includes('instagram')}
+              onCheckedChange={() => handleTypeToggle('instagram')}
+              disabled={disabled}
+              className="mt-0.5"
+            />
+            <div className="flex-1 space-y-2">
+              <label
+                htmlFor="engagement-instagram"
+                className="text-sm font-medium leading-none cursor-pointer block"
+              >
+                Instagram
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Pessoas que interagiram com seu perfil do Instagram
+              </p>
+              
+              {selectedTypes.includes('instagram') && (
+                <div className="mt-3 pl-3 border-l-2 border-primary/30 animate-in fade-in slide-in-from-top-2">
+                  <Label htmlFor="instagram-account" className="text-xs">
+                    Perfil do Instagram <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={instagramAccountId}
+                    onValueChange={(value) => onChange({ engagementTypes: selectedTypes, instagramAccountId: value, facebookPageId })}
+                    disabled={disabled}
                   >
-                    Instagram Business Profile
-                  </label>
+                    <SelectTrigger id="instagram-account" className="mt-1.5">
+                      <SelectValue placeholder={isLoadingInstagram ? "Carregando perfis..." : "Selecione um perfil"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instagramAccounts?.map((account: any) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          @{account.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-
-                {data.engagementTypes.includes('instagram') && (
-                  <div className="ml-6 mt-2">
-                    <Label htmlFor="instagram-account" className="text-xs">Perfil do Instagram</Label>
-                    {loadingInstagram ? (
-                      <Skeleton className="h-10 w-full mt-1" />
-                    ) : (
-                      <Select
-                        value={data.instagramAccountId}
-                        onValueChange={(value) => onChange({ ...data, instagramAccountId: value })}
-                      >
-                        <SelectTrigger id="instagram-account" className="mt-1">
-                          <SelectValue placeholder="Selecione um perfil" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {instagramAccounts?.map((account: any) => (
-                            <SelectItem key={account.id} value={account.id}>
-                              @{account.username} ({account.name})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="type-facebook"
-                    checked={data.engagementTypes.includes('facebook')}
-                    onCheckedChange={(checked) => handleTypeToggle('facebook', checked as boolean)}
-                  />
-                  <label
-                    htmlFor="type-facebook"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    Página do Facebook
-                  </label>
-                </div>
-
-                {data.engagementTypes.includes('facebook') && (
-                  <div className="ml-6 mt-2">
-                    <Label htmlFor="facebook-page" className="text-xs">Página do Facebook</Label>
-                    {loadingFacebook ? (
-                      <Skeleton className="h-10 w-full mt-1" />
-                    ) : (
-                      <Select
-                        value={data.facebookPageId}
-                        onValueChange={(value) => onChange({ ...data, facebookPageId: value })}
-                      >
-                        <SelectTrigger id="facebook-page" className="mt-1">
-                          <SelectValue placeholder="Selecione uma página" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {facebookPages?.map((page: any) => (
-                            <SelectItem key={page.id} value={page.id}>
-                              {page.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-
-            {data.engagementTypes.length > 0 && (
-              <div className="mt-3 flex items-center gap-2">
-                <Badge variant="secondary" className="text-sm">
-                  📊 Serão criados: {totalAudiences} públicos
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  ({data.engagementTypes.length} tipos × {RETENTION_PERIODS} períodos)
-                </span>
-              </div>
-            )}
           </div>
-        </>
-      )}
+        </div>
+
+        {/* Facebook */}
+        <div className="p-4 rounded-lg border hover:bg-accent/50 transition-colors">
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="engagement-facebook"
+              checked={selectedTypes.includes('facebook')}
+              onCheckedChange={() => handleTypeToggle('facebook')}
+              disabled={disabled}
+              className="mt-0.5"
+            />
+            <div className="flex-1 space-y-2">
+              <label
+                htmlFor="engagement-facebook"
+                className="text-sm font-medium leading-none cursor-pointer block"
+              >
+                Facebook
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Pessoas que interagiram com sua página do Facebook
+              </p>
+              
+              {selectedTypes.includes('facebook') && (
+                <div className="mt-3 pl-3 border-l-2 border-primary/30 animate-in fade-in slide-in-from-top-2">
+                  <Label htmlFor="facebook-page" className="text-xs">
+                    Página do Facebook <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={facebookPageId}
+                    onValueChange={(value) => onChange({ engagementTypes: selectedTypes, instagramAccountId, facebookPageId: value })}
+                    disabled={disabled}
+                  >
+                    <SelectTrigger id="facebook-page" className="mt-1.5">
+                      <SelectValue placeholder={isLoadingPages ? "Carregando páginas..." : "Selecione uma página"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {facebookPages?.map((page: any) => (
+                        <SelectItem key={page.id} value={page.id}>
+                          {page.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
