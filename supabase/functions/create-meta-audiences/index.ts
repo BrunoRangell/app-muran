@@ -47,7 +47,7 @@ async function fetchPixels(accountId: string, accessToken: string) {
 
 // Buscar perfis Instagram vinculados
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
-  const url = `${GRAPH_API_BASE}/${accountId}?fields=instagram_accounts{id,name,username}&access_token=${accessToken}`;
+  const url = `${GRAPH_API_BASE}/act_${accountId}?fields=instagram_accounts{id,name,username}&access_token=${accessToken}`;
   const response = await fetch(url);
   
   if (!response.ok) {
@@ -62,7 +62,7 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
 // Buscar páginas Facebook através do Business Portfolio
 async function fetchFacebookPages(accountId: string, accessToken: string) {
   // Passo 1: Buscar o Business Portfolio da conta
-  const businessUrl = `${GRAPH_API_BASE}/${accountId}?fields=business&access_token=${accessToken}`;
+  const businessUrl = `${GRAPH_API_BASE}/act_${accountId}?fields=business&access_token=${accessToken}`;
   const businessResponse = await fetch(businessUrl);
   
   if (!businessResponse.ok) {
