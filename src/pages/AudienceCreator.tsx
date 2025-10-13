@@ -140,9 +140,7 @@ const AudienceCreator = () => {
           {/* Configuração Inicial */}
           <InitialConfig
             accountId={formData.accountId}
-            pixelId={formData.pixelId}
             onAccountIdChange={(value) => setFormData({ ...formData, accountId: value, pixelId: '', siteEvents: [], engagementTypes: [], instagramAccountId: undefined, facebookPageId: undefined })}
-            onPixelIdChange={(value) => setFormData({ ...formData, pixelId: value })}
           />
 
           {/* Públicos de Site */}
@@ -161,16 +159,13 @@ const AudienceCreator = () => {
               </div>
 
               <SiteAudienceForm
+                accountId={formData.accountId}
+                pixelId={formData.pixelId}
                 selectedEvents={formData.siteEvents}
+                onPixelChange={(value) => setFormData({ ...formData, pixelId: value })}
                 onChange={(events) => setFormData({ ...formData, siteEvents: events })}
                 disabled={!formData.pixelId}
               />
-              
-              {!formData.pixelId && (
-                <p className="text-sm text-muted-foreground mt-4 text-center">
-                  Selecione um pixel na configuração inicial para habilitar
-                </p>
-              )}
             </Card>
           )}
 

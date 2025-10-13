@@ -5,11 +5,12 @@ const GRAPH_API_VERSION = 'v21.0';
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
 interface CreateAudienceRequest {
-  action: 'fetch_accounts' | 'fetch_pixels' | 'fetch_instagram_accounts' | 'fetch_facebook_pages' | 'create_audiences';
+  action: 'fetch_accounts' | 'fetch_pixels' | 'fetch_instagram_accounts' | 'fetch_facebook_pages' | 'create_audiences' | 'create_unified_audiences';
   accountId?: string;
   audienceType?: 'site' | 'engagement';
   pixelId?: string;
   eventTypes?: string[];
+  siteEvents?: string[];
   instagramAccountId?: string;
   facebookPageId?: string;
   engagementTypes?: string[];
@@ -20,7 +21,7 @@ async function getMetaAccessToken(supabase: any): Promise<string> {
   const { data, error } = await supabase
     .from('api_tokens')
     .select('value')
-    .eq('name', 'META_ADS_ACCESS_TOKEN')
+    .eq('name', 'meta_access_token')
     .single();
 
   if (error || !data) {
@@ -58,18 +59,36 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   return data.instagram_accounts?.data || [];
 }
 
-// Buscar páginas Facebook
+// Buscar páginas Facebook através do Business Portfolio
 async function fetchFacebookPages(accountId: string, accessToken: string) {
-  const url = `${GRAPH_API_BASE}/${accountId}?fields=pages{id,name}&access_token=${accessToken}`;
-  const response = await fetch(url);
+  // Passo 1: Buscar o Business Portfolio da conta
+  const businessUrl = `${GRAPH_API_BASE}/${accountId}?fields=business&access_token=${accessToken}`;
+  const businessResponse = await fetch(businessUrl);
   
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Erro ao buscar páginas Facebook: ${error}`);
+  if (!businessResponse.ok) {
+    const error = await businessResponse.text();
+    throw new Error(`Erro ao buscar business portfolio: ${error}`);
   }
 
-  const data = await response.json();
-  return data.pages?.data || [];
+  const businessData = await businessResponse.json();
+  
+  // Se não há business portfolio, retorna array vazio
+  if (!businessData.business || !businessData.business.id) {
+    console.log('[create-meta-audiences] Conta não possui Business Portfolio configurado');
+    return [];
+  }
+
+  // Passo 2: Buscar páginas do Business Portfolio
+  const pagesUrl = `${GRAPH_API_BASE}/${businessData.business.id}?fields=owned_pages{id,name}&access_token=${accessToken}`;
+  const pagesResponse = await fetch(pagesUrl);
+  
+  if (!pagesResponse.ok) {
+    const error = await pagesResponse.text();
+    throw new Error(`Erro ao buscar páginas: ${error}`);
+  }
+
+  const pagesData = await pagesResponse.json();
+  return pagesData.owned_pages?.data || [];
 }
 
 // Criar público de site
@@ -336,6 +355,114 @@ Deno.serve(async (req) => {
           created,
           failed,
           audiences: results
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'create_unified_audiences') {
+      const { 
+        accountId, 
+        pixelId,
+        siteEvents,
+        engagementTypes,
+        instagramAccountId,
+        facebookPageId
+      } = requestData;
+
+      if (!accountId) {
+        throw new Error('accountId é obrigatório');
+      }
+
+      const results: any = {
+        site: [],
+        engagement: [],
+        created: 0,
+        failed: 0
+      };
+
+      const siteRetentionDays = [7, 14, 30, 60, 90, 180];
+      const engagementRetentionDays = [7, 14, 30, 60, 90, 180, 365, 730];
+
+      // Criar públicos de site se houver eventos
+      if (siteEvents && siteEvents.length > 0 && pixelId) {
+        for (const event of siteEvents) {
+          for (const days of siteRetentionDays) {
+            try {
+              const result = await createSiteAudience(accountId, pixelId, event, days, accessToken);
+              results.site.push({
+                name: `[SITE] ${event} - ${days}D`,
+                status: 'success',
+                audienceId: result.id
+              });
+              results.created++;
+            } catch (error: any) {
+              results.site.push({
+                name: `[SITE] ${event} - ${days}D`,
+                status: 'failed',
+                error: error.message
+              });
+              results.failed++;
+            }
+          }
+        }
+      }
+
+      // Criar públicos de engajamento se houver tipos
+      if (engagementTypes && engagementTypes.length > 0) {
+        for (const type of engagementTypes) {
+          for (const days of engagementRetentionDays) {
+            try {
+              if (type === 'instagram' && instagramAccountId) {
+                const result = await createEngagementAudience(
+                  accountId,
+                  instagramAccountId,
+                  'instagram',
+                  days,
+                  accessToken
+                );
+                results.engagement.push({
+                  name: `[IG] Envolvidos - ${days}D`,
+                  status: 'success',
+                  audienceId: result.id
+                });
+                results.created++;
+              } else if (type === 'facebook' && facebookPageId) {
+                const result = await createEngagementAudience(
+                  accountId,
+                  facebookPageId,
+                  'facebook',
+                  days,
+                  accessToken
+                );
+                results.engagement.push({
+                  name: `[FB] Envolvidos - ${days}D`,
+                  status: 'success',
+                  audienceId: result.id
+                });
+                results.created++;
+              }
+            } catch (error: any) {
+              const name = type === 'instagram' 
+                ? `[IG] Envolvidos - ${days}D`
+                : `[FB] Envolvidos - ${days}D`;
+              results.engagement.push({
+                name,
+                status: 'failed',
+                error: error.message
+              });
+              results.failed++;
+            }
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          created: results.created,
+          failed: results.failed,
+          audiences: [...results.site, ...results.engagement]
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

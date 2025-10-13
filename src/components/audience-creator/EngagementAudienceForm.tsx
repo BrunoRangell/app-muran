@@ -84,12 +84,18 @@ const EngagementAudienceForm = ({
                       <SelectValue placeholder={isLoadingInstagram ? "Carregando perfis..." : "Selecione um perfil"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {instagramAccounts?.map((account: any) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          @{account.username}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+              {instagramAccounts && instagramAccounts.length > 0 ? (
+                instagramAccounts.map((account: any) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    @{account.username} ({account.name})
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="p-2 text-sm text-muted-foreground">
+                  Nenhum perfil Instagram encontrado
+                </div>
+              )}
+            </SelectContent>
                   </Select>
                 </div>
               )}
@@ -131,13 +137,19 @@ const EngagementAudienceForm = ({
                     <SelectTrigger id="facebook-page" className="mt-1.5">
                       <SelectValue placeholder={isLoadingPages ? "Carregando páginas..." : "Selecione uma página"} />
                     </SelectTrigger>
-                    <SelectContent>
-                      {facebookPages?.map((page: any) => (
-                        <SelectItem key={page.id} value={page.id}>
-                          {page.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+            <SelectContent>
+              {facebookPages && facebookPages.length > 0 ? (
+                facebookPages.map((page: any) => (
+                  <SelectItem key={page.id} value={page.id}>
+                    {page.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="p-2 text-sm text-muted-foreground">
+                  Nenhuma página Facebook encontrada
+                </div>
+              )}
+            </SelectContent>
                   </Select>
                 </div>
               )}
