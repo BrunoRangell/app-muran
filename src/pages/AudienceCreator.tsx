@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users, Globe, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import InitialConfig from "@/components/audience-creator/InitialConfig";
 import SiteAudienceForm from "@/components/audience-creator/SiteAudienceForm";
 import EngagementAudienceForm from "@/components/audience-creator/EngagementAudienceForm";
@@ -23,6 +24,7 @@ interface UnifiedFormData {
 
 const AudienceCreator = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState<UnifiedFormData>({
     accountId: '',
     pixelId: '',
@@ -140,7 +142,21 @@ const AudienceCreator = () => {
           {/* Configuração Inicial */}
           <InitialConfig
             accountId={formData.accountId}
-            onAccountIdChange={(value) => setFormData({ ...formData, accountId: value, pixelId: '', siteEvents: [], engagementTypes: [], instagramAccountId: undefined, facebookPageId: undefined })}
+            onAccountIdChange={(value) => {
+              // Invalidar cache quando trocar de conta
+              queryClient.invalidateQueries({ queryKey: ['meta-instagram-accounts'] });
+              queryClient.invalidateQueries({ queryKey: ['meta-facebook-pages'] });
+              queryClient.invalidateQueries({ queryKey: ['meta-pixels'] });
+              setFormData({ 
+                ...formData, 
+                accountId: value, 
+                pixelId: '', 
+                siteEvents: [], 
+                engagementTypes: [], 
+                instagramAccountId: undefined, 
+                facebookPageId: undefined 
+              });
+            }}
           />
 
           {/* Públicos de Site */}

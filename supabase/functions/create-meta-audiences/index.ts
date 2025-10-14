@@ -16,6 +16,17 @@ interface CreateAudienceRequest {
   engagementTypes?: string[];
 }
 
+// Normalizar accountId removendo prefixo act_ se presente
+function normalizeAccountId(accountId: string): string {
+  if (!accountId) return '';
+  let normalized = accountId.trim();
+  // Remove todos os prefixos act_ (caso haja duplicação)
+  while (normalized.startsWith('act_')) {
+    normalized = normalized.substring(4);
+  }
+  return normalized;
+}
+
 // Função para buscar o token Meta do banco de dados
 async function getMetaAccessToken(supabase: any): Promise<string> {
   const { data, error } = await supabase
@@ -47,7 +58,13 @@ async function fetchPixels(accountId: string, accessToken: string) {
 
 // Buscar perfis Instagram vinculados
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
-  const url = `${GRAPH_API_BASE}/act_${accountId}?fields=instagram_accounts{id,name,username}&access_token=${accessToken}`;
+  const normalizedId = normalizeAccountId(accountId);
+  const url = `${GRAPH_API_BASE}/act_${normalizedId}?fields=instagram_accounts{id,name,username}&access_token=${accessToken}`;
+  
+  console.log('[create-meta-audiences] fetchInstagramAccounts - accountId recebido:', accountId);
+  console.log('[create-meta-audiences] fetchInstagramAccounts - accountId normalizado:', normalizedId);
+  console.log('[create-meta-audiences] fetchInstagramAccounts - URL gerada:', url);
+  
   const response = await fetch(url);
   
   if (!response.ok) {
@@ -61,8 +78,16 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
 
 // Buscar páginas Facebook através do Business Portfolio
 async function fetchFacebookPages(accountId: string, accessToken: string) {
+  const normalizedId = normalizeAccountId(accountId);
+  
+  console.log('[create-meta-audiences] fetchFacebookPages - accountId recebido:', accountId);
+  console.log('[create-meta-audiences] fetchFacebookPages - accountId normalizado:', normalizedId);
+  
   // Passo 1: Buscar o Business Portfolio da conta
-  const businessUrl = `${GRAPH_API_BASE}/act_${accountId}?fields=business&access_token=${accessToken}`;
+  const businessUrl = `${GRAPH_API_BASE}/act_${normalizedId}?fields=business&access_token=${accessToken}`;
+  
+  console.log('[create-meta-audiences] fetchFacebookPages - URL business gerada:', businessUrl);
+  
   const businessResponse = await fetch(businessUrl);
   
   if (!businessResponse.ok) {
@@ -209,9 +234,12 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const requestData: CreateAudienceRequest = await req.json();
-    const { action } = requestData;
+    const { action, accountId } = requestData;
 
     console.log('[create-meta-audiences] Action:', action);
+    console.log('[create-meta-audiences] AccountId recebido:', accountId);
+    console.log('[create-meta-audiences] Tipo do accountId:', typeof accountId);
+    console.log('[create-meta-audiences] Começa com act_?', accountId?.startsWith('act_'));
 
     // Buscar token do banco de dados
     const accessToken = await getMetaAccessToken(supabase);

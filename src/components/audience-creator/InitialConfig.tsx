@@ -34,7 +34,14 @@ const InitialConfig = ({ accountId, onAccountIdChange }: InitialConfigProps) => 
             type="text"
             placeholder="Ex: 1234567890 ou act_1234567890"
             value={accountId}
-            onChange={(e) => onAccountIdChange(e.target.value)}
+            onChange={(e) => {
+              let value = e.target.value.trim();
+              // Remove múltiplos prefixos act_ se houver
+              while (value.startsWith('act_')) {
+                value = value.substring(4);
+              }
+              onAccountIdChange(value);
+            }}
             className="font-mono"
           />
           <p className="text-xs text-muted-foreground">
