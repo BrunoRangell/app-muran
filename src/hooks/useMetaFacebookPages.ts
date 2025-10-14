@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useMetaFacebookPages = (accountId: string) => {
-  // Normalizar accountId removendo "act_" se presente
+  // Normalizar accountId removendo "act_" se presente (edge function adiciona)
   const normalizedAccountId = accountId.startsWith('act_') 
-    ? accountId 
-    : accountId ? `act_${accountId}` : '';
+    ? accountId.substring(4)
+    : accountId;
 
   return useQuery({
     queryKey: ['meta-facebook-pages', normalizedAccountId],

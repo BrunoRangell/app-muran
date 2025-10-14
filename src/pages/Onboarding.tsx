@@ -36,27 +36,10 @@ export default function Onboarding() {
     try {
       setIsOnboarding(true);
 
-      // 1. Criar o cliente primeiro
-      const { data: newClient, error: clientError } = await supabase
-        .from("clients")
-        .insert({
-          company_name: companyName.trim(),
-          status: "active",
-          contract_value: 0,
-          first_payment_date: new Date().toISOString(),
-          payment_type: "pre",
-          contact_name: "",
-          contact_phone: "",
-        })
-        .select()
-        .single();
-
-      if (clientError) throw clientError;
-
-      // 2. Executar as automações de onboarding
+      // Executar as automações de onboarding
       const { data, error } = await supabase.functions.invoke("orchestrate-client-onboarding", {
         body: {
-          clientId: newClient.id,
+          companyName: companyName.trim(),
           integrations,
         },
       });
@@ -66,8 +49,8 @@ export default function Onboarding() {
       setOnboardingResult(data);
       
       toast({
-        title: "Cliente criado e onboarding concluído",
-        description: "O cliente foi criado e as integrações foram executadas com sucesso.",
+        title: "Onboarding concluído",
+        description: "As integrações foram executadas com sucesso.",
       });
     } catch (error: any) {
       console.error("Erro ao executar onboarding:", error);
@@ -234,7 +217,7 @@ export default function Onboarding() {
               className="w-full h-11 text-sm gap-2 shadow-sm hover:shadow transition-shadow"
             >
               <Play className="h-4 w-4" />
-              {isOnboarding ? "Processando..." : "Criar Cliente e Executar Onboarding"}
+              {isOnboarding ? "Processando..." : "Executar Onboarding"}
             </Button>
           </div>
         </CardContent>
