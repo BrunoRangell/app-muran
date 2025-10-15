@@ -2,16 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useMetaInstagramAccounts = (accountId: string) => {
-  // Normalizar accountId removendo "act_" se presente (edge function adiciona)
-  const normalizedAccountId = accountId.startsWith('act_') 
-    ? accountId.substring(4)
-    : accountId;
+  // accountId já vem apenas com números do input
 
   return useQuery({
-    queryKey: ['meta-instagram-accounts', normalizedAccountId],
+    queryKey: ['meta-instagram-accounts', accountId],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('create-meta-audiences', {
-        body: { action: 'fetch_instagram_accounts', accountId: normalizedAccountId }
+        body: { action: 'fetch_instagram_accounts', accountId }
       });
 
       if (error) throw error;

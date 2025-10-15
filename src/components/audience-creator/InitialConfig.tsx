@@ -32,20 +32,19 @@ const InitialConfig = ({ accountId, onAccountIdChange }: InitialConfigProps) => 
           <Input
             id="accountId"
             type="text"
-            placeholder="Ex: 1234567890 ou act_1234567890"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="Ex: 1234567890"
             value={accountId}
             onChange={(e) => {
-              let value = e.target.value.trim();
-              // Remove múltiplos prefixos act_ se houver
-              while (value.startsWith('act_')) {
-                value = value.substring(4);
-              }
+              // Aceita apenas números
+              const value = e.target.value.replace(/\D/g, '');
               onAccountIdChange(value);
             }}
             className="font-mono"
           />
           <p className="text-xs text-muted-foreground">
-            Digite apenas os números ou o ID completo com prefixo "act_"
+            Digite apenas os números do ID da conta (sem o prefixo "act_")
           </p>
         </div>
       </div>
