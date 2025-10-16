@@ -28,6 +28,14 @@ const EngagementAudienceForm = ({
   const { data: instagramAccounts, isLoading: isLoadingInstagram } = useMetaInstagramAccounts(accountId);
   const { data: facebookPages, isLoading: isLoadingPages } = useMetaFacebookPages(accountId);
 
+  console.log('[EngagementAudienceForm] 📊 Estado atual:', {
+    accountId,
+    instagramAccounts,
+    facebookPages,
+    isLoadingInstagram,
+    isLoadingPages
+  });
+
   const handleTypeToggle = (type: string) => {
     let newTypes: string[];
     if (selectedTypes.includes(type)) {

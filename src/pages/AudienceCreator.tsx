@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users, Globe, MessageSquare } from "lucide-react";
@@ -38,6 +38,14 @@ const AudienceCreator = () => {
   const [result, setResult] = useState<any>(null);
 
   const { mutate: createAudiences, isPending } = useCreateAudiences();
+
+  // Limpar cache ao montar componente
+  useEffect(() => {
+    console.log('[AudienceCreator] 🧹 Limpando cache ao montar componente...');
+    queryClient.removeQueries({ queryKey: ['meta-instagram-accounts'] });
+    queryClient.removeQueries({ queryKey: ['meta-facebook-pages'] });
+    queryClient.removeQueries({ queryKey: ['meta-pixels'] });
+  }, [queryClient]);
 
   const handleCreateAudiences = () => {
     // Validações
