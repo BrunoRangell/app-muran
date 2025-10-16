@@ -73,7 +73,14 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   }
 
   const data = await response.json();
-  return data.instagram_accounts?.data || [];
+  console.log('[create-meta-audiences] fetchInstagramAccounts - Resposta completa da API:', JSON.stringify(data, null, 2));
+  console.log('[create-meta-audiences] fetchInstagramAccounts - instagram_accounts:', data.instagram_accounts);
+  console.log('[create-meta-audiences] fetchInstagramAccounts - data.instagram_accounts?.data:', data.instagram_accounts?.data);
+  
+  const accounts = data.instagram_accounts?.data || [];
+  console.log('[create-meta-audiences] fetchInstagramAccounts - Retornando', accounts.length, 'contas');
+  
+  return accounts;
 }
 
 // Buscar páginas Facebook através do Business Portfolio
@@ -96,6 +103,7 @@ async function fetchFacebookPages(accountId: string, accessToken: string) {
   }
 
   const businessData = await businessResponse.json();
+  console.log('[create-meta-audiences] fetchFacebookPages - Business data:', JSON.stringify(businessData, null, 2));
   
   // Se não há business portfolio, retorna array vazio
   if (!businessData.business || !businessData.business.id) {
@@ -113,7 +121,13 @@ async function fetchFacebookPages(accountId: string, accessToken: string) {
   }
 
   const pagesData = await pagesResponse.json();
-  return pagesData.owned_pages?.data || [];
+  console.log('[create-meta-audiences] fetchFacebookPages - Pages data:', JSON.stringify(pagesData, null, 2));
+  console.log('[create-meta-audiences] fetchFacebookPages - owned_pages:', pagesData.owned_pages);
+  
+  const pages = pagesData.owned_pages?.data || [];
+  console.log('[create-meta-audiences] fetchFacebookPages - Retornando', pages.length, 'páginas');
+  
+  return pages;
 }
 
 // Criar público de site
