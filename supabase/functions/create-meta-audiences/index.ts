@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const GRAPH_API_VERSION = 'v21.0';
+const GRAPH_API_VERSION = 'v23.0';
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
 interface CreateAudienceRequest {
