@@ -56,78 +56,93 @@ async function fetchPixels(accountId: string, accessToken: string) {
   return data.data || [];
 }
 
+// Helper para retry com delay
+async function fetchWithRetry(
+  url: string, 
+  maxRetries: number = 2, 
+  delayMs: number = 1000
+): Promise<any> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      if (attempt === maxRetries) {
+        const error = await response.text();
+        throw new Error(`Erro após ${maxRetries + 1} tentativas: ${error}`);
+      }
+      console.log(`[fetchWithRetry] Erro HTTP, tentativa ${attempt + 1}/${maxRetries + 1}, aguardando ${delayMs}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      continue;
+    }
+    
+    const data = await response.json();
+    
+    // Se a resposta está vazia mas o request foi bem-sucedido, tenta novamente
+    if (attempt < maxRetries && Object.keys(data).length <= 1) {
+      console.log(`[fetchWithRetry] Resposta vazia (${Object.keys(data).length} keys), tentativa ${attempt + 1}/${maxRetries + 1}, aguardando ${delayMs}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      continue;
+    }
+    
+    return data;
+  }
+}
+
 // Buscar perfis Instagram vinculados
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   const normalizedId = normalizeAccountId(accountId);
   const url = `${GRAPH_API_BASE}/act_${normalizedId}?fields=instagram_accounts{id,name,username}&access_token=${accessToken}`;
   
-  console.log('[create-meta-audiences] fetchInstagramAccounts - accountId recebido:', accountId);
-  console.log('[create-meta-audiences] fetchInstagramAccounts - accountId normalizado:', normalizedId);
-  console.log('[create-meta-audiences] fetchInstagramAccounts - URL gerada:', url);
+  console.log('[create-meta-audiences] fetchInstagramAccounts - URL:', url);
   
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Erro ao buscar perfis Instagram: ${error}`);
+  try {
+    const data = await fetchWithRetry(url);
+    console.log('[create-meta-audiences] fetchInstagramAccounts - Resposta:', JSON.stringify(data, null, 2));
+    
+    const accounts = data.instagram_accounts?.data || [];
+    console.log('[create-meta-audiences] fetchInstagramAccounts - Retornando', accounts.length, 'contas');
+    
+    return accounts;
+  } catch (error) {
+    console.error('[create-meta-audiences] fetchInstagramAccounts - Erro:', error);
+    throw error;
   }
-
-  const data = await response.json();
-  console.log('[create-meta-audiences] fetchInstagramAccounts - Resposta completa da API:', JSON.stringify(data, null, 2));
-  console.log('[create-meta-audiences] fetchInstagramAccounts - instagram_accounts:', data.instagram_accounts);
-  console.log('[create-meta-audiences] fetchInstagramAccounts - data.instagram_accounts?.data:', data.instagram_accounts?.data);
-  
-  const accounts = data.instagram_accounts?.data || [];
-  console.log('[create-meta-audiences] fetchInstagramAccounts - Retornando', accounts.length, 'contas');
-  
-  return accounts;
 }
 
 // Buscar páginas Facebook através do Business Portfolio
 async function fetchFacebookPages(accountId: string, accessToken: string) {
   const normalizedId = normalizeAccountId(accountId);
   
-  console.log('[create-meta-audiences] fetchFacebookPages - accountId recebido:', accountId);
   console.log('[create-meta-audiences] fetchFacebookPages - accountId normalizado:', normalizedId);
   
-  // Passo 1: Buscar o Business Portfolio da conta
-  const businessUrl = `${GRAPH_API_BASE}/act_${normalizedId}?fields=business&access_token=${accessToken}`;
-  
-  console.log('[create-meta-audiences] fetchFacebookPages - URL business gerada:', businessUrl);
-  
-  const businessResponse = await fetch(businessUrl);
-  
-  if (!businessResponse.ok) {
-    const error = await businessResponse.text();
-    throw new Error(`Erro ao buscar business portfolio: ${error}`);
-  }
+  try {
+    // Passo 1: Buscar o Business Portfolio
+    const businessUrl = `${GRAPH_API_BASE}/act_${normalizedId}?fields=business&access_token=${accessToken}`;
+    console.log('[create-meta-audiences] fetchFacebookPages - URL business:', businessUrl);
+    
+    const businessData = await fetchWithRetry(businessUrl);
+    console.log('[create-meta-audiences] fetchFacebookPages - Business data:', JSON.stringify(businessData, null, 2));
+    
+    if (!businessData.business?.id) {
+      console.log('[create-meta-audiences] fetchFacebookPages - Sem Business Portfolio');
+      return [];
+    }
 
-  const businessData = await businessResponse.json();
-  console.log('[create-meta-audiences] fetchFacebookPages - Business data:', JSON.stringify(businessData, null, 2));
-  
-  // Se não há business portfolio, retorna array vazio
-  if (!businessData.business || !businessData.business.id) {
-    console.log('[create-meta-audiences] Conta não possui Business Portfolio configurado');
-    return [];
+    // Passo 2: Buscar páginas do Business Portfolio
+    const pagesUrl = `${GRAPH_API_BASE}/${businessData.business.id}?fields=owned_pages{id,name}&access_token=${accessToken}`;
+    console.log('[create-meta-audiences] fetchFacebookPages - URL pages:', pagesUrl);
+    
+    const pagesData = await fetchWithRetry(pagesUrl);
+    console.log('[create-meta-audiences] fetchFacebookPages - Pages data:', JSON.stringify(pagesData, null, 2));
+    
+    const pages = pagesData.owned_pages?.data || [];
+    console.log('[create-meta-audiences] fetchFacebookPages - Retornando', pages.length, 'páginas');
+    
+    return pages;
+  } catch (error) {
+    console.error('[create-meta-audiences] fetchFacebookPages - Erro:', error);
+    throw error;
   }
-
-  // Passo 2: Buscar páginas do Business Portfolio
-  const pagesUrl = `${GRAPH_API_BASE}/${businessData.business.id}?fields=owned_pages{id,name}&access_token=${accessToken}`;
-  const pagesResponse = await fetch(pagesUrl);
-  
-  if (!pagesResponse.ok) {
-    const error = await pagesResponse.text();
-    throw new Error(`Erro ao buscar páginas: ${error}`);
-  }
-
-  const pagesData = await pagesResponse.json();
-  console.log('[create-meta-audiences] fetchFacebookPages - Pages data:', JSON.stringify(pagesData, null, 2));
-  console.log('[create-meta-audiences] fetchFacebookPages - owned_pages:', pagesData.owned_pages);
-  
-  const pages = pagesData.owned_pages?.data || [];
-  console.log('[create-meta-audiences] fetchFacebookPages - Retornando', pages.length, 'páginas');
-  
-  return pages;
 }
 
 // Criar público de site
