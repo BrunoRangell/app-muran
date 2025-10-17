@@ -91,7 +91,7 @@ async function fetchWithRetry(
 // Buscar perfis Instagram vinculados
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   const normalizedId = normalizeAccountId(accountId);
-  const url = `${GRAPH_API_BASE}/act_${normalizedId}?fields=instagram_accounts{id,name,username}&access_token=${accessToken}`;
+  const url = `${GRAPH_API_BASE}/act_${normalizedId}?fields=instagram_accounts{name,username}&access_token=${accessToken}`;
   
   console.log('[create-meta-audiences] fetchInstagramAccounts - URL:', url);
   
