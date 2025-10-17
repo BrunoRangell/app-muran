@@ -23,7 +23,7 @@ interface CreateAudienceRequest {
   debugToken?: string;
 }
 
-// Força o formato com act_
+// Helper → sempre garantir act_ prefixado
 function withActPrefix(accountId: string): string {
   if (!accountId) return "";
   return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
@@ -37,83 +37,90 @@ async function getMetaAccessToken(supabase: any): Promise<string> {
   return data.value;
 }
 
-// Buscar Pixels
+// ======================== FETCH PIXELS ========================
 async function fetchPixels(accountId: string, accessToken: string) {
-  const url = `${GRAPH_API_BASE}/${withActPrefix(accountId)}/adspixels?fields=id,name&access_token=${accessToken}`;
-  console.log("[PIXEL] 🔍 Buscando pixels:", url);
-  const response = await fetch(url);
-  const data = await response.json();
+  const actId = withActPrefix(accountId);
+  const url = `${GRAPH_API_BASE}/${actId}/adspixels?fields=id,name&access_token=${accessToken}`;
+  console.log("[PIXEL] 🔍", url);
 
-  if (!response.ok) {
-    console.error("[PIXEL] ❌ Erro:", data.error?.message);
-    throw new Error(data.error?.message || "Erro ao buscar pixels");
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || "Erro ao buscar pixels");
+    console.log(`[PIXEL] ✅ ${data.data?.length || 0} encontrados`);
+    return data.data || [];
+  } catch (err: any) {
+    console.error("[PIXEL] ❌ Erro Graph:", err.message);
+    return [];
   }
-
-  console.log(`[PIXEL] ✅ ${data.data?.length || 0} pixels encontrados`);
-  return data.data || [];
 }
 
-// Buscar perfis do Instagram vinculados
+// ======================== FETCH INSTAGRAM ========================
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
-  console.log("[IG] 🔍 Buscando perfis vinculados a:", actId);
+  console.log("[IG] 🔍 Buscando IG vinculados a", actId);
 
-  // 1️⃣ Buscar diretamente na conta de anúncios
-  const directUrl = `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name,profile_pic}&access_token=${accessToken}`;
-  const directRes = await fetch(directUrl);
-  const directData = await directRes.json();
+  try {
+    // 1️⃣ tentar via conta de anúncios
+    const direct = await fetch(
+      `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name}&access_token=${accessToken}`,
+    );
+    const directData = await direct.json();
+    if (direct.ok && directData.instagram_accounts?.data?.length) {
+      console.log(`[IG] ✅ Direto: ${directData.instagram_accounts.data.length}`);
+      return directData.instagram_accounts.data;
+    }
 
-  if (directData.instagram_accounts?.data?.length > 0) {
-    console.log(`[IG] ✅ Perfis diretos encontrados: ${directData.instagram_accounts.data.length}`);
-    return directData.instagram_accounts.data;
-  }
+    // 2️⃣ tentar via business
+    const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
+    const businessData = await business.json();
+    const businessId = businessData.business?.id;
+    if (!businessId) {
+      console.warn("[IG] ⚠️ Nenhum business vinculado.");
+      return [];
+    }
 
-  // 2️⃣ Buscar via business vinculado
-  const businessUrl = `${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`;
-  const businessRes = await fetch(businessUrl);
-  const businessData = await businessRes.json();
-  const businessId = businessData.business?.id;
-
-  if (!businessId) {
-    console.warn("[IG] ⚠️ Nenhum business vinculado encontrado.");
+    const ig = await fetch(
+      `${GRAPH_API_BASE}/${businessId}/instagram_accounts?fields=id,username,name&access_token=${accessToken}`,
+    );
+    const igData = await ig.json();
+    if (!ig.ok) throw new Error(igData.error?.message || "Erro no IG Business");
+    console.log(`[IG] ✅ via Business: ${igData.data?.length || 0}`);
+    return igData.data || [];
+  } catch (err: any) {
+    console.error("[IG] ❌ Erro Graph:", err.message);
     return [];
   }
-
-  const igUrl = `${GRAPH_API_BASE}/${businessId}/instagram_accounts?fields=id,username,name,profile_pic&access_token=${accessToken}`;
-  const igRes = await fetch(igUrl);
-  const igData = await igRes.json();
-
-  if (!igRes.ok) throw new Error(igData.error?.message || "Erro ao buscar perfis do Instagram");
-  console.log(`[IG] ✅ Perfis via business: ${igData.data?.length || 0}`);
-  return igData.data || [];
 }
 
-// Buscar páginas do Facebook
+// ======================== FETCH FACEBOOK PAGES ========================
 async function fetchFacebookPages(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
-  console.log("[FB] 🔍 Buscando páginas vinculadas à conta:", actId);
+  console.log("[FB] 🔍 Buscando páginas vinculadas a", actId);
 
-  // Buscar business vinculado
-  const businessUrl = `${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`;
-  const businessRes = await fetch(businessUrl);
-  const businessData = await businessRes.json();
-  const businessId = businessData.business?.id;
+  try {
+    const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
+    const businessData = await business.json();
+    const businessId = businessData.business?.id;
+    if (!businessId) {
+      console.warn("[FB] ⚠️ Nenhum business vinculado.");
+      return [];
+    }
 
-  if (!businessId) {
-    console.warn("[FB] ⚠️ Nenhum business vinculado à conta.");
+    const pages = await fetch(
+      `${GRAPH_API_BASE}/${businessId}?fields=owned_pages{id,name,link,picture,fan_count}&access_token=${accessToken}`,
+    );
+    const pagesData = await pages.json();
+    if (!pages.ok) throw new Error(pagesData.error?.message || "Erro no FB Pages");
+    console.log(`[FB] ✅ ${pagesData.owned_pages?.data?.length || 0} páginas`);
+    return pagesData.owned_pages?.data || [];
+  } catch (err: any) {
+    console.error("[FB] ❌ Erro Graph:", err.message);
     return [];
   }
-
-  const pagesUrl = `${GRAPH_API_BASE}/${businessId}?fields=owned_pages{id,name,link,picture,fan_count}&access_token=${accessToken}`;
-  const pagesRes = await fetch(pagesUrl);
-  const pagesData = await pagesRes.json();
-
-  if (!pagesRes.ok) throw new Error(pagesData.error?.message || "Erro ao buscar páginas");
-  console.log(`[FB] ✅ ${pagesData.owned_pages?.data?.length || 0} páginas encontradas`);
-  return pagesData.owned_pages?.data || [];
 }
 
-// Criar público de site
+// ======================== CREATE SITE AUDIENCE ========================
 async function createSiteAudience(
   accountId: string,
   pixelId: string,
@@ -161,7 +168,7 @@ async function createSiteAudience(
   return data;
 }
 
-// Criar público de engajamento
+// ======================== CREATE ENGAGEMENT AUDIENCE ========================
 async function createEngagementAudience(
   accountId: string,
   sourceId: string,
@@ -210,8 +217,7 @@ async function createEngagementAudience(
   return data;
 }
 
-// ========================= SERVER HANDLER =========================
-
+// ======================== MAIN SERVER HANDLER ========================
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -222,7 +228,7 @@ Deno.serve(async (req) => {
 
     const accessToken = await getMetaAccessToken(supabase);
 
-    // ===== Pixels =====
+    // === PIXELS ===
     if (action === "fetch_pixels") {
       const pixels = await fetchPixels(accountId!, accessToken);
       return new Response(JSON.stringify({ success: true, pixels }), {
@@ -230,7 +236,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ===== Instagram =====
+    // === INSTAGRAM ===
     if (action === "fetch_instagram_accounts") {
       const accounts = await fetchInstagramAccounts(accountId!, accessToken);
       return new Response(JSON.stringify({ success: true, accounts }), {
@@ -238,7 +244,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ===== Facebook =====
+    // === FACEBOOK ===
     if (action === "fetch_facebook_pages") {
       const pages = await fetchFacebookPages(accountId!, accessToken);
       return new Response(JSON.stringify({ success: true, pages }), {
@@ -246,7 +252,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ===== Criação de Públicos =====
+    // === CRIAR PÚBLICOS ===
     if (action === "create_audiences" || action === "create_unified_audiences") {
       const { audienceType, pixelId, eventTypes, siteEvents, instagramAccountId, facebookPageId, engagementTypes } =
         requestData;
