@@ -311,11 +311,13 @@ Deno.serve(async (req) => {
                 d,
                 accessToken,
               );
-              results.push({ name: `[${type.toUpperCase()}] Envolvidos - ${d}D`, status: "success", id: res.id });
+              const prefix = type === "instagram" ? "IG" : "FB";
+              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: res.id });
             } catch (err: any) {
               console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
+              const prefix = type === "instagram" ? "IG" : "FB";
               results.push({
-                name: `[${type.toUpperCase()}] Envolvidos - ${d}D`,
+                name: `[${prefix}] Envolvidos - ${d}D`,
                 status: "failed",
                 error: err.message,
               });
