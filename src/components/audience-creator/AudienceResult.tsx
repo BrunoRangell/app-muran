@@ -18,7 +18,7 @@ interface AudienceResultProps {
 }
 
 const AudienceResult = ({ result, onCreateNew }: AudienceResultProps) => {
-  const { created, failed, audiences } = result;
+  const { created = 0, failed = 0, audiences = [] } = result || {};
   const total = created + failed;
 
   return (
