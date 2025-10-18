@@ -25,8 +25,8 @@ const EngagementAudienceForm = ({
   onChange,
   disabled = false 
 }: EngagementAudienceFormProps) => {
-  const { data: instagramAccounts, isLoading: isLoadingInstagram } = useMetaInstagramAccounts(accountId);
-  const { data: facebookPages, isLoading: isLoadingPages } = useMetaFacebookPages(accountId);
+  const { data: instagramAccounts = [], isLoading: isLoadingInstagram } = useMetaInstagramAccounts(accountId);
+  const { data: facebookPages = [], isLoading: isLoadingPages } = useMetaFacebookPages(accountId);
 
   console.log('[EngagementAudienceForm] 📊 Estado atual:', {
     accountId,
