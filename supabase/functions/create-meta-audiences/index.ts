@@ -23,21 +23,21 @@ interface CreateAudienceRequest {
   debugToken?: string;
 }
 
-// Helper → sempre garantir act_ prefixado
+// ✅ Helper → sempre garantir act_ prefixado
 function withActPrefix(accountId: string): string {
   if (!accountId) return "";
   return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
 }
 
-// ✅ Sanitizador de nomes compatível com a API Meta
+// ✅ Sanitizador de nomes compatível com API Meta
 function sanitizeAudienceName(name: string): string {
   return name
-    .replace(/[\[\]\-\s]+/g, "_") // substitui colchetes, hífens e espaços por "_"
-    .replace(/[^a-zA-Z0-9_]/g, "") // remove qualquer outro caractere especial
-    .substring(0, 49); // garante menos de 50 caracteres
+    .replace(/[\[\]\-\s]+/g, "_")
+    .replace(/[^a-zA-Z0-9_]/g, "")
+    .substring(0, 49);
 }
 
-// Buscar token Meta no Supabase
+// ✅ Buscar token Meta no Supabase
 async function getMetaAccessToken(supabase: any): Promise<string> {
   const { data, error } = await supabase.from("api_tokens").select("value").eq("name", "meta_access_token").single();
 
@@ -192,6 +192,7 @@ async function createEngagementAudience(
   audienceName = sanitizeAudienceName(audienceName);
 
   const sourceTypeKey = sourceType === "instagram" ? "ig_business" : "page";
+  const engagementAudienceType = sourceType === "instagram" ? "IG_BUSINESS" : "PAGE";
 
   const rule =
     sourceType === "instagram"
@@ -227,15 +228,18 @@ async function createEngagementAudience(
     `[AUDIENCE] 🚀 Criando público de engajamento: ${audienceName} | Source: ${sourceId} | Type: ${sourceTypeKey}`,
   );
 
+  const body = {
+    name: audienceName,
+    subtype: "ENGAGEMENT",
+    engagement_audience_type: engagementAudienceType,
+    rule,
+    access_token: accessToken,
+  };
+
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: audienceName,
-      subtype: "ENGAGEMENT",
-      rule,
-      access_token: accessToken,
-    }),
+    body: JSON.stringify(body),
   });
 
   const data = await res.json();
@@ -248,7 +252,7 @@ async function createEngagementAudience(
   return data;
 }
 
-// ======================== MAIN SERVER HANDLER ========================
+// ======================== MAIN HANDLER ========================
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -259,7 +263,7 @@ Deno.serve(async (req) => {
 
     const accessToken = await getMetaAccessToken(supabase);
 
-    // === PIXELS ===
+    // === FETCHES ===
     if (action === "fetch_pixels") {
       const pixels = await fetchPixels(accountId!, accessToken);
       return new Response(JSON.stringify({ success: true, pixels }), {
@@ -267,7 +271,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === INSTAGRAM ===
     if (action === "fetch_instagram_accounts") {
       const accounts = await fetchInstagramAccounts(accountId!, accessToken);
       return new Response(JSON.stringify({ success: true, accounts }), {
@@ -275,7 +278,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === FACEBOOK ===
     if (action === "fetch_facebook_pages") {
       const pages = await fetchFacebookPages(accountId!, accessToken);
       return new Response(JSON.stringify({ success: true, pages }), {
@@ -283,7 +285,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === CRIAR PÚBLICOS ===
+    // === CREATE AUDIENCES ===
     if (action === "create_audiences" || action === "create_unified_audiences") {
       const { audienceType, pixelId, eventTypes, siteEvents, instagramAccountId, facebookPageId, engagementTypes } =
         requestData;
@@ -300,7 +302,7 @@ Deno.serve(async (req) => {
         facebookPageId,
       });
 
-      // 🎯 SITE AUDIENCES
+      // SITE
       if ((audienceType === "site" || action === "create_unified_audiences") && pixelId && (eventTypes || siteEvents)) {
         for (const event of eventTypes || siteEvents || []) {
           for (const d of siteDays) {
@@ -322,7 +324,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 🎯 ENGAGEMENT AUDIENCES
+      // ENGAGEMENT
       if ((audienceType === "engagement" || action === "create_unified_audiences") && engagementTypes?.length) {
         for (const type of engagementTypes) {
           const sourceId = type === "instagram" ? instagramAccountId : facebookPageId;
