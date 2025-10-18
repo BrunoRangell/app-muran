@@ -180,25 +180,36 @@ async function createEngagementAudience(
   const audienceName =
     sourceType === "instagram" ? `[IG] Envolvidos - ${retentionDays}D` : `[FB] Envolvidos - ${retentionDays}D`;
 
-  // ✅ Usar event type correto baseado no arquivo de referência
-  const eventType = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
   const sourceTypeKey = sourceType === "instagram" ? "ig_business" : "page";
 
-  const rule = {
-    inclusions: {
-      operator: "or",
-      rules: [
-        {
-          event_sources: [{ type: sourceTypeKey, id: sourceId }],
-          retention_seconds: retentionDays * 86400,
-          filter: {
-            operator: "and",
-            filters: [{ field: "event", operator: "eq", value: eventType }],
-          },
+  // ✅ Instagram: SEM filter | Facebook: COM filter (page_engaged)
+  const rule = sourceType === "instagram" 
+    ? {
+        inclusions: {
+          operator: "or",
+          rules: [
+            {
+              event_sources: [{ type: sourceTypeKey, id: sourceId }],
+              retention_seconds: retentionDays * 86400,
+            },
+          ],
         },
-      ],
-    },
-  };
+      }
+    : {
+        inclusions: {
+          operator: "or",
+          rules: [
+            {
+              event_sources: [{ type: sourceTypeKey, id: sourceId }],
+              retention_seconds: retentionDays * 86400,
+              filter: {
+                operator: "and",
+                filters: [{ field: "event", operator: "eq", value: "page_engaged" }],
+              },
+            },
+          ],
+        },
+      };
 
   const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
   const body = new URLSearchParams({
