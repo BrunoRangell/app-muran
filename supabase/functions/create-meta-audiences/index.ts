@@ -180,14 +180,21 @@ async function createEngagementAudience(
   const audienceName =
     sourceType === "instagram" ? `[IG] Envolvidos - ${retentionDays}D` : `[FB] Envolvidos - ${retentionDays}D`;
 
+  // ✅ Usar event type correto baseado no arquivo de referência
+  const eventType = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
+  const sourceTypeKey = sourceType === "instagram" ? "ig_business" : "page";
+
   const rule = {
     inclusions: {
       operator: "or",
       rules: [
         {
-          event_sources: [{ id: sourceId, type: sourceType === "instagram" ? "instagram_account" : "page" }],
+          event_sources: [{ type: sourceTypeKey, id: sourceId }],
           retention_seconds: retentionDays * 86400,
-          filter: { operator: "or", filters: [{ field: "event", operator: "eq", value: "page_engaged" }] },
+          filter: {
+            operator: "and",
+            filters: [{ field: "event", operator: "eq", value: eventType }],
+          },
         },
       ],
     },
@@ -201,6 +208,8 @@ async function createEngagementAudience(
     access_token: accessToken,
   });
 
+  console.log(`[AUDIENCE] 🚀 Criando: ${audienceName} | Source: ${sourceId} | Type: ${sourceTypeKey}`);
+
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -213,7 +222,7 @@ async function createEngagementAudience(
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName}`);
+  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
   return data;
 }
 
@@ -260,6 +269,15 @@ Deno.serve(async (req) => {
       const siteDays = [7, 14, 30, 60, 90, 180];
       const engageDays = [7, 14, 30, 60, 90, 180, 365, 730];
 
+      console.log("[UNIFIED] 📥 Payload:", {
+        accountId,
+        siteEvents: siteEvents?.length || 0,
+        engagementTypes,
+        instagramAccountId,
+        facebookPageId,
+      });
+
+      // 🎯 SITE AUDIENCES
       if ((audienceType === "site" || action === "create_unified_audiences") && pixelId && (eventTypes || siteEvents)) {
         for (const event of eventTypes || siteEvents || []) {
           for (const d of siteDays) {
@@ -273,10 +291,17 @@ Deno.serve(async (req) => {
         }
       }
 
+      // 🎯 ENGAGEMENT AUDIENCES
       if ((audienceType === "engagement" || action === "create_unified_audiences") && engagementTypes?.length) {
         for (const type of engagementTypes) {
           const sourceId = type === "instagram" ? instagramAccountId : facebookPageId;
-          if (!sourceId) continue;
+          if (!sourceId) {
+            console.warn(`[UNIFIED] ⚠️ ${type} selecionado mas sem ID configurado`);
+            continue;
+          }
+
+          console.log(`[UNIFIED] 🎯 Criando públicos ${type.toUpperCase()} com source: ${sourceId}`);
+
           for (const d of engageDays) {
             try {
               const res = await createEngagementAudience(
@@ -288,6 +313,7 @@ Deno.serve(async (req) => {
               );
               results.push({ name: `[${type.toUpperCase()}] Envolvidos - ${d}D`, status: "success", id: res.id });
             } catch (err: any) {
+              console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
               results.push({
                 name: `[${type.toUpperCase()}] Envolvidos - ${d}D`,
                 status: "failed",
@@ -298,9 +324,20 @@ Deno.serve(async (req) => {
         }
       }
 
-      return new Response(JSON.stringify({ success: true, results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const created = results.filter((r) => r.status === "success").length;
+      const failed = results.filter((r) => r.status === "failed").length;
+
+      console.log(`[UNIFIED] ✅ Resumo: ${created} criados | ${failed} falharam`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          created,
+          failed,
+          audiences: results,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     throw new Error("Ação inválida");

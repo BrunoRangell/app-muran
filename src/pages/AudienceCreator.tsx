@@ -85,14 +85,25 @@ const AudienceCreator = () => {
     createAudiences(formData, {
       onSuccess: (data) => {
         setShowProgress(false);
+        
+        const totalCreated = (data.created || 0);
+        const totalFailed = (data.failed || 0);
+        const totalProcessed = totalCreated + totalFailed;
+        
+        // ✅ Só mostrar resultado se processou algo
+        if (totalProcessed === 0) {
+          toast.error("Nenhum público foi processado. Verifique as configurações.");
+          return;
+        }
+        
         setResult(data);
         setShowResult(true);
         
-        if (data.created > 0) {
-          toast.success(`${data.created} público(s) criado(s) com sucesso!`);
+        if (totalCreated > 0) {
+          toast.success(`${totalCreated} público(s) criado(s) com sucesso!`);
         }
-        if (data.failed > 0) {
-          toast.error(`${data.failed} público(s) falharam`);
+        if (totalFailed > 0) {
+          toast.warning(`${totalFailed} público(s) falharam`);
         }
       },
       onError: (error: any) => {
