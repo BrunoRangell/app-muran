@@ -138,27 +138,30 @@ async function createSiteAudience(
         {
           event_sources: [{ id: pixelId, type: "pixel" }],
           retention_seconds: retentionDays * 86400,
-          filter: { operator: "and", filters: [{ field: "event", operator: "eq", value: eventType }] },
+          filter: {
+            operator: "and",
+            filters: [{ field: "event", operator: "eq", value: eventType }],
+          },
         },
       ],
     },
   };
 
   const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
-  const body = new URLSearchParams({
-    name: audienceName,
-    subtype: "WEBSITE",
-    rule: JSON.stringify(rule),
-    access_token: accessToken,
-  });
+  console.log(`[AUDIENCE] 🚀 Criando público de site: ${audienceName}`);
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: audienceName,
+      subtype: "WEBSITE",
+      rule,
+      access_token: accessToken,
+    }),
   });
-  const data = await res.json();
 
+  const data = await res.json();
   if (!res.ok) {
     console.error("[AUDIENCE] ❌ Erro ao criar público de site:", data.error?.message);
     throw new Error(data.error?.message || "Erro ao criar público");
@@ -182,52 +185,52 @@ async function createEngagementAudience(
 
   const sourceTypeKey = sourceType === "instagram" ? "ig_business" : "page";
 
-  // ✅ Instagram: SEM filter | Facebook: COM filter (page_liked)
-  const rule = sourceType === "instagram" 
-    ? {
-        inclusions: {
-          operator: "or",
-          rules: [
-            {
-              event_sources: [{ type: sourceTypeKey, id: sourceId }],
-              retention_seconds: retentionDays * 86400,
-            },
-          ],
-        },
-      }
-    : {
-        inclusions: {
-          operator: "or",
-          rules: [
-            {
-              event_sources: [{ type: sourceTypeKey, id: sourceId }],
-              retention_seconds: retentionDays * 86400,
-              filter: {
-                operator: "and",
-                filters: [{ field: "event", operator: "eq", value: "page_liked" }],
+  const rule =
+    sourceType === "instagram"
+      ? {
+          inclusions: {
+            operator: "or",
+            rules: [
+              {
+                event_sources: [{ type: sourceTypeKey, id: sourceId }],
+                retention_seconds: retentionDays * 86400,
               },
-            },
-          ],
-        },
-      };
+            ],
+          },
+        }
+      : {
+          inclusions: {
+            operator: "or",
+            rules: [
+              {
+                event_sources: [{ type: sourceTypeKey, id: sourceId }],
+                retention_seconds: retentionDays * 86400,
+                filter: {
+                  operator: "and",
+                  filters: [{ field: "event", operator: "eq", value: "page_liked" }],
+                },
+              },
+            ],
+          },
+        };
 
   const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
-  const body = new URLSearchParams({
-    name: audienceName,
-    subtype: "ENGAGEMENT",
-    rule: JSON.stringify(rule),
-    access_token: accessToken,
-  });
-
-  console.log(`[AUDIENCE] 🚀 Criando: ${audienceName} | Source: ${sourceId} | Type: ${sourceTypeKey}`);
+  console.log(
+    `[AUDIENCE] 🚀 Criando público de engajamento: ${audienceName} | Source: ${sourceId} | Type: ${sourceTypeKey}`,
+  );
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: audienceName,
+      subtype: "ENGAGEMENT",
+      rule,
+      access_token: accessToken,
+    }),
   });
-  const data = await res.json();
 
+  const data = await res.json();
   if (!res.ok) {
     console.error("[AUDIENCE] ❌ Erro ao criar público de engajamento:", data.error?.message);
     throw new Error(data.error?.message || "Erro ao criar público");
@@ -276,6 +279,7 @@ Deno.serve(async (req) => {
     if (action === "create_audiences" || action === "create_unified_audiences") {
       const { audienceType, pixelId, eventTypes, siteEvents, instagramAccountId, facebookPageId, engagementTypes } =
         requestData;
+
       const results: any[] = [];
       const siteDays = [7, 14, 30, 60, 90, 180];
       const engageDays = [7, 14, 30, 60, 90, 180, 365, 730];
@@ -294,9 +298,17 @@ Deno.serve(async (req) => {
           for (const d of siteDays) {
             try {
               const res = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
-              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: res.id });
+              results.push({
+                name: `[SITE] ${event} - ${d}D`,
+                status: "success",
+                id: res.id,
+              });
             } catch (err: any) {
-              results.push({ name: `[SITE] ${event} - ${d}D`, status: "failed", error: err.message });
+              results.push({
+                name: `[SITE] ${event} - ${d}D`,
+                status: "failed",
+                error: err.message,
+              });
             }
           }
         }
@@ -323,7 +335,11 @@ Deno.serve(async (req) => {
                 accessToken,
               );
               const prefix = type === "instagram" ? "IG" : "FB";
-              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: res.id });
+              results.push({
+                name: `[${prefix}] Envolvidos - ${d}D`,
+                status: "success",
+                id: res.id,
+              });
             } catch (err: any) {
               console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
               const prefix = type === "instagram" ? "IG" : "FB";
