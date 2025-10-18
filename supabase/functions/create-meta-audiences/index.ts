@@ -182,7 +182,7 @@ async function createEngagementAudience(
 
   const sourceTypeKey = sourceType === "instagram" ? "ig_business" : "page";
 
-  // ✅ Instagram: SEM filter | Facebook: COM filter (page_engaged)
+  // ✅ Instagram: SEM filter | Facebook: COM filter (page_liked)
   const rule = sourceType === "instagram" 
     ? {
         inclusions: {
@@ -204,7 +204,7 @@ async function createEngagementAudience(
               retention_seconds: retentionDays * 86400,
               filter: {
                 operator: "and",
-                filters: [{ field: "event", operator: "eq", value: "page_engaged" }],
+                filters: [{ field: "event", operator: "eq", value: "page_liked" }],
               },
             },
           ],
