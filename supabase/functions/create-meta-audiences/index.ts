@@ -29,6 +29,14 @@ function withActPrefix(accountId: string): string {
   return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
 }
 
+// ✅ Sanitizador de nomes compatível com a API Meta
+function sanitizeAudienceName(name: string): string {
+  return name
+    .replace(/[\[\]\-\s]+/g, "_") // substitui colchetes, hífens e espaços por "_"
+    .replace(/[^a-zA-Z0-9_]/g, "") // remove qualquer outro caractere especial
+    .substring(0, 49); // garante menos de 50 caracteres
+}
+
 // Buscar token Meta no Supabase
 async function getMetaAccessToken(supabase: any): Promise<string> {
   const { data, error } = await supabase.from("api_tokens").select("value").eq("name", "meta_access_token").single();
@@ -61,7 +69,6 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   console.log("[IG] 🔍 Buscando IG vinculados a", actId);
 
   try {
-    // 1️⃣ tentar via conta de anúncios
     const direct = await fetch(
       `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name}&access_token=${accessToken}`,
     );
@@ -71,7 +78,6 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
       return directData.instagram_accounts.data;
     }
 
-    // 2️⃣ tentar via business
     const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
     const businessData = await business.json();
     const businessId = businessData.business?.id;
@@ -129,7 +135,8 @@ async function createSiteAudience(
   accessToken: string,
 ) {
   const actId = withActPrefix(accountId);
-  const audienceName = `[SITE] ${eventType} - ${retentionDays}D`;
+  let audienceName = `[SITE] ${eventType} - ${retentionDays}D`;
+  audienceName = sanitizeAudienceName(audienceName);
 
   const rule = {
     inclusions: {
@@ -180,8 +187,9 @@ async function createEngagementAudience(
   accessToken: string,
 ) {
   const actId = withActPrefix(accountId);
-  const audienceName =
+  let audienceName =
     sourceType === "instagram" ? `[IG] Envolvidos - ${retentionDays}D` : `[FB] Envolvidos - ${retentionDays}D`;
+  audienceName = sanitizeAudienceName(audienceName);
 
   const sourceTypeKey = sourceType === "instagram" ? "ig_business" : "page";
 
