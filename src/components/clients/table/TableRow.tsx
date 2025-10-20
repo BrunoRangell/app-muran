@@ -1,4 +1,3 @@
-
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DollarSign, Pencil } from "lucide-react";
@@ -10,57 +9,96 @@ interface ClientTableRowProps {
   columns: Column[];
   onEditClick: (client: Client) => void;
   onPaymentClick?: (clientId: string) => void;
-  viewMode?: 'default' | 'payments';
+  viewMode?: "default" | "payments";
+  className?: string; // ✅ permite aplicar classes externas (corrige o TS2322)
 }
 
-export const ClientTableRow = ({ 
-  client, 
-  columns, 
+export const ClientTableRow = ({
+  client,
+  columns,
   onEditClick,
   onPaymentClick,
-  viewMode = 'default'
+  viewMode = "default",
+  className = "",
 }: ClientTableRowProps) => {
   return (
-    <TableRow>
-      {columns.filter(col => col.show).map(column => {
-        const content = formatCellContent(client, column.id);
+    <TableRow
+      className={`transition-colors cursor-pointer ${className}`}
+      onClick={() => {
+        // permite clicar na linha inteira, mas sem interferir no botão
+        if (viewMode === "default") onEditClick(client);
+      }}
+    >
+      {columns
+        .filter((col) => col.show)
+        .map((column) => {
+          const content = formatCellContent(client, column.id);
 
-        if (column.id === 'status') {
+          // STATUS → mostra badge colorido
+          if (column.id === "status") {
+            return (
+              <TableCell key={column.id} className="text-sm font-medium">
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    client.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {client.status === "active" ? "Ativo" : "Inativo"}
+                </span>
+              </TableCell>
+            );
+          }
+
+          // CONTRATO → usa monoespaçada pra números
+          if (column.id === "contract_value") {
+            return (
+              <TableCell key={column.id} className="text-right font-mono text-sm text-gray-800">
+                {content}
+              </TableCell>
+            );
+          }
+
+          // CANAL DE AQUISIÇÃO → texto com leve destaque
+          if (column.id === "acquisition_channel") {
+            return (
+              <TableCell key={column.id} className="text-sm text-gray-700 capitalize">
+                {content || "-"}
+              </TableCell>
+            );
+          }
+
+          // DEMAIS CAMPOS → padrão simples e alinhado
           return (
-            <TableCell key={column.id}>
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  client.status === "active"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {client.status === "active" ? "Ativo" : "Inativo"}
-              </span>
+            <TableCell key={column.id} className="text-sm text-gray-800">
+              {content || "-"}
             </TableCell>
           );
-        }
+        })}
 
-        return (
-          <TableCell key={column.id}>{content}</TableCell>
-        );
-      })}
-      <TableCell className="text-right">
-        {viewMode === 'payments' ? (
+      {/* AÇÕES */}
+      <TableCell className="text-right w-[120px]">
+        {viewMode === "payments" ? (
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onPaymentClick?.(client.id)}
-            className="gap-2"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPaymentClick?.(client.id);
+            }}
+            className="gap-2 text-sm"
           >
             <DollarSign className="h-4 w-4" />
-            Registrar Pagamento
+            Registrar
           </Button>
         ) : (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onEditClick(client)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditClick(client);
+            }}
+            className="hover:text-muran-primary"
           >
             <Pencil className="h-4 w-4" />
           </Button>

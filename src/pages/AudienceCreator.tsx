@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users, Globe, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import InitialConfig from "@/components/audience-creator/InitialConfig";
 import SiteAudienceForm from "@/components/audience-creator/SiteAudienceForm";
 import EngagementAudienceForm from "@/components/audience-creator/EngagementAudienceForm";
@@ -23,6 +24,7 @@ interface UnifiedFormData {
 
 const AudienceCreator = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState<UnifiedFormData>({
     accountId: '',
     pixelId: '',
@@ -36,6 +38,14 @@ const AudienceCreator = () => {
   const [result, setResult] = useState<any>(null);
 
   const { mutate: createAudiences, isPending } = useCreateAudiences();
+
+  // Limpar cache ao montar componente
+  useEffect(() => {
+    console.log('[AudienceCreator] 🧹 Limpando cache ao montar componente...');
+    queryClient.removeQueries({ queryKey: ['meta-instagram-accounts'] });
+    queryClient.removeQueries({ queryKey: ['meta-facebook-pages'] });
+    queryClient.removeQueries({ queryKey: ['meta-pixels'] });
+  }, [queryClient]);
 
   const handleCreateAudiences = () => {
     // Validações
@@ -70,19 +80,47 @@ const AudienceCreator = () => {
       return;
     }
 
+    // ✅ Validação adicional: verificar se há conteúdo válido
+    const hasInstagram = formData.engagementTypes.includes('instagram') && formData.instagramAccountId;
+    const hasFacebook = formData.engagementTypes.includes('facebook') && formData.facebookPageId;
+    const hasSite = formData.siteEvents.length > 0 && formData.pixelId;
+    
+    if (!hasInstagram && !hasFacebook && !hasSite) {
+      toast.error("Selecione pelo menos um tipo de público válido para criar");
+      return;
+    }
+
+    console.log("[FRONTEND] 🚀 Iniciando criação:", {
+      instagram: hasInstagram,
+      facebook: hasFacebook,
+      site: hasSite,
+      accountId: formData.accountId
+    });
+
     setShowProgress(true);
 
     createAudiences(formData, {
       onSuccess: (data) => {
         setShowProgress(false);
+        
+        const totalCreated = (data.created || 0);
+        const totalFailed = (data.failed || 0);
+        const totalProcessed = totalCreated + totalFailed;
+        
+        // ✅ Só mostrar resultado se processou algo
+        if (totalProcessed === 0) {
+          toast.error("Nenhum público foi processado. Verifique as configurações.");
+          return;
+        }
+        
         setResult(data);
         setShowResult(true);
         
-        if (data.created > 0) {
-          toast.success(`${data.created} público(s) criado(s) com sucesso!`);
+        if (totalCreated > 0) {
+          toast.success(`${totalCreated} público(s) criado(s) com sucesso!`);
         }
-        if (data.failed > 0) {
-          toast.error(`${data.failed} público(s) falharam`);
+        if (totalFailed > 0) {
+          toast.warning(`${totalFailed} público(s) falharam`);
         }
       },
       onError: (error: any) => {
@@ -140,9 +178,21 @@ const AudienceCreator = () => {
           {/* Configuração Inicial */}
           <InitialConfig
             accountId={formData.accountId}
-            pixelId={formData.pixelId}
-            onAccountIdChange={(value) => setFormData({ ...formData, accountId: value, pixelId: '', siteEvents: [], engagementTypes: [], instagramAccountId: undefined, facebookPageId: undefined })}
-            onPixelIdChange={(value) => setFormData({ ...formData, pixelId: value })}
+            onAccountIdChange={(value) => {
+              // Invalidar cache quando trocar de conta
+              queryClient.invalidateQueries({ queryKey: ['meta-instagram-accounts'] });
+              queryClient.invalidateQueries({ queryKey: ['meta-facebook-pages'] });
+              queryClient.invalidateQueries({ queryKey: ['meta-pixels'] });
+              setFormData({ 
+                ...formData, 
+                accountId: value, 
+                pixelId: '', 
+                siteEvents: [], 
+                engagementTypes: [], 
+                instagramAccountId: undefined, 
+                facebookPageId: undefined 
+              });
+            }}
           />
 
           {/* Públicos de Site */}
@@ -161,16 +211,13 @@ const AudienceCreator = () => {
               </div>
 
               <SiteAudienceForm
+                accountId={formData.accountId}
+                pixelId={formData.pixelId}
                 selectedEvents={formData.siteEvents}
+                onPixelChange={(value) => setFormData({ ...formData, pixelId: value })}
                 onChange={(events) => setFormData({ ...formData, siteEvents: events })}
                 disabled={!formData.pixelId}
               />
-              
-              {!formData.pixelId && (
-                <p className="text-sm text-muted-foreground mt-4 text-center">
-                  Selecione um pixel na configuração inicial para habilitar
-                </p>
-              )}
             </Card>
           )}
 

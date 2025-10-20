@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface OrchestrationRequest {
-  clientId: string;
+  companyName: string;
   integrations: {
     clickup: boolean;
     discord: boolean;
@@ -21,49 +21,17 @@ serve(async (req) => {
   }
 
   try {
-    const { clientId, integrations }: OrchestrationRequest = await req.json();
+    const { companyName, integrations }: OrchestrationRequest = await req.json();
 
-    console.log(`🎯 [ORCHESTRATOR] Iniciando onboarding para cliente ${clientId}`);
+    console.log(`🎯 [ORCHESTRATOR] Iniciando onboarding para ${companyName}`);
     console.log(`🔧 [ORCHESTRATOR] Integrações: ${JSON.stringify(integrations)}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Buscar dados do cliente
-    const { data: client, error: clientError } = await supabase
-      .from('clients')
-      .select('company_name')
-      .eq('id', clientId)
-      .single();
-
-    if (clientError || !client) {
-      throw new Error('Cliente não encontrado');
-    }
-
-    const clientName = client.company_name;
+    const clientName = companyName;
     console.log(`👤 [ORCHESTRATOR] Cliente: ${clientName}`);
-
-    // Criar ou atualizar registro de onboarding
-    const { data: existingOnboarding } = await supabase
-      .from('onboarding')
-      .select('id')
-      .eq('client_id', clientId)
-      .single();
-
-    if (existingOnboarding) {
-      await supabase
-        .from('onboarding')
-        .update({ status: 'in_progress' })
-        .eq('client_id', clientId);
-    } else {
-      await supabase
-        .from('onboarding')
-        .insert({
-          client_id: clientId,
-          status: 'in_progress'
-        });
-    }
 
     const results = {
       clickup: null as any,
@@ -79,7 +47,7 @@ serve(async (req) => {
       console.log(`📁 [ORCHESTRATOR] Iniciando Google Drive...`);
       try {
         const driveResult = await supabase.functions.invoke('create-drive-folder', {
-          body: { clientName, clientId }
+          body: { clientName }
         });
         results.drive = driveResult.data;
         driveLink = driveResult.data?.folderLink;
@@ -95,7 +63,7 @@ serve(async (req) => {
       console.log(`💬 [ORCHESTRATOR] Iniciando Discord...`);
       try {
         const discordResult = await supabase.functions.invoke('create-discord-channel', {
-          body: { clientName, clientId, driveLink }
+          body: { clientName, driveLink }
         });
         results.discord = discordResult.data;
         console.log(`✅ [ORCHESTRATOR] Discord concluído`);
@@ -110,7 +78,7 @@ serve(async (req) => {
       console.log(`📋 [ORCHESTRATOR] Iniciando ClickUp...`);
       try {
         const clickupResult = await supabase.functions.invoke('create-clickup-project', {
-          body: { clientName, clientId }
+          body: { clientName }
         });
         results.clickup = clickupResult.data;
         console.log(`✅ [ORCHESTRATOR] ClickUp concluído`);
@@ -131,15 +99,6 @@ serve(async (req) => {
     } else if (successfulIntegrations < enabledIntegrations) {
       finalStatus = 'partial';
     }
-
-    // Atualizar status final
-    await supabase
-      .from('onboarding')
-      .update({
-        status: finalStatus,
-        completed_at: new Date().toISOString()
-      })
-      .eq('client_id', clientId);
 
     console.log(`🎉 [ORCHESTRATOR] Onboarding concluído: ${finalStatus}`);
     console.log(`📊 [ORCHESTRATOR] ${successfulIntegrations}/${enabledIntegrations} integrações bem-sucedidas`);

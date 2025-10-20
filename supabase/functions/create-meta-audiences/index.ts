@@ -1,356 +1,370 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { corsHeaders } from '../_shared/cors.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const GRAPH_API_VERSION = 'v21.0';
+const GRAPH_API_VERSION = "v23.0";
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
 interface CreateAudienceRequest {
-  action: 'fetch_accounts' | 'fetch_pixels' | 'fetch_instagram_accounts' | 'fetch_facebook_pages' | 'create_audiences';
+  action:
+    | "fetch_accounts"
+    | "fetch_pixels"
+    | "fetch_instagram_accounts"
+    | "fetch_facebook_pages"
+    | "create_audiences"
+    | "create_unified_audiences";
   accountId?: string;
-  audienceType?: 'site' | 'engagement';
+  audienceType?: "site" | "engagement";
   pixelId?: string;
   eventTypes?: string[];
+  siteEvents?: string[];
   instagramAccountId?: string;
   facebookPageId?: string;
   engagementTypes?: string[];
+  debugToken?: string;
 }
 
-// Função para buscar o token Meta do banco de dados
+// Helper → sempre garantir act_ prefixado
+function withActPrefix(accountId: string): string {
+  if (!accountId) return "";
+  return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
+}
+
+// Buscar token Meta no Supabase
 async function getMetaAccessToken(supabase: any): Promise<string> {
-  const { data, error } = await supabase
-    .from('api_tokens')
-    .select('value')
-    .eq('name', 'META_ADS_ACCESS_TOKEN')
-    .single();
+  const { data, error } = await supabase.from("api_tokens").select("value").eq("name", "meta_access_token").single();
 
-  if (error || !data) {
-    throw new Error('Token Meta Ads não encontrado no banco de dados');
-  }
-
+  if (error || !data) throw new Error("Token Meta Ads não encontrado no banco");
   return data.value;
 }
 
-// Buscar pixels de uma conta
+// ======================== FETCH PIXELS ========================
 async function fetchPixels(accountId: string, accessToken: string) {
-  const url = `${GRAPH_API_BASE}/${accountId}/adspixels?fields=id,name&access_token=${accessToken}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Erro ao buscar pixels: ${error}`);
-  }
+  const actId = withActPrefix(accountId);
+  const url = `${GRAPH_API_BASE}/${actId}/adspixels?fields=id,name&access_token=${accessToken}`;
+  console.log("[PIXEL] 🔍", url);
 
-  const data = await response.json();
-  return data.data || [];
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || "Erro ao buscar pixels");
+    console.log(`[PIXEL] ✅ ${data.data?.length || 0} encontrados`);
+    return data.data || [];
+  } catch (err: any) {
+    console.error("[PIXEL] ❌ Erro Graph:", err.message);
+    return [];
+  }
 }
 
-// Buscar perfis Instagram vinculados
+// ======================== FETCH INSTAGRAM ========================
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
-  const url = `${GRAPH_API_BASE}/${accountId}?fields=instagram_accounts{id,name,username}&access_token=${accessToken}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Erro ao buscar perfis Instagram: ${error}`);
-  }
+  const actId = withActPrefix(accountId);
+  console.log("[IG] 🔍 Buscando IG vinculados a", actId);
 
-  const data = await response.json();
-  return data.instagram_accounts?.data || [];
+  try {
+    // 1️⃣ tentar via conta de anúncios
+    const direct = await fetch(
+      `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name}&access_token=${accessToken}`,
+    );
+    const directData = await direct.json();
+    if (direct.ok && directData.instagram_accounts?.data?.length) {
+      console.log(`[IG] ✅ Direto: ${directData.instagram_accounts.data.length}`);
+      return directData.instagram_accounts.data;
+    }
+
+    // 2️⃣ tentar via business
+    const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
+    const businessData = await business.json();
+    const businessId = businessData.business?.id;
+    if (!businessId) {
+      console.warn("[IG] ⚠️ Nenhum business vinculado.");
+      return [];
+    }
+
+    const ig = await fetch(
+      `${GRAPH_API_BASE}/${businessId}/instagram_accounts?fields=id,username,name&access_token=${accessToken}`,
+    );
+    const igData = await ig.json();
+    if (!ig.ok) throw new Error(igData.error?.message || "Erro no IG Business");
+    console.log(`[IG] ✅ via Business: ${igData.data?.length || 0}`);
+    return igData.data || [];
+  } catch (err: any) {
+    console.error("[IG] ❌ Erro Graph:", err.message);
+    return [];
+  }
 }
 
-// Buscar páginas Facebook
+// ======================== FETCH FACEBOOK PAGES ========================
 async function fetchFacebookPages(accountId: string, accessToken: string) {
-  const url = `${GRAPH_API_BASE}/${accountId}?fields=pages{id,name}&access_token=${accessToken}`;
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Erro ao buscar páginas Facebook: ${error}`);
-  }
+  const actId = withActPrefix(accountId);
+  console.log("[FB] 🔍 Buscando páginas vinculadas a", actId);
 
-  const data = await response.json();
-  return data.pages?.data || [];
+  try {
+    const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
+    const businessData = await business.json();
+    const businessId = businessData.business?.id;
+    if (!businessId) {
+      console.warn("[FB] ⚠️ Nenhum business vinculado.");
+      return [];
+    }
+
+    const pages = await fetch(
+      `${GRAPH_API_BASE}/${businessId}?fields=owned_pages{id,name,link,picture,fan_count}&access_token=${accessToken}`,
+    );
+    const pagesData = await pages.json();
+    if (!pages.ok) throw new Error(pagesData.error?.message || "Erro no FB Pages");
+    console.log(`[FB] ✅ ${pagesData.owned_pages?.data?.length || 0} páginas`);
+    return pagesData.owned_pages?.data || [];
+  } catch (err: any) {
+    console.error("[FB] ❌ Erro Graph:", err.message);
+    return [];
+  }
 }
 
-// Criar público de site
+// ======================== CREATE SITE AUDIENCE ========================
 async function createSiteAudience(
   accountId: string,
   pixelId: string,
   eventType: string,
   retentionDays: number,
-  accessToken: string
+  accessToken: string,
 ) {
+  const actId = withActPrefix(accountId);
   const audienceName = `[SITE] ${eventType} - ${retentionDays}D`;
-  
+
   const rule = {
     inclusions: {
-      operator: 'or',
+      operator: "or",
       rules: [
         {
-          event_sources: [{ id: pixelId, type: 'pixel' }],
+          event_sources: [{ id: pixelId, type: "pixel" }],
           retention_seconds: retentionDays * 86400,
-          filter: {
-            operator: 'and',
-            filters: [
-              { field: 'event', operator: 'eq', value: eventType }
-            ]
-          }
-        }
-      ]
-    }
+          filter: { operator: "and", filters: [{ field: "event", operator: "eq", value: eventType }] },
+        },
+      ],
+    },
   };
 
-  const url = `${GRAPH_API_BASE}/${accountId}/customaudiences`;
+  const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
   const body = new URLSearchParams({
     name: audienceName,
-    subtype: 'WEBSITE',
+    subtype: "WEBSITE",
     rule: JSON.stringify(rule),
-    access_token: accessToken
+    access_token: accessToken,
   });
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
   });
+  const data = await res.json();
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Erro ao criar público');
+  if (!res.ok) {
+    console.error("[AUDIENCE] ❌ Erro ao criar público de site:", data.error?.message);
+    throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  return await response.json();
+  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName}`);
+  return data;
 }
 
-// Criar público de engajamento
+// ======================== CREATE ENGAGEMENT AUDIENCE ========================
 async function createEngagementAudience(
   accountId: string,
   sourceId: string,
-  sourceType: 'instagram' | 'facebook',
+  sourceType: "instagram" | "facebook",
   retentionDays: number,
-  accessToken: string
+  accessToken: string,
 ) {
-  const audienceName = sourceType === 'instagram' 
-    ? `[IG] Envolvidos - ${retentionDays}D`
-    : `[FB] Envolvidos - ${retentionDays}D`;
-  
-  const rule = {
-    inclusions: {
-      operator: 'or',
-      rules: [
+  const actId = withActPrefix(accountId);
+  const retentionSeconds = retentionDays * 86400;
+  const prefix = sourceType === "instagram" ? "IG" : "FB";
+  const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
+
+  const objectType = sourceType === "instagram" ? "ig_business" : "page";
+  const eventName = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
+
+  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
+
+  const payload = {
+    name: audienceName,
+    subtype: "ENGAGEMENT",
+    prefill: true,
+
+    // ⚠️ Adiciona rule mínima apenas para atender o requisito
+    rule: {
+      inclusions: {
+        operator: "or",
+        rules: [
+          {
+            object_id: String(sourceId),
+            event_name: eventName,
+            retention_seconds: retentionSeconds,
+          },
+        ],
+      },
+    },
+
+    // ✅ Nova estrutura funcional de engajamento
+    engagement_audience_details: {
+      engagement_type: eventName,
+      engagement_spec: [
         {
-          event_sources: [
-            {
-              id: sourceId,
-              type: sourceType === 'instagram' ? 'instagram_account' : 'page'
-            }
-          ],
-          retention_seconds: retentionDays * 86400,
-          filter: {
-            operator: 'or',
-            filters: [
-              { field: 'event', operator: 'eq', value: 'page_engaged' }
-            ]
-          }
-        }
-      ]
-    }
+          object_id: String(sourceId),
+          type: objectType,
+          retention_seconds: retentionSeconds,
+        },
+      ],
+    },
+
+    access_token: accessToken,
   };
 
-  const url = `${GRAPH_API_BASE}/${accountId}/customaudiences`;
-  const body = new URLSearchParams({
-    name: audienceName,
-    subtype: 'ENGAGEMENT',
-    rule: JSON.stringify(rule),
-    access_token: accessToken
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`);
+  console.log(JSON.stringify(payload, null, 2));
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
-  });
+  const raw = await res.text();
+  console.log("→ Resposta bruta:", raw);
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Erro ao criar público');
+  if (!res.ok) {
+    const err = JSON.parse(raw);
+    console.error(`[AUDIENCE] ❌ Erro (${res.status})`, err);
+    throw new Error(err.error?.message || "Erro ao criar público");
   }
 
-  return await response.json();
+  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`);
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━");
 }
 
+// ======================== MAIN SERVER HANDLER ========================
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const requestData: CreateAudienceRequest = await req.json();
-    const { action } = requestData;
+    const { action, accountId } = requestData;
 
-    console.log('[create-meta-audiences] Action:', action);
-
-    // Buscar token do banco de dados
     const accessToken = await getMetaAccessToken(supabase);
 
-    if (action === 'fetch_pixels') {
-      const { accountId } = requestData;
-      if (!accountId) throw new Error('accountId é obrigatório');
-      
-      const pixels = await fetchPixels(accountId, accessToken);
-      return new Response(
-        JSON.stringify({ success: true, pixels }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // === PIXELS ===
+    if (action === "fetch_pixels") {
+      const pixels = await fetchPixels(accountId!, accessToken);
+      return new Response(JSON.stringify({ success: true, pixels }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (action === 'fetch_instagram_accounts') {
-      const { accountId } = requestData;
-      if (!accountId) throw new Error('accountId é obrigatório');
-      
-      const accounts = await fetchInstagramAccounts(accountId, accessToken);
-      return new Response(
-        JSON.stringify({ success: true, accounts }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // === INSTAGRAM ===
+    if (action === "fetch_instagram_accounts") {
+      const accounts = await fetchInstagramAccounts(accountId!, accessToken);
+      return new Response(JSON.stringify({ success: true, accounts }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (action === 'fetch_facebook_pages') {
-      const { accountId } = requestData;
-      if (!accountId) throw new Error('accountId é obrigatório');
-      
-      const pages = await fetchFacebookPages(accountId, accessToken);
-      return new Response(
-        JSON.stringify({ success: true, pages }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // === FACEBOOK ===
+    if (action === "fetch_facebook_pages") {
+      const pages = await fetchFacebookPages(accountId!, accessToken);
+      return new Response(JSON.stringify({ success: true, pages }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (action === 'create_audiences') {
-      const { 
-        accountId, 
-        audienceType, 
-        pixelId, 
-        eventTypes,
+    // === CRIAR PÚBLICOS ===
+    if (action === "create_audiences" || action === "create_unified_audiences") {
+      const { audienceType, pixelId, eventTypes, siteEvents, instagramAccountId, facebookPageId, engagementTypes } =
+        requestData;
+      const results: any[] = [];
+      const siteDays = [7, 14, 30, 60, 90, 180];
+      const engageDays = [7, 14, 30, 60, 90, 180, 365, 730];
+
+      console.log("[UNIFIED] 📥 Payload:", {
+        accountId,
+        siteEvents: siteEvents?.length || 0,
+        engagementTypes,
         instagramAccountId,
         facebookPageId,
-        engagementTypes
-      } = requestData;
+      });
 
-      if (!accountId || !audienceType) {
-        throw new Error('accountId e audienceType são obrigatórios');
-      }
-
-      const results = [];
-      let created = 0;
-      let failed = 0;
-
-      if (audienceType === 'site') {
-        if (!pixelId || !eventTypes || eventTypes.length === 0) {
-          throw new Error('pixelId e eventTypes são obrigatórios para públicos de site');
-        }
-
-        const siteRetentionDays = [7, 14, 30, 60, 90, 180];
-
-        for (const eventType of eventTypes) {
-          for (const days of siteRetentionDays) {
+      // 🎯 SITE AUDIENCES
+      if ((audienceType === "site" || action === "create_unified_audiences") && pixelId && (eventTypes || siteEvents)) {
+        for (const event of eventTypes || siteEvents || []) {
+          for (const d of siteDays) {
             try {
-              const result = await createSiteAudience(accountId, pixelId, eventType, days, accessToken);
-              results.push({
-                name: `[SITE] ${eventType} - ${days}D`,
-                status: 'success',
-                audienceId: result.id
-              });
-              created++;
-            } catch (error: any) {
-              results.push({
-                name: `[SITE] ${eventType} - ${days}D`,
-                status: 'failed',
-                error: error.message
-              });
-              failed++;
+              const res = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
+              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: res.id });
+            } catch (err: any) {
+              results.push({ name: `[SITE] ${event} - ${d}D`, status: "failed", error: err.message });
             }
           }
         }
-      } else if (audienceType === 'engagement') {
-        if (!engagementTypes || engagementTypes.length === 0) {
-          throw new Error('engagementTypes é obrigatório para públicos de engajamento');
-        }
+      }
 
-        const engagementRetentionDays = [7, 14, 30, 60, 90, 180, 365, 730];
-
+      // 🎯 ENGAGEMENT AUDIENCES
+      if ((audienceType === "engagement" || action === "create_unified_audiences") && engagementTypes?.length) {
         for (const type of engagementTypes) {
-          for (const days of engagementRetentionDays) {
+          const sourceId = type === "instagram" ? instagramAccountId : facebookPageId;
+          if (!sourceId) {
+            console.warn(`[UNIFIED] ⚠️ ${type} selecionado mas sem ID configurado`);
+            continue;
+          }
+
+          console.log(`[UNIFIED] 🎯 Criando públicos ${type.toUpperCase()} com source: ${sourceId}`);
+
+          for (const d of engageDays) {
             try {
-              if (type === 'instagram' && instagramAccountId) {
-                const result = await createEngagementAudience(
-                  accountId,
-                  instagramAccountId,
-                  'instagram',
-                  days,
-                  accessToken
-                );
-                results.push({
-                  name: `[IG] Envolvidos - ${days}D`,
-                  status: 'success',
-                  audienceId: result.id
-                });
-                created++;
-              } else if (type === 'facebook' && facebookPageId) {
-                const result = await createEngagementAudience(
-                  accountId,
-                  facebookPageId,
-                  'facebook',
-                  days,
-                  accessToken
-                );
-                results.push({
-                  name: `[FB] Envolvidos - ${days}D`,
-                  status: 'success',
-                  audienceId: result.id
-                });
-                created++;
-              }
-            } catch (error: any) {
-              const name = type === 'instagram' 
-                ? `[IG] Envolvidos - ${days}D`
-                : `[FB] Envolvidos - ${days}D`;
+              const res = await createEngagementAudience(
+                accountId!,
+                sourceId,
+                type as "instagram" | "facebook",
+                d,
+                accessToken,
+              );
+              const prefix = type === "instagram" ? "IG" : "FB";
+              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: res.id });
+            } catch (err: any) {
+              console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
+              const prefix = type === "instagram" ? "IG" : "FB";
               results.push({
-                name,
-                status: 'failed',
-                error: error.message
+                name: `[${prefix}] Envolvidos - ${d}D`,
+                status: "failed",
+                error: err.message,
               });
-              failed++;
             }
           }
         }
       }
+
+      const created = results.filter((r) => r.status === "success").length;
+      const failed = results.filter((r) => r.status === "failed").length;
+
+      console.log(`[UNIFIED] ✅ Resumo: ${created} criados | ${failed} falharam`);
 
       return new Response(
         JSON.stringify({
           success: true,
           created,
           failed,
-          audiences: results
+          audiences: results,
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    throw new Error('Ação inválida');
-
-  } catch (error: any) {
-    console.error('[create-meta-audiences] Error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    throw new Error("Ação inválida");
+  } catch (err: any) {
+    console.error("[create-meta-audiences] ❌ Erro geral:", err.message);
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

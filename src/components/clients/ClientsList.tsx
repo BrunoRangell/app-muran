@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useClientsPaginated } from "@/hooks/queries/useClientsPaginated";
 import { useClientColumns } from "@/hooks/useClientColumns";
 import { useClientFilters } from "@/hooks/useClientFilters";
@@ -14,16 +13,17 @@ import { Loader2 } from "lucide-react";
 export const ClientsList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const { columns, toggleColumn } = useClientColumns({ viewMode: 'default' });
+
+  // Novo: estado para ordenação
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({
+    key: "",
+    direction: "asc",
+  });
+
+  const { columns, toggleColumn } = useClientColumns({ viewMode: "default" });
   const { filters, updateFilter, clearFilters, hasActiveFilters } = useClientFilters();
-  const { 
-    clients, 
-    totalCount,
-    isLoading, 
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage 
-  } = useClientsPaginated(filters);
+  const { clients, totalCount, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useClientsPaginated(filters);
 
   const handleEditClick = (client: Client) => {
     setSelectedClient(client);
@@ -34,6 +34,35 @@ export const ClientsList = () => {
     setSelectedClient(null);
     setIsFormOpen(true);
   };
+
+  // Handler para alternar a ordenação
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        // Alterna asc/desc
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  // Ordenação aplicada localmente aos clientes já carregados
+  const sortedClients = [...(clients || [])].sort((a, b) => {
+    const { key, direction } = sortConfig;
+    if (!key) return 0;
+
+    const aValue = (a as any)[key];
+    const bValue = (b as any)[key];
+
+    if (aValue == null || bValue == null) return 0;
+
+    // Comparação numérica ou textual
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return direction === "asc" ? aValue - bValue : bValue - aValue;
+    }
+    const comparison = String(aValue).localeCompare(String(bValue), "pt-BR", { numeric: true });
+    return direction === "asc" ? comparison : -comparison;
+  });
 
   return (
     <>
@@ -53,11 +82,11 @@ export const ClientsList = () => {
         </div>
 
         <ClientsTable
-          clients={clients || []}
+          clients={sortedClients}
           columns={columns}
           onEditClick={handleEditClick}
-          sortConfig={{ key: "", direction: "asc" }}
-          onSort={() => {}}
+          sortConfig={sortConfig}
+          onSort={handleSort}
           isLoading={isLoading}
         />
 
@@ -84,10 +113,7 @@ export const ClientsList = () => {
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-2xl">
-          <ClientForm
-            initialData={selectedClient}
-            onSuccess={() => setIsFormOpen(false)}
-          />
+          <ClientForm initialData={selectedClient} onSuccess={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>
     </>
