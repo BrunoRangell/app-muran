@@ -177,49 +177,43 @@ async function createEngagementAudience(
   accessToken: string,
 ) {
   const actId = withActPrefix(accountId);
-
-  // ✅ Nome compatível com API (sem colchetes, sem espaços)
-  const audienceName =
-    sourceType === "instagram" ? `IG_Envolvidos_${retentionDays}D` : `FB_Envolvidos_${retentionDays}D`;
-
-  const subtype = "ENGAGEMENT";
   const retentionSeconds = retentionDays * 86400;
 
-  // ✅ Regras específicas por tipo
-  const rule =
-    sourceType === "instagram"
-      ? {
-          inclusions: {
-            operator: "or",
-            rules: [
-              {
-                event_sources: [{ id: sourceId, type: "ig_business" }],
-                retention_seconds: retentionSeconds,
-              },
-            ],
-          },
-          rule_aggregation: "union",
-        }
-      : {
-          inclusions: {
-            operator: "or",
-            rules: [
-              {
-                event_sources: [{ id: sourceId, type: "page" }],
-                retention_seconds: retentionSeconds,
+  // ✅ Nomes simples, válidos
+  const prefix = sourceType === "instagram" ? "IG" : "FB";
+  const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
+
+  // ✅ Ajuste de tipo e evento conforme documentação atualizada
+  const isInstagram = sourceType === "instagram";
+  const sourceTypeKey = isInstagram ? "ig_professional" : "page";
+  const eventValue = isInstagram ? "ig_account_engaged" : "page_engaged";
+
+  // ✅ subtype = CUSTOM (mais estável que ENGAGEMENT)
+  const subtype = "CUSTOM";
+
+  // ✅ Regra simplificada
+  const rule = {
+    inclusions: {
+      operator: "or",
+      rules: [
+        {
+          event_sources: [{ id: sourceId, type: sourceTypeKey }],
+          retention_seconds: retentionSeconds,
+          ...(isInstagram
+            ? {}
+            : {
                 filter: {
                   operator: "and",
-                  filters: [{ field: "event", operator: "eq", value: "page_engaged" }],
+                  filters: [{ field: "event", operator: "eq", value: eventValue }],
                 },
-              },
-            ],
-          },
-          rule_aggregation: "union",
-        };
+              }),
+        },
+      ],
+    },
+  };
 
   console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`, { subtype, rule });
 
-  // ✅ Usar FormData em vez de URLSearchParams (evita encoding incorreto)
   const formData = new FormData();
   formData.append("name", audienceName);
   formData.append("subtype", subtype);
@@ -247,7 +241,7 @@ async function createEngagementAudience(
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
+  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`, data);
   return data;
 }
 
