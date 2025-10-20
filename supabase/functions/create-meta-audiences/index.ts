@@ -178,75 +178,93 @@ async function createEngagementAudience(
 ) {
   const actId = withActPrefix(accountId);
   const audienceName =
-    sourceType === "instagram" ? `[IG] Envolvidos - ${retentionDays}D` : `[FB] Envolvidos - ${retentionDays}D`;
+    sourceType === "instagram" ? `[IG] Envolvidos_${retentionDays}D` : `[FB] Envolvidos_${retentionDays}D`;
 
-  // ✅ Construir rule condicionalmente conforme documentação Meta
-  // Instagram: SEM filter (evento inclusivo ig_business_profile_all)
-  // Facebook: COM filter page_engaged
-  const rule = sourceType === "instagram" 
-    ? {
-        inclusions: {
-          operator: "or",
-          rules: [{
-            event_sources: [{ type: "ig_business", id: sourceId }],
-            retention_seconds: retentionDays * 86400
-            // SEM filter para Instagram conforme documentação
-          }]
-        }
-      }
-    : {
-        inclusions: {
-          operator: "or",
-          rules: [{
-            event_sources: [{ type: "page", id: sourceId }],
-            retention_seconds: retentionDays * 86400,
-            filter: {
-              operator: "and",
-              filters: [{ field: "event", operator: "eq", value: "page_engaged" }]
-            }
-          }]
-        }
-      };
+  const retentionSeconds = retentionDays * 86400;
 
-  console.log(`[AUDIENCE] 📋 Payload ${sourceType}:`, {
-    name: audienceName,
-    subtype: "ENGAGEMENT",
-    rule: JSON.stringify(rule, null, 2),
-    sourceId,
-    retentionDays,
-    hasFilter: sourceType !== "instagram"
+  // ✅ Construir o rule corretamente conforme documentação
+  const rule =
+    sourceType === "instagram"
+      ? {
+          inclusions: {
+            operator: "or",
+            rules: [
+              {
+                event_sources: [{ id: sourceId, type: "ig_business" }],
+                retention_seconds: retentionSeconds,
+                filter: {
+                  operator: "and",
+                  filters: [
+                    {
+                      field: "event",
+                      operator: "eq",
+                      value: "ig_business_profile_all",
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        }
+      : {
+          inclusions: {
+            operator: "or",
+            rules: [
+              {
+                event_sources: [{ id: sourceId, type: "page" }],
+                retention_seconds: retentionSeconds,
+                filter: {
+                  operator: "and",
+                  filters: [
+                    {
+                      field: "event",
+                      operator: "eq",
+                      value: "page_engaged",
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        };
+
+  console.log(`[AUDIENCE] 🚀 Enviando ${sourceType.toUpperCase()}:`, {
+    audienceName,
+    rule,
   });
 
-  const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
-  const body = new URLSearchParams({
-    name: audienceName,
-    subtype: "ENGAGEMENT",
-    rule: JSON.stringify(rule),
-    access_token: accessToken,
-  });
+  const url = `https://graph.facebook.com/v24.0/${actId}/customaudiences`;
 
-  console.log(`[AUDIENCE] 🚀 Criando: ${audienceName} | Source: ${sourceId} | Type: ${sourceType}`);
+  const formData = new FormData();
+  formData.append("name", audienceName);
+  formData.append("subtype", "ENGAGEMENT");
+  formData.append("rule", JSON.stringify(rule));
+  formData.append("prefill", "1");
+  formData.append("access_token", accessToken);
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
+    body: formData,
   });
-  const data = await res.json();
+
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { raw: text };
+  }
 
   if (!res.ok) {
-    console.error(`[AUDIENCE] ❌ Erro ao criar ${sourceType}:`, {
+    console.error(`[AUDIENCE] ❌ Erro ${sourceType.toUpperCase()}:`, {
       status: res.status,
-      error: data.error,
-      sentPayload: {
-        name: audienceName,
-        rule: JSON.stringify(rule, null, 2)
-      }
+      body: text,
+      sent: { name: audienceName, rule },
     });
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
+  console.log(`[AUDIENCE] ✅ Criado ${audienceName}`, data);
   return data;
 }
 
