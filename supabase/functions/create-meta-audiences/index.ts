@@ -178,47 +178,62 @@ async function createEngagementAudience(
 ) {
   const actId = withActPrefix(accountId);
   const retentionSeconds = retentionDays * 86400;
+
+  // Nome simples e válido
   const prefix = sourceType === "instagram" ? "IG" : "FB";
   const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
 
-  // ⚙️ Tipos de origem e eventos válidos para v23
-  const eventSourceType = sourceType === "instagram" ? "ig_professional" : "page";
-  const eventName = sourceType === "instagram" ? "ig_account_engaged" : "page_engaged";
+  // ⚙️ Configuração correta por tipo
+  let eventSourceType = "";
+  let rule: any = {};
 
-  // ✅ subtype deve ser ENGAGEMENT (com prefill e origin válido)
-  const subtype = "ENGAGEMENT";
+  if (sourceType === "instagram") {
+    // ✅ IG usa "ig_business" ainda para contas vinculadas ao Business Manager
+    // ⚠️ "ig_professional" só funciona em contas vinculadas via Graph Pro
+    eventSourceType = "ig_business";
 
-  // ✅ Construção da regra
-  const rule = {
-    inclusions: {
-      operator: "or",
-      rules: [
-        {
-          event_sources: [{ id: sourceId, type: eventSourceType }],
-          retention_seconds: retentionSeconds,
-          filter:
-            sourceType === "facebook"
-              ? {
-                  operator: "and",
-                  filters: [{ field: "event", operator: "eq", value: eventName }],
-                }
-              : undefined,
-        },
-      ],
-    },
-  };
+    rule = {
+      inclusions: {
+        operator: "or",
+        rules: [
+          {
+            event_sources: [{ id: sourceId, type: eventSourceType }],
+            retention_seconds: retentionSeconds,
+          },
+        ],
+      },
+    };
+  } else {
+    // ✅ Facebook usa page + page_engaged
+    eventSourceType = "page";
+    rule = {
+      inclusions: {
+        operator: "or",
+        rules: [
+          {
+            event_sources: [{ id: sourceId, type: eventSourceType }],
+            retention_seconds: retentionSeconds,
+            filter: {
+              operator: "and",
+              filters: [{ field: "event", operator: "eq", value: "page_engaged" }],
+            },
+          },
+        ],
+      },
+    };
+  }
 
-  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`, { subtype, rule });
-
-  // ✅ FormData evita encoding incorreto
+  // ✅ subtype ENGAGEMENT e prefill obrigatórios
   const formData = new FormData();
   formData.append("name", audienceName);
-  formData.append("subtype", subtype);
+  formData.append("subtype", "ENGAGEMENT");
   formData.append("prefill", "1");
   formData.append("rule", JSON.stringify(rule));
   formData.append("access_token", accessToken);
 
   const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
+
+  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`, { rule });
 
   const res = await fetch(url, { method: "POST", body: formData });
   const text = await res.text();
@@ -233,12 +248,12 @@ async function createEngagementAudience(
     console.error(`[AUDIENCE] ❌ Erro ${sourceType.toUpperCase()}:`, {
       status: res.status,
       body: text,
-      sent: { name: audienceName, subtype, rule },
+      sent: { name: audienceName, rule },
     });
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`, data);
+  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
   return data;
 }
 
