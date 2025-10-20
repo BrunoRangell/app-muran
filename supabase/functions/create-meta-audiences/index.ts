@@ -178,35 +178,31 @@ async function createEngagementAudience(
 ) {
   const actId = withActPrefix(accountId);
   const retentionSeconds = retentionDays * 86400;
-
-  // ✅ Nomes simples, válidos
   const prefix = sourceType === "instagram" ? "IG" : "FB";
   const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
 
-  // ✅ Ajuste de tipo e evento conforme documentação atualizada
-  const isInstagram = sourceType === "instagram";
-  const sourceTypeKey = isInstagram ? "ig_professional" : "page";
-  const eventValue = isInstagram ? "ig_account_engaged" : "page_engaged";
+  // ⚙️ Tipos de origem e eventos válidos para v23
+  const eventSourceType = sourceType === "instagram" ? "ig_professional" : "page";
+  const eventName = sourceType === "instagram" ? "ig_account_engaged" : "page_engaged";
 
-  // ✅ subtype = CUSTOM (mais estável que ENGAGEMENT)
-  const subtype = "CUSTOM";
+  // ✅ subtype deve ser ENGAGEMENT (com prefill e origin válido)
+  const subtype = "ENGAGEMENT";
 
-  // ✅ Regra simplificada
+  // ✅ Construção da regra
   const rule = {
     inclusions: {
       operator: "or",
       rules: [
         {
-          event_sources: [{ id: sourceId, type: sourceTypeKey }],
+          event_sources: [{ id: sourceId, type: eventSourceType }],
           retention_seconds: retentionSeconds,
-          ...(isInstagram
-            ? {}
-            : {
-                filter: {
+          filter:
+            sourceType === "facebook"
+              ? {
                   operator: "and",
-                  filters: [{ field: "event", operator: "eq", value: eventValue }],
-                },
-              }),
+                  filters: [{ field: "event", operator: "eq", value: eventName }],
+                }
+              : undefined,
         },
       ],
     },
@@ -214,17 +210,18 @@ async function createEngagementAudience(
 
   console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`, { subtype, rule });
 
+  // ✅ FormData evita encoding incorreto
   const formData = new FormData();
   formData.append("name", audienceName);
   formData.append("subtype", subtype);
-  formData.append("rule", JSON.stringify(rule));
   formData.append("prefill", "1");
+  formData.append("rule", JSON.stringify(rule));
   formData.append("access_token", accessToken);
 
   const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
+
   const res = await fetch(url, { method: "POST", body: formData });
   const text = await res.text();
-
   let data;
   try {
     data = JSON.parse(text);
