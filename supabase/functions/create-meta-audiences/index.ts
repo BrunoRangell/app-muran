@@ -23,13 +23,13 @@ interface CreateAudienceRequest {
   debugToken?: string;
 }
 
-// Helper → sempre garantir act_ prefixado
+// Sempre garantir act_ prefixado
 function withActPrefix(accountId: string): string {
   if (!accountId) return "";
   return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
 }
 
-// Buscar token Meta no Supabase
+// Token Meta no Supabase
 async function getMetaAccessToken(supabase: any): Promise<string> {
   const { data, error } = await supabase.from("api_tokens").select("value").eq("name", "meta_access_token").single();
 
@@ -37,7 +37,7 @@ async function getMetaAccessToken(supabase: any): Promise<string> {
   return data.value;
 }
 
-// ======================== FETCH PIXELS ========================
+/* ======================== FETCH PIXELS ======================== */
 async function fetchPixels(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
   const url = `${GRAPH_API_BASE}/${actId}/adspixels?fields=id,name&access_token=${accessToken}`;
@@ -55,13 +55,13 @@ async function fetchPixels(accountId: string, accessToken: string) {
   }
 }
 
-// ======================== FETCH INSTAGRAM ========================
+/* ======================== FETCH INSTAGRAM ======================== */
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
   console.log("[IG] 🔍 Buscando IG vinculados a", actId);
 
   try {
-    // 1️⃣ tentar via conta de anúncios
+    // 1) via conta de anúncios
     const direct = await fetch(
       `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name}&access_token=${accessToken}`,
     );
@@ -71,7 +71,7 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
       return directData.instagram_accounts.data;
     }
 
-    // 2️⃣ tentar via business
+    // 2) via business
     const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
     const businessData = await business.json();
     const businessId = businessData.business?.id;
@@ -93,7 +93,7 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   }
 }
 
-// ======================== FETCH FACEBOOK PAGES ========================
+/* ======================== FETCH FACEBOOK PAGES ======================== */
 async function fetchFacebookPages(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
   console.log("[FB] 🔍 Buscando páginas vinculadas a", actId);
@@ -120,7 +120,7 @@ async function fetchFacebookPages(accountId: string, accessToken: string) {
   }
 }
 
-// ======================== CREATE SITE AUDIENCE ========================
+/* ======================== CREATE SITE AUDIENCE ======================== */
 async function createSiteAudience(
   accountId: string,
   pixelId: string,
@@ -138,7 +138,10 @@ async function createSiteAudience(
         {
           event_sources: [{ id: pixelId, type: "pixel" }],
           retention_seconds: retentionDays * 86400,
-          filter: { operator: "and", filters: [{ field: "event", operator: "eq", value: eventType }] },
+          filter: {
+            operator: "and",
+            filters: [{ field: "event", operator: "eq", value: eventType }],
+          },
         },
       ],
     },
@@ -168,7 +171,7 @@ async function createSiteAudience(
   return data;
 }
 
-// ======================== CREATE ENGAGEMENT AUDIENCE ========================
+/* ======================== CREATE ENGAGEMENT AUDIENCE (ESTILO ANTIGO) ======================== */
 async function createEngagementAudience(
   accountId: string,
   sourceId: string,
@@ -179,55 +182,31 @@ async function createEngagementAudience(
   const actId = withActPrefix(accountId);
   const retentionSeconds = retentionDays * 86400;
 
-  // Nome simples e válido
+  // Nomes curtos e válidos
   const prefix = sourceType === "instagram" ? "IG" : "FB";
   const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
 
-  // ⚙️ Configuração correta por tipo
-  let eventSourceType = "";
-  let rule: any = {};
+  // 👉 Formato clássico que não falha:
+  //    usa object_id + event_name (sem event_sources/filter)
+  const eventName = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
 
-  if (sourceType === "instagram") {
-    // ✅ IG usa "ig_business" ainda para contas vinculadas ao Business Manager
-    // ⚠️ "ig_professional" só funciona em contas vinculadas via Graph Pro
-    eventSourceType = "ig_business";
+  const rule = {
+    inclusions: {
+      operator: "or",
+      rules: [
+        {
+          object_id: String(sourceId),
+          event_name: eventName,
+          retention_seconds: retentionSeconds,
+        },
+      ],
+    },
+  };
 
-    rule = {
-      inclusions: {
-        operator: "or",
-        rules: [
-          {
-            event_sources: [{ id: sourceId, type: eventSourceType }],
-            retention_seconds: retentionSeconds,
-          },
-        ],
-      },
-    };
-  } else {
-    // ✅ Facebook usa page + page_engaged
-    eventSourceType = "page";
-    rule = {
-      inclusions: {
-        operator: "or",
-        rules: [
-          {
-            event_sources: [{ id: sourceId, type: eventSourceType }],
-            retention_seconds: retentionSeconds,
-            filter: {
-              operator: "and",
-              filters: [{ field: "event", operator: "eq", value: "page_engaged" }],
-            },
-          },
-        ],
-      },
-    };
-  }
-
-  // ✅ subtype ENGAGEMENT e prefill obrigatórios
   const formData = new FormData();
   formData.append("name", audienceName);
   formData.append("subtype", "ENGAGEMENT");
-  formData.append("prefill", "1");
+  formData.append("prefill", "1"); // importante
   formData.append("rule", JSON.stringify(rule));
   formData.append("access_token", accessToken);
 
@@ -237,7 +216,8 @@ async function createEngagementAudience(
 
   const res = await fetch(url, { method: "POST", body: formData });
   const text = await res.text();
-  let data;
+
+  let data: any;
   try {
     data = JSON.parse(text);
   } catch {
@@ -257,7 +237,7 @@ async function createEngagementAudience(
   return data;
 }
 
-// ======================== MAIN SERVER HANDLER ========================
+/* ======================== MAIN ======================== */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -296,6 +276,7 @@ Deno.serve(async (req) => {
     if (action === "create_audiences" || action === "create_unified_audiences") {
       const { audienceType, pixelId, eventTypes, siteEvents, instagramAccountId, facebookPageId, engagementTypes } =
         requestData;
+
       const results: any[] = [];
       const siteDays = [7, 14, 30, 60, 90, 180];
       const engageDays = [7, 14, 30, 60, 90, 180, 365, 730];
@@ -308,21 +289,29 @@ Deno.serve(async (req) => {
         facebookPageId,
       });
 
-      // 🎯 SITE AUDIENCES
+      // SITE
       if ((audienceType === "site" || action === "create_unified_audiences") && pixelId && (eventTypes || siteEvents)) {
         for (const event of eventTypes || siteEvents || []) {
           for (const d of siteDays) {
             try {
               const res = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
-              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: res.id });
+              results.push({
+                name: `[SITE] ${event} - ${d}D`,
+                status: "success",
+                id: res.id,
+              });
             } catch (err: any) {
-              results.push({ name: `[SITE] ${event} - ${d}D`, status: "failed", error: err.message });
+              results.push({
+                name: `[SITE] ${event} - ${d}D`,
+                status: "failed",
+                error: err.message,
+              });
             }
           }
         }
       }
 
-      // 🎯 ENGAGEMENT AUDIENCES
+      // ENGAGEMENT
       if ((audienceType === "engagement" || action === "create_unified_audiences") && engagementTypes?.length) {
         for (const type of engagementTypes) {
           const sourceId = type === "instagram" ? instagramAccountId : facebookPageId;
@@ -343,12 +332,16 @@ Deno.serve(async (req) => {
                 accessToken,
               );
               const prefix = type === "instagram" ? "IG" : "FB";
-              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: res.id });
-            } catch (err: any) {
-              console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
-              const prefix = type === "instagram" ? "IG" : "FB";
               results.push({
-                name: `[${prefix}] Envolvidos - ${d}D`,
+                name: `${prefix}_Envolvidos_${d}D`,
+                status: "success",
+                id: res.id,
+              });
+            } catch (err: any) {
+              const prefix = type === "instagram" ? "IG" : "FB";
+              console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
+              results.push({
+                name: `${prefix}_Envolvidos_${d}D`,
                 status: "failed",
                 error: err.message,
               });
