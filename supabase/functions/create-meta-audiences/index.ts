@@ -190,16 +190,33 @@ async function createEngagementAudience(
     name: audienceName,
     subtype: "ENGAGEMENT",
     prefill: true,
+
+    // ⚠️ Adiciona rule mínima apenas para atender o requisito
+    rule: {
+      inclusions: {
+        operator: "or",
+        rules: [
+          {
+            object_id: String(sourceId),
+            event_name: eventName,
+            retention_seconds: retentionSeconds,
+          },
+        ],
+      },
+    },
+
+    // ✅ Nova estrutura funcional de engajamento
     engagement_audience_details: {
       engagement_type: eventName,
       engagement_spec: [
         {
-          object_id: sourceId,
+          object_id: String(sourceId),
           type: objectType,
           retention_seconds: retentionSeconds,
         },
       ],
     },
+
     access_token: accessToken,
   };
 
