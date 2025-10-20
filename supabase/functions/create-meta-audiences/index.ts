@@ -181,31 +181,27 @@ async function createEngagementAudience(
   const prefix = sourceType === "instagram" ? "IG" : "FB";
   const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
 
-  // ✅ Estrutura compatível com v23
+  const objectType = sourceType === "instagram" ? "ig_business" : "page";
   const eventName = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
 
-  const rule = {
-    inclusions: {
-      operator: "or",
-      rules: [
-        {
-          object_id: String(sourceId),
-          event_name: eventName,
-          retention_seconds: retentionSeconds,
-        },
-      ],
-    },
-  };
+  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
 
   const payload = {
     name: audienceName,
     subtype: "ENGAGEMENT",
     prefill: true,
-    rule,
+    engagement_audience_details: {
+      engagement_type: eventName,
+      engagement_spec: [
+        {
+          object_id: sourceId,
+          type: objectType,
+          retention_seconds: retentionSeconds,
+        },
+      ],
+    },
     access_token: accessToken,
   };
-
-  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`);
@@ -220,7 +216,11 @@ async function createEngagementAudience(
   const raw = await res.text();
   console.log("→ Resposta bruta:", raw);
 
-  if (!res.ok) throw new Error(JSON.parse(raw).error?.message || raw);
+  if (!res.ok) {
+    const err = JSON.parse(raw);
+    console.error(`[AUDIENCE] ❌ Erro (${res.status})`, err);
+    throw new Error(err.error?.message || "Erro ao criar público");
+  }
 
   console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━");
