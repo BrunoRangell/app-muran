@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const GRAPH_API_VERSION = "v24.0";
+const GRAPH_API_VERSION = "v23.0";
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
 interface CreateAudienceRequest {
@@ -23,17 +23,13 @@ interface CreateAudienceRequest {
   debugToken?: string;
 }
 
-// =======================================================
-// 🔧 Helper: garantir prefixo act_
-// =======================================================
+// Helper → sempre garantir act_ prefixado
 function withActPrefix(accountId: string): string {
   if (!accountId) return "";
   return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
 }
 
-// =======================================================
-// 🔐 Buscar token Meta no Supabase
-// =======================================================
+// Buscar token Meta no Supabase
 async function getMetaAccessToken(supabase: any): Promise<string> {
   const { data, error } = await supabase.from("api_tokens").select("value").eq("name", "meta_access_token").single();
 
@@ -41,9 +37,7 @@ async function getMetaAccessToken(supabase: any): Promise<string> {
   return data.value;
 }
 
-// =======================================================
-// 📊 Buscar Pixels
-// =======================================================
+// ======================== FETCH PIXELS ========================
 async function fetchPixels(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
   const url = `${GRAPH_API_BASE}/${actId}/adspixels?fields=id,name&access_token=${accessToken}`;
@@ -61,14 +55,13 @@ async function fetchPixels(accountId: string, accessToken: string) {
   }
 }
 
-// =======================================================
-// 📸 Buscar Contas do Instagram
-// =======================================================
+// ======================== FETCH INSTAGRAM ========================
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
   console.log("[IG] 🔍 Buscando IG vinculados a", actId);
 
   try {
+    // 1️⃣ tentar via conta de anúncios
     const direct = await fetch(
       `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name}&access_token=${accessToken}`,
     );
@@ -78,6 +71,7 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
       return directData.instagram_accounts.data;
     }
 
+    // 2️⃣ tentar via business
     const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
     const businessData = await business.json();
     const businessId = businessData.business?.id;
@@ -99,9 +93,7 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   }
 }
 
-// =======================================================
-// 📘 Buscar Páginas do Facebook
-// =======================================================
+// ======================== FETCH FACEBOOK PAGES ========================
 async function fetchFacebookPages(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
   console.log("[FB] 🔍 Buscando páginas vinculadas a", actId);
@@ -128,9 +120,7 @@ async function fetchFacebookPages(accountId: string, accessToken: string) {
   }
 }
 
-// =======================================================
-// 🌐 Criar Públicos de Site
-// =======================================================
+// ======================== CREATE SITE AUDIENCE ========================
 async function createSiteAudience(
   accountId: string,
   pixelId: string,
@@ -139,7 +129,7 @@ async function createSiteAudience(
   accessToken: string,
 ) {
   const actId = withActPrefix(accountId);
-  const audienceName = `SITE_${eventType}_${retentionDays}D`;
+  const audienceName = `[SITE] ${eventType} - ${retentionDays}D`;
 
   const rule = {
     inclusions: {
@@ -154,14 +144,19 @@ async function createSiteAudience(
     },
   };
 
-  const formData = new FormData();
-  formData.append("name", audienceName);
-  formData.append("subtype", "WEBSITE");
-  formData.append("rule", JSON.stringify(rule));
-  formData.append("access_token", accessToken);
-
   const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
-  const res = await fetch(url, { method: "POST", body: formData });
+  const body = new URLSearchParams({
+    name: audienceName,
+    subtype: "WEBSITE",
+    rule: JSON.stringify(rule),
+    access_token: accessToken,
+  });
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
   const data = await res.json();
 
   if (!res.ok) {
@@ -173,9 +168,7 @@ async function createSiteAudience(
   return data;
 }
 
-// =======================================================
-// 🤝 Criar Públicos de Engajamento (Instagram + Facebook)
-// =======================================================
+// ======================== CREATE ENGAGEMENT AUDIENCE ========================
 async function createEngagementAudience(
   accountId: string,
   sourceId: string,
@@ -187,6 +180,10 @@ async function createEngagementAudience(
   const audienceName = `${sourceType === "instagram" ? "IG" : "FB"}_Envolvidos_${retentionDays}D`;
   const retentionSeconds = retentionDays * 86400;
 
+  // 🔧 Escolher subtype correto conforme origem
+  const subtype = sourceType === "facebook" ? "PAGE" : "ENGAGEMENT";
+
+  // 🔧 Construir rule conforme documentação oficial
   const rule =
     sourceType === "instagram"
       ? {
@@ -232,16 +229,21 @@ async function createEngagementAudience(
           },
         };
 
-  console.log(`[AUDIENCE] 🚀 Criando público ${audienceName}`, { sourceType, rule });
+  console.log(`[AUDIENCE] 🚀 Criando público ${audienceName}`, {
+    subtype,
+    sourceType,
+    rule,
+  });
 
+  // ✅ Usar FormData para evitar encoding incorreto
   const formData = new FormData();
   formData.append("name", audienceName);
-  formData.append("subtype", "ENGAGEMENT");
+  formData.append("subtype", subtype);
   formData.append("rule", JSON.stringify(rule));
   formData.append("prefill", "1");
   formData.append("access_token", accessToken);
 
-  const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
+  const url = `https://graph.facebook.com/v24.0/${actId}/customaudiences`;
   const res = await fetch(url, { method: "POST", body: formData });
   const text = await res.text();
 
@@ -256,7 +258,7 @@ async function createEngagementAudience(
     console.error(`[AUDIENCE] ❌ Erro ${sourceType.toUpperCase()}:`, {
       status: res.status,
       body: text,
-      sent: { name: audienceName, rule },
+      sent: { name: audienceName, subtype, rule },
     });
     throw new Error(data.error?.message || "Erro ao criar público");
   }
@@ -265,9 +267,7 @@ async function createEngagementAudience(
   return data;
 }
 
-// =======================================================
-// 🧠 MAIN HANDLER
-// =======================================================
+// ======================== MAIN SERVER HANDLER ========================
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -275,61 +275,73 @@ Deno.serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const requestData: CreateAudienceRequest = await req.json();
     const { action, accountId } = requestData;
+
     const accessToken = await getMetaAccessToken(supabase);
 
-    // === FETCH ===
-    if (action === "fetch_pixels")
-      return new Response(JSON.stringify({ success: true, pixels: await fetchPixels(accountId!, accessToken) }), {
+    // === PIXELS ===
+    if (action === "fetch_pixels") {
+      const pixels = await fetchPixels(accountId!, accessToken);
+      return new Response(JSON.stringify({ success: true, pixels }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
 
-    if (action === "fetch_instagram_accounts")
-      return new Response(
-        JSON.stringify({ success: true, accounts: await fetchInstagramAccounts(accountId!, accessToken) }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-
-    if (action === "fetch_facebook_pages")
-      return new Response(JSON.stringify({ success: true, pages: await fetchFacebookPages(accountId!, accessToken) }), {
+    // === INSTAGRAM ===
+    if (action === "fetch_instagram_accounts") {
+      const accounts = await fetchInstagramAccounts(accountId!, accessToken);
+      return new Response(JSON.stringify({ success: true, accounts }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
 
-    // === CREATE ===
+    // === FACEBOOK ===
+    if (action === "fetch_facebook_pages") {
+      const pages = await fetchFacebookPages(accountId!, accessToken);
+      return new Response(JSON.stringify({ success: true, pages }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === CRIAR PÚBLICOS ===
     if (action === "create_audiences" || action === "create_unified_audiences") {
       const { audienceType, pixelId, eventTypes, siteEvents, instagramAccountId, facebookPageId, engagementTypes } =
         requestData;
-
       const results: any[] = [];
       const siteDays = [7, 14, 30, 60, 90, 180];
       const engageDays = [7, 14, 30, 60, 90, 180, 365, 730];
 
-      console.log("[UNIFIED] 📥 Payload recebido:", {
+      console.log("[UNIFIED] 📥 Payload:", {
         accountId,
+        siteEvents: siteEvents?.length || 0,
+        engagementTypes,
         instagramAccountId,
         facebookPageId,
-        engagementTypes,
-        siteEvents,
       });
 
-      // SITE AUDIENCES
-      if ((audienceType === "site" || action === "create_unified_audiences") && pixelId) {
+      // 🎯 SITE AUDIENCES
+      if ((audienceType === "site" || action === "create_unified_audiences") && pixelId && (eventTypes || siteEvents)) {
         for (const event of eventTypes || siteEvents || []) {
           for (const d of siteDays) {
             try {
               const res = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
-              results.push({ name: `SITE_${event}_${d}D`, status: "success", id: res.id });
+              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: res.id });
             } catch (err: any) {
-              results.push({ name: `SITE_${event}_${d}D`, status: "failed", error: err.message });
+              results.push({ name: `[SITE] ${event} - ${d}D`, status: "failed", error: err.message });
             }
           }
         }
       }
 
-      // ENGAGEMENT AUDIENCES
+      // 🎯 ENGAGEMENT AUDIENCES
       if ((audienceType === "engagement" || action === "create_unified_audiences") && engagementTypes?.length) {
         for (const type of engagementTypes) {
           const sourceId = type === "instagram" ? instagramAccountId : facebookPageId;
-          if (!sourceId) continue;
+          if (!sourceId) {
+            console.warn(`[UNIFIED] ⚠️ ${type} selecionado mas sem ID configurado`);
+            continue;
+          }
+
+          console.log(`[UNIFIED] 🎯 Criando públicos ${type.toUpperCase()} com source: ${sourceId}`);
 
           for (const d of engageDays) {
             try {
@@ -340,10 +352,13 @@ Deno.serve(async (req) => {
                 d,
                 accessToken,
               );
-              results.push({ name: `${type.toUpperCase()}_Envolvidos_${d}D`, status: "success", id: res.id });
+              const prefix = type === "instagram" ? "IG" : "FB";
+              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: res.id });
             } catch (err: any) {
+              console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
+              const prefix = type === "instagram" ? "IG" : "FB";
               results.push({
-                name: `${type.toUpperCase()}_Envolvidos_${d}D`,
+                name: `[${prefix}] Envolvidos - ${d}D`,
                 status: "failed",
                 error: err.message,
               });
@@ -355,10 +370,17 @@ Deno.serve(async (req) => {
       const created = results.filter((r) => r.status === "success").length;
       const failed = results.filter((r) => r.status === "failed").length;
 
-      console.log(`[UNIFIED] ✅ Finalizado: ${created} criados | ${failed} falharam`);
-      return new Response(JSON.stringify({ success: true, created, failed, audiences: results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.log(`[UNIFIED] ✅ Resumo: ${created} criados | ${failed} falharam`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          created,
+          failed,
+          audiences: results,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     throw new Error("Ação inválida");
