@@ -177,13 +177,15 @@ async function createEngagementAudience(
   accessToken: string,
 ) {
   const actId = withActPrefix(accountId);
+
+  // ✅ Nome compatível com API (sem colchetes, sem espaços)
   const audienceName =
     sourceType === "instagram" ? `IG_Envolvidos_${retentionDays}D` : `FB_Envolvidos_${retentionDays}D`;
 
   const subtype = "ENGAGEMENT";
   const retentionSeconds = retentionDays * 86400;
 
-  // ✅ Regras específicas
+  // ✅ Regras específicas por tipo
   const rule =
     sourceType === "instagram"
       ? {
@@ -196,6 +198,7 @@ async function createEngagementAudience(
               },
             ],
           },
+          rule_aggregation: "union",
         }
       : {
           inclusions: {
@@ -211,14 +214,12 @@ async function createEngagementAudience(
               },
             ],
           },
+          rule_aggregation: "union",
         };
 
-  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`, {
-    sourceType,
-    subtype,
-    rule,
-  });
+  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`, { subtype, rule });
 
+  // ✅ Usar FormData em vez de URLSearchParams (evita encoding incorreto)
   const formData = new FormData();
   formData.append("name", audienceName);
   formData.append("subtype", subtype);
@@ -246,7 +247,7 @@ async function createEngagementAudience(
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`, data);
+  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
   return data;
 }
 
