@@ -180,25 +180,42 @@ async function createEngagementAudience(
   const audienceName =
     sourceType === "instagram" ? `[IG] Envolvidos - ${retentionDays}D` : `[FB] Envolvidos - ${retentionDays}D`;
 
-  // ✅ Usar event type correto baseado no arquivo de referência
-  const eventType = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
-  const sourceTypeKey = sourceType === "instagram" ? "ig_business" : "page";
+  // ✅ Construir rule condicionalmente conforme documentação Meta
+  // Instagram: SEM filter (evento inclusivo ig_business_profile_all)
+  // Facebook: COM filter page_engaged
+  const rule = sourceType === "instagram" 
+    ? {
+        inclusions: {
+          operator: "or",
+          rules: [{
+            event_sources: [{ type: "ig_business", id: sourceId }],
+            retention_seconds: retentionDays * 86400
+            // SEM filter para Instagram conforme documentação
+          }]
+        }
+      }
+    : {
+        inclusions: {
+          operator: "or",
+          rules: [{
+            event_sources: [{ type: "page", id: sourceId }],
+            retention_seconds: retentionDays * 86400,
+            filter: {
+              operator: "and",
+              filters: [{ field: "event", operator: "eq", value: "page_engaged" }]
+            }
+          }]
+        }
+      };
 
-  const rule = {
-    inclusions: {
-      operator: "or",
-      rules: [
-        {
-          event_sources: [{ type: sourceTypeKey, id: sourceId }],
-          retention_seconds: retentionDays * 86400,
-          filter: {
-            operator: "and",
-            filters: [{ field: "event", operator: "eq", value: eventType }],
-          },
-        },
-      ],
-    },
-  };
+  console.log(`[AUDIENCE] 📋 Payload ${sourceType}:`, {
+    name: audienceName,
+    subtype: "ENGAGEMENT",
+    rule: JSON.stringify(rule, null, 2),
+    sourceId,
+    retentionDays,
+    hasFilter: sourceType !== "instagram"
+  });
 
   const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
   const body = new URLSearchParams({
@@ -218,7 +235,14 @@ async function createEngagementAudience(
   const data = await res.json();
 
   if (!res.ok) {
-    console.error("[AUDIENCE] ❌ Erro ao criar público de engajamento:", data.error?.message);
+    console.error(`[AUDIENCE] ❌ Erro ao criar ${sourceType}:`, {
+      status: res.status,
+      error: data.error,
+      sentPayload: {
+        name: audienceName,
+        rule: JSON.stringify(rule, null, 2)
+      }
+    });
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 

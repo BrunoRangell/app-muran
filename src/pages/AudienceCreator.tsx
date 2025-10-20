@@ -80,6 +80,23 @@ const AudienceCreator = () => {
       return;
     }
 
+    // ✅ Validação adicional: verificar se há conteúdo válido
+    const hasInstagram = formData.engagementTypes.includes('instagram') && formData.instagramAccountId;
+    const hasFacebook = formData.engagementTypes.includes('facebook') && formData.facebookPageId;
+    const hasSite = formData.siteEvents.length > 0 && formData.pixelId;
+    
+    if (!hasInstagram && !hasFacebook && !hasSite) {
+      toast.error("Selecione pelo menos um tipo de público válido para criar");
+      return;
+    }
+
+    console.log("[FRONTEND] 🚀 Iniciando criação:", {
+      instagram: hasInstagram,
+      facebook: hasFacebook,
+      site: hasSite,
+      accountId: formData.accountId
+    });
+
     setShowProgress(true);
 
     createAudiences(formData, {
