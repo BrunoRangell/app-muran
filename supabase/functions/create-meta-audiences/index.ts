@@ -181,28 +181,22 @@ async function createEngagementAudience(
   const prefix = sourceType === "instagram" ? "IG" : "FB";
   const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
 
-  // Evento válido conforme tipo
-  const eventType = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
-  const eventSourceType = sourceType === "instagram" ? "ig_business" : "page";
+  // ✅ Estrutura compatível com v23
+  const eventName = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
 
-  // Estrutura de regra
   const rule = {
     inclusions: {
       operator: "or",
       rules: [
         {
-          event_sources: [{ type: eventSourceType, id: sourceId }],
+          object_id: String(sourceId),
+          event_name: eventName,
           retention_seconds: retentionSeconds,
-          filter: {
-            operator: "and",
-            filters: [{ field: "event", operator: "eq", value: eventType }],
-          },
         },
       ],
     },
   };
 
-  // Payload
   const payload = {
     name: audienceName,
     subtype: "ENGAGEMENT",
@@ -215,39 +209,21 @@ async function createEngagementAudience(
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`);
-  console.log("→ Tipo:", sourceType);
-  console.log("→ Source ID:", sourceId);
-  console.log("→ URL:", url);
-  console.log("→ Payload enviado (JSON):");
   console.log(JSON.stringify(payload, null, 2));
 
-  // Chamada
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  const rawText = await res.text();
-  console.log("→ Resposta bruta da API:", rawText);
+  const raw = await res.text();
+  console.log("→ Resposta bruta:", raw);
 
-  let data: any;
-  try {
-    data = JSON.parse(rawText);
-  } catch {
-    data = { raw: rawText };
-  }
-
-  if (!res.ok) {
-    console.error(`[AUDIENCE] ❌ Erro ${sourceType.toUpperCase()} (${res.status})`);
-    console.error("→ Corpo enviado:", JSON.stringify(payload, null, 2));
-    console.error("→ Corpo retornado:", JSON.stringify(data, null, 2));
-    throw new Error(data.error?.message || "Erro ao criar público");
-  }
+  if (!res.ok) throw new Error(JSON.parse(raw).error?.message || raw);
 
   console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━");
-  return data;
 }
 
 // ======================== MAIN SERVER HANDLER ========================
