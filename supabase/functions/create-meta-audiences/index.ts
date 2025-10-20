@@ -181,10 +181,11 @@ async function createEngagementAudience(
   const prefix = sourceType === "instagram" ? "IG" : "FB";
   const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
 
-  // Eventos válidos
+  // Evento válido conforme tipo
   const eventType = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
   const eventSourceType = sourceType === "instagram" ? "ig_business" : "page";
 
+  // Estrutura de regra
   const rule = {
     inclusions: {
       operator: "or",
@@ -201,32 +202,51 @@ async function createEngagementAudience(
     },
   };
 
-  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
-
+  // Payload
   const payload = {
     name: audienceName,
-    rule: JSON.stringify(rule),
-    prefill: true,
     subtype: "ENGAGEMENT",
+    prefill: true,
+    rule,
     access_token: accessToken,
   };
 
-  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`, payload);
+  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
 
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`);
+  console.log("→ Tipo:", sourceType);
+  console.log("→ Source ID:", sourceId);
+  console.log("→ URL:", url);
+  console.log("→ Payload enviado (JSON):");
+  console.log(JSON.stringify(payload, null, 2));
+
+  // Chamada
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  const data = await res.json();
+  const rawText = await res.text();
+  console.log("→ Resposta bruta da API:", rawText);
+
+  let data: any;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    data = { raw: rawText };
+  }
 
   if (!res.ok) {
-    console.error(`[AUDIENCE] ❌ Erro ${sourceType.toUpperCase()}:`, data);
+    console.error(`[AUDIENCE] ❌ Erro ${sourceType.toUpperCase()} (${res.status})`);
+    console.error("→ Corpo enviado:", JSON.stringify(payload, null, 2));
+    console.error("→ Corpo retornado:", JSON.stringify(data, null, 2));
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
+  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`);
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━");
   return data;
 }
 
