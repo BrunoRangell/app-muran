@@ -225,7 +225,7 @@ async function createEngagementAudience(
     access_token: accessToken,
   });
 
-  console.log(`[AUDIENCE] 🚀 Criando: ${audienceName} | Source: ${sourceId} | Type: ${sourceTypeKey}`);
+  console.log(`[AUDIENCE] 🚀 Criando: ${audienceName} | Source: ${sourceId} | Type: ${sourceType}`);
 
   const res = await fetch(url, {
     method: "POST",
