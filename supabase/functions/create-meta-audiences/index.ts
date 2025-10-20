@@ -23,13 +23,13 @@ interface CreateAudienceRequest {
   debugToken?: string;
 }
 
-// 🧩 Helper para garantir prefixo "act_"
+// Helper → sempre garantir act_ prefixado
 function withActPrefix(accountId: string): string {
   if (!accountId) return "";
   return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
 }
 
-// 🔑 Busca token Meta Ads no Supabase
+// Buscar token Meta no Supabase
 async function getMetaAccessToken(supabase: any): Promise<string> {
   const { data, error } = await supabase.from("api_tokens").select("value").eq("name", "meta_access_token").single();
 
@@ -55,12 +55,13 @@ async function fetchPixels(accountId: string, accessToken: string) {
   }
 }
 
-// ======================== FETCH INSTAGRAM ACCOUNTS ========================
+// ======================== FETCH INSTAGRAM ========================
 async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
   console.log("[IG] 🔍 Buscando IG vinculados a", actId);
 
   try {
+    // 1️⃣ tentar via conta de anúncios
     const direct = await fetch(
       `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name}&access_token=${accessToken}`,
     );
@@ -70,6 +71,7 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
       return directData.instagram_accounts.data;
     }
 
+    // 2️⃣ tentar via business
     const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
     const businessData = await business.json();
     const businessId = businessData.business?.id;
@@ -136,10 +138,7 @@ async function createSiteAudience(
         {
           event_sources: [{ id: pixelId, type: "pixel" }],
           retention_seconds: retentionDays * 86400,
-          filter: {
-            operator: "and",
-            filters: [{ field: "event", operator: "eq", value: eventType }],
-          },
+          filter: { operator: "and", filters: [{ field: "event", operator: "eq", value: eventType }] },
         },
       ],
     },
@@ -161,7 +160,7 @@ async function createSiteAudience(
   const data = await res.json();
 
   if (!res.ok) {
-    console.error("[AUDIENCE] ❌ Erro SITE:", data.error?.message);
+    console.error("[AUDIENCE] ❌ Erro ao criar público de site:", data.error?.message);
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
@@ -182,35 +181,42 @@ async function createEngagementAudience(
     sourceType === "instagram" ? `IG_Envolvidos_${retentionDays}D` : `FB_Envolvidos_${retentionDays}D`;
 
   const subtype = "ENGAGEMENT";
-  const eventValue = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
-  const sourceTypeKey = sourceType === "instagram" ? "ig_business" : "page";
+  const retentionSeconds = retentionDays * 86400;
 
-  const rule = {
-    inclusions: {
-      operator: "or",
-      rules: [
-        {
-          event_sources: [{ id: sourceId, type: sourceTypeKey }],
-          retention_seconds: retentionDays * 86400,
-          filter: {
-            operator: "and",
-            filters: [
+  // ✅ Regras específicas
+  const rule =
+    sourceType === "instagram"
+      ? {
+          inclusions: {
+            operator: "or",
+            rules: [
               {
-                field: "event",
-                operator: "eq",
-                value: eventValue,
+                event_sources: [{ id: sourceId, type: "ig_business" }],
+                retention_seconds: retentionSeconds,
               },
             ],
           },
-        },
-      ],
-    },
-  };
+        }
+      : {
+          inclusions: {
+            operator: "or",
+            rules: [
+              {
+                event_sources: [{ id: sourceId, type: "page" }],
+                retention_seconds: retentionSeconds,
+                filter: {
+                  operator: "and",
+                  filters: [{ field: "event", operator: "eq", value: "page_engaged" }],
+                },
+              },
+            ],
+          },
+        };
 
-  console.log(`[AUDIENCE] 🚀 Criando público ${audienceName}`, {
+  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`, {
+    sourceType,
     subtype,
-    eventValue,
-    sourceTypeKey,
+    rule,
   });
 
   const formData = new FormData();
@@ -220,23 +226,31 @@ async function createEngagementAudience(
   formData.append("prefill", "1");
   formData.append("access_token", accessToken);
 
-  const res = await fetch(`https://graph.facebook.com/v23.0/${actId}/customaudiences`, {
-    method: "POST",
-    body: formData,
-  });
+  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
+  const res = await fetch(url, { method: "POST", body: formData });
+  const text = await res.text();
 
-  const data = await res.json();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { raw: text };
+  }
 
   if (!res.ok) {
-    console.error(`[AUDIENCE] ❌ Erro ${sourceType.toUpperCase()}:`, data.error);
+    console.error(`[AUDIENCE] ❌ Erro ${sourceType.toUpperCase()}:`, {
+      status: res.status,
+      body: text,
+      sent: { name: audienceName, subtype, rule },
+    });
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
+  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`, data);
   return data;
 }
 
-// ======================== MAIN HANDLER ========================
+// ======================== MAIN SERVER HANDLER ========================
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -275,46 +289,42 @@ Deno.serve(async (req) => {
     if (action === "create_audiences" || action === "create_unified_audiences") {
       const { audienceType, pixelId, eventTypes, siteEvents, instagramAccountId, facebookPageId, engagementTypes } =
         requestData;
-
       const results: any[] = [];
       const siteDays = [7, 14, 30, 60, 90, 180];
       const engageDays = [7, 14, 30, 60, 90, 180, 365, 730];
 
-      console.log("[UNIFIED] 📥 Payload recebido:", {
+      console.log("[UNIFIED] 📥 Payload:", {
         accountId,
-        siteEvents,
+        siteEvents: siteEvents?.length || 0,
         engagementTypes,
+        instagramAccountId,
+        facebookPageId,
       });
 
-      // 🎯 SITE
+      // 🎯 SITE AUDIENCES
       if ((audienceType === "site" || action === "create_unified_audiences") && pixelId && (eventTypes || siteEvents)) {
         for (const event of eventTypes || siteEvents || []) {
           for (const d of siteDays) {
             try {
               const res = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
-              results.push({
-                name: `[SITE] ${event} - ${d}D`,
-                status: "success",
-                id: res.id,
-              });
+              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: res.id });
             } catch (err: any) {
-              results.push({
-                name: `[SITE] ${event} - ${d}D`,
-                status: "failed",
-                error: err.message,
-              });
+              results.push({ name: `[SITE] ${event} - ${d}D`, status: "failed", error: err.message });
             }
           }
         }
       }
 
-      // 🎯 ENGAGEMENT
+      // 🎯 ENGAGEMENT AUDIENCES
       if ((audienceType === "engagement" || action === "create_unified_audiences") && engagementTypes?.length) {
         for (const type of engagementTypes) {
           const sourceId = type === "instagram" ? instagramAccountId : facebookPageId;
-          if (!sourceId) continue;
+          if (!sourceId) {
+            console.warn(`[UNIFIED] ⚠️ ${type} selecionado mas sem ID configurado`);
+            continue;
+          }
 
-          console.log(`[UNIFIED] 🎯 Criando públicos ${type} (${sourceId})`);
+          console.log(`[UNIFIED] 🎯 Criando públicos ${type.toUpperCase()} com source: ${sourceId}`);
 
           for (const d of engageDays) {
             try {
@@ -325,14 +335,13 @@ Deno.serve(async (req) => {
                 d,
                 accessToken,
               );
-              results.push({
-                name: `${type.toUpperCase()}_Envolvidos_${d}D`,
-                status: "success",
-                id: res.id,
-              });
+              const prefix = type === "instagram" ? "IG" : "FB";
+              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: res.id });
             } catch (err: any) {
+              console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
+              const prefix = type === "instagram" ? "IG" : "FB";
               results.push({
-                name: `${type.toUpperCase()}_Envolvidos_${d}D`,
+                name: `[${prefix}] Envolvidos - ${d}D`,
                 status: "failed",
                 error: err.message,
               });
@@ -344,11 +353,17 @@ Deno.serve(async (req) => {
       const created = results.filter((r) => r.status === "success").length;
       const failed = results.filter((r) => r.status === "failed").length;
 
-      console.log(`[UNIFIED] ✅ Finalizado: ${created} criados | ${failed} falharam`);
+      console.log(`[UNIFIED] ✅ Resumo: ${created} criados | ${failed} falharam`);
 
-      return new Response(JSON.stringify({ success: true, created, failed, audiences: results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          created,
+          failed,
+          audiences: results,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     throw new Error("Ação inválida");
