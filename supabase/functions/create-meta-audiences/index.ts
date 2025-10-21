@@ -184,40 +184,37 @@ async function createEngagementAudience(
   const objectType = sourceType === "instagram" ? "ig_business" : "page";
   const eventName = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
 
-  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences`;
+  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences?access_token=${accessToken}`;
 
   const payload = {
     name: audienceName,
-    subtype: "ENGAGEMENT",
     prefill: true,
-
-    // ⚠️ Adiciona rule mínima apenas para atender o requisito
     rule: {
       inclusions: {
         operator: "or",
         rules: [
           {
-            object_id: String(sourceId),
-            event_name: eventName,
+            event_sources: [
+              {
+                id: sourceId,
+                type: objectType, // "ig_business" ou "page"
+              },
+            ],
             retention_seconds: retentionSeconds,
+            filter: {
+              operator: "and",
+              filters: [
+                {
+                  field: "event",
+                  operator: "eq",
+                  value: eventName, // "ig_business_profile_all" ou "page_engaged"
+                },
+              ],
+            },
           },
         ],
       },
     },
-
-    // ✅ Nova estrutura funcional de engajamento
-    engagement_audience_details: {
-      engagement_type: eventName,
-      engagement_spec: [
-        {
-          object_id: String(sourceId),
-          type: objectType,
-          retention_seconds: retentionSeconds,
-        },
-      ],
-    },
-
-    access_token: accessToken,
   };
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━");
