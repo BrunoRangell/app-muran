@@ -157,16 +157,14 @@ async function createSiteAudience(
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
-
   const data = await res.json();
-  console.log(`[SITE] → Resposta:`, data);
 
   if (!res.ok) {
-    console.error("[SITE] ❌ Erro ao criar público:", data.error?.message);
+    console.error("[AUDIENCE] ❌ Erro ao criar público de site:", data.error?.message);
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[SITE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
+  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName}`);
   return data;
 }
 
@@ -180,37 +178,55 @@ async function createEngagementAudience(
 ) {
   const actId = withActPrefix(accountId);
   const retentionSeconds = retentionDays * 86400;
-  const prefix = sourceType === "instagram" ? "IG" : "FB";
-  const audienceName = `${prefix}_Envolvidos_${retentionDays}D`;
+  const prefix = sourceType === "instagram" ? "[IG]" : "[FB]";
+  const audienceName = `${prefix} Envolvidos ${retentionDays}D`;
 
   const objectType = sourceType === "instagram" ? "ig_business" : "page";
   const eventName = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
 
-  const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
+  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences?access_token=${accessToken}`;
 
-  const body = new URLSearchParams({
+  const payload = {
     name: audienceName,
-    prefill: "true",
-    rule: JSON.stringify({
+    prefill: true,
+    rule: {
       inclusions: {
         operator: "or",
         rules: [
           {
-            event_sources: [{ id: sourceId, type: objectType }],
+            event_sources: [
+              {
+                id: sourceId,
+                type: objectType, // "ig_business" ou "page"
+              },
+            ],
             retention_seconds: retentionSeconds,
             filter: {
               operator: "and",
-              filters: [{ field: "event", operator: "eq", value: eventName }],
+              filters: [
+                {
+                  field: "event",
+                  operator: "eq",
+                  value: eventName, // "ig_business_profile_all" ou "page_engaged"
+                },
+              ],
             },
           },
         ],
       },
-    }),
-    access_token: accessToken,
-  });
+    },
+  };
 
   console.log("━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`);
+  console.log(JSON.stringify(payload, null, 2));
+
+  const body = new URLSearchParams({
+    name: audienceName,
+    prefill: "true",
+    rule: JSON.stringify(payload.rule), // importante!
+    access_token: accessToken,
+  });
 
   const res = await fetch(url, {
     method: "POST",
@@ -218,18 +234,17 @@ async function createEngagementAudience(
     body: body.toString(),
   });
 
-  const data = await res.json();
-  console.log("→ Resposta:", data);
+  const raw = await res.text();
+  console.log("→ Resposta bruta:", raw);
 
   if (!res.ok) {
-    console.error(`[AUDIENCE] ❌ Erro (${res.status})`, data);
-    throw new Error(data.error?.message || "Erro ao criar público");
+    const err = JSON.parse(raw);
+    console.error(`[AUDIENCE] ❌ Erro (${res.status})`, err);
+    throw new Error(err.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName} (ID: ${data.id})`);
+  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━");
-
-  return data;
 }
 
 // ======================== MAIN SERVER HANDLER ========================
@@ -288,8 +303,8 @@ Deno.serve(async (req) => {
         for (const event of eventTypes || siteEvents || []) {
           for (const d of siteDays) {
             try {
-              const resData = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
-              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: resData.id });
+              const res = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
+              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: res.id });
             } catch (err: any) {
               results.push({ name: `[SITE] ${event} - ${d}D`, status: "failed", error: err.message });
             }
@@ -310,7 +325,7 @@ Deno.serve(async (req) => {
 
           for (const d of engageDays) {
             try {
-              const resData = await createEngagementAudience(
+              const res = await createEngagementAudience(
                 accountId!,
                 sourceId,
                 type as "instagram" | "facebook",
@@ -318,11 +333,15 @@ Deno.serve(async (req) => {
                 accessToken,
               );
               const prefix = type === "instagram" ? "IG" : "FB";
-              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: resData.id });
+              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: res.id });
             } catch (err: any) {
+              console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
               const prefix = type === "instagram" ? "IG" : "FB";
-              console.error(`[UNIFIED] ❌ Falha ${prefix} ${d}D:`, err.message);
-              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "failed", error: err.message });
+              results.push({
+                name: `[${prefix}] Envolvidos - ${d}D`,
+                status: "failed",
+                error: err.message,
+              });
             }
           }
         }
@@ -333,9 +352,15 @@ Deno.serve(async (req) => {
 
       console.log(`[UNIFIED] ✅ Resumo: ${created} criados | ${failed} falharam`);
 
-      return new Response(JSON.stringify({ success: true, created, failed, audiences: results }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          created,
+          failed,
+          audiences: results,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     throw new Error("Ação inválida");
