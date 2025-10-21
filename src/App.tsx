@@ -90,14 +90,14 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/audience-creator"
-            element={
-              <PrivateRoute requireAdmin>
-                <AudienceCreator />
-              </PrivateRoute>
-            }
-          />
+        <Route
+          path="/audience-creator"
+          element={
+            <PrivateRoute>
+              <AudienceCreator />
+            </PrivateRoute>
+          }
+        />
           <Route
             path="/clientes/relatorio"
             element={

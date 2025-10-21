@@ -1,4 +1,3 @@
-
 export const buildPlatformUrl = (platform: 'meta' | 'google', accountId?: string): string => {
   if (platform === 'meta') {
     if (accountId) {
@@ -15,4 +14,8 @@ export const buildPlatformUrl = (platform: 'meta' | 'google', accountId?: string
 
   // Retornar um fallback seguro
   return '#';
+};
+
+export const buildAudiencesUrl = (accountId: string): string => {
+  return `https://adsmanager.facebook.com/adsmanager/audiences?act=${accountId}`;
 };

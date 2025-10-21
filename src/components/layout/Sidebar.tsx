@@ -52,6 +52,7 @@ const adminMenuItems: MenuItem[] = [
 
 const regularMenuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/" },
+  { icon: Target, label: "Criar Públicos", path: "/audience-creator" },
   { icon: Users, label: "Equipe", path: "/equipe" },
   { icon: BarChart3, label: "Revisão Diária", path: "/revisao-diaria-avancada" },
 ];

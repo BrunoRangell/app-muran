@@ -144,7 +144,13 @@ const AudienceCreator = () => {
   };
 
   if (showResult && result) {
-    return <AudienceResult result={result} onCreateNew={handleCreateNew} />;
+    return (
+      <AudienceResult 
+        result={result} 
+        accountId={formData.accountId}
+        onCreateNew={handleCreateNew} 
+      />
+    );
   }
 
   const isAccountIdValid = formData.accountId.length >= 10;
