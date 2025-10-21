@@ -221,10 +221,17 @@ async function createEngagementAudience(
   console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`);
   console.log(JSON.stringify(payload, null, 2));
 
+  const body = new URLSearchParams({
+    name: audienceName,
+    prefill: "true",
+    rule: JSON.stringify(payload.rule), // importante!
+    access_token: accessToken,
+  });
+
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
   });
 
   const raw = await res.text();
