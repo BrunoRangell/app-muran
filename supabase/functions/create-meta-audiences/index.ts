@@ -157,14 +157,16 @@ async function createSiteAudience(
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
+
   const data = await res.json();
+  console.log(`[SITE] → Resposta:`, data);
 
   if (!res.ok) {
-    console.error("[AUDIENCE] ❌ Erro ao criar público de site:", data.error?.message);
+    console.error("[SITE] ❌ Erro ao criar público:", data.error?.message);
     throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Público criado: ${audienceName}`);
+  console.log(`[SITE] ✅ Público criado: ${audienceName} (ID: ${data.id})`);
   return data;
 }
 
@@ -184,49 +186,31 @@ async function createEngagementAudience(
   const objectType = sourceType === "instagram" ? "ig_business" : "page";
   const eventName = sourceType === "instagram" ? "ig_business_profile_all" : "page_engaged";
 
-  const url = `https://graph.facebook.com/v23.0/${actId}/customaudiences?access_token=${accessToken}`;
-
-  const payload = {
-    name: audienceName,
-    prefill: true,
-    rule: {
-      inclusions: {
-        operator: "or",
-        rules: [
-          {
-            event_sources: [
-              {
-                id: sourceId,
-                type: objectType, // "ig_business" ou "page"
-              },
-            ],
-            retention_seconds: retentionSeconds,
-            filter: {
-              operator: "and",
-              filters: [
-                {
-                  field: "event",
-                  operator: "eq",
-                  value: eventName, // "ig_business_profile_all" ou "page_engaged"
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-  };
-
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`);
-  console.log(JSON.stringify(payload, null, 2));
+  const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
 
   const body = new URLSearchParams({
     name: audienceName,
     prefill: "true",
-    rule: JSON.stringify(payload.rule), // importante!
+    rule: JSON.stringify({
+      inclusions: {
+        operator: "or",
+        rules: [
+          {
+            event_sources: [{ id: sourceId, type: objectType }],
+            retention_seconds: retentionSeconds,
+            filter: {
+              operator: "and",
+              filters: [{ field: "event", operator: "eq", value: eventName }],
+            },
+          },
+        ],
+      },
+    }),
     access_token: accessToken,
   });
+
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log(`[AUDIENCE] 🚀 Criando ${audienceName}`);
 
   const res = await fetch(url, {
     method: "POST",
@@ -234,17 +218,18 @@ async function createEngagementAudience(
     body: body.toString(),
   });
 
-  const raw = await res.text();
-  console.log("→ Resposta bruta:", raw);
+  const data = await res.json();
+  console.log("→ Resposta:", data);
 
   if (!res.ok) {
-    const err = JSON.parse(raw);
-    console.error(`[AUDIENCE] ❌ Erro (${res.status})`, err);
-    throw new Error(err.error?.message || "Erro ao criar público");
+    console.error(`[AUDIENCE] ❌ Erro (${res.status})`, data);
+    throw new Error(data.error?.message || "Erro ao criar público");
   }
 
-  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName}`);
+  console.log(`[AUDIENCE] ✅ Criado com sucesso: ${audienceName} (ID: ${data.id})`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━");
+
+  return data;
 }
 
 // ======================== MAIN SERVER HANDLER ========================
@@ -303,8 +288,8 @@ Deno.serve(async (req) => {
         for (const event of eventTypes || siteEvents || []) {
           for (const d of siteDays) {
             try {
-              const res = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
-              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: res.id });
+              const resData = await createSiteAudience(accountId!, pixelId, event, d, accessToken);
+              results.push({ name: `[SITE] ${event} - ${d}D`, status: "success", id: resData.id });
             } catch (err: any) {
               results.push({ name: `[SITE] ${event} - ${d}D`, status: "failed", error: err.message });
             }
@@ -325,7 +310,7 @@ Deno.serve(async (req) => {
 
           for (const d of engageDays) {
             try {
-              const res = await createEngagementAudience(
+              const resData = await createEngagementAudience(
                 accountId!,
                 sourceId,
                 type as "instagram" | "facebook",
@@ -333,15 +318,11 @@ Deno.serve(async (req) => {
                 accessToken,
               );
               const prefix = type === "instagram" ? "IG" : "FB";
-              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: res.id });
+              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "success", id: resData.id });
             } catch (err: any) {
-              console.error(`[UNIFIED] ❌ Falha ${type} ${d}D:`, err.message);
               const prefix = type === "instagram" ? "IG" : "FB";
-              results.push({
-                name: `[${prefix}] Envolvidos - ${d}D`,
-                status: "failed",
-                error: err.message,
-              });
+              console.error(`[UNIFIED] ❌ Falha ${prefix} ${d}D:`, err.message);
+              results.push({ name: `[${prefix}] Envolvidos - ${d}D`, status: "failed", error: err.message });
             }
           }
         }
@@ -352,15 +333,9 @@ Deno.serve(async (req) => {
 
       console.log(`[UNIFIED] ✅ Resumo: ${created} criados | ${failed} falharam`);
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          created,
-          failed,
-          audiences: results,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ success: true, created, failed, audiences: results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     throw new Error("Ação inválida");
