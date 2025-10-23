@@ -1,4 +1,3 @@
-
 project_id = "socrnutfpqtcjmetskta"
 
 [api]
@@ -34,5 +33,8 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.orchestrate-client-onboarding]
+verify_jwt = false
+
+[functions.refresh-meta-token]
 verify_jwt = false
 
