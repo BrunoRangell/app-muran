@@ -68,26 +68,31 @@ export const OverviewCards = ({ metrics }: OverviewCardsProps) => {
         const isPositive = card.variation >= 0;
 
         return (
-          <Card key={card.label} className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-2 bg-muran-primary/10 rounded-lg">
-                <Icon className="h-5 w-5 text-muran-primary" />
+          <Card 
+            key={card.label} 
+            className="group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border/50"
+          >
+            <div className="p-6 flex flex-col h-full">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2.5 bg-primary/10 rounded-lg transition-colors group-hover:bg-primary/20">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className={cn(
+                  "flex items-center gap-1 text-sm font-semibold",
+                  isPositive ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"
+                )}>
+                  {isPositive ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+                  {formatPercent(card.variation)}
+                </div>
               </div>
-              <div className={cn(
-                "flex items-center gap-1 text-sm font-medium",
-                isPositive ? "text-green-600" : "text-red-600"
-              )}>
-                {isPositive ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
-                {formatPercent(card.variation)}
-              </div>
-            </div>
 
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-muran-dark">{card.value}</p>
-              <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-              <p className="text-xs text-muted-foreground">
-                {isPositive ? '+' : ''}{card.absolute} vs período anterior
-              </p>
+              <div className="space-y-1.5 mt-auto">
+                <p className="text-3xl font-bold tracking-tight text-foreground">{card.value}</p>
+                <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
+                <p className="text-xs text-muted-foreground/80">
+                  {isPositive ? '+' : ''}{card.absolute} vs período anterior
+                </p>
+              </div>
             </div>
           </Card>
         );

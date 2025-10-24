@@ -24,11 +24,17 @@ export const LeadsChart = ({ data }: LeadsChartProps) => {
   };
 
   return (
-    <Card className="p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-muran-dark">Leads por Dia</h2>
-        <p className="text-sm text-muted-foreground">Evolução diária de conversões e investimento</p>
+    <Card className="transition-all duration-300 hover:shadow-lg border-border/50">
+      <div className="p-6 pb-2">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-10 w-1 bg-primary rounded-full" />
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Leads por Dia</h2>
+            <p className="text-sm text-muted-foreground">Evolução diária de conversões e investimento</p>
+          </div>
+        </div>
       </div>
+      <div className="px-6 pb-6">
 
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={chartData}>
@@ -102,6 +108,7 @@ export const LeadsChart = ({ data }: LeadsChartProps) => {
           />
         </LineChart>
       </ResponsiveContainer>
+      </div>
     </Card>
   );
 };

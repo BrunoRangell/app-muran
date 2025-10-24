@@ -20,10 +20,14 @@ export const ConversionFunnel = ({ data, platform }: ConversionFunnelProps) => {
   const platformColorLight = platform === 'meta' ? 'bg-muran-primary/20' : 'bg-blue-600/20';
 
   return (
-    <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-6 text-muran-dark">
-        Funil de Conversão - {platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
-      </h3>
+    <Card className="transition-all duration-300 hover:shadow-lg border-border/50">
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className={`h-10 w-1 ${platformColor} rounded-full`} />
+          <h3 className="text-lg font-semibold text-foreground">
+            Funil de Conversão - {platform === 'meta' ? 'Meta Ads' : 'Google Ads'}
+          </h3>
+        </div>
 
       <div className="space-y-4">
         {/* Impressões */}
@@ -81,6 +85,7 @@ export const ConversionFunnel = ({ data, platform }: ConversionFunnelProps) => {
             </div>
           </div>
         </Card>
+      </div>
       </div>
     </Card>
   );

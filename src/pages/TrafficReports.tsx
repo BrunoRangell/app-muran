@@ -22,8 +22,8 @@ const TrafficReports = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muran-secondary/5 to-background">
-      <div className="max-w-[1600px] mx-auto p-3 md:p-6 space-y-6">
+    <div className="min-h-screen bg-muted/30">
+      <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
         <TrafficReportHeader
           selectedClient={selectedClient}
           onClientChange={setSelectedClient}
