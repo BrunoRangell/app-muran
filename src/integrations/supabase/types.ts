@@ -635,6 +635,42 @@ export type Database = {
           },
         ]
       }
+      meta_token_metadata: {
+        Row: {
+          created_at: string
+          details: Json | null
+          expires_at: string | null
+          id: string
+          last_checked: string | null
+          last_refreshed: string | null
+          status: string
+          token_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          expires_at?: string | null
+          id?: string
+          last_checked?: string | null
+          last_refreshed?: string | null
+          status?: string
+          token_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          expires_at?: string | null
+          id?: string
+          last_checked?: string | null
+          last_refreshed?: string | null
+          status?: string
+          token_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       onboarding: {
         Row: {
           clickup_completed_at: string | null
@@ -918,18 +954,12 @@ export type Database = {
         Args: { budget_amount: number; end_date: string; start_date: string }
         Returns: number
       }
-      cleanup_old_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_old_logs: { Args: never; Returns: undefined }
       extract_transaction_pattern: {
         Args: { description: string }
         Returns: string
       }
-      get_campaign_health_status: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_campaign_health_status: { Args: never; Returns: Json }
       get_cron_expression: {
         Args: { job_name: string }
         Returns: {
@@ -945,10 +975,7 @@ export type Database = {
           schedule: string
         }[]
       }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_current_user_role: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -967,26 +994,11 @@ export type Database = {
         }
         Returns: number
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_service_role_execution: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_team_member: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      manual_cleanup_campaign_health: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      review_all_google_ads_clients: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      is_admin: { Args: never; Returns: boolean }
+      is_service_role_execution: { Args: never; Returns: boolean }
+      is_team_member: { Args: never; Returns: boolean }
+      manual_cleanup_campaign_health: { Args: never; Returns: Json }
+      review_all_google_ads_clients: { Args: never; Returns: Json }
       update_daily_budget_review: {
         Args: {
           p_id: number

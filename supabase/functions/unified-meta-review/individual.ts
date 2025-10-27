@@ -1,4 +1,4 @@
-import { createSupabaseClient, fetchMetaAccessToken, fetchClientData, fetchPrimaryMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview } from "./database.ts";
+import { createSupabaseClient, fetchMetaAccessToken, fetchClientData, fetchPrimaryMetaAccount, fetchSpecificMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview } from "./database.ts";
 import { fetchMetaApiData, fetchMetaBalance, fetchAccountBasicInfo } from "./meta-api.ts";
 import { updateCampaignHealth } from "./campaigns.ts";
 import { IndividualReviewRequest } from "./types.ts";
@@ -59,11 +59,18 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     
     console.log(`✅ [INDIVIDUAL] Cliente encontrado: ${clientData.company_name} (${clientTime}ms)`);
     
-    // 3. Buscar conta Meta principal
+    // 3. Buscar conta Meta (específica ou principal)
     const accountStartTime = Date.now();
-    console.log(`📊 [INDIVIDUAL] Buscando conta Meta principal para ${clientData.company_name}...`);
     
-    const metaAccount = await fetchPrimaryMetaAccount(supabase, clientId);
+    let metaAccount;
+    if (metaAccountId) {
+      console.log(`📊 [INDIVIDUAL] Buscando conta Meta ESPECÍFICA ${metaAccountId} para ${clientData.company_name}...`);
+      metaAccount = await fetchSpecificMetaAccount(supabase, clientId, metaAccountId);
+    } else {
+      console.log(`📊 [INDIVIDUAL] Buscando conta Meta PRINCIPAL para ${clientData.company_name}...`);
+      metaAccount = await fetchPrimaryMetaAccount(supabase, clientId);
+    }
+    
     const accountTime = Date.now() - accountStartTime;
     
     if (!metaAccount) {
@@ -71,7 +78,12 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       return { success: false, error: "Conta Meta não encontrada para este cliente" };
     }
     
-    console.log(`✅ [INDIVIDUAL] Conta Meta encontrada: ${metaAccount.account_name} (${accountTime}ms)`);
+    console.log(`✅ [INDIVIDUAL] Conta Meta selecionada (${accountTime}ms):`, {
+      account_id: metaAccount.account_id,
+      account_name: metaAccount.account_name,
+      is_primary: metaAccount.is_primary,
+      requested_account: metaAccountId || 'primária (padrão)'
+    });
     
     // 4. Buscar orçamento personalizado ativo
     const budgetStartTime = Date.now();

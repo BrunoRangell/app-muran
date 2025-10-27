@@ -224,35 +224,47 @@ export const useBudgetSetup = () => {
         if (accountId.includes('-temp-')) {
           const clientId = accountId.split('-temp-')[0];
           
-          // Criar nova conta no banco de dados
-          const { data: newAccount, error: createError } = await supabase
-            .from("client_accounts")
-            .insert({
-              client_id: clientId,
-              platform: 'meta',
-              account_name: `Conta Meta`,
-              account_id: values.account_id || "",
-              budget_amount: budgetAmount,
-              is_primary: false,
-              status: 'active'
-            })
-            .select()
-            .single();
+          // Só criar se houver dados válidos
+          const hasValidAccountId = values.account_id && values.account_id.trim() !== "";
+          const hasValidBudget = budgetAmount > 0;
           
-          if (createError) throw createError;
-          console.log(`✅ Nova conta criada para cliente ${clientId}`);
+          if (hasValidAccountId || hasValidBudget) {
+            // Criar nova conta no banco de dados
+            const { data: newAccount, error: createError } = await supabase
+              .from("client_accounts")
+              .insert({
+                client_id: clientId,
+                platform: 'meta',
+                account_name: `Conta Meta`,
+                account_id: values.account_id?.trim() || "",
+                budget_amount: budgetAmount,
+                is_primary: false,
+                status: 'active'
+              })
+              .select()
+              .single();
+            
+            if (createError) throw createError;
+            console.log(`✅ Nova conta criada para cliente ${clientId}`);
+          } else {
+            console.log(`⏭️ Ignorando conta temporária vazia ${accountId}`);
+          }
         } else if (accountId.includes('-meta-temp')) {
           // Conta temporária para cliente sem contas Meta
           const clientId = accountId.split('-meta-temp')[0];
           
-          if (values.account_id || values.budget_amount) {
+          // Só criar se houver dados válidos
+          const hasValidAccountId = values.account_id && values.account_id.trim() !== "";
+          const hasValidBudget = budgetAmount > 0;
+          
+          if (hasValidAccountId || hasValidBudget) {
             const { error: createError } = await supabase
               .from("client_accounts")
               .insert({
                 client_id: clientId,
                 platform: 'meta',
                 account_name: `Conta Meta`,
-                account_id: values.account_id || "",
+                account_id: values.account_id?.trim() || "",
                 budget_amount: budgetAmount,
                 is_primary: true,
                 status: 'active'
@@ -260,6 +272,8 @@ export const useBudgetSetup = () => {
             
             if (createError) throw createError;
             console.log(`✅ Primeira conta Meta criada para cliente ${clientId}`);
+          } else {
+            console.log(`⏭️ Ignorando conta Meta temporária vazia para cliente ${clientId}`);
           }
         } else if (accountId.includes('-google-')) {
           // Conta temporária para Google Ads
@@ -306,17 +320,16 @@ export const useBudgetSetup = () => {
             console.log(`✅ Primeira conta Google criada para cliente ${clientId}`);
           }
         } else {
-          // Atualizar conta existente
+          // Atualizar conta existente - apenas budget_amount
           const { error } = await supabase
             .from("client_accounts")
             .update({
-              account_id: values.account_id || "",
               budget_amount: budgetAmount
             })
             .eq("id", accountId);
           
           if (error) throw error;
-          console.log(`✅ Conta ${accountId} atualizada`);
+          console.log(`✅ Conta ${accountId} atualizada - Budget: R$ ${budgetAmount}`);
         }
       }
       

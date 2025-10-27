@@ -57,6 +57,7 @@ const Settings = lazyWithTimeout(() => import("@/pages/Settings"));
 const ImprovedDailyReviews = lazyWithTimeout(() => import("@/pages/ImprovedDailyReviews"));
 const Onboarding = lazyWithTimeout(() => import("@/pages/Onboarding"));
 const AudienceCreator = lazyWithTimeout(() => import("@/pages/AudienceCreator"));
+const TrafficReports = lazyWithTimeout(() => import("@/pages/TrafficReports"));
 
 
 function App() {
@@ -124,6 +125,9 @@ function App() {
           />
           {/* Página principal de revisão diária */}
             <Route path="/revisao-diaria-avancada" element={<ImprovedDailyReviews />} />
+          
+          {/* Relatórios de Tráfego */}
+          <Route path="/relatorios-trafego" element={<TrafficReports />} />
           
           {/* Redirecionamento da rota antiga do financeiro para a página inicial */}
           <Route path="/financeiro" element={<Navigate to="/" replace />} />
