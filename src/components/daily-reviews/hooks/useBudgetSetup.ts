@@ -306,17 +306,16 @@ export const useBudgetSetup = () => {
             console.log(`✅ Primeira conta Google criada para cliente ${clientId}`);
           }
         } else {
-          // Atualizar conta existente
+          // Atualizar conta existente - apenas budget_amount
           const { error } = await supabase
             .from("client_accounts")
             .update({
-              account_id: values.account_id || "",
               budget_amount: budgetAmount
             })
             .eq("id", accountId);
           
           if (error) throw error;
-          console.log(`✅ Conta ${accountId} atualizada`);
+          console.log(`✅ Conta ${accountId} atualizada - Budget: R$ ${budgetAmount}`);
         }
       }
       
