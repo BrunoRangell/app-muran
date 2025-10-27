@@ -54,6 +54,37 @@ export async function fetchClientData(supabase: any, clientId: string): Promise<
   return client;
 }
 
+// Buscar conta Meta específica por account_id
+export async function fetchSpecificMetaAccount(
+  supabase: any,
+  clientId: string,
+  accountId: string
+): Promise<MetaAccount | null> {
+  console.log(`🔍 [DATABASE] Buscando conta Meta específica ${accountId} para cliente ${clientId}`);
+  
+  const { data: metaAccount, error: accountError } = await supabase
+    .from("client_accounts")
+    .select("*")
+    .eq("client_id", clientId)
+    .eq("account_id", accountId)
+    .eq("platform", "meta")
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (accountError) {
+    console.error(`❌ [DATABASE] Erro ao buscar conta Meta específica: ${accountError.message}`);
+    return null;
+  }
+
+  if (!metaAccount) {
+    console.log(`⚠️ [DATABASE] Conta Meta específica ${accountId} não encontrada`);
+  } else {
+    console.log(`✅ [DATABASE] Conta Meta específica encontrada: ${metaAccount.account_name}`);
+  }
+
+  return metaAccount;
+}
+
 // Buscar conta Meta principal do cliente usando a tabela client_accounts
 export async function fetchPrimaryMetaAccount(
   supabase: any, 
