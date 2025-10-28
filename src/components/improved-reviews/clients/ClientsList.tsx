@@ -68,6 +68,20 @@ export function ClientsList({
       const aName = a?.company_name || '';
       const bName = b?.company_name || '';
       
+      // Se activeFilter "adjustments" está ativo, ordenar por ajuste_recomendado / diário_atual
+      if (activeFilter === "adjustments") {
+        const aCurrent = a.review?.daily_budget_current || 0;
+        const aAdjustment = a.budgetCalculation?.budgetDifference || 0;
+        const bCurrent = b.review?.daily_budget_current || 0;
+        const bAdjustment = b.budgetCalculation?.budgetDifference || 0;
+        
+        // Calcular proporção do ajuste em relação ao diário atual
+        const aProportion = aCurrent > 0 ? Math.abs(aAdjustment) / aCurrent : 0;
+        const bProportion = bCurrent > 0 ? Math.abs(bAdjustment) / bCurrent : 0;
+        
+        return bProportion - aProportion; // Maior proporção primeiro (mais urgente)
+      }
+      
       // Se activeFilter "balance" está ativo, ordenar por dias restantes (menor primeiro)
       if (activeFilter === "balance" && platform === "meta") {
         const calculateDaysRemaining = (client: any) => {

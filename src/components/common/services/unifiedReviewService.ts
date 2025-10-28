@@ -89,9 +89,18 @@ export const reviewAllClients = async (
     
     for (const client of clients) {
       try {
+        // Validar se o cliente tem google_account_id antes de tentar revisar
+        const googleAccountId = client.google_account_id;
+        
+        if (!googleAccountId) {
+          console.warn(`[unifiedReviewService] Cliente ${client.company_name} (${client.id}) não tem conta Google configurada - pulando`);
+          failedReviews.push(client.company_name);
+          continue;
+        }
+        
         await reviewClient({ 
           clientId: client.id, 
-          accountId: client.google_account_id, 
+          accountId: googleAccountId, 
           platform 
         });
         successfulReviews.push(client.company_name);
