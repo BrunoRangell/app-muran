@@ -68,6 +68,14 @@ export function ClientsList({
       const aName = a?.company_name || '';
       const bName = b?.company_name || '';
       
+      // Se activeFilter "adjustments" está ativo, ordenar por valor absoluto do ajuste (maior primeiro)
+      if (activeFilter === "adjustments") {
+        const aAdjustment = Math.abs(a.budgetCalculation?.budgetDifference || 0);
+        const bAdjustment = Math.abs(b.budgetCalculation?.budgetDifference || 0);
+        
+        return bAdjustment - aAdjustment; // Maior ajuste primeiro
+      }
+      
       // Se activeFilter "balance" está ativo, ordenar por dias restantes (menor primeiro)
       if (activeFilter === "balance" && platform === "meta") {
         const calculateDaysRemaining = (client: any) => {
