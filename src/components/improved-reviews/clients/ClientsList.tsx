@@ -68,21 +68,18 @@ export function ClientsList({
       const aName = a?.company_name || '';
       const bName = b?.company_name || '';
       
-      // Se activeFilter "adjustments" está ativo, ordenar por razão atual/ideal (mais distante de 1.0 primeiro)
+      // Se activeFilter "adjustments" está ativo, ordenar por ajuste_recomendado / diário_ideal
       if (activeFilter === "adjustments") {
         const aIdeal = a.budgetCalculation?.idealDailyBudget || 0;
-        const aCurrent = a.review?.daily_budget_current || 0;
+        const aAdjustment = a.budgetCalculation?.budgetDifference || 0;
         const bIdeal = b.budgetCalculation?.idealDailyBudget || 0;
-        const bCurrent = b.review?.daily_budget_current || 0;
+        const bAdjustment = b.budgetCalculation?.budgetDifference || 0;
         
-        // Calcular razão (atual/ideal) e distância de 1.0
-        const aRatio = aIdeal > 0 ? aCurrent / aIdeal : 1;
-        const bRatio = bIdeal > 0 ? bCurrent / bIdeal : 1;
+        // Calcular proporção do ajuste em relação ao ideal
+        const aProportion = aIdeal > 0 ? Math.abs(aAdjustment) / aIdeal : 0;
+        const bProportion = bIdeal > 0 ? Math.abs(bAdjustment) / bIdeal : 0;
         
-        const aDistance = Math.abs(aRatio - 1);
-        const bDistance = Math.abs(bRatio - 1);
-        
-        return bDistance - aDistance; // Maior distância primeiro (mais urgente)
+        return bProportion - aProportion; // Maior proporção primeiro (mais urgente)
       }
       
       // Se activeFilter "balance" está ativo, ordenar por dias restantes (menor primeiro)
