@@ -60,32 +60,59 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
   console.log("[IG] 🔍 Buscando IG vinculados a", actId);
 
   try {
-    // 1️⃣ tentar via conta de anúncios
-    const direct = await fetch(
-      `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name}&access_token=${accessToken}`,
-    );
-    const directData = await direct.json();
-    if (direct.ok && directData.instagram_accounts?.data?.length) {
-      console.log(`[IG] ✅ Direto: ${directData.instagram_accounts.data.length}`);
-      return directData.instagram_accounts.data;
+    let allAccounts: any[] = [];
+    
+    // 1️⃣ Tentar via conta de anúncios COM PAGINAÇÃO
+    let directUrl: string | null = `${GRAPH_API_BASE}/${actId}?fields=instagram_accounts{username,id,name}&access_token=${accessToken}`;
+    
+    while (directUrl) {
+      const direct = await fetch(directUrl);
+      const directData = await direct.json();
+      
+      if (direct.ok && directData.instagram_accounts?.data?.length) {
+        allAccounts = allAccounts.concat(directData.instagram_accounts.data);
+        
+        // Verificar se há próxima página
+        directUrl = directData.instagram_accounts.paging?.next || null;
+        
+        if (!directUrl) {
+          console.log(`[IG] ✅ Direto: ${allAccounts.length} perfis (todas as páginas)`);
+          return allAccounts;
+        }
+      } else {
+        break; // Sair do loop se não houver dados
+      }
     }
 
-    // 2️⃣ tentar via business
+    // 2️⃣ Tentar via business COM PAGINAÇÃO
     const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
     const businessData = await business.json();
     const businessId = businessData.business?.id;
+    
     if (!businessId) {
       console.warn("[IG] ⚠️ Nenhum business vinculado.");
-      return [];
+      return allAccounts; // Retornar o que foi encontrado via direct
     }
 
-    const ig = await fetch(
-      `${GRAPH_API_BASE}/${businessId}/instagram_accounts?fields=id,username,name&access_token=${accessToken}`,
-    );
-    const igData = await ig.json();
-    if (!ig.ok) throw new Error(igData.error?.message || "Erro no IG Business");
-    console.log(`[IG] ✅ via Business: ${igData.data?.length || 0}`);
-    return igData.data || [];
+    let igUrl: string | null = `${GRAPH_API_BASE}/${businessId}/instagram_accounts?fields=id,username,name&access_token=${accessToken}`;
+    
+    while (igUrl) {
+      const ig = await fetch(igUrl);
+      const igData = await ig.json();
+      
+      if (!ig.ok) throw new Error(igData.error?.message || "Erro no IG Business");
+      
+      if (igData.data?.length) {
+        allAccounts = allAccounts.concat(igData.data);
+      }
+      
+      // Verificar se há próxima página
+      igUrl = igData.paging?.next || null;
+    }
+    
+    console.log(`[IG] ✅ via Business: ${allAccounts.length} perfis (todas as páginas)`);
+    return allAccounts;
+    
   } catch (err: any) {
     console.error("[IG] ❌ Erro Graph:", err.message);
     return [];
@@ -95,24 +122,32 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
 // ======================== FETCH FACEBOOK PAGES ========================
 async function fetchFacebookPages(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
-  console.log("[FB] 🔍 Buscando páginas vinculadas a", actId);
+  console.log("[FB] 🔍 Buscando páginas promovíveis em", actId);
 
   try {
-    const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
-    const businessData = await business.json();
-    const businessId = businessData.business?.id;
-    if (!businessId) {
-      console.warn("[FB] ⚠️ Nenhum business vinculado.");
-      return [];
+    let allPages: any[] = [];
+    let pagesUrl: string | null = `${GRAPH_API_BASE}/${actId}/promote_pages?fields=id,name,link,picture,fan_count&access_token=${accessToken}`;
+    
+    while (pagesUrl) {
+      const pages = await fetch(pagesUrl);
+      const pagesData = await pages.json();
+      
+      if (!pages.ok) {
+        console.error("[FB] ❌ Erro ao buscar promote_pages:", pagesData.error?.message);
+        throw new Error(pagesData.error?.message || "Erro ao buscar páginas promovíveis");
+      }
+      
+      if (pagesData.data?.length) {
+        allPages = allPages.concat(pagesData.data);
+      }
+      
+      // Verificar se há próxima página
+      pagesUrl = pagesData.paging?.next || null;
     }
-
-    const pages = await fetch(
-      `${GRAPH_API_BASE}/${businessId}?fields=owned_pages{id,name,link,picture,fan_count}&access_token=${accessToken}`,
-    );
-    const pagesData = await pages.json();
-    if (!pages.ok) throw new Error(pagesData.error?.message || "Erro no FB Pages");
-    console.log(`[FB] ✅ ${pagesData.owned_pages?.data?.length || 0} páginas`);
-    return pagesData.owned_pages?.data || [];
+    
+    console.log(`[FB] ✅ ${allPages.length} páginas promovíveis (todas as BMs)`);
+    return allPages;
+    
   } catch (err: any) {
     console.error("[FB] ❌ Erro Graph:", err.message);
     return [];
