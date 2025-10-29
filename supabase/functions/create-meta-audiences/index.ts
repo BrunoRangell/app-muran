@@ -122,36 +122,30 @@ async function fetchInstagramAccounts(accountId: string, accessToken: string) {
 // ======================== FETCH FACEBOOK PAGES ========================
 async function fetchFacebookPages(accountId: string, accessToken: string) {
   const actId = withActPrefix(accountId);
-  console.log("[FB] 🔍 Buscando páginas vinculadas a", actId);
+  console.log("[FB] 🔍 Buscando páginas promovíveis em", actId);
 
   try {
-    const business = await fetch(`${GRAPH_API_BASE}/${actId}?fields=business&access_token=${accessToken}`);
-    const businessData = await business.json();
-    const businessId = businessData.business?.id;
-    
-    if (!businessId) {
-      console.warn("[FB] ⚠️ Nenhum business vinculado.");
-      return [];
-    }
-
     let allPages: any[] = [];
-    let pagesUrl: string | null = `${GRAPH_API_BASE}/${businessId}?fields=owned_pages{id,name,link,picture,fan_count}&access_token=${accessToken}`;
+    let pagesUrl: string | null = `${GRAPH_API_BASE}/${actId}/promote_pages?fields=id,name,link,picture,fan_count&access_token=${accessToken}`;
     
     while (pagesUrl) {
       const pages = await fetch(pagesUrl);
       const pagesData = await pages.json();
       
-      if (!pages.ok) throw new Error(pagesData.error?.message || "Erro no FB Pages");
+      if (!pages.ok) {
+        console.error("[FB] ❌ Erro ao buscar promote_pages:", pagesData.error?.message);
+        throw new Error(pagesData.error?.message || "Erro ao buscar páginas promovíveis");
+      }
       
-      if (pagesData.owned_pages?.data?.length) {
-        allPages = allPages.concat(pagesData.owned_pages.data);
+      if (pagesData.data?.length) {
+        allPages = allPages.concat(pagesData.data);
       }
       
       // Verificar se há próxima página
-      pagesUrl = pagesData.owned_pages?.paging?.next || null;
+      pagesUrl = pagesData.paging?.next || null;
     }
     
-    console.log(`[FB] ✅ ${allPages.length} páginas (todas as páginas)`);
+    console.log(`[FB] ✅ ${allPages.length} páginas promovíveis (todas as BMs)`);
     return allPages;
     
   } catch (err: any) {
