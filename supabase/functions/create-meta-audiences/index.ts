@@ -181,7 +181,7 @@ async function createSiteAudience(
   const url = `${GRAPH_API_BASE}/${actId}/customaudiences`;
   const body = new URLSearchParams({
     name: audienceName,
-    subtype: "WEBSITE",
+    prefill: "true",
     rule: JSON.stringify(rule),
     access_token: accessToken,
   });
