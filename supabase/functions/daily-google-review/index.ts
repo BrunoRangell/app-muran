@@ -924,6 +924,47 @@ async function processGoogleReview(req: Request) {
       throw new Error(`Erro crítico ao salvar revisão: ${dbError.message}`);
     }
 
+    // Registrar log de conclusão na system_logs
+    try {
+      console.log("📝 Registrando log de conclusão no system_logs...");
+      
+      const logResponse = await fetch(
+        `${supabaseUrl}/rest/v1/system_logs`,
+        {
+          method: "POST",
+          headers: {
+            "apikey": supabaseKey,
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({
+            event_type: 'batch_review_completed',
+            message: `Revisão Google Ads concluída para ${clientData?.company_name || 'cliente'}`,
+            details: {
+              platform: 'google',
+              clientId,
+              accountId: googleAccountId,
+              accountName: realAccountName,
+              successCount: 1,
+              errorCount: 0,
+              totalClients: 1,
+              completedAt: new Date().toISOString(),
+              source: requestData.source || 'manual'
+            }
+          })
+        }
+      );
+      
+      if (!logResponse.ok) {
+        console.warn("⚠️ Não foi possível registrar log de conclusão (não crítico)");
+      } else {
+        console.log("✅ Log de conclusão registrado com sucesso");
+      }
+    } catch (logError: any) {
+      console.warn("⚠️ Erro ao registrar log (não crítico):", logError.message);
+    }
+
     return {
       success: true,
       reviewId,
