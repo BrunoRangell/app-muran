@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.48.1";
 import { ClientData, MetaAccount, CustomBudget, ReviewData } from "./types.ts";
 
 // Criação do cliente Supabase
@@ -290,4 +290,83 @@ export async function createNewReview(
   
   console.log(`✅ [DATABASE] Nova revisão criada: ID ${newReview.id}`);
   return newReview.id;
+}
+
+// Limpar revisões antigas (dias anteriores) e duplicatas do dia atual
+export async function cleanupOldReviews(
+  supabase: any,
+  platform: 'meta' | 'google',
+  reviewDate: string,
+  clientId?: string,
+  accountId?: string
+): Promise<{ deleted_old: number; deleted_today_duplicates: number }> {
+  console.log(`🧹 [DATABASE] Iniciando limpeza de revisões antigas para plataforma ${platform}`);
+  
+  let deletedOld = 0;
+  let deletedTodayDuplicates = 0;
+  
+  try {
+    // 1. Remover revisões de dias anteriores
+    console.log(`🗑️ [DATABASE] Removendo revisões anteriores a ${reviewDate}...`);
+    
+    let deleteOldQuery = supabase
+      .from("budget_reviews")
+      .delete()
+      .eq("platform", platform)
+      .lt("review_date", reviewDate);
+    
+    // Se clientId fornecido, limpar apenas daquele cliente
+    if (clientId) {
+      deleteOldQuery = deleteOldQuery.eq("client_id", clientId);
+    }
+    
+    if (accountId) {
+      deleteOldQuery = deleteOldQuery.eq("account_id", accountId);
+    }
+    
+    const { error: deleteOldError, count: oldCount } = await deleteOldQuery.select('*', { count: 'exact', head: true });
+    
+    if (deleteOldError) {
+      console.error(`❌ [DATABASE] Erro ao remover revisões antigas: ${deleteOldError.message}`);
+    } else {
+      deletedOld = oldCount || 0;
+      console.log(`✅ [DATABASE] ${deletedOld} revisões antigas removidas`);
+    }
+    
+    // 2. Remover duplicatas do dia atual (se clientId/accountId fornecidos)
+    if (clientId && accountId) {
+      console.log(`🗑️ [DATABASE] Removendo duplicatas do dia ${reviewDate}...`);
+      
+      const { error: deleteTodayError, count: todayCount } = await supabase
+        .from("budget_reviews")
+        .delete()
+        .eq("platform", platform)
+        .eq("client_id", clientId)
+        .eq("account_id", accountId)
+        .eq("review_date", reviewDate)
+        .select('*', { count: 'exact', head: true });
+      
+      if (deleteTodayError) {
+        console.error(`❌ [DATABASE] Erro ao remover duplicatas de hoje: ${deleteTodayError.message}`);
+      } else {
+        deletedTodayDuplicates = todayCount || 0;
+        console.log(`✅ [DATABASE] ${deletedTodayDuplicates} duplicatas de hoje removidas`);
+      }
+    }
+    
+    const totalDeleted = deletedOld + deletedTodayDuplicates;
+    console.log(`🧹 [DATABASE] Limpeza concluída: ${totalDeleted} revisões removidas no total`);
+    
+    return {
+      deleted_old: deletedOld,
+      deleted_today_duplicates: deletedTodayDuplicates
+    };
+    
+  } catch (error) {
+    console.error(`❌ [DATABASE] Erro inesperado na limpeza: ${error.message}`);
+    return {
+      deleted_old: 0,
+      deleted_today_duplicates: 0
+    };
+  }
 }

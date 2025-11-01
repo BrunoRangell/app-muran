@@ -1,5 +1,6 @@
 import { processIndividualReview } from "./individual.ts";
 import { BatchReviewRequest } from "./types.ts";
+import { createSupabaseClient, cleanupOldReviews } from "./database.ts";
 
 export async function processBatchReview(request: BatchReviewRequest) {
   const batchStartTime = Date.now();
@@ -20,6 +21,19 @@ export async function processBatchReview(request: BatchReviewRequest) {
     }
     
     const today = reviewDate || new Date().toISOString().split('T')[0];
+    
+    // Limpeza GLOBAL de revisões antigas no início do batch (mais eficiente)
+    console.log(`🧹 [BATCH] Executando limpeza global de revisões antigas do Meta Ads...`);
+    const cleanupStartTime = Date.now();
+    const supabase = createSupabaseClient();
+    
+    const cleanupResult = await cleanupOldReviews(supabase, 'meta', today);
+    const cleanupTime = Date.now() - cleanupStartTime;
+    
+    console.log(`✅ [BATCH] Limpeza global concluída (${cleanupTime}ms):`, {
+      deleted_old: cleanupResult.deleted_old,
+      deleted_today_duplicates: cleanupResult.deleted_today_duplicates
+    });
     
     console.log(`📊 [BATCH] Processando ${clientIds.length} clientes em lote para data ${today}`);
     
