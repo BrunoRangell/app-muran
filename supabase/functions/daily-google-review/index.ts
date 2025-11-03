@@ -301,58 +301,57 @@ async function fetchDailySpend(
   }
 }
 
-// Função para processar as revisões do Google Ads
-async function processGoogleReview(req: Request) {
+// Função auxiliar para registrar log de conclusão em lote
+async function logBatchCompletion(
+  supabaseUrl: string,
+  supabaseKey: string,
+  successCount: number,
+  errorCount: number,
+  totalClients: number,
+  source: string
+) {
   try {
-    const requestBody = await req.text();
-    console.log("Corpo da requisição recebida:", requestBody);
+    console.log("📝 Registrando log consolidado de conclusão em lote...");
     
-    if (!requestBody || requestBody.trim() === '') {
-      console.error("Corpo da requisição vazio");
-      return { success: false, error: "Corpo da requisição vazio ou inválido" };
-    }
-
-    let parsedBody;
-    try {
-      parsedBody = JSON.parse(requestBody);
-    } catch (parseError) {
-      console.error("Erro ao fazer parse do JSON:", parseError);
-      return { success: false, error: "Formato JSON inválido no corpo da requisição" };
-    }
-
-    const { clientId, googleAccountId, reviewDate = new Date().toISOString().split("T")[0] } = parsedBody;
-
-    console.log("Parâmetros extraídos:", { clientId, googleAccountId, reviewDate });
-
-    if (!clientId) {
-      console.error("ID do cliente não fornecido");
-      return { success: false, error: "ID do cliente é obrigatório" };
-    }
-
-    if (!googleAccountId) {
-      console.error("ID da conta Google Ads não fornecido");
-      return { success: false, error: "ID da conta Google Ads é obrigatório" };
-    }
-
-    // Validar formato do ID da conta Google Ads
-    if (!validateGoogleAccountId(googleAccountId)) {
-      console.error("Formato inválido do ID da conta Google Ads:", googleAccountId);
-      return { 
-        success: false, 
-        error: `Formato inválido do ID da conta Google Ads: ${googleAccountId}. Deve conter apenas números e ter entre 8-12 dígitos.` 
-      };
-    }
-
-    console.log(`Processando revisão do Google Ads para cliente ${clientId}, conta ${googleAccountId} na data ${reviewDate}`);
+    await fetch(`${supabaseUrl}/rest/v1/system_logs`, {
+      method: "POST",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        event_type: 'batch_review_completed',
+        message: `Revisão em massa Google Ads concluída ${source === 'automatic' ? 'automaticamente' : 'manualmente'}`,
+        details: {
+          platform: 'google',
+          successCount,
+          errorCount,
+          totalClients,
+          completedAt: new Date().toISOString(),
+          source
+        }
+      })
+    });
     
-    // URL da API do Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseKey) {
-      return { success: false, error: "Configuração do Supabase incompleta" };
-    }
+    console.log("✅ Log consolidado registrado com sucesso");
+  } catch (error: any) {
+    console.warn("⚠️ Erro ao registrar log consolidado:", error.message);
+  }
+}
 
+// Função para processar uma revisão individual de Google Ads
+async function processIndividualGoogleReview(
+  clientId: string,
+  supabaseUrl: string,
+  supabaseKey: string,
+  reviewDate: string,
+  source: string
+) {
+  try {
+    console.log(`\n🔍 [${clientId}] Iniciando processamento individual...`);
+    
     // Buscar dados do cliente
     const clientResponse = await fetch(`${supabaseUrl}/rest/v1/clients?id=eq.${clientId}&select=*`, {
       headers: {
@@ -363,69 +362,50 @@ async function processGoogleReview(req: Request) {
     });
 
     if (!clientResponse.ok) {
-      const errorText = await clientResponse.text();
-      console.error("Erro ao buscar cliente:", errorText);
-      throw new Error(`Erro ao buscar cliente: ${clientResponse.status} - ${errorText}`);
+      throw new Error(`Erro ao buscar cliente: ${clientResponse.status}`);
     }
 
     const clients = await clientResponse.json();
     if (!clients || clients.length === 0) {
-      return { success: false, error: `Cliente ${clientId} não encontrado` };
+      throw new Error(`Cliente ${clientId} não encontrado`);
     }
 
-    const client = clients[0];
+    const clientData = clients[0];
     
-    // Buscar ou criar conta do Google Ads específica
-    let accountName = "Conta não identificada"; // ALTERADO: usar fallback padrão
-    let accountIdUuid = null;
-    
+    // Buscar conta Google Ads do cliente
     const accountResponse = await fetch(
-      `${supabaseUrl}/rest/v1/client_accounts?client_id=eq.${clientId}&account_id=eq.${googleAccountId}&platform=eq.google&select=*`, {
-      headers: {
-        "apikey": supabaseKey,
-        "Authorization": `Bearer ${supabaseKey}`,
-        "Content-Type": "application/json"
-      }
-    });
-    
-    if (accountResponse.ok) {
-      const accounts = await accountResponse.json();
-      if (accounts && accounts.length > 0) {
-        accountName = accounts[0].account_name || "Conta não identificada"; // ALTERADO: usar fallback
-        accountIdUuid = accounts[0].id;
-      } else {
-        // Criar nova conta se não existir
-        const createAccountResponse = await fetch(
-          `${supabaseUrl}/rest/v1/client_accounts`, {
-          method: "POST",
-          headers: {
-            "apikey": supabaseKey,
-            "Authorization": `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-          },
-          body: JSON.stringify({
-            client_id: clientId,
-            platform: "google",
-            account_id: googleAccountId,
-            account_name: accountName,
-            budget_amount: 0,
-            status: "active"
-          })
-        });
-        
-        if (createAccountResponse.ok) {
-          const newAccount = await createAccountResponse.json();
-          accountIdUuid = newAccount[0].id;
-          console.log(`✅ Nova conta Google Ads criada: ${accountIdUuid}`);
+      `${supabaseUrl}/rest/v1/client_accounts?client_id=eq.${clientId}&platform=eq.google&is_primary=eq.true&select=*`,
+      {
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json"
         }
       }
+    );
+    
+    if (!accountResponse.ok) {
+      throw new Error(`Erro ao buscar conta Google Ads: ${accountResponse.status}`);
+    }
+    
+    const accounts = await accountResponse.json();
+    if (!accounts || accounts.length === 0) {
+      throw new Error(`Nenhuma conta Google Ads encontrada para o cliente ${clientId}`);
+    }
+    
+    const account = accounts[0];
+    const googleAccountId = account.account_id;
+    const accountIdUuid = account.id;
+    let accountName = account.account_name || "Conta não identificada";
+
+    // Validar formato do ID da conta Google Ads
+    if (!validateGoogleAccountId(googleAccountId)) {
+      throw new Error(`Formato inválido do ID da conta Google Ads: ${googleAccountId}`);
     }
 
     // Verificar orçamento personalizado
-    const today = new Date().toISOString().split('T')[0];
     const customBudgetResponse = await fetch(
-      `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&is_active=eq.true&platform=eq.google&start_date=lte.${today}&end_date=gte.${today}&order=created_at.desc&limit=1`, {
+      `${supabaseUrl}/rest/v1/custom_budgets?client_id=eq.${clientId}&is_active=eq.true&platform=eq.google&start_date=lte.${reviewDate}&end_date=gte.${reviewDate}&order=created_at.desc&limit=1`, {
       headers: {
         "apikey": supabaseKey,
         "Authorization": `Bearer ${supabaseKey}`,
@@ -439,7 +419,7 @@ async function processGoogleReview(req: Request) {
       const customBudgets = await customBudgetResponse.json();
       if (customBudgets && customBudgets.length > 0) {
         customBudget = customBudgets[0];
-        console.log(`✅ Usando orçamento personalizado (ID: ${customBudget.id})`);
+        console.log(`✅ [${clientId}] Usando orçamento personalizado (ID: ${customBudget.id})`);
       }
     }
 
@@ -924,68 +904,108 @@ async function processGoogleReview(req: Request) {
       throw new Error(`Erro crítico ao salvar revisão: ${dbError.message}`);
     }
 
-    // Registrar log de conclusão na system_logs
-    try {
-      console.log("📝 Registrando log de conclusão no system_logs...");
-      
-      const logResponse = await fetch(
-        `${supabaseUrl}/rest/v1/system_logs`,
-        {
-          method: "POST",
-          headers: {
-            "apikey": supabaseKey,
-            "Authorization": `Bearer ${supabaseKey}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal"
-          },
-          body: JSON.stringify({
-            event_type: 'batch_review_completed',
-            message: `Revisão Google Ads concluída para ${clientData?.company_name || 'cliente'}`,
-            details: {
-              platform: 'google',
-              clientId,
-              accountId: googleAccountId,
-              accountName: realAccountName,
-              successCount: 1,
-              errorCount: 0,
-              totalClients: 1,
-              completedAt: new Date().toISOString(),
-              source: requestData.source || 'manual'
-            }
-          })
-        }
-      );
-      
-      if (!logResponse.ok) {
-        console.warn("⚠️ Não foi possível registrar log de conclusão (não crítico)");
-      } else {
-        console.log("✅ Log de conclusão registrado com sucesso");
-      }
-    } catch (logError: any) {
-      console.warn("⚠️ Erro ao registrar log (não crítico):", logError.message);
-    }
+    // Log individual (opcional - apenas para rastreabilidade)
+    console.log(`✅ [${clientId}] Revisão processada com sucesso (reviewId: ${reviewId})`);
 
     return {
       success: true,
       reviewId,
       clientId,
       accountId: googleAccountId,
-      accountName: realAccountName, // RETORNAR O NOME REAL DA CONTA OU "Conta não identificada"
+      accountName: realAccountName,
       currentDailyBudget,
       totalSpent,
       lastFiveDaysSpent,
-      individualDaysSpent: {
-        day1: googleDay1Spent,
-        day2: googleDay2Spent,
-        day3: googleDay3Spent,
-        day4: googleDay4Spent,
-        day5: googleDay5Spent
-      },
-      apiErrorDetails,
-      ...customBudgetInfo
+      companyName: clientData.company_name
     };
-  } catch (error) {
-    console.error("❌ Erro na função Edge do Google Ads:", error.message);
+  } catch (error: any) {
+    console.error(`❌ [${clientId}] Erro ao processar revisão:`, error.message);
+    throw error;
+  }
+}
+
+// Função para processar as revisões do Google Ads (individual ou em lote)
+async function processGoogleReview(req: Request) {
+  try {
+    const requestBody = await req.text();
+    console.log("📥 Corpo da requisição recebida");
+    
+    if (!requestBody || requestBody.trim() === '') {
+      return { success: false, error: "Corpo da requisição vazio ou inválido" };
+    }
+
+    let requestData;
+    try {
+      requestData = JSON.parse(requestBody);
+    } catch (parseError) {
+      return { success: false, error: "Formato JSON inválido no corpo da requisição" };
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return { success: false, error: "Configuração do Supabase incompleta" };
+    }
+
+    const reviewDate = requestData.reviewDate || new Date().toISOString().split("T")[0];
+    const source = requestData.source || 'manual';
+
+    // MODO LOTE: Processar múltiplos clientes
+    if (Array.isArray(requestData.clientIds) && requestData.clientIds.length > 0) {
+      console.log(`\n🚀 [LOTE] Iniciando processamento em lote de ${requestData.clientIds.length} clientes`);
+      
+      const results = await Promise.allSettled(
+        requestData.clientIds.map((clientId: string) =>
+          processIndividualGoogleReview(clientId, supabaseUrl, supabaseKey, reviewDate, source)
+        )
+      );
+      
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const errorCount = results.filter(r => r.status === 'rejected').length;
+      
+      console.log(`\n📊 [LOTE] Resultado: ${successCount} sucessos, ${errorCount} falhas`);
+      
+      // Registrar log consolidado
+      await logBatchCompletion(supabaseUrl, supabaseKey, successCount, errorCount, requestData.clientIds.length, source);
+      
+      return {
+        success: true,
+        mode: 'batch',
+        totalClients: requestData.clientIds.length,
+        successCount,
+        errorCount,
+        results: results.map((result, index) => ({
+          clientId: requestData.clientIds[index],
+          status: result.status,
+          data: result.status === 'fulfilled' ? result.value : null,
+          error: result.status === 'rejected' ? result.reason?.message : null
+        }))
+      };
+    }
+
+    // MODO INDIVIDUAL: Processar cliente único (manter compatibilidade)
+    const { clientId, googleAccountId } = requestData;
+
+    if (!clientId || !googleAccountId) {
+      return { success: false, error: "clientId e googleAccountId são obrigatórios" };
+    }
+
+    console.log(`\n🔍 [INDIVIDUAL] Processando cliente único: ${clientId}`);
+    
+    const result = await processIndividualGoogleReview(clientId, supabaseUrl, supabaseKey, reviewDate, source);
+    
+    // Registrar log individual
+    await logBatchCompletion(supabaseUrl, supabaseKey, 1, 0, 1, source);
+    
+    return {
+      success: true,
+      mode: 'individual',
+      ...result
+    };
+
+  } catch (error: any) {
+    console.error("❌ Erro crítico na função processGoogleReview:", error.message);
     return {
       success: false,
       error: error.message,
