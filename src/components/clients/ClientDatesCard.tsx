@@ -4,7 +4,7 @@ import { Building2, Handshake, Cake, Calendar, Clock } from "lucide-react";
 import { UnifiedClient } from "@/hooks/useUnifiedData";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { isValidDate, getNextOccurrence, getDaysUntil, getYearsSince, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
+import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
 
 interface ClientDatesCardProps {
   clients: UnifiedClient[];
@@ -29,7 +29,7 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
         // Aniversário de parceria
         if (isValidDate(client.first_payment_date)) {
           const nextAnniversary = getNextOccurrence(client.first_payment_date);
-          const yearsComplete = getYearsSince(client.first_payment_date);
+          const yearsComplete = getYearsToComplete(client.first_payment_date, nextAnniversary);
           allDates.push({
             client,
             date: nextAnniversary,
@@ -43,7 +43,7 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
         // Aniversário da empresa
         if (isValidDate(client.company_birthday)) {
           const nextCompanyBirthday = getNextOccurrence(client.company_birthday);
-          const yearsComplete = getYearsSince(client.company_birthday);
+          const yearsComplete = getYearsToComplete(client.company_birthday, nextCompanyBirthday);
           allDates.push({
             client,
             date: nextCompanyBirthday,
@@ -117,7 +117,6 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
                           : 'bg-muran-primary/10 text-muran-primary border-muran-primary/20'
                       }`}
                     >
-                      {date.type === 'partnership_anniversary' ? '✨ ' : '🎂 '}
                       {date.yearsComplete} {date.yearsComplete === 1 ? 'ano' : 'anos'}
                       {date.type === 'partnership_anniversary' ? ' de parceria' : ' da empresa'}
                     </Badge>

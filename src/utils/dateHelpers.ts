@@ -48,6 +48,11 @@ export const getYearsSince = (dateString: string): number => {
   return years;
 };
 
+export const getYearsToComplete = (originalDateString: string, nextOccurrence: Date): number => {
+  const originalDate = parseISO(originalDateString);
+  return nextOccurrence.getFullYear() - originalDate.getFullYear();
+};
+
 export const isDateToday = (date: Date): boolean => {
   const today = new Date();
   return (

@@ -5,7 +5,7 @@ import { TeamMember } from "@/types/team";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { isValidDate, getNextOccurrence, getDaysUntil, getYearsSince, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
+import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
 
 interface TeamDatesCardProps {
   members: TeamMember[];
@@ -47,7 +47,7 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
       // Aniversário de Muran
       if (isValidDate(member.start_date)) {
         const nextWorkAnniversary = getNextOccurrence(member.start_date);
-        const yearsComplete = getYearsSince(member.start_date);
+        const yearsComplete = getYearsToComplete(member.start_date, nextWorkAnniversary);
         allDates.push({
           member,
           date: nextWorkAnniversary,
@@ -133,7 +133,7 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                           : 'bg-muran-primary/10 text-muran-primary border-muran-primary/20'
                       }`}
                     >
-                      {date.type === 'birthday' ? '🎂 Aniversário' : `✨ ${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`}
+                      {date.type === 'birthday' ? 'Aniversário' : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`}
                     </Badge>
                   </div>
                   
