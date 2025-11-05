@@ -54,7 +54,7 @@ export const GoalProgress = ({ goal, currentValue, newClientsThisMonth = 0 }: Go
 
   return (
     <div className="space-y-3">
-      <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-2 rounded-lg">
+      <div className="bg-gradient-to-r from-indigo-50/50 to-blue-50/50 p-3 rounded-lg">
         <div className="flex items-center gap-2">
           <Target className="w-5 h-5 text-indigo-600" />
           <div className="flex-1">
@@ -96,18 +96,18 @@ export const GoalProgress = ({ goal, currentValue, newClientsThisMonth = 0 }: Go
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">Meta</p>
-          <p className="text-lg font-semibold">{goal.target_value}</p>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+          <p className="text-[11px] text-gray-500 mb-0.5">Meta</p>
+          <p className="text-xl font-semibold">{goal.target_value}</p>
         </div>
-        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">{getCurrentValueLabel()}</p>
-          <p className="text-lg font-semibold">{currentValue}</p>
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+          <p className="text-[11px] text-gray-500 mb-0.5">{getCurrentValueLabel()}</p>
+          <p className="text-xl font-semibold">{currentValue}</p>
         </div>
-        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">Novos este mês</p>
-          <p className="text-lg font-semibold">{newClientsThisMonth}</p>
+        <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+          <p className="text-[11px] text-gray-500 mb-0.5">Novos este mês</p>
+          <p className="text-xl font-semibold">{newClientsThisMonth}</p>
         </div>
       </div>
     </div>
