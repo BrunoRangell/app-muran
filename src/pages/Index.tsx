@@ -1,18 +1,17 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { startOfMonth, endOfMonth } from "date-fns";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getRandomQuote } from "@/data/motivationalQuotes";
-import { CompanyCards } from "@/components/index/CompanyCards";
-import { MetricsCard } from "@/components/index/MetricsCard";
-import { TeamDatesCard } from "@/components/team/TeamDatesCard";
-import { ClientDatesCard } from "@/components/clients/ClientDatesCard";
-import { GoalCard } from "@/components/index/GoalCard";
-import { Quote } from "lucide-react";
-import { useUnifiedData } from "@/hooks/useUnifiedData";
-import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
 import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
+import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
+import { useUnifiedData } from "@/hooks/useUnifiedData";
+import { CompactHeader } from "@/components/index/CompactHeader";
+import { KPICards } from "@/components/index/KPICards";
+import { GoalCard } from "@/components/index/GoalCard";
+import { UnifiedDatesTimeline } from "@/components/index/UnifiedDatesTimeline";
+import { CompanyInfoTabs } from "@/components/index/CompanyInfoTabs";
+import { QuickInsights } from "@/components/index/QuickInsights";
 import { AuthDebugger } from "@/components/auth/AuthDebugger";
 
 const Index = () => {
@@ -150,14 +149,6 @@ const Index = () => {
     }
   }, [session, user, isAuthenticated, isAuthLoading]);
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase();
-  };
-
   const todaysQuote = getRandomQuote();
 
   if (isTeamLoading || isMetricsLoading || isUserLoading || isAuthLoading || isClientsLoading) {
@@ -174,69 +165,49 @@ const Index = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 p-4 md:p-6 relative">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100 p-4 md:p-8">
       {isRevalidating && (
         <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm border border-muran-primary/20 rounded-lg px-4 py-2 shadow-lg flex items-center gap-2">
           <div className="h-4 w-4 border-2 border-muran-primary border-t-transparent rounded-full animate-spin" />
           <span className="text-sm text-muran-complementary">Atualizando...</span>
         </div>
       )}
-      
-      <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-12 w-12 border-2 border-muran-primary/20">
-              {avatarUrl ? (
-                <AvatarImage src={avatarUrl} alt={userName} className="object-cover" />
-              ) : (
-                <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
-                  {getInitials(userName)}
-                </AvatarFallback>
-              )}
-            </Avatar>
-            <div className="text-left">
-              <h1 className="text-2xl font-bold text-muran-complementary">
-                {greeting}, {userName || "Usuário"}!
-              </h1>
-              <p className="text-gray-600">É muito bom ter você na Muran!</p>
-            </div>
+
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Compact Header */}
+        <CompactHeader
+          greeting={greeting}
+          userName={userName}
+          userAvatar={avatarUrl}
+          userRole={userRole}
+          quote={`${todaysQuote.quote} - ${todaysQuote.author}`}
+        />
+
+        {/* KPI Cards */}
+        <KPICards clientMetrics={clientMetrics} />
+
+        {/* Main Grid - 2 Columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - 60% */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Goal Card - Expanded */}
+            <GoalCard isAdmin={isAdmin} />
+            
+            {/* Unified Dates Timeline */}
+            <UnifiedDatesTimeline 
+              teamMembers={teamMembers || []} 
+              clients={clients || []} 
+            />
           </div>
-        </div>
-        
-        <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
-          <Quote className="h-5 w-5 text-muran-primary/50 shrink-0" />
-          <p className="text-sm text-gray-600 italic">
-            "{todaysQuote.quote}" 
-            <span className="text-xs text-gray-500 ml-1">
-              - {todaysQuote.author}
-            </span>
-          </p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-1">
-          <CompanyCards />
-        </div>
-
-        <div className="lg:col-span-3">
-          <GoalCard isAdmin={isAdmin} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-1">
-          <MetricsCard clientMetrics={clientMetrics} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div>
-          {teamMembers && <TeamDatesCard members={teamMembers} />}
-        </div>
-        
-        <div>
-          {clients && <ClientDatesCard clients={clients} />}
+          {/* Right Column - 40% */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Company Info */}
+            <CompanyInfoTabs />
+            
+            {/* Quick Insights */}
+            <QuickInsights clientMetrics={clientMetrics} />
+          </div>
         </div>
       </div>
     </div>
