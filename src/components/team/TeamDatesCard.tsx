@@ -16,6 +16,7 @@ interface TeamDate {
   type: 'birthday' | 'work_anniversary';
   daysUntil: number;
   yearsComplete?: number;
+  originalDate?: string;
 }
 
 export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
@@ -51,7 +52,8 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
           date: nextWorkAnniversary,
           type: 'work_anniversary',
           daysUntil: getDaysUntil(nextWorkAnniversary),
-          yearsComplete
+          yearsComplete,
+          originalDate: member.start_date
         });
       }
     });
@@ -124,7 +126,9 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                     <span className={isToday ? 'text-white/90' : 'text-gray-600'}>
                       {date.type === 'birthday' 
                         ? format(date.date, "dd 'de' MMMM", { locale: ptBR })
-                        : format(date.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                        : date.originalDate 
+                          ? format(new Date(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                          : format(date.date, "dd 'de' MMMM", { locale: ptBR })}
                     </span>
                     {!isToday && (
                       <span className={`text-xs ${

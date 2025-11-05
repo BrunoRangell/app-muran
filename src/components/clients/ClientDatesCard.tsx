@@ -15,6 +15,7 @@ interface ClientDate {
   type: 'partnership_anniversary' | 'company_birthday';
   daysUntil: number;
   yearsComplete: number;
+  originalDate: string;
 }
 
 export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
@@ -33,7 +34,8 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
             date: nextAnniversary,
             type: 'partnership_anniversary',
             daysUntil: getDaysUntil(nextAnniversary),
-            yearsComplete
+            yearsComplete,
+            originalDate: client.first_payment_date
           });
         }
         
@@ -46,7 +48,8 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
             date: nextCompanyBirthday,
             type: 'company_birthday',
             daysUntil: getDaysUntil(nextCompanyBirthday),
-            yearsComplete
+            yearsComplete,
+            originalDate: client.company_birthday
           });
         }
       });
@@ -104,7 +107,7 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
                   
                   <div className="flex items-center gap-2 text-sm">
                     <span className={isToday ? 'text-white/90' : 'text-gray-600'}>
-                      {format(date.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      {format(new Date(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                     </span>
                     {!isToday && (
                       <span className={`text-xs ${
