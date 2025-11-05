@@ -56,7 +56,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   }
 
   return (
-    <Card className="border-0 shadow-sm bg-white h-full min-h-[260px]">
+    <Card className="border-0 shadow-sm bg-white h-full min-h-[310px]">
       <GoalHeader
         goal={goal}
         isAdmin={isAdmin}
