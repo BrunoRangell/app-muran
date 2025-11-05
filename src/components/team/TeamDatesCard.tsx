@@ -6,21 +6,27 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
+import { useImportantDates } from "@/hooks/useImportantDates";
+import { AddDateDialog } from "@/components/dates/AddDateDialog";
 
 interface TeamDatesCardProps {
   members: TeamMember[];
 }
 
 interface TeamDate {
-  member: TeamMember;
+  member?: TeamMember;
   date: Date;
-  type: 'birthday' | 'work_anniversary';
+  type: 'birthday' | 'work_anniversary' | 'custom';
   daysUntil: number;
   yearsComplete?: number;
   originalDate?: string;
+  title?: string;
+  customId?: string;
 }
 
 export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
+  const { dates: customDates } = useImportantDates('team');
+  
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -59,6 +65,29 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
       }
     });
     
+    // Adicionar datas customizadas
+    customDates.forEach(customDate => {
+      if (customDate.entity_type === 'team' || customDate.entity_type === 'custom') {
+        const dateObj = new Date(customDate.date);
+        const nextOccurrence = customDate.is_recurring ? getNextOccurrence(customDate.date) : dateObj;
+        
+        // Encontrar o membro associado se houver entity_id
+        const associatedMember = customDate.entity_id 
+          ? members.find(m => m.id === customDate.entity_id)
+          : undefined;
+        
+        allDates.push({
+          member: associatedMember,
+          date: nextOccurrence,
+          type: 'custom',
+          daysUntil: getDaysUntil(nextOccurrence),
+          originalDate: customDate.date,
+          title: customDate.title,
+          customId: customDate.id
+        });
+      }
+    });
+    
     // Ordenar por proximidade e pegar os 5 próximos
     return allDates
       .sort((a, b) => a.daysUntil - b.daysUntil)
@@ -69,11 +98,12 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
 
   return (
     <Card className="border-0 shadow-sm hover:scale-105 transition-transform duration-300">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
         <CardTitle className="flex items-center gap-3 text-lg font-bold text-gray-800">
           <Gift className="text-muran-primary" size={20} />
           Datas da Equipe
         </CardTitle>
+        <AddDateDialog entityType="team" />
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -83,7 +113,7 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
             
             return (
               <div
-                key={`${date.member.id}-${date.type}-${index}`}
+                key={`${date.member?.id || date.customId}-${date.type}-${index}`}
                 className={`group relative flex items-start gap-3 p-3.5 rounded-lg transition-all duration-300 ${
                   isToday 
                     ? 'bg-muran-primary text-white shadow-xl' 
@@ -99,7 +129,7 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                     ? 'ring-3 ring-blue-300'
                     : 'ring-1.5 ring-muran-primary/20 group-hover:ring-muran-primary/40'
                 }`}>
-                  {date.member.photo_url ? (
+                  {date.member?.photo_url ? (
                     <AvatarImage
                       src={date.member.photo_url}
                       alt={date.member.name}
@@ -113,7 +143,7 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                         ? 'bg-blue-100 text-blue-700 text-base'
                         : 'bg-muran-primary text-white text-base'
                     }>
-                      {getInitials(date.member.name)}
+                      {date.member ? getInitials(date.member.name) : '📅'}
                     </AvatarFallback>
                   )}
                 </Avatar>
@@ -121,7 +151,8 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3 mb-1">
                     <h4 className={`font-bold text-base leading-tight ${isToday ? 'text-white' : isTomorrow ? 'text-blue-900' : 'text-gray-900'}`}>
-                      {isToday && '🎉 '}{isTomorrow && '🎂 '}{date.member.name}
+                      {isToday && '🎉 '}{isTomorrow && '🎂 '}
+                      {date.type === 'custom' ? date.title : date.member?.name}
                     </h4>
                     <Badge 
                       variant={isToday ? "default" : "outline"}
@@ -133,7 +164,11 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                           : 'bg-muran-primary/10 text-muran-primary border-muran-primary/20'
                       }`}
                     >
-                      {date.type === 'birthday' ? 'Aniversário' : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`}
+                      {date.type === 'birthday' 
+                        ? 'Aniversário' 
+                        : date.type === 'work_anniversary'
+                        ? `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`
+                        : 'Data Especial'}
                     </Badge>
                   </div>
                   

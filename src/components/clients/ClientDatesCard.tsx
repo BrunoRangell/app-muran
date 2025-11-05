@@ -1,25 +1,31 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Handshake, Cake, Calendar, Clock } from "lucide-react";
+import { Building2, Handshake, Calendar, Clock } from "lucide-react";
 import { UnifiedClient } from "@/hooks/useUnifiedData";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
+import { useImportantDates } from "@/hooks/useImportantDates";
+import { AddDateDialog } from "@/components/dates/AddDateDialog";
 
 interface ClientDatesCardProps {
   clients: UnifiedClient[];
 }
 
 interface ClientDate {
-  client: UnifiedClient;
+  client?: UnifiedClient;
   date: Date;
-  type: 'partnership_anniversary' | 'company_birthday';
+  type: 'partnership_anniversary' | 'custom';
   daysUntil: number;
-  yearsComplete: number;
+  yearsComplete?: number;
   originalDate: string;
+  title?: string;
+  customId?: string;
 }
 
 export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
+  const { dates: customDates } = useImportantDates('client');
+  
   const getAllClientDates = (): ClientDate[] => {
     const allDates: ClientDate[] = [];
     
@@ -39,21 +45,30 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
             originalDate: client.first_payment_date
           });
         }
-        
-        // Aniversário da empresa
-        if (isValidDate(client.company_birthday)) {
-          const nextCompanyBirthday = getNextOccurrence(client.company_birthday);
-          const yearsComplete = getYearsToComplete(client.company_birthday, nextCompanyBirthday);
-          allDates.push({
-            client,
-            date: nextCompanyBirthday,
-            type: 'company_birthday',
-            daysUntil: getDaysUntil(nextCompanyBirthday),
-            yearsComplete,
-            originalDate: client.company_birthday
-          });
-        }
       });
+    
+    // Adicionar datas customizadas
+    customDates.forEach(customDate => {
+      if (customDate.entity_type === 'client' || customDate.entity_type === 'custom') {
+        const dateObj = new Date(customDate.date);
+        const nextOccurrence = customDate.is_recurring ? getNextOccurrence(customDate.date) : dateObj;
+        
+        // Encontrar o cliente associado se houver entity_id
+        const associatedClient = customDate.entity_id 
+          ? clients.find(c => c.id === customDate.entity_id)
+          : undefined;
+        
+        allDates.push({
+          client: associatedClient,
+          date: nextOccurrence,
+          type: 'custom',
+          daysUntil: getDaysUntil(nextOccurrence),
+          originalDate: customDate.date,
+          title: customDate.title,
+          customId: customDate.id
+        });
+      }
+    });
     
     // Ordenar por proximidade e pegar os 5 próximos
     return allDates
@@ -65,11 +80,12 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
 
   return (
     <Card className="border-0 shadow-sm hover:scale-105 transition-transform duration-300">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
         <CardTitle className="flex items-center gap-3 text-lg font-bold text-gray-800">
           <Building2 className="text-muran-primary" size={20} />
           Datas dos Clientes
         </CardTitle>
+        <AddDateDialog entityType="client" />
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -95,31 +111,29 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
                     ? 'bg-blue-100 ring-3 ring-blue-300'
                     : 'bg-muran-primary/10 ring-1.5 ring-muran-primary/20 group-hover:ring-muran-primary/40'
                 }`}>
-                  {date.type === 'partnership_anniversary' ? (
-                    <Handshake size={20} className={isToday ? 'text-white' : isTomorrow ? 'text-blue-600' : 'text-muran-primary'} />
-                  ) : (
-                    <Cake size={20} className={isToday ? 'text-white' : isTomorrow ? 'text-blue-600' : 'text-muran-primary'} />
-                  )}
+                  <Handshake size={20} className={isToday ? 'text-white' : isTomorrow ? 'text-blue-600' : 'text-muran-primary'} />
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3 mb-1">
                     <h4 className={`font-bold text-base leading-tight ${isToday ? 'text-white' : isTomorrow ? 'text-blue-900' : 'text-gray-900'}`}>
-                      {isToday && '🎉 '}{isTomorrow && '🎂 '}{date.client.company_name}
+                      {isToday && '🎉 '}{isTomorrow && '🎂 '}
+                      {date.type === 'custom' ? date.title : date.client?.company_name}
                     </h4>
-                    <Badge 
-                      variant={isToday ? "default" : "outline"}
-                      className={`shrink-0 ${
-                        isToday 
-                          ? 'bg-white/20 text-white border-white/30' 
-                          : isTomorrow
-                          ? 'bg-blue-100 text-blue-700 border-blue-300'
-                          : 'bg-muran-primary/10 text-muran-primary border-muran-primary/20'
-                      }`}
-                    >
-                      {date.yearsComplete} {date.yearsComplete === 1 ? 'ano' : 'anos'}
-                      {date.type === 'partnership_anniversary' ? ' de parceria' : ' da empresa'}
-                    </Badge>
+                    {date.type === 'partnership_anniversary' && date.yearsComplete && (
+                      <Badge 
+                        variant={isToday ? "default" : "outline"}
+                        className={`shrink-0 ${
+                          isToday 
+                            ? 'bg-white/20 text-white border-white/30' 
+                            : isTomorrow
+                            ? 'bg-blue-100 text-blue-700 border-blue-300'
+                            : 'bg-muran-primary/10 text-muran-primary border-muran-primary/20'
+                        }`}
+                      >
+                        {date.yearsComplete} {date.yearsComplete === 1 ? 'ano' : 'anos'} de parceria
+                      </Badge>
+                    )}
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
