@@ -6,9 +6,11 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getRandomQuote } from "@/data/motivationalQuotes";
 import { CompanyCards } from "@/components/index/CompanyCards";
 import { MetricsCard } from "@/components/index/MetricsCard";
-import { BirthdayCard } from "@/components/team/BirthdayCard";
+import { TeamDatesCard } from "@/components/team/TeamDatesCard";
+import { ClientDatesCard } from "@/components/clients/ClientDatesCard";
 import { GoalCard } from "@/components/index/GoalCard";
 import { Quote } from "lucide-react";
+import { useUnifiedData } from "@/hooks/useUnifiedData";
 import { DashboardLoadingState } from "@/components/loading-states/DashboardLoadingState";
 import { useUnifiedAuth } from "@/hooks/useUnifiedAuth";
 import { AuthDebugger } from "@/components/auth/AuthDebugger";
@@ -32,6 +34,9 @@ const Index = () => {
       return data;
     },
   });
+
+  // Buscar clientes para datas importantes
+  const { data: clients, isLoading: isClientsLoading } = useUnifiedData();
 
   const { data: clientMetrics, isLoading: isMetricsLoading } = useQuery({
     queryKey: ["client_metrics"],
@@ -155,7 +160,7 @@ const Index = () => {
 
   const todaysQuote = getRandomQuote();
 
-  if (isTeamLoading || isMetricsLoading || isUserLoading || isAuthLoading) {
+  if (isTeamLoading || isMetricsLoading || isUserLoading || isAuthLoading || isClientsLoading) {
     return <DashboardLoadingState />;
   }
 
@@ -223,9 +228,15 @@ const Index = () => {
         <div className="lg:col-span-1">
           <MetricsCard clientMetrics={clientMetrics} />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+          {teamMembers && <TeamDatesCard members={teamMembers} />}
+        </div>
         
-        <div className="lg:col-span-2">
-          {teamMembers && <BirthdayCard members={teamMembers} />}
+        <div>
+          {clients && <ClientDatesCard clients={clients} />}
         </div>
       </div>
     </div>
