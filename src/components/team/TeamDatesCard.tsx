@@ -103,24 +103,24 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                 </Avatar>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <p className={`font-semibold text-base truncate mb-1 ${isToday ? 'text-white' : 'text-gray-900'}`}>
+                    {isToday ? `🎉 ${date.member.name}` : 
+                     isTomorrow ? `🎂 ${date.member.name}` : 
+                     date.member.name}
+                  </p>
+                  
+                  <div className="flex items-center gap-2 mb-2">
                     {date.type === 'birthday' ? (
-                      <Gift size={16} className={isToday ? 'text-white' : 'text-muran-primary'} />
+                      <Gift size={18} className={isToday ? 'text-white' : 'text-muran-primary'} />
                     ) : (
-                      <Briefcase size={16} className={isToday ? 'text-white' : 'text-muran-primary'} />
+                      <Briefcase size={18} className={isToday ? 'text-white' : 'text-muran-primary'} />
                     )}
-                    <p className={`font-semibold truncate ${isToday ? 'text-white' : ''}`}>
-                      {isToday ? `🎉 ${date.member.name}` : 
-                       isTomorrow ? `🎂 ${date.member.name}` : 
-                       date.member.name}
+                    <p className={`font-bold text-base ${isToday ? 'text-white' : 'text-muran-primary'}`}>
+                      {date.type === 'birthday' 
+                        ? 'Aniversário' 
+                        : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`}
                     </p>
                   </div>
-                  
-                  <p className={`text-sm ${isToday ? 'text-white/90' : 'text-gray-600'}`}>
-                    {date.type === 'birthday' 
-                      ? 'Aniversário' 
-                      : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`}
-                  </p>
                   
                   <div className="flex items-center gap-2 text-sm">
                     <span className={isToday ? 'text-white/90' : 'text-gray-600'}>

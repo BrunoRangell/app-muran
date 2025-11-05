@@ -93,17 +93,24 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <p className={`font-semibold truncate ${isToday ? 'text-white' : 'text-gray-900'}`}>
+                  <p className={`font-semibold text-base truncate mb-1 ${isToday ? 'text-white' : 'text-gray-900'}`}>
                     {isToday ? `🎉 ${date.client.company_name}` : 
                      isTomorrow ? `🎂 ${date.client.company_name}` : 
                      date.client.company_name}
                   </p>
                   
-                  <p className={`text-sm ${isToday ? 'text-white/90' : 'text-gray-600'}`}>
-                    {date.type === 'partnership_anniversary' 
-                      ? `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de parceria` 
-                      : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} da empresa`}
-                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    {date.type === 'partnership_anniversary' ? (
+                      <Handshake size={18} className={isToday ? 'text-white' : 'text-muran-primary'} />
+                    ) : (
+                      <Cake size={18} className={isToday ? 'text-white' : 'text-muran-primary'} />
+                    )}
+                    <p className={`font-bold text-base ${isToday ? 'text-white' : 'text-muran-primary'}`}>
+                      {date.type === 'partnership_anniversary' 
+                        ? `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de parceria` 
+                        : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} da empresa`}
+                    </p>
+                  </div>
                   
                   <div className="flex items-center gap-2 text-sm">
                     <span className={isToday ? 'text-white/90' : 'text-gray-600'}>
