@@ -65,7 +65,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         onEditClick={() => setIsEditing(true)}
       />
       
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         {isEditing || isCreating ? (
           <GoalForm
             initialData={goal}

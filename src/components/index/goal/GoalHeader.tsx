@@ -14,7 +14,7 @@ interface GoalHeaderProps {
 
 export const GoalHeader = ({ goal, isAdmin, isEditing, isCreating, onEditClick }: GoalHeaderProps) => {
   return (
-    <CardHeader className="p-4">
+    <CardHeader className="p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6 text-[#ff6e00]" />
