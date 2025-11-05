@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Gift, Briefcase } from "lucide-react";
+import { Gift, Briefcase, Calendar, Clock } from "lucide-react";
 import { TeamMember } from "@/types/team";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -138,9 +138,10 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                    <span className={
+                    <span className={`flex items-center gap-1.5 ${
                       isToday ? 'text-white/90' : isTomorrow ? 'text-blue-700' : 'text-gray-600'
-                    }>
+                    }`}>
+                      <Calendar className="h-3.5 w-3.5" />
                       {date.type === 'birthday' 
                         ? format(date.date, "dd 'de' MMMM", { locale: ptBR })
                         : date.originalDate 
@@ -148,9 +149,10 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                           : format(date.date, "dd 'de' MMMM", { locale: ptBR })}
                     </span>
                     {!isToday && (
-                      <span className={`font-medium ${
+                      <span className={`flex items-center gap-1.5 font-medium ${
                         isTomorrow ? 'text-blue-700' : 'text-muran-primary/70'
                       }`}>
+                        <Clock className="h-3.5 w-3.5" />
                         {date.daysUntil} {date.daysUntil === 1 ? 'dia restante' : 'dias restantes'}
                       </span>
                     )}

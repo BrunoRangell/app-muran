@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Handshake, Cake } from "lucide-react";
+import { Building2, Handshake, Cake, Calendar, Clock } from "lucide-react";
 import { UnifiedClient } from "@/hooks/useUnifiedData";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -124,15 +124,17 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                    <span className={
+                    <span className={`flex items-center gap-1.5 ${
                       isToday ? 'text-white/90' : isTomorrow ? 'text-blue-700' : 'text-gray-600'
-                    }>
+                    }`}>
+                      <Calendar className="h-3.5 w-3.5" />
                       {format(new Date(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                     </span>
                     {!isToday && (
-                      <span className={`font-medium ${
+                      <span className={`flex items-center gap-1.5 font-medium ${
                         isTomorrow ? 'text-blue-700' : 'text-muran-primary/70'
                       }`}>
+                        <Clock className="h-3.5 w-3.5" />
                         {date.daysUntil} {date.daysUntil === 1 ? 'dia restante' : 'dias restantes'}
                       </span>
                     )}
