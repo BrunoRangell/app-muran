@@ -15,6 +15,7 @@ export const useClientColumns = ({ viewMode }: UseClientColumnsProps) => {
     { id: 'first_payment_date', label: 'Início da Parceria', show: viewMode === 'default', fixed: false },
     { id: 'last_payment_date', label: 'Último Pagamento', show: viewMode === 'default', fixed: false },
     { id: 'retention', label: 'Retenção', show: viewMode === 'default', fixed: false },
+    { id: 'days_until_anniversary', label: 'Próximo Aniversário', show: viewMode === 'default', fixed: false },
     { id: 'payment_type', label: 'Tipo de Pagamento', show: viewMode === 'default', fixed: false },
     { id: 'company_birthday', label: 'Aniversário da Empresa', show: viewMode === 'default', fixed: false },
     { id: 'contact_name', label: 'Responsável', show: viewMode === 'default', fixed: false },
