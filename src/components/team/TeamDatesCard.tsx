@@ -122,7 +122,9 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                   
                   <div className="flex items-center gap-2 text-sm">
                     <span className={isToday ? 'text-white/90' : 'text-gray-600'}>
-                      {format(date.date, "dd 'de' MMMM", { locale: ptBR })}
+                      {date.type === 'birthday' 
+                        ? format(date.date, "dd 'de' MMMM", { locale: ptBR })
+                        : format(date.date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                     </span>
                     {!isToday && (
                       <span className={`text-xs ${
