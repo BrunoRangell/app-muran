@@ -76,7 +76,7 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {teamDates.map((date, index) => {
             const isToday = isDateToday(date.date);
             const isTomorrow = isDateTomorrow(date.date);
@@ -84,7 +84,7 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
             return (
               <div
                 key={`${date.member.id}-${date.type}-${index}`}
-                className={`group relative flex items-start gap-4 p-5 rounded-xl transition-all duration-300 ${
+                className={`group relative flex items-start gap-3 p-3.5 rounded-lg transition-all duration-300 ${
                   isToday 
                     ? 'bg-muran-primary text-white shadow-xl' 
                     : isTomorrow 
@@ -92,12 +92,12 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                     : 'bg-white border border-gray-200/50 hover:border-muran-primary/30 hover:shadow-md hover:scale-[1.02]'
                 }`}
               >
-                <Avatar className={`h-14 w-14 shrink-0 transition-all duration-300 ${
+                <Avatar className={`h-11 w-11 shrink-0 transition-all duration-300 ${
                   isToday 
                     ? 'ring-4 ring-white/40' 
                     : isTomorrow
-                    ? 'ring-4 ring-blue-300'
-                    : 'ring-2 ring-muran-primary/20 group-hover:ring-muran-primary/40'
+                    ? 'ring-3 ring-blue-300'
+                    : 'ring-1.5 ring-muran-primary/20 group-hover:ring-muran-primary/40'
                 }`}>
                   {date.member.photo_url ? (
                     <AvatarImage
@@ -108,10 +108,10 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                   ) : (
                     <AvatarFallback className={
                       isToday 
-                        ? 'bg-white/20 text-white text-lg' 
+                        ? 'bg-white/20 text-white text-base' 
                         : isTomorrow
-                        ? 'bg-blue-100 text-blue-700 text-lg'
-                        : 'bg-muran-primary text-white text-lg'
+                        ? 'bg-blue-100 text-blue-700 text-base'
+                        : 'bg-muran-primary text-white text-base'
                     }>
                       {getInitials(date.member.name)}
                     </AvatarFallback>
@@ -119,8 +119,8 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                 </Avatar>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <h4 className={`font-bold text-lg leading-tight ${isToday ? 'text-white' : isTomorrow ? 'text-blue-900' : 'text-gray-900'}`}>
+                  <div className="flex items-start justify-between gap-3 mb-1">
+                    <h4 className={`font-bold text-base leading-tight ${isToday ? 'text-white' : isTomorrow ? 'text-blue-900' : 'text-gray-900'}`}>
                       {isToday && '🎉 '}{isTomorrow && '🎂 '}{date.member.name}
                     </h4>
                     <Badge 
