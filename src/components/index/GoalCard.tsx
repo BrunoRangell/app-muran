@@ -10,6 +10,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const {
     goal,
     currentValue,
+    newClientsThisMonth,
     isLoading,
     queryError,
     isEditing,
@@ -76,7 +77,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
             isSubmitting={updateGoal.isPending || createGoal.isPending}
           />
         ) : goal ? (
-          <GoalProgress goal={goal} currentValue={currentValue || 0} />
+          <GoalProgress goal={goal} currentValue={currentValue || 0} newClientsThisMonth={newClientsThisMonth} />
         ) : (
           <EmptyGoalState 
             isAdmin={isAdmin}

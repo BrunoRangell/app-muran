@@ -95,6 +95,34 @@ export const useGoalCard = (isAdmin: boolean) => {
   const goal = goals?.[0];
   const { data: currentValue, error: calculationError } = useGoalCalculation(goal);
 
+  // Query para buscar novos clientes do mês atual
+  const { data: newClientsThisMonth = 0 } = useQuery({
+    queryKey: ["new-clients-month"],
+    queryFn: async () => {
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+        .toISOString()
+        .split("T")[0];
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        .toISOString()
+        .split("T")[0];
+
+      const { count, error } = await supabase
+        .from("clients")
+        .select("*", { count: "exact" })
+        .eq("status", "active")
+        .gte("first_payment_date", firstDayOfMonth)
+        .lte("first_payment_date", lastDayOfMonth);
+
+      if (error) {
+        console.error("Erro ao buscar novos clientes do mês:", error);
+        return 0;
+      }
+
+      return count || 0;
+    },
+  });
+
   const finalizeGoal = useMutation({
     mutationFn: async (goalToFinalize: Goal) => {
       // Garante que temos o valor mais atualizado
@@ -241,6 +269,7 @@ export const useGoalCard = (isAdmin: boolean) => {
   return {
     goal,
     currentValue,
+    newClientsThisMonth,
     isLoading,
     queryError,
     isEditing,

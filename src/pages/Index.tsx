@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { startOfMonth, endOfMonth } from "date-fns";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getRandomQuote } from "@/data/motivationalQuotes";
 import { CompanyCards } from "@/components/index/CompanyCards";
-import { MetricsCard } from "@/components/index/MetricsCard";
 import { TeamDatesCard } from "@/components/team/TeamDatesCard";
 import { ClientDatesCard } from "@/components/clients/ClientDatesCard";
 import { GoalCard } from "@/components/index/GoalCard";
@@ -38,37 +36,6 @@ const Index = () => {
   // Buscar clientes para datas importantes
   const { data: clients, isLoading: isClientsLoading } = useUnifiedData();
 
-  const { data: clientMetrics, isLoading: isMetricsLoading } = useQuery({
-    queryKey: ["client_metrics"],
-    queryFn: async () => {
-      const now = new Date();
-      const monthStart = startOfMonth(now);
-      const monthEnd = endOfMonth(now);
-
-      const { data: activeClients, error: activeError } = await supabase
-        .from("clients")
-        .select("count")
-        .eq("status", "active")
-        .single();
-
-      if (activeError) throw activeError;
-
-      const { data: newClients, error: newError } = await supabase
-        .from("clients")
-        .select("count")
-        .eq("status", "active")
-        .gte("first_payment_date", monthStart.toISOString())
-        .lte("first_payment_date", monthEnd.toISOString())
-        .single();
-
-      if (newError) throw newError;
-
-      return {
-        activeCount: activeClients?.count || 0,
-        newCount: newClients?.count || 0,
-      };
-    },
-  });
 
   useEffect(() => {
     const getGreeting = () => {
@@ -160,7 +127,7 @@ const Index = () => {
 
   const todaysQuote = getRandomQuote();
 
-  if (isTeamLoading || isMetricsLoading || isUserLoading || isAuthLoading || isClientsLoading) {
+  if (isTeamLoading || isUserLoading || isAuthLoading || isClientsLoading) {
     return <DashboardLoadingState />;
   }
 
@@ -214,19 +181,13 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="lg:col-span-1">
-          <CompanyCards />
-        </div>
-
-        <div className="lg:col-span-3">
           <GoalCard isAdmin={isAdmin} />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        
         <div className="lg:col-span-1">
-          <MetricsCard clientMetrics={clientMetrics} />
+          <CompanyCards />
         </div>
       </div>
 

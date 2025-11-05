@@ -9,9 +9,10 @@ import { getDaysRemaining } from "../goal/goalUtils";
 interface GoalProgressProps {
   goal: Goal;
   currentValue: number;
+  newClientsThisMonth?: number;
 }
 
-export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
+export const GoalProgress = ({ goal, currentValue, newClientsThisMonth = 0 }: GoalProgressProps) => {
   const progress = Math.min(Math.round((currentValue / goal.target_value) * 100), 100);
 
   const getProgressColor = (value: number) => {
@@ -95,14 +96,18 @@ export const GoalProgress = ({ goal, currentValue }: GoalProgressProps) => {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
-          <p className="text-xs text-gray-500 mb-0.5">Meta de {goal.goal_type === 'active_clients' ? 'clientes ativos' : 'novos clientes'}</p>
+          <p className="text-xs text-gray-500 mb-0.5">Meta</p>
           <p className="text-lg font-semibold">{goal.target_value}</p>
         </div>
         <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
           <p className="text-xs text-gray-500 mb-0.5">{getCurrentValueLabel()}</p>
           <p className="text-lg font-semibold">{currentValue}</p>
+        </div>
+        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+          <p className="text-xs text-gray-500 mb-0.5">Novos este mês</p>
+          <p className="text-lg font-semibold">{newClientsThisMonth}</p>
         </div>
       </div>
     </div>
