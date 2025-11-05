@@ -1,13 +1,25 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Building2, Handshake, Calendar, Clock } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { UnifiedClient } from "@/hooks/useUnifiedData";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
+import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete } from "@/utils/dateHelpers";
 import { useImportantDates } from "@/hooks/useImportantDates";
 import { AddDateDialog } from "@/components/dates/AddDateDialog";
+import { EditDateDialog } from "@/components/dates/EditDateDialog";
 import { AllClientDatesDialog } from "@/components/dates/AllClientDatesDialog";
+import { DateItem } from "@/components/dates/DateItem";
+import { Handshake } from "lucide-react";
+import { ImportantDate } from "@/types/importantDate";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ClientDatesCardProps {
   clients: UnifiedClient[];
@@ -25,7 +37,9 @@ interface ClientDate {
 }
 
 export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
-  const { dates: customDates } = useImportantDates('client');
+  const { dates: customDates, deleteDate } = useImportantDates('client');
+  const [editingDate, setEditingDate] = useState<ImportantDate | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const getAllClientDates = (): ClientDate[] => {
     const allDates: ClientDate[] = [];
@@ -78,96 +92,88 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
   const allClientDates = getAllClientDates();
   const clientDates = allClientDates.slice(0, 5);
 
+  const handleDelete = async () => {
+    if (deletingId) {
+      await deleteDate.mutateAsync(deletingId);
+      setDeletingId(null);
+    }
+  };
+
   return (
-    <Card className="border-0 shadow-sm hover:scale-105 transition-transform duration-300">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
-        <CardTitle className="flex items-center gap-3 text-lg font-bold text-gray-800">
-          <Building2 className="text-muran-primary" size={20} />
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <Building2 className="text-muran-primary" size={18} />
           Datas dos Clientes
         </CardTitle>
         <AddDateDialog entityType="client" />
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {clientDates.map((date, index) => {
-            const isToday = isDateToday(date.date);
-            const isTomorrow = isDateTomorrow(date.date);
+            const isCustom = date.type === 'custom';
+            const customDate = isCustom ? customDates.find(d => d.id === date.customId) : null;
             
             return (
-              <div
+              <DateItem
                 key={`${date.client?.id || date.customId}-${date.type}-${index}`}
-                className={`group relative flex items-start gap-3 p-3.5 rounded-lg transition-all duration-300 ${
-                  isToday 
-                    ? 'bg-muran-primary text-white shadow-xl' 
-                    : isTomorrow 
-                    ? 'bg-blue-50 border border-blue-200 shadow-lg' 
-                    : 'bg-white border border-gray-200/50 hover:border-muran-primary/30 hover:shadow-md hover:scale-[1.02]'
-                }`}
-              >
-                <div className={`flex items-center justify-center h-11 w-11 rounded-full shrink-0 transition-all duration-300 ${
-                  isToday 
-                    ? 'bg-white/20 ring-2 ring-white/40' 
-                    : isTomorrow
-                    ? 'bg-blue-100 ring-3 ring-blue-300'
-                    : 'bg-muran-primary/10 ring-1.5 ring-muran-primary/20 group-hover:ring-muran-primary/40'
-                }`}>
-                  <Handshake size={20} className={isToday ? 'text-white' : isTomorrow ? 'text-blue-600' : 'text-muran-primary'} />
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <h4 className={`font-bold text-base leading-tight ${isToday ? 'text-white' : isTomorrow ? 'text-blue-900' : 'text-gray-900'}`}>
-                      {isToday && '🎉 '}{isTomorrow && '🎂 '}
-                      {date.type === 'custom' ? date.title : date.client?.company_name}
-                    </h4>
-                    {date.type === 'partnership_anniversary' && date.yearsComplete && (
-                      <Badge 
-                        variant={isToday ? "default" : "outline"}
-                        className={`shrink-0 ${
-                          isToday 
-                            ? 'bg-white/20 text-white border-white/30' 
-                            : isTomorrow
-                            ? 'bg-blue-100 text-blue-700 border-blue-300'
-                            : 'bg-muran-primary/10 text-muran-primary border-muran-primary/20'
-                        }`}
-                      >
-                        {date.yearsComplete} {date.yearsComplete === 1 ? 'ano' : 'anos'} de parceria
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                    <span className={`flex items-center gap-1.5 ${
-                      isToday ? 'text-white/90' : isTomorrow ? 'text-blue-700' : 'text-gray-600'
-                    }`}>
-                      <Calendar className="h-3.5 w-3.5" />
-                      {format(new Date(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                    </span>
-                    {!isToday && (
-                      <span className={`flex items-center gap-1.5 font-medium ${
-                        isTomorrow ? 'text-blue-700' : 'text-muran-primary/70'
-                      }`}>
-                        <Clock className="h-3.5 w-3.5" />
-                        {date.daysUntil} {date.daysUntil === 1 ? 'dia restante' : 'dias restantes'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+                title={date.type === 'custom' ? date.title! : date.client?.company_name!}
+                date={date.date}
+                daysUntil={date.daysUntil}
+                badge={
+                  date.type === 'partnership_anniversary' && date.yearsComplete
+                    ? {
+                        label: `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de parceria`,
+                      }
+                    : undefined
+                }
+                icon={<Handshake size={18} className="text-muran-primary" />}
+                dateFormat="dd 'de' MMM 'de' yyyy"
+                showActions={isCustom}
+                onEdit={customDate ? () => setEditingDate(customDate) : undefined}
+                onDelete={isCustom ? () => setDeletingId(date.customId!) : undefined}
+              />
             );
           })}
           {clientDates.length === 0 && (
-            <p className="text-center text-gray-600 font-medium">
+            <p className="text-center text-sm text-muted-foreground py-4">
               Nenhuma data próxima encontrada
             </p>
           )}
         </div>
       </CardContent>
       {allClientDates.length > 0 && (
-        <CardFooter className="pt-4">
+        <CardFooter className="pt-3">
           <AllClientDatesDialog dates={allClientDates} totalCount={allClientDates.length} />
         </CardFooter>
       )}
+
+      {/* Edit Dialog */}
+      {editingDate && (
+        <EditDateDialog
+          date={editingDate}
+          open={!!editingDate}
+          onOpenChange={(open) => !open && setEditingDate(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja deletar esta data? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Deletar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

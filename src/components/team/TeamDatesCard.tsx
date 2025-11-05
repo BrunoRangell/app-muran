@@ -1,14 +1,25 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Gift, Briefcase, Calendar, Clock } from "lucide-react";
+import { Gift } from "lucide-react";
 import { TeamMember } from "@/types/team";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
+import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete } from "@/utils/dateHelpers";
 import { useImportantDates } from "@/hooks/useImportantDates";
 import { AddDateDialog } from "@/components/dates/AddDateDialog";
+import { EditDateDialog } from "@/components/dates/EditDateDialog";
 import { AllTeamDatesDialog } from "@/components/dates/AllTeamDatesDialog";
+import { DateItem } from "@/components/dates/DateItem";
+import { ImportantDate } from "@/types/importantDate";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TeamDatesCardProps {
   members: TeamMember[];
@@ -26,7 +37,9 @@ interface TeamDate {
 }
 
 export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
-  const { dates: customDates } = useImportantDates('team');
+  const { dates: customDates, deleteDate } = useImportantDates('team');
+  const [editingDate, setEditingDate] = useState<ImportantDate | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const getInitials = (name: string) => {
     return name
@@ -96,115 +109,62 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
   const allTeamDates = getAllTeamDates();
   const teamDates = allTeamDates.slice(0, 5);
 
+  const handleDelete = async () => {
+    if (deletingId) {
+      await deleteDate.mutateAsync(deletingId);
+      setDeletingId(null);
+    }
+  };
+
   return (
-    <Card className="border-0 shadow-sm hover:scale-105 transition-transform duration-300">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
-        <CardTitle className="flex items-center gap-3 text-lg font-bold text-gray-800">
-          <Gift className="text-muran-primary" size={20} />
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <Gift className="text-muran-primary" size={18} />
           Datas da Equipe
         </CardTitle>
         <AddDateDialog entityType="team" />
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {teamDates.map((date, index) => {
-            const isToday = isDateToday(date.date);
-            const isTomorrow = isDateTomorrow(date.date);
+            const isCustom = date.type === 'custom';
+            const customDate = isCustom ? customDates.find(d => d.id === date.customId) : null;
+            
+            const badgeLabel = 
+              date.type === 'birthday' 
+                ? 'Aniversário' 
+                : date.type === 'work_anniversary'
+                ? `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`
+                : 'Data Especial';
+            
+            const dateFormatString = date.type === 'birthday' ? "dd 'de' MMM" : "dd 'de' MMM 'de' yyyy";
             
             return (
-              <div
+              <DateItem
                 key={`${date.member?.id || date.customId}-${date.type}-${index}`}
-                className={`group relative flex items-start gap-3 p-3.5 rounded-lg transition-all duration-300 ${
-                  isToday 
-                    ? 'bg-muran-primary text-white shadow-xl' 
-                    : isTomorrow 
-                    ? 'bg-blue-50 border border-blue-200 shadow-lg' 
-                    : 'bg-white border border-gray-200/50 hover:border-muran-primary/30 hover:shadow-md hover:scale-[1.02]'
-                }`}
-              >
-                <Avatar className={`h-11 w-11 shrink-0 transition-all duration-300 ${
-                  isToday 
-                    ? 'ring-4 ring-white/40' 
-                    : isTomorrow
-                    ? 'ring-3 ring-blue-300'
-                    : 'ring-1.5 ring-muran-primary/20 group-hover:ring-muran-primary/40'
-                }`}>
-                  {date.member?.photo_url ? (
-                    <AvatarImage
-                      src={date.member.photo_url}
-                      alt={date.member.name}
-                      className="object-cover"
-                    />
-                  ) : (
-                    <AvatarFallback className={
-                      isToday 
-                        ? 'bg-white/20 text-white text-base' 
-                        : isTomorrow
-                        ? 'bg-blue-100 text-blue-700 text-base'
-                        : 'bg-muran-primary text-white text-base'
-                    }>
-                      {date.member ? getInitials(date.member.name) : '📅'}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <h4 className={`font-bold text-base leading-tight ${isToday ? 'text-white' : isTomorrow ? 'text-blue-900' : 'text-gray-900'}`}>
-                      {isToday && '🎉 '}{isTomorrow && '🎂 '}
-                      {date.type === 'custom' ? date.title : date.member?.name}
-                    </h4>
-                    <Badge 
-                      variant={isToday ? "default" : "outline"}
-                      className={`shrink-0 ${
-                        isToday 
-                          ? 'bg-white/20 text-white border-white/30' 
-                          : isTomorrow
-                          ? 'bg-blue-100 text-blue-700 border-blue-300'
-                          : 'bg-muran-primary/10 text-muran-primary border-muran-primary/20'
-                      }`}
-                    >
-                      {date.type === 'birthday' 
-                        ? 'Aniversário' 
-                        : date.type === 'work_anniversary'
-                        ? `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`
-                        : 'Data Especial'}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                    <span className={`flex items-center gap-1.5 ${
-                      isToday ? 'text-white/90' : isTomorrow ? 'text-blue-700' : 'text-gray-600'
-                    }`}>
-                      <Calendar className="h-3.5 w-3.5" />
-                      {date.type === 'birthday' 
-                        ? format(date.date, "dd 'de' MMMM", { locale: ptBR })
-                        : date.originalDate 
-                          ? format(new Date(date.originalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-                          : format(date.date, "dd 'de' MMMM", { locale: ptBR })}
-                    </span>
-                    {!isToday && (
-                      <span className={`flex items-center gap-1.5 font-medium ${
-                        isTomorrow ? 'text-blue-700' : 'text-muran-primary/70'
-                      }`}>
-                        <Clock className="h-3.5 w-3.5" />
-                        {date.daysUntil} {date.daysUntil === 1 ? 'dia restante' : 'dias restantes'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+                title={date.type === 'custom' ? date.title! : date.member?.name!}
+                date={date.date}
+                daysUntil={date.daysUntil}
+                badge={{ label: badgeLabel }}
+                avatarUrl={date.member?.photo_url}
+                avatarFallback={date.member ? getInitials(date.member.name) : '📅'}
+                dateFormat={dateFormatString}
+                showActions={isCustom}
+                onEdit={customDate ? () => setEditingDate(customDate) : undefined}
+                onDelete={isCustom ? () => setDeletingId(date.customId!) : undefined}
+              />
             );
           })}
           {teamDates.length === 0 && (
-            <p className="text-center text-gray-600 font-medium">
+            <p className="text-center text-sm text-muted-foreground py-4">
               Nenhuma data próxima encontrada
             </p>
           )}
         </div>
       </CardContent>
       {allTeamDates.length > 0 && (
-        <CardFooter className="pt-4">
+        <CardFooter className="pt-3">
           <AllTeamDatesDialog 
             dates={allTeamDates} 
             totalCount={allTeamDates.length}
@@ -212,6 +172,33 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
           />
         </CardFooter>
       )}
+
+      {/* Edit Dialog */}
+      {editingDate && (
+        <EditDateDialog
+          date={editingDate}
+          open={!!editingDate}
+          onOpenChange={(open) => !open && setEditingDate(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja deletar esta data? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Deletar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
