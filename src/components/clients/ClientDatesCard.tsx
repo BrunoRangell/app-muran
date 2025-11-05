@@ -104,7 +104,7 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Building2 className="text-muran-primary" size={18} />
-          Datas dos Clientes
+          Próximas Datas - Clientes
         </CardTitle>
         <AddDateDialog entityType="client" />
       </CardHeader>

@@ -121,7 +121,7 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Gift className="text-muran-primary" size={18} />
-          Datas da Equipe
+          Próximas Datas - Equipe
         </CardTitle>
         <AddDateDialog entityType="team" />
       </CardHeader>
