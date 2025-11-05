@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Handshake, Calendar, Clock } from "lucide-react";
 import { UnifiedClient } from "@/hooks/useUnifiedData";
@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
 import { useImportantDates } from "@/hooks/useImportantDates";
 import { AddDateDialog } from "@/components/dates/AddDateDialog";
+import { AllClientDatesDialog } from "@/components/dates/AllClientDatesDialog";
 
 interface ClientDatesCardProps {
   clients: UnifiedClient[];
@@ -70,13 +71,12 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
       }
     });
     
-    // Ordenar por proximidade e pegar os 5 próximos
-    return allDates
-      .sort((a, b) => a.daysUntil - b.daysUntil)
-      .slice(0, 5);
+    // Ordenar por proximidade
+    return allDates.sort((a, b) => a.daysUntil - b.daysUntil);
   };
 
-  const clientDates = getAllClientDates();
+  const allClientDates = getAllClientDates();
+  const clientDates = allClientDates.slice(0, 5);
 
   return (
     <Card className="border-0 shadow-sm hover:scale-105 transition-transform duration-300">
@@ -95,7 +95,7 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
             
             return (
               <div
-                key={`${date.client.id}-${date.type}-${index}`}
+                key={`${date.client?.id || date.customId}-${date.type}-${index}`}
                 className={`group relative flex items-start gap-3 p-3.5 rounded-lg transition-all duration-300 ${
                   isToday 
                     ? 'bg-muran-primary text-white shadow-xl' 
@@ -163,6 +163,11 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
           )}
         </div>
       </CardContent>
+      {allClientDates.length > 0 && (
+        <CardFooter className="pt-4">
+          <AllClientDatesDialog dates={allClientDates} totalCount={allClientDates.length} />
+        </CardFooter>
+      )}
     </Card>
   );
 };

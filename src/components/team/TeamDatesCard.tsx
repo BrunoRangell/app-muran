@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Gift, Briefcase, Calendar, Clock } from "lucide-react";
 import { TeamMember } from "@/types/team";
@@ -8,6 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { isValidDate, getNextOccurrence, getDaysUntil, getYearsToComplete, isDateToday, isDateTomorrow } from "@/utils/dateHelpers";
 import { useImportantDates } from "@/hooks/useImportantDates";
 import { AddDateDialog } from "@/components/dates/AddDateDialog";
+import { AllTeamDatesDialog } from "@/components/dates/AllTeamDatesDialog";
 
 interface TeamDatesCardProps {
   members: TeamMember[];
@@ -88,13 +89,12 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
       }
     });
     
-    // Ordenar por proximidade e pegar os 5 próximos
-    return allDates
-      .sort((a, b) => a.daysUntil - b.daysUntil)
-      .slice(0, 5);
+    // Ordenar por proximidade
+    return allDates.sort((a, b) => a.daysUntil - b.daysUntil);
   };
 
-  const teamDates = getAllTeamDates();
+  const allTeamDates = getAllTeamDates();
+  const teamDates = allTeamDates.slice(0, 5);
 
   return (
     <Card className="border-0 shadow-sm hover:scale-105 transition-transform duration-300">
@@ -203,6 +203,15 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
           )}
         </div>
       </CardContent>
+      {allTeamDates.length > 0 && (
+        <CardFooter className="pt-4">
+          <AllTeamDatesDialog 
+            dates={allTeamDates} 
+            totalCount={allTeamDates.length}
+            getInitials={getInitials}
+          />
+        </CardFooter>
+      )}
     </Card>
   );
 };
