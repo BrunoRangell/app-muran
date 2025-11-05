@@ -103,23 +103,19 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                 </Avatar>
                 
                 <div className="flex-1 min-w-0">
-                  <p className={`font-semibold text-base truncate mb-1 ${isToday ? 'text-white' : 'text-gray-900'}`}>
-                    {isToday ? `🎉 ${date.member.name}` : 
-                     isTomorrow ? `🎂 ${date.member.name}` : 
-                     date.member.name}
-                  </p>
-                  
-                  <div className="flex items-center gap-2 mb-2">
-                    {date.type === 'birthday' ? (
-                      <Gift size={18} className={isToday ? 'text-white' : 'text-muran-primary'} />
-                    ) : (
-                      <Briefcase size={18} className={isToday ? 'text-white' : 'text-muran-primary'} />
-                    )}
-                    <p className={`font-bold text-base ${isToday ? 'text-white' : 'text-muran-primary'}`}>
+                  <div className="flex items-baseline justify-between gap-3 mb-2">
+                    <p className={`font-semibold text-base truncate ${isToday ? 'text-white' : 'text-gray-900'}`}>
+                      {isToday ? `🎉 ${date.member.name}` : 
+                       isTomorrow ? `🎂 ${date.member.name}` : 
+                       date.member.name}
+                    </p>
+                    <span className={`text-[10px] uppercase tracking-wider font-medium whitespace-nowrap ${
+                      isToday ? 'text-white/90' : 'text-muran-primary/70'
+                    }`}>
                       {date.type === 'birthday' 
                         ? 'Aniversário' 
                         : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`}
-                    </p>
+                    </span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm">

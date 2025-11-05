@@ -93,23 +93,19 @@ export const ClientDatesCard = ({ clients }: ClientDatesCardProps) => {
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <p className={`font-semibold text-base truncate mb-1 ${isToday ? 'text-white' : 'text-gray-900'}`}>
-                    {isToday ? `🎉 ${date.client.company_name}` : 
-                     isTomorrow ? `🎂 ${date.client.company_name}` : 
-                     date.client.company_name}
-                  </p>
-                  
-                  <div className="flex items-center gap-2 mb-2">
-                    {date.type === 'partnership_anniversary' ? (
-                      <Handshake size={18} className={isToday ? 'text-white' : 'text-muran-primary'} />
-                    ) : (
-                      <Cake size={18} className={isToday ? 'text-white' : 'text-muran-primary'} />
-                    )}
-                    <p className={`font-bold text-base ${isToday ? 'text-white' : 'text-muran-primary'}`}>
+                  <div className="flex items-baseline justify-between gap-3 mb-2">
+                    <p className={`font-semibold text-base truncate ${isToday ? 'text-white' : 'text-gray-900'}`}>
+                      {isToday ? `🎉 ${date.client.company_name}` : 
+                       isTomorrow ? `🎂 ${date.client.company_name}` : 
+                       date.client.company_name}
+                    </p>
+                    <span className={`text-[10px] uppercase tracking-wider font-medium whitespace-nowrap ${
+                      isToday ? 'text-white/90' : 'text-muran-primary/70'
+                    }`}>
                       {date.type === 'partnership_anniversary' 
                         ? `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de parceria` 
                         : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} da empresa`}
-                    </p>
+                    </span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm">
