@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Gift, Briefcase } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Gift, Briefcase, Calendar, Clock } from "lucide-react";
 import { TeamMember } from "@/types/team";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -83,12 +84,21 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
             return (
               <div
                 key={`${date.member.id}-${date.type}-${index}`}
-                className={`flex items-center gap-4 p-4 rounded-lg transition-all duration-200 ${
-                  isToday ? 'bg-muran-primary text-white' : 
-                  isTomorrow ? 'bg-blue-200 text-blue-800' : 'bg-gray-50 text-gray-900'
-                } ${isToday || isTomorrow ? 'shadow-xl' : 'shadow-sm'}`}
+                className={`group relative flex items-start gap-4 p-5 rounded-xl transition-all duration-300 ${
+                  isToday 
+                    ? 'bg-muran-primary text-white shadow-xl' 
+                    : isTomorrow 
+                    ? 'bg-blue-50 border border-blue-200 shadow-lg' 
+                    : 'bg-white border border-gray-200/50 hover:border-muran-primary/30 hover:shadow-md hover:scale-[1.02]'
+                }`}
               >
-                <Avatar className="h-12 w-12 border-2 border-white/20">
+                <Avatar className={`h-14 w-14 shrink-0 transition-all duration-300 ${
+                  isToday 
+                    ? 'ring-4 ring-white/40' 
+                    : isTomorrow
+                    ? 'ring-4 ring-blue-300'
+                    : 'ring-2 ring-muran-primary/20 group-hover:ring-muran-primary/40'
+                }`}>
                   {date.member.photo_url ? (
                     <AvatarImage
                       src={date.member.photo_url}
@@ -96,30 +106,42 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                       className="object-cover"
                     />
                   ) : (
-                    <AvatarFallback className="bg-[#ff6e00] text-white text-xl">
+                    <AvatarFallback className={
+                      isToday 
+                        ? 'bg-white/20 text-white text-lg' 
+                        : isTomorrow
+                        ? 'bg-blue-100 text-blue-700 text-lg'
+                        : 'bg-muran-primary text-white text-lg'
+                    }>
                       {getInitials(date.member.name)}
                     </AvatarFallback>
                   )}
                 </Avatar>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-3 mb-2">
-                    <p className={`font-semibold text-base truncate ${isToday ? 'text-white' : 'text-gray-900'}`}>
-                      {isToday ? `🎉 ${date.member.name}` : 
-                       isTomorrow ? `🎂 ${date.member.name}` : 
-                       date.member.name}
-                    </p>
-                    <span className={`text-[10px] uppercase tracking-wider font-medium whitespace-nowrap ${
-                      isToday ? 'text-white/90' : 'text-muran-primary/70'
-                    }`}>
-                      {date.type === 'birthday' 
-                        ? 'Aniversário' 
-                        : `${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`}
-                    </span>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h4 className={`font-bold text-lg leading-tight ${isToday ? 'text-white' : isTomorrow ? 'text-blue-900' : 'text-gray-900'}`}>
+                      {isToday && '🎉 '}{isTomorrow && '🎂 '}{date.member.name}
+                    </h4>
+                    <Badge 
+                      variant={isToday ? "default" : "outline"}
+                      className={`shrink-0 ${
+                        isToday 
+                          ? 'bg-white/20 text-white border-white/30' 
+                          : isTomorrow
+                          ? 'bg-blue-100 text-blue-700 border-blue-300'
+                          : 'bg-muran-primary/10 text-muran-primary border-muran-primary/20'
+                      }`}
+                    >
+                      {date.type === 'birthday' ? '🎂 Aniversário' : `✨ ${date.yearsComplete} ${date.yearsComplete === 1 ? 'ano' : 'anos'} de Muran`}
+                    </Badge>
                   </div>
                   
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className={isToday ? 'text-white/90' : 'text-gray-600'}>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    <span className={`flex items-center gap-1.5 ${
+                      isToday ? 'text-white/90' : isTomorrow ? 'text-blue-700' : 'text-gray-600'
+                    }`}>
+                      <Calendar className="h-3.5 w-3.5" />
                       {date.type === 'birthday' 
                         ? format(date.date, "dd 'de' MMMM", { locale: ptBR })
                         : date.originalDate 
@@ -127,10 +149,11 @@ export const TeamDatesCard = ({ members }: TeamDatesCardProps) => {
                           : format(date.date, "dd 'de' MMMM", { locale: ptBR })}
                     </span>
                     {!isToday && (
-                      <span className={`text-xs ${
-                        isTomorrow ? 'text-blue-700' : 'text-gray-500'
+                      <span className={`flex items-center gap-1.5 font-medium ${
+                        isTomorrow ? 'text-blue-700' : 'text-muran-primary/70'
                       }`}>
-                        • {date.daysUntil} {date.daysUntil === 1 ? 'dia restante' : 'dias restantes'}
+                        <Clock className="h-3.5 w-3.5" />
+                        {date.daysUntil} {date.daysUntil === 1 ? 'dia restante' : 'dias restantes'}
                       </span>
                     )}
                   </div>
