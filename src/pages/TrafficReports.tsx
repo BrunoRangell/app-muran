@@ -3,6 +3,8 @@ import { subDays } from "date-fns";
 import { TrafficReportFilters } from "@/components/traffic-reports/TrafficReportFilters";
 import { InsightsOverview } from "@/components/traffic-reports/InsightsOverview";
 import { CampaignsInsightsTable } from "@/components/traffic-reports/CampaignsInsightsTable";
+import { InsightsConversionFunnel } from "@/components/traffic-reports/InsightsConversionFunnel";
+import { TrendCharts } from "@/components/traffic-reports/TrendCharts";
 import { useUnifiedData } from "@/hooks/useUnifiedData";
 import { useClientAccounts } from "@/hooks/useClientAccounts";
 import { useTrafficInsights } from "@/hooks/useTrafficInsights";
@@ -130,6 +132,28 @@ const TrafficReports = () => {
               overview={insightsData.overview}
               platform={insightsData.platform}
             />
+
+            {/* Funil de Conversão */}
+            <InsightsConversionFunnel
+              data={{
+                impressions: insightsData.overview.impressions.current,
+                clicks: insightsData.overview.clicks.current,
+                conversions: insightsData.overview.conversions.current,
+                spend: insightsData.overview.spend.current,
+                cpc: insightsData.overview.cpc.current,
+                cpa: insightsData.overview.cpa.current,
+              }}
+              platform={insightsData.platform}
+            />
+
+            {/* Gráficos de Tendência */}
+            {insightsData.timeSeries && insightsData.timeSeries.length > 0 && (
+              <TrendCharts
+                timeSeries={insightsData.timeSeries}
+                overview={insightsData.overview}
+                platform={insightsData.platform}
+              />
+            )}
 
             {/* Tabela de Campanhas */}
             <CampaignsInsightsTable 
