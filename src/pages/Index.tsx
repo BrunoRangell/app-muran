@@ -165,7 +165,7 @@ const Index = () => {
               <h1 className="text-2xl font-bold text-muran-complementary">
                 {greeting}, {userName || "Usuário"}!
               </h1>
-              <p className="text-gray-600">É muito bom ter você na Muran!</p>
+              <p className="text-gray-600">Somos um time. Somos a Muran.</p>
             </div>
           </div>
         </div>
