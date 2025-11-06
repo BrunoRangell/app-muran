@@ -11,69 +11,91 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { clientId, accountId, platform, dateRange, compareWithPrevious } = await req.json() as TrafficInsightsRequest;
+    const { clientId, accountIds, platform, dateRange, compareWithPrevious } = await req.json() as TrafficInsightsRequest;
 
-    console.log(`🔍 [TRAFFIC-INSIGHTS] Request:`, { clientId, accountId, platform, dateRange });
+    console.log(`🔍 [TRAFFIC-INSIGHTS] Request:`, { clientId, accountIds, platform, dateRange });
 
     // Validações
-    if (!clientId || !accountId || !platform || !dateRange) {
+    if (!clientId || !accountIds || accountIds.length === 0 || !platform || !dateRange) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Parâmetros obrigatórios: clientId, accountId, platform, dateRange' }),
+        JSON.stringify({ success: false, error: 'Parâmetros obrigatórios: clientId, accountIds (array), platform, dateRange' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     let result: TrafficInsightsResponse;
 
-    // Buscar insights conforme plataforma
-    if (platform === 'meta') {
-      result = await fetchMetaInsights(clientId, accountId, dateRange, compareWithPrevious);
-    } else if (platform === 'google') {
-      result = await fetchGoogleInsights(clientId, accountId, dateRange, compareWithPrevious);
-    } else if (platform === 'both') {
-      // Buscar ambas plataformas em paralelo
-      const [metaResult, googleResult] = await Promise.all([
-        fetchMetaInsights(clientId, accountId, dateRange, compareWithPrevious).catch(err => null),
-        fetchGoogleInsights(clientId, accountId, dateRange, compareWithPrevious).catch(err => null)
-      ]);
+    // Buscar insights para múltiplas contas
+    const allResults = await Promise.all(
+      accountIds.map(async (accountId) => {
+        try {
+          if (platform === 'meta' || platform === 'both') {
+            return await fetchMetaInsights(clientId, accountId, dateRange, compareWithPrevious);
+          } else if (platform === 'google') {
+            return await fetchGoogleInsights(clientId, accountId, dateRange, compareWithPrevious);
+          }
+        } catch (error) {
+          console.error(`❌ Error fetching insights for account ${accountId}:`, error);
+          return null;
+        }
+      })
+    );
 
-      // Combinar resultados
+    const validResults = allResults.filter(r => r !== null);
+
+    if (validResults.length === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Nenhum dado disponível para as contas selecionadas' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Agregar resultados de múltiplas contas
+    if (platform === 'both') {
+      // Separar Meta e Google
+      const metaResults = validResults.filter(r => r.platform === 'meta');
+      const googleResults = validResults.filter(r => r.platform === 'google');
+
+      const aggregatedMeta = metaResults.length > 0 ? aggregateResults(metaResults) : null;
+      const aggregatedGoogle = googleResults.length > 0 ? aggregateResults(googleResults) : null;
+
+      // Combinar Meta e Google
       result = {
         success: true,
         platform: 'both',
-        clientName: metaResult?.clientName || googleResult?.clientName || '',
-        accountName: 'Meta + Google',
+        clientName: aggregatedMeta?.clientName || aggregatedGoogle?.clientName || '',
+        accountName: `${accountIds.length} contas`,
         dateRange,
         overview: {
           impressions: {
-            current: (metaResult?.overview.impressions.current || 0) + (googleResult?.overview.impressions.current || 0),
-            previous: (metaResult?.overview.impressions.previous || 0) + (googleResult?.overview.impressions.previous || 0),
+            current: (aggregatedMeta?.overview.impressions.current || 0) + (aggregatedGoogle?.overview.impressions.current || 0),
+            previous: (aggregatedMeta?.overview.impressions.previous || 0) + (aggregatedGoogle?.overview.impressions.previous || 0),
             change: 0
           },
-          reach: metaResult?.overview.reach || { current: 0, previous: 0, change: 0 },
+          reach: aggregatedMeta?.overview.reach || { current: 0, previous: 0, change: 0 },
           clicks: {
-            current: (metaResult?.overview.clicks.current || 0) + (googleResult?.overview.clicks.current || 0),
-            previous: (metaResult?.overview.clicks.previous || 0) + (googleResult?.overview.clicks.previous || 0),
+            current: (aggregatedMeta?.overview.clicks.current || 0) + (aggregatedGoogle?.overview.clicks.current || 0),
+            previous: (aggregatedMeta?.overview.clicks.previous || 0) + (aggregatedGoogle?.overview.clicks.previous || 0),
             change: 0
           },
           ctr: { current: 0, previous: 0, change: 0 },
           conversions: {
-            current: (metaResult?.overview.conversions.current || 0) + (googleResult?.overview.conversions.current || 0),
-            previous: (metaResult?.overview.conversions.previous || 0) + (googleResult?.overview.conversions.previous || 0),
+            current: (aggregatedMeta?.overview.conversions.current || 0) + (aggregatedGoogle?.overview.conversions.current || 0),
+            previous: (aggregatedMeta?.overview.conversions.previous || 0) + (aggregatedGoogle?.overview.conversions.previous || 0),
             change: 0
           },
           spend: {
-            current: (metaResult?.overview.spend.current || 0) + (googleResult?.overview.spend.current || 0),
-            previous: (metaResult?.overview.spend.previous || 0) + (googleResult?.overview.spend.previous || 0),
+            current: (aggregatedMeta?.overview.spend.current || 0) + (aggregatedGoogle?.overview.spend.current || 0),
+            previous: (aggregatedMeta?.overview.spend.previous || 0) + (aggregatedGoogle?.overview.spend.previous || 0),
             change: 0
           },
           cpa: { current: 0, previous: 0, change: 0 },
           cpc: { current: 0, previous: 0, change: 0 }
         },
-        campaigns: [...(metaResult?.campaigns || []), ...(googleResult?.campaigns || [])],
+        campaigns: [...(aggregatedMeta?.campaigns || []), ...(aggregatedGoogle?.campaigns || [])],
         timeSeries: [],
-        metaData: metaResult || undefined,
-        googleData: googleResult || undefined
+        metaData: aggregatedMeta || undefined,
+        googleData: aggregatedGoogle || undefined
       };
 
       // Calcular métricas derivadas
@@ -106,13 +128,11 @@ serve(async (req: Request) => {
         }
       });
     } else {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Plataforma inválida. Use: meta, google ou both' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Plataforma específica (meta ou google)
+      result = aggregateResults(validResults);
     }
 
-    console.log(`✅ [TRAFFIC-INSIGHTS] Success for ${platform}`);
+    console.log(`✅ [TRAFFIC-INSIGHTS] Success for ${platform}, ${validResults.length} accounts`);
 
     return new Response(
       JSON.stringify(result),
@@ -127,3 +147,75 @@ serve(async (req: Request) => {
     );
   }
 });
+
+// Função auxiliar para agregar múltiplos resultados
+function aggregateResults(results: TrafficInsightsResponse[]): TrafficInsightsResponse {
+  if (results.length === 1) return results[0];
+
+  const aggregated: TrafficInsightsResponse = {
+    success: true,
+    platform: results[0].platform,
+    clientName: results[0].clientName,
+    accountName: `${results.length} contas`,
+    dateRange: results[0].dateRange,
+    overview: {
+      impressions: { current: 0, previous: 0, change: 0 },
+      reach: { current: 0, previous: 0, change: 0 },
+      clicks: { current: 0, previous: 0, change: 0 },
+      ctr: { current: 0, previous: 0, change: 0 },
+      conversions: { current: 0, previous: 0, change: 0 },
+      spend: { current: 0, previous: 0, change: 0 },
+      cpa: { current: 0, previous: 0, change: 0 },
+      cpc: { current: 0, previous: 0, change: 0 }
+    },
+    campaigns: [],
+    timeSeries: []
+  };
+
+  // Somar métricas
+  results.forEach(result => {
+    aggregated.overview.impressions.current += result.overview.impressions.current;
+    aggregated.overview.impressions.previous += result.overview.impressions.previous;
+    aggregated.overview.reach.current += result.overview.reach?.current || 0;
+    aggregated.overview.reach.previous += result.overview.reach?.previous || 0;
+    aggregated.overview.clicks.current += result.overview.clicks.current;
+    aggregated.overview.clicks.previous += result.overview.clicks.previous;
+    aggregated.overview.conversions.current += result.overview.conversions.current;
+    aggregated.overview.conversions.previous += result.overview.conversions.previous;
+    aggregated.overview.spend.current += result.overview.spend.current;
+    aggregated.overview.spend.previous += result.overview.spend.previous;
+    aggregated.campaigns.push(...result.campaigns);
+  });
+
+  // Calcular métricas derivadas
+  if (aggregated.overview.impressions.current > 0) {
+    aggregated.overview.ctr.current = (aggregated.overview.clicks.current / aggregated.overview.impressions.current) * 100;
+  }
+  if (aggregated.overview.impressions.previous > 0) {
+    aggregated.overview.ctr.previous = (aggregated.overview.clicks.previous / aggregated.overview.impressions.previous) * 100;
+  }
+  if (aggregated.overview.conversions.current > 0) {
+    aggregated.overview.cpa.current = aggregated.overview.spend.current / aggregated.overview.conversions.current;
+  }
+  if (aggregated.overview.conversions.previous > 0) {
+    aggregated.overview.cpa.previous = aggregated.overview.spend.previous / aggregated.overview.conversions.previous;
+  }
+  if (aggregated.overview.clicks.current > 0) {
+    aggregated.overview.cpc.current = aggregated.overview.spend.current / aggregated.overview.clicks.current;
+  }
+  if (aggregated.overview.clicks.previous > 0) {
+    aggregated.overview.cpc.previous = aggregated.overview.spend.previous / aggregated.overview.clicks.previous;
+  }
+
+  // Calcular changes
+  Object.keys(aggregated.overview).forEach(key => {
+    const metric = aggregated.overview[key as keyof typeof aggregated.overview];
+    if (metric.previous > 0) {
+      metric.change = ((metric.current - metric.previous) / metric.previous) * 100;
+    } else if (metric.current > 0) {
+      metric.change = 100;
+    }
+  });
+
+  return aggregated;
+}

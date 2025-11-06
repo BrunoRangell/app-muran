@@ -1,6 +1,6 @@
 export interface TrafficInsightsRequest {
   clientId: string;
-  accountId: string;
+  accountIds: string[];
   platform: 'meta' | 'google' | 'both';
   dateRange: {
     start: string;

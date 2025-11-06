@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const TrafficReports = () => {
   const [selectedClient, setSelectedClient] = useState<string>("");
-  const [selectedAccount, setSelectedAccount] = useState<string>("");
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<'meta' | 'google' | 'both'>('both');
   const [dateRange, setDateRange] = useState({
     start: subDays(new Date(), 30),
@@ -37,7 +37,7 @@ const TrafficReports = () => {
     refetch
   } = useTrafficInsights({
     clientId: selectedClient,
-    accountId: selectedAccount,
+    accountIds: selectedAccounts,
     platform: selectedPlatform,
     dateRange: {
       start: dateRange.start.toISOString().split('T')[0],
@@ -48,16 +48,32 @@ const TrafficReports = () => {
 
   const handleClientChange = (clientId: string) => {
     setSelectedClient(clientId);
-    setSelectedAccount(""); // Reset account when client changes
+    setSelectedAccounts([]); // Reset accounts when client changes
   };
 
   const handlePlatformChange = (platform: 'meta' | 'google' | 'both') => {
     setSelectedPlatform(platform);
-    setSelectedAccount(""); // Reset account when platform changes
+    
+    // Auto-selecionar contas principais
+    if (platform === 'both') {
+      const metaPrimary = accountsData?.find(a => a.platform === 'meta' && a.is_primary);
+      const googlePrimary = accountsData?.find(a => a.platform === 'google' && a.is_primary);
+      
+      const autoSelected = [];
+      if (metaPrimary) autoSelected.push(metaPrimary.id);
+      if (googlePrimary) autoSelected.push(googlePrimary.id);
+      
+      setSelectedAccounts(autoSelected);
+    } else {
+      const primaryAccount = accountsData?.find(
+        a => a.platform === platform && a.is_primary
+      );
+      setSelectedAccounts(primaryAccount ? [primaryAccount.id] : []);
+    }
   };
 
   const isLoading = isLoadingClients || isLoadingAccounts || isLoadingInsights;
-  const hasSelection = selectedClient && selectedAccount;
+  const hasSelection = selectedClient && selectedAccounts.length > 0;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -74,11 +90,11 @@ const TrafficReports = () => {
           clients={clientsData || []}
           accounts={accountsData || []}
           selectedClient={selectedClient}
-          selectedAccount={selectedAccount}
+          selectedAccounts={selectedAccounts}
           selectedPlatform={selectedPlatform}
           dateRange={dateRange}
           onClientChange={handleClientChange}
-          onAccountChange={setSelectedAccount}
+          onAccountsChange={setSelectedAccounts}
           onPlatformChange={handlePlatformChange}
           onDateRangeChange={setDateRange}
           onRefresh={() => refetch()}
@@ -95,10 +111,10 @@ const TrafficReports = () => {
         )}
 
         {/* Estado: Cliente selecionado mas sem conta */}
-        {selectedClient && !selectedAccount && (
+        {selectedClient && selectedAccounts.length === 0 && (
           <Alert>
             <AlertDescription>
-              Selecione uma conta de anúncios para visualizar as métricas
+              Selecione pelo menos uma conta de anúncios para visualizar as métricas
             </AlertDescription>
           </Alert>
         )}
@@ -158,7 +174,7 @@ const TrafficReports = () => {
             {/* Tabela de Campanhas */}
             <CampaignsInsightsTable 
               campaigns={insightsData.campaigns}
-              accountId={accountsData?.find(a => a.id === selectedAccount)?.account_id}
+              accountId={accountsData?.find(a => selectedAccounts.includes(a.id))?.account_id}
             />
           </div>
         )}

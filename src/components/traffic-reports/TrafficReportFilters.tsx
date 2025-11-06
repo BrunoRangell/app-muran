@@ -6,16 +6,17 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AccountMultiSelect } from "./AccountMultiSelect";
 
 interface TrafficReportFiltersProps {
   clients: Array<{ id: string; company_name: string }>;
-  accounts: Array<{ id: string; account_name: string; platform: string }>;
+  accounts: Array<{ id: string; account_name: string; platform: string; is_primary: boolean }>;
   selectedClient: string;
-  selectedAccount: string;
+  selectedAccounts: string[];
   selectedPlatform: 'meta' | 'google' | 'both';
   dateRange: { start: Date; end: Date };
   onClientChange: (clientId: string) => void;
-  onAccountChange: (accountId: string) => void;
+  onAccountsChange: (accountIds: string[]) => void;
   onPlatformChange: (platform: 'meta' | 'google' | 'both') => void;
   onDateRangeChange: (range: { start: Date; end: Date }) => void;
   onRefresh: () => void;
@@ -26,11 +27,11 @@ export function TrafficReportFilters({
   clients,
   accounts,
   selectedClient,
-  selectedAccount,
+  selectedAccounts,
   selectedPlatform,
   dateRange,
   onClientChange,
-  onAccountChange,
+  onAccountsChange,
   onPlatformChange,
   onDateRangeChange,
   onRefresh,
@@ -83,27 +84,6 @@ export function TrafficReportFilters({
           </Select>
         </div>
 
-        {/* Conta */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Conta de Anúncios</label>
-          <Select 
-            value={selectedAccount} 
-            onValueChange={onAccountChange}
-            disabled={!selectedClient || accounts.length === 0}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione a conta" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.account_name} ({account.platform.toUpperCase()})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Plataforma */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Plataforma</label>
@@ -117,6 +97,17 @@ export function TrafficReportFilters({
               <SelectItem value="both">Ambas</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Conta de Anúncios - Multi-Select */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Contas de Anúncios</label>
+          <AccountMultiSelect
+            accounts={accounts}
+            selectedIds={selectedAccounts}
+            onChange={onAccountsChange}
+            disabled={!selectedClient || accounts.length === 0}
+          />
         </div>
 
         {/* Período */}

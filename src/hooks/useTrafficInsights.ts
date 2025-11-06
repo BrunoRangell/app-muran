@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface TrafficInsightsParams {
   clientId: string;
-  accountId: string;
+  accountIds: string[];
   platform: 'meta' | 'google' | 'both';
   dateRange: {
     start: string;
@@ -34,7 +34,7 @@ export const useTrafficInsights = (params: TrafficInsightsParams) => {
       console.log('✅ [useTrafficInsights] Data received');
       return data;
     },
-    enabled: !!params.clientId && !!params.accountId && !!params.platform,
+    enabled: !!params.clientId && params.accountIds.length > 0 && !!params.platform,
     staleTime: 5 * 60 * 1000, // 5 minutos
     retry: 2
   });
