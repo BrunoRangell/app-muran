@@ -25,22 +25,18 @@ export async function fetchMetaInsights(
     throw new Error(`Conta Meta não encontrada: ${accountError?.message}`);
   }
 
-  // Buscar token de acesso
+  // Buscar token de acesso Meta global
   const { data: tokenData, error: tokenError } = await supabase
     .from('api_tokens')
-    .select('access_token')
-    .eq('client_id', clientId)
-    .eq('platform', 'meta')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(1)
+    .select('value')
+    .eq('name', 'meta_access_token')
     .single();
 
-  if (tokenError || !tokenData?.access_token) {
-    throw new Error('Token de acesso Meta não encontrado');
+  if (tokenError || !tokenData?.value) {
+    throw new Error('Token de acesso Meta não encontrado. Configure o token em Configurações → API Tokens');
   }
 
-  const accessToken = tokenData.access_token;
+  const accessToken = tokenData.value;
   const metaAccountId = accountData.account_id;
 
   // Calcular período anterior para comparação

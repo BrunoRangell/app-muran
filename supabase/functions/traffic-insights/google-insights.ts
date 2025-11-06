@@ -25,23 +25,29 @@ export async function fetchGoogleInsights(
     throw new Error(`Conta Google não encontrada: ${accountError?.message}`);
   }
 
-  // Buscar tokens de acesso
-  const { data: tokenData, error: tokenError } = await supabase
+  // Buscar tokens de acesso Google globais
+  const { data: accessTokenData, error: accessError } = await supabase
     .from('api_tokens')
-    .select('access_token, refresh_token, developer_token')
-    .eq('client_id', clientId)
-    .eq('platform', 'google')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(1)
+    .select('value')
+    .eq('name', 'google_access_token')
     .single();
 
-  if (tokenError || !tokenData?.access_token) {
-    throw new Error('Token de acesso Google não encontrado');
+  const { data: devTokenData, error: devError } = await supabase
+    .from('api_tokens')
+    .select('value')
+    .eq('name', 'google_developer_token')
+    .single();
+
+  if (accessError || !accessTokenData?.value) {
+    throw new Error('Token de acesso Google não encontrado. Configure o token em Configurações → API Tokens');
   }
 
-  const accessToken = tokenData.access_token;
-  const developerToken = tokenData.developer_token;
+  if (devError || !devTokenData?.value) {
+    throw new Error('Developer Token Google não encontrado. Configure o token em Configurações → API Tokens');
+  }
+
+  const accessToken = accessTokenData.value;
+  const developerToken = devTokenData.value;
   const customerId = accountData.account_id.replace(/-/g, '');
 
   // Calcular período anterior
