@@ -1,73 +1,140 @@
 import { useState } from "react";
-import { format, subDays } from "date-fns";
-import { TrafficReportHeader } from "@/components/traffic-reports/TrafficReportHeader";
-import { OverviewCards } from "@/components/traffic-reports/OverviewCards";
-import { LeadsChart } from "@/components/traffic-reports/LeadsChart";
-import { DetailedTabs } from "@/components/traffic-reports/DetailedTabs";
-import { useTrafficReportData } from "@/hooks/useTrafficReportData";
-import { DateRangeFilter } from "@/types/traffic-report";
+import { subDays } from "date-fns";
+import { TrafficReportFilters } from "@/components/traffic-reports/TrafficReportFilters";
+import { InsightsOverview } from "@/components/traffic-reports/InsightsOverview";
+import { CampaignsInsightsTable } from "@/components/traffic-reports/CampaignsInsightsTable";
+import { useUnifiedData } from "@/hooks/useUnifiedData";
+import { useClientAccounts } from "@/hooks/useClientAccounts";
+import { useTrafficInsights } from "@/hooks/useTrafficInsights";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const TrafficReports = () => {
   const [selectedClient, setSelectedClient] = useState<string>("");
-  const [dateRange, setDateRange] = useState<DateRangeFilter>({
-    startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
-    endDate: format(new Date(), 'yyyy-MM-dd'),
+  const [selectedAccount, setSelectedAccount] = useState<string>("");
+  const [selectedPlatform, setSelectedPlatform] = useState<'meta' | 'google' | 'both'>('both');
+  const [dateRange, setDateRange] = useState({
+    start: subDays(new Date(), 30),
+    end: new Date()
   });
 
-  const { data: reportData, isLoading, error, refetch } = useTrafficReportData(
+  // Buscar clientes
+  const { data: clientsData, isLoading: isLoadingClients } = useUnifiedData();
+
+  // Buscar contas do cliente selecionado
+  const { data: accountsData, isLoading: isLoadingAccounts } = useClientAccounts(
     selectedClient,
-    dateRange
+    selectedPlatform === 'both' ? undefined : selectedPlatform
   );
+
+  // Buscar insights de tráfego
+  const { 
+    data: insightsData, 
+    isLoading: isLoadingInsights,
+    error: insightsError,
+    refetch
+  } = useTrafficInsights({
+    clientId: selectedClient,
+    accountId: selectedAccount,
+    platform: selectedPlatform,
+    dateRange: {
+      start: dateRange.start.toISOString().split('T')[0],
+      end: dateRange.end.toISOString().split('T')[0]
+    },
+    compareWithPrevious: true
+  });
+
+  const handleClientChange = (clientId: string) => {
+    setSelectedClient(clientId);
+    setSelectedAccount(""); // Reset account when client changes
+  };
+
+  const handlePlatformChange = (platform: 'meta' | 'google' | 'both') => {
+    setSelectedPlatform(platform);
+    setSelectedAccount(""); // Reset account when platform changes
+  };
+
+  const isLoading = isLoadingClients || isLoadingAccounts || isLoadingInsights;
+  const hasSelection = selectedClient && selectedAccount;
 
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
-        <TrafficReportHeader
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold">Relatórios de Tráfego</h1>
+          <p className="text-muted-foreground">
+            Análise detalhada de performance de Meta Ads e Google Ads com dados em tempo real
+          </p>
+        </div>
+
+        {/* Filtros */}
+        <TrafficReportFilters
+          clients={clientsData || []}
+          accounts={accountsData || []}
           selectedClient={selectedClient}
-          onClientChange={setSelectedClient}
+          selectedAccount={selectedAccount}
+          selectedPlatform={selectedPlatform}
           dateRange={dateRange}
+          onClientChange={handleClientChange}
+          onAccountChange={setSelectedAccount}
+          onPlatformChange={handlePlatformChange}
           onDateRangeChange={setDateRange}
           onRefresh={() => refetch()}
+          isLoading={isLoadingInsights}
         />
 
+        {/* Estado: Nenhum cliente selecionado */}
         {!selectedClient && (
           <Alert>
             <AlertDescription>
-              Selecione um cliente para visualizar o relatório de tráfego
+              Selecione um cliente para visualizar os relatórios de tráfego
             </AlertDescription>
           </Alert>
         )}
 
-        {isLoading && (
+        {/* Estado: Cliente selecionado mas sem conta */}
+        {selectedClient && !selectedAccount && (
+          <Alert>
+            <AlertDescription>
+              Selecione uma conta de anúncios para visualizar as métricas
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Loading */}
+        {isLoadingInsights && hasSelection && (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muran-primary" />
+            <div className="text-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-muran-primary mx-auto" />
+              <p className="text-sm text-muted-foreground">
+                Carregando dados das APIs...
+              </p>
+            </div>
           </div>
         )}
 
-        {error && (
+        {/* Erro */}
+        {insightsError && hasSelection && (
           <Alert variant="destructive">
             <AlertDescription>
-              Erro ao carregar dados: {error.message}
+              Erro ao carregar dados: {insightsError.message}
             </AlertDescription>
           </Alert>
         )}
 
-        {reportData && !isLoading && (
-          <div className="space-y-6">
-            {/* Cards de Overview */}
-            <OverviewCards metrics={reportData.overview} />
+        {/* Dados */}
+        {insightsData && !isLoadingInsights && hasSelection && (
+          <div className="space-y-8">
+            {/* Overview Cards */}
+            <InsightsOverview 
+              overview={insightsData.overview}
+              platform={insightsData.platform}
+            />
 
-            {/* Gráfico de Leads */}
-            <LeadsChart data={reportData.leadsTimeSeries} />
-
-            {/* Abas Detalhadas */}
-            <DetailedTabs
-              metaCampaigns={reportData.metaCampaigns}
-              googleCampaigns={reportData.googleCampaigns}
-              metaFunnel={reportData.metaFunnel}
-              googleFunnel={reportData.googleFunnel}
+            {/* Tabela de Campanhas */}
+            <CampaignsInsightsTable 
+              campaigns={insightsData.campaigns}
+              accountId={accountsData?.find(a => a.id === selectedAccount)?.account_id}
             />
           </div>
         )}
