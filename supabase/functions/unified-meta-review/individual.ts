@@ -1,4 +1,4 @@
-import { createSupabaseClient, fetchMetaAccessToken, fetchClientData, fetchPrimaryMetaAccount, fetchSpecificMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview } from "./database.ts";
+import { createSupabaseClient, fetchMetaAccessToken, fetchClientData, fetchPrimaryMetaAccount, fetchSpecificMetaAccount, fetchActiveCustomBudget, checkExistingReview, updateExistingReview, createNewReview, cleanupOldReviews } from "./database.ts";
 import { fetchMetaApiData, fetchMetaBalance, fetchAccountBasicInfo } from "./meta-api.ts";
 import { updateCampaignHealth } from "./campaigns.ts";
 import { IndividualReviewRequest } from "./types.ts";
@@ -147,7 +147,19 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
       is_prepay_account: balanceData.is_prepay_account
     };
     
-    // 9. Verificar revisão existente e salvar/atualizar
+    // 9. Limpar revisões antigas ANTES de salvar a nova
+    const cleanupStartTime = Date.now();
+    console.log(`🧹 [INDIVIDUAL] Limpando revisões antigas para cliente ${clientId}...`);
+    
+    const cleanupResult = await cleanupOldReviews(supabase, 'meta', today, clientId, metaAccount.id);
+    const cleanupTime = Date.now() - cleanupStartTime;
+    
+    console.log(`✅ [INDIVIDUAL] Limpeza concluída (${cleanupTime}ms):`, {
+      deleted_old: cleanupResult.deleted_old,
+      deleted_today_duplicates: cleanupResult.deleted_today_duplicates
+    });
+    
+    // 10. Verificar revisão existente e salvar/atualizar
     const saveStartTime = Date.now();
     console.log(`💾 [INDIVIDUAL] Salvando revisão...`);
     
@@ -164,7 +176,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     const saveTime = Date.now() - saveStartTime;
     console.log(`✅ [INDIVIDUAL] Revisão salva: ID ${reviewId} (${saveTime}ms)`);
     
-    // 10. Atualizar saldo e modelo de cobrança na tabela client_accounts
+    // 11. Atualizar saldo e modelo de cobrança na tabela client_accounts
     console.log(`🔄 [DATABASE] Atualizando saldo e modelo de cobrança em client_accounts para conta ${metaAccount.id}`);
     console.log('🔎 [DATABASE] Dados de funding do basicInfo:', {
       lastFundingDate: basicAccountInfo.lastFundingDate,
@@ -291,7 +303,7 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
     
     console.log(`🔍 [INDIVIDUAL] ===== FIM DEBUG DATABASE UPDATE =====`);
 
-    // 11. Atualizar campaign health (executa de forma assíncrona)
+    // 12. Atualizar campaign health (executa de forma assíncrona)
     console.log(`📊 [INDIVIDUAL] Atualizando campaign health...`);
     updateCampaignHealth(supabase, clientId, metaAccount.account_id, metaToken, today).catch(error => {
       console.error(`⚠️ [INDIVIDUAL] Erro ao atualizar campaign health:`, error);

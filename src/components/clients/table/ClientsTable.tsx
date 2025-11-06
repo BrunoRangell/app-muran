@@ -2,7 +2,7 @@ import { Table, TableBody } from "@/components/ui/table";
 import { Client, Column, SortConfig } from "../types";
 import { ClientsTableHeader } from "./TableHeader";
 import { ClientTableRow } from "./TableRow";
-import { calculateRetention } from "./utils";
+import { calculateRetention, calculateDaysUntilPartnershipAnniversary } from "./utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClientsTableProps {
@@ -24,6 +24,7 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
   const clientsWithRetention = clients?.map((client) => ({
     ...client,
     calculatedRetention: calculateRetention(client),
+    calculatedDaysUntilAnniversary: calculateDaysUntilPartnershipAnniversary(client),
   }));
 
   const sortedClients = clientsWithRetention?.sort((a, b) => {
@@ -33,6 +34,12 @@ export const ClientsTable = ({ clients, columns, onEditClick, sortConfig, onSort
       return sortConfig.direction === "asc"
         ? a.calculatedRetention - b.calculatedRetention
         : b.calculatedRetention - a.calculatedRetention;
+    }
+
+    if (sortConfig.key === "days_until_anniversary") {
+      return sortConfig.direction === "asc"
+        ? a.calculatedDaysUntilAnniversary - b.calculatedDaysUntilAnniversary
+        : b.calculatedDaysUntilAnniversary - a.calculatedDaysUntilAnniversary;
     }
 
     const aValue = a[sortConfig.key as keyof Client];

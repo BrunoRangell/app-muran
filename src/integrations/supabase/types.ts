@@ -609,6 +609,57 @@ export type Database = {
         }
         Relationships: []
       }
+      important_dates: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          date: string
+          date_type: string
+          description: string | null
+          entity_id: string | null
+          entity_type: string
+          icon: string | null
+          id: string
+          is_recurring: boolean | null
+          recurrence_pattern: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          date_type: string
+          description?: string | null
+          entity_id?: string | null
+          entity_type: string
+          icon?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          recurrence_pattern?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          date_type?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          icon?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          recurrence_pattern?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       imported_transactions: {
         Row: {
           cost_id: number | null

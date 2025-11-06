@@ -10,6 +10,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   const {
     goal,
     currentValue,
+    newClientsThisMonth,
     isLoading,
     queryError,
     isEditing,
@@ -55,7 +56,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
   }
 
   return (
-    <Card className="border-0 shadow-sm bg-white h-full">
+    <Card className="border-0 shadow-sm bg-white h-full min-h-[310px]">
       <GoalHeader
         goal={goal}
         isAdmin={isAdmin}
@@ -64,7 +65,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
         onEditClick={() => setIsEditing(true)}
       />
       
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         {isEditing || isCreating ? (
           <GoalForm
             initialData={goal}
@@ -76,7 +77,7 @@ export const GoalCard = ({ isAdmin }: { isAdmin: boolean }) => {
             isSubmitting={updateGoal.isPending || createGoal.isPending}
           />
         ) : goal ? (
-          <GoalProgress goal={goal} currentValue={currentValue || 0} />
+          <GoalProgress goal={goal} currentValue={currentValue || 0} newClientsThisMonth={newClientsThisMonth} />
         ) : (
           <EmptyGoalState 
             isAdmin={isAdmin}

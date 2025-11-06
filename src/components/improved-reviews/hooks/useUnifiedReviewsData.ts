@@ -203,6 +203,7 @@ export function useUnifiedReviewsData() {
           return {
             ...client,
             meta_account_id: account.account_id,
+            meta_account_uuid: account.id, // UUID do client_accounts para queries
             meta_account_name: account.account_name,
             budget_amount: monthlyBudget,
             original_budget_amount: account.budget_amount,

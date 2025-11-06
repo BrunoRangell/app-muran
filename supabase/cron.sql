@@ -87,6 +87,12 @@ VALUES (
 -- Jobs já foram recriados via migração SQL, apenas documentando aqui:
 -- 1. cron-health-check: executa a cada hora (0 * * * *)
 -- 2. google-ads-token-check-job: executa a cada 2 horas (0 */2 * * *)
+-- 3. google-ads-batch-review-job (ID 33): ATUALIZADO para processamento em lote
+--    - Agenda: A cada 2 horas (0 9,11,13,15,17,19,21,23 * * *)
+--    - Coleta TODOS os clientIds em um único array JSON
+--    - Faz UMA única chamada HTTP para daily-google-review
+--    - Registra logs em cron_execution_logs
+--    - Atualizado em: 2025-01-03
 
 -- Registrar log de configuração final
 INSERT INTO public.system_logs (event_type, message, details)

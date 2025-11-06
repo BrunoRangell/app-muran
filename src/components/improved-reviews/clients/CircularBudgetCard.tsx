@@ -167,11 +167,11 @@ export function CircularBudgetCard({
   const statusInfo = getStatusInfo();
   const accountInfo = getAccountInfo();
 
-  // Buscar informações de veiculação das campanhas - usar o account_id correto
+  // Buscar informações de veiculação das campanhas - usar o UUID correto do client_accounts
   const veiculationAccountId =
     platform === "meta"
-      ? client.review?.account_id || client.meta_account_id
-      : client.review?.account_id || client.google_account_id;
+      ? client.review?.account_id || client.meta_account_uuid
+      : client.review?.account_id || client.google_account_uuid;
 
   const { data: veiculationInfo } = useCampaignVeiculationStatus(client.id, veiculationAccountId, platform);
 
