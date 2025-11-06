@@ -29,13 +29,13 @@ export async function fetchGoogleInsights(
   const { data: accessTokenData, error: accessError } = await supabase
     .from('api_tokens')
     .select('value')
-    .eq('name', 'google_access_token')
+    .eq('name', 'google_ads_access_token')
     .single();
 
   const { data: devTokenData, error: devError } = await supabase
     .from('api_tokens')
     .select('value')
-    .eq('name', 'google_developer_token')
+    .eq('name', 'google_ads_developer_token')
     .single();
 
   if (accessError || !accessTokenData?.value) {

@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { GoogleAdsTokenTest } from "./GoogleAdsTokenTest";
+import { GoogleAdsTokenManager } from "./GoogleAdsTokenManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -68,6 +69,10 @@ export const ApiConfigurationPanel = () => {
         </TabsList>
 
         <TabsContent value="google-ads" className="space-y-6">
+          {/* Gerenciador de Tokens */}
+          <GoogleAdsTokenManager />
+
+          {/* Diagnóstico e Teste */}
           <div className="bg-white rounded-lg border p-6 space-y-4">
             <h3 className="text-lg font-medium">Diagnóstico do Google Ads</h3>
             <p className="text-sm text-gray-600">
