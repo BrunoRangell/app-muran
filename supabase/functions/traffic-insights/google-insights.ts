@@ -38,6 +38,12 @@ export async function fetchGoogleInsights(
     .eq('name', 'google_ads_developer_token')
     .single();
 
+  const { data: managerIdData, error: managerError } = await supabase
+    .from('api_tokens')
+    .select('value')
+    .eq('name', 'google_ads_manager_id')
+    .single();
+
   if (accessError || !accessTokenData?.value) {
     throw new Error('Token de acesso Google não encontrado. Configure o token em Configurações → API Tokens');
   }
@@ -48,6 +54,7 @@ export async function fetchGoogleInsights(
 
   const accessToken = accessTokenData.value;
   const developerToken = devTokenData.value;
+  const managerId = managerIdData?.value || null;
   const customerId = accountData.account_id.replace(/-/g, '');
 
   // Calcular período anterior
@@ -65,6 +72,7 @@ export async function fetchGoogleInsights(
     customerId,
     accessToken,
     developerToken,
+    managerId,
     dateRange.start,
     dateRange.end
   );
@@ -76,6 +84,7 @@ export async function fetchGoogleInsights(
       customerId,
       accessToken,
       developerToken,
+      managerId,
       previousStart.toISOString().split('T')[0],
       previousEnd.toISOString().split('T')[0]
     );
@@ -157,6 +166,7 @@ async function fetchGoogleAdsApiInsights(
   customerId: string,
   accessToken: string,
   developerToken: string,
+  managerId: string | null,
   startDate: string,
   endDate: string
 ) {
@@ -184,13 +194,21 @@ async function fetchGoogleAdsApiInsights(
 
   console.log(`🌐 [GOOGLE-API] Fetching insights: ${startDate} to ${endDate}`);
 
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${accessToken}`,
+    'developer-token': developerToken,
+    'Content-Type': 'application/json'
+  };
+
+  // Adicionar login-customer-id se houver Manager ID configurado
+  if (managerId) {
+    headers['login-customer-id'] = managerId.replace(/-/g, '');
+    console.log(`🔑 [GOOGLE-API] Using Manager ID: ${managerId}`);
+  }
+
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'developer-token': developerToken,
-      'Content-Type': 'application/json'
-    },
+    headers,
     body: JSON.stringify({ query })
   });
 
