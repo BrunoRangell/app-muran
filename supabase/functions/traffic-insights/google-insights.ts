@@ -57,6 +57,13 @@ export async function fetchGoogleInsights(
   const managerId = managerIdData?.value || null;
   const customerId = accountData.account_id.replace(/-/g, '');
 
+  // Validar tokens carregados
+  console.log(`🔐 [GOOGLE-INSIGHTS] Tokens loaded:`);
+  console.log(`   - Access Token: ${accessToken ? '✅ Present' : '❌ Missing'}`);
+  console.log(`   - Developer Token: ${developerToken ? '✅ Present' : '❌ Missing'}`);
+  console.log(`   - Manager ID: ${managerId || 'Not configured (optional)'}`);
+  console.log(`   - Customer ID: ${customerId}`);
+
   // Calcular período anterior
   const startDate = new Date(dateRange.start);
   const endDate = new Date(dateRange.end);
@@ -190,9 +197,11 @@ async function fetchGoogleAdsApiInsights(
     ORDER BY segments.date ASC
   `;
 
-  const url = `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:searchStream`;
+  const url = `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`;
 
   console.log(`🌐 [GOOGLE-API] Fetching insights: ${startDate} to ${endDate}`);
+  console.log(`🔑 [GOOGLE-API] Customer ID: ${customerId}`);
+  console.log(`📊 [GOOGLE-API] URL: ${url}`);
 
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${accessToken}`,
@@ -214,11 +223,24 @@ async function fetchGoogleAdsApiInsights(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ [GOOGLE-API] Error:`, errorText);
-    throw new Error(`Google Ads API error: ${response.status}`);
+    console.error(`❌ [GOOGLE-API] HTTP ${response.status}:`, errorText);
+    
+    let errorDetails;
+    try {
+      errorDetails = JSON.parse(errorText);
+    } catch {
+      errorDetails = { message: errorText };
+    }
+    
+    throw new Error(
+      `Google Ads API error ${response.status}: ${errorDetails?.error?.message || errorText}`
+    );
   }
 
   const results = await response.json();
+
+  console.log(`✅ [GOOGLE-API] Response received, processing...`);
+  console.log(`📦 [GOOGLE-API] Results structure:`, JSON.stringify(results).substring(0, 200));
 
   const campaignsMap = new Map<string, any>();
   const timeSeriesMap = new Map<string, any>();
@@ -228,80 +250,79 @@ async function fetchGoogleAdsApiInsights(
   let totalSpend = 0;
   let totalConversions = 0;
 
-  if (results && Array.isArray(results)) {
-    for (const result of results) {
-      if (!result.results) continue;
+  // Processar results.results diretamente (API v21 retorna { results: [...] })
+  if (results && results.results && Array.isArray(results.results)) {
+    for (const row of results.results) {
+      const campaign = row.campaign;
+      const metrics = row.metrics;
+      const date = row.segments?.date;
 
-      for (const row of result.results) {
-        const campaign = row.campaign;
-        const metrics = row.metrics;
-        const date = row.segments?.date;
+      if (!campaign || !metrics) continue;
 
-        if (!campaign || !metrics) continue;
+      const campaignId = campaign.id?.toString() || 'unknown';
+      const campaignName = campaign.name || 'Unknown Campaign';
+      const status = campaign.status || 'UNKNOWN';
 
-        const campaignId = campaign.id?.toString() || 'unknown';
-        const campaignName = campaign.name || 'Unknown Campaign';
-        const status = campaign.status || 'UNKNOWN';
+      const impressions = parseInt(metrics.impressions || '0');
+      const clicks = parseInt(metrics.clicks || '0');
+      const spend = parseFloat(metrics.costMicros || '0') / 1000000;
+      const conversions = parseFloat(metrics.conversions || '0');
+      const ctr = parseFloat(metrics.ctr || '0') * 100;
+      const cpc = parseFloat(metrics.averageCpc || '0') / 1000000;
+      const videoViews = parseInt(metrics.videoViews || '0');
 
-        const impressions = parseInt(metrics.impressions || '0');
-        const clicks = parseInt(metrics.clicks || '0');
-        const spend = parseFloat(metrics.costMicros || '0') / 1000000;
-        const conversions = parseFloat(metrics.conversions || '0');
-        const ctr = parseFloat(metrics.ctr || '0') * 100;
-        const cpc = parseFloat(metrics.averageCpc || '0') / 1000000;
-        const videoViews = parseInt(metrics.videoViews || '0');
+      // Agregar por campanha
+      if (!campaignsMap.has(campaignId)) {
+        campaignsMap.set(campaignId, {
+          id: campaignId,
+          name: campaignName,
+          platform: 'google' as const,
+          status: status.toLowerCase(),
+          impressions: 0,
+          clicks: 0,
+          ctr: 0,
+          cpc: 0,
+          conversions: 0,
+          cpa: 0,
+          spend: 0,
+          videoViews: 0
+        });
+      }
 
-        // Agregar por campanha
-        if (!campaignsMap.has(campaignId)) {
-          campaignsMap.set(campaignId, {
-            id: campaignId,
-            name: campaignName,
-            platform: 'google' as const,
-            status: status.toLowerCase(),
+      const campaignData = campaignsMap.get(campaignId);
+      campaignData.impressions += impressions;
+      campaignData.clicks += clicks;
+      campaignData.spend += spend;
+      campaignData.conversions += conversions;
+      campaignData.videoViews += videoViews;
+
+      // Agregar por data
+      if (date) {
+        if (!timeSeriesMap.has(date)) {
+          timeSeriesMap.set(date, {
+            date,
             impressions: 0,
             clicks: 0,
-            ctr: 0,
-            cpc: 0,
             conversions: 0,
-            cpa: 0,
-            spend: 0,
-            videoViews: 0
+            spend: 0
           });
         }
 
-        const campaignData = campaignsMap.get(campaignId);
-        campaignData.impressions += impressions;
-        campaignData.clicks += clicks;
-        campaignData.spend += spend;
-        campaignData.conversions += conversions;
-        campaignData.videoViews += videoViews;
-
-        // Agregar por data
-        if (date) {
-          if (!timeSeriesMap.has(date)) {
-            timeSeriesMap.set(date, {
-              date,
-              impressions: 0,
-              clicks: 0,
-              conversions: 0,
-              spend: 0
-            });
-          }
-
-          const timePoint = timeSeriesMap.get(date);
-          timePoint.impressions += impressions;
-          timePoint.clicks += clicks;
-          timePoint.conversions += conversions;
-          timePoint.spend += spend;
-        }
-
-        totalImpressions += impressions;
-        totalClicks += clicks;
-        totalSpend += spend;
-        totalConversions += conversions;
+        const timePoint = timeSeriesMap.get(date);
+        timePoint.impressions += impressions;
+        timePoint.clicks += clicks;
+        timePoint.conversions += conversions;
+        timePoint.spend += spend;
       }
+
+      totalImpressions += impressions;
+      totalClicks += clicks;
+      totalSpend += spend;
+      totalConversions += conversions;
     }
   }
+
+  console.log(`✅ [GOOGLE-INSIGHTS] Processed ${campaignsMap.size} campaigns, ${timeSeriesMap.size} days of data`);
 
   // Calcular métricas derivadas por campanha
   const campaigns: CampaignInsight[] = Array.from(campaignsMap.values()).map(c => {
