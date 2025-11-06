@@ -374,7 +374,7 @@ async function processIndividualGoogleReview(
     
     // Buscar conta Google Ads do cliente
     const accountResponse = await fetch(
-      `${supabaseUrl}/rest/v1/client_accounts?client_id=eq.${clientId}&platform=eq.google&is_primary=eq.true&select=*`,
+      `${supabaseUrl}/rest/v1/client_accounts?client_id=eq.${clientId}&platform=eq.google&status=eq.active&order=is_primary.desc,created_at.asc&select=*`,
       {
         headers: {
           "apikey": supabaseKey,
