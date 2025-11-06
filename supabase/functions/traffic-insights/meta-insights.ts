@@ -37,7 +37,12 @@ export async function fetchMetaInsights(
   }
 
   const accessToken = tokenData.value;
-  const metaAccountId = accountData.account_id;
+  
+  // Adicionar prefixo act_ se não existir
+  let metaAccountId = accountData.account_id;
+  if (!metaAccountId.startsWith('act_')) {
+    metaAccountId = `act_${metaAccountId}`;
+  }
 
   // Calcular período anterior para comparação
   const startDate = new Date(dateRange.start);
@@ -147,6 +152,9 @@ async function fetchMetaApiInsights(
   since: string,
   until: string
 ) {
+  // Garantir que o accountId tenha o prefixo act_
+  const formattedAccountId = accountId.startsWith('act_') ? accountId : `act_${accountId}`;
+  
   const fields = [
     'campaign_id',
     'campaign_name',
@@ -171,9 +179,9 @@ async function fetchMetaApiInsights(
     limit: '500'
   });
 
-  const url = `https://graph.facebook.com/v22.0/${accountId}/insights?${params}`;
+  const url = `https://graph.facebook.com/v22.0/${formattedAccountId}/insights?${params}`;
 
-  console.log(`🌐 [META-API] Fetching insights: ${since} to ${until}`);
+  console.log(`🌐 [META-API] Fetching insights for ${formattedAccountId}: ${since} to ${until}`);
 
   const response = await fetch(url);
   
