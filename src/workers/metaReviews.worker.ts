@@ -50,24 +50,18 @@ const calculateBudget = (input: {
   const remainingDays = Math.max(budgetEndDay - currentDay, 1);
   const remainingBudget = Math.max(input.monthlyBudget - input.totalSpent, 0);
   const idealDailyBudget = remainingBudget / remainingDays;
-  const budgetDifference = input.currentDailyBudget - idealDailyBudget;
-  const budgetDifferencePercent = idealDailyBudget > 0 ? (budgetDifference / idealDailyBudget) * 100 : 0;
+  const budgetDifference = idealDailyBudget - input.currentDailyBudget;
   
-  const INCREASE_THRESHOLD = -10;
-  const DECREASE_THRESHOLD = 10;
-  
+  // Threshold de R$ 5 para acusar ajuste necessário
   let needsBudgetAdjustment = false;
   
   if (!input.warningIgnoredToday) {
-    if (budgetDifferencePercent <= INCREASE_THRESHOLD || budgetDifferencePercent >= DECREASE_THRESHOLD) {
-      needsBudgetAdjustment = true;
-    }
+    needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
   }
   
   return {
     idealDailyBudget,
     budgetDifference,
-    budgetDifferencePercent,
     remainingDays,
     remainingBudget,
     needsBudgetAdjustment,

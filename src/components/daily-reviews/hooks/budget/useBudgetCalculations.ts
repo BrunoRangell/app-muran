@@ -105,8 +105,8 @@ export const useBudgetCalculations = ({ client }: UseBudgetCalculationProps): Bu
       const calculatedBudgetDifference = calculatedIdealDailyBudget - clientCurrentDailyBudget;
       setBudgetDifference(calculatedBudgetDifference);
 
-      // Determinar se o orçamento precisa de ajuste
-      setNeedsBudgetAdjustment(Math.abs(calculatedBudgetDifference) > 5);
+      // Determinar se o orçamento precisa de ajuste (threshold de R$ 5)
+      setNeedsBudgetAdjustment(Math.abs(calculatedBudgetDifference) >= 5);
     }
 
     setIsCalculating(false);
