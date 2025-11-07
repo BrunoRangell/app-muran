@@ -128,18 +128,13 @@ export function useUnifiedReviewsData() {
           const remainingBudget = Math.max(monthlyBudget - totalSpent, 0);
           const idealDailyBudget = remainingBudget / remainingDays;
           const currentDailyBudget = review?.daily_budget_current || 0;
-          const budgetDifference = currentDailyBudget - idealDailyBudget;
-          const budgetDifferencePercent = idealDailyBudget > 0 ? (budgetDifference / idealDailyBudget) * 100 : 0;
+          const budgetDifference = idealDailyBudget - currentDailyBudget;
           
-          const INCREASE_THRESHOLD = -10;
-          const DECREASE_THRESHOLD = 10;
-          
+          // Threshold de R$ 5 para acusar ajuste necessário
           let needsBudgetAdjustment = false;
           
           if (!warningIgnoredToday) {
-            if (budgetDifferencePercent <= INCREASE_THRESHOLD || budgetDifferencePercent >= DECREASE_THRESHOLD) {
-              needsBudgetAdjustment = true;
-            }
+            needsBudgetAdjustment = Math.abs(budgetDifference) >= 5;
           }
           
           const balanceInfo = account.saldo_restante !== null || account.is_prepay_account !== null ? {
@@ -211,7 +206,6 @@ export function useUnifiedReviewsData() {
             budgetCalculation: {
               idealDailyBudget,
               budgetDifference,
-              budgetDifferencePercent,
               remainingDays,
               remainingBudget,
               needsBudgetAdjustment,
