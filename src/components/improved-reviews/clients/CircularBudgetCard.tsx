@@ -100,8 +100,8 @@ export function CircularBudgetCard({
   const currentDailyBudget = client.review?.daily_budget_current || 0;
   // diferença correta: IDEAL - ATUAL
   const budgetDifference = idealDailyBudget - currentDailyBudget;
-  // define se precisa ajustar (tolerância de R$1, ajuste se preferir 0)
-  const needsAdjustment = Math.abs(budgetDifference) > 1;
+  // define se precisa ajustar (threshold de R$ 5 ou mais)
+  const needsAdjustment = Math.abs(budgetDifference) >= 5;
   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< FIM DA CORREÇÃO
 
   const remainingDays = client.budgetCalculation?.remainingDays || 0;

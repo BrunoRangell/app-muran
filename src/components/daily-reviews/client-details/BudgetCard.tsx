@@ -17,10 +17,10 @@ export const BudgetCard = ({
   idealDailyBudget,
   dateRange
 }: BudgetCardProps) => {
-  // Verificar se temos valores válidos para mostrar o alerta
+  // Verificar se temos valores válidos para mostrar o alerta (threshold de R$ 5)
   const shouldShowAlert = !isNaN(idealDailyBudget) && idealDailyBudget > 0 && 
                          !isNaN(dailyBudget) && dailyBudget > 0 &&
-                         Math.abs(dailyBudget - idealDailyBudget) > 5;
+                         Math.abs(dailyBudget - idealDailyBudget) >= 5;
 
   return (
     <Card>
