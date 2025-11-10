@@ -47,20 +47,36 @@ export async function processBatchReview(request: BatchReviewRequest) {
       const clientId = clientIds[i];
       const clientStartTime = Date.now();
       
-      console.log(`\n👤 [BATCH] Processando cliente ${i + 1}/${clientIds.length}: ${clientId}`);
+      console.log(`\n👤 [BATCH] ========================================`);
+      console.log(`👤 [BATCH] Processando cliente ${i + 1}/${clientIds.length}`);
+      console.log(`👤 [BATCH] Cliente ID: ${clientId}`);
+      console.log(`👤 [BATCH] ========================================`);
       
       try {
-        // Usar a função de revisão individual para cada cliente
-        const individualResult = await processIndividualReview({
-          clientId,
-          reviewDate: today
+        // Criar timeout de 30 segundos por cliente
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('TIMEOUT: Cliente demorou mais de 30 segundos para processar')), 30000);
         });
+        
+        // Race entre o processamento e o timeout
+        const individualResult = await Promise.race([
+          processIndividualReview({
+            clientId,
+            reviewDate: today
+          }),
+          timeoutPromise
+        ]) as any;
         
         const clientTime = Date.now() - clientStartTime;
         
         if (individualResult.success) {
           successCount++;
-          console.log(`✅ [BATCH] Cliente ${i + 1} SUCESSO (${clientTime}ms): ${individualResult.data?.client?.name || clientId}`);
+          console.log(`✅ [BATCH] ========================================`);
+          console.log(`✅ [BATCH] Cliente ${i + 1} SUCESSO (${clientTime}ms)`);
+          console.log(`✅ [BATCH] Nome: ${individualResult.data?.client?.name || 'N/A'}`);
+          console.log(`✅ [BATCH] Conta: ${individualResult.data?.account?.name || 'N/A'}`);
+          console.log(`✅ [BATCH] Gasto: R$ ${individualResult.data?.review?.total_spent?.toFixed(2) || '0.00'}`);
+          console.log(`✅ [BATCH] ========================================\n`);
           
           results.push({
             clientId,
@@ -71,7 +87,11 @@ export async function processBatchReview(request: BatchReviewRequest) {
         } else {
           errorCount++;
           const errorMsg = individualResult.error || 'Erro desconhecido';
-          console.error(`❌ [BATCH] Cliente ${i + 1} ERRO (${clientTime}ms): ${errorMsg}`);
+          console.error(`❌ [BATCH] ========================================`);
+          console.error(`❌ [BATCH] Cliente ${i + 1} ERRO (${clientTime}ms)`);
+          console.error(`❌ [BATCH] Cliente ID: ${clientId}`);
+          console.error(`❌ [BATCH] Erro: ${errorMsg}`);
+          console.error(`❌ [BATCH] ========================================\n`);
           
           errors.push({
             clientId,
@@ -90,12 +110,21 @@ export async function processBatchReview(request: BatchReviewRequest) {
         const clientTime = Date.now() - clientStartTime;
         errorCount++;
         const errorMsg = error.message || 'Erro inesperado';
+        const errorStack = error.stack || 'Sem stack trace disponível';
         
-        console.error(`❌ [BATCH] Cliente ${i + 1} EXCEPTION (${clientTime}ms):`, error);
+        console.error(`❌ [BATCH] ========================================`);
+        console.error(`❌ [BATCH] Cliente ${i + 1} EXCEPTION (${clientTime}ms)`);
+        console.error(`❌ [BATCH] Cliente ID: ${clientId}`);
+        console.error(`❌ [BATCH] Mensagem: ${errorMsg}`);
+        console.error(`❌ [BATCH] Stack Trace:`);
+        console.error(errorStack);
+        console.error(`❌ [BATCH] Objeto de erro completo:`, JSON.stringify(error, null, 2));
+        console.error(`❌ [BATCH] ========================================\n`);
         
         errors.push({
           clientId,
           error: errorMsg,
+          stack_trace: errorStack,
           processing_time: clientTime
         });
         
