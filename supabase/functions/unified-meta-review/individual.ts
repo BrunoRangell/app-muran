@@ -339,7 +339,24 @@ export async function processIndividualReview(request: IndividualReviewRequest) 
 
   } catch (error) {
     const totalTime = Date.now() - processStartTime;
-    console.error(`❌ [INDIVIDUAL] ERRO NO PROCESSAMENTO (${totalTime}ms):`, error);
-    return { success: false, error: error.message };
+    const errorMsg = error.message || 'Erro inesperado';
+    const errorStack = error.stack || 'Sem stack trace disponível';
+    
+    console.error(`❌ [INDIVIDUAL] ========================================`);
+    console.error(`❌ [INDIVIDUAL] ERRO CRÍTICO NO PROCESSAMENTO (${totalTime}ms)`);
+    console.error(`❌ [INDIVIDUAL] Cliente ID: ${request.clientId}`);
+    console.error(`❌ [INDIVIDUAL] Mensagem: ${errorMsg}`);
+    console.error(`❌ [INDIVIDUAL] Stack Trace:`);
+    console.error(errorStack);
+    console.error(`❌ [INDIVIDUAL] Objeto de erro completo:`, JSON.stringify(error, null, 2));
+    console.error(`❌ [INDIVIDUAL] Request completo:`, JSON.stringify(request, null, 2));
+    console.error(`❌ [INDIVIDUAL] ========================================`);
+    
+    return { 
+      success: false, 
+      error: errorMsg,
+      stack_trace: errorStack,
+      processing_time: totalTime
+    };
   }
 }

@@ -171,10 +171,16 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
         try {
           const campaignInsightsUrl = `https://graph.facebook.com/v22.0/${campaign.id}/insights?fields=spend,impressions&time_range={"since":"${today}","until":"${today}"}&access_token=${accessToken}`;
           
-          console.log(`🔍 DEBUG Meta: Buscando insights para campanha ${campaign.id} (${campaign.name})`);
+          console.log(`🔍 DEBUG Meta: ==========================================`);
+          console.log(`🔍 DEBUG Meta: Buscando insights para campanha ${campaign.id}`);
+          console.log(`🔍 DEBUG Meta: Nome: ${campaign.name}`);
+          console.log(`🔍 DEBUG Meta: URL: ${campaignInsightsUrl.replace(accessToken, 'TOKEN_OCULTO')}`);
           
           const response = await fetch(campaignInsightsUrl);
           const data = await response.json();
+          
+          console.log(`🔍 DEBUG Meta: Status HTTP: ${response.status}`);
+          console.log(`🔍 DEBUG Meta: Resposta completa:`, JSON.stringify(data, null, 2));
           
           let campaignCost = 0;
           let campaignImpressions = 0;
@@ -183,9 +189,17 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
             const insights = data.data[0];
             campaignCost = parseFloat(insights.spend || '0');
             campaignImpressions = parseInt(insights.impressions || '0');
-            console.log(`📊 DEBUG Meta: Campanha ${campaign.name} - Custo: ${campaignCost}, Impressões: ${campaignImpressions}`);
+            console.log(`✅ DEBUG Meta: Insights encontrados!`);
+            console.log(`💰 DEBUG Meta: Custo: R$ ${campaignCost.toFixed(2)}`);
+            console.log(`👁️ DEBUG Meta: Impressões: ${campaignImpressions.toLocaleString()}`);
           } else {
-            console.warn(`⚠️ DEBUG Meta: Sem insights para campanha ${campaign.name}:`, data);
+            console.warn(`⚠️ DEBUG Meta: SEM INSIGHTS DISPONÍVEIS`);
+            console.warn(`⚠️ DEBUG Meta: response.ok: ${response.ok}`);
+            console.warn(`⚠️ DEBUG Meta: data.data existe: ${!!data.data}`);
+            console.warn(`⚠️ DEBUG Meta: data.data é array: ${Array.isArray(data.data)}`);
+            console.warn(`⚠️ DEBUG Meta: data.data.length: ${data.data?.length || 0}`);
+            console.warn(`⚠️ DEBUG Meta: Resposta data completa:`, JSON.stringify(data, null, 2));
+            console.warn(`⚠️ DEBUG Meta: POSSÍVEL CAUSA: API Meta ainda não processou dados de hoje`);
           }
           
           const campaignDetail = {
@@ -196,11 +210,17 @@ async function fetchMetaActiveCampaigns(accessToken: string, accountId: string):
             status: campaign.effective_status
           };
           
-          console.log(`📋 DEBUG Meta: Detalhes da campanha processada:`, campaignDetail);
+          console.log(`📋 DEBUG Meta: Detalhes finais da campanha:`, campaignDetail);
+          console.log(`🔍 DEBUG Meta: ==========================================\n`);
           
           return campaignDetail;
         } catch (error) {
-          console.error(`❌ Meta: Erro ao buscar insights da campanha ${campaign.id}:`, error);
+          console.error(`❌ Meta: ==========================================`);
+          console.error(`❌ Meta: ERRO ao buscar insights da campanha ${campaign.id}`);
+          console.error(`❌ Meta: Nome: ${campaign.name}`);
+          console.error(`❌ Meta: Erro: ${error.message}`);
+          console.error(`❌ Meta: Stack:`, error.stack);
+          console.error(`❌ Meta: ==========================================\n`);
           return {
             id: campaign.id,
             name: campaign.name,
