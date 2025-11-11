@@ -35,67 +35,81 @@ export async function processBatchReview(request: BatchReviewRequest) {
       deleted_today_duplicates: cleanupResult.deleted_today_duplicates
     });
     
-    console.log(`📊 [BATCH] Processando ${clientIds.length} clientes em lote para data ${today}`);
+    console.log(`📊 [BATCH] Processando ${clientIds.length} clientes em PARALELO para data ${today}`);
     
+    // Processar TODOS os clientes em paralelo (estratégia do Google Ads)
+    const processingStartTime = Date.now();
+    const clientResults = await Promise.allSettled(
+      clientIds.map((clientId: string) => {
+        const clientStartTime = Date.now();
+        console.log(`\n🚀 [BATCH] Iniciando processamento paralelo - Cliente ID: ${clientId}`);
+        
+        return processIndividualReview({
+          clientId,
+          reviewDate: today
+        }).then(result => ({
+          ...result,
+          clientId,
+          processing_time: Date.now() - clientStartTime
+        })).catch(error => ({
+          success: false,
+          error: error.message || 'Erro inesperado',
+          stack_trace: error.stack || 'Sem stack trace',
+          clientId,
+          processing_time: Date.now() - clientStartTime
+        }));
+      })
+    );
+    
+    const processingTime = Date.now() - processingStartTime;
+    console.log(`⚡ [BATCH] Processamento paralelo concluído em ${processingTime}ms`);
+    
+    // Processar resultados
     const results = [];
+    const errors = [];
     let successCount = 0;
     let errorCount = 0;
-    const errors = [];
     
-    // Processar cada cliente individualmente
-    for (let i = 0; i < clientIds.length; i++) {
-      const clientId = clientIds[i];
-      const clientStartTime = Date.now();
+    clientResults.forEach((promiseResult, index) => {
+      const clientId = clientIds[index];
       
-      console.log(`\n👤 [BATCH] ========================================`);
-      console.log(`👤 [BATCH] Processando cliente ${i + 1}/${clientIds.length}`);
-      console.log(`👤 [BATCH] Cliente ID: ${clientId}`);
-      console.log(`👤 [BATCH] ========================================`);
-      
-      try {
-        // Criar timeout de 30 segundos por cliente
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('TIMEOUT: Cliente demorou mais de 30 segundos para processar')), 30000);
-        });
+      if (promiseResult.status === 'fulfilled') {
+        const result = promiseResult.value;
+        const clientTime = result.processing_time || 0;
         
-        // Race entre o processamento e o timeout
-        const individualResult = await Promise.race([
-          processIndividualReview({
-            clientId,
-            reviewDate: today
-          }),
-          timeoutPromise
-        ]) as any;
-        
-        const clientTime = Date.now() - clientStartTime;
-        
-        if (individualResult.success) {
+        if (result.success) {
           successCount++;
           console.log(`✅ [BATCH] ========================================`);
-          console.log(`✅ [BATCH] Cliente ${i + 1} SUCESSO (${clientTime}ms)`);
-          console.log(`✅ [BATCH] Nome: ${individualResult.data?.client?.name || 'N/A'}`);
-          console.log(`✅ [BATCH] Conta: ${individualResult.data?.account?.name || 'N/A'}`);
-          console.log(`✅ [BATCH] Gasto: R$ ${individualResult.data?.review?.total_spent?.toFixed(2) || '0.00'}`);
+          console.log(`✅ [BATCH] Cliente ${index + 1}/${clientIds.length} SUCESSO (${clientTime}ms)`);
+          console.log(`✅ [BATCH] Cliente ID: ${clientId}`);
+          console.log(`✅ [BATCH] Nome: ${result.data?.client?.name || 'N/A'}`);
+          console.log(`✅ [BATCH] Conta: ${result.data?.account?.name || 'N/A'}`);
+          console.log(`✅ [BATCH] Gasto: R$ ${result.data?.review?.total_spent?.toFixed(2) || '0.00'}`);
           console.log(`✅ [BATCH] ========================================\n`);
           
           results.push({
             clientId,
             status: 'success',
-            data: individualResult.data,
+            data: result.data,
             processing_time: clientTime
           });
         } else {
           errorCount++;
-          const errorMsg = individualResult.error || 'Erro desconhecido';
+          const errorMsg = result.error || 'Erro desconhecido';
           console.error(`❌ [BATCH] ========================================`);
-          console.error(`❌ [BATCH] Cliente ${i + 1} ERRO (${clientTime}ms)`);
+          console.error(`❌ [BATCH] Cliente ${index + 1}/${clientIds.length} ERRO (${clientTime}ms)`);
           console.error(`❌ [BATCH] Cliente ID: ${clientId}`);
           console.error(`❌ [BATCH] Erro: ${errorMsg}`);
+          if (result.stack_trace) {
+            console.error(`❌ [BATCH] Stack Trace:`);
+            console.error(result.stack_trace);
+          }
           console.error(`❌ [BATCH] ========================================\n`);
           
           errors.push({
             clientId,
             error: errorMsg,
+            stack_trace: result.stack_trace,
             processing_time: clientTime
           });
           
@@ -106,41 +120,35 @@ export async function processBatchReview(request: BatchReviewRequest) {
             processing_time: clientTime
           });
         }
-      } catch (error) {
-        const clientTime = Date.now() - clientStartTime;
+      } else {
+        // Promise rejected
         errorCount++;
-        const errorMsg = error.message || 'Erro inesperado';
-        const errorStack = error.stack || 'Sem stack trace disponível';
+        const errorMsg = promiseResult.reason?.message || 'Promise rejeitada';
+        const errorStack = promiseResult.reason?.stack || 'Sem stack trace';
         
         console.error(`❌ [BATCH] ========================================`);
-        console.error(`❌ [BATCH] Cliente ${i + 1} EXCEPTION (${clientTime}ms)`);
+        console.error(`❌ [BATCH] Cliente ${index + 1}/${clientIds.length} EXCEPTION`);
         console.error(`❌ [BATCH] Cliente ID: ${clientId}`);
         console.error(`❌ [BATCH] Mensagem: ${errorMsg}`);
         console.error(`❌ [BATCH] Stack Trace:`);
         console.error(errorStack);
-        console.error(`❌ [BATCH] Objeto de erro completo:`, JSON.stringify(error, null, 2));
         console.error(`❌ [BATCH] ========================================\n`);
         
         errors.push({
           clientId,
           error: errorMsg,
           stack_trace: errorStack,
-          processing_time: clientTime
+          processing_time: 0
         });
         
         results.push({
           clientId,
           status: 'error',
           error: errorMsg,
-          processing_time: clientTime
+          processing_time: 0
         });
       }
-      
-      // Pequena pausa entre processamentos para evitar sobrecarga
-      if (i < clientIds.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
+    });
     
     const batchTime = Date.now() - batchStartTime;
     
