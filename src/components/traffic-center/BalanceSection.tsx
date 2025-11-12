@@ -9,7 +9,7 @@ interface AccountInfo {
   status?: { code: unknown; label: string; tone: "ok" | "warn" | "crit" | "info" };
   billing_model?: "pre" | "pos";
   saldo?: {
-    type: "numeric" | "unavailable";
+    type: "numeric" | "credit_card" | "unavailable";
     value?: number;
     source?: string;
     percent?: number;
@@ -104,6 +104,10 @@ function Card({ platform, obj }: CardProps) {
   if (obj.saldo?.type === "numeric") {
     saldoValue = <div className="text-2xl font-extrabold">{money(obj.saldo.value)}</div>;
     batteryClass = pctToClass(batteryPercent);
+  } else if (obj.saldo?.type === "credit_card") {
+    saldoValue = <div className="text-2xl font-bold text-blue-600">💳 Cartão de crédito</div>;
+    batteryClass = "info";
+    batteryPercent = 0;
   } else {
     saldoValue = <div className="text-2xl font-bold text-gray-500">Saldo não encontrado</div>;
     batteryClass = "crit";

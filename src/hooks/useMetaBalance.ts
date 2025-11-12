@@ -8,10 +8,11 @@ export interface ApiAccount {
   status_label: string;
   status_tone: "ok" | "warn" | "crit" | "info";
   billing_model: "pre" | "pos";
-  balance_type: "numeric" | "unavailable";
+  balance_type: "numeric" | "credit_card" | "unavailable";
   balance_value?: number;
   balance_source?: string;
   balance_percent?: number;
+  last_funding_detected_at?: string | null;
   last_recharge_date?: string;
   last_recharge_amount?: number;
   badges?: string[];
@@ -47,7 +48,7 @@ export function useMetaBalance() {
       // Buscar contas Meta
       const { data: metaAccounts, error: metaError } = await supabase
         .from("client_accounts")
-        .select("*")
+        .select("*, last_funding_detected_at")
         .eq("platform", "meta")
         .eq("status", "active");
 
@@ -70,9 +71,14 @@ export function useMetaBalance() {
             status_label: "Ativa",
             status_tone: "ok",
             billing_model: metaAccount.is_prepay_account ? "pre" : "pos",
-            balance_type: metaAccount.saldo_restante !== null ? "numeric" : "unavailable",
+            balance_type: metaAccount.saldo_restante !== null 
+              ? "numeric" 
+              : (metaAccount.is_prepay_account === false && !metaAccount.last_funding_detected_at) 
+                ? "credit_card" 
+                : "unavailable",
             balance_value: metaAccount.saldo_restante || undefined,
             balance_percent: metaAccount.saldo_restante ? Math.min(1, metaAccount.saldo_restante / 1000) : 0,
+            last_funding_detected_at: metaAccount.last_funding_detected_at,
           };
 
           result.push({

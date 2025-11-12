@@ -425,6 +425,10 @@ export function CircularBudgetCard({
                     </div>
                   )}
                 </div>
+              ) : client.balance_info.balance_type === "credit_card" ? (
+                <div className="text-blue-800">
+                  <span className="text-sm">💳 Cartão de crédito</span>
+                </div>
               ) : (
                 <div className="text-gray-600">
                   <span className="text-sm">Saldo não encontrado</span>
