@@ -425,31 +425,9 @@ export function CircularBudgetCard({
                     </div>
                   )}
                 </div>
-              ) : client.balance_info.balance_type === "credit_card" ? (
-                <div className="text-blue-800">
-                  <span className="text-sm">💳 Cartão de crédito</span>
-                </div>
               ) : (
                 <div className="text-gray-600">
-                  <span className="text-sm">Saldo indisponível</span>
-                </div>
-              )}
-
-              {/* Botão "Ver saldo no gerenciador" - APENAS para contas pós-pagas */}
-              {client.balance_info?.billing_model === "pos" && (
-                <div className="mt-3 pt-2 border-t border-blue-200">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const billingUrl = `https://business.facebook.com/billing_hub/accounts/details?asset_id=${accountInfo.id}`;
-                      window.open(billingUrl, "_blank");
-                    }}
-                    className="w-full text-xs bg-white hover:bg-blue-50 border-blue-300 text-blue-700 hover:text-blue-800"
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Ver saldo no gerenciador
-                  </Button>
+                  <span className="text-sm">Saldo não encontrado</span>
                 </div>
               )}
             </div>

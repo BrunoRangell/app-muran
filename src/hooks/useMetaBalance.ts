@@ -8,7 +8,7 @@ export interface ApiAccount {
   status_label: string;
   status_tone: "ok" | "warn" | "crit" | "info";
   billing_model: "pre" | "pos";
-  balance_type: "numeric" | "credit_card" | "unavailable";
+  balance_type: "numeric" | "unavailable";
   balance_value?: number;
   balance_source?: string;
   balance_percent?: number;
