@@ -452,64 +452,6 @@ function calculateBalanceFromActivities(activities: any[]) {
   }
 }
 
-// Função para recalcular saldo baseado no saldo manual definido pelo usuário
-async function recalculateBalanceFromManual(
-  accountId: string, 
-  accessToken: string, 
-  manualBalance: number, 
-  balanceSetAt: string
-): Promise<number> {
-  console.log(`🎯 [RECALCULO] Iniciando recálculo para conta ${accountId} desde ${balanceSetAt}`);
-  
-  try {
-    // Converter balanceSetAt para ISO format para a API
-    const sinceDate = new Date(balanceSetAt);
-    const untilDate = new Date();
-    
-    // Buscar activities desde o momento que o saldo foi definido
-    const activities = await fetchAccountActivities(accountId, accessToken, sinceDate, untilDate);
-    
-    if (!activities || activities.length === 0) {
-      console.log(`ℹ️ [RECALCULO] Nenhuma activity encontrada desde ${balanceSetAt}, mantendo saldo manual`);
-      return manualBalance;
-    }
-    
-    // Filtrar apenas charges (gastos) posteriores ao timestamp
-    const charges = activities.filter(activity => {
-      const isCharge = activity.event_type === "ad_account_billing_charge";
-      const activityDate = new Date(activity.event_time);
-      const isAfterManualSet = activityDate > sinceDate;
-      
-      return isCharge && isAfterManualSet;
-    });
-    
-    console.log(`💳 [RECALCULO] ${charges.length} charges encontradas desde ${balanceSetAt}`);
-    
-    // Calcular total de gastos
-    let totalCharges = 0;
-    for (const charge of charges) {
-      const extraData = parseExtraData(charge.extra_data);
-      if (extraData?.new_value) {
-        const chargeAmount = extraData.new_value / 100; // Converter de centavos
-        totalCharges += chargeAmount;
-      }
-    }
-    
-    const updatedBalance = manualBalance - totalCharges;
-    
-    console.log(`✅ [RECALCULO] Saldo recalculado:`, {
-      manualBalance: `R$ ${manualBalance.toFixed(2)}`,
-      totalCharges: `R$ ${totalCharges.toFixed(2)}`,
-      updatedBalance: `R$ ${updatedBalance.toFixed(2)}`
-    });
-    
-    return updatedBalance;
-    
-  } catch (error) {
-    console.error(`❌ [RECALCULO] Erro:`, error);
-    throw error;
-  }
-}
 
 // Verificar se existe funding nos últimos 60 dias
 function hasFundingInLast60Days(activities: any[]): boolean {
@@ -622,67 +564,25 @@ export async function fetchMetaBalance(accountId: string, accessToken: string, s
         };
       }
       
-      // 3.2. TEM funding nos últimos 60 dias - verificar saldo manual
+      // 3.2. TEM funding nos últimos 60 dias
       console.log(`💰 [META-API] FUNDING encontrado nos últimos 60 dias!`);
+      console.log(`ℹ️ [META-API] Para contas pós-pagas com funding, usuário deve consultar saldo no Business Manager`);
       
-      const { data: clientAccount, error: clientAccountError } = await supabase
-        .from('client_accounts')
-        .select('balance_set_at, saldo_restante')
-        .eq('account_id', accountId)
-        .eq('platform', 'meta')
-        .single();
-
-      if (clientAccountError && clientAccountError.code !== 'PGRST116') {
-        console.error(`❌ [META-API] Erro ao buscar dados da conta:`, clientAccountError);
-      }
-
-      // 3.3. Se há saldo manual definido, usar recálculo
-      if (clientAccount?.balance_set_at && clientAccount?.saldo_restante !== null) {
-        console.log(`🎯 [META-API] Saldo manual encontrado! Recalculando...`);
-        
-        try {
-          const recalculatedBalance = await recalculateBalanceFromManual(
-            accountId, 
-            accessToken, 
-            clientAccount.saldo_restante, 
-            clientAccount.balance_set_at
-          );
-          
-          const responseTime = Date.now() - startTime;
-          console.log(`✅ [META-API] Saldo recalculado (${responseTime}ms):`, {
-            originalManual: clientAccount.saldo_restante,
-            recalculated: recalculatedBalance,
-            setAt: clientAccount.balance_set_at
-          });
-          
-          return { 
-            saldo_restante: recalculatedBalance,
-            source: 'manual_recalculated',
-            is_prepay_account: false,
-            funding_detected: true
-          };
-        } catch (recalcError) {
-          console.error(`❌ [META-API] Erro no recálculo:`, recalcError);
-        }
-      }
-      
-      // 3.4. Calcular saldo baseado nas activities (para salvar funding info)
+      // 3.3. Calcular saldo baseado nas activities (para salvar funding info)
       const balanceCalc = calculateBalanceFromActivities(activities);
       
       if (balanceCalc && balanceCalc.funding_detected) {
         const responseTime = Date.now() - startTime;
-        console.log(`💰 [META-API] Funding detectado via activities:`, {
-          saldo_restante: balanceCalc.saldo_restante,
+        console.log(`💰 [META-API] Funding detectado:`, {
           funding_detected: balanceCalc.funding_detected,
           last_funding_date: balanceCalc.last_funding_date,
-          charges_since_funding: balanceCalc.charges_since_funding,
           funding_amount: balanceCalc.funding_amount,
           total_charges: balanceCalc.total_charges
         });
         
         return { 
-          saldo_restante: null, // Não usar saldo calculado, apenas salvar funding info
-          source: 'funding_available_for_manual',
+          saldo_restante: null,
+          source: 'funding_available_manual_check',
           is_prepay_account: false,
           funding_detected: true,
           last_funding_date: balanceCalc.last_funding_date,
